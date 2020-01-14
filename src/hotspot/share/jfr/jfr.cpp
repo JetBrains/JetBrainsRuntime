@@ -45,15 +45,21 @@ bool Jfr::is_recording() {
   return JfrRecorder::is_recording();
 }
 
-void Jfr::on_vm_init() {
-  if (!JfrRecorder::on_vm_init()) {
-    vm_exit_during_initialization("Failure when starting JFR on_vm_init");
+void Jfr::on_create_vm_1() {
+  if (!JfrRecorder::on_create_vm_1()) {
+    vm_exit_during_initialization("Failure when starting JFR on_create_vm_1");
   }
 }
 
-void Jfr::on_vm_start() {
-  if (!JfrRecorder::on_vm_start()) {
-    vm_exit_during_initialization("Failure when starting JFR on_vm_start");
+void Jfr::on_create_vm_2() {
+  if (!JfrRecorder::on_create_vm_2()) {
+    vm_exit_during_initialization("Failure when starting JFR on_create_vm_2");
+  }
+}
+
+void Jfr::on_create_vm_3() {
+  if (!JfrRecorder::on_create_vm_3()) {
+    vm_exit_during_initialization("Failure when starting JFR on_create_vm_3");
   }
 }
 
@@ -97,7 +103,7 @@ void Jfr::on_vm_shutdown(bool exception_handler) {
 
 void Jfr::weak_oops_do(BoolObjectClosure* is_alive, OopClosure* f) {
   if (LeakProfiler::is_running()) {
-    LeakProfiler::oops_do(is_alive, f);
+    LeakProfiler::weak_oops_do(is_alive, f);
   }
 }
 

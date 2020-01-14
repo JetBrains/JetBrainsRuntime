@@ -29,6 +29,8 @@ import java.util.SortedSet;
 
 import javax.lang.model.element.PackageElement;
 
+import jdk.javadoc.internal.doclets.formats.html.markup.BodyContents;
+import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
@@ -51,9 +53,6 @@ import jdk.javadoc.internal.doclets.toolkit.util.DocPaths;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Atul M Dambalkar
- * @author Bhavesh Patel (Modified)
  */
 public class TreeWriter extends AbstractTreeWriter {
 
@@ -70,6 +69,8 @@ public class TreeWriter extends AbstractTreeWriter {
 
     private final Navigation navBar;
 
+    protected BodyContents bodyContents;
+
     /**
      * Constructor to construct TreeWriter object.
      *
@@ -81,7 +82,8 @@ public class TreeWriter extends AbstractTreeWriter {
         super(configuration, filename, classtree);
         packages = configuration.packages;
         classesOnly = packages.isEmpty();
-        this.navBar = new Navigation(null, configuration, fixedNavDiv, PageMode.TREE, path);
+        this.navBar = new Navigation(null, configuration, PageMode.TREE, path);
+        this.bodyContents = new BodyContents();
     }
 
     /**
@@ -111,21 +113,23 @@ public class TreeWriter extends AbstractTreeWriter {
                 HtmlStyle.title, headContent);
         Content div = HtmlTree.DIV(HtmlStyle.header, heading);
         addPackageTreeLinks(div);
-        HtmlTree htmlTree = HtmlTree.MAIN();
-        htmlTree.add(div);
+        Content mainContent = new ContentBuilder();
+        mainContent.add(div);
         HtmlTree divTree = new HtmlTree(HtmlTag.DIV);
         divTree.setStyle(HtmlStyle.contentContainer);
         addTree(classtree.baseClasses(), "doclet.Class_Hierarchy", divTree);
         addTree(classtree.baseInterfaces(), "doclet.Interface_Hierarchy", divTree);
         addTree(classtree.baseAnnotationTypes(), "doclet.Annotation_Type_Hierarchy", divTree);
         addTree(classtree.baseEnums(), "doclet.Enum_Hierarchy", divTree, true);
-        htmlTree.add(divTree);
-        body.add(htmlTree);
-        htmlTree = HtmlTree.FOOTER();
+        mainContent.add(divTree);
+        HtmlTree footerTree = HtmlTree.FOOTER();
         navBar.setUserFooter(getUserHeaderFooter(false));
-        htmlTree.add(navBar.getContent(false));
-        addBottom(htmlTree);
-        body.add(htmlTree);
+        footerTree.add(navBar.getContent(false));
+        addBottom(footerTree);
+        body.add(bodyContents
+                .addMainContent(mainContent)
+                .setFooter(footerTree)
+                .toContent());
         printHtmlDocument(null, "class tree", body);
     }
 
@@ -176,11 +180,11 @@ public class TreeWriter extends AbstractTreeWriter {
     protected HtmlTree getTreeHeader() {
         String title = resources.getText("doclet.Window_Class_Hierarchy");
         HtmlTree bodyTree = getBody(getWindowTitle(title));
-        HtmlTree htmlTree = HtmlTree.HEADER();
-        addTop(htmlTree);
+        Content headerContent = new ContentBuilder();
+        addTop(headerContent);
         navBar.setUserHeader(getUserHeaderFooter(true));
-        htmlTree.add(navBar.getContent(true));
-        bodyTree.add(htmlTree);
+        headerContent.add(navBar.getContent(true));
+        bodyContents.setHeader(headerContent);
         return bodyTree;
     }
 

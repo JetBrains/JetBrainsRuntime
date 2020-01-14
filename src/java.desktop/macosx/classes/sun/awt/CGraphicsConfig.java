@@ -35,7 +35,6 @@ import sun.java2d.SurfaceData;
 import sun.java2d.opengl.CGLLayer;
 import sun.lwawt.LWGraphicsConfig;
 import sun.lwawt.macosx.CFRetainedResource;
-import sun.lwawt.macosx.CPlatformView;
 
 public abstract class CGraphicsConfig extends GraphicsConfiguration
         implements LWGraphicsConfig {
@@ -77,12 +76,6 @@ public abstract class CGraphicsConfig extends GraphicsConfiguration
         double yscale = device.getYResolution() / 72.0;
         return new AffineTransform(xscale, 0.0, 0.0, yscale, 0.0, 0.0);
     }
-
-    /**
-     * Creates a new SurfaceData that will be associated with the given
-     * LWWindowPeer.
-     */
-    public abstract SurfaceData createSurfaceData(CPlatformView pView);
 
     /**
      * Creates a new SurfaceData that will be associated with the given

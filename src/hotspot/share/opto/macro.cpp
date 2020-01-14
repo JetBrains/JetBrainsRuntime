@@ -1033,13 +1033,7 @@ void PhaseMacroExpand::process_users_of_allocation(CallNode *alloc) {
         if (ctrl_proj != NULL) {
           _igvn.replace_node(ctrl_proj, init->in(TypeFunc::Control));
 #ifdef ASSERT
-          BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
           Node* tmp = init->in(TypeFunc::Control);
-          while (bs->is_gc_barrier_node(tmp)) {
-            Node* tmp2 = bs->step_over_gc_barrier_ctrl(tmp);
-            assert(tmp != tmp2, "Must make progress");
-            tmp = tmp2;
-          }
           assert(tmp == _fallthroughcatchproj, "allocation control projection");
 #endif
         }
@@ -2533,7 +2527,7 @@ bool PhaseMacroExpand::expand_macro_nodes() {
   while (progress) {
     progress = false;
     for (int i = C->macro_count(); i > 0; i--) {
-      Node * n = C->macro_node(i-1);
+      Node* n = C->macro_node(i-1);
       bool success = false;
       debug_only(int old_macro_count = C->macro_count(););
       if (n->Opcode() == Op_LoopLimit) {
@@ -2578,7 +2572,7 @@ bool PhaseMacroExpand::expand_macro_nodes() {
         C->remove_macro_node(n);
         success = true;
       }
-      assert(success == (C->macro_count() < old_macro_count), "elimination reduces macro count");
+      assert(!success || (C->macro_count() == (old_macro_count - 1)), "elimination must have deleted one node from macro list");
       progress = progress || success;
     }
   }
@@ -2586,32 +2580,30 @@ bool PhaseMacroExpand::expand_macro_nodes() {
   // expand arraycopy "macro" nodes first
   // For ReduceBulkZeroing, we must first process all arraycopy nodes
   // before the allocate nodes are expanded.
-  int macro_idx = C->macro_count() - 1;
-  while (macro_idx >= 0) {
-    Node * n = C->macro_node(macro_idx);
+  for (int i = C->macro_count(); i > 0; i--) {
+    Node* n = C->macro_node(i-1);
     assert(n->is_macro(), "only macro nodes expected here");
     if (_igvn.type(n) == Type::TOP || (n->in(0) != NULL && n->in(0)->is_top())) {
       // node is unreachable, so don't try to expand it
       C->remove_macro_node(n);
       continue;
     }
-    int macro_count = C->macro_count();
+    debug_only(int old_macro_count = C->macro_count(););
     switch (n->class_id()) {
     case Node::Class_Lock:
       expand_lock_node(n->as_Lock());
-      assert(C->macro_count() < macro_count, "must have deleted a node from macro list");
+      assert(C->macro_count() == (old_macro_count - 1), "expansion must have deleted one node from macro list");
       break;
     case Node::Class_Unlock:
       expand_unlock_node(n->as_Unlock());
-      assert(C->macro_count() < macro_count, "must have deleted a node from macro list");
+      assert(C->macro_count() == (old_macro_count - 1), "expansion must have deleted one node from macro list");
       break;
     case Node::Class_ArrayCopy:
       expand_arraycopy_node(n->as_ArrayCopy());
-      assert(C->macro_count() < macro_count, "must have deleted a node from macro list");
+      assert(C->macro_count() == (old_macro_count - 1), "expansion must have deleted one node from macro list");
       break;
     }
     if (C->failing())  return true;
-    macro_idx --;
   }
 
   // All nodes except Allocate nodes are expanded now. There could be

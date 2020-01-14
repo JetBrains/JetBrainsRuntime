@@ -207,7 +207,7 @@ Node *MemNode::optimize_memory_chain(Node *mchain, const TypePtr *t_adr, Node *l
   Node* result = optimize_simple_memory_chain(mchain, t_oop, load, phase);
   bool is_instance = t_oop->is_known_instance_field();
   PhaseIterGVN *igvn = phase->is_IterGVN();
-  if (is_instance && igvn != NULL  && result->is_Phi()) {
+  if (is_instance && igvn != NULL && result->is_Phi()) {
     PhiNode *mphi = result->as_Phi();
     assert(mphi->bottom_type() == Type::MEMORY, "memory phi required");
     const TypePtr *t = mphi->adr_type();
@@ -1438,8 +1438,9 @@ Node *LoadNode::split_through_phi(PhaseGVN *phase) {
 
   // Do nothing here if Identity will find a value
   // (to avoid infinite chain of value phis generation).
-  if (!phase->eqv(this, phase->apply_identity(this)))
+  if (!phase->eqv(this, this->Identity(phase))) {
     return NULL;
+  }
 
   // Select Region to split through.
   Node* region;
@@ -1528,7 +1529,7 @@ Node *LoadNode::split_through_phi(PhaseGVN *phase) {
       // otherwise it will be not updated during igvn->transform since
       // igvn->type(x) is set to x->Value() already.
       x->raise_bottom_type(t);
-      Node *y = igvn->apply_identity(x);
+      Node* y = x->Identity(igvn);
       if (y != x) {
         x = y;
       } else {

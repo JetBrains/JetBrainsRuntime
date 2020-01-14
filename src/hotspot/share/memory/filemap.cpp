@@ -1038,16 +1038,11 @@ bool FileMapInfo::open_for_read() {
   }
   int fd = os::open(_full_path, O_RDONLY | O_BINARY, 0);
   if (fd < 0) {
-    if (is_static()) {
-      if (errno == ENOENT) {
-        // Not locating the shared archive is ok.
-        fail_continue("Specified shared archive not found (%s).", _full_path);
-      } else {
-        fail_continue("Failed to open shared archive file (%s).",
-                      os::strerror(errno));
-      }
+    if (errno == ENOENT) {
+      fail_continue("Specified shared archive not found (%s).", _full_path);
     } else {
-      log_warning(cds, dynamic)("specified dynamic archive doesn't exist: %s", _full_path);
+      fail_continue("Failed to open shared archive file (%s).",
+                    os::strerror(errno));
     }
     return false;
   }
@@ -1169,9 +1164,9 @@ void FileMapInfo::write_region(int region, char* base, size_t size,
 
   si->set_file_offset(_file_offset);
   char* requested_base = (target_base == NULL) ? NULL : target_base + MetaspaceShared::final_delta();
-  log_info(cds)("Shared file region  %d: " SIZE_FORMAT_HEX_W(08)
-                " bytes, addr " INTPTR_FORMAT " file offset " SIZE_FORMAT_HEX_W(08),
-                region, size, p2i(requested_base), _file_offset);
+  log_debug(cds)("Shared file region  %d: " SIZE_FORMAT_HEX_W(08)
+                 " bytes, addr " INTPTR_FORMAT " file offset " SIZE_FORMAT_HEX_W(08),
+                 region, size, p2i(requested_base), _file_offset);
 
   int crc = ClassLoader::crc32(0, base, (jint)size);
   si->init(region, target_base, size, read_only, allow_exec, crc);
@@ -1190,8 +1185,8 @@ void FileMapInfo::write_bitmap_region(const CHeapBitMap* ptrmap) {
   ptrmap->write_to(buffer, size_in_bytes);
   header()->set_ptrmap_size_in_bits(size_in_bits);
 
-  log_info(cds)("ptrmap = " INTPTR_FORMAT " (" SIZE_FORMAT " bytes)",
-                p2i(buffer), size_in_bytes);
+  log_debug(cds)("ptrmap = " INTPTR_FORMAT " (" SIZE_FORMAT " bytes)",
+                 p2i(buffer), size_in_bytes);
   write_region(MetaspaceShared::bm, (char*)buffer, size_in_bytes, /*read_only=*/true, /*allow_exec=*/false);
 }
 
@@ -1252,8 +1247,8 @@ size_t FileMapInfo::write_archive_heap_regions(GrowableArray<MemRegion> *heap_me
       total_size += size;
     }
 
-    log_info(cds)("Archive heap region %d: " INTPTR_FORMAT " - " INTPTR_FORMAT " = " SIZE_FORMAT_W(8) " bytes",
-                  i, p2i(start), p2i(start + size), size);
+    log_debug(cds)("Archive heap region %d: " INTPTR_FORMAT " - " INTPTR_FORMAT " = " SIZE_FORMAT_W(8) " bytes",
+                   i, p2i(start), p2i(start + size), size);
     write_region(i, start, size, false, false);
     if (size > 0) {
       address oopmap = oopmaps->at(arr_idx)._oopmap;
@@ -1390,14 +1385,6 @@ MapArchiveResult FileMapInfo::map_regions(int regions[], int num_regions, char* 
 
   }
 
-  DEBUG_ONLY(if (addr_delta == 0 && ArchiveRelocationMode == 1) {
-      // This is for simulating mmap failures at the requested address. We do it here (instead
-      // of MetaspaceShared::map_archives) so we can thoroughly test the code for failure handling
-      // (releasing all allocated resource, etc).
-      log_info(cds)("ArchiveRelocationMode == 1: always map archive(s) at an alternative address");
-      return MAP_ARCHIVE_MMAP_FAILURE;
-    });
-
   header()->set_mapped_base_address(header()->requested_base_address() + addr_delta);
   if (addr_delta != 0 && !relocate_pointers(addr_delta)) {
     return MAP_ARCHIVE_OTHER_FAILURE;
@@ -1451,12 +1438,14 @@ MapArchiveResult FileMapInfo::map_region(int i, intx addr_delta, char* mapped_ba
     MemTracker::record_virtual_memory_type((address)requested_addr, mtClassShared);
   }
 
-  if (MetaspaceShared::use_windows_memory_mapping() && addr_delta != 0) {
+  if (MetaspaceShared::use_windows_memory_mapping() && rs.is_reserved()) {
     // This is the second time we try to map the archive(s). We have already created a ReservedSpace
     // that covers all the FileMapRegions to ensure all regions can be mapped. However, Windows
     // can't mmap into a ReservedSpace, so we just os::read() the data. We're going to patch all the
     // regions anyway, so there's no benefit for mmap anyway.
     if (!read_region(i, requested_addr, size)) {
+      log_info(cds)("Failed to read %s shared space into reserved space at " INTPTR_FORMAT,
+                    shared_region_name[i], p2i(requested_addr));
       return MAP_ARCHIVE_OTHER_FAILURE; // oom or I/O error.
     }
   } else {
@@ -1464,7 +1453,8 @@ MapArchiveResult FileMapInfo::map_region(int i, intx addr_delta, char* mapped_ba
                                 requested_addr, size, si->read_only(),
                                 si->allow_exec());
     if (base != requested_addr) {
-      log_info(cds)("Unable to map %s shared space at required address.", shared_region_name[i]);
+      log_info(cds)("Unable to map %s shared space at " INTPTR_FORMAT,
+                    shared_region_name[i], p2i(requested_addr));
       _memory_mapping_failed = true;
       return MAP_ARCHIVE_MMAP_FAILURE;
     }
@@ -1473,7 +1463,7 @@ MapArchiveResult FileMapInfo::map_region(int i, intx addr_delta, char* mapped_ba
   si->set_mapped_base(requested_addr);
 
   if (!rs.is_reserved()) {
-    // When mapping on Windows with (addr_delta == 0), we don't reserve the address space for the regions
+    // When mapping on Windows for the first attempt, we don't reserve the address space for the regions
     // (Windows can't mmap into a ReservedSpace). In this case, NMT requires we call it after
     // os::map_memory has succeeded.
     assert(MetaspaceShared::use_windows_memory_mapping(), "Windows memory mapping only");

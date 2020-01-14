@@ -69,6 +69,19 @@
 // This file holds all globally used constants & types, class (forward)
 // declarations and a few frequently used utility functions.
 
+// Declare the named class to be noncopyable.  This macro must be used in
+// a private part of the class's definition, followed by a semi-colon.
+// Doing so provides private declarations for the class's copy constructor
+// and assignment operator.  Because these operations are private, most
+// potential callers will fail to compile because they are inaccessible.
+// The operations intentionally lack a definition, to provoke link-time
+// failures for calls from contexts where they are accessible, e.g. from
+// within the class or from a friend of the class.
+// Note: The lack of definitions is still not completely bullet-proof, as
+// an apparent call might be optimized away by copy elision.
+// For C++11 the declarations should be changed to deleted definitions.
+#define NONCOPYABLE(C) C(C const&); C& operator=(C const&) /* next token must be ; */
+
 //----------------------------------------------------------------------------------------------------
 // Printf-style formatters for fixed- and variable-width types as pointers and
 // integers.  These are derived from the definitions in inttypes.h.  If the platform
@@ -948,6 +961,13 @@ template<class T> inline T MAX4(T a, T b, T c, T d) { return MAX2(MAX3(a, b, c),
 template<class T> inline T MIN4(T a, T b, T c, T d) { return MIN2(MIN3(a, b, c), d); }
 
 template<class T> inline T ABS(T x)                 { return (x > 0) ? x : -x; }
+
+// Return the given value clamped to the range [min ... max]
+template<typename T>
+inline T clamp(T value, T min, T max) {
+  assert(min <= max, "must be");
+  return MIN2(MAX2(value, min), max);
+}
 
 // true if x is a power of 2, false otherwise
 inline bool is_power_of_2(intptr_t x) {

@@ -51,7 +51,6 @@
 #include "runtime/javaCalls.hpp"
 #include "runtime/mutexLocker.hpp"
 #include "runtime/objectMonitor.hpp"
-#include "runtime/orderAccess.hpp"
 #include "runtime/osThread.hpp"
 #include "runtime/perfMemory.hpp"
 #include "runtime/semaphore.hpp"
@@ -167,6 +166,22 @@ julong os::Bsd::available_memory() {
   }
 #endif
   return available;
+}
+
+// for more info see :
+// https://man.openbsd.org/sysctl.2
+void os::Bsd::print_uptime_info(outputStream* st) {
+  struct timeval boottime;
+  size_t len = sizeof(boottime);
+  int mib[2];
+  mib[0] = CTL_KERN;
+  mib[1] = KERN_BOOTTIME;
+
+  if (sysctl(mib, 2, &boottime, &len, NULL, 0) >= 0) {
+    time_t bootsec = boottime.tv_sec;
+    time_t currsec = time(NULL);
+    os::print_dhm(st, "OS uptime:", (long) difftime(currsec, bootsec));
+  }
 }
 
 julong os::physical_memory() {
@@ -931,7 +946,7 @@ jlong os::javaTimeNanos() {
   if (now <= prev) {
     return prev;   // same or retrograde time;
   }
-  const uint64_t obsv = Atomic::cmpxchg(now, &Bsd::_max_abstime, prev);
+  const uint64_t obsv = Atomic::cmpxchg(&Bsd::_max_abstime, prev, now);
   assert(obsv >= prev, "invariant");   // Monotonicity
   // If the CAS succeeded then we're done and return "now".
   // If the CAS failed and the observed value "obsv" is >= now then
@@ -1570,6 +1585,8 @@ void os::print_os_info(outputStream* st) {
 
   os::Posix::print_uname_info(st);
 
+  os::Bsd::print_uptime_info(st);
+
   os::Posix::print_rlimit_info(st);
 
   os::Posix::print_load_average(st);
@@ -1834,7 +1851,7 @@ static int check_pending_signals() {
   for (;;) {
     for (int i = 0; i < NSIG + 1; i++) {
       jint n = pending_signals[i];
-      if (n > 0 && n == Atomic::cmpxchg(n - 1, &pending_signals[i], n)) {
+      if (n > 0 && n == Atomic::cmpxchg(&pending_signals[i], n, n - 1)) {
         return i;
       }
     }
@@ -1895,7 +1912,7 @@ void bsd_wrap_code(char* base, size_t size) {
   }
 
   char buf[PATH_MAX + 1];
-  int num = Atomic::add(1, &cnt);
+  int num = Atomic::add(&cnt, 1);
 
   snprintf(buf, PATH_MAX + 1, "%s/hs-vm-%d-%d",
            os::get_temp_directory(), os::current_process_id(), num);
@@ -3209,7 +3226,7 @@ static volatile int* volatile apic_to_processor_mapping = NULL;
 static volatile int next_processor_id = 0;
 
 static inline volatile int* get_apic_to_processor_mapping() {
-  volatile int* mapping = OrderAccess::load_acquire(&apic_to_processor_mapping);
+  volatile int* mapping = Atomic::load_acquire(&apic_to_processor_mapping);
   if (mapping == NULL) {
     // Calculate possible number space for APIC ids. This space is not necessarily
     // in the range [0, number_of_processors).
@@ -3238,9 +3255,9 @@ static inline volatile int* get_apic_to_processor_mapping() {
       mapping[i] = -1;
     }
 
-    if (!Atomic::replace_if_null(mapping, &apic_to_processor_mapping)) {
+    if (!Atomic::replace_if_null(&apic_to_processor_mapping, mapping)) {
       FREE_C_HEAP_ARRAY(int, mapping);
-      mapping = OrderAccess::load_acquire(&apic_to_processor_mapping);
+      mapping = Atomic::load_acquire(&apic_to_processor_mapping);
     }
   }
 
@@ -3264,11 +3281,13 @@ uint os::processor_id() {
   int processor_id = Atomic::load(&mapping[apic_id]);
 
   while (processor_id < 0) {
-    if (Atomic::cmpxchg(-2, &mapping[apic_id], -1)) {
-      Atomic::store(Atomic::add(1, &next_processor_id) - 1, &mapping[apic_id]);
+    if (Atomic::cmpxchg(&mapping[apic_id], -1, -2) == -1) {
+      Atomic::store(&mapping[apic_id], Atomic::add(&next_processor_id, 1) - 1);
     }
     processor_id = Atomic::load(&mapping[apic_id]);
   }
+
+  assert(processor_id >= 0 && processor_id < os::processor_count(), "invalid processor id");
 
   return (uint)processor_id;
 }
@@ -3762,11 +3781,30 @@ int os::fork_and_exec(char* cmd, bool use_vfork_if_available) {
   }
 }
 
-// Get the default path to the core file
+// Get the kern.corefile setting, or otherwise the default path to the core file
 // Returns the length of the string
 int os::get_core_path(char* buffer, size_t bufferSize) {
-  int n = jio_snprintf(buffer, bufferSize, "/cores/core.%d", current_process_id());
+  int n = 0;
+#ifdef __APPLE__
+  char coreinfo[MAX_PATH];
+  size_t sz = sizeof(coreinfo);
+  int ret = sysctlbyname("kern.corefile", coreinfo, &sz, NULL, 0);
+  if (ret == 0) {
+    char *pid_pos = strstr(coreinfo, "%P");
+    // skip over the "%P" to preserve any optional custom user pattern
+    const char* tail = (pid_pos != NULL) ? (pid_pos + 2) : "";
 
+    if (pid_pos != NULL) {
+      *pid_pos = '\0';
+      n = jio_snprintf(buffer, bufferSize, "%s%d%s", coreinfo, os::current_process_id(), tail);
+    } else {
+      n = jio_snprintf(buffer, bufferSize, "%s", coreinfo);
+    }
+  } else
+#endif
+  {
+    n = jio_snprintf(buffer, bufferSize, "/cores/core.%d", os::current_process_id());
+  }
   // Truncate if theoretical string was longer than bufferSize
   n = MIN2(n, (int)bufferSize);
 

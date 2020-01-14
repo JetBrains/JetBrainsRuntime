@@ -391,34 +391,6 @@ Java_sun_java2d_metal_MTLSurfaceData_clearWindow
     cglsdo->layer = NULL;
 }
 
-JNIEXPORT void JNICALL
-Java_sun_java2d_metal_MTLSurfaceData_validate
-    (JNIEnv *env, jobject jsurfacedata,
-     jint xoff, jint yoff, jint width, jint height, jboolean isOpaque)
-{
-    J2dTraceLn2(J2D_TRACE_INFO, "MTLLSurfaceData_validate: w=%d h=%d", width, height);
-
-    BMTLSDOps *mtlsdo = (BMTLSDOps*)SurfaceData_GetOps(env, jsurfacedata);
-    mtlsdo->needsInit = JNI_TRUE;
-    mtlsdo->xOffset = xoff;
-    mtlsdo->yOffset = yoff;
-
-    mtlsdo->width = width;
-    mtlsdo->height = height;
-    mtlsdo->isOpaque = isOpaque;
-
-    if (mtlsdo->drawableType == MTLSD_WINDOW) {
-        // J2dTraceLn4(J2D_TRACE_INFO, "MTLContext_SetSurfaces: w=%d h=%d src=%p dst=%p", width, height, mtlsdo, mtlsdo);
-        [MTLContext setSurfacesEnv:env src:ptr_to_jlong(mtlsdo) dst:ptr_to_jlong(mtlsdo)];
-
-        // we have to explicitly tell the NSOpenGLContext that its target
-        // drawable has changed size
-        MTLSDOps *cglsdo = (MTLSDOps *)mtlsdo->privOps;
-        MTLContext *mtlc = cglsdo->configInfo->context;
-
-    }
-}
-
 NSString * getSurfaceDescription(const BMTLSDOps * bmtlsdOps) {
     if (bmtlsdOps == NULL)
         return @"NULL";

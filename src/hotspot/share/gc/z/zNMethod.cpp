@@ -41,7 +41,6 @@
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "runtime/atomic.hpp"
-#include "runtime/orderAccess.hpp"
 #include "utilities/debug.hpp"
 
 static ZNMethodData* gc_data(const nmethod* nm) {
@@ -164,7 +163,7 @@ void ZNMethod::register_nmethod(nmethod* nm) {
   ZNMethodTable::register_nmethod(nm);
 
   // Disarm nmethod entry barrier
-  disarm_nmethod(nm);
+  disarm(nm);
 }
 
 void ZNMethod::unregister_nmethod(nmethod* nm) {
@@ -188,7 +187,25 @@ void ZNMethod::flush_nmethod(nmethod* nm) {
   delete gc_data(nm);
 }
 
-void ZNMethod::disarm_nmethod(nmethod* nm) {
+bool ZNMethod::supports_entry_barrier(nmethod* nm) {
+  BarrierSetNMethod* const bs = BarrierSet::barrier_set()->barrier_set_nmethod();
+  if (bs != NULL) {
+    return bs->supports_entry_barrier(nm);
+  }
+
+  return false;
+}
+
+bool ZNMethod::is_armed(nmethod* nm) {
+  BarrierSetNMethod* const bs = BarrierSet::barrier_set()->barrier_set_nmethod();
+  if (bs != NULL) {
+    return bs->is_armed(nm);
+  }
+
+  return false;
+}
+
+void ZNMethod::disarm(nmethod* nm) {
   BarrierSetNMethod* const bs = BarrierSet::barrier_set()->barrier_set_nmethod();
   if (bs != NULL) {
     bs->disarm(nm);
@@ -258,7 +275,7 @@ private:
   volatile bool _failed;
 
   void set_failed() {
-    Atomic::store(true, &_failed);
+    Atomic::store(&_failed, true);
   }
 
   void unlink(nmethod* nm) {
@@ -302,10 +319,12 @@ public:
 
     ZLocker<ZReentrantLock> locker(ZNMethod::lock_for_nmethod(nm));
 
-    // Heal oops and disarm
-    ZNMethodOopClosure cl;
-    ZNMethod::nmethod_oops_do(nm, &cl);
-    ZNMethod::disarm_nmethod(nm);
+    if (ZNMethod::is_armed(nm)) {
+      // Heal oops and disarm
+      ZNMethodOopClosure cl;
+      ZNMethod::nmethod_oops_do(nm, &cl);
+      ZNMethod::disarm(nm);
+    }
 
     // Clear compiled ICs and exception caches
     if (!nm->unload_nmethod_caches(_unloading_occurred)) {

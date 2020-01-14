@@ -69,11 +69,6 @@ import static javax.lang.model.element.Modifier.SYNCHRONIZED;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Robert Field
- * @author Atul M Dambalkar
- * @author Jamie Ho (Re-write)
- * @author Bhavesh Patel (Modified)
  */
 public abstract class AbstractMemberWriter implements MemberSummaryWriter {
 
@@ -515,11 +510,11 @@ public abstract class AbstractMemberWriter implements MemberSummaryWriter {
         private Content exceptions;
 
         // Threshold for length of type parameters before switching from inline to block representation.
-        private final static int TYPE_PARAMS_MAX_INLINE_LENGTH = 50;
+        private static final int TYPE_PARAMS_MAX_INLINE_LENGTH = 50;
 
         // Threshold for combined length of modifiers, type params and return type before breaking
         // it up with a line break before the return type.
-        private final static int RETURN_TYPE_MAX_LINE_LENGTH = 50;
+        private static final int RETURN_TYPE_MAX_LINE_LENGTH = 50;
 
         /**
          * Create a new member signature builder.

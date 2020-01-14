@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,9 +36,6 @@ import javax.lang.model.element.VariableElement;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Jamie Ho
- * @author Bhavesh Patel (Modified)
  */
 
 public interface FieldWriter {
@@ -50,8 +47,7 @@ public interface FieldWriter {
      * @param memberDetailsTree the content tree representing member details
      * @return content tree for the field details header
      */
-    public Content getFieldDetailsTreeHeader(TypeElement typeElement,
-            Content memberDetailsTree);
+    Content getFieldDetailsTreeHeader(TypeElement typeElement, Content memberDetailsTree);
 
     /**
      * Get the field documentation tree header.
@@ -60,8 +56,7 @@ public interface FieldWriter {
      * @param fieldDetailsTree the content tree representing field details
      * @return content tree for the field documentation header
      */
-    public Content getFieldDocTreeHeader(VariableElement field,
-            Content fieldDetailsTree);
+    Content getFieldDocTreeHeader(VariableElement field, Content fieldDetailsTree);
 
     /**
      * Get the signature for the given field.
@@ -69,7 +64,7 @@ public interface FieldWriter {
      * @param field the field being documented
      * @return content tree for the field signature
      */
-    public Content getSignature(VariableElement field);
+    Content getSignature(VariableElement field);
 
     /**
      * Add the deprecated output for the given field.
@@ -77,7 +72,7 @@ public interface FieldWriter {
      * @param field the field being documented
      * @param fieldDocTree content tree to which the deprecated information will be added
      */
-    public void addDeprecated(VariableElement field, Content fieldDocTree);
+    void addDeprecated(VariableElement field, Content fieldDocTree);
 
     /**
      * Add the comments for the given field.
@@ -85,7 +80,7 @@ public interface FieldWriter {
      * @param field the field being documented
      * @param fieldDocTree the content tree to which the comments will be added
      */
-    public void addComments(VariableElement field, Content fieldDocTree);
+    void addComments(VariableElement field, Content fieldDocTree);
 
     /**
      * Add the tags for the given field.
@@ -93,7 +88,7 @@ public interface FieldWriter {
      * @param field the field being documented
      * @param fieldDocTree the content tree to which the tags will be added
      */
-    public void addTags(VariableElement field, Content fieldDocTree);
+    void addTags(VariableElement field, Content fieldDocTree);
 
     /**
      * Get the field details tree.
@@ -102,7 +97,7 @@ public interface FieldWriter {
      * @param memberDetailsTree the content tree representing member details
      * @return content tree for the field details
      */
-    public Content getFieldDetails(Content memberDetailsTreeHeader, Content memberDetailsTree);
+    Content getFieldDetails(Content memberDetailsTreeHeader, Content memberDetailsTree);
 
     /**
      * Get the field documentation.
@@ -110,12 +105,12 @@ public interface FieldWriter {
      * @param fieldDocTree the content tree representing field documentation
      * @return content tree for the field documentation
      */
-    public Content getFieldDoc(Content fieldDocTree);
+    Content getFieldDoc(Content fieldDocTree);
 
     /**
      * Gets the member header tree.
      *
      * @return a content tree for the member header
      */
-    public Content getMemberTreeHeader();
+    Content getMemberTreeHeader();
 }

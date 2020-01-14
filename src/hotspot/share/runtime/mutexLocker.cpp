@@ -187,6 +187,11 @@ void assert_lock_strong(const Mutex* lock) {
   if (lock->owned_by_self()) return;
   fatal("must own lock %s", lock->name());
 }
+
+void assert_locked_or_safepoint_or_handshake(const Mutex* lock, const JavaThread* thread) {
+  if (Thread::current()->is_VM_thread() && thread->is_vmthread_processing_handshake()) return;
+  assert_locked_or_safepoint(lock);
+}
 #endif
 
 #define def(var, type, pri, vm_block, safepoint_check_allowed ) {      \
@@ -244,7 +249,7 @@ void mutex_init() {
     Notification_lock = Service_lock;
   }
 
-  def(JmethodIdCreation_lock       , PaddedMutex  , leaf,        true,  _safepoint_check_always); // used for creating jmethodIDs.
+  def(JmethodIdCreation_lock       , PaddedMutex  , leaf,        true,  _safepoint_check_never); // used for creating jmethodIDs.
 
   def(SystemDictionary_lock        , PaddedMonitor, leaf,        true,  _safepoint_check_always);
   def(ProtectionDomainSet_lock     , PaddedMutex  , leaf-1,      true,  _safepoint_check_never);
@@ -311,7 +316,7 @@ void mutex_init() {
 #if INCLUDE_JFR
   def(JfrMsg_lock                  , PaddedMonitor, leaf,        true,  _safepoint_check_always);
   def(JfrBuffer_lock               , PaddedMutex  , leaf,        true,  _safepoint_check_never);
-  def(JfrStream_lock               , PaddedMutex  , nonleaf + 1, false, _safepoint_check_always);
+  def(JfrStream_lock               , PaddedMutex  , nonleaf + 1, false, _safepoint_check_never);
   def(JfrStacktrace_lock           , PaddedMutex  , special,     true,  _safepoint_check_never);
   def(JfrThreadSampler_lock        , PaddedMonitor, leaf,        true,  _safepoint_check_never);
 #endif

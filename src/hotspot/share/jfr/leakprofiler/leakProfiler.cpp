@@ -31,7 +31,6 @@
 #include "jfr/recorder/service/jfrOptionSet.hpp"
 #include "logging/log.hpp"
 #include "memory/iterator.hpp"
-#include "runtime/mutexLocker.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/vmThread.hpp"
 
@@ -46,16 +45,6 @@ bool LeakProfiler::start(int sample_count) {
 
   // Allows user to disable leak profiler on command line by setting queue size to zero.
   if (sample_count == 0) {
-    return false;
-  }
-
-  if (UseZGC) {
-    log_warning(jfr)("LeakProfiler is currently not supported in combination with ZGC");
-    return false;
-  }
-
-  if (UseShenandoahGC) {
-    log_warning(jfr)("LeakProfiler is currently not supported in combination with Shenandoah GC");
     return false;
   }
 
@@ -93,7 +82,6 @@ void LeakProfiler::emit_events(int64_t cutoff_ticks, bool emit_all) {
   if (!is_running()) {
     return;
   }
-  MutexLocker lock(JfrStream_lock);
   // exclusive access to object sampler instance
   ObjectSampler* const sampler = ObjectSampler::acquire();
   assert(sampler != NULL, "invariant");
@@ -101,11 +89,11 @@ void LeakProfiler::emit_events(int64_t cutoff_ticks, bool emit_all) {
   ObjectSampler::release();
 }
 
-void LeakProfiler::oops_do(BoolObjectClosure* is_alive, OopClosure* f) {
+void LeakProfiler::weak_oops_do(BoolObjectClosure* is_alive, OopClosure* f) {
   assert(SafepointSynchronize::is_at_safepoint(),
     "Leak Profiler::oops_do(...) may only be called during safepoint");
   if (is_running()) {
-    ObjectSampler::oops_do(is_alive, f);
+    ObjectSampler::weak_oops_do(is_alive, f);
   }
 }
 

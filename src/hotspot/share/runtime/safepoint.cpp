@@ -328,7 +328,7 @@ void SafepointSynchronize::arm_safepoint() {
 
   assert((_safepoint_counter & 0x1) == 0, "must be even");
   // The store to _safepoint_counter must happen after any stores in arming.
-  OrderAccess::release_store(&_safepoint_counter, _safepoint_counter + 1);
+  Atomic::release_store(&_safepoint_counter, _safepoint_counter + 1);
 
   // We are synchronizing
   OrderAccess::storestore(); // Ordered with _safepoint_counter
@@ -482,7 +482,7 @@ void SafepointSynchronize::disarm_safepoint() {
 
     // Set the next dormant (even) safepoint id.
     assert((_safepoint_counter & 0x1) == 1, "must be odd");
-    OrderAccess::release_store(&_safepoint_counter, _safepoint_counter + 1);
+    Atomic::release_store(&_safepoint_counter, _safepoint_counter + 1);
 
     OrderAccess::fence(); // Keep the local state from floating up.
 
@@ -530,6 +530,10 @@ bool SafepointSynchronize::is_cleanup_needed() {
   if (StringTable::needs_rehashing()) return true;
   if (SymbolTable::needs_rehashing()) return true;
   return false;
+}
+
+bool SafepointSynchronize::is_forced_cleanup_needed() {
+  return ObjectSynchronizer::needs_monitor_scavenge();
 }
 
 class ParallelSPCleanupThreadClosure : public ThreadClosure {
@@ -615,19 +619,6 @@ public:
         EventSafepointCleanupTask event;
         TraceTime timer(name, TRACETIME_LOG(Info, safepoint, cleanup));
         StringTable::rehash_table();
-
-        post_safepoint_cleanup_task_event(event, safepoint_id, name);
-      }
-    }
-
-    if (_subtasks.try_claim_task(SafepointSynchronize::SAFEPOINT_CLEANUP_CLD_PURGE)) {
-      if (ClassLoaderDataGraph::should_purge_and_reset()) {
-        // CMS delays purging the CLDG until the beginning of the next safepoint and to
-        // make sure concurrent sweep is done
-        const char* name = "purging class loader data graph";
-        EventSafepointCleanupTask event;
-        TraceTime timer(name, TRACETIME_LOG(Info, safepoint, cleanup));
-        ClassLoaderDataGraph::purge();
 
         post_safepoint_cleanup_task_event(event, safepoint_id, name);
       }
@@ -745,10 +736,7 @@ static bool safepoint_safe_with(JavaThread *thread, JavaThreadState state) {
 }
 
 bool SafepointSynchronize::handshake_safe(JavaThread *thread) {
-  // This function must be called with the Threads_lock held so an externally
-  // suspended thread cannot be resumed thus it is safe.
-  assert(Threads_lock->owned_by_self() && Thread::current()->is_VM_thread(),
-         "Must hold Threads_lock and be VMThread");
+  assert(Thread::current()->is_VM_thread(), "Must be VMThread");
   if (thread->is_ext_suspended() || thread->is_terminated()) {
     return true;
   }
@@ -890,7 +878,7 @@ void SafepointSynchronize::block(JavaThread *thread) {
 void SafepointSynchronize::handle_polling_page_exception(JavaThread *thread) {
   assert(thread->is_Java_thread(), "polling reference encountered by VM thread");
   assert(thread->thread_state() == _thread_in_Java, "should come from Java code");
-  if (!ThreadLocalHandshakes) {
+  if (!SafepointMechanism::uses_thread_local_poll()) {
     assert(SafepointSynchronize::is_synchronizing(), "polling encountered outside safepoint synchronization");
   }
 
@@ -968,15 +956,15 @@ void ThreadSafepointState::destroy(JavaThread *thread) {
 }
 
 uint64_t ThreadSafepointState::get_safepoint_id() const {
-  return OrderAccess::load_acquire(&_safepoint_id);
+  return Atomic::load_acquire(&_safepoint_id);
 }
 
 void ThreadSafepointState::reset_safepoint_id() {
-  OrderAccess::release_store(&_safepoint_id, SafepointSynchronize::InactiveSafepointCounter);
+  Atomic::release_store(&_safepoint_id, SafepointSynchronize::InactiveSafepointCounter);
 }
 
 void ThreadSafepointState::set_safepoint_id(uint64_t safepoint_id) {
-  OrderAccess::release_store(&_safepoint_id, safepoint_id);
+  Atomic::release_store(&_safepoint_id, safepoint_id);
 }
 
 void ThreadSafepointState::examine_state_of_thread(uint64_t safepoint_count) {

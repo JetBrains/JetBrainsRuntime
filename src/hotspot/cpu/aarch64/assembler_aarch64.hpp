@@ -554,7 +554,7 @@ class Address {
 
   void lea(MacroAssembler *, Register) const;
 
-  static bool offset_ok_for_immed(long offset, int shift = 0) {
+  static bool offset_ok_for_immed(long offset, int shift) {
     unsigned mask = (1 << shift) - 1;
     if (offset < 0 || offset & mask) {
       return (uabs(offset) < (1 << (20 - 12))); // Unscaled offset
@@ -604,7 +604,9 @@ class InternalAddress: public Address {
   InternalAddress(address target) : Address(target, relocInfo::internal_word_type) {}
 };
 
-const int FPUStateSizeInWords = 32 * 2;
+const int FPUStateSizeInWords = FloatRegisterImpl::number_of_registers *
+                                FloatRegisterImpl::save_slots_per_register;
+
 typedef enum {
   PLDL1KEEP = 0b00000, PLDL1STRM, PLDL2KEEP, PLDL2STRM, PLDL3KEEP, PLDL3STRM,
   PSTL1KEEP = 0b10000, PSTL1STRM, PSTL2KEEP, PSTL2STRM, PSTL3KEEP, PSTL3STRM,

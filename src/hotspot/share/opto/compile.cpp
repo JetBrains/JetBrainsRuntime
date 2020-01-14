@@ -1475,8 +1475,6 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
         tj = TypeInstPtr::MARK;
         ta = TypeAryPtr::RANGE; // generic ignored junk
         ptr = TypePtr::BotPTR;
-      } else if (BarrierSet::barrier_set()->barrier_set_c2()->flatten_gc_alias_type(tj)) {
-        ta = tj->isa_aryptr();
       } else {                  // Random constant offset into array body
         offset = Type::OffsetBot;   // Flatten constant access into array body
         tj = ta = TypeAryPtr::make(ptr,ta->ary(),ta->klass(),false,offset);
@@ -1541,8 +1539,6 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
       if (!is_known_inst) { // Do it only for non-instance types
         tj = to = TypeInstPtr::make(TypePtr::BotPTR, env()->Object_klass(), false, NULL, offset);
       }
-    } else if (BarrierSet::barrier_set()->barrier_set_c2()->flatten_gc_alias_type(tj)) {
-      to = tj->is_instptr();
     } else if (offset < 0 || offset >= k->size_helper() * wordSize) {
       // Static fields are in the space above the normal instance
       // fields in the java.lang.Class instance.
@@ -1641,8 +1637,7 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
           (offset == Type::OffsetBot && tj == TypePtr::BOTTOM) ||
           (offset == oopDesc::mark_offset_in_bytes() && tj->base() == Type::AryPtr) ||
           (offset == oopDesc::klass_offset_in_bytes() && tj->base() == Type::AryPtr) ||
-          (offset == arrayOopDesc::length_offset_in_bytes() && tj->base() == Type::AryPtr) ||
-          (BarrierSet::barrier_set()->barrier_set_c2()->verify_gc_alias_type(tj, offset)),
+          (offset == arrayOopDesc::length_offset_in_bytes() && tj->base() == Type::AryPtr),
           "For oops, klasses, raw offset must be constant; for arrays the offset is never known" );
   assert( tj->ptr() != TypePtr::TopPTR &&
           tj->ptr() != TypePtr::AnyNull &&
@@ -2466,7 +2461,11 @@ void Compile::Code_Gen() {
   {
     TracePhase tp("matcher", &timers[_t_matcher]);
     matcher.match();
+    if (failing()) {
+      return;
+    }
   }
+
   // In debug mode can dump m._nodes.dump() for mapping of ideal to machine
   // nodes.  Mapping is only valid at the root of each matched subtree.
   NOT_PRODUCT( verify_graph_edges(); )
@@ -4281,6 +4280,13 @@ Node* Compile::constrained_convI2L(PhaseGVN* phase, Node* value, const TypeInt* 
   return phase->transform(new ConvI2LNode(value, ltype));
 }
 
+void Compile::print_inlining_stream_free() {
+  if (_print_inlining_stream != NULL) {
+    _print_inlining_stream->~stringStream();
+    _print_inlining_stream = NULL;
+  }
+}
+
 // The message about the current inlining is accumulated in
 // _print_inlining_stream and transfered into the _print_inlining_list
 // once we know whether inlining succeeds or not. For regular
@@ -4291,13 +4297,21 @@ Node* Compile::constrained_convI2L(PhaseGVN* phase, Node* value, const TypeInt* 
 // when the inlining is attempted again.
 void Compile::print_inlining_init() {
   if (print_inlining() || print_intrinsics()) {
+    // print_inlining_init is actually called several times.
+    print_inlining_stream_free();
     _print_inlining_stream = new stringStream();
+    // Watch out: The memory initialized by the constructor call PrintInliningBuffer()
+    // will be copied into the only initial element. The default destructor of
+    // PrintInliningBuffer will be called when leaving the scope here. If it
+    // would destuct the  enclosed stringStream _print_inlining_list[0]->_ss
+    // would be destructed, too!
     _print_inlining_list = new (comp_arena())GrowableArray<PrintInliningBuffer>(comp_arena(), 1, 1, PrintInliningBuffer());
   }
 }
 
 void Compile::print_inlining_reinit() {
   if (print_inlining() || print_intrinsics()) {
+    print_inlining_stream_free();
     // Re allocate buffer when we change ResourceMark
     _print_inlining_stream = new stringStream();
   }
@@ -4311,7 +4325,7 @@ void Compile::print_inlining_commit() {
   assert(print_inlining() || print_intrinsics(), "PrintInlining off?");
   // Transfer the message from _print_inlining_stream to the current
   // _print_inlining_list buffer and clear _print_inlining_stream.
-  _print_inlining_list->at(_print_inlining_idx).ss()->write(_print_inlining_stream->as_string(), _print_inlining_stream->size());
+  _print_inlining_list->at(_print_inlining_idx).ss()->write(_print_inlining_stream->base(), _print_inlining_stream->size());
   print_inlining_reset();
 }
 
@@ -4392,9 +4406,16 @@ void Compile::process_print_inlining() {
   if (do_print_inlining) {
     ResourceMark rm;
     stringStream ss;
+    assert(_print_inlining_list != NULL, "process_print_inlining should be called only once.");
     for (int i = 0; i < _print_inlining_list->length(); i++) {
       ss.print("%s", _print_inlining_list->adr_at(i)->ss()->as_string());
+      _print_inlining_list->at(i).freeStream();
     }
+    // Reset _print_inlining_list, it only contains destructed objects.
+    // It is on the arena, so it will be freed when the arena is reset.
+    _print_inlining_list = NULL;
+    // _print_inlining_stream won't be used anymore, either.
+    print_inlining_stream_free();
     size_t end = ss.size();
     _print_inlining_output = NEW_ARENA_ARRAY(comp_arena(), char, end+1);
     strncpy(_print_inlining_output, ss.base(), end+1);

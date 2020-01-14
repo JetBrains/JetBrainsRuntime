@@ -32,6 +32,8 @@ import java.util.ListIterator;
 import java.util.Set;
 import java.util.TreeSet;
 
+import jdk.javadoc.internal.doclets.formats.html.markup.BodyContents;
+import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.formats.html.markup.Entity;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
@@ -55,8 +57,6 @@ import jdk.javadoc.internal.doclets.toolkit.util.IndexBuilder;
  *  deletion without notice.</b>
  *
  * @see java.lang.Character
- * @author Atul M Dambalkar
- * @author Bhavesh Patel (Modified)
  */
 public class SplitIndexWriter extends AbstractIndexWriter {
 
@@ -122,12 +122,11 @@ public class SplitIndexWriter extends AbstractIndexWriter {
         String title = resources.getText("doclet.Window_Split_Index",
                 unicode.toString());
         HtmlTree body = getBody(getWindowTitle(title));
-        HtmlTree header = HtmlTree.HEADER();
-        addTop(header);
+        Content headerContent = new ContentBuilder();
+        addTop(headerContent);
         navBar.setUserHeader(getUserHeaderFooter(true));
-        header.add(navBar.getContent(true));
-        body.add(header);
-        HtmlTree main = HtmlTree.MAIN();
+        headerContent.add(navBar.getContent(true));
+        Content main = new ContentBuilder();
         main.add(HtmlTree.DIV(HtmlStyle.header,
                 HtmlTree.HEADING(Headings.PAGE_TITLE_HEADING,
                         contents.getContent("doclet.Index"))));
@@ -144,12 +143,15 @@ public class SplitIndexWriter extends AbstractIndexWriter {
         }
         addLinksForIndexes(divTree);
         main.add(divTree);
-        body.add(main);
         HtmlTree footer = HtmlTree.FOOTER();
         navBar.setUserFooter(getUserHeaderFooter(false));
         footer.add(navBar.getContent(false));
         addBottom(footer);
-        body.add(footer);
+        body.add(new BodyContents()
+                .setHeader(headerContent)
+                .addMainContent(main)
+                .setFooter(footer)
+                .toContent());
         String description = "index: " + unicode;
         printHtmlDocument(null, description, body);
     }
@@ -170,9 +172,14 @@ public class SplitIndexWriter extends AbstractIndexWriter {
         contentTree.add(links.createLink(pathToRoot.resolve(DocPaths.ALLCLASSES_INDEX),
                 contents.allClassesLabel));
         if (!configuration.packages.isEmpty()) {
-            contentTree.add(Entity.NO_BREAK_SPACE);
+            contentTree.add(getVerticalSeparator());
             contentTree.add(links.createLink(pathToRoot.resolve(DocPaths.ALLPACKAGES_INDEX),
                     contents.allPackagesLabel));
+        }
+        if (!configuration.tagSearchIndex.isEmpty()) {
+            contentTree.add(getVerticalSeparator());
+            contentTree.add(links.createLink(pathToRoot.resolve(DocPaths.SYSTEM_PROPERTIES),
+                    contents.systemPropertiesLabel));
+        }
     }
-}
 }

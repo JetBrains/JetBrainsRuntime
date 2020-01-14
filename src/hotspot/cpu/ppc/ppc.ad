@@ -2224,6 +2224,7 @@ const bool Matcher::match_rule_supported(int opcode) {
   if (!has_match_rule(opcode))
     return false;
 
+  bool ret_value = true;
   switch (opcode) {
   case Op_SqrtD:
     return VM_Version::has_fsqrt();
@@ -2286,12 +2287,20 @@ const bool Matcher::match_rule_supported(int opcode) {
   case Op_UpperCase:
   case Op_Whitespace:
     return UseCharacterCompareIntrinsics;
+
+  case Op_CacheWB:
+  case Op_CacheWBPreSync:
+  case Op_CacheWBPostSync:
+    if (!VM_Version::supports_data_cache_line_flush()) {
+      ret_value = false;
+    }
+    break;
   }
 
-  return true;  // Per default match rules are supported.
+  return ret_value;  // Per default match rules are supported.
 }
 
-const bool Matcher::match_rule_supported_vector(int opcode, int vlen) {
+const bool Matcher::match_rule_supported_vector(int opcode, int vlen, BasicType bt) {
 
   // TODO
   // identify extra cases that we might want to provide match rules for
@@ -2425,6 +2434,24 @@ const bool Matcher::require_postalloc_expand = true;
 // the cpu only look at the lower 5/6 bits anyway?
 // PowerPC requires masked shift counts.
 const bool Matcher::need_masked_shift_count = true;
+
+// No support for generic vector operands.
+const bool Matcher::supports_generic_vector_operands  = false;
+
+MachOper* Matcher::specialize_generic_vector_operand(MachOper* original_opnd, uint ideal_reg, bool is_temp) {
+  ShouldNotReachHere(); // generic vector operands not supported
+  return NULL;
+}
+
+bool Matcher::is_generic_reg2reg_move(MachNode* m) {
+  ShouldNotReachHere();  // generic vector operands not supported
+  return false;
+}
+
+bool Matcher::is_generic_vector(MachOper* opnd)  {
+  ShouldNotReachHere();  // generic vector operands not supported
+  return false;
+}
 
 // This affects two different things:
 //  - how Decode nodes are matched
@@ -15195,6 +15222,44 @@ instruct brNop2() %{
   ins_encode %{
     // TODO: PPC port $archOpcode(ppc64Opcode_mcrf);
     __ brnop2();
+  %}
+  ins_pipe(pipe_class_default);
+%}
+
+instruct cacheWB(indirect addr)
+%{
+  match(CacheWB addr);
+
+  ins_cost(100);
+  format %{ "cache writeback, address = $addr" %}
+  ins_encode %{
+    assert($addr->index_position() < 0, "should be");
+    assert($addr$$disp == 0, "should be");
+    __ cache_wb(Address($addr$$base$$Register));
+  %}
+  ins_pipe(pipe_class_default);
+%}
+
+instruct cacheWBPreSync()
+%{
+  match(CacheWBPreSync);
+
+  ins_cost(0);
+  format %{ "cache writeback presync" %}
+  ins_encode %{
+    __ cache_wbsync(true);
+  %}
+  ins_pipe(pipe_class_default);
+%}
+
+instruct cacheWBPostSync()
+%{
+  match(CacheWBPostSync);
+
+  ins_cost(100);
+  format %{ "cache writeback postsync" %}
+  ins_encode %{
+    __ cache_wbsync(false);
   %}
   ins_pipe(pipe_class_default);
 %}

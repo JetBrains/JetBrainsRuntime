@@ -56,15 +56,11 @@ import jdk.javadoc.internal.doclets.toolkit.util.DocPaths;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Robert G. Field
- * @author Bhavesh Patel (Modified)
  */
 public class PackageUseWriter extends SubWriterHolderWriter {
 
     final PackageElement packageElement;
     final SortedMap<String, Set<TypeElement>> usingPackageToUsedClasses = new TreeMap<>();
-    protected HtmlTree mainTree = HtmlTree.MAIN();
     final String packageUseTableSummary;
     private final Navigation navBar;
 
@@ -104,7 +100,7 @@ public class PackageUseWriter extends SubWriterHolderWriter {
 
         packageUseTableSummary = resources.getText("doclet.Use_Table_Summary",
                 resources.getText("doclet.packages"));
-        this.navBar = new Navigation(packageElement, configuration, fixedNavDiv, PageMode.USE, path);
+        this.navBar = new Navigation(packageElement, configuration, PageMode.USE, path);
     }
 
     /**
@@ -136,13 +132,13 @@ public class PackageUseWriter extends SubWriterHolderWriter {
         } else {
             addPackageUse(div);
         }
-        mainTree.add(div);
-        body.add(mainTree);
+        bodyContents.addMainContent(div);
         HtmlTree footer = HtmlTree.FOOTER();
         navBar.setUserFooter(getUserHeaderFooter(false));
         footer.add(navBar.getContent(false));
         addBottom(footer);
-        body.add(footer);
+        bodyContents.setFooter(footer);
+        body.add(bodyContents.toContent());
         printHtmlDocument(null,
                 getDescription("use", packageElement),
                 body);
@@ -242,22 +238,22 @@ public class PackageUseWriter extends SubWriterHolderWriter {
         String name = packageElement.isUnnamed() ? "" : utils.getPackageName(packageElement);
         String title = resources.getText("doclet.Window_ClassUse_Header", packageText, name);
         HtmlTree bodyTree = getBody(getWindowTitle(title));
-        HtmlTree htmlTree = HtmlTree.HEADER();
-        addTop(htmlTree);
+        Content headerContent = new ContentBuilder();
+        addTop(headerContent);
         Content linkContent = getModuleLink(utils.elementUtils.getModuleOf(packageElement),
                 contents.moduleLabel);
         navBar.setNavLinkModule(linkContent);
         navBar.setUserHeader(getUserHeaderFooter(true));
-        htmlTree.add(navBar.getContent(true));
-        bodyTree.add(htmlTree);
-        ContentBuilder headContent = new ContentBuilder();
-        headContent.add(contents.getContent("doclet.ClassUse_Title", packageText));
-        headContent.add(new HtmlTree(HtmlTag.BR));
-        headContent.add(name);
+        headerContent.add(navBar.getContent(true));
+        ContentBuilder headingContent = new ContentBuilder();
+        headingContent.add(contents.getContent("doclet.ClassUse_Title", packageText));
+        headingContent.add(new HtmlTree(HtmlTag.BR));
+        headingContent.add(name);
         Content heading = HtmlTree.HEADING(Headings.PAGE_TITLE_HEADING, true,
-                HtmlStyle.title, headContent);
+                HtmlStyle.title, headingContent);
         Content div = HtmlTree.DIV(HtmlStyle.header, heading);
-        mainTree.add(div);
+        bodyContents.setHeader(headerContent)
+                .addMainContent(div);
         return bodyTree;
     }
 }

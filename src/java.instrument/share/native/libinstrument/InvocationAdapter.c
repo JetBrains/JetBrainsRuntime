@@ -32,6 +32,8 @@
 
 #include    "jni.h"
 
+#include    "jdk_util.h"
+
 #include    "Utilities.h"
 #include    "JPLISAssert.h"
 #include    "JPLISAgent.h"
@@ -708,6 +710,10 @@ char *decodePath(const char *s, int* decodedLen) {
     }
 
     resultp = result = calloc(n+1, 1);
+    if (result == NULL) {
+        *decodedLen = 0;
+        return NULL;
+    }
     c = s[0];
     for (i = 0; i < n;) {
         if (c != '%') {
@@ -775,14 +781,6 @@ appendClassPath( JPLISAgent* agent,
     }                            \
     jplis_assert((void*)res != (void*)NULL);     \
 }
-
-/**
- * Convert a pathname to canonical form.
- * This method is exported from libjava.
- */
-extern int
-Canonicalize(JNIEnv *unused, char *orig, char *out, int len);
-
 
 /*
  * This function takes the value of the Boot-Class-Path attribute,
@@ -904,8 +902,7 @@ appendBootClassPath( JPLISAgent* agent,
             char* resolved;
 
             if (!haveBasePath) {
-                /* Use NULL as the JNIEnv since we know that Canonicalize does not use it. */
-                if (Canonicalize(NULL, (char*)jarfile, canonicalPath, sizeof(canonicalPath)) != 0) {
+                if (JDK_Canonicalize((char*)jarfile, canonicalPath, sizeof(canonicalPath)) != 0) {
                     fprintf(stderr, "WARNING: unable to canonicalize %s\n", jarfile);
                     free(path);
                     continue;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,14 @@
 package jdk.javadoc.internal.doclets.toolkit;
 
 import java.io.*;
+import java.lang.ref.*;
 import java.util.*;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.util.SimpleElementVisitor9;
+import javax.lang.model.util.SimpleElementVisitor14;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 
@@ -72,10 +73,6 @@ import static javax.tools.Diagnostic.Kind.*;
  * If you write code that depends on this, you do so at your own risk.
  * This code and its internal interfaces are subject to change or
  * deletion without notice.</b>
- *
- * @author Robert Field.
- * @author Atul Dambalkar.
- * @author Jamie Ho
  */
 public abstract class BaseConfiguration {
     /**
@@ -109,7 +106,7 @@ public abstract class BaseConfiguration {
     public String tagletpath = null;
 
     /**
-     * This is true if option "-serialwarn" is used. Defualt value is false to
+     * This is true if option "-serialwarn" is used. Default value is false to
      * suppress excessive warnings about serial tag.
      */
     public boolean serialwarn = false;
@@ -246,8 +243,8 @@ public abstract class BaseConfiguration {
 
     /**
      * Don't generate deprecated API information at all, if -nodeprecated
-     * option is used. <code>nodepracted</code> is set to true if
-     * -nodeprecated option is used. Default is generate deprected API
+     * option is used. <code>nodeprecated</code> is set to true if
+     * -nodeprecated option is used. Default is generate deprecated API
      * information.
      */
     public boolean nodeprecated = false;
@@ -1095,7 +1092,7 @@ public abstract class BaseConfiguration {
 
     public abstract boolean showMessage(Element e, String key);
 
-    public static abstract class Option implements Doclet.Option, Comparable<Option> {
+    public abstract static class Option implements Doclet.Option, Comparable<Option> {
         private final String[] names;
         private final String parameters;
         private final String description;
@@ -1222,7 +1219,8 @@ public abstract class BaseConfiguration {
      * Splits the elements in a collection to its individual
      * collection.
      */
-    static private class Splitter {
+    @SuppressWarnings("preview")
+    private static class Splitter {
 
         final Set<ModuleElement> mset = new LinkedHashSet<>();
         final Set<PackageElement> pset = new LinkedHashSet<>();
@@ -1235,7 +1233,7 @@ public abstract class BaseConfiguration {
                     : docEnv.getSpecifiedElements();
 
             for (Element e : inset) {
-                new SimpleElementVisitor9<Void, Void>() {
+                new SimpleElementVisitor14<Void, Void>() {
                     @Override
                     @DefinedBy(Api.LANGUAGE_MODEL)
                     public Void visitModule(ModuleElement e, Void p) {

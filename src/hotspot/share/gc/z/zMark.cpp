@@ -44,11 +44,12 @@
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/handshake.hpp"
-#include "runtime/orderAccess.hpp"
 #include "runtime/prefetch.inline.hpp"
+#include "runtime/safepointMechanism.hpp"
 #include "runtime/thread.hpp"
 #include "utilities/align.hpp"
 #include "utilities/globalDefinitions.hpp"
+#include "utilities/powerOfTwo.hpp"
 #include "utilities/ticks.hpp"
 
 static const ZStatSubPhase ZSubPhaseConcurrentMark("Concurrent Mark");
@@ -80,7 +81,7 @@ size_t ZMark::calculate_nstripes(uint nworkers) const {
   // Calculate the number of stripes from the number of workers we use,
   // where the number of stripes must be a power of two and we want to
   // have at least one worker per stripe.
-  const size_t nstripes = ZUtils::round_down_power_of_2(nworkers);
+  const size_t nstripes = round_down_power_of_2(nworkers);
   return MIN2(nstripes, ZMarkStripesMax);
 }
 
@@ -138,6 +139,10 @@ public:
 
     // Retire TLAB
     ZThreadLocalAllocBuffer::retire(thread);
+  }
+
+  virtual bool should_disarm_nmethods() const {
+    return true;
   }
 
   virtual void do_oop(oop* p) {
@@ -414,13 +419,14 @@ void ZMark::idle() const {
   os::naked_short_sleep(1);
 }
 
-class ZMarkFlushAndFreeStacksClosure : public ThreadClosure {
+class ZMarkFlushAndFreeStacksClosure : public HandshakeClosure {
 private:
   ZMark* const _mark;
   bool         _flushed;
 
 public:
   ZMarkFlushAndFreeStacksClosure(ZMark* mark) :
+      HandshakeClosure("ZMarkFlushAndFreeStacks"),
       _mark(mark),
       _flushed(false) {}
 
@@ -449,7 +455,7 @@ bool ZMark::flush(bool at_safepoint) {
 
 bool ZMark::try_flush(volatile size_t* nflush) {
   // Only flush if handshakes are enabled
-  if (!ThreadLocalHandshakes) {
+  if (!SafepointMechanism::uses_thread_local_poll()) {
     return false;
   }
 
@@ -487,7 +493,7 @@ bool ZMark::try_terminate() {
       // Flush before termination
       if (!try_flush(&_work_nterminateflush)) {
         // No more work available, skip further flush attempts
-        Atomic::store(false, &_work_terminateflush);
+        Atomic::store(&_work_terminateflush, false);
       }
 
       // Don't terminate, regardless of whether we successfully

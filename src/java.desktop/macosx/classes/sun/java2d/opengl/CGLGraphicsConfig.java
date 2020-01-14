@@ -56,7 +56,6 @@ import sun.java2d.pipe.hw.AccelTypedVolatileImage;
 import sun.java2d.pipe.hw.ContextCapabilities;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.macosx.CFRetainedResource;
-import sun.lwawt.macosx.CPlatformView;
 
 import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_DOUBLEBUFFERED;
 import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_EXT_FBOBJECT;
@@ -257,11 +256,6 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     public String toString() {
         String display = getDevice().getIDstring();
         return ("CGLGraphicsConfig[" + display + ", pixfmt=" + pixfmt + "]");
-    }
-
-    @Override
-    public SurfaceData createSurfaceData(CPlatformView pView) {
-        return CGLSurfaceData.createData(pView);
     }
 
     @Override

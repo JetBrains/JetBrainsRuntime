@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,9 +36,6 @@ import javax.lang.model.type.TypeMirror;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Jamie Ho
- * @author Bhavesh Patel (Modified)
  */
 
 public interface MethodWriter {
@@ -50,8 +47,7 @@ public interface MethodWriter {
      * @param memberDetailsTree the content tree representing member details
      * @return content tree for the method details header
      */
-    public Content getMethodDetailsTreeHeader(TypeElement typeElement,
-            Content memberDetailsTree);
+    Content getMethodDetailsTreeHeader(TypeElement typeElement, Content memberDetailsTree);
 
     /**
      * Get the method documentation tree header.
@@ -60,8 +56,7 @@ public interface MethodWriter {
      * @param methodDetailsTree the content tree representing method details
      * @return content tree for the method documentation header
      */
-    public Content getMethodDocTreeHeader(ExecutableElement method,
-            Content methodDetailsTree);
+    Content getMethodDocTreeHeader(ExecutableElement method, Content methodDetailsTree);
 
     /**
      * Get the signature for the given method.
@@ -69,7 +64,7 @@ public interface MethodWriter {
      * @param method the method being documented
      * @return content tree for the method signature
      */
-    public Content getSignature(ExecutableElement method);
+    Content getSignature(ExecutableElement method);
 
     /**
      * Add the deprecated output for the given method.
@@ -77,7 +72,7 @@ public interface MethodWriter {
      * @param method the method being documented
      * @param methodDocTree content tree to which the deprecated information will be added
      */
-    public void addDeprecated(ExecutableElement method, Content methodDocTree);
+    void addDeprecated(ExecutableElement method, Content methodDocTree);
 
     /**
      * Add the comments for the given method.
@@ -86,7 +81,7 @@ public interface MethodWriter {
      * @param method the method being documented
      * @param methodDocTree the content tree to which the comments will be added
      */
-    public void addComments(TypeMirror holder, ExecutableElement method, Content methodDocTree);
+    void addComments(TypeMirror holder, ExecutableElement method, Content methodDocTree);
 
     /**
      * Add the tags for the given method.
@@ -94,7 +89,7 @@ public interface MethodWriter {
      * @param method the method being documented
      * @param methodDocTree the content tree to which the tags will be added
      */
-    public void addTags(ExecutableElement method, Content methodDocTree);
+    void addTags(ExecutableElement method, Content methodDocTree);
 
     /**
      * Get the method details tree.
@@ -103,7 +98,7 @@ public interface MethodWriter {
      * @param methodDetailsTree the content tree representing method details
      * @return content tree for the method details
      */
-    public Content getMethodDetails(Content methodDetailsTreeHeader, Content methodDetailsTree);
+    Content getMethodDetails(Content methodDetailsTreeHeader, Content methodDetailsTree);
 
     /**
      * Get the method documentation.
@@ -111,12 +106,12 @@ public interface MethodWriter {
      * @param methodDocTree the content tree representing method documentation
      * @return content tree for the method documentation
      */
-    public Content getMethodDoc(Content methodDocTree);
+    Content getMethodDoc(Content methodDocTree);
 
     /**
      * Gets the member header tree.
      *
      * @return a content tree for the member header
      */
-    public Content getMemberTreeHeader();
+    Content getMemberTreeHeader();
 }

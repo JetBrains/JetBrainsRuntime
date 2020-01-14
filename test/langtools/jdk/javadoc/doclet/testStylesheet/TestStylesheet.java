@@ -24,9 +24,8 @@
 /*
  * @test
  * @bug      4494033 7028815 7052425 8007338 8023608 8008164 8016549 8072461 8154261 8162363 8160196 8151743 8177417
- *           8175218 8176452 8181215 8182263 8183511 8169819 8183037 8185369 8182765 8196201 8184205
+ *           8175218 8176452 8181215 8182263 8183511 8169819 8183037 8185369 8182765 8196201 8184205 8223378
  * @summary  Run tests on doclet stylesheet.
- * @author   jamieh
  * @library  ../../lib
  * @modules jdk.javadoc/jdk.javadoc.internal.tool
  * @build    javadoc.tester.*
@@ -78,7 +77,8 @@ public class TestStylesheet extends JavadocTester {
                 + "}",
                 ".overviewSummary caption, .memberSummary caption, .typeSummary caption,\n"
                 + ".useSummary caption, .constantsSummary caption, .deprecatedSummary caption,\n"
-                + ".requiresSummary caption, .packagesSummary caption, .providesSummary caption, .usesSummary caption {\n"
+                + ".requiresSummary caption, .packagesSummary caption, .providesSummary caption,\n"
+                + ".usesSummary caption, .systemPropertiesSummary caption {\n"
                 + "    position:relative;\n"
                 + "    text-align:left;\n"
                 + "    background-repeat:no-repeat;\n"
@@ -95,7 +95,7 @@ public class TestStylesheet extends JavadocTester {
                 ".overviewSummary caption span, .memberSummary caption span, .typeSummary caption span,\n"
                 + ".useSummary caption span, .constantsSummary caption span, .deprecatedSummary caption span,\n"
                 + ".requiresSummary caption span, .packagesSummary caption span, .providesSummary caption span,\n"
-                + ".usesSummary caption span {\n"
+                + ".usesSummary caption span, .systemPropertiesSummary caption span {\n"
                 + "    white-space:nowrap;\n"
                 + "    padding-top:5px;\n"
                 + "    padding-left:12px;\n"
@@ -138,23 +138,14 @@ public class TestStylesheet extends JavadocTester {
                 + "}",
                 ".overviewSummary td, .memberSummary td, .typeSummary td,\n"
                 + ".useSummary td, .constantsSummary td, .deprecatedSummary td,\n"
-                + ".requiresSummary td, .packagesSummary td, .providesSummary td, .usesSummary td {\n"
+                + ".requiresSummary td, .packagesSummary td, .providesSummary td,\n"
+                + ".usesSummary td, .systemPropertiesSummary td {\n"
                 + "    text-align:left;\n"
                 + "    padding:0px 0px 12px 10px;\n"
                 + "}",
                 "@import url('resources/fonts/dejavu.css');",
-                ".navPadding {\n"
-                + "    padding-top: 107px;\n"
-                + "}",
-                "a[name]:before, a[name]:target, a[id]:before, a[id]:target {\n"
-                + "    content:\"\";\n"
-                + "    display:inline-block;\n"
-                + "    position:relative;\n"
-                + "    padding-top:129px;\n"
-                + "    margin-top:-129px;\n"
-                + "}",
-                ".searchTagResult:before, .searchTagResult:target {\n"
-                + "    color:red;\n"
+                ".searchTagResult:target {\n"
+                + "    background-color:yellow;\n"
                 + "}",
                 "a[href]:hover, a[href]:focus {\n"
                 + "    text-decoration:none;\n"
@@ -190,7 +181,7 @@ public class TestStylesheet extends JavadocTester {
                 + "    background-size:12px;\n"
                 + "    border:0 none;\n"
                 + "    width:16px;\n"
-                + "    height:17px;\n"
+                + "    height:16px;\n"
                 + "    position:relative;\n"
                 + "    left:-4px;\n"
                 + "    top:-4px;\n"

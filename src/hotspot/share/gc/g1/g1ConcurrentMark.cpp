@@ -55,6 +55,7 @@
 #include "include/jvm.h"
 #include "logging/log.hpp"
 #include "memory/allocation.hpp"
+#include "memory/iterator.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "oops/access.inline.hpp"
@@ -62,6 +63,7 @@
 #include "runtime/atomic.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/java.hpp"
+#include "runtime/orderAccess.hpp"
 #include "runtime/prefetch.inline.hpp"
 #include "services/memTracker.hpp"
 #include "utilities/align.hpp"
@@ -207,7 +209,7 @@ G1CMMarkStack::TaskQueueEntryChunk* G1CMMarkStack::allocate_new_chunk() {
     return NULL;
   }
 
-  size_t cur_idx = Atomic::add(1u, &_hwm) - 1;
+  size_t cur_idx = Atomic::add(&_hwm, 1u) - 1;
   if (cur_idx >= _chunk_capacity) {
     return NULL;
   }
@@ -280,7 +282,7 @@ void G1CMRootMemRegions::reset() {
 
 void G1CMRootMemRegions::add(HeapWord* start, HeapWord* end) {
   assert_at_safepoint();
-  size_t idx = Atomic::add((size_t)1, &_num_root_regions) - 1;
+  size_t idx = Atomic::add(&_num_root_regions, (size_t)1) - 1;
   assert(idx < _max_regions, "Trying to add more root MemRegions than there is space " SIZE_FORMAT, _max_regions);
   assert(start != NULL && end != NULL && start <= end, "Start (" PTR_FORMAT ") should be less or equal to "
          "end (" PTR_FORMAT ")", p2i(start), p2i(end));
@@ -308,7 +310,7 @@ const MemRegion* G1CMRootMemRegions::claim_next() {
     return NULL;
   }
 
-  size_t claimed_index = Atomic::add((size_t)1, &_claimed_root_regions) - 1;
+  size_t claimed_index = Atomic::add(&_claimed_root_regions, (size_t)1) - 1;
   if (claimed_index < _num_root_regions) {
     return &_root_regions[claimed_index];
   }
@@ -1121,7 +1123,7 @@ public:
   virtual void work(uint worker_id) {
     G1UpdateRemSetTrackingBeforeRebuild update_cl(_g1h, _cm, &_cl);
     _g1h->heap_region_par_iterate_from_worker_offset(&update_cl, &_hrclaimer, worker_id);
-    Atomic::add(update_cl.num_selected_for_rebuild(), &_total_selected_for_rebuild);
+    Atomic::add(&_total_selected_for_rebuild, update_cl.num_selected_for_rebuild());
   }
 
   uint total_selected_for_rebuild() const { return _total_selected_for_rebuild; }
@@ -1272,7 +1274,7 @@ class G1ReclaimEmptyRegionsTask : public AbstractGangTask {
           _g1h->free_humongous_region(hr, _local_cleanup_list);
         } else {
           _old_regions_removed++;
-          _g1h->free_region(hr, _local_cleanup_list, false /* skip_remset */, false /* skip_hcc */, true /* locked */);
+          _g1h->free_region(hr, _local_cleanup_list);
         }
         hr->clear_cardtable();
         _g1h->concurrent_mark()->clear_statistics_in_region(hr->hrm_index());
@@ -1611,7 +1613,7 @@ void G1ConcurrentMark::weak_refs_work(bool clear_all_soft_refs) {
     // we utilize all the worker threads we can.
     bool processing_is_mt = rp->processing_is_mt();
     uint active_workers = (processing_is_mt ? _g1h->workers()->active_workers() : 1U);
-    active_workers = MAX2(MIN2(active_workers, _max_num_tasks), 1U);
+    active_workers = clamp(active_workers, 1u, _max_num_tasks);
 
     // Parallel processing task executor.
     G1CMRefProcTaskExecutor par_task_executor(_g1h, this,
@@ -1906,7 +1908,7 @@ G1ConcurrentMark::claim_region(uint worker_id) {
     HeapWord* end = curr_region != NULL ? curr_region->end() : finger + HeapRegion::GrainWords;
 
     // Is the gap between reading the finger and doing the CAS too long?
-    HeapWord* res = Atomic::cmpxchg(end, &_finger, finger);
+    HeapWord* res = Atomic::cmpxchg(&_finger, finger, end);
     if (res == finger && curr_region != NULL) {
       // we succeeded
       HeapWord*   bottom        = curr_region->bottom();
@@ -2587,7 +2589,8 @@ void G1CMTask::do_marking_step(double time_target_ms,
   // and do_marking_step() is not being called serially.
   bool do_stealing = do_termination && !is_serial;
 
-  double diff_prediction_ms = _g1h->policy()->predictor().get_new_prediction(&_marking_step_diff_ms);
+  G1Predictions const& predictor = _g1h->policy()->predictor();
+  double diff_prediction_ms = predictor.predict_zero_bounded(&_marking_step_diff_ms);
   _time_target_ms = time_target_ms - diff_prediction_ms;
 
   // set up the variables that are used in the work-based scheme to

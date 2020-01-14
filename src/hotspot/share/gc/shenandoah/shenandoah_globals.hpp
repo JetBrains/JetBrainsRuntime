@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2016, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -36,8 +37,7 @@
                             product_rw,                                     \
                             lp64_product,                                   \
                             range,                                          \
-                            constraint,                                     \
-                            writeable)                                      \
+                            constraint)                                     \
                                                                             \
   experimental(size_t, ShenandoahHeapRegionSize, 0,                         \
           "Size of the Shenandoah regions. Set to zero to detect "          \
@@ -86,7 +86,7 @@
           "References get processed at every Nth GC cycle. Set to zero "    \
           "to disable reference processing.")                               \
                                                                             \
-  experimental(uintx, ShenandoahUnloadClassesFrequency, 5,                  \
+  experimental(uintx, ShenandoahUnloadClassesFrequency, 1,                  \
           "How often should classes get unloaded. "                         \
           "Class unloading is performed at every Nth GC cycle. "            \
           "Set to zero to disable class unloading during concurrent GC.")   \

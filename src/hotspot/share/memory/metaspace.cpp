@@ -40,8 +40,8 @@
 #include "memory/metaspaceTracer.hpp"
 #include "memory/universe.hpp"
 #include "oops/compressedOops.hpp"
+#include "runtime/atomic.hpp"
 #include "runtime/init.hpp"
-#include "runtime/orderAccess.hpp"
 #include "services/memTracker.hpp"
 #include "utilities/copy.hpp"
 #include "utilities/debug.hpp"
@@ -128,7 +128,7 @@ size_t MetaspaceGC::delta_capacity_until_GC(size_t bytes) {
 }
 
 size_t MetaspaceGC::capacity_until_GC() {
-  size_t value = OrderAccess::load_acquire(&_capacity_until_GC);
+  size_t value = Atomic::load_acquire(&_capacity_until_GC);
   assert(value >= MetaspaceSize, "Not initialized properly?");
   return value;
 }
@@ -162,7 +162,7 @@ bool MetaspaceGC::inc_capacity_until_GC(size_t v, size_t* new_cap_until_GC, size
   if (can_retry != NULL) {
     *can_retry = true;
   }
-  size_t prev_value = Atomic::cmpxchg(new_value, &_capacity_until_GC, old_capacity_until_GC);
+  size_t prev_value = Atomic::cmpxchg(&_capacity_until_GC, old_capacity_until_GC, new_value);
 
   if (old_capacity_until_GC != prev_value) {
     return false;
@@ -180,7 +180,7 @@ bool MetaspaceGC::inc_capacity_until_GC(size_t v, size_t* new_cap_until_GC, size
 size_t MetaspaceGC::dec_capacity_until_GC(size_t v) {
   assert_is_aligned(v, Metaspace::commit_alignment());
 
-  return Atomic::sub(v, &_capacity_until_GC);
+  return Atomic::sub(&_capacity_until_GC, v);
 }
 
 void MetaspaceGC::initialize() {
@@ -394,7 +394,7 @@ static void dec_stat_nonatomically(size_t* pstat, size_t words) {
 }
 
 static void inc_stat_atomically(volatile size_t* pstat, size_t words) {
-  Atomic::add(words, pstat);
+  Atomic::add(pstat, words);
 }
 
 static void dec_stat_atomically(volatile size_t* pstat, size_t words) {
@@ -402,7 +402,7 @@ static void dec_stat_atomically(volatile size_t* pstat, size_t words) {
   assert(size_now >= words, "About to decrement counter below zero "
          "(current value: " SIZE_FORMAT ", decrement value: " SIZE_FORMAT ".",
          size_now, words);
-  Atomic::sub(words, pstat);
+  Atomic::sub(pstat, words);
 }
 
 void MetaspaceUtils::dec_capacity(Metaspace::MetadataType mdtype, size_t words) {
@@ -1022,53 +1022,16 @@ void Metaspace::allocate_metaspace_compressed_klass_ptrs(ReservedSpace metaspace
   assert_is_aligned(cds_base, _reserve_alignment);
   assert_is_aligned(compressed_class_space_size(), _reserve_alignment);
 
-  // Don't use large pages for the class space.
-  bool large_pages = false;
-
- if (metaspace_rs.is_reserved()) {
-   // CDS should have already reserved the space.
-   assert(requested_addr == NULL, "not used");
-   assert(cds_base != NULL, "CDS should have already reserved the memory space");
- } else {
-   assert(cds_base == NULL, "must be");
-#if !(defined(AARCH64) || defined(AIX))
-  metaspace_rs = ReservedSpace(compressed_class_space_size(), _reserve_alignment,
-                               large_pages, requested_addr);
-#else // AARCH64
-  // Our compressed klass pointers may fit nicely into the lower 32
-  // bits.
-  if ((uint64_t)requested_addr + compressed_class_space_size() < 4*G) {
-    metaspace_rs = ReservedSpace(compressed_class_space_size(),
-                                 _reserve_alignment,
-                                 large_pages,
-                                 requested_addr);
+  if (metaspace_rs.is_reserved()) {
+    // CDS should have already reserved the space.
+    assert(requested_addr == NULL, "not used");
+    assert(cds_base != NULL, "CDS should have already reserved the memory space");
+  } else {
+    assert(cds_base == NULL, "must be");
+    metaspace_rs = reserve_space(compressed_class_space_size(),
+                                 _reserve_alignment, requested_addr,
+                                 false /* use_requested_addr */);
   }
-
-  if (! metaspace_rs.is_reserved()) {
-    // Aarch64: Try to align metaspace so that we can decode a compressed
-    // klass with a single MOVK instruction.  We can do this iff the
-    // compressed class base is a multiple of 4G.
-    // Aix: Search for a place where we can find memory. If we need to load
-    // the base, 4G alignment is helpful, too.
-    size_t increment = AARCH64_ONLY(4*)G;
-    for (char *a = align_up(requested_addr, increment);
-         a < (char*)(1024*G);
-         a += increment) {
-      if (a == (char *)(32*G)) {
-        // Go faster from here on. Zero-based is no longer possible.
-        increment = 4*G;
-      }
-
-      metaspace_rs = ReservedSpace(compressed_class_space_size(),
-                                   _reserve_alignment,
-                                   large_pages,
-                                   a);
-      if (metaspace_rs.is_reserved())
-        break;
-    }
-  }
-#endif // AARCH64
- }
 
   if (!metaspace_rs.is_reserved()) {
     assert(cds_base == NULL, "CDS should have already reserved the memory space");
@@ -1077,8 +1040,8 @@ void Metaspace::allocate_metaspace_compressed_klass_ptrs(ReservedSpace metaspace
     // metaspace as if UseCompressedClassPointers is off because too much
     // initialization has happened that depends on UseCompressedClassPointers.
     // So, UseCompressedClassPointers cannot be turned off at this point.
-    metaspace_rs = ReservedSpace(compressed_class_space_size(),
-                                 _reserve_alignment, large_pages);
+    metaspace_rs = reserve_space(compressed_class_space_size(),
+                                 _reserve_alignment, NULL, false);
     if (!metaspace_rs.is_reserved()) {
       vm_exit_during_initialization(err_msg("Could not allocate metaspace: " SIZE_FORMAT " bytes",
                                             compressed_class_space_size()));
@@ -1131,7 +1094,80 @@ void Metaspace::initialize_class_space(ReservedSpace rs) {
   }
 }
 
+#endif // _LP64
+
+#ifdef PREFERRED_METASPACE_ALIGNMENT
+ReservedSpace Metaspace::reserve_preferred_space(size_t size, size_t alignment,
+                                                 bool large_pages, char *requested_addr,
+                                                 bool use_requested_addr) {
+  // Our compressed klass pointers may fit nicely into the lower 32 bits.
+  if (requested_addr != NULL && (uint64_t)requested_addr + size < 4*G) {
+    ReservedSpace rs(size, alignment, large_pages, requested_addr);
+    if (rs.is_reserved() || use_requested_addr) {
+      return rs;
+    }
+  }
+
+  struct SearchParams { uintptr_t limit; size_t increment; };
+
+  // AArch64: Try to align metaspace so that we can decode a compressed
+  // klass with a single MOVK instruction. We can do this iff the
+  // compressed class base is a multiple of 4G.
+  // Aix: Search for a place where we can find memory. If we need to load
+  // the base, 4G alignment is helpful, too.
+
+  // Go faster above 32G as it is no longer possible to use a zero base.
+  // AArch64: Additionally, ensure the lower LogKlassAlignmentInBytes
+  // bits of the upper 32-bits of the address are zero so we can handle
+  // a shift when decoding.
+
+  static const SearchParams search_params[] = {
+    // Limit    Increment
+    {  32*G,    AARCH64_ONLY(4*)G,                               },
+    {  1024*G,  (4 AARCH64_ONLY(<< LogKlassAlignmentInBytes))*G  },
+  };
+
+  // Null requested_addr means allocate anywhere so ensure the search
+  // begins from a non-null address.
+  char *a = MAX2(requested_addr, (char *)search_params[0].increment);
+
+  for (const SearchParams *p = search_params;
+       p < search_params + ARRAY_SIZE(search_params);
+       ++p) {
+    a = align_up(a, p->increment);
+    if (use_requested_addr && a != requested_addr)
+      return ReservedSpace();
+
+    for (; a < (char *)p->limit; a += p->increment) {
+      ReservedSpace rs(size, alignment, large_pages, a);
+      if (rs.is_reserved() || use_requested_addr) {
+        return rs;
+      }
+    }
+  }
+
+  return ReservedSpace();
+}
+#endif // PREFERRED_METASPACE_ALIGNMENT
+
+// Try to reserve a region for the metaspace at the requested address. Some
+// platforms have particular alignment requirements to allow efficient decode of
+// compressed class pointers in which case requested_addr is treated as hint for
+// where to start looking unless use_requested_addr is true.
+ReservedSpace Metaspace::reserve_space(size_t size, size_t alignment,
+                                       char* requested_addr, bool use_requested_addr) {
+  bool large_pages = false; // Don't use large pages for the class space.
+  assert(is_aligned(requested_addr, alignment), "must be");
+  assert(requested_addr != NULL || !use_requested_addr,
+         "cannot set use_requested_addr with NULL address");
+
+#ifdef PREFERRED_METASPACE_ALIGNMENT
+  return reserve_preferred_space(size, alignment, large_pages,
+                                 requested_addr, use_requested_addr);
+#else
+  return ReservedSpace(size, alignment, large_pages, requested_addr);
 #endif
+}
 
 void Metaspace::ergo_initialize() {
   if (DumpSharedSpaces) {

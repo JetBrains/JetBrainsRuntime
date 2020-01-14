@@ -25,7 +25,9 @@
 #include "precompiled.hpp"
 #include "logging/logStream.hpp"
 #include "memory/allocation.inline.hpp"
+#include "runtime/atomic.hpp"
 #include "runtime/jniHandles.inline.hpp"
+#include "runtime/orderAccess.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/threadSMR.inline.hpp"
@@ -35,6 +37,7 @@
 #include "utilities/copy.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/ostream.hpp"
+#include "utilities/powerOfTwo.hpp"
 #include "utilities/resourceHash.hpp"
 #include "utilities/vmError.hpp"
 
@@ -134,7 +137,7 @@ uint                  ThreadsSMRSupport::_to_delete_list_max = 0;
 // 'inline' functions first so the definitions are before first use:
 
 inline void ThreadsSMRSupport::add_deleted_thread_times(uint add_value) {
-  Atomic::add(add_value, &_deleted_thread_times);
+  Atomic::add(&_deleted_thread_times, add_value);
 }
 
 inline void ThreadsSMRSupport::inc_deleted_thread_cnt() {
@@ -156,7 +159,7 @@ inline void ThreadsSMRSupport::update_deleted_thread_time_max(uint new_value) {
       // No need to update max value so we're done.
       break;
     }
-    if (Atomic::cmpxchg(new_value, &_deleted_thread_time_max, cur_value) == cur_value) {
+    if (Atomic::cmpxchg(&_deleted_thread_time_max, cur_value, new_value) == cur_value) {
       // Updated max value so we're done. Otherwise try it all again.
       break;
     }
@@ -170,7 +173,7 @@ inline void ThreadsSMRSupport::update_java_thread_list_max(uint new_value) {
 }
 
 inline ThreadsList* ThreadsSMRSupport::xchg_java_thread_list(ThreadsList* new_list) {
-  return (ThreadsList*)Atomic::xchg(new_list, &_java_thread_list);
+  return (ThreadsList*)Atomic::xchg(&_java_thread_list, new_list);
 }
 
 // Hash table of pointers found by a scan. Used for collecting hazard
@@ -779,7 +782,7 @@ void ThreadsSMRSupport::clear_delete_notify() {
 bool ThreadsSMRSupport::delete_notify() {
   // Use load_acquire() in order to see any updates to _delete_notify
   // earlier than when delete_lock is grabbed.
-  return (OrderAccess::load_acquire(&_delete_notify) != 0);
+  return (Atomic::load_acquire(&_delete_notify) != 0);
 }
 
 // Safely free a ThreadsList after a Threads::add() or Threads::remove().
@@ -807,13 +810,7 @@ void ThreadsSMRSupport::free_list(ThreadsList* threads) {
 
   // Hash table size should be first power of two higher than twice the length of the ThreadsList
   int hash_table_size = MIN2((int)get_java_thread_list()->length(), 32) << 1;
-  hash_table_size--;
-  hash_table_size |= hash_table_size >> 1;
-  hash_table_size |= hash_table_size >> 2;
-  hash_table_size |= hash_table_size >> 4;
-  hash_table_size |= hash_table_size >> 8;
-  hash_table_size |= hash_table_size >> 16;
-  hash_table_size++;
+  hash_table_size = round_up_power_of_2(hash_table_size);
 
   // Gather a hash table of the current hazard ptrs:
   ThreadScanHashtable *scan_table = new ThreadScanHashtable(hash_table_size);
@@ -870,13 +867,7 @@ bool ThreadsSMRSupport::is_a_protected_JavaThread(JavaThread *thread) {
   // Hash table size should be first power of two higher than twice
   // the length of the Threads list.
   int hash_table_size = MIN2((int)get_java_thread_list()->length(), 32) << 1;
-  hash_table_size--;
-  hash_table_size |= hash_table_size >> 1;
-  hash_table_size |= hash_table_size >> 2;
-  hash_table_size |= hash_table_size >> 4;
-  hash_table_size |= hash_table_size >> 8;
-  hash_table_size |= hash_table_size >> 16;
-  hash_table_size++;
+  hash_table_size = round_up_power_of_2(hash_table_size);
 
   // Gather a hash table of the JavaThreads indirectly referenced by
   // hazard ptrs.

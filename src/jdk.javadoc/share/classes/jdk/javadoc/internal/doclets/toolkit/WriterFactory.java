@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,8 +40,6 @@ import jdk.javadoc.internal.doclets.toolkit.util.VisibleMemberTable;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Jamie Ho
  */
 
 public interface WriterFactory {
@@ -52,7 +50,7 @@ public interface WriterFactory {
      * @return the writer for the constant summary.  Return null if this
      * writer is not supported by the doclet.
      */
-    public abstract ConstantsSummaryWriter getConstantsSummaryWriter();
+    ConstantsSummaryWriter getConstantsSummaryWriter();
 
     /**
      * Return the writer for the package summary.
@@ -61,7 +59,7 @@ public interface WriterFactory {
      * @return the writer for the package summary.  Return null if this
      * writer is not supported by the doclet.
      */
-    public abstract PackageSummaryWriter getPackageSummaryWriter(PackageElement packageElement);
+    PackageSummaryWriter getPackageSummaryWriter(PackageElement packageElement);
 
     /**
      * Return the writer for the module summary.
@@ -70,7 +68,7 @@ public interface WriterFactory {
      * @return the writer for the module summary.  Return null if this
      * writer is not supported by the doclet.
      */
-    public abstract ModuleSummaryWriter getModuleSummaryWriter(ModuleElement mdle);
+    ModuleSummaryWriter getModuleSummaryWriter(ModuleElement mdle);
 
     /**
      * Return the writer for a class.
@@ -80,7 +78,7 @@ public interface WriterFactory {
      * @return the writer for the class.  Return null if this
      * writer is not supported by the doclet.
      */
-    public abstract ClassWriter getClassWriter(TypeElement typeElement, ClassTree classTree);
+    ClassWriter getClassWriter(TypeElement typeElement, ClassTree classTree);
 
     /**
      * Return the writer for an annotation type.
@@ -89,7 +87,7 @@ public interface WriterFactory {
      * @return the writer for the annotation type.  Return null if this
      * writer is not supported by the doclet.
      */
-    public abstract AnnotationTypeWriter getAnnotationTypeWriter(TypeElement annotationType);
+    AnnotationTypeWriter getAnnotationTypeWriter(TypeElement annotationType);
 
     /**
      * Return the method writer for a given class.
@@ -98,7 +96,7 @@ public interface WriterFactory {
      * @return the method writer for the give class.  Return null if this
      * writer is not supported by the doclet.
      */
-    public abstract MethodWriter getMethodWriter(ClassWriter classWriter);
+    MethodWriter getMethodWriter(ClassWriter classWriter);
 
     /**
      * Return the annotation type field writer for a given annotation type.
@@ -108,9 +106,8 @@ public interface WriterFactory {
      * @return the member writer for the given annotation type.  Return null if
      *         this writer is not supported by the doclet.
      */
-    public abstract AnnotationTypeFieldWriter
-            getAnnotationTypeFieldWriter(
-        AnnotationTypeWriter annotationTypeWriter);
+    AnnotationTypeFieldWriter getAnnotationTypeFieldWriter(
+            AnnotationTypeWriter annotationTypeWriter);
 
     /**
      * Return the annotation type optional member writer for a given annotation
@@ -121,9 +118,8 @@ public interface WriterFactory {
      * @return the member writer for the given annotation type.  Return null if
      *         this writer is not supported by the doclet.
      */
-    public abstract AnnotationTypeOptionalMemberWriter
-            getAnnotationTypeOptionalMemberWriter(
-        AnnotationTypeWriter annotationTypeWriter);
+    AnnotationTypeOptionalMemberWriter getAnnotationTypeOptionalMemberWriter(
+            AnnotationTypeWriter annotationTypeWriter);
 
     /**
      * Return the annotation type required member writer for a given annotation type.
@@ -133,9 +129,8 @@ public interface WriterFactory {
      * @return the member writer for the given annotation type.  Return null if
      *         this writer is not supported by the doclet.
      */
-    public abstract AnnotationTypeRequiredMemberWriter
-            getAnnotationTypeRequiredMemberWriter(
-        AnnotationTypeWriter annotationTypeWriter);
+    AnnotationTypeRequiredMemberWriter getAnnotationTypeRequiredMemberWriter(
+            AnnotationTypeWriter annotationTypeWriter);
 
     /**
      * Return the enum constant writer for a given class.
@@ -144,8 +139,7 @@ public interface WriterFactory {
      * @return the enum constant writer for the give class.  Return null if this
      * writer is not supported by the doclet.
      */
-    public abstract EnumConstantWriter getEnumConstantWriter(
-        ClassWriter classWriter);
+    EnumConstantWriter getEnumConstantWriter(ClassWriter classWriter);
 
     /**
      * Return the field writer for a given class.
@@ -154,7 +148,7 @@ public interface WriterFactory {
      * @return the field writer for the give class.  Return null if this
      * writer is not supported by the doclet.
      */
-    public abstract FieldWriter getFieldWriter(ClassWriter classWriter);
+    FieldWriter getFieldWriter(ClassWriter classWriter);
 
     /**
      * Return the property writer for a given class.
@@ -163,7 +157,7 @@ public interface WriterFactory {
      * @return the property writer for the give class.  Return null if this
      * writer is not supported by the doclet.
      */
-    public abstract PropertyWriter getPropertyWriter(ClassWriter classWriter);
+    PropertyWriter getPropertyWriter(ClassWriter classWriter);
 
     /**
      * Return the constructor writer for a given class.
@@ -172,8 +166,7 @@ public interface WriterFactory {
      * @return the method writer for the give class.  Return null if this
      * writer is not supported by the doclet.
      */
-    public abstract ConstructorWriter getConstructorWriter(
-        ClassWriter classWriter);
+    ConstructorWriter getConstructorWriter(ClassWriter classWriter);
 
     /**
      * Return the specified member summary writer for a given class.
@@ -186,8 +179,8 @@ public interface WriterFactory {
      *
      * @see VisibleMemberTable
      */
-    public abstract MemberSummaryWriter getMemberSummaryWriter(
-        ClassWriter classWriter, VisibleMemberTable.Kind memberType);
+    MemberSummaryWriter getMemberSummaryWriter(ClassWriter classWriter,
+                                               VisibleMemberTable.Kind memberType);
 
     /**
      * Return the specified member summary writer for a given annotation type.
@@ -201,15 +194,15 @@ public interface WriterFactory {
      *
      * @see VisibleMemberTable
      */
-    public abstract MemberSummaryWriter getMemberSummaryWriter(
-        AnnotationTypeWriter annotationTypeWriter, VisibleMemberTable.Kind memberType);
+    MemberSummaryWriter getMemberSummaryWriter(AnnotationTypeWriter annotationTypeWriter,
+                                               VisibleMemberTable.Kind memberType);
 
     /**
      * Return the writer for the serialized form.
      *
      * @return the writer for the serialized form.
      */
-    public SerializedFormWriter getSerializedFormWriter();
+    SerializedFormWriter getSerializedFormWriter();
 
     /**
      * Return the handler for doc files.

@@ -58,6 +58,7 @@ BOOT_MODULES += \
     java.rmi \
     java.security.sasl \
     java.xml \
+    jdk.incubator.foreign \
     jdk.internal.vm.ci \
     jdk.jfr \
     jdk.management \
@@ -128,7 +129,7 @@ endif
 
 JRE_TOOL_MODULES += \
     jdk.jdwp.agent \
-    jdk.pack \
+    jdk.incubator.jpackage \
     jdk.scripting.nashorn.shell \
     #
 
@@ -149,6 +150,7 @@ DOCS_MODULES += \
     jdk.editpad \
     jdk.hotspot.agent \
     jdk.httpserver \
+    jdk.incubator.jpackage \
     jdk.jartool \
     jdk.javadoc \
     jdk.jcmd \
@@ -161,6 +163,7 @@ DOCS_MODULES += \
     jdk.jsobject \
     jdk.jshell \
     jdk.jstatd \
+    jdk.incubator.foreign \
     jdk.localedata \
     jdk.management \
     jdk.management.agent \
@@ -168,7 +171,6 @@ DOCS_MODULES += \
     jdk.naming.dns \
     jdk.naming.rmi \
     jdk.net \
-    jdk.pack \
     jdk.rmic \
     jdk.scripting.nashorn \
     jdk.sctp \
@@ -240,6 +242,13 @@ endif
 
 ifeq ($(ENABLE_AOT), false)
   MODULES_FILTER += jdk.aot
+endif
+
+################################################################################
+# jpackage is only on windows, macosx, and linux
+
+ifeq ($(call isTargetOs, windows macosx linux), false)
+  MODULES_FILTER += jdk.incubator.jpackage
 endif
 
 ################################################################################

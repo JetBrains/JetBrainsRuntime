@@ -34,8 +34,6 @@ import jdk.javadoc.internal.doclets.toolkit.util.Utils;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Bhavesh Patel
  */
 public enum HtmlTag {
     A(BlockType.INLINE, EndTag.END),
@@ -99,7 +97,7 @@ public enum HtmlTag {
     /**
      * Enum representing the type of HTML element.
      */
-    public static enum BlockType {
+    public enum BlockType {
         BLOCK,
         INLINE,
         OTHER
@@ -108,7 +106,7 @@ public enum HtmlTag {
     /**
      * Enum representing HTML end tag requirement.
      */
-    public static enum EndTag {
+    public enum EndTag {
         END,
         NOEND
     }

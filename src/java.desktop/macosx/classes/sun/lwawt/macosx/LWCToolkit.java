@@ -121,7 +121,6 @@ import sun.lwawt.PlatformComponent;
 import sun.lwawt.PlatformDropTarget;
 import sun.lwawt.PlatformWindow;
 import sun.lwawt.SecurityWarningWindow;
-import sun.security.action.GetBooleanAction;
 
 @SuppressWarnings("serial") // JDK implementation class
 final class NamedCursor extends Cursor {
@@ -150,21 +149,21 @@ public final class LWCToolkit extends LWToolkit {
 
         ResourceBundle platformResources = java.security.AccessController.doPrivileged(
                 new java.security.PrivilegedAction<ResourceBundle>() {
-                    @Override
-                    public ResourceBundle run() {
-                        ResourceBundle platformResources = null;
-                        try {
-                            platformResources = ResourceBundle.getBundle("sun.awt.resources.awtosx");
-                        } catch (MissingResourceException e) {
-                            // No resource file; defaults will be used.
-                        }
+            @Override
+            public ResourceBundle run() {
+                ResourceBundle platformResources = null;
+                try {
+                    platformResources = ResourceBundle.getBundle("sun.awt.resources.awtosx");
+                } catch (MissingResourceException e) {
+                    // No resource file; defaults will be used.
+                }
 
-                        System.loadLibrary("awt");
-                        System.loadLibrary("fontmanager");
+                System.loadLibrary("awt");
+                System.loadLibrary("fontmanager");
 
-                        return platformResources;
-                    }
-                });
+                return platformResources;
+            }
+        });
 
         if (!GraphicsEnvironment.isHeadless() &&
             !PlatformGraphicsInfo.isInAquaSession())
@@ -212,9 +211,9 @@ public final class LWCToolkit extends LWToolkit {
     public static final int INACTIVE_SELECTION_BACKGROUND_COLOR = 1;
     public static final int INACTIVE_SELECTION_FOREGROUND_COLOR = 2;
     private static int[] appleColors = {
-            0xFF808080, // keyboardFocusColor = Color.gray;
-            0xFFC0C0C0, // secondarySelectedControlColor
-            0xFF303030, // controlDarkShadowColor
+        0xFF808080, // keyboardFocusColor = Color.gray;
+        0xFFC0C0C0, // secondarySelectedControlColor
+        0xFF303030, // controlDarkShadowColor
     };
 
     private native void loadNativeColors(final int[] systemColors, final int[] appleColors);
@@ -647,7 +646,7 @@ public final class LWCToolkit extends LWToolkit {
         final boolean[] ret = new boolean[1];
 
         try {  invokeAndWait(new Runnable() { @Override
-        public void run() { synchronized(ret) {
+                                              public void run() { synchronized(ret) {
             ret[0] = a.equals(b);
         }}}, c); } catch (Exception e) { e.printStackTrace(); }
 
@@ -809,6 +808,23 @@ public final class LWCToolkit extends LWToolkit {
         return locale;
     }
 
+    public static boolean isLocaleUSInternationalPC(Locale locale) {
+        return (locale != null ?
+            locale.toString().equals("_US_UserDefined_15000") : false);
+    }
+
+    public static boolean isCharModifierKeyInUSInternationalPC(char ch) {
+        // 5 characters: APOSTROPHE, QUOTATION MARK, ACCENT GRAVE, SMALL TILDE,
+        // CIRCUMFLEX ACCENT
+        final char[] modifierKeys = {'\'', '"', '`', '\u02DC', '\u02C6'};
+        for (char modKey : modifierKeys) {
+            if (modKey == ch) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public InputMethodDescriptor getInputMethodAdapterDescriptor() {
         if (sInputMethodDescriptor == null)
@@ -857,20 +873,6 @@ public final class LWCToolkit extends LWToolkit {
     @Override
     public boolean canPopupOverlapTaskBar() {
         return false;
-    }
-
-    private static Boolean sunAwtDisableCALayers = null;
-
-    /**
-     * Returns the value of "sun.awt.disableCALayers" property. Default
-     * value is {@code false}.
-     */
-    public static synchronized boolean getSunAwtDisableCALayers() {
-        if (sunAwtDisableCALayers == null) {
-            sunAwtDisableCALayers = AccessController.doPrivileged(
-                    new GetBooleanAction("sun.awt.disableCALayers"));
-        }
-        return sunAwtDisableCALayers;
     }
 
     /*
@@ -927,9 +929,9 @@ public final class LWCToolkit extends LWToolkit {
     @Override
     public boolean isModalExclusionTypeSupported(Dialog.ModalExclusionType exclusionType) {
         return (exclusionType == null) ||
-                (exclusionType == Dialog.ModalExclusionType.NO_EXCLUDE) ||
-                (exclusionType == Dialog.ModalExclusionType.APPLICATION_EXCLUDE) ||
-                (exclusionType == Dialog.ModalExclusionType.TOOLKIT_EXCLUDE);
+            (exclusionType == Dialog.ModalExclusionType.NO_EXCLUDE) ||
+            (exclusionType == Dialog.ModalExclusionType.APPLICATION_EXCLUDE) ||
+            (exclusionType == Dialog.ModalExclusionType.TOOLKIT_EXCLUDE);
     }
 
     @Override
@@ -937,10 +939,10 @@ public final class LWCToolkit extends LWToolkit {
         //TODO: FileDialog blocks excluded windows...
         //TODO: Test: 2 file dialogs, separate AppContexts: a) Dialog 1 blocked, shouldn't be. Frame 4 blocked (shouldn't be).
         return (modalityType == null) ||
-                (modalityType == Dialog.ModalityType.MODELESS) ||
-                (modalityType == Dialog.ModalityType.DOCUMENT_MODAL) ||
-                (modalityType == Dialog.ModalityType.APPLICATION_MODAL) ||
-                (modalityType == Dialog.ModalityType.TOOLKIT_MODAL);
+            (modalityType == Dialog.ModalityType.MODELESS) ||
+            (modalityType == Dialog.ModalityType.DOCUMENT_MODAL) ||
+            (modalityType == Dialog.ModalityType.APPLICATION_MODAL) ||
+            (modalityType == Dialog.ModalityType.TOOLKIT_MODAL);
     }
 
     @Override
