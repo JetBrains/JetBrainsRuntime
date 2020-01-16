@@ -125,9 +125,7 @@ JfrBuffer* JfrThreadLocal::install_java_buffer() const {
 
 JfrStackFrame* JfrThreadLocal::install_stackframes() const {
   assert(_stackframes == NULL, "invariant");
-  _stackdepth = (u4)JfrOptionSet::stackdepth();
-  guarantee(_stackdepth > 0, "Stackdepth must be > 0");
-  _stackframes = NEW_C_HEAP_ARRAY(JfrStackFrame, _stackdepth, mtTracing);
+  _stackframes = NEW_C_HEAP_ARRAY(JfrStackFrame, stackdepth(), mtTracing);
   return _stackframes;
 }
 
@@ -138,4 +136,8 @@ void JfrThreadLocal::destroy_stackframes(Thread* thread) {
     FREE_C_HEAP_ARRAY(JfrStackFrame, frames);
     thread->jfr_thread_local()->set_stackframes(NULL);
   }
+}
+
+u4 JfrThreadLocal::stackdepth() const {
+  return _stackdepth != 0 ? _stackdepth : (u4)JfrOptionSet::stackdepth();
 }

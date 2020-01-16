@@ -1227,7 +1227,7 @@ bool PhaseIdealLoop::loop_predication_impl_helper(IdealLoopTree *loop, ProjNode*
 // range checks between the pre and main loop to validate the value
 // of the main loop induction variable. Make a copy of the predicates
 // here with an opaque node as a place holder for the value (will be
-// updated by PhaseIdealLoop::update_skeleton_predicate()).
+// updated by PhaseIdealLoop::clone_skeleton_predicate()).
 ProjNode* PhaseIdealLoop::insert_skeleton_predicate(IfNode* iff, IdealLoopTree *loop,
                                                     ProjNode* proj, ProjNode *predicate_proj,
                                                     ProjNode* upper_bound_proj,
@@ -1380,7 +1380,6 @@ bool PhaseIdealLoop::loop_predication_impl(IdealLoopTree *loop) {
     } // end while
   }
 
-  Node_List if_proj_list_freq(area);
   if (follow_branches) {
     PathFrequency pf(loop->_head, this);
 
@@ -1398,6 +1397,7 @@ bool PhaseIdealLoop::loop_predication_impl(IdealLoopTree *loop) {
     // And look into all branches
     Node_Stack stack(0);
     VectorSet seen(Thread::current()->resource_area());
+    Node_List if_proj_list_freq(area);
     while (regions.size() > 0) {
       Node* c = regions.pop();
       loop_predication_follow_branches(c, loop, loop_trip_cnt, pf, stack, seen, if_proj_list_freq);

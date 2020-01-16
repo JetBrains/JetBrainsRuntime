@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,13 +29,14 @@
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
+ *          jdk.jartool/sun.tools.jar
  * @run main LongBCP
  */
 
+import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import jdk.test.lib.Platform;
 import jdk.test.lib.compiler.CompilerUtils;
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
@@ -81,6 +82,23 @@ public class LongBCP {
         output.shouldContain("Hello World")
               .shouldHaveExitValue(0);
 
+        // create a hello.jar
+        sun.tools.jar.Main jarTool = new sun.tools.jar.Main(System.out, System.err, "jar");
+        String helloJar = destDir.toString() + File.separator + "hello.jar";
+        if (!jarTool.run(new String[]
+            {"-cf", helloJar, "-C", destDir.toString(), "Hello.class"})) {
+            throw new RuntimeException("Could not write the Hello jar file");
+        }
+
+        // run with long bootclasspath to hello.jar
+        bootCP = "-Xbootclasspath/a:" + helloJar;
+        pb = ProcessTools.createJavaProcessBuilder(
+            bootCP, "Hello");
+
+        output = new OutputAnalyzer(pb.start());
+        output.shouldContain("Hello World")
+              .shouldHaveExitValue(0);
+
         // relative path tests
         // We currently cannot handle relative path specified in the
         // -Xbootclasspath/a on windows.
@@ -98,13 +116,8 @@ public class LongBCP {
             bootCP, "Hello");
 
         output = new OutputAnalyzer(pb.start());
-        if (!Platform.isWindows()) {
-            output.shouldContain("Hello World")
-                  .shouldHaveExitValue(0);
-        } else {
-            output.shouldContain("Could not find or load main class Hello")
-                  .shouldHaveExitValue(1);
-        }
+        output.shouldContain("Hello World")
+              .shouldHaveExitValue(0);
 
         // total relative path length exceeds MAX_PATH
         destDir = Paths.get(destDir.toString(), "yyyyyyyy");
@@ -116,12 +129,7 @@ public class LongBCP {
             bootCP, "Hello");
 
         output = new OutputAnalyzer(pb.start());
-        if (!Platform.isWindows()) {
-            output.shouldContain("Hello World")
-                  .shouldHaveExitValue(0);
-        } else {
-            output.shouldContain("Could not find or load main class Hello")
-                  .shouldHaveExitValue(1);
-        }
+        output.shouldContain("Hello World")
+              .shouldHaveExitValue(0);
     }
 }

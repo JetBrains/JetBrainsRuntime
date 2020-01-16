@@ -30,7 +30,14 @@
 //--------------------------------------------------------------------------------------
 // Non-product code
 
-#ifndef PRODUCT
+// AIX xlc16/legacy-xlc calls into the new operators from Iostream_init::Iostream_init()
+#if defined(AIX) && defined(__IBMCPP__)
+#if __IBMCPP__ >= 1600
+#define AVOID_FATAL_GLOBAL_NEW
+#endif
+#endif
+
+#if !defined(PRODUCT) && !defined(AVOID_FATAL_GLOBAL_NEW)
 // The global operator new should never be called since it will usually indicate
 // a memory leak.  Use CHeapObj as the base class of such objects to make it explicit
 // that they're allocated on the C heap.

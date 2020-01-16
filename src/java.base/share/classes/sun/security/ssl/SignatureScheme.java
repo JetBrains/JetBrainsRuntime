@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Set;
 import sun.security.ssl.SupportedGroupsExtension.NamedGroup;
 import sun.security.ssl.SupportedGroupsExtension.NamedGroupType;
+import sun.security.ssl.X509Authentication.X509Possession;
 import sun.security.util.KeyUtil;
 import sun.security.util.SignatureUtil;
 
@@ -64,7 +65,7 @@ enum SignatureScheme {
                                     "EC",
                                     NamedGroup.SECP384_R1,
                                     ProtocolVersion.PROTOCOLS_TO_13),
-    ECDSA_SECP512R1_SHA512  (0x0603, "ecdsa_secp512r1_sha512",
+    ECDSA_SECP521R1_SHA512  (0x0603, "ecdsa_secp521r1_sha512",
                                     "SHA512withECDSA",
                                     "EC",
                                     NamedGroup.SECP521_R1,
@@ -272,17 +273,28 @@ enum SignatureScheme {
                 Arrays.asList(handshakeSupportedProtocols);
 
         boolean mediator = true;
-        if (signAlgParamSpec != null) {
-            mediator = signAlgParamSpec.isAvailable;
-        } else {
-            try {
-                JsseJce.getSignature(algorithm);
-            } catch (Exception e) {
-                mediator = false;
-                if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
-                    SSLLogger.warning(
-                        "Signature algorithm, " + algorithm +
-                        ", is not supported by the underlying providers");
+        // HACK CODE
+        //
+        // An EC provider, for example the SunEC provider, may support
+        // AlgorithmParameters but not KeyPairGenerator or Signature.
+        if ("EC".equals(keyAlgorithm)) {
+            mediator = JsseJce.isEcAvailable();
+        }
+
+        // Check the specific algorithm and parameters.
+        if (mediator) {
+            if (signAlgParamSpec != null) {
+                mediator = signAlgParamSpec.isAvailable;
+            } else {
+                try {
+                    JsseJce.getSignature(algorithm);
+                } catch (Exception e) {
+                    mediator = false;
+                    if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
+                        SSLLogger.warning(
+                            "Signature algorithm, " + algorithm +
+                            ", is not supported by the underlying providers");
+                    }
                 }
             }
         }
@@ -357,12 +369,12 @@ enum SignatureScheme {
                 } else if (SSLLogger.isOn &&
                         SSLLogger.isOn("ssl,handshake,verbose")) {
                     SSLLogger.finest(
-                        "Ignore disabled signature sheme: " + ss.name);
+                        "Ignore disabled signature scheme: " + ss.name);
                 }
             } else if (SSLLogger.isOn &&
                     SSLLogger.isOn("ssl,handshake,verbose")) {
                 SSLLogger.finest(
-                    "Ignore inactive signature sheme: " + ss.name);
+                    "Ignore inactive signature scheme: " + ss.name);
             }
         }
 
@@ -416,9 +428,10 @@ enum SignatureScheme {
 
     static SignatureScheme getPreferableAlgorithm(
             List<SignatureScheme> schemes,
-            PrivateKey signingKey,
+            X509Possession x509Possession,
             ProtocolVersion version) {
 
+        PrivateKey signingKey = x509Possession.popPrivateKey;
         String keyAlgorithm = signingKey.getAlgorithm();
         int keySize;
         // Only need to check RSA algorithm at present.
@@ -435,8 +448,9 @@ enum SignatureScheme {
                 if (ss.namedGroup != null &&
                     ss.namedGroup.type == NamedGroupType.NAMED_GROUP_ECDHE) {
                     ECParameterSpec params =
-                                ((ECPrivateKey)signingKey).getParams();
-                    if (ss.namedGroup == NamedGroup.valueOf(params)) {
+                            x509Possession.getECParameterSpec();
+                    if (params != null &&
+                            ss.namedGroup == NamedGroup.valueOf(params)) {
                         return ss;
                     }
                 } else {

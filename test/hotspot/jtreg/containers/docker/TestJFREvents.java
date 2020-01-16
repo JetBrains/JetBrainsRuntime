@@ -36,14 +36,19 @@
  * @build JfrReporter
  * @run driver TestJFREvents
  */
+import java.util.List;
 import jdk.test.lib.containers.docker.Common;
 import jdk.test.lib.containers.docker.DockerRunOptions;
 import jdk.test.lib.containers.docker.DockerTestUtils;
+import jdk.test.lib.Asserts;
+import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.Utils;
 
 
 public class TestJFREvents {
     private static final String imageName = Common.imageName("jfr-events");
+    private static final String TEST_ENV_VARIABLE = "UNIQUE_VARIABLE_ABC592903XYZ";
+    private static final String TEST_ENV_VALUE = "unique_value_abc592903xyz";
     private static final int availableCPUs = Runtime.getRuntime().availableProcessors();
 
     public static void main(String[] args) throws Exception {
@@ -68,6 +73,7 @@ public class TestJFREvents {
 
             testProcessInfo();
 
+            testEnvironmentVariables();
         } finally {
             DockerTestUtils.removeDockerImage(imageName);
         }
@@ -79,14 +85,12 @@ public class TestJFREvents {
         DockerTestUtils.dockerRunJava(
                                       commonDockerOpts()
                                       .addDockerOpts("--cpus=" + valueToSet)
-                                      .addClassOptions(JfrReporter.TESTCASE_CPU))
-            .shouldHaveExitValue(0)
-            .shouldContain(JfrReporter.TEST_REPORTED_CORES);
-
+                                      .addClassOptions("jdk.CPUInformation"))
+            .shouldHaveExitValue(0);
         // The following assertion is currently disabled due to JFR reporting incorrect values.
         // JFR reports values for the host system as opposed to values for the container.
         // @ignore 8219999
-        // .shouldContain(JfrReporter.TEST_REPORTED_CORES + "=" + expectedValue);
+        // .shouldContain("cores = " + expectedValue");
     }
 
 
@@ -95,9 +99,9 @@ public class TestJFREvents {
         DockerTestUtils.dockerRunJava(
                                       commonDockerOpts()
                                       .addDockerOpts("--memory=" + valueToSet)
-                                      .addClassOptions(JfrReporter.TESTCASE_MEMORY))
+                                      .addClassOptions("jdk.PhysicalMemory"))
             .shouldHaveExitValue(0)
-            .shouldContain(JfrReporter.TEST_REPORTED_MEMORY + "=" + expectedValue);
+            .shouldContain("totalSize = " + expectedValue);
     }
 
 
@@ -105,10 +109,9 @@ public class TestJFREvents {
         Common.logNewTestCase("ProcessInfo");
         DockerTestUtils.dockerRunJava(
                                       commonDockerOpts()
-                                      .addClassOptions(JfrReporter.TESTCASE_PROCESS))
+                                      .addClassOptions("jdk.SystemProcess"))
             .shouldHaveExitValue(0)
-            .shouldContain(JfrReporter.TEST_REPORTED_PID + "=1");
-
+            .shouldContain("pid = 1");
     }
 
 
@@ -116,5 +119,32 @@ public class TestJFREvents {
         return new DockerRunOptions(imageName, "/jdk/bin/java", "JfrReporter")
             .addDockerOpts("--volume", Utils.TEST_CLASSES + ":/test-classes/")
             .addJavaOpts("-cp", "/test-classes/");
+    }
+
+
+    private static void testEnvironmentVariables() throws Exception {
+        Common.logNewTestCase("EnvironmentVariables");
+
+        List<String> cmd = DockerTestUtils.buildJavaCommand(
+                                      commonDockerOpts()
+                                      .addClassOptions("jdk.InitialEnvironmentVariable"));
+
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        // Container has JAVA_HOME defined via the Dockerfile; make sure
+        // it is reported by JFR event.
+        // Environment variable set in host system should not be visible inside a container,
+        // and should not be reported by JFR.
+        pb.environment().put(TEST_ENV_VARIABLE, TEST_ENV_VALUE);
+
+        System.out.println("[COMMAND]\n" + Utils.getCommandLine(pb));
+        OutputAnalyzer out = new OutputAnalyzer(pb.start());
+        System.out.println("[STDERR]\n" + out.getStderr());
+        System.out.println("[STDOUT]\n" + out.getStdout());
+
+        out.shouldHaveExitValue(0)
+            .shouldContain("key = JAVA_HOME")
+            .shouldContain("value = /jdk")
+            .shouldNotContain(TEST_ENV_VARIABLE)
+            .shouldNotContain(TEST_ENV_VALUE);
     }
 }

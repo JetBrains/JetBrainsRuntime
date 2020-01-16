@@ -131,31 +131,6 @@ JNF_COCOA_EXIT(env);
 }
 
 /**
- * Returns a pointer (as a jlong) to the native CGLGraphicsConfigInfo
- * associated with the given OGLSDOps.  This method can be called from
- * shared code to retrieve the native GraphicsConfig data in a platform-
- * independent manner.
- */
-jlong
-OGLSD_GetNativeConfigInfo(OGLSDOps *oglsdo)
-{
-    J2dTraceLn(J2D_TRACE_INFO, "OGLSD_GetNativeConfigInfo");
-
-    if (oglsdo == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "OGLSD_GetNativeConfigInfo: ops are null");
-        return 0L;
-    }
-
-    CGLSDOps *cglsdo = (CGLSDOps *)oglsdo->privOps;
-    if (cglsdo == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "OGLSD_GetNativeConfigInfo: cgl ops are null");
-        return 0L;
-    }
-
-    return ptr_to_jlong(cglsdo->configInfo);
-}
-
-/**
  * Makes the given GraphicsConfig's context current to its associated
  * "scratch" surface.  If there is a problem making the context current,
  * this method will return NULL; otherwise, returns a pointer to the
@@ -374,21 +349,9 @@ extern GetRasInfoFunc  OGLSD_GetRasInfo;
 extern UnlockFunc      OGLSD_Unlock;
 extern DisposeFunc     OGLSD_Dispose;
 
-
-void
-CGLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
-{
-    OGLSDOps *oglsdo = (OGLSDOps *)ops;
-    jlong pConfigInfo = OGLSD_GetNativeConfigInfo(oglsdo);
-    JNU_CallStaticMethodByName(env, NULL, "sun/java2d/opengl/CGLSurfaceData",
-                               "dispose", "(JJ)V",
-                               ptr_to_jlong(ops), pConfigInfo);
-}
-
-
 JNIEXPORT void JNICALL
 Java_sun_java2d_opengl_CGLSurfaceData_initOps
-    (JNIEnv *env, jobject cglsd,
+    (JNIEnv *env, jobject cglsd, jobject gc,
      jlong pConfigInfo, jlong pPeerData, jlong layerPtr,
      jint xoff, jint yoff, jboolean isOpaque)
 {
@@ -396,8 +359,22 @@ Java_sun_java2d_opengl_CGLSurfaceData_initOps
     J2dTraceLn1(J2D_TRACE_INFO, "  pPeerData=%p", jlong_to_ptr(pPeerData));
     J2dTraceLn2(J2D_TRACE_INFO, "  xoff=%d, yoff=%d", (int)xoff, (int)yoff);
 
+    gc = (*env)->NewGlobalRef(env, gc);
+    if (gc == NULL) {
+        JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
+        return;
+    }
+
     OGLSDOps *oglsdo = (OGLSDOps *)
         SurfaceData_InitOps(env, cglsd, sizeof(OGLSDOps));
+    if (oglsdo == NULL) {
+        (*env)->DeleteGlobalRef(env, gc);
+        JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
+        return;
+    }
+    // later the graphicsConfig will be used for deallocation of oglsdo
+    oglsdo->graphicsConfig = gc;
+
     CGLSDOps *cglsdo = (CGLSDOps *)malloc(sizeof(CGLSDOps));
     if (cglsdo == NULL) {
         JNU_ThrowOutOfMemoryError(env, "creating native cgl ops");
@@ -409,7 +386,7 @@ Java_sun_java2d_opengl_CGLSurfaceData_initOps
     oglsdo->sdOps.Lock               = OGLSD_Lock;
     oglsdo->sdOps.GetRasInfo         = OGLSD_GetRasInfo;
     oglsdo->sdOps.Unlock             = OGLSD_Unlock;
-    oglsdo->sdOps.Dispose            = CGLSD_Dispose;
+    oglsdo->sdOps.Dispose            = OGLSD_Dispose;
 
     oglsdo->drawableType = OGLSD_UNDEFINED;
     oglsdo->activeBuffer = GL_FRONT;

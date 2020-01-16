@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,7 +69,26 @@ ZBarrierSetC2State* ZBarrierSetC2::state() const {
 }
 
 bool ZBarrierSetC2::is_gc_barrier_node(Node* node) const {
-  return node->is_LoadBarrier();
+  // 1. This step follows potential oop projections of a load barrier before expansion
+  if (node->is_Proj()) {
+    node = node->in(0);
+  }
+
+  // 2. This step checks for unexpanded load barriers
+  if (node->is_LoadBarrier()) {
+    return true;
+  }
+
+  // 3. This step checks for the phi corresponding to an optimized load barrier expansion
+  if (node->is_Phi()) {
+    PhiNode* phi = node->as_Phi();
+    Node* n = phi->in(1);
+    if (n != NULL && (n->is_LoadBarrierSlowReg() ||  n->is_LoadBarrierWeakSlowReg())) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 void ZBarrierSetC2::register_potential_barrier_node(Node* node) const {
@@ -170,6 +189,15 @@ LoadBarrierNode::LoadBarrierNode(Compile* C,
   bs->register_potential_barrier_node(this);
 }
 
+uint LoadBarrierNode::size_of() const {
+  return sizeof(*this);
+}
+
+uint LoadBarrierNode::cmp(const Node& n) const {
+  ShouldNotReachHere();
+  return 0;
+}
+
 const Type *LoadBarrierNode::bottom_type() const {
   const Type** floadbarrier = (const Type **)(Compile::current()->type_arena()->Amalloc_4((Number_of_Outputs)*sizeof(Type*)));
   Node* in_oop = in(Oop);
@@ -177,6 +205,11 @@ const Type *LoadBarrierNode::bottom_type() const {
   floadbarrier[Memory] = Type::MEMORY;
   floadbarrier[Oop] = in_oop == NULL ? Type::TOP : in_oop->bottom_type();
   return TypeTuple::make(Number_of_Outputs, floadbarrier);
+}
+
+const TypePtr* LoadBarrierNode::adr_type() const {
+  ShouldNotReachHere();
+  return NULL;
 }
 
 const Type *LoadBarrierNode::Value(PhaseGVN *phase) const {
@@ -422,6 +455,11 @@ Node *LoadBarrierNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   return NULL;
 }
 
+uint LoadBarrierNode::match_edge(uint idx) const {
+  ShouldNotReachHere();
+  return 0;
+}
+
 void LoadBarrierNode::fix_similar_in_uses(PhaseIterGVN* igvn) {
   Node* out_res = proj_out_or_null(Oop);
   if (out_res == NULL) {
@@ -638,7 +676,10 @@ Node* ZBarrierSetC2::load_barrier(GraphKit* kit, Node* val, Node* adr, bool weak
     if (barrier == transformed_barrier) {
       kit->set_control(gvn.transform(new ProjNode(barrier, LoadBarrierNode::Control)));
     }
-    return gvn.transform(new ProjNode(transformed_barrier, LoadBarrierNode::Oop));
+    Node* result = gvn.transform(new ProjNode(transformed_barrier, LoadBarrierNode::Oop));
+    assert(is_gc_barrier_node(result), "sanity");
+    assert(step_over_gc_barrier(result) == val, "sanity");
+    return result;
   } else {
     return val;
   }
@@ -964,6 +1005,9 @@ void ZBarrierSetC2::expand_loadbarrier_optimized(PhaseMacroExpand* phase, LoadBa
   traverse(preceding_barrier_node, result_region, result_phi, -1);
 #endif
 
+  assert(is_gc_barrier_node(result_phi), "sanity");
+  assert(step_over_gc_barrier(result_phi) == in_val, "sanity");
+
   return;
 }
 
@@ -1126,7 +1170,7 @@ static bool split_barrier_thru_phi(PhaseIdealLoop* phase, LoadBarrierNode* lb) {
   if (lb->in(LoadBarrierNode::Oop)->is_Phi()) {
     Node* oop_phi = lb->in(LoadBarrierNode::Oop);
 
-    if (oop_phi->in(2) == oop_phi) {
+    if ((oop_phi->req() != 3) || (oop_phi->in(2) == oop_phi)) {
       // Ignore phis with only one input
       return false;
     }
@@ -1283,10 +1327,9 @@ static bool common_barriers(PhaseIdealLoop* phase, LoadBarrierNode* lb) {
       Node* other_ctrl = u->in(LoadBarrierNode::Control);
 
       Node* lca = phase->dom_lca(this_ctrl, other_ctrl);
-      bool ok = true;
-
       Node* proj1 = NULL;
       Node* proj2 = NULL;
+      bool ok = (lb->in(LoadBarrierNode::Address) == u->in(LoadBarrierNode::Address));
 
       while (this_ctrl != lca && ok) {
         if (this_ctrl->in(0) != NULL &&
@@ -1375,6 +1418,32 @@ void ZBarrierSetC2::loop_optimize_gc_barrier(PhaseIdealLoop* phase, Node* node, 
   if (node->is_LoadBarrier()) {
     optimize_load_barrier(phase, node->as_LoadBarrier(), last_round);
   }
+}
+
+Node* ZBarrierSetC2::step_over_gc_barrier(Node* c) const {
+  Node* node = c;
+
+  // 1. This step follows potential oop projections of a load barrier before expansion
+  if (node->is_Proj()) {
+    node = node->in(0);
+  }
+
+  // 2. This step checks for unexpanded load barriers
+  if (node->is_LoadBarrier()) {
+    return node->in(LoadBarrierNode::Oop);
+  }
+
+  // 3. This step checks for the phi corresponding to an optimized load barrier expansion
+  if (node->is_Phi()) {
+    PhiNode* phi = node->as_Phi();
+    Node* n = phi->in(1);
+    if (n != NULL && (n->is_LoadBarrierSlowReg() ||  n->is_LoadBarrierWeakSlowReg())) {
+      assert(c == node, "projections from step 1 should only be seen before macro expansion");
+      return phi->in(2);
+    }
+  }
+
+  return c;
 }
 
 // == Verification ==

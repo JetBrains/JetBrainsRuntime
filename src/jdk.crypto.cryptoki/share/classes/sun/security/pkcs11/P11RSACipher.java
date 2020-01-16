@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -275,10 +275,10 @@ final class P11RSACipher extends CipherSpi {
                 long sessId = session.id();
                 switch (mode) {
                 case MODE_ENCRYPT:
-                    p11.C_Encrypt(sessId, buffer, 0, inLen, buffer, 0, outLen);
+                    p11.C_Encrypt(sessId, 0, buffer, 0, inLen, 0, buffer, 0, outLen);
                     break;
                 case MODE_DECRYPT:
-                    p11.C_Decrypt(sessId, buffer, 0, inLen, buffer, 0, outLen);
+                    p11.C_Decrypt(sessId, 0, buffer, 0, inLen, 0, buffer, 0, outLen);
                     break;
                 case MODE_SIGN:
                     byte[] tmpBuffer = new byte[maxInputSize];
@@ -372,11 +372,11 @@ final class P11RSACipher extends CipherSpi {
             switch (mode) {
             case MODE_ENCRYPT:
                 n = p11.C_Encrypt
-                        (session.id(), buffer, 0, bufOfs, out, outOfs, outLen);
+                        (session.id(), 0, buffer, 0, bufOfs, 0, out, outOfs, outLen);
                 break;
             case MODE_DECRYPT:
                 n = p11.C_Decrypt
-                        (session.id(), buffer, 0, bufOfs, out, outOfs, outLen);
+                        (session.id(), 0, buffer, 0, bufOfs, 0, out, outOfs, outLen);
                 break;
             case MODE_SIGN:
                 byte[] tmpBuffer = new byte[bufOfs];
@@ -550,13 +550,14 @@ final class P11RSACipher extends CipherSpi {
             try {
                 try {
                     s = token.getObjSession();
-                    long keyType = CKK_GENERIC_SECRET;
+                    long p11KeyType =
+                        P11SecretKeyFactory.getPKCS11KeyType(algorithm);
                     CK_ATTRIBUTE[] attributes = new CK_ATTRIBUTE[] {
                             new CK_ATTRIBUTE(CKA_CLASS, CKO_SECRET_KEY),
-                            new CK_ATTRIBUTE(CKA_KEY_TYPE, keyType),
+                            new CK_ATTRIBUTE(CKA_KEY_TYPE, p11KeyType),
                         };
                     attributes = token.getAttributes(
-                            O_IMPORT, CKO_SECRET_KEY, keyType, attributes);
+                            O_IMPORT, CKO_SECRET_KEY, p11KeyType, attributes);
 
                     long keyID = token.p11.C_UnwrapKey(s.id(),
                                     new CK_MECHANISM(mechanism), p11KeyID,

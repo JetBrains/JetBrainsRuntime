@@ -692,7 +692,6 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
      */
     protected void modelChanged() {
         // create a view hierarchy
-        rootViewInitialized = false;
         ViewFactory f = rootView.getViewFactory();
         Document doc = editor.getDocument();
         Element elem = doc.getDefaultRootElement();
@@ -942,11 +941,9 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
             if ((d.width > (i.left + i.right + caretMargin)) && (d.height > (i.top + i.bottom))) {
                 rootView.setSize(d.width - i.left - i.right -
                         caretMargin, d.height - i.top - i.bottom);
-            }
-            else if (!rootViewInitialized && (d.width <= 0 || d.height <= 0)) {
+            } else if (d.width == 0 && d.height == 0) {
                 // Probably haven't been layed out yet, force some sort of
                 // initial sizing.
-                rootViewInitialized = true;
                 rootView.setSize(Integer.MAX_VALUE, Integer.MAX_VALUE);
             }
             d.width = (int) Math.min((long) rootView.getPreferredSpan(View.X_AXIS) +
@@ -1398,7 +1395,6 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
     private static final Position.Bias[] discardBias = new Position.Bias[1];
     private DefaultCaret dropCaret;
     private int caretMargin;
-    private boolean rootViewInitialized;
 
     /**
      * Root view that acts as a gateway between the component
@@ -1961,7 +1957,6 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
          * @see DocumentListener#insertUpdate
          */
         public final void insertUpdate(DocumentEvent e) {
-            rootViewInitialized = false;
             Document doc = e.getDocument();
             Object o = doc.getProperty("i18n");
             if (o instanceof Boolean) {
@@ -1990,7 +1985,6 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
          * @see DocumentListener#removeUpdate
          */
         public final void removeUpdate(DocumentEvent e) {
-            rootViewInitialized = false;
             Rectangle alloc = (painted) ? getVisibleEditorRect() : null;
             rootView.removeUpdate(e, alloc, rootView.getViewFactory());
         }
@@ -2006,7 +2000,6 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
          * @see DocumentListener#changedUpdate(DocumentEvent)
          */
         public final void changedUpdate(DocumentEvent e) {
-            rootViewInitialized = false;
             Rectangle alloc = (painted) ? getVisibleEditorRect() : null;
             rootView.changedUpdate(e, alloc, rootView.getViewFactory());
         }

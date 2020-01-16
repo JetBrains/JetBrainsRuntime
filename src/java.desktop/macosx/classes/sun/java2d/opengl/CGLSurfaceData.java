@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,8 +48,9 @@ public abstract class CGLSurfaceData extends OGLSurfaceData {
 
     native void validate(int xoff, int yoff, int width, int height, boolean isOpaque);
 
-    private native void initOps(long pConfigInfo, long pPeerData, long layerPtr,
-                                int xoff, int yoff, boolean isOpaque);
+    private native void initOps(OGLGraphicsConfig gc, long pConfigInfo,
+                                long pPeerData, long layerPtr, int xoff,
+                                int yoff, boolean isOpaque);
 
     protected CGLSurfaceData(CGLGraphicsConfig gc, ColorModel cm, int type,
                              int width, int height) {
@@ -74,8 +75,7 @@ public abstract class CGLSurfaceData extends OGLSurfaceData {
             pPeerData = pView.getAWTView();
             isOpaque = pView.isOpaque();
         }
-        CGLGraphicsConfig.refPConfigInfo(pConfigInfo);
-        initOps(pConfigInfo, pPeerData, 0, 0, 0, isOpaque);
+        initOps(gc, pConfigInfo, pPeerData, 0, 0, 0, isOpaque);
     }
 
     protected CGLSurfaceData(CGLLayer layer, CGLGraphicsConfig gc,
@@ -91,8 +91,7 @@ public abstract class CGLSurfaceData extends OGLSurfaceData {
             layerPtr = layer.getPointer();
             isOpaque = layer.isOpaque();
         }
-        CGLGraphicsConfig.refPConfigInfo(pConfigInfo);
-        initOps(pConfigInfo, 0, layerPtr, 0, 0, isOpaque);
+        initOps(gc, pConfigInfo, 0, layerPtr, 0, 0, isOpaque);
     }
 
     @Override //SurfaceData
@@ -381,10 +380,5 @@ public abstract class CGLSurfaceData extends OGLSurfaceData {
         if (ctx != 0L) {
             destroyCGLContext(ctx);
         }
-    }
-
-    static void dispose(long pData, long pConfigInfo) {
-        OGLSurfaceData.dispose(pData, pConfigInfo);
-        CGLGraphicsConfig.deRefPConfigInfo(pConfigInfo);
     }
 }

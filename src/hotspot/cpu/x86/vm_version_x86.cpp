@@ -380,6 +380,10 @@ class VM_Version_StubGenerator: public StubCodeGenerator {
     __ cmpl(rax, 0xE0);
     __ jccb(Assembler::notEqual, legacy_setup); // jump if EVEX is not supported
 
+    __ lea(rsi, Address(rbp, in_bytes(VM_Version::std_cpuid1_offset())));
+    __ movl(rax, Address(rsi, 0));
+    __ cmpl(rax, 0x50654);              // If it is Skylake
+    __ jcc(Assembler::equal, legacy_setup);
     // If UseAVX is unitialized or is set by the user to include EVEX
     if (use_evex) {
       // EVEX setup: run in lowest evex mode
@@ -463,6 +467,11 @@ class VM_Version_StubGenerator: public StubCodeGenerator {
     __ andl(rax, Address(rbp, in_bytes(VM_Version::xem_xcr0_offset()))); // xcr0 bits sse | ymm
     __ cmpl(rax, 0xE0);
     __ jcc(Assembler::notEqual, legacy_save_restore);
+
+    __ lea(rsi, Address(rbp, in_bytes(VM_Version::std_cpuid1_offset())));
+    __ movl(rax, Address(rsi, 0));
+    __ cmpl(rax, 0x50654);              // If it is Skylake
+    __ jcc(Assembler::equal, legacy_save_restore);
 
     // If UseAVX is unitialized or is set by the user to include EVEX
     if (use_evex) {
@@ -649,6 +658,9 @@ void VM_Version::get_processor_features() {
   }
   if (FLAG_IS_DEFAULT(UseAVX)) {
     FLAG_SET_DEFAULT(UseAVX, use_avx_limit);
+    if (is_intel_family_core() && _model == CPU_MODEL_SKYLAKE && _stepping < 5) {
+      FLAG_SET_DEFAULT(UseAVX, 2);  //Set UseAVX=2 for Skylake
+    }
   } else if (UseAVX > use_avx_limit) {
     warning("UseAVX=%d is not supported on this CPU, setting it to UseAVX=%d", (int) UseAVX, use_avx_limit);
     FLAG_SET_DEFAULT(UseAVX, use_avx_limit);
@@ -900,6 +912,13 @@ void VM_Version::get_processor_features() {
   } else if (UseSHA256Intrinsics) {
     warning("Intrinsics for SHA-224 and SHA-256 crypto hash functions not available on this CPU.");
     FLAG_SET_DEFAULT(UseSHA256Intrinsics, false);
+  }
+
+  if (!FLAG_IS_DEFAULT(AVX3Threshold)) {
+    if (!is_power_of_2(AVX3Threshold)) {
+      warning("AVX3Threshold must be a power of 2");
+      FLAG_SET_DEFAULT(AVX3Threshold, 4096);
+    }
   }
 
 #ifdef _LP64

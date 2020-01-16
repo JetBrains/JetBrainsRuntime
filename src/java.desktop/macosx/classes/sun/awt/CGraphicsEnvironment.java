@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,23 @@
 
 package sun.awt;
 
-import java.awt.*;
-import java.util.*;
+import java.awt.AWTError;
+import java.awt.Font;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.HeadlessException;
+import java.awt.Toolkit;
+import java.lang.ref.WeakReference;
 import java.util.concurrent.Callable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
 
-import sun.java2d.*;
+import sun.java2d.MacosxSurfaceManagerFactory;
+import sun.java2d.SunGraphicsEnvironment;
+import sun.java2d.SurfaceManagerFactory;
 import sun.lwawt.macosx.CThreading;
 
 /**
@@ -89,6 +101,9 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
     /** Reference to the display reconfiguration callback context. */
     private final long displayReconfigContext;
 
+    // list of invalidated graphics devices (those which were removed)
+    private List<WeakReference<CGraphicsDevice>> oldDevices = new ArrayList<>();
+
     /**
      * Construct a new instance.
      */
@@ -121,11 +136,23 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
             mainDisplayID = getMainDisplayID();
             if (removed && devices.containsKey(displayId)) {
                 final CGraphicsDevice gd = devices.remove(displayId);
-                gd.invalidate(mainDisplayID);
-                gd.displayChanged();
+                oldDevices.add(new WeakReference<>(gd));
             }
         }
         initDevices(mainDisplayID);
+
+        // Need to notify old devices, in case the user hold the reference to it
+        for (ListIterator<WeakReference<CGraphicsDevice>> it =
+             oldDevices.listIterator(); it.hasNext(); ) {
+            CGraphicsDevice gd = it.next().get();
+            if (gd != null) {
+                gd.invalidate(mainDisplayID);
+                gd.displayChanged();
+            } else {
+                // no more references to this device, remove it
+                it.remove();
+            }
+        }
     }
 
     @Override
