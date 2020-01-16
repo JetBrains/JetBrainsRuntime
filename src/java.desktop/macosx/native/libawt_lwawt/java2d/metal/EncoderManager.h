@@ -30,6 +30,8 @@
 // returns encoder that renders/fills geometry with current paint and composite
 - (id<MTLRenderCommandEncoder> _Nonnull)getRenderEncoder:(const BMTLSDOps * _Nonnull)dstOps;
 
+- (id<MTLRenderCommandEncoder> _Nonnull)getAARenderEncoder:(id<MTLTexture>)dstTxt;
+
 - (id<MTLRenderCommandEncoder> _Nonnull)getRenderEncoder:(id<MTLTexture> _Nonnull)dest
                                              isDstOpaque:(bool)isOpaque;
 
@@ -42,10 +44,16 @@
                                       isSrcOpaque:(bool)isSrcOpaque
                                       isDstOpaque:(bool)isDstOpaque;
 
+- (id<MTLRenderCommandEncoder> _Nonnull)getTextureEncoder:(id<MTLTexture> _Nonnull)dest
+                                              isSrcOpaque:(bool)isSrcOpaque
+                                              isDstOpaque:(bool)isDstOpaque
+                                                     isAA:(jboolean)isAA;
+
 // Base method to obtain any MTLRenderCommandEncoder
 - (id<MTLRenderCommandEncoder> _Nonnull)getEncoder:(id<MTLTexture> _Nonnull)dest
                                   isOpaque:(jboolean)isOpaque
                                  isTexture:(jboolean)isTexture
+                                      isAA:(jboolean)isAA
                                   srcFlags:(const SurfaceRasterFlags * _Nullable)srcFlags;
 
 - (id<MTLBlitCommandEncoder> _Nonnull)createBlitEncoder;

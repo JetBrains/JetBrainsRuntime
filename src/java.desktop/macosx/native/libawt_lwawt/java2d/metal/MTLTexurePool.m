@@ -10,7 +10,7 @@
 
 @implementation MTLTexturePoolItem
 
-@synthesize texture, isBusy, lastUsed;
+@synthesize texture, isBusy, lastUsed, isMultiSample;
 
 - (id) initWithTexture:(id<MTLTexture>)tex {
     self = [super init];
@@ -88,6 +88,12 @@
 
 // NOTE: called from RQ-thread (on blit operations)
 - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format {
+    return [self getTexture:width height:height format:format isMultiSample:NO];
+}
+
+// NOTE: called from RQ-thread (on blit operations)
+- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format
+                          isMultiSample:(bool)isMultiSample {
     @autoreleasepool {
         // 1. clean pool if necessary
         const int requestedPixels = width*height;
@@ -139,7 +145,8 @@
                 int minDeltaAreaIndex = -1;
                 for (int c = 0; c < count; ++c) {
                     MTLTexturePoolItem *tpi = [cell objectAtIndex:c];
-                    if (tpi == nil || tpi.isBusy || tpi.texture.pixelFormat != format) { // TODO: use swizzle when formats are not equal
+                    if (tpi == nil || tpi.isBusy || tpi.texture.pixelFormat != format
+                        || tpi.isMultiSample != isMultiSample) { // TODO: use swizzle when formats are not equal
                         continue;
                     }
                     if (tpi.texture.width < width || tpi.texture.height < height) {
@@ -166,7 +173,17 @@
         }
 
         if (minDeltaTpi == NULL) {
-            MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format width:width height:height mipmapped:NO];
+            MTLTextureDescriptor *textureDescriptor =
+                    [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format
+                                                                       width:(NSUInteger) width
+                                                                      height:(NSUInteger) height
+                                                                   mipmapped:NO];
+            if (isMultiSample) {
+                textureDescriptor.textureType = MTLTextureType2DMultisample;
+                textureDescriptor.sampleCount = 4;
+                textureDescriptor.storageMode = MTLStorageModePrivate;
+            }
+
             id <MTLTexture> tex = [[self.device newTextureWithDescriptor:textureDescriptor] autorelease];
             minDeltaTpi = [[[MTLTexturePoolItem alloc] initWithTexture:tex] autorelease];
             NSMutableArray * cell = _cells[cellY0 * _poolCellWidth + cellX0];
