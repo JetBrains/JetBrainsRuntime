@@ -44,6 +44,7 @@
 
 static MTLRenderPipelineDescriptor * templateRenderPipelineDesc = nil;
 static MTLRenderPipelineDescriptor * templateTexturePipelineDesc = nil;
+static MTLRenderPipelineDescriptor * templateAATexturePipelineDesc = nil;
 
 static void initTemplatePipelineDescriptors() {
     if (templateRenderPipelineDesc != nil && templateTexturePipelineDesc != nil)
@@ -71,6 +72,19 @@ static void initTemplatePipelineDescriptors() {
     templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepRate = 1;
     templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
     templateTexturePipelineDesc.label = @"template_texture";
+
+    templateAATexturePipelineDesc = [[MTLRenderPipelineDescriptor new] autorelease];
+    templateAATexturePipelineDesc.sampleCount = 1;
+    templateAATexturePipelineDesc.vertexDescriptor = vertDesc;
+    templateAATexturePipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatR8Unorm;
+    templateAATexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
+    templateAATexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].offset = 2*sizeof(float);
+    templateAATexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
+    templateAATexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stride = sizeof(struct TxtVertex);
+    templateAATexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepRate = 1;
+    templateAATexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
+    templateAATexturePipelineDesc.label = @"template_aa_texture";
+
 }
 
 @implementation MTLPaint {
@@ -235,6 +249,7 @@ static void initTemplatePipelineDescriptors() {
                composite:(MTLComposite *)composite
            isStencilUsed:(jboolean)isStencilUsed
                isTexture:(jboolean)isTexture
+                    isAA:(jboolean)isAA
                 srcFlags:(const SurfaceRasterFlags *)srcFlags
                 dstFlags:(const SurfaceRasterFlags *)dstFlags
     pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
@@ -245,14 +260,26 @@ static void initTemplatePipelineDescriptors() {
 
     id<MTLRenderPipelineState> pipelineState = nil;
     if (isTexture) {
-        pipelineState = [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
-                                                vertexShaderId:@"vert_txt"
-                                              fragmentShaderId:@"frag_txt"
-                                                 compositeRule:[composite getRule]
-                                                      srcFlags:srcFlags
-                                                      dstFlags:dstFlags
-                                                 stencilNeeded:stencil];
 
+        if (isAA) {
+            pipelineState = [pipelineStateStorage getPipelineState:templateAATexturePipelineDesc
+                                                    vertexShaderId:@"vert_txt"
+                                                  fragmentShaderId:@"aa_frag_txt"
+                                                     compositeRule:[composite getRule]
+                                                              isAA:JNI_FALSE
+                                                          srcFlags:srcFlags
+                                                          dstFlags:dstFlags
+                                                     stencilNeeded:stencil];
+        } else {
+            pipelineState = [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
+                                                    vertexShaderId:@"vert_txt"
+                                                  fragmentShaderId:@"frag_txt"
+                                                     compositeRule:[composite getRule]
+                                                              isAA:JNI_FALSE
+                                                          srcFlags:srcFlags
+                                                          dstFlags:dstFlags
+                                                     stencilNeeded:stencil];
+        }
         if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
             struct TxtFrameUniforms uf = {RGBA_TO_V4(_color), 1, srcFlags->isOpaque, dstFlags->isOpaque };
             [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
@@ -266,17 +293,24 @@ static void initTemplatePipelineDescriptors() {
                                                     vertexShaderId:@"vert_col"
                                                   fragmentShaderId:@"frag_col"
                                                      compositeRule:[composite getRule]
+                                                              isAA:isAA
                                                           srcFlags:srcFlags
                                                           dstFlags:dstFlags
                                                      stencilNeeded:stencil];
 
-            struct FrameUniforms uf = {RGBA_TO_V4(_color)};
-            [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+            if (isAA) {
+                struct FrameUniforms uf = {1.0f, 1.0f, 1.0f, 1.0};
+                [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+            } else {
+                struct FrameUniforms uf = {RGBA_TO_V4(_color)};
+                [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+            }
         } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
             pipelineState = [pipelineStateStorage getPipelineState:templateRenderPipelineDesc
                                                     vertexShaderId:@"vert_grad"
                                                   fragmentShaderId:@"frag_grad"
                                                      compositeRule:[composite getRule]
+                                                              isAA:isAA
                                                           srcFlags:srcFlags
                                                           dstFlags:dstFlags
                                                      stencilNeeded:stencil];

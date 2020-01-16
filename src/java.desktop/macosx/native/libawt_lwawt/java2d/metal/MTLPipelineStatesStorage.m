@@ -79,12 +79,31 @@ static void setBlendingFactors(
                     stencilNeeded:stencilNeeded];
 }
 
+- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
+                                 vertexShaderId:(NSString *)vertexShaderId
+                               fragmentShaderId:(NSString *)fragmentShaderId
+                                  compositeRule:(jint)compositeRule
+                                       srcFlags:(const SurfaceRasterFlags *)srcFlags
+                                       dstFlags:(const SurfaceRasterFlags *)dstFlags
+                                  stencilNeeded:(bool)stencilNeeded;
+{
+    return [self getPipelineState:pipelineDescriptor
+                   vertexShaderId:vertexShaderId
+                 fragmentShaderId:fragmentShaderId
+                    compositeRule:compositeRule
+                             isAA:JNI_FALSE
+                         srcFlags:srcFlags
+                         dstFlags:dstFlags
+            stencilNeeded:stencilNeeded];
+}
+
 // Base method to obtain MTLRenderPipelineState.
 // NOTE: parameters compositeRule, srcFlags, dstFlags are used to set MTLRenderPipelineColorAttachmentDescriptor multipliers
 - (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
                                  vertexShaderId:(NSString *)vertexShaderId
                                fragmentShaderId:(NSString *)fragmentShaderId
                                   compositeRule:(jint)compositeRule
+                                           isAA:(jboolean)isAA
                                        srcFlags:(const SurfaceRasterFlags *)srcFlags
                                        dstFlags:(const SurfaceRasterFlags *)dstFlags
                                   stencilNeeded:(bool)stencilNeeded;
@@ -112,7 +131,10 @@ static void setBlendingFactors(
         subIndex |= 1 << 4;
     }
 
-    int index = compositeRule*32 + subIndex;
+    if (isAA) {
+        subIndex |= 1 << 5;
+    }
+    int index = compositeRule*64 + subIndex;
 
     NSPointerArray * subStates = [self getSubStates:vertexShaderId fragmentShader:fragmentShaderId];
     while (index >= [subStates count]) {
@@ -137,6 +159,17 @@ static void setBlendingFactors(
             }
             if (stencilNeeded) {
                 pipelineDesc.stencilAttachmentPixelFormat = MTLPixelFormatStencil8;
+            }
+
+            if (isAA) {
+                pipelineDesc.sampleCount = 4;
+                pipelineDesc.colorAttachments[0].rgbBlendOperation =   MTLBlendOperationAdd;
+                pipelineDesc.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
+                pipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
+                pipelineDesc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorSourceAlpha;
+                pipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+                pipelineDesc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+                pipelineDesc.colorAttachments[0].blendingEnabled = YES;
             }
 
             NSError *error = nil;

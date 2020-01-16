@@ -45,6 +45,15 @@ NSMutableDictionary<NSString*, id<MTLFunction>> * shaders;
                                        dstFlags:(const SurfaceRasterFlags * )dstFlags
                                   stencilNeeded:(bool)stencilNeeded;
 
+- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
+                                 vertexShaderId:(NSString *)vertexShaderId
+                               fragmentShaderId:(NSString *)fragmentShaderId
+                                  compositeRule:(jint)compositeRule
+                                           isAA:(jboolean)isAA
+                                       srcFlags:(const SurfaceRasterFlags *)srcFlags
+                                       dstFlags:(const SurfaceRasterFlags *)dstFlags
+                                  stencilNeeded:(bool)stencilNeeded;
+
 - (id<MTLFunction>) getShader:(NSString *)name;
 @end
 

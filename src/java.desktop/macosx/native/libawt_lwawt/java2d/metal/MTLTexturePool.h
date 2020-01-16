@@ -6,6 +6,7 @@
 @property (readwrite, retain) id<MTLTexture> texture;
 @property (readwrite) bool isBusy;
 @property (readwrite, retain) NSDate * lastUsed;
+@property (readwrite) bool isMultiSample;
 
 - (id) initWithTexture:(id<MTLTexture>)tex;
 @end
@@ -22,6 +23,8 @@
 
 - (id) initWithDevice:(id<MTLDevice>)device;
 - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format;
+- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format
+                          isMultiSample:(bool)isMultiSample;
 @end
 
 #endif /* MTLTexturePool_h_Included */
