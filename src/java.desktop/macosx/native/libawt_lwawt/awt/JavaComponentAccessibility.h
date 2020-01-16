@@ -141,6 +141,5 @@
 - (BOOL)accessibilityIsIgnored;
 - (id)accessibilityHitTest:(NSPoint)point withEnv:(JNIEnv *)env;
 - (id)accessibilityFocusedUIElement;
-- (NSArray *)accessibilitySelectedChildren;
 
 @end
