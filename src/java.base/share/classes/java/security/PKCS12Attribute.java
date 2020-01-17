@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -254,6 +254,9 @@ public final class PKCS12Attribute implements KeyStore.Entry.Attribute {
     private void parse(byte[] encoded) throws IOException {
         DerInputStream attributeValue = new DerInputStream(encoded);
         DerValue[] attrSeq = attributeValue.getSequence(2);
+        if (attrSeq.length != 2) {
+            throw new IOException("Invalid length for PKCS12Attribute");
+        }
         ObjectIdentifier type = attrSeq[0].getOID();
         DerInputStream attrContent =
             new DerInputStream(attrSeq[1].toByteArray());
