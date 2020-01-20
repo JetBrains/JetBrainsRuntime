@@ -494,6 +494,32 @@ void CheckFontSmoothingSettings(HWND hWnd) {
     }
 }
 
+BOOL GetDwmColorizationColorFromRegistry(DWORD& colorizationColor, DWORD& colorizationColorBalance) {
+    // DwmGetColorizationColor is unreliable: it doesn't extract the actual accent color value set by user. To get the
+    // actual value (usable e.g. to calculate the border colors), we have to use the registry.
+    DWORD colorizationColorBgr = 0;
+    DWORD dwordSize(sizeof(DWORD));
+
+    HKEY hKey = NULL;
+    if (::RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\DWM", 0, KEY_READ, &hKey) != ERROR_SUCCESS) return FALSE;
+    if (::RegQueryValueEx(hKey, L"ColorizationColor", NULL, NULL, reinterpret_cast<LPBYTE>(&colorizationColorBgr), &dwordSize) != ERROR_SUCCESS) {
+        RegCloseKey(hKey);
+        return FALSE;
+    }
+
+    int b = colorizationColorBgr & 0xFF;
+    int g = (colorizationColorBgr & 0xFF00) >> 8;
+    int r = (colorizationColorBgr & 0xFF0000) >> 16;
+    colorizationColor = RGB(r, g, b);
+
+    if (::RegQueryValueEx(hKey, L"ColorizationColorBalance", NULL, NULL, reinterpret_cast<LPBYTE>(&colorizationColorBalance), &dwordSize) != ERROR_SUCCESS) {
+        colorizationColorBalance = -1;
+    }
+    RegCloseKey(hKey);
+
+    return TRUE;
+}
+
 BOOL ColorizationColorAffectsBorders() {
     DWORD result = 0;
     DWORD bufSize(sizeof(DWORD));
@@ -525,11 +551,14 @@ void AwtDesktopProperties::GetColorParameters() {
     BOOL enabled;
     DwmIsCompositionEnabled(&enabled);
     if (enabled) {
-        DWORD color;
-        BOOL opaque = FALSE;
-        // [tav] todo: listen WM_DWMCOLORIZATIONCOLORCHANGED
-        DwmGetColorizationColor(&color, &opaque);
-        SetColorProperty(TEXT("win.dwm.colorizationColor"), RGB(GetBValue(color), GetGValue(color), GetRValue(color)));
+        DWORD color = 0;
+        DWORD balance = 0;
+
+        if (GetDwmColorizationColorFromRegistry(color, balance)) {
+            SetColorProperty(TEXT("win.dwm.colorizationColor"), color);
+            SetIntegerProperty(TEXT("win.dwm.colorizationColorBalance"), balance);
+        }
+
         SetBooleanProperty(TEXT("win.dwm.colorizationColor.affects.borders"), ColorizationColorAffectsBorders());
     }
 
