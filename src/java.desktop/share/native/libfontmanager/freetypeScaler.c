@@ -1436,7 +1436,7 @@ static jlong
         glyphInfo->advanceX =
             (float) (advh * FTFixedToFloat(context->transform.xx));
         glyphInfo->advanceY =
-            (float) (-advh * FTFixedToFloat(context->transform.yx));
+            (float) (advh * FTFixedToFloat(context->transform.xy));
     } else {
         if (!ftglyph->advance.y) {
             glyphInfo->advanceX =
