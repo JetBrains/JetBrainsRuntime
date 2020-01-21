@@ -37,7 +37,6 @@ import sun.java2d.DisposerRecord;
 import java.awt.geom.Point2D;
 import java.lang.ref.SoftReference;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.Locale;
 import java.util.WeakHashMap;
 
 /*
@@ -152,32 +151,13 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
         this.key = key;
     }
 
-    static WeakHashMap<Font2D, Boolean> aatInfo = new WeakHashMap<>();
     private static final WeakHashMap<Font2D, FaceRef> facePtr =
             new WeakHashMap<>();
 
     private static boolean isAAT(Font2D font) {
-       Boolean aatObj;
-       synchronized (aatInfo) {
-           aatObj = aatInfo.get(font);
-       }
-       if (aatObj != null) {
-          return aatObj.booleanValue();
-       }
-       boolean aat = false;
-       if (font instanceof TrueTypeFont) {
-           TrueTypeFont ttf = (TrueTypeFont)font;
-           aat =  ttf.getDirectoryEntry(TrueTypeFont.morxTag) != null ||
-                  ttf.getDirectoryEntry(TrueTypeFont.mortTag) != null;
-       } else if (font instanceof PhysicalFont) {
-           PhysicalFont pf = (PhysicalFont)font;
-           aat =  pf.getTableBytes(TrueTypeFont.morxTag) != null ||
-                  pf.getTableBytes(TrueTypeFont.mortTag) != null;
-       }
-       synchronized (aatInfo) {
-           aatInfo.put(font, Boolean.valueOf(aat));
-       }
-       return aat;
+       // CoreText layout code ignores fractional metrics font attribute
+       // also, using CoreText layout in Harfbuzz code leads to wrong advances for emoji glyphs
+       return false;
     }
 
     private long getFacePtr(Font2D font2D) {
