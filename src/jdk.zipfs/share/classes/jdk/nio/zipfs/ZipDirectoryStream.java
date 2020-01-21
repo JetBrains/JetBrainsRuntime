@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package jdk.nio.zipfs;
 
 import java.io.IOException;
 import java.nio.file.ClosedDirectoryStreamException;
+import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
@@ -40,21 +41,21 @@ import java.util.NoSuchElementException;
 class ZipDirectoryStream implements DirectoryStream<Path> {
 
     private final ZipFileSystem zipfs;
-    private final byte[] path;
+    private final ZipPath dir;
     private final DirectoryStream.Filter<? super Path> filter;
     private volatile boolean isClosed;
     private volatile Iterator<Path> itr;
 
-    ZipDirectoryStream(ZipPath zipPath,
+    ZipDirectoryStream(ZipPath dir,
                        DirectoryStream.Filter<? super java.nio.file.Path> filter)
         throws IOException
     {
-        this.zipfs = zipPath.getFileSystem();
-        this.path = zipPath.getResolvedPath();
+        this.zipfs = dir.getFileSystem();
+        this.dir = dir;
         this.filter = filter;
         // sanity check
-        if (!zipfs.isDirectory(path))
-            throw new NotDirectoryException(zipPath.toString());
+        if (!zipfs.isDirectory(dir.getResolvedPath()))
+            throw new NotDirectoryException(dir.toString());
     }
 
     @Override
@@ -65,9 +66,9 @@ class ZipDirectoryStream implements DirectoryStream<Path> {
             throw new IllegalStateException("Iterator has already been returned");
 
         try {
-            itr = zipfs.iteratorOf(path, filter);
+            itr = zipfs.iteratorOf(dir, filter);
         } catch (IOException e) {
-            throw new IllegalStateException(e);
+            throw new DirectoryIteratorException(e);
         }
 
         return new Iterator<Path>() {
@@ -96,5 +97,4 @@ class ZipDirectoryStream implements DirectoryStream<Path> {
     public synchronized void close() throws IOException {
         isClosed = true;
     }
-
 }

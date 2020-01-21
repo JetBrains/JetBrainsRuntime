@@ -771,6 +771,22 @@ ConNode* PhaseTransform::zerocon(BasicType bt) {
 
 
 //=============================================================================
+Node* PhaseGVN::apply_ideal(Node* k, bool can_reshape) {
+  Node* i = BarrierSet::barrier_set()->barrier_set_c2()->ideal_node(this, k, can_reshape);
+  if (i == NULL) {
+    i = k->Ideal(this, can_reshape);
+  }
+  return i;
+}
+
+Node* PhaseGVN::apply_identity(Node* k) {
+  Node* i = BarrierSet::barrier_set()->barrier_set_c2()->identity_node(this, k);
+  if (i == k) {
+    i = k->Identity(this);
+  }
+  return i;
+}
+
 //------------------------------transform--------------------------------------
 // Return a node which computes the same function as this node, but in a
 // faster or cheaper fashion.
@@ -788,7 +804,7 @@ Node *PhaseGVN::transform_no_reclaim( Node *n ) {
   Node *k = n;
   NOT_PRODUCT( uint loop_count = 0; )
   while( 1 ) {
-    Node *i = k->Ideal(this, /*can_reshape=*/false);
+    Node *i = apply_ideal(k, /*can_reshape=*/false);
     if( !i ) break;
     assert( i->_idx >= k->_idx, "Idealize should return new nodes, use Identity to return old nodes" );
     k = i;
@@ -825,7 +841,7 @@ Node *PhaseGVN::transform_no_reclaim( Node *n ) {
   }
 
   // Now check for Identities
-  Node *i = k->Identity(this);  // Look for a nearby replacement
+  Node *i = apply_identity(k);  // Look for a nearby replacement
   if( i != k ) {                // Found? Return replacement!
     NOT_PRODUCT( set_progress(); )
     return i;
@@ -1214,7 +1230,7 @@ Node *PhaseIterGVN::transform_old(Node* n) {
   DEBUG_ONLY(dead_loop_check(k);)
   DEBUG_ONLY(bool is_new = (k->outcnt() == 0);)
   C->remove_modified_node(k);
-  Node* i = k->Ideal(this, /*can_reshape=*/true);
+  Node* i = apply_ideal(k, /*can_reshape=*/true);
   assert(i != k || is_new || i->outcnt() > 0, "don't return dead nodes");
 #ifndef PRODUCT
   verify_step(k);
@@ -1256,7 +1272,7 @@ Node *PhaseIterGVN::transform_old(Node* n) {
     // Try idealizing again
     DEBUG_ONLY(is_new = (k->outcnt() == 0);)
     C->remove_modified_node(k);
-    i = k->Ideal(this, /*can_reshape=*/true);
+    i = apply_ideal(k, /*can_reshape=*/true);
     assert(i != k || is_new || (i->outcnt() > 0), "don't return dead nodes");
 #ifndef PRODUCT
     verify_step(k);
@@ -1298,7 +1314,7 @@ Node *PhaseIterGVN::transform_old(Node* n) {
   }
 
   // Now check for Identities
-  i = k->Identity(this);      // Look for a nearby replacement
+  i = apply_identity(k);      // Look for a nearby replacement
   if (i != k) {                // Found? Return replacement!
     NOT_PRODUCT(set_progress();)
     add_users_to_worklist(k);
@@ -1640,14 +1656,24 @@ void PhaseIterGVN::add_users_to_worklist( Node *n ) {
     }
     // Loading the java mirror from a Klass requires two loads and the type
     // of the mirror load depends on the type of 'n'. See LoadNode::Value().
-    // If the code pattern requires a barrier for
-    //   mirror = ((OopHandle)mirror)->resolve();
-    // this won't match.
+    //   LoadBarrier?(LoadP(LoadP(AddP(foo:Klass, #java_mirror))))
+    BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+    bool has_load_barriers = bs->has_load_barriers();
+
     if (use_op == Op_LoadP && use->bottom_type()->isa_rawptr()) {
       for (DUIterator_Fast i2max, i2 = use->fast_outs(i2max); i2 < i2max; i2++) {
         Node* u = use->fast_out(i2);
         const Type* ut = u->bottom_type();
         if (u->Opcode() == Op_LoadP && ut->isa_instptr()) {
+          if (has_load_barriers) {
+            // Search for load barriers behind the load
+            for (DUIterator_Fast i3max, i3 = u->fast_outs(i3max); i3 < i3max; i3++) {
+              Node* b = u->fast_out(i3);
+              if (bs->is_gc_barrier_node(b)) {
+                _worklist.push(b);
+              }
+            }
+          }
           _worklist.push(u);
         }
       }
@@ -1789,14 +1815,23 @@ void PhaseCCP::analyze() {
         }
         // Loading the java mirror from a Klass requires two loads and the type
         // of the mirror load depends on the type of 'n'. See LoadNode::Value().
-        // If the code pattern requires a barrier for
-        //   mirror = ((OopHandle)mirror)->resolve();
-        // this won't match.
+        BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+        bool has_load_barriers = bs->has_load_barriers();
+
         if (m_op == Op_LoadP && m->bottom_type()->isa_rawptr()) {
           for (DUIterator_Fast i2max, i2 = m->fast_outs(i2max); i2 < i2max; i2++) {
             Node* u = m->fast_out(i2);
             const Type* ut = u->bottom_type();
             if (u->Opcode() == Op_LoadP && ut->isa_instptr() && ut != type(u)) {
+              if (has_load_barriers) {
+                // Search for load barriers behind the load
+                for (DUIterator_Fast i3max, i3 = u->fast_outs(i3max); i3 < i3max; i3++) {
+                  Node* b = u->fast_out(i3);
+                  if (bs->is_gc_barrier_node(b)) {
+                    _worklist.push(b);
+                  }
+                }
+              }
               worklist.push(u);
             }
           }
@@ -1871,13 +1906,23 @@ Node *PhaseCCP::transform_once( Node *n ) {
       } else if( n->is_Region() ) { // Unreachable region
         // Note: nn == C->top()
         n->set_req(0, NULL);        // Cut selfreference
-        // Eagerly remove dead phis to avoid phis copies creation.
-        for (DUIterator i = n->outs(); n->has_out(i); i++) {
-          Node* m = n->out(i);
-          if( m->is_Phi() ) {
-            assert(type(m) == Type::TOP, "Unreachable region should not have live phis.");
-            replace_node(m, nn);
-            --i; // deleted this phi; rescan starting with next position
+        bool progress = true;
+        uint max = n->outcnt();
+        DUIterator i;
+        while (progress) {
+          progress = false;
+          // Eagerly remove dead phis to avoid phis copies creation.
+          for (i = n->outs(); n->has_out(i); i++) {
+            Node* m = n->out(i);
+            if (m->is_Phi()) {
+              assert(type(m) == Type::TOP, "Unreachable region should not have live phis.");
+              replace_node(m, nn);
+              if (max != n->outcnt()) {
+                progress = true;
+                i = n->refresh_out_pos(i);
+                max = n->outcnt();
+              }
+            }
           }
         }
       }

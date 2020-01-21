@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,12 +21,18 @@
  * questions.
  */
 
+
+
 package jdk.tools.jaotc;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
 import java.util.stream.Stream;
 
 final class Linker {
@@ -44,9 +50,12 @@ final class Linker {
         return libraryFileName;
     }
 
+    private static Stream<String> getLines(InputStream stream) {
+        return new BufferedReader(new InputStreamReader(stream)).lines();
+    }
+
     private static String getString(InputStream stream) {
-        BufferedReader br = new BufferedReader(new InputStreamReader(stream));
-        Stream<String> lines = br.lines();
+        Stream<String> lines = getLines(stream);
         StringBuilder sb = new StringBuilder();
         lines.iterator().forEachRemaining(e -> sb.append(e));
         return sb.toString();
@@ -148,41 +157,25 @@ final class Linker {
     }
 
     /**
-     * Visual Studio supported versions Search Order is: VS2013, VS2015, VS2012
+     * Search for Visual Studio link.exe Search Order is: VS2017+, VS2013, VS2015, VS2012.
      */
-    public enum VSVERSIONS {
-        VS2013("VS120COMNTOOLS", "C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\VC\\bin\\amd64\\link.exe"),
-        VS2015("VS140COMNTOOLS", "C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\amd64\\link.exe"),
-        VS2012("VS110COMNTOOLS", "C:\\Program Files (x86)\\Microsoft Visual Studio 11.0\\VC\\bin\\amd64\\link.exe");
-
-        private final String envvariable;
-        private final String wkp;
-
-        VSVERSIONS(String envvariable, String wellknownpath) {
-            this.envvariable = envvariable;
-            this.wkp = wellknownpath;
+    private static String getWindowsLinkPath() throws Exception {
+        try {
+            Path vc141NewerLinker = getVC141AndNewerLinker();
+            if (vc141NewerLinker != null) {
+                return vc141NewerLinker.toString();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
-        String EnvVariable() {
-            return envvariable;
-        }
-
-        String WellKnownPath() {
-            return wkp;
-        }
-    }
-
-    /**
-     * Search for Visual Studio link.exe Search Order is: VS2013, VS2015, VS2012
-     */
-    private static String getWindowsLinkPath() {
         String link = "\\VC\\bin\\amd64\\link.exe";
 
         /**
          * First try searching the paths pointed to by the VS environment variables.
          */
         for (VSVERSIONS vs : VSVERSIONS.values()) {
-            String vspath = System.getenv(vs.EnvVariable());
+            String vspath = System.getenv(vs.getEnvVariable());
             if (vspath != null) {
                 File commonTools = new File(vspath);
                 File vsRoot = commonTools.getParentFile().getParentFile();
@@ -197,7 +190,7 @@ final class Linker {
          * If we didn't find via the VS environment variables, try the well known paths
          */
         for (VSVERSIONS vs : VSVERSIONS.values()) {
-            String wkp = vs.WellKnownPath();
+            String wkp = vs.getWellKnownPath();
             if (new File(wkp).exists()) {
                 return wkp;
             }
@@ -206,4 +199,66 @@ final class Linker {
         return null;
     }
 
+    private static Path getVC141AndNewerLinker() throws Exception {
+        String programFilesX86 = System.getenv("ProgramFiles(x86)");
+        if (programFilesX86 == null) {
+            throw new InternalError("Could not read the ProgramFiles(x86) environment variable");
+        }
+        Path vswhere = Paths.get(programFilesX86 + "\\Microsoft Visual Studio\\Installer\\vswhere.exe");
+        if (!Files.exists(vswhere)) {
+            return null;
+        }
+
+        ProcessBuilder processBuilder = new ProcessBuilder(vswhere.toString(), "-requires",
+                        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath", "-latest");
+        processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
+        processBuilder.redirectError(ProcessBuilder.Redirect.PIPE);
+        Process process = processBuilder.start();
+        final int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            String errorMessage = getString(process.getErrorStream());
+            if (errorMessage.isEmpty()) {
+                errorMessage = getString(process.getInputStream());
+            }
+            throw new InternalError(errorMessage);
+        }
+
+        String installationPath = getLines(process.getInputStream()).findFirst().orElseThrow(() -> new InternalError("Unexpected empty output from vswhere"));
+        Path vcToolsVersionFilePath = Paths.get(installationPath, "VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt");
+        List<String> vcToolsVersionFileLines = Files.readAllLines(vcToolsVersionFilePath);
+        if (vcToolsVersionFileLines.isEmpty()) {
+            throw new InternalError(vcToolsVersionFilePath.toString() + " is empty");
+        }
+        String vcToolsVersion = vcToolsVersionFileLines.get(0);
+        Path linkPath = Paths.get(installationPath, "VC\\Tools\\MSVC", vcToolsVersion, "bin\\Hostx64\\x64\\link.exe");
+        if (!Files.exists(linkPath)) {
+            throw new InternalError("Linker at path " + linkPath.toString() + " does not exist");
+        }
+
+        return linkPath;
+    }
+
+    // @formatter:off (workaround for Eclipse formatting bug)
+    enum VSVERSIONS {
+        VS2013("VS120COMNTOOLS", "C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\VC\\bin\\amd64\\link.exe"),
+        VS2015("VS140COMNTOOLS", "C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\amd64\\link.exe"),
+        VS2012("VS110COMNTOOLS", "C:\\Program Files (x86)\\Microsoft Visual Studio 11.0\\VC\\bin\\amd64\\link.exe");
+
+        private final String envvariable;
+        private final String wkp;
+
+        VSVERSIONS(String envvariable, String wellknownpath) {
+            this.envvariable = envvariable;
+            this.wkp = wellknownpath;
+        }
+
+        String getEnvVariable() {
+            return envvariable;
+        }
+
+        String getWellKnownPath() {
+            return wkp;
+        }
+    }
+    // @formatter:on
 }

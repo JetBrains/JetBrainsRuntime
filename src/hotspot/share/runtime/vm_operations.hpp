@@ -117,6 +117,7 @@
   template(ScavengeMonitors)                      \
   template(PrintMetadata)                         \
   template(GTestExecuteAtSafepoint)               \
+  template(JFROldObject)                          \
 
 class VM_Operation: public CHeapObj<mtInternal> {
  public:

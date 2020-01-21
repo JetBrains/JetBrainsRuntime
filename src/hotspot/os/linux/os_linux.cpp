@@ -1716,6 +1716,8 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
   void * result = NULL;
   bool load_attempted = false;
 
+  log_info(os)("attempting shared library load of %s", filename);
+
   // Check whether the library to load might change execution rights
   // of the stack. If they are changed, the protection of the stack
   // guard pages will be lost. We need a safepoint to fix this.
@@ -1936,8 +1938,19 @@ void * os::Linux::dlopen_helper(const char *filename, char *ebuf,
                                 int ebuflen) {
   void * result = ::dlopen(filename, RTLD_LAZY);
   if (result == NULL) {
-    ::strncpy(ebuf, ::dlerror(), ebuflen - 1);
-    ebuf[ebuflen-1] = '\0';
+    const char* error_report = ::dlerror();
+    if (error_report == NULL) {
+      error_report = "dlerror returned no error description";
+    }
+    if (ebuf != NULL && ebuflen > 0) {
+      ::strncpy(ebuf, error_report, ebuflen-1);
+      ebuf[ebuflen-1]='\0';
+    }
+    Events::log(NULL, "Loading shared library %s failed, %s", filename, error_report);
+    log_info(os)("shared library load of %s failed, %s", filename, error_report);
+  } else {
+    Events::log(NULL, "Loaded shared library %s", filename);
+    log_info(os)("shared library load of %s was successful", filename);
   }
   return result;
 }

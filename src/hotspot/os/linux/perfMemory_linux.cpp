@@ -661,7 +661,7 @@ static int get_namespace_pid(int vmid) {
   if (fp) {
     int pid, nspid;
     int ret;
-    while (!feof(fp)) {
+    while (!feof(fp) && !ferror(fp)) {
       ret = fscanf(fp, "NSpid: %d %d", &pid, &nspid);
       if (ret == 1) {
         break;
@@ -1107,7 +1107,7 @@ static size_t sharedmem_filesize(int fd, TRAPS) {
 
   if ((statbuf.st_size == 0) ||
      ((size_t)statbuf.st_size % os::vm_page_size() != 0)) {
-    THROW_MSG_0(vmSymbols::java_lang_Exception(),
+    THROW_MSG_0(vmSymbols::java_io_IOException(),
                 "Invalid PerfMemory size");
   }
 

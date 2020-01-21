@@ -102,7 +102,7 @@ final class Finished {
             }
 
             if (m.remaining() != verifyDataLen) {
-                throw context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                throw context.conContext.fatal(Alert.DECODE_ERROR,
                     "Inappropriate finished message: need " + verifyDataLen +
                     " but remaining " + m.remaining() + " bytes verify_data");
             }
@@ -120,7 +120,7 @@ final class Finished {
                         "Failed to generate verify_data", ioe);
             }
             if (!MessageDigest.isEqual(myVerifyData, verifyData)) {
-                throw context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                throw context.conContext.fatal(Alert.DECRYPT_ERROR,
                         "The Finished message cannot be verified.");
             }
         }
@@ -580,6 +580,16 @@ final class Finished {
 
         private void onConsumeFinished(ServerHandshakeContext shc,
                 ByteBuffer message) throws IOException {
+            // Make sure that any expected CertificateVerify message
+            // has been received and processed.
+            if (!shc.isResumption) {
+                if (shc.handshakeConsumers.containsKey(
+                        SSLHandshake.CERTIFICATE_VERIFY.id)) {
+                    throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                            "Unexpected Finished handshake message");
+                }
+            }
+
             FinishedMessage fm = new FinishedMessage(shc, message);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine(
@@ -871,6 +881,16 @@ final class Finished {
 
         private void onConsumeFinished(ClientHandshakeContext chc,
                 ByteBuffer message) throws IOException {
+            // Make sure that any expected CertificateVerify message
+            // has been received and processed.
+            if (!chc.isResumption) {
+                if (chc.handshakeConsumers.containsKey(
+                        SSLHandshake.CERTIFICATE_VERIFY.id)) {
+                    throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                            "Unexpected Finished handshake message");
+                }
+            }
+
             FinishedMessage fm = new FinishedMessage(chc, message);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine(
@@ -993,6 +1013,16 @@ final class Finished {
 
         private void onConsumeFinished(ServerHandshakeContext shc,
                 ByteBuffer message) throws IOException {
+            // Make sure that any expected CertificateVerify message
+            // has been received and processed.
+            if (!shc.isResumption) {
+                if (shc.handshakeConsumers.containsKey(
+                        SSLHandshake.CERTIFICATE_VERIFY.id)) {
+                    throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                            "Unexpected Finished handshake message");
+                }
+            }
+
             FinishedMessage fm = new FinishedMessage(shc, message);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine(

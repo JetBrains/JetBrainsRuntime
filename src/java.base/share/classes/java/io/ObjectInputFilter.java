@@ -35,6 +35,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import jdk.internal.misc.SharedSecrets;
+import jdk.internal.util.StaticProperty;
 
 /**
  * Filter classes, array lengths, and graph metrics during deserialization.
@@ -256,7 +257,7 @@ public interface ObjectInputFilter {
         static {
             configuredFilter = AccessController
                     .doPrivileged((PrivilegedAction<ObjectInputFilter>) () -> {
-                        String props = System.getProperty(SERIAL_FILTER_PROPNAME);
+                        String props = StaticProperty.jdkSerialFilter();
                         if (props == null) {
                             props = Security.getProperty(SERIAL_FILTER_PROPNAME);
                         }

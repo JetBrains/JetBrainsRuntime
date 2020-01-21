@@ -27,7 +27,9 @@
 #include "opto/arraycopynode.hpp"
 #include "opto/graphKit.hpp"
 #include "opto/idealKit.hpp"
+#include "opto/macro.hpp"
 #include "opto/narrowptrnode.hpp"
+#include "opto/runtime.hpp"
 #include "utilities/macros.hpp"
 
 // By default this is a no-op.
@@ -106,14 +108,19 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
   bool unsafe = (decorators & C2_UNSAFE_ACCESS) != 0;
 
   bool in_native = (decorators & IN_NATIVE) != 0;
-  assert(!in_native, "not supported yet");
 
   MemNode::MemOrd mo = access.mem_node_mo();
   LoadNode::ControlDependency dep = pinned ? LoadNode::Pinned : LoadNode::DependsOnlyOnTest;
   Node* control = control_dependent ? kit->control() : NULL;
 
-  Node* load = kit->make_load(control, adr, val_type, access.type(), adr_type, mo,
-                              dep, requires_atomic_access, unaligned, mismatched, unsafe);
+  Node* load;
+  if (in_native) {
+    load = kit->make_load(control, adr, val_type, access.type(), mo);
+  } else {
+    load = kit->make_load(control, adr, val_type, access.type(), adr_type, mo,
+                          dep, requires_atomic_access, unaligned, mismatched, unsafe);
+  }
+
   access.set_raw_access(load);
 
   return load;
@@ -598,4 +605,31 @@ void BarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool i
   } else {
     kit->set_all_memory(n);
   }
+}
+
+#define XTOP LP64_ONLY(COMMA phase->top())
+
+void BarrierSetC2::clone_at_expansion(PhaseMacroExpand* phase, ArrayCopyNode* ac) const {
+  Node* ctrl = ac->in(TypeFunc::Control);
+  Node* mem = ac->in(TypeFunc::Memory);
+  Node* src = ac->in(ArrayCopyNode::Src);
+  Node* src_offset = ac->in(ArrayCopyNode::SrcPos);
+  Node* dest = ac->in(ArrayCopyNode::Dest);
+  Node* dest_offset = ac->in(ArrayCopyNode::DestPos);
+  Node* length = ac->in(ArrayCopyNode::Length);
+
+  assert (src_offset == NULL && dest_offset == NULL, "for clone offsets should be null");
+
+  const char* copyfunc_name = "arraycopy";
+  address     copyfunc_addr =
+          phase->basictype2arraycopy(T_LONG, NULL, NULL,
+                              true, copyfunc_name, true);
+
+  const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
+  const TypeFunc* call_type = OptoRuntime::fast_arraycopy_Type();
+
+  Node* call = phase->make_leaf_call(ctrl, mem, call_type, copyfunc_addr, copyfunc_name, raw_adr_type, src, dest, length XTOP);
+  phase->transform_later(call);
+
+  phase->igvn().replace_node(ac, call);
 }

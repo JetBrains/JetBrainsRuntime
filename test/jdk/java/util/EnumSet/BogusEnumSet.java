@@ -32,11 +32,12 @@ import java.io.*;
 
 public class BogusEnumSet {
     public static void main(String[] args) throws Throwable {
-        // This test depends on the current serialVersionUID of EnumSet,
-        // which may change if the EnumSet class is modified.
-        // The current value is -2409567991088730183L = 0xde8f7eadb5012fb9L
-        // If the value changes, it will have to be patched into the
-        // serialized byte stream below at the location noted.
+        // This test depends on the computed serialVersionUID of EnumSet,
+        // which is 1009687484059888093L = 0x0e03216acd8c29ddL. This
+        // value should remain the same in order to remain compatible
+        // with JDK 8. If this value changes, then EnumSet has changed
+        // incompatibly. The value is embedded within the serialized
+        // byte stream below at the location noted.
         byte[] serializedForm  = {
             (byte)0xac, (byte)0xed, 0x0, 0x5, 0x73, 0x72, 0x0, 0x18,
             0x6a,  0x61,  0x76,  0x61, 0x2e,  0x75,  0x74,  0x69,
@@ -47,7 +48,7 @@ public class BogusEnumSet {
             0x11, 0x6a,  0x61,  0x76,  0x61, 0x2e,  0x75,  0x74,  0x69,
             0x6c,  0x2e, 0x45, 0x6e, 0x75, 0x6d, 0x53, 0x65, 0x74,
             // EnumSet's serialVersionUID is the following eight bytes (big-endian)
-            (byte)0xde, (byte)0x8f, 0x7e, (byte)0xad, (byte)0xb5, (byte)0x01, 0x2f, (byte)0xb9,
+            0x0e, 0x03, 0x21, 0x6a, (byte)0xcd, (byte)0x8c, 0x29, (byte)0xdd,
             0x2, 0x0, 0x2, 0x4c, 0x0, 0xb, 0x65, 0x6c, 0x65, 0x6d, 0x65, 0x6e, 0x74,
             0x54, 0x79, 0x70, 0x65, 0x74, 0x0, 0x11, 0x4c, 0x6a, 0x61, 0x76,
             0x61, 0x2f, 0x6c, 0x61, 0x6e, 0x67, 0x2f, 0x43, 0x6c, 0x61, 0x73,

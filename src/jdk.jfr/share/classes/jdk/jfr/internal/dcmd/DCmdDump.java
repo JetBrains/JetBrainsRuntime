@@ -158,7 +158,7 @@ final class DCmdDump extends AbstractDCmd {
                 wup = new WriteableUserPath(safe.toPath());
             }
             r.dumpStopped(wup);
-            reportOperationComplete("Dumped", name, new SafePath(wup.getText()));
+            reportOperationComplete("Dumped", name, new SafePath(wup.getRealPathText()));
         }
     }
 

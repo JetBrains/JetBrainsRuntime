@@ -101,7 +101,6 @@ java/awt/Window/MaximizeOffscreen/MaximizeOffscreenTest.java                    
 java/awt/Window/OwnedWindowsLeak/OwnedWindowsLeak.java                                      nobug linux-all
 java/awt/Window/ScreenLocation/ScreenLocationTest.java                                      nobug linux-all
 java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.java        nobug linux-all
-java/awt/Window/ShapedAndTranslucentWindows/Translucent.java                                nobug windows-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/WindowOpacity.java                              nobug windows-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java                                      nobug linux-all,macosx-all
 java/awt/Window/WindowDeadlockTest/WindowDeadlockTest.java                                  nobug macosx-all timeout
@@ -131,7 +130,6 @@ java/awt/event/MouseWheelEvent/DisabledComponent/DisabledComponent.java         
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java                             nobug macosx-all,windows-all,linux-all
 java/awt/event/SequencedEvent/SequencedEventTest.java                                       nobug macosx-all,windows-all,linux-all
 java/awt/font/Emoji/EmojiDrawingTest.java                                                   nobug macosx-all
-java/awt/font/Outline/OutlineInvarianceTest.java                                            nobug linux-all,windows-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java                                    nobug macosx-all,windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java                                            nobug macosx-all,windows-all
 java/awt/hidpi/ClientAreaOriginWindowsTest.java                                             nobug windows-all

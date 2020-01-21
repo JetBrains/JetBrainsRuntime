@@ -190,10 +190,15 @@ public:
 
   virtual void clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const;
 
+  virtual Node* ideal_node(PhaseGVN* phase, Node* n, bool can_reshape) const { return NULL; }
+  virtual Node* identity_node(PhaseGVN* phase, Node* n) const { return n; }
+
   // These are general helper methods used by C2
   virtual bool array_copy_requires_gc_barriers(BasicType type) const { return false; }
+  virtual void clone_at_expansion(PhaseMacroExpand* phase, ArrayCopyNode* ac) const;
 
   // Support for GC barriers emitted during parsing
+  virtual bool has_load_barriers() const { return false; }
   virtual bool is_gc_barrier_node(Node* node) const { return false; }
   virtual Node* step_over_gc_barrier(Node* c) const { return c; }
 

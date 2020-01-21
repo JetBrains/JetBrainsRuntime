@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2148,6 +2148,9 @@ JavaObjectNode* ConnectionGraph::unique_java_object(Node *n) {
     return NULL;
   }
   PointsToNode* ptn = ptnode_adr(idx);
+  if (ptn == NULL) {
+    return NULL;
+  }
   if (ptn->is_JavaObject()) {
     return ptn->as_JavaObject();
   }
@@ -2201,6 +2204,9 @@ bool ConnectionGraph::not_global_escape(Node *n) {
     return false;
   }
   PointsToNode* ptn = ptnode_adr(idx);
+  if (ptn == NULL) {
+    return false; // not in congraph (e.g. ConI)
+  }
   PointsToNode::EscapeState es = ptn->escape_state();
   // If we have already computed a value, return it.
   if (es >= PointsToNode::GlobalEscape)

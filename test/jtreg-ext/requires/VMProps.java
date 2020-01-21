@@ -45,6 +45,7 @@ import sun.hotspot.cpuinfo.CPUInfo;
 import sun.hotspot.gc.GC;
 import sun.hotspot.WhiteBox;
 import jdk.test.lib.Platform;
+import jdk.test.lib.Container;
 
 /**
  * The Class to be invoked by jtreg prior Test Suite execution to
@@ -84,7 +85,7 @@ public class VMProps implements Callable<Map<String, String>> {
         map.put("vm.hasJFR", vmHasJFR());
         map.put("vm.cpu.features", cpuFeatures());
         map.put("vm.rtm.cpu", vmRTMCPU());
-        map.put("vm.rtm.os", vmRTMOS());
+        map.put("vm.rtm.compiler", vmRTMCompiler());
         map.put("vm.aot", vmAOT());
         // vm.cds is true if the VM is compiled with cds support.
         map.put("vm.cds", vmCDS());
@@ -130,8 +131,6 @@ public class VMProps implements Callable<Map<String, String>> {
             return arch;
         }
     }
-
-
 
     /**
      * @return VM type value extracted from the "java.vm.name" property.
@@ -215,7 +214,22 @@ public class VMProps implements Callable<Map<String, String>> {
      */
     protected String vmJvmci() {
         // builds with jvmci have this flag
-        return "" + (WB.getBooleanVMFlag("EnableJVMCI") != null);
+        if (WB.getBooleanVMFlag("EnableJVMCI") == null) {
+            return "false";
+        }
+
+        switch (GC.selected()) {
+            case Serial:
+            case Parallel:
+            case G1:
+                // These GCs are supported with JVMCI
+                return "true";
+            default:
+                break;
+        }
+
+        // Every other GC is not supported
+        return "false";
     }
 
     /**
@@ -301,24 +315,16 @@ public class VMProps implements Callable<Map<String, String>> {
     }
 
     /**
-     * @return true if VM runs RTM supported OS and false otherwise.
+     * @return true if compiler in use supports RTM and false otherwise.
      */
-    protected String vmRTMOS() {
-        boolean isRTMOS = true;
+    protected String vmRTMCompiler() {
+        boolean isRTMCompiler = false;
 
-        if (Platform.isAix()) {
-            // Actually, this works since AIX 7.1.3.30, but os.version property
-            // is set to 7.1.
-            isRTMOS = (Platform.getOsVersionMajor()  > 7) ||
-                      (Platform.getOsVersionMajor() == 7 && Platform.getOsVersionMinor() > 1);
-
-        } else if (Platform.isLinux()) {
-            if (Platform.isPPC()) {
-                isRTMOS = (Platform.getOsVersionMajor()  > 4) ||
-                          (Platform.getOsVersionMajor() == 4 && Platform.getOsVersionMinor() > 1);
-            }
+        if (Compiler.isC2Enabled() &&
+            (Platform.isX86() || Platform.isX64() || Platform.isPPC())) {
+            isRTMCompiler = true;
         }
-        return "" + isRTMOS;
+        return "" + isRTMCompiler;
     }
 
     /**
@@ -341,7 +347,24 @@ public class VMProps implements Callable<Map<String, String>> {
         } else {
             jaotc = bin.resolve("jaotc");
         }
-        return "" + Files.exists(jaotc);
+
+        if (!Files.exists(jaotc)) {
+            // No jaotc => no AOT
+            return "false";
+        }
+
+        switch (GC.selected()) {
+            case Serial:
+            case Parallel:
+            case G1:
+                // These GCs are supported with AOT
+                return "true";
+            default:
+                break;
+        }
+
+        // Every other GC is not supported
+        return "false";
     }
 
     /**
@@ -416,7 +439,7 @@ public class VMProps implements Callable<Map<String, String>> {
      * @return true if docker is supported in a given environment
      */
     protected String dockerSupport() {
-        boolean isSupported = false;
+        boolean isSupported = true;
         if (Platform.isLinux()) {
            // currently docker testing is only supported for Linux,
            // on certain platforms
@@ -449,7 +472,7 @@ public class VMProps implements Callable<Map<String, String>> {
     }
 
     private boolean checkDockerSupport() throws IOException, InterruptedException {
-        ProcessBuilder pb = new ProcessBuilder("docker", "ps");
+        ProcessBuilder pb = new ProcessBuilder(Container.ENGINE_COMMAND, "ps");
         Process p = pb.start();
         p.waitFor(10, TimeUnit.SECONDS);
 

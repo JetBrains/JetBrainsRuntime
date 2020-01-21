@@ -146,6 +146,11 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
     }
     private SoftReference<ConcurrentHashMap<LayoutEngineKey, LayoutEngine>> cacheref =
         new SoftReference<>(null);
+
+    private SunLayoutEngine(LayoutEngineKey key) {
+        this.key = key;
+    }
+
     private static final WeakHashMap<Font2D, FaceRef> facePtr =
             new WeakHashMap<>();
 
@@ -153,10 +158,6 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
        // CoreText layout code ignores fractional metrics font attribute
        // also, using CoreText layout in Harfbuzz code leads to wrong advances for emoji glyphs
        return false;
-    }
-
-    private SunLayoutEngine(LayoutEngineKey key) {
-        this.key = key;
     }
 
     private long getFacePtr(Font2D font2D) {
