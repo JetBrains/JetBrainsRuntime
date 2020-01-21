@@ -57,7 +57,7 @@ public class ThreadGroupTest extends TestScaffold {
     // Helper thread to fetch VirtualMachineManager
     static class Fetcher implements Runnable {
         public void run() {
-            Bootstrap.virtualMachineManager();
+            com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         }
     }
 

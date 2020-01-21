@@ -34,7 +34,7 @@
  *     on base of classes which implement the TransportService abstract
  *     class (com.sun.jdi.connect.spi.TransportService).
  *     The test checks up that at start-up time when
- *     Bootstrap.virtualMachineManager() is invoked four expected pluggable
+ *     com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked four expected pluggable
  *     connectors (two AttachingConnectors and two ListeningConnectors) are
  *     created  properly on base of two different TransportService
  *     implementations, but 2 other pluggable connectors (AttachingConnector
@@ -77,7 +77,7 @@
  *          capabilities().supportsHandshakeTimeout = false
  *          capabilities().supportsMultipleConnections = false
  *     Also the test checks up that at start-up time when
- *     Bootstrap.virtualMachineManager() is invoked the 2 pluggable connectors
+ *     com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked the 2 pluggable connectors
  *     (AttachingConnector and ListeningConnector) are NOT created as they are
  *     based on class which extends the TransportService abstract class but
  *     constructors of this class throws Exception.
@@ -126,7 +126,7 @@ import java.io.*;
  * class (com.sun.jdi.connect.spi.TransportService).                        <BR>
  *                                                                          <BR>
  * The test checks up that at start-up time when                            <BR>
- * Bootstrap.virtualMachineManager() is invoked four expected pluggable     <BR>
+ * com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked four expected pluggable     <BR>
  * connectors (two AttachingConnectors and two ListeningConnectors) are     <BR>
  * created  properly on base of two different TransportService              <BR>
  * implementations, but 2 other pluggable connectors (AttachingConnector    <BR>
@@ -176,7 +176,7 @@ import java.io.*;
  *      capabilities().supportsMultipleConnections = false                  <BR>
  *                                                                          <BR>
  * Also the test checks up that at start-up time when                       <BR>
- * Bootstrap.virtualMachineManager() is invoked the 2 pluggable connectors  <BR>
+ * com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked the 2 pluggable connectors  <BR>
  * (AttachingConnector and ListeningConnector) are NOT created as they are  <BR>
  * based on class which extends the TransportService abstract class but     <BR>
  * constructors of this class throws Exception.                             <BR>
@@ -260,9 +260,9 @@ public class plugMultiConnect004 {
             = new String[invalidTransportServicesNumber];
         invalidTransportServicesNames[0] = "PlugTransportService004_03_Name";
 
-        VirtualMachineManager virtualMachineManager = Bootstrap.virtualMachineManager();
+        VirtualMachineManager virtualMachineManager = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         if (virtualMachineManager == null) {
-            logOnError(errorLogPrefixHead + "Bootstrap.virtualMachineManager() returns null.");
+            logOnError(errorLogPrefixHead + "com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() returns null.");
             return STATUS_FAILED;
         }
 

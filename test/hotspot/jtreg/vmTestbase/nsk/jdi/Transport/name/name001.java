@@ -67,7 +67,7 @@ public class name001 {
         int exitCode0 = 0;
         int exitCode2 = 2;
 
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         for (Connector connector : vmm.allConnectors()) {
                 String sName = connector.transport().name();

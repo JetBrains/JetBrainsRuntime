@@ -112,8 +112,8 @@ public class major001 {
 
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ variable part
 
-        log2("......call to Bootstrap.virtualMachineManager()");
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        log2("......call to com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager()");
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         if (vmm == null) {
             log3("ERROR: null returned");
             testExitCode = FAILED;

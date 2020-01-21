@@ -73,7 +73,7 @@ public class setvalue001 {
                         "Method tested: " +
                         "jdi.Connector.Argument.setValue()\n" ;
 
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         List connectorsList = vmm.allConnectors();
         Iterator connectorsListIterator = connectorsList.iterator();

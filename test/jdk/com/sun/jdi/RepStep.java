@@ -141,7 +141,7 @@ public class RepStep {
     }
 
     private Connector findConnector(String name) throws Exception {
-        List connectors = Bootstrap.virtualMachineManager().allConnectors();
+        List connectors = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().allConnectors();
         Iterator iter = connectors.iterator();
         while (iter.hasNext()) {
             Connector connector = (Connector)iter.next();

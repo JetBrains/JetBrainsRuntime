@@ -34,7 +34,7 @@
  *     on base of classes which implement the TransportService abstract
  *     class (com.sun.jdi.connect.spi.TransportService).
  *     The test checks up that at start-up time when
- *     Bootstrap.virtualMachineManager() is invoked two pluggable
+ *     com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked two pluggable
  *     connectors (AttachingConnector and ListeningConnector) are created
  *     on base of PlugTransportService001 class which extends
  *     com.sun.jdi.connect.spi.TransportService abstract class
@@ -105,7 +105,7 @@ import java.io.*;
  * class (com.sun.jdi.connect.spi.TransportService).                        <BR>
  *                                                                          <BR>
  * The test checks up that at start-up time when                            <BR>
- * Bootstrap.virtualMachineManager() is invoked two pluggable               <BR>
+ * com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked two pluggable               <BR>
  * connectors (AttachingConnector and ListeningConnector) are created       <BR>
  * on base of PlugTransportService001 class which extends                   <BR>
  * com.sun.jdi.connect.spi.TransportService abstract class                  <BR>
@@ -194,9 +194,9 @@ public class transportService001 {
             ("==> Test checks that expected pluggable attaching and listening connectors are created properly.");
 
 
-        VirtualMachineManager virtualMachineManager = Bootstrap.virtualMachineManager();
+        VirtualMachineManager virtualMachineManager = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         if (virtualMachineManager == null) {
-            logOnError(errorLogPrefixHead + "Bootstrap.virtualMachineManager() returns null.");
+            logOnError(errorLogPrefixHead + "com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() returns null.");
             return STATUS_FAILED;
         }
 

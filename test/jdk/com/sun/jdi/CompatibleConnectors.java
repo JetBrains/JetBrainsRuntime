@@ -260,7 +260,7 @@ public class CompatibleConnectors {
     }
 
     public static void main(String args[]) throws Exception {
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         // in 1.2/1.3/1.4 the defualtConnector was
         // com.sun.jdi.CommandLineLaunch. Many debuggers probably

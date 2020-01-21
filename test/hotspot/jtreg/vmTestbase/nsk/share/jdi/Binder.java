@@ -179,7 +179,7 @@ public class Binder extends DebugeeBinder {
      */
     public Debugee bindToDebugeeNoWait(String classToExecute) {
 
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         display("VirtualMachineManager: version "
                 + vmm.majorInterfaceVersion() + "."
                 + vmm.minorInterfaceVersion());

@@ -202,7 +202,7 @@ public class stoplis001 {
     }
 
     private Connector findConnector(String connectorName) {
-        List connectors = Bootstrap.virtualMachineManager().allConnectors();
+        List connectors = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().allConnectors();
         Iterator iter = connectors.iterator();
 
         while (iter.hasNext()) {

@@ -71,7 +71,7 @@ public class isvalid002 {
                         "Method tested: " +
                         "jdi.Connector.Argument.isValid\n" ;
 
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         List connectorsList = vmm.allConnectors();
         Iterator connectorsListIterator = connectorsList.iterator();

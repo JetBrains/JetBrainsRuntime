@@ -34,7 +34,7 @@
  * The debuggee program (exclude001a.java) starts three
  * addional threads of MyThread class. The 'run' method of these
  * threads invokes java.lang.System.currentTimeMillis() and
- * com.sun.jdi.Bootstrap.virtualMachineManager() methods.
+ * com.sun.jdi.com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() methods.
  * There are three test cases:
  *  - block all exclude filter;
  *  - modified exclude filter allowing tracing events for java.* methods,
@@ -102,7 +102,7 @@ public class exclude001 extends JdbTest {
     static final String DEBUGGEE_THREAD = PACKAGE_NAME + "." + MYTHREAD;
 
     static final String JAVA_CORE_METHOD = "java.lang.System.currentTimeMillis";
-    static final String COM_SUN_METHOD   = "com.sun.jdi.Bootstrap.virtualMachineManager";
+    static final String COM_SUN_METHOD   = "com.sun.jdi.com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager";
 
     protected void runCases() {
         String[] reply;

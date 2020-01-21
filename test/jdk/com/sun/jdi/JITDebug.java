@@ -194,7 +194,7 @@ public class JITDebug {
             System.err.flush();
             hang();
         }
-        List conns = Bootstrap.virtualMachineManager().attachingConnectors();
+        List conns = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().attachingConnectors();
         for (Iterator it = conns.iterator(); it.hasNext(); ) {
             AttachingConnector conn = (AttachingConnector)it.next();
             if (conn.name().equals(connectorName)) {

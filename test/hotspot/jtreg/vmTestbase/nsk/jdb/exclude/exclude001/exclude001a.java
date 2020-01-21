@@ -89,6 +89,6 @@ class MyThread extends Thread {
 
         long time = java.lang.System.currentTimeMillis();
 
-        VirtualMachineManager vmm = com.sun.jdi.Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.sun.jdi.com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
     }
 }

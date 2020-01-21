@@ -92,7 +92,7 @@ public class ProcessAttachTest {
 
     private static void tryDebug(long pid) throws IOException,
             IllegalConnectorArgumentsException {
-        AttachingConnector ac = Bootstrap.virtualMachineManager().attachingConnectors()
+        AttachingConnector ac = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().attachingConnectors()
                 .stream()
                 .filter(c -> c.name().equals("com.sun.jdi.ProcessAttach"))
                 .findFirst()

@@ -54,7 +54,7 @@ public class DebugUsingCustomConnector {
          * path so defining class loader for the JDI classes will
          * not find classes on the system class path.
          */
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         if (vmm.getClass().getClassLoader() == null) {
             System.out.println("JDI on bootclasspath - test skipped");
             return;

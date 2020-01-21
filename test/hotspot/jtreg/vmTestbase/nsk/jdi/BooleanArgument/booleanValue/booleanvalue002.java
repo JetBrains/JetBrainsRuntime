@@ -79,7 +79,7 @@ public class booleanvalue002 {
                         "jdi.Connector.BooleanArgument.booleanValue\n" ;
 
 
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         List connectorsList = vmm.allConnectors();
         Iterator connectorsListIterator = connectorsList.iterator();

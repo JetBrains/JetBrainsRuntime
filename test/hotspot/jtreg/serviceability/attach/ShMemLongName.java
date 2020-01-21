@@ -60,7 +60,7 @@ public class ShMemLongName {
             waitForReady(target);
 
             log("attaching to the VM...");
-            AttachingConnector ac = Bootstrap.virtualMachineManager().attachingConnectors()
+            AttachingConnector ac = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().attachingConnectors()
                     .stream()
                     .filter(c -> transport.equals(c.transport().name()))
                     .findFirst()

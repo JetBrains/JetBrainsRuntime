@@ -51,7 +51,7 @@ public class description001 {
     public static int run(String argv[], PrintStream out) {
         ArgumentHandler argHandler = new ArgumentHandler(argv);
         log = new Log(out, argHandler);
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         List acl = vmm.allConnectors();
         if (acl.size() > 0) {

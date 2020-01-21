@@ -35,7 +35,7 @@
  *     (AttachingConnector, ListeningConnector, or LaunchingConnector).
  *     and the TransportService abstract class.
  *     The test checks up that at start-up time when >
- *     Bootstrap.virtualMachineManager() is invoked the 6 expected
+ *     com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked the 6 expected
  *     pluggable connectors are created  properly on base of 6 different
  *     Connector implementations of different types and four expected
  *     pluggable connectors (two AttachingConnectors and two
@@ -128,7 +128,7 @@ import java.io.*;
  * and the TransportService abstract class.                                 <BR>
  *                                                                          <BR>
  * The test checks up that at start-up time when                            <BR>
- * Bootstrap.virtualMachineManager() is invoked the 6 expected              <BR>
+ * com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked the 6 expected              <BR>
  * pluggable connectors are created  properly on base of 6 different        <BR>
  * Connector implementations of different types and four expected           <BR>
  * pluggable connectors (two AttachingConnectors and two                    <BR>
@@ -274,9 +274,9 @@ public class plugMultiConnect005 {
         referenceTransportServices[0] = new PlugTransportService005_01();
         referenceTransportServices[1] = new PlugTransportService005_02();
 
-        VirtualMachineManager virtualMachineManager = Bootstrap.virtualMachineManager();
+        VirtualMachineManager virtualMachineManager = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         if (virtualMachineManager == null) {
-            logOnError(errorLogPrefixHead + "Bootstrap.virtualMachineManager() returns null.");
+            logOnError(errorLogPrefixHead + "com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() returns null.");
             return STATUS_FAILED;
         }
 

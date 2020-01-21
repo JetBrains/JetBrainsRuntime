@@ -86,7 +86,7 @@ public class intvalue002 {
                         "Method tested: " +
                         "jdi.Connector.IntegerArgument.intValue()\n" ;
 
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         List connectorsList = vmm.allConnectors();
         Iterator connectorsListIterator = connectorsList.iterator();

@@ -55,7 +55,7 @@ public class BadHandshakeTest {
      * Find a connector by name
      */
     private static Connector findConnector(String name) {
-        List<Connector> connectors = Bootstrap.virtualMachineManager().allConnectors();
+        List<Connector> connectors = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().allConnectors();
         Iterator<Connector> iter = connectors.iterator();
         while (iter.hasNext()) {
             Connector connector = (Connector)iter.next();

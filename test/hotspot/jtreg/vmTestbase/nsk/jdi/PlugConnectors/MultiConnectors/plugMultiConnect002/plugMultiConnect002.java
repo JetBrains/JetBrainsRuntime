@@ -34,7 +34,7 @@
  *     on base of classes which implement the Connector interfaces
  *     (AttachingConnector, ListeningConnector, or LaunchingConnector).
  *     The test checks up that at start-up time when
- *     Bootstrap.virtualMachineManager() is invoked the 6 expected
+ *     com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked the 6 expected
  *     pluggable connectors are created  properly on base of 6 different
  *     Connector implementations of different types, but 3 other pluggable
  *     connectors are NOT created for Connector implementations for which
@@ -59,7 +59,7 @@
  *          Connector.BooleanArgument;
  *          Connector.SelectedArgument;
  *     Also the test checks up that at start-up time when
- *     Bootstrap.virtualMachineManager() is invoked the 3 pluggable
+ *     com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked the 3 pluggable
  *     connectors are NOT created as they are based on classes which
  *     implement the Connector interfaces
  *     (AttachingConnector, ListeningConnector, and LaunchingConnector),
@@ -110,7 +110,7 @@ import java.io.*;
  * (AttachingConnector, ListeningConnector, or LaunchingConnector).    <BR>
  *                                                                     <BR>
  * The test checks up that at start-up time when                       <BR>
- * Bootstrap.virtualMachineManager() is invoked the 6 expected         <BR>
+ * com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked the 6 expected         <BR>
  * pluggable connectors are created  properly on base of 6 different   <BR>
  * Connector implementations of different types, but 3 other pluggable <BR>
  * connectors are NOT created for Connector implementations for which  <BR>
@@ -141,7 +141,7 @@ import java.io.*;
  *      Connector.SelectedArgument;                                    <BR>
  *                                                                     <BR>
  * Also the test checks up that at start-up time when                  <BR>
- * Bootstrap.virtualMachineManager() is invoked the 3 pluggable        <BR>
+ * com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked the 3 pluggable        <BR>
  * connectors are NOT created as they are based on classes which       <BR>
  * implement the Connector interfaces                                  <BR>
  * (AttachingConnector, ListeningConnector, and LaunchingConnector),   <BR>
@@ -232,9 +232,9 @@ public class plugMultiConnect002 {
         referencePlugConnectors[4] = new PlugListenConnector002_01();
         referencePlugConnectors[5] = new PlugListenConnector002_02();
 
-        VirtualMachineManager virtualMachineManager = Bootstrap.virtualMachineManager();
+        VirtualMachineManager virtualMachineManager = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         if (virtualMachineManager == null) {
-            logOnError(errorLogPrefixHead + "Bootstrap.virtualMachineManager() returns null.");
+            logOnError(errorLogPrefixHead + "com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() returns null.");
             return STATUS_FAILED;
         }
 

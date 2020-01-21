@@ -54,7 +54,7 @@ public class RunToExit {
      * Find a connector by name
      */
     private static Connector findConnector(String name) {
-        List connectors = Bootstrap.virtualMachineManager().allConnectors();
+        List connectors = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().allConnectors();
         Iterator iter = connectors.iterator();
         while (iter.hasNext()) {
             Connector connector = (Connector)iter.next();
