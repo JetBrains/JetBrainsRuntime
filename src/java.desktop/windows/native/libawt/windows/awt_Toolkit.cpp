@@ -1008,6 +1008,14 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
       }
 // Remove this define when we move to newer (XP) version of SDK.
 #define WM_THEMECHANGED                 0x031A
+
+#ifndef WM_DWMCOMPOSITIONCHANGED
+#define WM_DWMCOMPOSITIONCHANGED        0x031E
+#define WM_DWMNCRENDERINGCHANGED        0x031F
+#define WM_DWMCOLORIZATIONCOLORCHANGED  0x0320
+#define WM_DWMWINDOWMAXIMIZEDCHANGED    0x0321
+#endif // WM_DWMCOMPOSITIONCHANGED
+      case WM_DWMCOLORIZATIONCOLORCHANGED:
       case WM_THEMECHANGED: {
           /* Upcall to WToolkit when user changes configuration.
            *
@@ -1023,12 +1031,7 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           }
           return 0;
       }
-#ifndef WM_DWMCOMPOSITIONCHANGED
-#define WM_DWMCOMPOSITIONCHANGED        0x031E
-#define WM_DWMNCRENDERINGCHANGED        0x031F
-#define WM_DWMCOLORIZATIONCOLORCHANGED  0x0320
-#define WM_DWMWINDOWMAXIMIZEDCHANGED    0x0321
-#endif // WM_DWMCOMPOSITIONCHANGED
+
       case WM_DWMCOMPOSITIONCHANGED: {
           DWMResetCompositionEnabled();
           return 0;
