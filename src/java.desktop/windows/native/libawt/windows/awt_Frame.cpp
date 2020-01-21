@@ -1825,15 +1825,30 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
         rect->top += insets.bottom;
         // [moklev] Workaround for RIDER-27069, IDEA-211327
         if (!this->IsUndecorated()) {
-            rect->right += this->ScaleUpX(1);
-            // [tav] Decrement NC bottom only when taskbar is bottom/autohide (JBR-1786)
             APPBARDATA abData;
+            abData.uEdge = 0;
             abData.cbSize = sizeof(abData);
-            if (::SHAppBarMessage(ABM_GETTASKBARPOS, &abData) &&
-                abData.uEdge == ABE_BOTTOM &&
-                ::SHAppBarMessage(ABM_GETSTATE, &abData) == ABS_AUTOHIDE)
+            if (::SHAppBarMessage(ABM_GETSTATE, &abData) == ABS_AUTOHIDE &&
+                ::SHAppBarMessage(ABM_GETTASKBARPOS, &abData))
             {
-                rect->bottom -= 1;
+                // [tav] leave one pixel for autohide taskbar
+                switch (abData.uEdge) {
+                    case ABE_TOP:
+                        rect->top += 1;
+                        break;
+                    case ABE_LEFT:
+                        rect->left += 1;
+                        break;
+                    case ABE_BOTTOM:
+                        rect->bottom -= 1;
+                        break;
+                    case ABE_RIGHT:
+                        rect->right -= 1;
+                        break;
+                }
+            }
+            if (abData.uEdge != ABE_RIGHT) {
+                rect->right += this->ScaleUpX(1);
             }
         }
     }
