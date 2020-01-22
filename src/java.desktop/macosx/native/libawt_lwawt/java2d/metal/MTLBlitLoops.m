@@ -262,6 +262,7 @@ MTLBlitSwToTextureViaPooledTexture(
         return;
     }
     [[mtlc getCommandBufferWrapper] registerPooledTexture:texHandle];
+    [texHandle release];
 
     id<MTLTexture> texBuff = texHandle.texture;
     id<MTLTexture> swizzledTexture = replaceTextureRegion(texBuff, srcInfo, rfi, 0, 0, sw, sh);

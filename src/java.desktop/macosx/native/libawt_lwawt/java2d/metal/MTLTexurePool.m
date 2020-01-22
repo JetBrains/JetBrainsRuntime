@@ -20,6 +20,12 @@
     return self;
 }
 
+- (void) dealloc {
+    [lastUsed release];
+    [texture release];
+    [super dealloc];
+}
+
 @end
 
 @implementation MTLPooledTextureHandle
