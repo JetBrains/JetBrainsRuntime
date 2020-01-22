@@ -1072,6 +1072,15 @@ tools/jimage/JImageExtractTest.java                                             
 
 ############################################################################
 
+# jb_jdi
+
+com/sun/jdi/JITDebug.sh
+com/sun/jdi/connect/spi/GeneratedConnectors.java
+com/sun/jdi/connect/spi/DebugUsingCustomConnector.java
+com/sun/jdi/ModulesTest.java
+com/sun/jdi/connect/spi/JdiLoadedByCustomLoader.sh
+com/sun/jdi/NashornPopFrameTest.java
+
 # jdk_jdi
 
 com/sun/jdi/BasicJDWPConnectionTest.java                                            8195703 generic-all
