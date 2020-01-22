@@ -71,7 +71,9 @@
  * Exported methods.
  */
 jboolean MTLVertexCache_InitVertexCache();
-void MTLVertexCache_FlushVertexCache(MTLContext *mtlc);
+void MTLVertexCache_FlushVertexCache();
+void MTLVertexCache_FlushGlyphVertexCache();
+void MTLVertexCache_FreeVertexCache();
 void MTLVertexCache_RestoreColorState(MTLContext *mtlc);
 
 void MTLVertexCache_EnableMaskCache(MTLContext *mtlc, BMTLSDOps *dstOps);
@@ -83,5 +85,9 @@ void MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
                                 jint maskscan, void *mask,
                                 BMTLSDOps *dstOps,
                                 jint fullwidth);
+void
+MTLVertexCache_AddGlyphQuad(MTLContext *mtlc,
+                            jfloat tx1, jfloat ty1, jfloat tx2, jfloat ty2,
+                            jfloat dx1, jfloat dy1, jfloat dx2, jfloat dy2);
 void MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps);
 #endif /* MTLVertexCache_h_Included */

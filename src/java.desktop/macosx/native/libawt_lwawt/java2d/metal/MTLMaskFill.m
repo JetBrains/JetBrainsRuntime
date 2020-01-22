@@ -118,7 +118,7 @@ MTLMaskFill_MaskFill(MTLContext *mtlc, BMTLSDOps * dstOps,
         }
     }
 
-    MTLVertexCache_FlushVertexCache(mtlc);
+    MTLVertexCache_FlushVertexCache();
 }
 
 JNIEXPORT void JNICALL
