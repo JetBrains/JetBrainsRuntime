@@ -39,6 +39,8 @@ if test -d $EXPLODED/$BUILD_NAME/Contents/Home/jmods; then
 fi
 if test -f $EXPLODED/$BUILD_NAME/Contents/MacOS/libjli.dylib; then
   mv $EXPLODED/$BUILD_NAME/Contents/MacOS/libjli.dylib $BACKUP_JMODS
+if test -d $EXPLODED/$BUILD_NAME/Contents/Home/Frameworks; then
+  mv $EXPLODED/$BUILD_NAME/Contents/Home/Frameworks $BACKUP_JMODS
 fi
 
 #log "$INPUT_FILE unzipped and removed"
@@ -125,9 +127,6 @@ log "Zipping $BUILD_NAME to $INPUT_FILE ..."
 (
   #cd "$EXPLODED"
   #ditto -c -k --sequesterRsrc --keepParent "$BUILD_NAME" "../$INPUT_FILE"
-  if test ! -z $(ls $BACKUP_JMODS/libjli.dylib); then
-    mv $BACKUP_JMODS/libjli.dylib $EXPLODED/$BUILD_NAME/Contents/MacOS
-  fi
   if test -d $BACKUP_JMODS/jmods; then
     mv $BACKUP_JMODS/jmods $EXPLODED/$BUILD_NAME/Contents/Home
   fi
