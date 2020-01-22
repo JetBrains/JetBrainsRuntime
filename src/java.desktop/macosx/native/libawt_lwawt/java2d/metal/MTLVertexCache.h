@@ -71,7 +71,7 @@
  * Exported methods.
  */
 jboolean MTLVertexCache_InitVertexCache();
-void MTLVertexCache_FlushVertexCache();
+void MTLVertexCache_FlushVertexCache(MTLContext *mtlc);
 void MTLVertexCache_FlushGlyphVertexCache();
 void MTLVertexCache_FreeVertexCache();
 void MTLVertexCache_RestoreColorState(MTLContext *mtlc);
