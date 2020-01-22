@@ -44,8 +44,9 @@
 #define OFFSET_SUBPIXPOS sun_java2d_pipe_BufferedTextPipe_OFFSET_SUBPIXPOS
 #define OFFSET_POSITIONS sun_java2d_pipe_BufferedTextPipe_OFFSET_POSITIONS
 
-void MTLTR_EnableGlyphVertexCache(MTLContext *mtlc);
+void MTLTR_EnableGlyphVertexCache(MTLContext *mtlc, BMTLSDOps *dstOps);
 void MTLTR_DisableGlyphVertexCache(MTLContext *mtlc);
+id<MTLTexture> MTLTR_GetGlyphCacheTexture();
 
 void MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                          jint totalGlyphs, jboolean usePositions,

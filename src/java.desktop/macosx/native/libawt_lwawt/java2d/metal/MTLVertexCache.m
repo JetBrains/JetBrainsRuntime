@@ -32,6 +32,7 @@
 
 #include "MTLPaints.h"
 #include "MTLVertexCache.h"
+#include "MTLTextRenderer.h"
 #include "common.h"
 
 typedef struct _J2DVertex {
@@ -82,7 +83,7 @@ MTLVertexCache_InitVertexCache()
 }
 
 void
-MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
+MTLVertexCache_FlushVertexCache()
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache");
 
@@ -100,6 +101,30 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
     maskCacheIndex = 0;
     [maskCacheTex release];
     maskCacheTex = nil;
+}
+
+void
+MTLVertexCache_FlushGlyphVertexCache()
+{
+    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_FlushGlyphVertexCache");
+
+    if (vertexCacheIndex > 0) {
+        [encoder setVertexBytes: vertexCache length:vertexCacheIndex * sizeof(J2DVertex)
+                                                atIndex:MeshVertexBuffer];
+        id<MTLTexture> glyphCacheTex = MTLTR_GetGlyphCacheTexture();
+        [encoder setFragmentTexture:glyphCacheTex atIndex: 0];
+        for (int i = 0; i < vertexCacheIndex; i = i + 6) {
+            J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_FlushGlyphVertexCache : draw texture at index %d", (int)(i + 1)/6);
+            [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:i vertexCount:6];
+        }
+    }
+    vertexCacheIndex = 0;
+}
+
+void MTLVertexCache_FreeVertexCache()
+{
+    free(vertexCache);
+    vertexCache = NULL;
 }
 
 /**
@@ -208,7 +233,7 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
     // we will start using DisableMaskCache until then
     // we are force flusging vertexcache.
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_DisableMaskCache");
-    MTLVertexCache_FlushVertexCache(mtlc);
+    MTLVertexCache_FlushVertexCache();
     MTLVertexCache_RestoreColorState(mtlc);
     [maskCacheTex release];
     maskCacheTex = nil;
@@ -242,7 +267,7 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
         vertexCacheIndex >= MTLVC_MAX_INDEX)
     {
         J2dTraceLn2(J2D_TRACE_INFO, "maskCacheIndex = %d, vertexCacheIndex = %d", maskCacheIndex, vertexCacheIndex);
-        MTLVertexCache_FlushVertexCache(mtlc);
+        MTLVertexCache_FlushVertexCache();
         [maskCacheTex release];
         maskCacheTex = nil;
         // TODO : Since we are not committing command buffer
@@ -320,6 +345,23 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
     dy2 = dy1 + height;
 
     J2dTraceLn8(J2D_TRACE_INFO, "tx1 = %f ty1 = %f tx2 = %f ty2 = %f dx1 = %f dy1 = %f dx2 = %f dy2 = %f", tx1, ty1, tx2, ty2, dx1, dy1, dx2, dy2);
+    MTLVC_ADD_TRIANGLES(tx1, ty1, tx2, ty2,
+                        dx1, dy1, dx2, dy2);
+}
+
+void
+MTLVertexCache_AddGlyphQuad(MTLContext *mtlc,
+                            jfloat tx1, jfloat ty1, jfloat tx2, jfloat ty2,
+                            jfloat dx1, jfloat dy1, jfloat dx2, jfloat dy2)
+{
+    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_AddGlyphQuad");
+
+    if (vertexCacheIndex >= MTLVC_MAX_INDEX)
+    {
+        J2dTraceLn2(J2D_TRACE_INFO, "maskCacheIndex = %d, vertexCacheIndex = %d", maskCacheIndex, vertexCacheIndex);
+        MTLVertexCache_FlushGlyphVertexCache();
+    }
+
     MTLVC_ADD_TRIANGLES(tx1, ty1, tx2, ty2,
                         dx1, dy1, dx2, dy2);
 }
