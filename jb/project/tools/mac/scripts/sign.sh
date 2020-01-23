@@ -25,7 +25,6 @@ find "$APP_DIRECTORY" -name '*.cstemp' -exec rm '{}' \;
 log "Signing libraries and executables..."
 # -perm +111 searches for executables
 for f in \
-   "Contents/MacOS" \
    "Contents/Home/bin" \
    "Contents/Home/lib"; do
   if [ -d "$APP_DIRECTORY/$f" ]; then
@@ -36,6 +35,7 @@ for f in \
       --entitlements entitlements.xml {} \;
   fi
 done
+cp "$APP_DIRECTORY"/Contents/Home/lib/jli/libjli.dylib "$APP_DIRECTORY"/Contents/MacOS/libjli.dylib
 
 log "Signing libraries in jars in $PWD"
 

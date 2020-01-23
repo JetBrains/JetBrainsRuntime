@@ -84,7 +84,7 @@ limit=3
 set +e
 while [[ $attempt -le $limit ]]; do
   log "Signing (attempt $attempt) $APPLICATION_PATH ..."
-  ./sign.sh "$APPLICATION_PATH" "$CODESIGN_STRING"
+  ./sign.sh -x "$APPLICATION_PATH" "$CODESIGN_STRING"
   ec=$?
   if [[ $ec -ne 0 ]]; then
     ((attempt += 1))
