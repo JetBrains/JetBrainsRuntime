@@ -3,4 +3,6 @@
 
 #import <Metal/Metal.h>
 
+#define MTLAASampleCount 4
+
 #endif /* MTLUtils_h_Included */

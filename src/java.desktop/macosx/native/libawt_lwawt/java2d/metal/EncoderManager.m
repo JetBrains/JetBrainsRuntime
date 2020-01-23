@@ -22,10 +22,12 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                 paint:(MTLPaint *)paint
             composite:(MTLComposite *)composite
             isTexture:(jboolean)isTexture
+                 isAA:(jboolean)isAA
              srcFlags:(const SurfaceRasterFlags * _Nullable)srcFlags
                  clip:(MTLClip *)clip
             transform:(MTLTransform *)transform
           forceUpdate:(jboolean)forceUpdate;
+@property jboolean aa;
 @end
 
 @implementation EncoderStates {
@@ -49,6 +51,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 
     // If true, indicates that encoder is used for texture drawing (user must do [encoder setFragmentTexture:] before drawing)
     jboolean _isTexture;
+    jboolean _isAA;
 
     // Clip rect or stencil
     MTLClip * _clip;
@@ -56,6 +59,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     // Transform (affects transformation inside vertex shader)
     MTLTransform * _transform;
 }
+@synthesize aa = _isAA;
 
 - (id)init {
     self = [super init];
@@ -85,11 +89,12 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 - (void)reset:(id<MTLTexture>)destination
            isDstOpaque:(jboolean)isDstOpaque
     isDstPremultiplied:(jboolean)isDstPremultiplied
+                  isAA:(jboolean)isAA
 {
     _destination = destination;
     _dstFlags.isOpaque = isDstOpaque;
     _dstFlags.isPremultiplied = isDstPremultiplied;
-
+    _isAA = isAA;
     // NOTE: probably it's better to invalidate/reset all cached states now
 }
 
@@ -97,6 +102,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                 paint:(MTLPaint *)paint
             composite:(MTLComposite *)composite
             isTexture:(jboolean)isTexture
+                 isAA:(jboolean)isAA
              srcFlags:(const SurfaceRasterFlags * _Nullable)srcFlags
                  clip:(MTLClip *)clip
             transform:(MTLTransform *)transform
@@ -123,6 +129,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                     composite:composite
                 isStencilUsed:[clip isShape]
                     isTexture:isTexture
+                         isAA:isAA
                      srcFlags:srcFlags
                   forceUpdate:forceUpdate];
     [self updateTransform:encoder transform:transform forceUpdate:forceUpdate];
@@ -139,6 +146,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                   composite:(MTLComposite *)composite
               isStencilUsed:(jboolean)isStencilUsed
                   isTexture:(jboolean)isTexture
+                       isAA:(jboolean)isAA
                    srcFlags:(const SurfaceRasterFlags * _Nullable)srcFlags
                 forceUpdate:(jboolean)forceUpdate
 {
@@ -149,18 +157,21 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
         && [_paint isEqual:paint]
         && [_composite isEqual:composite]
         && _isTexture == isTexture
+        && _isAA == isAA
         && _srcFlags.isOpaque == srcFlags->isOpaque && _srcFlags.isPremultiplied == srcFlags->isPremultiplied)
         return;
 
     [_paint copyFrom:paint];
     [_composite copyFrom:composite];
     _isTexture = isTexture;
+    _isAA = isAA;
     _srcFlags = *srcFlags;
 
     [paint setPipelineState:encoder
                   composite:_composite
               isStencilUsed:isStencilUsed
                   isTexture:_isTexture
+                       isAA:isAA
                    srcFlags:&_srcFlags
                    dstFlags:&_dstFlags
        pipelineStateStorage:_pipelineStateStorage];
@@ -234,11 +245,16 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     return [self getRenderEncoder:dstOps->pTexture isDstOpaque:dstOps->isOpaque];
 }
 
+- (id<MTLRenderCommandEncoder>) getAARenderEncoder:(id<MTLTexture>)dstTxt
+{
+    return [self getEncoder:dstTxt isOpaque:JNI_TRUE isTexture:JNI_FALSE isAA:JNI_TRUE srcFlags:NULL];
+
+}
 
 - (id<MTLRenderCommandEncoder> _Nonnull)getRenderEncoder:(id<MTLTexture> _Nonnull)dest
                                              isDstOpaque:(bool)isOpaque
 {
-    return [self getEncoder:dest isOpaque:isOpaque isTexture:JNI_FALSE srcFlags:NULL];
+    return [self getEncoder:dest isOpaque:isOpaque isTexture:JNI_FALSE isAA:JNI_FALSE srcFlags:NULL];
 }
 
 - (id<MTLRenderCommandEncoder> _Nonnull) getTextureEncoder:(const BMTLSDOps * _Nonnull)dstOps
@@ -250,25 +266,35 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 - (id<MTLRenderCommandEncoder> _Nonnull) getTextureEncoder:(id<MTLTexture> _Nonnull)dest
                                       isSrcOpaque:(bool)isSrcOpaque
                                       isDstOpaque:(bool)isDstOpaque
+                                             isAA:(jboolean)isAA
 {
     SurfaceRasterFlags srcFlags = { isSrcOpaque, JNI_TRUE };
     return [self getEncoder:dest
                    isOpaque:isDstOpaque
                   isTexture:JNI_TRUE
+                       isAA:isAA
                    srcFlags:&srcFlags];
+}
+
+- (id<MTLRenderCommandEncoder> _Nonnull) getTextureEncoder:(id<MTLTexture> _Nonnull)dest
+                                               isSrcOpaque:(bool)isSrcOpaque
+                                               isDstOpaque:(bool)isDstOpaque
+{
+    return [self getTextureEncoder:dest isSrcOpaque:isSrcOpaque isDstOpaque:isDstOpaque isAA:JNI_FALSE];
 }
 
 - (id<MTLRenderCommandEncoder> _Nonnull) getEncoder:(id<MTLTexture> _Nonnull)dest
                                   isOpaque:(jboolean)isOpaque
                                  isTexture:(jboolean)isTexture
+                                      isAA:(jboolean)isAA
                                   srcFlags:(const SurfaceRasterFlags * _Nullable)srcFlags
 {
     //
     // 1. check whether it's necessary to call endEncoder
     //
     jboolean needEnd = JNI_FALSE;
-    if (_encoder != nil) {
-        if (_destination != dest) {
+    if (_encoder != nil ) {
+        if (_destination != dest || isAA != _encoderStates.aa) {
             J2dTraceLn2(J2D_TRACE_VERBOSE, "end common encoder because of dest change: %p -> %p", _destination, dest);
             needEnd = JNI_TRUE;
         } else if ((_useStencil == NO) != ([_mtlc.clip isShape] == NO)) {
@@ -300,9 +326,21 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
         MTLCommandBufferWrapper * cbw = [_mtlc getCommandBufferWrapper];
         MTLRenderPassDescriptor * rpd = [MTLRenderPassDescriptor renderPassDescriptor];
         MTLRenderPassColorAttachmentDescriptor * ca = rpd.colorAttachments[0];
-        ca.texture = dest;
-        ca.loadAction = MTLLoadActionLoad;
-        ca.storeAction = MTLStoreActionStore;
+        if (isAA && !isTexture) {
+            MTLTexturePoolItem *ti = [_mtlc.texturePool getTexture:dest.width
+                                      height:dest.height format:dest.pixelFormat isMultiSample:YES];
+            [cbw registerPooledTexture: ti];
+            [ti release];
+            ca.texture = ti.texture;
+            ca.resolveTexture = dest;
+            ca.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
+            ca.loadAction = MTLLoadActionClear;
+            ca.storeAction =  MTLStoreActionMultisampleResolve;
+        } else {
+            ca.texture = dest;
+            ca.loadAction = MTLLoadActionLoad;
+            ca.storeAction = MTLStoreActionStore;
+        }
 
         if (_useStencil) {
             // If you enable stencil testing or stencil writing, the MTLRenderPassDescriptor must include a stencil attachment.
@@ -317,7 +355,8 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 
         [_encoderStates reset:dest
                   isDstOpaque:isOpaque
-           isDstPremultiplied:YES];
+           isDstPremultiplied:YES
+                         isAA:isAA];
     }
 
     //
@@ -327,6 +366,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                             paint:_mtlc.paint
                         composite:_mtlc.composite
                         isTexture:isTexture
+                             isAA:isAA
                          srcFlags:srcFlags
                              clip:_mtlc.clip
                         transform:_mtlc.transform
