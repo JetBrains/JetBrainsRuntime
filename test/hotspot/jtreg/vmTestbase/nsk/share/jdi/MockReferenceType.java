@@ -282,7 +282,7 @@ public class MockReferenceType implements ReferenceType {
     public static Value createObjectReference(VirtualMachine virtualMachine, String typeSignature, String typeName)
             throws Exception {
 
-        Class clazz = Class.forName("com.sun.tools.jdi.ObjectReferenceImpl");
+        Class clazz = Class.forName("com.jetbrains.jdi.ObjectReferenceImpl");
         java.lang.reflect.Constructor c = clazz.getDeclaredConstructor(VirtualMachine.class, long.class);
         c.setAccessible(true);
         Value objRef = (Value) c.newInstance(virtualMachine, 0);

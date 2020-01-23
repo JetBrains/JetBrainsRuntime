@@ -170,6 +170,25 @@ vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded004
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded005/TestDescription.java 8153598 generic-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Deadlock/JavaDeadlock001/TestDescription.java 8060733 generic-all
 
+# jb_jdi
+
+vmTestbase/nsk/jdi/PlugConnectors/AttachConnector/plugAttachConnect001/plugAttachConnect001.java
+vmTestbase/nsk/jdi/PlugConnectors/AttachConnector/plugAttachConnect002/plugAttachConnect002.java
+vmTestbase/nsk/jdi/PlugConnectors/LaunchConnector/plugLaunchConnect001/plugLaunchConnect001.java
+vmTestbase/nsk/jdi/PlugConnectors/LaunchConnector/plugLaunchConnect002/plugLaunchConnect002.java
+vmTestbase/nsk/jdi/PlugConnectors/ListenConnector/plugListenConnect001/plugListenConnect001.java
+vmTestbase/nsk/jdi/PlugConnectors/ListenConnector/plugListenConnect002/plugListenConnect002.java
+vmTestbase/nsk/jdi/PlugConnectors/MultiConnectors/plugMultiConnect001/plugMultiConnect001.java
+vmTestbase/nsk/jdi/PlugConnectors/MultiConnectors/plugMultiConnect002/plugMultiConnect002.java
+vmTestbase/nsk/jdi/PlugConnectors/MultiConnectors/plugMultiConnect003/plugMultiConnect003.java
+vmTestbase/nsk/jdi/PlugConnectors/MultiConnectors/plugMultiConnect004/plugMultiConnect004.java
+vmTestbase/nsk/jdi/PlugConnectors/MultiConnectors/plugMultiConnect005/plugMultiConnect005.java
+vmTestbase/nsk/jdi/PlugConnectors/MultiConnectors/plugMultiConnect006/plugMultiConnect006.java
+vmTestbase/nsk/jdi/PlugConnectors/TransportService/transportService001/transportService001.java
+vmTestbase/nsk/jdi/PlugConnectors/TransportService/transportService002/transportService002.java
+
+# jdi
+
 vmTestbase/nsk/jdi/AttachingConnector/attachnosuspend/attachnosuspend001/TestDescription.java 8153613 generic-all
 vmTestbase/nsk/jdi/BScenarios/hotswap/tc10x001/TestDescription.java                 8013728 generic-all
 vmTestbase/nsk/jdi/BScenarios/multithrd/tc02x004/TestDescription.java               4751860 generic-all

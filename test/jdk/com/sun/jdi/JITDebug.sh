@@ -111,7 +111,7 @@ if [ -z "${TESTJAVA}" ] ; then
 fi
 echo "JDK under test is: $TESTJAVA"
 #
-CLASSPATH="${TESTCLASSES}"
+CLASSPATH="${TESTCLASSES}${PS}${CPAPPEND}"
 export CLASSPATH
 CP="-classpath \"${CLASSPATH}\""
 #

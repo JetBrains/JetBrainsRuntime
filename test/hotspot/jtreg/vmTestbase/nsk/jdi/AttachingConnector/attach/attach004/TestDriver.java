@@ -28,10 +28,7 @@ import jdk.test.lib.Utils;
 import jtreg.SkippedException;
 import nsk.share.jdi.ArgumentHandler;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -121,7 +118,7 @@ public class TestDriver {
         cmd.add(JDKToolFinder.getJDKTool("java"));
         Collections.addAll(cmd, Utils.addTestJavaOpts(
                 "-cp",
-                Utils.TEST_CLASS_PATH,
+                Utils.TEST_CLASS_PATH + File.pathSeparator + System.getenv("CPAPPEND"),
                 debuggerClass.getName(),
                 "-debuggeePID",
                 "" + debuggeePid));
