@@ -30,7 +30,7 @@
 // returns encoder that renders/fills geometry with current paint and composite
 - (id<MTLRenderCommandEncoder> _Nonnull)getRenderEncoder:(const BMTLSDOps * _Nonnull)dstOps;
 
-- (id<MTLRenderCommandEncoder> _Nonnull)getAARenderEncoder:(id<MTLTexture>)dstTxt;
+- (id<MTLRenderCommandEncoder> _Nonnull)getAARenderEncoder:(id<MTLTexture> _Nonnull)dstTxt;
 
 - (id<MTLRenderCommandEncoder> _Nonnull)getRenderEncoder:(id<MTLTexture> _Nonnull)dest
                                              isDstOpaque:(bool)isOpaque;
