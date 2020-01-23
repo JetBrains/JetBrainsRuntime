@@ -51,8 +51,6 @@ public class RenderPerfTest {
             ignoredTests.add("testWhiteTextBubblesNoAA");
             ignoredTests.add("testWhiteTextBubblesLCD");
             ignoredTests.add("testWhiteTextBubblesGray");
-            ignoredTests.add("testFlatBoxBubblesAA");
-            ignoredTests.add("testFlatBoxRotBubblesAA");
             ignoredTests.add("testLinGradOvalRotBubblesAA");
             ignoredTests.add("testWiredBoxBubblesAA");
             ignoredTests.add("testLinesAA");
