@@ -299,7 +299,7 @@ static void initTemplatePipelineDescriptors() {
                                                      stencilNeeded:stencil];
 
             if (isAA) {
-                struct FrameUniforms uf = {1.0f, 1.0f, 1.0f, 1.0};
+                struct FrameUniforms uf = { {1.0f, 1.0f, 1.0f, 1.0f} };
                 [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
             } else {
                 struct FrameUniforms uf = {RGBA_TO_V4(_color)};
