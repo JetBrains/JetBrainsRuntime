@@ -245,7 +245,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     return [self getRenderEncoder:dstOps->pTexture isDstOpaque:dstOps->isOpaque];
 }
 
-- (id<MTLRenderCommandEncoder>) getAARenderEncoder:(id<MTLTexture>)dstTxt
+- (id<MTLRenderCommandEncoder>) getAARenderEncoder:(id<MTLTexture> _Nonnull) dstTxt
 {
     return [self getEncoder:dstTxt isOpaque:JNI_TRUE isTexture:JNI_FALSE isAA:JNI_TRUE srcFlags:NULL];
 
