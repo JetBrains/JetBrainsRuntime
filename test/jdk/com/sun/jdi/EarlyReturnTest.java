@@ -310,7 +310,7 @@ public class EarlyReturnTest extends TestScaffold {
 
     public static void main(String[] args)      throws Exception {
         EarlyReturnTest meee = new EarlyReturnTest(args);
-        vmm = Bootstrap.virtualMachineManager();
+        vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         meee.startTests();
     }
 

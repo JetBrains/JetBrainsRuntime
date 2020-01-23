@@ -34,7 +34,7 @@
  *     on base of classes which implement the Connector interfaces
  *     (AttachingConnector, ListeningConnector, or LaunchingConnector).
  *     The test checks up that at start-up time when
- *     Bootstrap.virtualMachineManager() is invoked the pluggable
+ *     com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked the pluggable
  *     connector named "PlugListenConnector002_Name" is created on base
  *     of PlugListenConnector002 class which implements
  *     com.sun.jdi.connect.ListeningConnector interface.
@@ -95,7 +95,7 @@ import java.io.*;
  * (AttachingConnector, ListeningConnector, or LaunchingConnector).    <BR>
  *                                                                     <BR>
  * The test checks up that at start-up time when                       <BR>
- * Bootstrap.virtualMachineManager() is invoked the pluggable          <BR>
+ * com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked the pluggable          <BR>
  * connector named "PlugListenConnector002_Name" is created on base    <BR>
  * of PlugListenConnector002 class which implements                    <BR>
  * com.sun.jdi.connect.ListeningConnector interface.                   <BR>
@@ -178,9 +178,9 @@ public class plugListenConnect002 {
             ("==> Test checks that expected pluggable listening connector is created properly.");
 
 
-        VirtualMachineManager virtualMachineManager = Bootstrap.virtualMachineManager();
+        VirtualMachineManager virtualMachineManager = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         if (virtualMachineManager == null) {
-            logOnError(errorLogPrefixHead + "Bootstrap.virtualMachineManager() returns null.");
+            logOnError(errorLogPrefixHead + "com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() returns null.");
             return STATUS_FAILED;
         }
 

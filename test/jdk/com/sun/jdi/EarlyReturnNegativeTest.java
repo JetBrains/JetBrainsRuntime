@@ -186,7 +186,7 @@ public class EarlyReturnNegativeTest extends TestScaffold {
 
     public static void main(String[] args)      throws Exception {
         EarlyReturnNegativeTest meee = new EarlyReturnNegativeTest(args);
-        vmm = Bootstrap.virtualMachineManager();
+        vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         meee.startTests();
     }
 

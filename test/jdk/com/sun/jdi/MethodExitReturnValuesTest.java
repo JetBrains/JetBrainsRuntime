@@ -230,7 +230,7 @@ public class MethodExitReturnValuesTest extends TestScaffold {
 
     public static void main(String[] args)      throws Exception {
         MethodExitReturnValuesTest meee = new MethodExitReturnValuesTest(args);
-        vmm = Bootstrap.virtualMachineManager();
+        vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         meee.startTests();
     }
 

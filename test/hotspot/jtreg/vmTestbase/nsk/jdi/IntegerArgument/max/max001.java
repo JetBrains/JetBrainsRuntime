@@ -77,7 +77,7 @@ public class max001 {
                         "jdi.Connector.IntegerArgument.max\n" ;
 
 
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         List connectorsList = vmm.allConnectors();
         Iterator connectorsListIterator = connectorsList.iterator();

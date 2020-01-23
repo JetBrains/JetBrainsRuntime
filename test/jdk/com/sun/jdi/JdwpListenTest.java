@@ -194,7 +194,7 @@ public class JdwpListenTest {
     }
 
     private static Connector getConnector(String name) {
-        List<Connector> connectors = Bootstrap.virtualMachineManager().allConnectors();
+        List<Connector> connectors = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().allConnectors();
         for (Iterator<Connector> iter = connectors.iterator(); iter.hasNext(); ) {
             Connector connector = iter.next();
             if (connector.name().equalsIgnoreCase(name)) {

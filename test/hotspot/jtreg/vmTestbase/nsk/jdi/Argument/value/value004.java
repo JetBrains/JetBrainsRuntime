@@ -65,7 +65,7 @@ public class value004 {
     public static int run(String argv[],PrintStream out) {
         ArgumentHandler argHandler = new ArgumentHandler(argv);
         log = new Log(out, argHandler);
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         String address = argHandler.getTransportPort();
 

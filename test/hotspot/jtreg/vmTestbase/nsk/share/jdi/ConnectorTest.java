@@ -196,7 +196,7 @@ public abstract class ConnectorTest {
 
     // try find connector with given name
     protected Connector findConnector(String connectorName) {
-        List<Connector> connectors = Bootstrap.virtualMachineManager().allConnectors();
+        List<Connector> connectors = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().allConnectors();
         Iterator<Connector> iter = connectors.iterator();
 
         while (iter.hasNext()) {

@@ -78,7 +78,7 @@ public class GetObjectLockCount {
      * Find a com.sun.jdi.CommandLineLaunch connector
      */
     static LaunchingConnector findLaunchingConnector() {
-        List <Connector> connectors = Bootstrap.virtualMachineManager().allConnectors();
+        List <Connector> connectors = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().allConnectors();
         Iterator <Connector> iter = connectors.iterator();
         while (iter.hasNext()) {
             Connector connector = iter.next();

@@ -34,7 +34,7 @@
  *     on base of classes which implement the TransportService abstract
  *     class (com.sun.jdi.connect.spi.TransportService).
  *     The test checks up that at start-up time when
- *     Bootstrap.virtualMachineManager() is invoked pluggable
+ *     com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked pluggable
  *     connectors (AttachingConnector and ListeningConnector) are NOT created
  *     on base of PlugTransportService003 class which extends
  *     com.sun.jdi.connect.spi.TransportService abstract class
@@ -82,7 +82,7 @@ import java.io.*;
  * class (com.sun.jdi.connect.spi.TransportService).                        <BR>
  *                                                                          <BR>
  * The test checks up that at start-up time when                            <BR>
- * Bootstrap.virtualMachineManager() is invoked pluggable                   <BR>
+ * com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() is invoked pluggable                   <BR>
  * connectors (AttachingConnector and ListeningConnector) are NOT created   <BR>
  * on base of PlugTransportService003 class which extends                   <BR>
  * com.sun.jdi.connect.spi.TransportService abstract class                  <BR>
@@ -148,18 +148,18 @@ public class transportService003 {
 
         VirtualMachineManager virtualMachineManager = null;
         try {
-            virtualMachineManager = Bootstrap.virtualMachineManager();
+            virtualMachineManager = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         } catch (Throwable thrown) {
-            // OK: Bootstrap.virtualMachineManager() may throw an unspecified error
+            // OK: com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() may throw an unspecified error
             // if initialization of the VirtualMachineManager fails or if the virtual
             // machine manager is unable to locate or create any Connectors.
             logOnVerbose
-                (infoLogPrefixNead + "Bootstrap.virtualMachineManager() throws:\n" + thrown);
+                (infoLogPrefixNead + "com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() throws:\n" + thrown);
             return STATUS_PASSED;
         }
 
         if (virtualMachineManager == null) {
-            logOnError(errorLogPrefixHead + "Bootstrap.virtualMachineManager() returns null.");
+            logOnError(errorLogPrefixHead + "com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager() returns null.");
             return STATUS_FAILED;
         }
 

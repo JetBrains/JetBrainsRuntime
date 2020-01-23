@@ -154,7 +154,7 @@ public class launch004 {
     private LaunchingConnector getLaunchingConnector(
         String connectorName, String transportName) {
 
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         List lcl = vmm.launchingConnectors();
         log.display("Number of launching connectors: " + lcl.size());

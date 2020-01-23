@@ -48,7 +48,7 @@ public class SunBootClassPathEmptyTest {
         VirtualMachine vm;
 
         VmConnector() {
-            for (LaunchingConnector c : Bootstrap.virtualMachineManager().launchingConnectors()) {
+            for (LaunchingConnector c : com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().launchingConnectors()) {
                 System.out.println("name: " + c.name());
                 if (c.name().equals("com.sun.jdi.CommandLineLaunch")) {
                     lc = c;

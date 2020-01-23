@@ -32,7 +32,7 @@ import java.util.List;
 public class ListConnectors {
 
     public void list() {
-        List<Connector> l = Bootstrap.virtualMachineManager().allConnectors();
+        List<Connector> l = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().allConnectors();
 
         for(Connector c: l) {
             System.out.println(c.name());

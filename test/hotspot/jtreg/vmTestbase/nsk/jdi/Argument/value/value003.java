@@ -61,7 +61,7 @@ public class value003 {
     public static int run(String argv[], PrintStream out) {
         ArgumentHandler argHandler = new ArgumentHandler(argv);
         log = new Log(out, argHandler);
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         String javaKind = argHandler.getOptions().getProperty("debugee.vmkind");
         boolean java_g = javaKind != null && javaKind.startsWith("java_g"); // ...or java_g.exe

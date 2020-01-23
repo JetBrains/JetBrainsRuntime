@@ -76,7 +76,7 @@ public class stringvalueof001 {
                         "Method tested: " +
                         "jdi.Connector.BooleanArgument.stringValueof\n" ;
 
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         List connectorsList = vmm.allConnectors();
         Iterator connectorsListIterator = connectorsList.iterator();

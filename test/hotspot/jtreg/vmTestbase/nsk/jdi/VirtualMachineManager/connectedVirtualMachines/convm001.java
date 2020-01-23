@@ -185,9 +185,9 @@ public class convm001 {
 
             //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ variable part
 
-            log2("......call to Bootstrap.virtualMachineManager()");
+            log2("......call to com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager()");
 
-            vmm = Bootstrap.virtualMachineManager();
+            vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
             if (vmm == null) {
                 log3("ERROR: null returned");
                 testExitCode = FAILED;

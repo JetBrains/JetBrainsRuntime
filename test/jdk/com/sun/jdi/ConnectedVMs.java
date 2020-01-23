@@ -63,7 +63,7 @@ public class ConnectedVMs extends TestScaffold {
     }
 
     void vms(int expected) {
-        List vms = Bootstrap.virtualMachineManager().
+        List vms = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().
             connectedVirtualMachines();
         if (vms.size() != expected) {
             System.out.println("FAILURE! " + passName +

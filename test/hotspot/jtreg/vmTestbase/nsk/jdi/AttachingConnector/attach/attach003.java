@@ -70,7 +70,7 @@ public class attach003 {
 
         log = new Log(out, new ArgumentHandler(argv));
 
-        List connectors = Bootstrap.virtualMachineManager().attachingConnectors();
+        List connectors = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().attachingConnectors();
         log.display("Getting of " + connectors.size() + " connectors.");
         log.display("-----------------------------------------------");
 

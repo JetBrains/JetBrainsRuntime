@@ -87,7 +87,7 @@ class VMConnection {
 
 
     private Connector findConnector(String name) {
-        List connectors = Bootstrap.virtualMachineManager().allConnectors();
+        List connectors = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().allConnectors();
         Iterator iter = connectors.iterator();
         while (iter.hasNext()) {
             Connector connector = (Connector)iter.next();
@@ -156,8 +156,8 @@ class VMConnection {
         }
         vm.setDebugTraceMode(traceFlags);
         System.out.println("JVM version:" + vm.version());
-        System.out.println("JDI version: " + Bootstrap.virtualMachineManager().majorInterfaceVersion() +
-                           "." + Bootstrap.virtualMachineManager().minorInterfaceVersion());
+        System.out.println("JDI version: " + com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().majorInterfaceVersion() +
+                           "." + com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().minorInterfaceVersion());
         System.out.println("JVM description: " + vm.description());
 
         return vm;

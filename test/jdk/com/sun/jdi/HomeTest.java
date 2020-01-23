@@ -76,7 +76,7 @@ public class HomeTest extends TestScaffold {
         mainThread = bpe.thread();
         EventRequestManager erm = vm().eventRequestManager();
 
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
         Connector defaultConnector = vmm.defaultConnector();
         Map arguments = defaultConnector.defaultArguments();
         String argsHome = getValue(arguments,"home");

@@ -36,7 +36,7 @@ import java.util.Map;
 public class AcceptTimeout {
 
     public static void main(String args[]) throws Exception {
-        List<ListeningConnector> connectors = Bootstrap.virtualMachineManager().listeningConnectors();
+        List<ListeningConnector> connectors = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().listeningConnectors();
         for (ListeningConnector lc: connectors) {
             Map<String,Connector.Argument> cargs = lc.defaultArguments();
             Connector.IntegerArgument timeout = (Connector.IntegerArgument)cargs.get("timeout");

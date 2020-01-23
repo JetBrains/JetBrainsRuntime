@@ -46,7 +46,7 @@ public class WildcardPortSupport {
 
     public void runAllTests() throws Exception {
         ListeningConnector connector =
-                Bootstrap.virtualMachineManager().listeningConnectors().stream().
+                com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().listeningConnectors().stream().
                         filter(c -> c.name().equals("com.sun.jdi.SocketListen")).findFirst().get();
 
         if (connector == null) {

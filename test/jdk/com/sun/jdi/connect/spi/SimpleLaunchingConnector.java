@@ -155,6 +155,6 @@ public class SimpleLaunchingConnector implements LaunchingConnector {
         /*
          * Debugee is connected - return the virtual machine mirror
          */
-        return Bootstrap.virtualMachineManager().createVirtualMachine(conn);
+        return com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager().createVirtualMachine(conn);
     }
 }

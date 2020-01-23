@@ -71,7 +71,7 @@ public class bounds001 {
     private int run() {
 
         exitStatus = Consts.TEST_PASSED;
-        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        VirtualMachineManager vmm = com.jetbrains.jdi.VirtualMachineManagerImpl.testVirtualMachineManager();
 
         List attachConnectors;
         List launchConnectors;
