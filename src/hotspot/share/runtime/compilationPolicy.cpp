@@ -215,6 +215,50 @@ CompileTask* CompilationPolicy::select_task_helper(CompileQueue* compile_queue) 
   return compile_queue->first();
 }
 
+
+//
+// CounterDecay for SimpleCompPolicy
+//
+// Iterates through invocation counters and decrements them. This
+// is done at each safepoint.
+//
+class CounterDecay : public AllStatic {
+  static jlong _last_timestamp;
+  static void do_method(Method* m) {
+    MethodCounters* mcs = m->method_counters();
+    if (mcs != NULL) {
+      mcs->invocation_counter()->decay();
+    }
+  }
+public:
+  static void decay();
+  static bool is_decay_needed() {
+    return (((os::javaTimeNanos() - _last_timestamp) / NANOUNITS) * MILLIUNITS) > CounterDecayMinIntervalLength;
+  }
+  static void update_last_timestamp() { _last_timestamp = os::javaTimeNanos(); }
+};
+
+jlong CounterDecay::_last_timestamp = 0;
+
+void CounterDecay::decay() {
+  update_last_timestamp();
+
+  // This operation is going to be performed only at the end of a safepoint
+  // and hence GC's will not be going on, all Java mutators are suspended
+  // at this point and hence SystemDictionary_lock is also not needed.
+  assert(SafepointSynchronize::is_at_safepoint(), "can only be executed at a safepoint");
+  size_t nclasses = ClassLoaderDataGraph::num_instance_classes();
+  size_t classes_per_tick = nclasses * (CounterDecayMinIntervalLength * 1e-3 /
+                                        CounterHalfLifeTime);
+  for (size_t i = 0; i < classes_per_tick; i++) {
+    InstanceKlass* k = ClassLoaderDataGraph::try_get_next_class();
+    if (k != NULL) {
+      k->methods_do(do_method);
+    }
+  }
+}
+
+
 #ifndef PRODUCT
 void CompilationPolicy::print_time() {
   tty->print_cr ("Accumulated compilationPolicy times:");
@@ -254,6 +298,7 @@ void NonTieredCompPolicy::initialize() {
   } else {
     _compiler_count = CICompilerCount;
   }
+  CounterDecay::update_last_timestamp();
 }
 
 // Note: this policy is used ONLY if TieredCompilation is off.
@@ -301,47 +346,6 @@ void NonTieredCompPolicy::reset_counter_for_back_branch_event(const methodHandle
   i->set(i->state(), CompileThreshold);
   // Don't reset counter too low - it is used to check if OSR method is ready.
   b->set(b->state(), CompileThreshold / 2);
-}
-
-//
-// CounterDecay
-//
-// Iterates through invocation counters and decrements them. This
-// is done at each safepoint.
-//
-class CounterDecay : public AllStatic {
-  static jlong _last_timestamp;
-  static void do_method(Method* m) {
-    MethodCounters* mcs = m->method_counters();
-    if (mcs != NULL) {
-      mcs->invocation_counter()->decay();
-    }
-  }
-public:
-  static void decay();
-  static bool is_decay_needed() {
-    return (os::javaTimeMillis() - _last_timestamp) > CounterDecayMinIntervalLength;
-  }
-};
-
-jlong CounterDecay::_last_timestamp = 0;
-
-void CounterDecay::decay() {
-  _last_timestamp = os::javaTimeMillis();
-
-  // This operation is going to be performed only at the end of a safepoint
-  // and hence GC's will not be going on, all Java mutators are suspended
-  // at this point and hence SystemDictionary_lock is also not needed.
-  assert(SafepointSynchronize::is_at_safepoint(), "can only be executed at a safepoint");
-  size_t nclasses = ClassLoaderDataGraph::num_instance_classes();
-  size_t classes_per_tick = nclasses * (CounterDecayMinIntervalLength * 1e-3 /
-                                        CounterHalfLifeTime);
-  for (size_t i = 0; i < classes_per_tick; i++) {
-    InstanceKlass* k = ClassLoaderDataGraph::try_get_next_class();
-    if (k != NULL) {
-      k->methods_do(do_method);
-    }
-  }
 }
 
 // Called at the end of the safepoint
