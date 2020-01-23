@@ -35,7 +35,7 @@
  */
 
 import com.sun.jdi.ReferenceType;
-import com.sun.tools.jdi.ReferenceTypeImpl;
+import com.jetbrains.jdi.ReferenceTypeImpl;
 
 import java.lang.ref.Reference;
 import java.lang.reflect.Field;
