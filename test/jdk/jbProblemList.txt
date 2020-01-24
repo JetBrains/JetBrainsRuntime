@@ -121,4 +121,17 @@ com/sun/jdi/JdwpAttachTest.java                                 8234935 windows-
 
 com/sun/jdi/ModulesTest.java
 
+com/sun/jdi/DeferredStepTest.java
+com/sun/jdi/JdbStepTest.java
+com/sun/jdi/JdbStopThreadTest.java
+com/sun/jdi/JdbStopThreadidTest.java
+com/sun/jdi/JdwpAllowTest.java
+com/sun/jdi/JdwpAttachTest.java
+com/sun/jdi/JdwpListenTest.java
+com/sun/jdi/JdwpNetProps.java
+com/sun/jdi/RedefineAddPrivateMethod.java
+com/sun/jdi/connect/spi/DebugUsingCustomConnector.java
+com/sun/jdi/connect/spi/GeneratedConnectors.java
+com/sun/jdi/connect/spi/JdiLoadedByCustomLoader.java
+
 ############################################################################
