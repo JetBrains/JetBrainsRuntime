@@ -504,7 +504,7 @@ BOOL ColorizationColorAffectsBorders() {
     DWORD bufSize(sizeof(DWORD));
     HKEY hKey = NULL;
     if (::RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\DWM"), 0, KEY_READ, &hKey) != ERROR_SUCCESS) return TRUE;
-    if (::RegQueryValueEx(hKey, _T("ColorPrevalence"), NULL, NULL, reinterpret_cast<LPBYTE>(&result), &bufSize) != ERROR_SUCCESS) return TRUE;
+    if (::RegQueryValueEx(hKey, _T("ColorPrevalence"), NULL, NULL, reinterpret_cast<LPBYTE>(&result), &bufSize) != ERROR_SUCCESS) result = 1;
     RegCloseKey(hKey);
     return result == 0 ? FALSE : TRUE;
 }
