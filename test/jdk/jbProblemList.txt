@@ -1248,3 +1248,5 @@ javax/swing/JTextArea/4697612/bug4697612.java                                   
 javax/swing/LookAndFeel/8145547/DemandGTK.java                                      JBR-1977 linux-aarch64
 javax/swing/LookAndFeel/8146276/NimbusGlueTest.java                                 JBR-1977 linux-aarch64
 sanity/client/SwingSet/src/GridBagLayoutDemoTest.java                               JBR-1977 linux-aarch64
+
+jb/java/jcef/JCEFStartupTest.java                                                   JBR-2094 macosx-all
