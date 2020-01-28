@@ -1,9 +1,8 @@
-import org.cef.CefApp;
+// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+
 import org.cef.CefClient;
-import org.cef.CefSettings;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefFrame;
-import org.cef.handler.CefAppHandlerAdapter;
 import org.cef.handler.CefLoadHandlerAdapter;
 import org.cef.network.CefRequest;
 
@@ -20,29 +19,10 @@ import java.util.concurrent.TimeUnit;
  * @run main JCEFStartupTest
  */
 public class JCEFStartupTest {
-    static final CefApp CEF_APP;
-    static final CefClient CEF_CLIENT;
+    static CefClient CEF_CLIENT = JBCefApp.getInstance().createClient();
 
     static final CountDownLatch LATCH = new CountDownLatch(1);
     static volatile boolean PASSED;
-
-    static {
-        CefSettings settings = new CefSettings();
-        settings.windowless_rendering_enabled = false;
-        settings.background_color = settings.new ColorType(255, 0, 255, 0);
-        settings.log_severity = CefSettings.LogSeverity.LOGSEVERITY_ERROR;
-        CefApp.startup();
-
-        String JCEF_FRAMEWORKS_PATH = System.getProperty("java.home") + "/Frameworks";
-        CefApp.addAppHandler(new CefAppHandlerAdapter(new String[] {
-                "--framework-dir-path=" + JCEF_FRAMEWORKS_PATH + "/Chromium Embedded Framework.framework",
-                "--browser-subprocess-path=" + JCEF_FRAMEWORKS_PATH + "/jcef Helper.app/Contents/MacOS/jcef Helper",
-                "--disable-in-process-stack-traces"
-        }) {});
-
-        CEF_APP = CefApp.getInstance(settings);
-        CEF_CLIENT = CEF_APP.createClient();
-    }
 
     JCEFStartupTest() {
         JFrame frame = new JFrame("JCEF");
@@ -85,7 +65,7 @@ public class JCEFStartupTest {
         }
 
         CEF_CLIENT.dispose();
-        CEF_APP.dispose();
+        JBCefApp.getInstance().getCefApp().dispose();
 
         if (!PASSED) {
             throw new RuntimeException("Test FAILED!");
