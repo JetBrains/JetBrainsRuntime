@@ -559,7 +559,7 @@ java/awt/Paint/PaintNativeOnUpdate.java                                         
 java/awt/Paint/bug8024864.java                                                      8176512 windows-all,macosx-all,linux-all
 java/awt/PrintJob/PrinterException.java                                             8194045 generic-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java                 7107528 linux-all,macosx-all,windows-all
-java/awt/Robot/CheckCommonColors/CheckCommonColors.java                             8215105 macosx-all
+java/awt/Robot/CheckCommonColors/CheckCommonColors.java                             8237925 macosx-all,windows-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java                            8215105 macosx-all,windows-all
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java                           8157173 generic-all
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java                                   8129827 generic-all
