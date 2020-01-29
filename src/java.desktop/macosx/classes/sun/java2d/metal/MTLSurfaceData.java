@@ -185,7 +185,7 @@ public abstract class MTLSurfaceData extends SurfaceData
         }
     }
 
-    private native void initOps(long pConfigInfo, long pPeerData, long layerPtr,
+    private native void initOps(MTLGraphicsConfig gc, long pConfigInfo, long pPeerData, long layerPtr,
                                 int xoff, int yoff, boolean isOpaque);
 
     private MTLSurfaceData(MTLLayer layer, MTLGraphicsConfig gc,
@@ -208,8 +208,7 @@ public abstract class MTLSurfaceData extends SurfaceData
             layerPtr = layer.getPointer();
             isOpaque = layer.isOpaque();
         }
-        MTLGraphicsConfig.refPConfigInfo(pConfigInfo);
-        initOps(pConfigInfo, 0, layerPtr, 0, 0, isOpaque);
+        initOps(gc, pConfigInfo, 0, layerPtr, 0, 0, isOpaque);
     }
 
     @Override //SurfaceData
@@ -676,10 +675,13 @@ public abstract class MTLSurfaceData extends SurfaceData
      * the native Dispose() method from the Disposer thread when the
      * Java-level MTLSurfaceData object is about to go away.
      */
-     public static void dispose(long pData, long pConfigInfo) {
+     public static void dispose(long pData, MTLGraphicsConfig gc) {
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
+            // make sure we have a current context before
+            // disposing the native resources (e.g. texture object)
+            MTLContext.setScratchSurface(gc);
             RenderBuffer buf = rq.getBuffer();
             rq.ensureCapacityAndAlignment(12, 4);
             buf.putInt(DISPOSE_SURFACE);
@@ -690,7 +692,5 @@ public abstract class MTLSurfaceData extends SurfaceData
         } finally {
             rq.unlock();
         }
-
-        MTLGraphicsConfig.deRefPConfigInfo(pConfigInfo);
     }
 }
