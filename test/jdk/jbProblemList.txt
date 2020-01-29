@@ -898,6 +898,7 @@ jdk/internal/platform/docker/TestDockerMemoryMetrics.java       8227317    linux
 ############################################################################
 java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java
 
+java/awt/Choice/ChoiceFromMaximizedFrame/ChoiceFromMaximizedFrame.java              JBR-1988 macosx-all
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java                  JBR-1988 macosx-all
 java/awt/Choice/DragMouseOutAndRelease/DragMouseOutAndRelease.java                  JBR-1988 macosx-all
 java/awt/Choice/UnfocusableCB_ERR/UnfocusableCB_ERR.java                            JBR-1988 macosx-all
@@ -939,6 +940,7 @@ java/awt/TextArea/TextAreaEditing/TextAreaEditing.java                          
 java/awt/TextField/TextFieldEditing/TextFieldEditing.java                           JBR-1988 macosx-all
 java/awt/keyboard/AllKeyCode/AllKeyCode.java                                        JBR-1988 macosx-all
 javax/swing/DefaultButtonModel/DefaultButtonModelCrashTest.java                     JBR-1988 macosx-all
+javax/swing/JColorChooser/Test8051548.java                                          JBR-1988 macosx-all
 javax/swing/JComboBox/4515752/DefaultButtonTest.java                                JBR-1988 macosx-all
 javax/swing/JComboBox/6607130/bug6607130.java                                       JBR-1988 macosx-all
 javax/swing/JFileChooser/7199708/bug7199708.java                                    JBR-1988 macosx-all
