@@ -47,7 +47,6 @@ import java.awt.image.*;
 import java.io.File;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.HashMap;
 
 import static sun.java2d.opengl.OGLSurfaceData.TEXTURE;
 import static sun.java2d.pipe.hw.AccelSurface.RT_TEXTURE;
@@ -87,8 +86,6 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
      */
     private static native int nativeGetMaxTextureSize();
 
-    private static final HashMap<Long, Integer> pGCRefCounts = new HashMap<>();
-
     static {
         mtlAvailable = initMTL();
     }
@@ -103,7 +100,6 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         this.mtlCaps = mtlCaps;
         this.maxTextureSize = maxTextureSize;
         context = new MTLContext(MTLRenderQueue.getInstance());
-        refPConfigInfo(pConfigInfo);
         // add a record to the Disposer so that we destroy the native
         // MTLGraphicsConfigInfo data when this object goes away
         Disposer.addRecord(disposerReferent,
@@ -164,33 +160,6 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
                         CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE,
                 ids[0]);
         return new MTLGraphicsConfig(device, pixfmt, cfginfo, textureSize, caps);
-    }
-
-    static void refPConfigInfo(long pConfigInfo) {
-        synchronized (pGCRefCounts) {
-            Integer count = pGCRefCounts.get(pConfigInfo);
-            if (count == null) {
-                count = 1;
-            }
-            else {
-                count++;
-            }
-            pGCRefCounts.put(pConfigInfo, count);
-        }
-    }
-
-    static void deRefPConfigInfo(long pConfigInfo) {
-        synchronized (pGCRefCounts) {
-            Integer count = pGCRefCounts.get(pConfigInfo);
-            if (count != null) {
-                count--;
-                pGCRefCounts.put(pConfigInfo, count);
-                if (count == 0) {
-                    MTLRenderQueue.disposeGraphicsConfig(pConfigInfo);
-                    pGCRefCounts.remove(pConfigInfo);
-                }
-            }
-        }
     }
 
     /**
@@ -254,7 +223,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         }
         public void dispose() {
             if (pCfgInfo != 0) {
-                deRefPConfigInfo(pCfgInfo);
+                MTLRenderQueue.disposeGraphicsConfig(pCfgInfo);
                 pCfgInfo = 0;
             }
         }

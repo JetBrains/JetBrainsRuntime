@@ -162,6 +162,7 @@ typedef struct {
 typedef struct {
     SurfaceDataOps               sdOps;
     void                         *privOps;
+    jobject                      graphicsConfig;
     jint                         drawableType;
     jint                       activeBuffer;
     jboolean                     isOpaque;

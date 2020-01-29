@@ -208,12 +208,15 @@ MTLSD_Delete(JNIEnv *env, BMTLSDOps *bmtlsdo)
 void
 MTLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
 {
-    MTLSDOps *mtlsdo = (MTLSDOps *)ops;
-    jlong pConfigInfo = MTLSD_GetNativeConfigInfo(mtlsdo);
+    BMTLSDOps *bmtlsdo = (BMTLSDOps *)ops;
+    jobject graphicsConfig = bmtlsdo->graphicsConfig;
 
     JNU_CallStaticMethodByName(env, NULL, "sun/java2d/metal/MTLSurfaceData",
-                               "dispose", "(JJ)V",
-                               ptr_to_jlong(ops), pConfigInfo);
+                               "dispose",
+                               "(JLsun/java2d/metal/MTLGraphicsConfig;)V",
+                               ptr_to_jlong(ops), graphicsConfig);
+    (*env)->DeleteGlobalRef(env, graphicsConfig);
+    bmtlsdo->graphicsConfig = NULL;
 }
 
 /**
@@ -272,20 +275,6 @@ MTLSD_DestroyMTLSurface(JNIEnv *env, BMTLSDOps * bmtlsdo)
 }
 
 /**
- * Returns a pointer (as a jlong) to the native CGLGraphicsConfigInfo
- * associated with the given OGLSDOps.  This method can be called from
- * shared code to retrieve the native GraphicsConfig data in a platform-
- * independent manner.
- */
-jlong
-MTLSD_GetNativeConfigInfo(BMTLSDOps *mtlsdo)
-{
-    J2dTraceLn(J2D_TRACE_INFO, "MTLSD_GetNativeConfigInfo -- :TODO");
-
-    return 0;
-}
-
-/**
  * This function initializes a native window surface and caches the window
  * bounds in the given BMTLSDOps.  Returns JNI_TRUE if the operation was
  * successful; JNI_FALSE otherwise.
@@ -338,11 +327,11 @@ extern UnlockFunc      MTLSD_Unlock;
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLSurfaceData_initOps
-    (JNIEnv *env, jobject cglsd,
+    (JNIEnv *env, jobject mtlsd, jobject gc,
      jlong pConfigInfo, jlong pPeerData, jlong layerPtr,
      jint xoff, jint yoff, jboolean isOpaque)
 {
-    BMTLSDOps *bmtlsdo = (BMTLSDOps *)SurfaceData_InitOps(env, cglsd, sizeof(BMTLSDOps));
+    BMTLSDOps *bmtlsdo = (BMTLSDOps *)SurfaceData_InitOps(env, mtlsd, sizeof(BMTLSDOps));
     MTLSDOps *mtlsdo = (MTLSDOps *)malloc(sizeof(MTLSDOps));
 
     J2dTraceLn1(J2D_TRACE_INFO, "MTLSurfaceData_initOps p=%p", bmtlsdo);
@@ -350,12 +339,21 @@ Java_sun_java2d_metal_MTLSurfaceData_initOps
     J2dTraceLn1(J2D_TRACE_INFO, "  layerPtr=%p", jlong_to_ptr(layerPtr));
     J2dTraceLn2(J2D_TRACE_INFO, "  xoff=%d, yoff=%d", (int)xoff, (int)yoff);
 
-    if (mtlsdo == NULL) {
-        JNU_ThrowOutOfMemoryError(env, "creating native cgl ops");
+    gc = (*env)->NewGlobalRef(env, gc);
+    if (gc == NULL) {
+        JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
         return;
     }
 
+    if (mtlsdo == NULL) {
+        (*env)->DeleteGlobalRef(env, gc);
+        JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
+        return;
+    }
+
+    // later the graphicsConfig will be used for deallocation of mtlsdo
     bmtlsdo->privOps = mtlsdo;
+    bmtlsdo->graphicsConfig = gc;
 
     bmtlsdo->sdOps.Lock               = MTLSD_Lock;
     bmtlsdo->sdOps.GetRasInfo         = MTLSD_GetRasInfo;
