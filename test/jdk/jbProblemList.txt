@@ -226,7 +226,7 @@ java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java 8150540 windows-all
 java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java 8150540 windows-all
 java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java 8150540 windows-all
 java/awt/TrayIcon/SystemTrayInstance/SystemTrayInstanceTest.java 8193543 linux-all
-java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java 8150540 windows-all
+java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java 8150540 windows-all,macosx-all (JBR-1988)
 java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java 8150540 windows-all
 java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java 8150540 windows-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupClickTest.java 8150540 windows-all,macosx-all
@@ -519,7 +519,7 @@ java/awt/image/VolatileImage/BitmaskVolatileImage.java 8133102 linux-all
 java/awt/SplashScreen/MultiResolutionSplash/unix/UnixMultiResolutionSplashTest.java 8203004 linux-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java 7107528 linux-all,macosx-all
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java 8080676 linux-all
-java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java 8157147 linux-all,solaris-all,windows-all
+java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java 8157147 linux-all,solaris-all,windows-all,macosx-all (JBR-1988)
 java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.java 8148041 linux-all
 java/awt/Toolkit/DesktopProperties/rfe4758438.java 8193547 linux-all
 java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Enable.java 6847163
@@ -971,6 +971,7 @@ javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java             
 javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java                         JBR-1988 macosx-all
 javax/swing/JRootPane/4670486/bug4670486.java                                       JBR-1988 macosx-all
 javax/swing/JSpinner/4973721/bug4973721.java                                        JBR-1988 macosx-all
+javax/swing/JSpinner/8223788/JSpinnerButtonFocusTest.java                           JBR-1988 macosx-all
 javax/swing/JTabbedPane/7161568/bug7161568.java                                     JBR-1988 macosx-all
 javax/swing/JTable/4220171/bug4220171.java                                          JBR-1988 macosx-all
 javax/swing/JTable/7055065/bug7055065.java                                          JBR-1988 macosx-all
@@ -983,6 +984,7 @@ javax/swing/JTree/4908142/bug4908142.java                                       
 javax/swing/JTree/4927934/bug4927934.java                                           JBR-1988 macosx-all
 javax/swing/JTree/6578666/bug6578666.java                                           JBR-1988 macosx-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java                      JBR-1988 macosx-all
+javax/swing/SwingUtilities/4917669/bug4917669.java                                  JBR-1988 macosx-all
 javax/swing/plaf/basic/BasicMenuUI/4983388/bug4983388.java                          JBR-1988 macosx-all
 javax/swing/plaf/basic/BasicRootPaneUI/HiddenDefaultButtonTest.java                 JBR-1988 macosx-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java                                     JBR-1988 macosx-all
