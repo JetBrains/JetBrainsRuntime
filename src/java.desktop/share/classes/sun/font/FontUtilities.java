@@ -138,7 +138,7 @@ public final class FontUtilities {
      * where the caller interprets 'layout' to mean any case where
      * one 'char' (ie the java type char) does not map to one glyph
      */
-    public static final int MAX_LAYOUT_CHARCODE = 0x206F;
+    public static final int MAX_LAYOUT_CHARCODE = 0x20F0;
 
     /**
      * Calls the private getFont2D() method in java.awt.Font objects.
@@ -303,6 +303,9 @@ public final class FontUtilities {
             return true;
         }
         else if (code >= 0x206a && code <= 0x206f) { // directional control
+            return true;
+        }
+        else if (code >= 0x20d0) { // U+20D0 - U+20F0 combining diacritical marks for symbols
             return true;
         }
         return false;
