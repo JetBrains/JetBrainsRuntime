@@ -68,6 +68,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     private static PlatformLogger eventLog = PlatformLogger.getLogger("sun.awt.X11.event.XWindow");
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.X11.focus.XWindow");
     private static PlatformLogger keyEventLog = PlatformLogger.getLogger("sun.awt.X11.kye.XWindow");
+    private static PlatformLogger touchEventLog = PlatformLogger.getLogger("sun.awt.event.TouchEvent");
   /* If a motion comes in while a multi-click is pending,
    * allow a smudge factor so that moving the mouse by a small
    * amount does not wipe out the multi-click state variables.
@@ -79,14 +80,12 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     static long lastButton = 0;
     static WeakReference<XWindow> lastWindowRef = null;
     static int clickCount = 0;
+
+    // all touch scrolls are measured in pixels
     private static int touchBeginX = 0, touchBeginY = 0;
     private static int trackingId = 0;
+    private static long lastTouchUpdateTime = 0;
     private static boolean isTouchScroll = false;
-    private static final int TOUCH_CLICK_RADIUS = 10;
-    // all touch scrolls are measured in pixels
-    private static final int TOUCH_BEGIN = 2;
-    private static final int TOUCH_UPDATE = 3;
-    private static final int TOUCH_END = 4;
 
     // used to check if we need to re-create surfaceData.
     int oldWidth = -1;
@@ -812,42 +811,61 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
             x = localXY.x;
             y = localXY.y;
         }
-
-        int button = XConstants.buttons[0];
-        int modifiers = getModifiers(dev.get_mods().get_effective(), button, 0);
-        // turning off shift modifier
-        modifiers &= ~InputEvent.SHIFT_DOWN_MASK;
+        int modifiers = getModifiers(dev.get_mods().get_effective(), MouseEvent.BUTTON1, 0);
+        int scrollModifiers = modifiers & ~InputEvent.SHIFT_DOWN_MASK;
 
         long jWhen = XToolkit.nowMillisUTC_offset(dev.get_time());
 
         switch (dev.get_evtype()) {
             case XConstants.XI_TouchBegin:
+                if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                    touchEventLog.finest("Touch Begin at: " + x + ", " + y);
+                }
                 isTouchScroll = false;
                 touchBeginX = x;
                 touchBeginY = y;
-                sendWheelEventFromTouch(dev, jWhen, modifiers, touchBeginX, touchBeginY, TOUCH_BEGIN, 1);
+                lastTouchUpdateTime = jWhen;
+                sendWheelEventFromTouch(dev, jWhen, scrollModifiers, touchBeginX, touchBeginY, TouchEvent.TOUCH_BEGIN, 1);
                 break;
             case XConstants.XI_TouchUpdate:
+                if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                    touchEventLog.finest("Touch Update at: " + x + ", " + y);
+                }
+                lastTouchUpdateTime = jWhen;
+
                 if (!isTouchScroll && isInsideTouchClickBoundaries(x, y)) {
                     return;
                 }
                 isTouchScroll = true;
 
-                if (lastY - y != 0) {
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastY - y);
+                int deltaY = lastY - y;
+                if (deltaY != 0) {
+                    if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                        touchEventLog.finest("Vertical touch scroll, delta: " + deltaY);
+                    }
+                    sendWheelEventFromTouch(dev, jWhen, scrollModifiers, x, y, TouchEvent.TOUCH_UPDATE, deltaY);
                 }
-                // horizontal scroll
-                if (lastX - x != 0) {
-                    modifiers |= InputEvent.SHIFT_DOWN_MASK;
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastX - x);
+
+                int deltaX = lastX - x;
+                if (deltaX != 0) {
+                    if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                        touchEventLog.finest("Horizontal touch scroll, delta: " + deltaX);
+                    }
+                    int horizontalScrollMods = scrollModifiers | InputEvent.SHIFT_DOWN_MASK;
+                    sendWheelEventFromTouch(dev, jWhen, horizontalScrollMods, x, y, TouchEvent.TOUCH_UPDATE, deltaX);
                 }
                 break;
             case XConstants.XI_TouchEnd:
-                sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_END, 1);
+                if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                    touchEventLog.finest("Touch End at: " + x + ", " + y);
+                }
+                sendWheelEventFromTouch(dev, jWhen, scrollModifiers, x, y, TouchEvent.TOUCH_END, 1);
+
                 if (!isTouchScroll) {
-                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, touchBeginX, touchBeginY, button);
-                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, touchBeginX, touchBeginY, button);
-                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, touchBeginX, touchBeginY, button);
+                    if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                        touchEventLog.finest("Touch Press at: " + x + ", " + y);
+                    }
+                    sendButtonPressFromTouch(dev, jWhen, modifiers, touchBeginX, touchBeginY);
                 }
 
                 // release touch processing
@@ -860,8 +878,8 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     }
 
     private boolean isInsideTouchClickBoundaries(int x, int y) {
-        return Math.abs(touchBeginX - x) <= TOUCH_CLICK_RADIUS &&
-                Math.abs(touchBeginY - y) <= TOUCH_CLICK_RADIUS;
+        return Math.abs(touchBeginX - x) <= TouchEvent.CLICK_RADIUS &&
+                Math.abs(touchBeginY - y) <= TouchEvent.CLICK_RADIUS;
     }
 
     private static boolean isOwningTouch(int fingerId) {
@@ -869,7 +887,24 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     }
 
     private static boolean isTouchReleased() {
-        return trackingId == 0;
+        if (trackingId == 0) {
+            return true;
+        }
+
+        // recovery from situation when TOUCH_END event didn't occurred
+        long msFromLastUpdate = Math.abs(System.currentTimeMillis() - lastTouchUpdateTime);
+        if (msFromLastUpdate >= TouchEvent.NO_UPDATE_TIMEOUT) {
+            touchEventLog.warning("Release touch processing, milliseconds from last update: " + msFromLastUpdate);
+        }
+        return msFromLastUpdate >= TouchEvent.NO_UPDATE_TIMEOUT;
+    }
+
+    private void sendButtonPressFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y) {
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_MOVED, jWhen, modifiers, x, y, MouseEvent.NOBUTTON, 0);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_DRAGGED, jWhen, modifiers, x, y, MouseEvent.BUTTON1, 0);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, x, y, MouseEvent.BUTTON1, 1);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, x, y, MouseEvent.BUTTON1, 1);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, x, y, MouseEvent.BUTTON1, 1);
     }
 
     private void sendWheelEventFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int type, int delta) {
@@ -883,15 +918,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                         1, delta));
     }
 
-    private void sendMouseEventFromTouch(XIDeviceEvent dev, int type, long jWhen, int modifiers, int x, int y, int button) {
+    private void sendMouseEventFromTouch(XIDeviceEvent dev, int type, long jWhen, int modifiers, int x, int y, int button, int clickCount) {
+        boolean popupTrigger = button == MouseEvent.BUTTON3;
         postEventToEventQueue(
                 new MouseEvent(getEventSource(), type, jWhen,
-                        modifiers,
-                        x, y,
+                        modifiers, x, y,
                         scaleDown((int) dev.get_root_x()),
                         scaleDown((int) dev.get_root_y()),
-                        1,
-                        false, button));
+                        clickCount, popupTrigger, button));
     }
 
     public void handleMotionNotify(XEvent xev) {
