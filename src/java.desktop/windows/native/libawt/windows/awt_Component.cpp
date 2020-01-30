@@ -226,8 +226,10 @@ AwtComponent::AwtComponent()
     m_mouseButtonClickAllowed = 0;
 
     m_isTouchScroll = FALSE;
-    m_touchDownPoint = {0, 0};
+    m_isLongPress = FALSE;
+    m_touchBeginPoint = {0, 0};
     m_lastTouchPoint = {0, 0};
+    m_touchBeginTime = 0;
 
     m_callbacksEnabled = FALSE;
     m_hwnd = NULL;
@@ -2404,8 +2406,8 @@ void AwtComponent::WmTouch(WPARAM wParam, LPARAM lParam) {
 
 BOOL AwtComponent::IsInsideTouchClickBoundaries(POINT p)
 {
-    return abs(p.x - m_touchDownPoint.x) <= TOUCH_MOUSE_COORDS_DELTA &&
-           abs(p.y - m_touchDownPoint.y) <= TOUCH_MOUSE_COORDS_DELTA;
+    return abs(p.x - m_touchBeginPoint.x) <= TOUCH_MOUSE_COORDS_DELTA &&
+           abs(p.y - m_touchBeginPoint.y) <= TOUCH_MOUSE_COORDS_DELTA;
 }
 
 POINT AwtComponent::TouchCoordsToLocal(LONG x, LONG y)
@@ -2418,16 +2420,25 @@ POINT AwtComponent::TouchCoordsToLocal(LONG x, LONG y)
 void AwtComponent::SendMouseWheelEventFromTouch(POINT p, jint modifiers, jint scrollType, jint pixels)
 {
     SendMouseWheelEvent(java_awt_event_MouseEvent_MOUSE_WHEEL, ::JVM_CurrentTimeMillis(NULL, 0),
-                        p.x, p.y, modifiers, 0, 0, scrollType,
-                        /*scrollAmount*/ 1, pixels,
+                        p.x, p.y, modifiers, /*clickCount*/ 0, /*popupTrigger*/ JNI_FALSE,
+                         scrollType, /*scrollAmount*/ 1, pixels,
                         static_cast<double>(pixels), /*msg*/ nullptr);
 }
 
 void AwtComponent::SendMouseEventFromTouch(jint id, POINT p, jint modifiers, jint clickCount, jint button)
 {
+    const jboolean popupTrigger = (button == java_awt_event_MouseEvent_BUTTON3) ? JNI_TRUE : JNI_FALSE;
     SendMouseEvent(id, ::JVM_CurrentTimeMillis(NULL, 0), p.x, p.y,
-                   modifiers, clickCount, /*popupTrigger*/ JNI_FALSE,
-                   button, /*msg*/ nullptr, /*causedByTouchEvent*/ TRUE);
+                   modifiers, clickCount, popupTrigger, button,
+                   /*msg*/ nullptr, /*causedByTouchEvent*/ TRUE);
+}
+
+void AwtComponent::SendButtonPressEventFromTouch(POINT p, jint modifiers, jint button)
+{
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_MOVED, p, modifiers, 0, java_awt_event_MouseEvent_NOBUTTON);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_PRESSED, p, modifiers, 1, button);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_RELEASED, p, modifiers, 1, button);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_CLICKED, p, modifiers, 1, button);
 }
 
 void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
@@ -2437,39 +2448,47 @@ void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
         return;
     }
 
-    jint modifiers = GetJavaModifiers();
-    // turn off horizontal
+    const jint modifiers = GetJavaModifiers();
     const POINT p = TouchCoordsToLocal(touchInput.x, touchInput.y);
 
     if (touchInput.dwFlags & TOUCHEVENTF_DOWN) {
-        m_touchDownPoint = p;
+        m_touchBeginPoint = p;
         m_isTouchScroll = FALSE;
+        m_isLongPress = FALSE;
+        m_touchBeginTime = ::JVM_CurrentTimeMillis(NULL, 0);
         SendMouseWheelEventFromTouch(p, modifiers, TOUCH_BEGIN, 1);
     } else if (touchInput.dwFlags & TOUCHEVENTF_MOVE) {
+        if (!m_isLongPress && !m_isTouchScroll && abs(::JVM_CurrentTimeMillis(NULL, 0) - m_touchBeginTime) >= TOUCH_LONG_PRESS) {
+            m_isLongPress = TRUE;
+            SendButtonPressEventFromTouch(p, modifiers, java_awt_event_MouseEvent_BUTTON3);
+        }
+
+        if (m_isLongPress) {
+            return;
+        }
+
         if (!m_isTouchScroll && IsInsideTouchClickBoundaries(p)) {
             return;
         }
         m_isTouchScroll = TRUE;
 
-        const int deltaY = ScaleDownY(static_cast<int>(m_lastTouchPoint.y - p.y));
+        const jint deltaY = ScaleDownY(static_cast<int>(m_lastTouchPoint.y - p.y));
         if (abs(deltaY) != 0) {
-            modifiers &= ~java_awt_event_InputEvent_SHIFT_DOWN_MASK;
-            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_UPDATE, deltaY);
+            // turn off horizontal
+            const jint scrollModifiers = modifiers & ~java_awt_event_InputEvent_SHIFT_DOWN_MASK;
+            SendMouseWheelEventFromTouch(p, scrollModifiers, TOUCH_UPDATE, deltaY);
         }
         
-        const int deltaX = ScaleDownX(static_cast<int>(m_lastTouchPoint.x - p.x));
+        const jint deltaX = ScaleDownX(static_cast<int>(m_lastTouchPoint.x - p.x));
         if (abs(deltaX) != 0) {
-            modifiers |= java_awt_event_InputEvent_SHIFT_DOWN_MASK;
-            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_UPDATE, deltaX);
+            const jint scrollModifiers = modifiers | java_awt_event_InputEvent_SHIFT_DOWN_MASK;
+            SendMouseWheelEventFromTouch(p, scrollModifiers, TOUCH_UPDATE, deltaX);
         }
     } else if (touchInput.dwFlags & TOUCHEVENTF_UP) {
         SendMouseWheelEventFromTouch(p, modifiers, TOUCH_END, 1);
 
-        if (!m_isTouchScroll) {
-            SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_MOVED, p, modifiers, 0, java_awt_event_MouseEvent_NOBUTTON);
-            SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_PRESSED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
-            SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_RELEASED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
-            SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_CLICKED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
+        if (!m_isTouchScroll && !m_isLongPress) {
+            SendButtonPressEventFromTouch(p, modifiers, java_awt_event_MouseEvent_BUTTON1);
         }
     }
 

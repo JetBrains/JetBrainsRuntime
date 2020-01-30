@@ -73,6 +73,7 @@ const int X_BUTTONS = MK_XBUTTON1|MK_XBUTTON2;
 // corresponding WM_LBUTTONDOWN/WM_LBUTTONUP event letting to associate these
 // events, when their coordinates are slightly different.
 const int TOUCH_MOUSE_COORDS_DELTA = 10;
+const long TOUCH_LONG_PRESS = 500;
 const int TOUCH_BEGIN = 2;
 const int TOUCH_UPDATE = 3;
 const int TOUCH_END = 4;
@@ -542,6 +543,7 @@ public:
     POINT TouchCoordsToLocal(LONG x, LONG y);
     void SendMouseWheelEventFromTouch(POINT p, jint modifiers, jint scrollType, jint pixels);
     void SendMouseEventFromTouch(jint id, POINT p, jint modifiers, jint clickCount, jint button);
+    void SendButtonPressEventFromTouch(POINT p, jint modifiers, jint button);
 
     // NB: 64-bit: vkey is wParam of the message, but other API's take
     // vkey parameters of type UINT, so we do the cast before dispatching.
@@ -792,8 +794,10 @@ private:
     UINT m_mouseButtonClickAllowed;
 
     BOOL m_isTouchScroll;
-    POINT m_touchDownPoint;
+    BOOL m_isLongPress;
+    POINT m_touchBeginPoint;
     POINT m_lastTouchPoint;
+    jlong m_touchBeginTime;
 
     BOOL m_bSubclassed;
     BOOL m_bPauseDestroy;
