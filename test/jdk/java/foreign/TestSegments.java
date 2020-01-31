@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,11 @@
  * @run testng TestSegments
  */
 
+import jdk.incubator.foreign.MemoryAddress;
 import jdk.incubator.foreign.MemoryLayout;
 import jdk.incubator.foreign.MemoryLayouts;
 import jdk.incubator.foreign.MemorySegment;
 
-import java.awt.font.LayoutPath;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -41,7 +41,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongFunction;
 import java.util.stream.Stream;
 
-import jdk.incubator.foreign.SequenceLayout;
 import org.testng.annotations.*;
 
 import static org.testng.Assert.*;
@@ -58,7 +57,8 @@ public class TestSegments {
         MemorySegment.allocateNative(layout);
     }
 
-    @Test(expectedExceptions = OutOfMemoryError.class)
+    @Test(expectedExceptions = { OutOfMemoryError.class,
+                                 IllegalArgumentException.class })
     public void testAllocateTooBig() {
         MemorySegment.allocateNative(Long.MAX_VALUE);
     }
@@ -91,6 +91,32 @@ public class TestSegments {
         try (MemorySegment segment = MemorySegment.allocateNative(1000)) {
             for (long i = 0 ; i < segment.byteSize() ; i++) {
                 assertEquals(0, (byte)byteHandle.get(segment.baseAddress(), i));
+            }
+        }
+    }
+
+    @Test
+    public void testSlices() {
+        VarHandle byteHandle = MemoryLayout.ofSequence(MemoryLayouts.JAVA_BYTE)
+                .varHandle(byte.class, MemoryLayout.PathElement.sequenceElement());
+        try (MemorySegment segment = MemorySegment.allocateNative(10)) {
+            //init
+            for (byte i = 0 ; i < segment.byteSize() ; i++) {
+                byteHandle.set(segment.baseAddress(), (long)i, i);
+            }
+            long start = 0;
+            MemoryAddress base = segment.baseAddress();
+            MemoryAddress last = base.addOffset(10);
+            while (!base.equals(last)) {
+                MemorySegment slice = segment.asSlice(base.offset(), 10 - start);
+                for (long i = start ; i < 10 ; i++) {
+                    assertEquals(
+                            byteHandle.get(segment.baseAddress(), i),
+                            byteHandle.get(slice.baseAddress(), i - start)
+                    );
+                }
+                base = base.addOffset(1);
+                start++;
             }
         }
     }

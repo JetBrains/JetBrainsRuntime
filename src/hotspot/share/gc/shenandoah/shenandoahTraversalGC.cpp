@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2018, 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2018, 2020, Red Hat, Inc. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -193,9 +194,6 @@ public:
       } else {
         _rp->roots_do(worker_id, &roots_cl, &cld_cl, &code_cl);
       }
-
-      AlwaysTrueClosure is_alive;
-      _dedup_roots.oops_do(&is_alive, &roots_cl, worker_id);
     }
   }
 };
@@ -670,11 +668,40 @@ void ShenandoahTraversalGC::final_traversal_collection() {
     if (ShenandoahVerify) {
       _heap->verifier()->verify_after_traversal();
     }
+#ifdef ASSERT
+    else {
+      verify_roots_after_gc();
+    }
+#endif
 
     if (VerifyAfterGC) {
       Universe::verify();
     }
   }
+}
+
+class ShenandoahVerifyAfterGC : public OopClosure {
+private:
+  template <class T>
+  void do_oop_work(T* p) {
+    T o = RawAccess<>::oop_load(p);
+    if (!CompressedOops::is_null(o)) {
+      oop obj = CompressedOops::decode_not_null(o);
+      shenandoah_assert_correct(p, obj);
+      shenandoah_assert_not_in_cset_except(p, obj, ShenandoahHeap::heap()->cancelled_gc());
+      shenandoah_assert_not_forwarded(p, obj);
+    }
+  }
+
+public:
+  void do_oop(narrowOop* p) { do_oop_work(p); }
+  void do_oop(oop* p)       { do_oop_work(p); }
+};
+
+void ShenandoahTraversalGC::verify_roots_after_gc() {
+  ShenandoahRootVerifier verifier;
+  ShenandoahVerifyAfterGC cl;
+  verifier.oops_do(&cl);
 }
 
 class ShenandoahTraversalFixRootsClosure : public OopClosure {
