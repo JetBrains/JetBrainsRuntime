@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 
 /*
  * @test
+ * @requires vm.bits != "32"
  * @run testng TestMemoryAlignment
  */
 
@@ -68,7 +69,7 @@ public class TestMemoryAlignment {
         VarHandle vh = aligned.varHandle(int.class);
         try (MemorySegment segment = MemorySegment.allocateNative(alignedGroup)) {
             MemoryAddress addr = segment.baseAddress();
-            vh.set(addr.offset(1L), -42);
+            vh.set(addr.addOffset(1L), -42);
             assertEquals(align, 8); //this is the only case where access is aligned
         } catch (IllegalStateException ex) {
             assertNotEquals(align, 8); //if align != 8, access is always unaligned

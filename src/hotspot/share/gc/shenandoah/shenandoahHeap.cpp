@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013, 2020, Red Hat, Inc. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -1331,7 +1332,9 @@ void ShenandoahHeap::object_iterate(ObjectClosure* cl) {
 
 // Keep alive an object that was loaded with AS_NO_KEEPALIVE.
 void ShenandoahHeap::keep_alive(oop obj) {
-  ShenandoahBarrierSet::barrier_set()->enqueue(obj);
+  if (is_concurrent_mark_in_progress()) {
+    ShenandoahBarrierSet::barrier_set()->enqueue(obj);
+  }
 }
 
 void ShenandoahHeap::heap_region_iterate(ShenandoahHeapRegionClosure* blk) const {
@@ -1715,7 +1718,6 @@ void ShenandoahEvacUpdateCleanupOopStorageRootsClosure::do_oop(oop* p) {
       if (obj == old) {
         _dead_counter ++;
       }
-      assert(*p == NULL, "Must be");
     } else if (_evac_in_progress && _heap->in_collection_set(obj)) {
       oop resolved = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       if (resolved == obj) {
@@ -2805,7 +2807,7 @@ void ShenandoahHeap::entry_init_traversal() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_traversal_gc);
 
-  static const char* msg = "Pause Init Traversal";
+  static const char* msg = init_traversal_event_message();
   GCTraceTime(Info, gc) time(msg, gc_timer());
   EventMark em("%s", msg);
 
@@ -2820,7 +2822,7 @@ void ShenandoahHeap::entry_final_traversal() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_traversal_gc);
 
-  static const char* msg = "Pause Final Traversal";
+  static const char* msg = final_traversal_event_message();
   GCTraceTime(Info, gc) time(msg, gc_timer());
   EventMark em("%s", msg);
 
@@ -2972,7 +2974,7 @@ void ShenandoahHeap::entry_preclean() {
 }
 
 void ShenandoahHeap::entry_traversal() {
-  static const char* msg = "Concurrent traversal";
+  static const char* msg = conc_traversal_event_message();
   GCTraceTime(Info, gc) time(msg, NULL, GCCause::_no_gc, true);
   EventMark em("%s", msg);
 
@@ -3138,6 +3140,51 @@ const char* ShenandoahHeap::conc_mark_event_message() const {
     return "Concurrent marking (unload classes)";
   } else {
     return "Concurrent marking";
+  }
+}
+
+const char* ShenandoahHeap::init_traversal_event_message() const {
+  bool proc_refs = process_references();
+  bool unload_cls = unload_classes();
+
+  if (proc_refs && unload_cls) {
+    return "Pause Init Traversal (process weakrefs) (unload classes)";
+  } else if (proc_refs) {
+    return "Pause Init Traversal (process weakrefs)";
+  } else if (unload_cls) {
+    return "Pause Init Traversal (unload classes)";
+  } else {
+    return "Pause Init Traversal";
+  }
+}
+
+const char* ShenandoahHeap::final_traversal_event_message() const {
+  bool proc_refs = process_references();
+  bool unload_cls = unload_classes();
+
+  if (proc_refs && unload_cls) {
+    return "Pause Final Traversal (process weakrefs) (unload classes)";
+  } else if (proc_refs) {
+    return "Pause Final Traversal (process weakrefs)";
+  } else if (unload_cls) {
+    return "Pause Final Traversal (unload classes)";
+  } else {
+    return "Pause Final Traversal";
+  }
+}
+
+const char* ShenandoahHeap::conc_traversal_event_message() const {
+  bool proc_refs = process_references();
+  bool unload_cls = unload_classes();
+
+  if (proc_refs && unload_cls) {
+    return "Concurrent Traversal (process weakrefs) (unload classes)";
+  } else if (proc_refs) {
+    return "Concurrent Traversal (process weakrefs)";
+  } else if (unload_cls) {
+    return "Concurrent Traversal (unload classes)";
+  } else {
+    return "Concurrent Traversal";
   }
 }
 

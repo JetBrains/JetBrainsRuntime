@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017, 2020, Red Hat, Inc. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -223,7 +224,9 @@ public:
     ShenandoahReentrantLocker locker(nm_data->lock());
 
     // Heal oops and disarm
-    ShenandoahNMethod::heal_nmethod(nm);
+    if (_heap->is_evacuation_in_progress()) {
+      ShenandoahNMethod::heal_nmethod(nm);
+    }
     ShenandoahNMethod::disarm_nmethod(nm);
 
     // Clear compiled ICs and exception caches
