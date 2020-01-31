@@ -58,9 +58,12 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     static WeakReference<XWindow> lastWindowRef = null;
     static int clickCount = 0;
     private static int touchBeginX = 0, touchBeginY = 0;
+    private static long touchBeginTime = 0L;
     private static int trackingId = 0;
     private static boolean isTouchScroll = false;
+    private static boolean isLongPress = false;
     private static final int TOUCH_CLICK_RADIUS = 10;
+    private static final long LONG_PRESS_DURATION = 500;
     // all touch scrolls are measured in pixels
     private static final int TOUCH_BEGIN = 2;
     private static final int TOUCH_UPDATE = 3;
@@ -800,42 +803,49 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
             x = localXY.x;
             y = localXY.y;
         }
-
-        int button = XConstants.buttons[0];
-        int modifiers = getModifiers(dev.get_mods().get_effective(), button, 0);
-        // turning off shift modifier
-        modifiers &= ~InputEvent.SHIFT_DOWN_MASK;
+        int modifiers = getModifiers(dev.get_mods().get_effective(), MouseEvent.BUTTON1, 0);
+        int scrollModifiers = modifiers & ~InputEvent.SHIFT_DOWN_MASK;
 
         long jWhen = XToolkit.nowMillisUTC_offset(dev.get_time());
 
         switch (dev.get_evtype()) {
             case XConstants.XI_TouchBegin:
                 isTouchScroll = false;
+                isLongPress = false;
                 touchBeginX = x;
                 touchBeginY = y;
-                sendWheelEventFromTouch(dev, jWhen, modifiers, touchBeginX, touchBeginY, TOUCH_BEGIN, 1);
+                touchBeginTime = jWhen;
+                sendWheelEventFromTouch(dev, jWhen, scrollModifiers, touchBeginX, touchBeginY, TOUCH_BEGIN, 1);
                 break;
             case XConstants.XI_TouchUpdate:
+                if (!isLongPress && !isTouchScroll && (Math.abs(touchBeginTime - jWhen) >= LONG_PRESS_DURATION)) {
+                    isLongPress = true;
+                    int longPressModifiers = getModifiers(dev.get_mods().get_effective(), MouseEvent.BUTTON3, 0);
+                    sendButtonPressFromTouch(dev, jWhen, longPressModifiers, touchBeginX, touchBeginY, MouseEvent.BUTTON3);
+                }
+
+                if (isLongPress) {
+                    return;
+                }
+
                 if (!isTouchScroll && isInsideTouchClickBoundaries(x, y)) {
                     return;
                 }
                 isTouchScroll = true;
 
                 if (lastY - y != 0) {
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastY - y);
+                    sendWheelEventFromTouch(dev, jWhen, scrollModifiers, x, y, TOUCH_UPDATE, lastY - y);
                 }
                 // horizontal scroll
                 if (lastX - x != 0) {
-                    modifiers |= InputEvent.SHIFT_DOWN_MASK;
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastX - x);
+                    int horizontalScrollMods = scrollModifiers | InputEvent.SHIFT_DOWN_MASK;
+                    sendWheelEventFromTouch(dev, jWhen, horizontalScrollMods, x, y, TOUCH_UPDATE, lastX - x);
                 }
                 break;
             case XConstants.XI_TouchEnd:
-                sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_END, 1);
-                if (!isTouchScroll) {
-                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, touchBeginX, touchBeginY, button);
-                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, touchBeginX, touchBeginY, button);
-                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, touchBeginX, touchBeginY, button);
+                sendWheelEventFromTouch(dev, jWhen, scrollModifiers, x, y, TOUCH_END, 1);
+                if (!isTouchScroll && !isLongPress) {
+                    sendButtonPressFromTouch(dev, jWhen, modifiers, touchBeginX, touchBeginY, MouseEvent.BUTTON1);
                 }
 
                 // release touch processing
@@ -860,6 +870,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         return trackingId == 0;
     }
 
+    private void sendButtonPressFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int button) {
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_MOVED, jWhen, modifiers, x, y, MouseEvent.NOBUTTON, 0);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_DRAGGED, jWhen, modifiers, x, y, button, 0);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, x, y, button, 1);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, x, y, button, 1);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, x, y, button, 1);
+    }
+
     private void sendWheelEventFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int type, int delta) {
         postEventToEventQueue(
                 new MouseWheelEvent(getEventSource(), MouseEvent.MOUSE_WHEEL, jWhen,
@@ -871,15 +889,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                         1, delta));
     }
 
-    private void sendMouseEventFromTouch(XIDeviceEvent dev, int type, long jWhen, int modifiers, int x, int y, int button) {
+    private void sendMouseEventFromTouch(XIDeviceEvent dev, int type, long jWhen, int modifiers, int x, int y, int button, int clickCount) {
+        boolean popupTrigger = button == MouseEvent.BUTTON3;
         postEventToEventQueue(
                 new MouseEvent(getEventSource(), type, jWhen,
-                        modifiers,
-                        x, y,
+                        modifiers, x, y,
                         scaleDown((int) dev.get_root_x()),
                         scaleDown((int) dev.get_root_y()),
-                        1,
-                        false, button));
+                        clickCount, popupTrigger, button));
     }
 
     public void handleMotionNotify(XEvent xev) {
