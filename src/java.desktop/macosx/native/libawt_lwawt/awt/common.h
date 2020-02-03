@@ -71,4 +71,10 @@ struct TxtFrameUniforms {
     int isSrcOpaque;
     int isDstOpaque;
 };
+
+struct AnchorData
+{
+    vector_float4 rect;
+    vector_float2 shear;
+};
 #endif

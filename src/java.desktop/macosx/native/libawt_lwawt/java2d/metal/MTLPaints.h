@@ -82,7 +82,7 @@
                    pixels:(void *)pixels;
 
 - (void)setTexture:(jboolean)useMask
-           pSrcOps:(jlong)pSrcOps
+           textureID:(id<MTLTexture>)textureID
             filter:(jboolean)filter
                xp0:(jdouble)xp0
                xp1:(jdouble)xp1

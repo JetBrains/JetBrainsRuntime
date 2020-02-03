@@ -44,6 +44,7 @@ import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.SurfaceType;
+import sun.java2d.macos.MacOSFlags;
 import static sun.java2d.pipe.BufferedOpCodes.*;
 
 import java.lang.annotation.Native;
@@ -263,13 +264,17 @@ public class BufferedPaints {
 
         double xp0, xp1, xp3, yp0, yp1, yp3;
         try {
-            at.invert();
-            xp0 = at.getScaleX();
-            xp1 = at.getShearX();
-            xp3 = at.getTranslateX();
-            yp0 = at.getShearY();
-            yp1 = at.getScaleY();
-            yp3 = at.getTranslateY();
+                // Do not invert the matrix for metal pipeline
+                if (MacOSFlags.isMetalEnabled() == false) {
+                   at.invert();
+                }
+
+                xp0 = at.getScaleX();
+                xp1 = at.getShearX();
+                xp3 = at.getTranslateX();
+                yp0 = at.getShearY();
+                yp1 = at.getScaleY();
+                yp3 = at.getTranslateY();
         } catch (java.awt.geom.NoninvertibleTransformException e) {
             xp0 = xp1 = xp3 = yp0 = yp1 = yp3 = 0.0;
         }
