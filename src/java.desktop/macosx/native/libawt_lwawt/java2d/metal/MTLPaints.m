@@ -102,6 +102,10 @@ static void initTemplatePipelineDescriptors() {
     jint          _pixel1;
     jint          _pixel2;
     jboolean      _useMask;
+
+    // texture paint
+    id<MTLTexture> _paintTexture;
+    struct AnchorData _anchor;
 }
 
 - (id)init {
@@ -129,6 +133,14 @@ static void initTemplatePipelineDescriptors() {
     if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
         return _color == other->_color;
     }
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
+        return _paintTexture == other->_paintTexture &&
+              _anchor.rect[0] == other->_anchor.rect[0] &&
+              _anchor.rect[1] == other->_anchor.rect[1] &&
+              _anchor.rect[2] == other->_anchor.rect[2] &&
+              _anchor.rect[3] == other->_anchor.rect[3];
+    }
+
     J2dTraceLn1(J2D_TRACE_ERROR, "Unimplemented paint mode %d", _paintState);
     return NO;
 }
@@ -150,19 +162,36 @@ static void initTemplatePipelineDescriptors() {
         _color == other->_color;
         return;
     }
+
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
+        _color == other->_color;
+        _paintTexture = other->_paintTexture;
+        _anchor = other->_anchor;
+        return;
+    }
+
     J2dTraceLn1(J2D_TRACE_ERROR, "Unsupported paint mode %d", _paintState);
 }
 
 - (NSString *)getDescription {
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR)
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
         return [NSString stringWithFormat:@"[r=%d g=%d b=%d a=%d]", (_color >> 16) & (0xFF), (_color >> 8) & 0xFF, (_color) & 0xFF, (_color >> 24) & 0xFF];
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT)
+    }
+    
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
         return [NSString stringWithFormat:@"gradient"];
+    }
+
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
+        return [NSString stringWithFormat:@"texture_paint"];
+    }
+
     return @"unknown-paint";
 }
 
 - (void)reset {
     _paintState = sun_java2d_SunGraphics2D_PAINT_UNDEFINED;
+    _paintTexture = nil;
 }
 
 - (void)setColor:(jint)pixelColor {
@@ -229,7 +258,7 @@ static void initTemplatePipelineDescriptors() {
 }
 
 - (void)setTexture:(jboolean)useMask
-           pSrcOps:(jlong)pSrcOps
+           textureID:(id<MTLTexture>)textureID
             filter:(jboolean)filter
                xp0:(jdouble)xp0
                xp1:(jdouble)xp1
@@ -238,8 +267,16 @@ static void initTemplatePipelineDescriptors() {
                yp1:(jdouble)yp1
                yp3:(jdouble)yp3
 {
-    J2dTraceLn(J2D_TRACE_ERROR, "setTexture: UNIMPLEMENTED");
-    [self setColor:0];
+    _paintState = sun_java2d_SunGraphics2D_PAINT_TEXTURE;
+    _paintTexture = textureID;
+
+    _anchor.rect[0] = xp3;
+    _anchor.rect[1] = yp3;
+    _anchor.rect[2] = xp0;
+    _anchor.rect[3] = yp1;
+
+    //_anchor.shear[0] = xp1;
+    //_anchor.shear[1] = yp0;
 }
 
 // For the current paint mode:
@@ -320,6 +357,18 @@ static void initTemplatePipelineDescriptors() {
                     RGBA_TO_V4(_pixel1),
                     RGBA_TO_V4(_pixel2)};
             [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
+        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
+            pipelineState = [pipelineStateStorage getPipelineState:templateRenderPipelineDesc
+                                        vertexShaderId:@"vert_tp"
+                                      fragmentShaderId:@"frag_tp"
+                                         compositeRule:[composite getRule]
+                                                  isAA:isAA
+                                              srcFlags:srcFlags
+                                              dstFlags:dstFlags
+                                         stencilNeeded:stencil];
+
+            [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
+            [encoder setFragmentTexture:_paintTexture atIndex: 0];
         }
     }
 

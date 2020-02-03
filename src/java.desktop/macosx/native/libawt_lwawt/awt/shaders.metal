@@ -138,3 +138,35 @@ fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
     return half4(c);
 }
 
+
+vertex TxtShaderInOut vert_tp(VertexInput in [[stage_in]],
+       constant AnchorData& anchorData [[buffer(FrameUniformBuffer)]],
+       constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
+    TxtShaderInOut out;
+    float4 pos4 = float4(in.position, 0.0, 1.0);
+    out.position = transform.transformMatrix * pos4;
+
+    // Compute texture coordinates here w.r.t. anchor rect of texture paint
+    float window_width = 2.0 / transform.transformMatrix[0][0];
+    float window_height = -2.0 / transform.transformMatrix[1][1];
+
+    out.texCoords.x = ( ((1 + out.position.x) * (window_width/2.0)) - anchorData.rect[0]) / (anchorData.rect[2]);
+    out.texCoords.y = ( ((1 - out.position.y) * (window_height/2.0)) - anchorData.rect[1]) / (anchorData.rect[3]);
+  
+    return out;
+}
+
+fragment half4 frag_tp(
+        TxtShaderInOut vert [[stage_in]],
+        texture2d<float, access::sample> renderTexture [[texture(0)]],
+        constant TxtFrameUniforms& uniforms [[buffer(1)]]
+        )
+{
+    constexpr sampler textureSampler (address::repeat,
+                                      mag_filter::nearest,
+                                      min_filter::nearest);
+
+    float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
+    float srcA = uniforms.isSrcOpaque ? 1 : pixelColor.a;
+    return half4(pixelColor.r, pixelColor.g, pixelColor.b, srcA);
+}
