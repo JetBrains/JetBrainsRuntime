@@ -54,7 +54,7 @@ import sun.awt.X11GraphicsEnvironment;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
-import sun.security.action.GetBooleanAction;
+import sun.security.action.GetPropertyAction;
 
 class XWindowPeer extends XPanelPeer implements WindowPeer,
                                                 DisplayChangedListener {
@@ -66,11 +66,13 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     private static final PlatformLogger iconLog = PlatformLogger.getLogger("sun.awt.X11.icon.XWindowPeer");
 
     // workaround for JBR-1680 (see https://youtrack.jetbrains.com/issue/JBR-1680#focus=streamItem-27-3821223.0-0)
-    private static final boolean X11_DISABLE_OVERRIDE_FLAG = AccessController.doPrivileged(
-            new GetBooleanAction("x11.disable.override.flag"));
-    private static final boolean X11_DISABLE_OVERRIDE_XWINDOWPEER = AccessController.doPrivileged(
-            new GetBooleanAction("x11.disable.override.xwindowpeer"));
-
+    //
+    // enable X11_DISABLE_OVERRIDE_FLAG by default (users haven't found side-effects), see
+    //  https://youtrack.jetbrains.com/issue/JBR-1680#focus=streamItem-27-3924178.0-0
+    private static final boolean X11_DISABLE_OVERRIDE_FLAG =
+            GetPropertyAction.privilegedGetProperty("x11.disable.override.flag", "true").equalsIgnoreCase("true");
+    private static final boolean X11_DISABLE_OVERRIDE_XWINDOWPEER =
+            GetPropertyAction.privilegedGetProperty("x11.disable.override.xwindowpeer", "false").equalsIgnoreCase("true");
 
     // should be synchronized on awtLock
     private static Set<XWindowPeer> windows = new HashSet<XWindowPeer>();
