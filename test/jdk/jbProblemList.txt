@@ -658,6 +658,7 @@ java/awt/font/TextLayout/CombiningPerf.java                                     
 java/awt/font/TextLayout/LigatureCaretTest.java                                     8197821 generic-all
 java/awt/font/TextLayout/OSXLigatureTest.java                                       JRE-865 macosx-all
 java/awt/font/TextLayout/TextLayoutBounds.java                                      8169188 generic-all
+java/awt/font/WindowsIndicFonts.java                                                8223935 windows-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java                            7080150 macosx-all
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java              8169109 windows-all,linux-all,macosx-all
 java/awt/im/memoryleak/InputContextMemoryLeakTest.java                              8023814 linux-all,solaris-all
