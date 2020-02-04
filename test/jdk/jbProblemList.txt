@@ -1004,3 +1004,17 @@ javax/swing/ToolTipManager/Test6256140.java                                     
 
 java/awt/image/DrawImage/UnmanagedDrawImagePerformance.java                         JBR-2064 macosx-all
 java/awt/Window/WindowsLeak/WindowsLeak.java                                        JBR-2064 macosx-all
+
+# no printer found
+java/awt/print/PrinterJob/ExceptionTest.java                                        nobug generic-all
+java/awt/print/PrinterJob/ImagePrinting/NullClipARGB.java                           nobug generic-all
+java/awt/print/PrinterJob/PrintCrashTest.java                                       nobug generic-all
+java/awt/print/PrinterJob/PrtException.java                                         nobug generic-all
+javax/print/attribute/ChromaticityValues.java                                       nobug generic-all
+javax/print/CheckDupFlavor.java                                                     nobug generic-all
+javax/print/PrintSE/PrintSE.sh                                                      nobug generic-all
+javax/print/PrintServiceLookup/CountPrintServices.java                              nobug generic-all
+javax/print/attribute/AttributeTest.java                                            nobug generic-all
+javax/print/attribute/GetCopiesSupported.java                                       nobug generic-all
+javax/print/attribute/SidesPageRangesTest.java                                      nobug generic-all
+javax/print/attribute/SupportedPrintableAreas.java                                  nobug generic-all
