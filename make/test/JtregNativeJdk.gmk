@@ -73,6 +73,7 @@ else
 endif
 
 ifeq ($(OPENJDK_TARGET_OS), windows)
+  BUILD_JDK_JTREG_LIBRARIES_LIBS_libwindows_touch_robot := user32.lib
   BUILD_JDK_JTREG_EXCLUDE += libtouchscreen_device.c
 else
   ifeq ($(OPENJDK_TARGET_OS), linux)
