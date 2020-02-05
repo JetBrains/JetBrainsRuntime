@@ -74,7 +74,7 @@ struct TxtFrameUniforms {
 
 struct AnchorData
 {
-    vector_float4 rect;
-    vector_float2 shear;
+    vector_float3 xParams;
+    vector_float3 yParams;
 };
 #endif

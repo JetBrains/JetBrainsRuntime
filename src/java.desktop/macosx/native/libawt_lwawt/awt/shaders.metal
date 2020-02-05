@@ -141,32 +141,34 @@ fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
 
 vertex TxtShaderInOut vert_tp(VertexInput in [[stage_in]],
        constant AnchorData& anchorData [[buffer(FrameUniformBuffer)]],
-       constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
+       constant TransformMatrix& transform [[buffer(MatrixBuffer)]])
+{
     TxtShaderInOut out;
     float4 pos4 = float4(in.position, 0.0, 1.0);
     out.position = transform.transformMatrix * pos4;
 
     // Compute texture coordinates here w.r.t. anchor rect of texture paint
-    float window_width = 2.0 / transform.transformMatrix[0][0];
-    float window_height = -2.0 / transform.transformMatrix[1][1];
-
-    out.texCoords.x = ( ((1 + out.position.x) * (window_width/2.0)) - anchorData.rect[0]) / (anchorData.rect[2]);
-    out.texCoords.y = ( ((1 - out.position.y) * (window_height/2.0)) - anchorData.rect[1]) / (anchorData.rect[3]);
-  
+    out.texCoords.x = (anchorData.xParams[0] * in.position.x) +
+                      (anchorData.xParams[1] * in.position.y) +
+                      (anchorData.xParams[2] * out.position.w);
+    out.texCoords.y = (anchorData.yParams[0] * in.position.x) +
+                      (anchorData.yParams[1] * in.position.y) +
+                      (anchorData.yParams[2] * out.position.w);
+   
     return out;
 }
 
 fragment half4 frag_tp(
         TxtShaderInOut vert [[stage_in]],
-        texture2d<float, access::sample> renderTexture [[texture(0)]],
-        constant TxtFrameUniforms& uniforms [[buffer(1)]]
-        )
+        texture2d<float, access::sample> renderTexture [[texture(0)]])
 {
     constexpr sampler textureSampler (address::repeat,
                                       mag_filter::nearest,
                                       min_filter::nearest);
 
     float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
-    float srcA = uniforms.isSrcOpaque ? 1 : pixelColor.a;
-    return half4(pixelColor.r, pixelColor.g, pixelColor.b, srcA);
+    return half4(pixelColor.r, pixelColor.g, pixelColor.b, 1.0);
+
+    // This implementation defaults alpha to 1.0 as if source is opaque
+    //TODO : implement alpha component value if source is transparent
 }
