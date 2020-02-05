@@ -134,11 +134,7 @@ static void initTemplatePipelineDescriptors() {
         return _color == other->_color;
     }
     if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-        return _paintTexture == other->_paintTexture &&
-              _anchor.rect[0] == other->_anchor.rect[0] &&
-              _anchor.rect[1] == other->_anchor.rect[1] &&
-              _anchor.rect[2] == other->_anchor.rect[2] &&
-              _anchor.rect[3] == other->_anchor.rect[3];
+        return _paintTexture == other->_paintTexture;
     }
 
     J2dTraceLn1(J2D_TRACE_ERROR, "Unimplemented paint mode %d", _paintState);
@@ -270,53 +266,13 @@ static void initTemplatePipelineDescriptors() {
     _paintState = sun_java2d_SunGraphics2D_PAINT_TEXTURE;
     _paintTexture = textureID;
     
-    // Prepare a matrix with input and invert it
-    double matrix[3][3];
-    double inverseMatrix[3][3];
-    
-    matrix[0][0] = xp0;
-    matrix[0][1] = xp1;
-    matrix[0][2] = xp3;
+    _anchor.xParams[0] = xp0;
+    _anchor.xParams[1] = xp1;
+    _anchor.xParams[2] = xp3;
 
-    matrix[1][0] = yp0;
-    matrix[1][1] = yp1;
-    matrix[1][2] = yp3;
-
-    matrix[2][0] = 0.0;
-    matrix[2][1] = 0.0;
-    matrix[2][2] = 1.0;
-
-    inverseMatrix[0][0] = (matrix[1][1] * matrix[2][2])-(matrix[1][2] * matrix[2][1]);
-    inverseMatrix[0][1] = -(matrix[0][1] * matrix[2][2])-(matrix[2][1] * matrix[0][2]);
-    inverseMatrix[0][2] = (matrix[0][1] * matrix[1][2])-(matrix[1][1] * matrix[0][2]);
-
-    inverseMatrix[1][0] = -(matrix[1][0] * matrix[2][2])-(matrix[1][2] * matrix[2][0]);
-    inverseMatrix[1][1] = (matrix[0][0] * matrix[2][2])-(matrix[0][2] * matrix[2][0]);
-    inverseMatrix[1][2] = -(matrix[0][0] * matrix[1][2])-(matrix[1][0] * matrix[0][2]);
-
-    inverseMatrix[2][0] = (matrix[1][0] * matrix[2][1])-(matrix[1][1] * matrix[2][0]);
-    inverseMatrix[2][1] = -(matrix[0][0] * matrix[2][1])-(matrix[0][1] * matrix[2][0]);
-    inverseMatrix[2][2] = (matrix[0][0] * matrix[1][1])-(matrix[0][1] * matrix[1][0]);
-
-    
-    double det = matrix[0][0] * inverseMatrix[0][0] +
-                 matrix[0][1] * inverseMatrix[1][0] +
-                 matrix[0][2] * inverseMatrix[2][0];
-
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            inverseMatrix[i][j] *= (1.0)/det;
-        }
-    }
-
-    
-    _anchor.rect[0] = inverseMatrix[0][2];
-    _anchor.rect[1] = inverseMatrix[1][2];
-    _anchor.rect[2] = inverseMatrix[0][0];
-    _anchor.rect[3] = inverseMatrix[1][1];
-
-    //_anchor.shear[0] = xp1;
-    //_anchor.shear[1] = yp0;
+    _anchor.yParams[0] = yp0;
+    _anchor.yParams[1] = yp1;
+    _anchor.yParams[2] = yp3;
 }
 
 // For the current paint mode:
