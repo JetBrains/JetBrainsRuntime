@@ -675,6 +675,7 @@ java/awt/image/DrawImage/IncorrectDestinationOffset.java                        
 java/awt/image/DrawImage/IncorrectSourceOffset.java                                 8196086 windows-all
 java/awt/image/DrawImage/IncorrectUnmanagedImageRotatedClip.java                    8196087 windows-all
 java/awt/image/MultiResolutionImage/MultiResolutionDrawImageWithTransformTest.java  8198390 generic-all
+java/awt/image/multiresolution/MenuMultiresolutionIconTest.java                     8151301 macosx-all,windows-all (windows - nobug commit testing)
 java/awt/image/multiresolution/MultiresolutionIconTest.java                         8169187 macosx-all,linux-all,windows-all
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java              8204214,8193941 macosx-all,windows-all,linux-all
 java/awt/image/VolatileImage/BitmaskVolatileImage.java                              8133102 linux-all
@@ -943,7 +944,7 @@ javax/swing/JPopupMenu/6987844/bug6987844.java                                  
 javax/swing/JPopupMenu/7156657/bug7156657.java                                      8171381 macosx-all,windows-all
 javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java                           8202880 linux-all,windows-all,macosx-all
 javax/swing/JRadioButton/8033699/bug8033699.java                                    8197552,8064920 macosx-all,windows-all,linux-all
-javax/swing/JRadioButton/8041561/bug8041561.java                                    8194941 linux-all
+javax/swing/JRadioButton/8041561/bug8041561.java                                    8194941,8233555 linux-all,macosx-all,windows-all (windows - nobug commit testing)
 javax/swing/JRadioButton/8075609/bug8075609.java                                    8197552 macosx-all,windows-all,linux-all
 javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java                 8197552 macosx-all,windows-all,linux-all
 javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java                         8221902 windows-all,linux-all (windows: commit testing)
@@ -1041,7 +1042,7 @@ javax/swing/text/TableView/TableViewLayoutTest.java                             
 javax/swing/text/Utilities/8134721/bug8134721.java                                  8199062 generic-all
 javax/swing/text/Utilities/8142966/SwingFontMetricsTest.java                        8199529 windows-all
 javax/swing/text/View/8014863/bug8014863.java                                       8072110 windows-all,linux-all
-javax/swing/text/html/CSS/4530474/bug4530474.java                                   8194941 linux-all
+javax/swing/text/html/CSS/4530474/bug4530474.java                                   8194941,8151301 linux-all,macosx-all,windows-all (windows - nobug commit testing)
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java                         8072110 windows-all,linux-all
 javax/swing/text/html/StyleSheet/BackgroundImage/BackgroundImagePosition.java       8198409 generic-all
 javax/swing/text/html/StyleSheet/bug4936917.java                                    8208569 macosx-all
