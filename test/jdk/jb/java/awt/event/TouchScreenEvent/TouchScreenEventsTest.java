@@ -46,10 +46,10 @@ public class TouchScreenEventsTest {
 
     public static void main(String[] args) throws Exception {
         if(runTest(new TouchClickSuite())
-                && runTest(new TouchMoveSuite())
-                && runTest(new TouchTinyMoveSuite())
-                && runTest(new TouchAxesScrollSuite(TouchAxesScrollSuite.AXIS.X))
-                && runTest(new TouchAxesScrollSuite(TouchAxesScrollSuite.AXIS.Y))) {
+                & runTest(new TouchMoveSuite())
+                & runTest(new TouchTinyMoveSuite())
+                & runTest(new TouchAxesScrollSuite(TouchAxesScrollSuite.AXIS.X))
+                & runTest(new TouchAxesScrollSuite(TouchAxesScrollSuite.AXIS.Y))) {
             System.out.println("TEST PASSED");
         } else {
             throw new RuntimeException("TEST FAILED");
