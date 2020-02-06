@@ -38,6 +38,7 @@
 #include "MTLTextRenderer.h"
 #include "MTLVertexCache.h"
 #include "MTLGlyphCache.h"
+#include "MTLBlitLoops.h"
 
 /**
  * The following constants define the inner and outer bounds of the
@@ -206,7 +207,10 @@ MTLTR_InitGlyphCache(MTLContext *mtlc)
 id<MTLTexture>
 MTLTR_GetGlyphCacheTexture()
 {
-    return glyphCacheAA->texture;
+    if (glyphCacheAA != NULL) {
+        return glyphCacheAA->texture;
+    }
+    return NULL;
 }
 
 /**
@@ -243,45 +247,134 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph)
     }
 }
 
-/**
- * (Re)Initializes the gamma related uniforms.
- *
- * The given contrast value is an int in the range [100, 250] which we will
- * then scale to fit in the range [1.0, 2.5].
- */
-static jboolean
-MTLTR_UpdateLCDTextContrast(jint contrast)
-{
-    //TODO
-    return JNI_TRUE;
+void fillLCDTxQuad(
+        struct TxtVertex * txQuadVerts,
+        jint sx1, jint sy1, jint sx2, jint sy2, jint sw, jint sh,
+        jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2, jdouble dw, jdouble dh
+) {
+    const float nsx1 = sx1/(float)sw;
+    const float nsy1 = sy1/(float)sh;
+    const float nsx2 = sx2/(float)sw;
+    const float nsy2 = sy2/(float)sh;
+
+    txQuadVerts[0].position[0] = dx1;
+    txQuadVerts[0].position[1] = dy1;
+    txQuadVerts[0].txtpos[0]   = nsx1;
+    txQuadVerts[0].txtpos[1]   = nsy1;
+
+    txQuadVerts[1].position[0] = dx2;
+    txQuadVerts[1].position[1] = dy1;
+    txQuadVerts[1].txtpos[0]   = nsx2;
+    txQuadVerts[1].txtpos[1]   = nsy1;
+
+    txQuadVerts[2].position[0] = dx2;
+    txQuadVerts[2].position[1] = dy2;
+    txQuadVerts[2].txtpos[0]   = nsx2;
+    txQuadVerts[2].txtpos[1]   = nsy2;
+
+    txQuadVerts[3].position[0] = dx2;
+    txQuadVerts[3].position[1] = dy2;
+    txQuadVerts[3].txtpos[0]   = nsx2;
+    txQuadVerts[3].txtpos[1]   = nsy2;
+
+    txQuadVerts[4].position[0] = dx1;
+    txQuadVerts[4].position[1] = dy2;
+    txQuadVerts[4].txtpos[0]   = nsx1;
+    txQuadVerts[4].txtpos[1]   = nsy2;
+
+    txQuadVerts[5].position[0] = dx1;
+    txQuadVerts[5].position[1] = dy1;
+    txQuadVerts[5].txtpos[0]   = nsx1;
+    txQuadVerts[5].txtpos[1]   = nsy1;
 }
 
-/**
- * Updates the current gamma-adjusted source color ("src_adj") of the LCD
- * text shader program.  Note that we could calculate this value in the
- * shader (e.g. just as we do for "dst_adj"), but would be unnecessary work
- * (and a measurable performance hit, maybe around 5%) since this value is
- * constant over the entire glyph list.  So instead we just calculate the
- * gamma-adjusted value once and update the uniform parameter of the LCD
- * shader as needed.
- */
-static jboolean
-MTLTR_UpdateLCDTextColor(jint contrast)
-{
-    //TODO
-    return JNI_TRUE;
-}
+static MTLRenderPipelineDescriptor * templateRenderPipelineDesc = nil;
+static MTLRenderPipelineDescriptor * templateLCDPipelineDesc = nil;
 
 /**
  * Enables the LCD text shader and updates any related state, such as the
  * gamma lookup table textures.
  */
 static jboolean
-MTLTR_EnableLCDGlyphModeState(GLuint glyphTextureID,
-                              GLuint dstTextureID,
+MTLTR_EnableLCDGlyphModeState(MTLContext *mtlc, 
+                              MTLSDOps *dstOps,
+                              MTLPooledTextureHandle *glyphTexture,
+                              id<MTLTexture> dstTexture,
                               jint contrast)
 {
-    //TODO
+    // create the LCD text shader, if necessary
+    if (templateLCDPipelineDesc == nil) {
+
+        MTLVertexDescriptor *vertDesc = [[MTLVertexDescriptor new] autorelease];
+        vertDesc.attributes[VertexAttributePosition].format = MTLVertexFormatFloat2;
+        vertDesc.attributes[VertexAttributePosition].offset = 0;
+        vertDesc.attributes[VertexAttributePosition].bufferIndex = MeshVertexBuffer;
+        vertDesc.layouts[MeshVertexBuffer].stride = sizeof(struct Vertex);
+        vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
+        vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
+
+        templateLCDPipelineDesc = [[MTLRenderPipelineDescriptor new] autorelease];
+        templateLCDPipelineDesc.sampleCount = 1;
+        templateLCDPipelineDesc.vertexDescriptor = vertDesc;
+        templateLCDPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+        templateLCDPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
+        templateLCDPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].offset = 2*sizeof(float);
+        templateLCDPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
+        templateLCDPipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stride = sizeof(struct TxtVertex);
+        templateLCDPipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepRate = 1;
+        templateLCDPipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
+        templateLCDPipelineDesc.label = @"template_lcd";
+    }
+
+    id<MTLRenderPipelineState> pipelineState = 
+                [mtlc.pipelineStateStorage 
+                    getPipelineState:templateLCDPipelineDesc
+                    vertexShaderId:@"vert_txt"
+                    fragmentShaderId:@"lcd_color"
+                   ];
+
+    id<MTLRenderCommandEncoder> encoder = [mtlc.encoderManager getTextureEncoder:dstOps isSrcOpaque:YES];
+    MTLRegion srcRect = glyphTexture.rect;
+    struct TxtVertex texVert[6];
+    fillLCDTxQuad(texVert, 0, 0, srcRect.size.width, srcRect.size.height, srcRect.size.width, srcRect.size.height, 0, 0, srcRect.size.width, srcRect.size.height, srcRect.size.width, srcRect.size.height);    
+    [encoder setVertexBytes:texVert length:sizeof(texVert) atIndex:MeshVertexBuffer];
+
+    [encoder setRenderPipelineState:pipelineState];
+
+    double g = 0;
+    double ig = 0;
+
+    // update the current contrast setting, if necessary
+    if (lastLCDContrast != contrast) {
+        g = ((double)contrast) / 100.0;
+        ig = 1.0 / g;
+        lastLCDContrast = contrast;
+    }
+
+    // update the current color settings
+    double gamma = ((double)contrast) / 100.0;
+    jfloat radj, gadj, badj;
+    jfloat clr[4];
+    jint col = [mtlc.paint getColor];
+    clr[0] = ((col >> 16) & 0xFF)/255.0f;
+    clr[1] = ((col >> 8) & 0xFF)/255.0f;
+    clr[2] = ((col) & 0xFF)/255.0f;
+
+    // gamma adjust the primary color
+    radj = (float)pow(clr[0], gamma);
+    gadj = (float)pow(clr[1], gamma);
+    badj = (float)pow(clr[2], gamma);
+
+    struct LCDFrameUniforms uf = {
+            {radj, gadj, badj},
+            {g, g, g},
+            {ig, ig, ig}};
+    [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];//FrameUniformBuffer];
+
+
+    [encoder setFragmentTexture:glyphTexture.texture atIndex:0];
+    [encoder setFragmentTexture:dstTexture atIndex:1];
+
     return JNI_TRUE;
 }
 
@@ -415,7 +508,7 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, MTLSDOps *dstOps,
                            GlyphInfo *ginfo, jint x, jint y,
                            jint glyphIndex, jint totalGlyphs,
                            jboolean rgbOrder, jint contrast,
-                           jint dstTextureID, jboolean * opened)
+                           id<MTLTexture> dstTextureID)
 {
     //TODO
     return JNI_TRUE;
@@ -468,9 +561,70 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, MTLSDOps *dstOps,
                           GlyphInfo *ginfo, jint x, jint y,
                           jint rowBytesOffset,
                           jboolean rgbOrder, jint contrast,
-                          jint dstTextureID)
+                          id<MTLTexture> dstTexture)
 {
-    //TODO
+    jfloat tx1, ty1, tx2, ty2;
+    jfloat dtx1, dty1, dtx2, dty2;
+    jint tw, th;
+    jint sx, sy, sw, sh, dxadj, dyadj;
+    jint x0;
+    jint w = ginfo->width;
+    jint h = ginfo->height;
+
+    MTLPooledTextureHandle *blitTexture = [mtlc.texturePool getTexture:MTLC_BLIT_TILE_SIZE height:MTLC_BLIT_TILE_SIZE format:MTLPixelFormatBGRA8Unorm];
+    if (blitTexture == nil) {
+        J2dTraceLn(J2D_TRACE_ERROR, "can't obtain temporary texture object from pool");
+        return JNI_FALSE;
+    }
+
+
+    if (glyphMode != MODE_NO_CACHE_LCD) {
+        MTLVertexCache_EnableMaskCache(mtlc, dstOps);
+        if (!MTLTR_EnableLCDGlyphModeState(mtlc, dstOps, blitTexture,
+                                           dstTexture, contrast))
+        {
+            return JNI_FALSE;
+        }
+        glyphMode = MODE_NO_CACHE_LCD;
+    }
+
+    x0 = x;
+    tx1 = 0.0f;
+    ty1 = 0.0f;
+    dtx1 = 0.0f;
+    dty2 = 0.0f;
+    tw = MTLTR_NOCACHE_TILE_SIZE;
+    th = MTLTR_NOCACHE_TILE_SIZE;
+
+    for (sy = 0; sy < h; sy += th, y += th) {
+        x = x0;
+        sh = ((sy + th) > h) ? (h - sy) : th;
+
+        for (sx = 0; sx < w; sx += tw, x += tw) {
+            sw = ((sx + tw) > w) ? (w - sx) : tw;
+
+            // copy LCD mask into glyph texture tile
+            MTLRegion region = {
+                {sx,  sy,   0},
+                {sw, sh, 1}
+            };
+            NSUInteger bytesPerRow = 1 * ginfo->width;
+            [blitTexture.texture replaceRegion:region
+                         mipmapLevel:0
+                         withBytes:ginfo->image + rowBytesOffset
+                         bytesPerRow:bytesPerRow];
+
+            // render composed texture into destination surface
+            MTLVertexCache_AddMaskQuad(mtlc,
+                                       sx, sy, x, y, sw, sh,
+                                       w, dstTexture,
+                                       dstOps,
+                                       ginfo->width);
+            //MTLBlitLoops_CopyArea(NULL, mtlc, dstOps, sx, sy, sw, sh, x, y);
+
+        }
+    }
+            
     return JNI_TRUE;
 }
 
@@ -560,6 +714,8 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                 ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps);
             }
         } else {
+            void* dstTexture = dstOps->textureLCD;
+
             // LCD-optimized glyph data
             jint rowBytesOffset = 0;
 
@@ -577,20 +733,18 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
             {
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD cache -- :TODO");
-                /*ok = MTLTR_DrawLCDGlyphViaCache(oglc, dstOps,
+                ok = MTLTR_DrawLCDGlyphViaCache(mtlc, dstOps,
                                                 ginfo, x, y,
                                                 glyphCounter, totalGlyphs,
                                                 rgbOrder, lcdContrast,
-                                                dstTextureID);*/
-                ok = JNI_FALSE;
+                                                dstTexture);
             } else {
-                J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD no cache -- :TODO");
-                /*ok = MTLTR_DrawLCDGlyphNoCache(oglc, dstOps,
+                J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD no cache");
+                ok = MTLTR_DrawLCDGlyphNoCache(mtlc, dstOps,
                                                ginfo, x, y,
                                                rowBytesOffset,
                                                rgbOrder, lcdContrast,
-                                               dstTextureID);*/
-                ok = JNI_FALSE;
+                                               dstTexture);
             }
         }
 

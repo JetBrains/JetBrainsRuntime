@@ -77,4 +77,10 @@ struct AnchorData
     vector_float3 xParams;
     vector_float3 yParams;
 };
+
+struct LCDFrameUniforms {
+    vector_float3 src_adj;
+    vector_float3 gamma;
+    vector_float3 invgamma;
+};
 #endif

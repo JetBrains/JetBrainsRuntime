@@ -185,6 +185,10 @@ static void initTemplatePipelineDescriptors() {
     return @"unknown-paint";
 }
 
+- (jint)getColor {
+    return _color;
+}
+
 - (void)reset {
     _paintState = sun_java2d_SunGraphics2D_PAINT_UNDEFINED;
     _paintTexture = nil;
