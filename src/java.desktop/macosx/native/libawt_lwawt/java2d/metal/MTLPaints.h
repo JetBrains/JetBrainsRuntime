@@ -45,7 +45,7 @@
 - (BOOL)isEqual:(MTLPaint *)other; // used to compare requested with cached
 - (void)copyFrom:(MTLPaint *)other; // used to save cached
 - (NSString *)getDescription;
-
+- (jint)getColor;
 - (void)reset;
 
 - (void)setColor:(jint)pixelColor;

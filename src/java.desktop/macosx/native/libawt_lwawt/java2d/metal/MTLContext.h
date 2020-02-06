@@ -40,6 +40,8 @@
 #include "MTLClip.h"
 #include "EncoderManager.h"
 
+#define MTLC_BLIT_TILE_SIZE 128
+
 /**
  * The MTLCommandBufferWrapper class contains command buffer and
  * associated resources that will be released in completion handler
