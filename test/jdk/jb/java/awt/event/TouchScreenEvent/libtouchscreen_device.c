@@ -44,7 +44,7 @@ static int set_bit(int fd, unsigned long int request, unsigned long int bit) {
 
 static int touch_begin(int fd, int tracking_id, int x, int y) {
   struct input_event ev;
-
+  int i = 0;
   const int cnt = 7;
   TEventData eventData[7] = {{EV_ABS, ABS_MT_TRACKING_ID, tracking_id},
                              {EV_ABS, ABS_MT_POSITION_X, x},
@@ -54,7 +54,7 @@ static int touch_begin(int fd, int tracking_id, int x, int y) {
                              {EV_ABS, ABS_Y, y},
                              {EV_SYN, 0, 0}};
 
-  for (int i = 0; i < cnt; i++) {
+  for (i = 0; i < cnt; i++) {
     memset(&ev, 0, sizeof(struct input_event));
     ev.type = eventData[i].type;
     ev.code = eventData[i].code;
@@ -69,7 +69,7 @@ static int touch_begin(int fd, int tracking_id, int x, int y) {
 
 static int touch_update(int fd, int x, int y) {
   struct input_event ev;
-
+  int i = 0;
   const int cnt = 5;
   TEventData eventData[5] = {{EV_ABS, ABS_MT_POSITION_X, x},
                              {EV_ABS, ABS_MT_POSITION_Y, y},
@@ -77,7 +77,7 @@ static int touch_update(int fd, int x, int y) {
                              {EV_ABS, ABS_Y, y},
                              {EV_SYN, 0, 0}};
 
-  for (int i = 0; i < cnt; i++) {
+  for (i = 0; i < cnt; i++) {
     memset(&ev, 0, sizeof(struct input_event));
     ev.type = eventData[i].type;
     ev.code = eventData[i].code;
@@ -93,12 +93,12 @@ static int touch_update(int fd, int x, int y) {
 // TODO consider different name in case of multitouch
 static int touch_end(int fd) {
   struct input_event ev;
-
+  int i = 0;
   const int cnt = 3;
   TEventData eventData[3] = {
       {EV_ABS, ABS_MT_TRACKING_ID, -1}, {EV_KEY, BTN_TOUCH, 0}, {EV_SYN, 0, 0}};
 
-  for (int i = 0; i < cnt; i++) {
+  for (i = 0; i < cnt; i++) {
     memset(&ev, 0, sizeof(struct input_event));
     ev.type = eventData[i].type;
     ev.code = eventData[i].code;
