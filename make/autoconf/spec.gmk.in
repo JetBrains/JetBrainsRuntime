@@ -285,6 +285,9 @@ USE_PRECOMPILED_HEADER := @USE_PRECOMPILED_HEADER@
 # Only build headless support or not
 ENABLE_HEADLESS_ONLY := @ENABLE_HEADLESS_ONLY@
 
+# Ship debug symbols (e.g. pdbs on Windows)
+SHIP_DEBUG_SYMBOLS := @SHIP_DEBUG_SYMBOLS@
+
 ENABLE_FULL_DOCS := @ENABLE_FULL_DOCS@
 
 # JDK_OUTPUTDIR specifies where a working jvm is built.
