@@ -95,7 +95,6 @@ public class SunJSSEFIPSInit {
     private static void deployNssConfigFile() throws IOException {
         StringBuilder sb = new StringBuilder();
         sb.append("name = NSS" + lineSep);
-        sb.append("nssLibraryDirectory = /usr/lib64" + lineSep);
         sb.append("nssDbMode = noDb" + lineSep);
         sb.append("nssModule = crypto" + lineSep);
         writeFile(nssConfigFileName, sb.toString());
