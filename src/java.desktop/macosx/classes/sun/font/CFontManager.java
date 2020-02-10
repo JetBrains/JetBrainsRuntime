@@ -27,7 +27,6 @@ package sun.font;
 
 import java.awt.*;
 import java.io.File;
-import java.io.FilenameFilter;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
@@ -41,6 +40,7 @@ import javax.swing.plaf.FontUIResource;
 import sun.awt.FontConfiguration;
 import sun.awt.HeadlessToolkit;
 import sun.lwawt.macosx.*;
+import sun.util.logging.PlatformLogger;
 
 public final class CFontManager extends SunFontManager {
     private static Hashtable<String, Font2D> genericFonts = new Hashtable<String, Font2D>();
@@ -145,10 +145,40 @@ public final class CFontManager extends SunFontManager {
         @SuppressWarnings("removal")
         String[] files = AccessController.doPrivileged((PrivilegedAction<String[]>) () ->
                 new File(jreFontDirName).list(getTrueTypeFilter()));
-
         if (files != null) {
+            PlatformLogger logger = FontUtilities.getLogger();
+            boolean versionCheckEnabled = !("true".equals(System.getProperty("java2d.font.noVersionCheck")));
+            int [] ver = new int[3];
             for (String f : files) {
-                loadNativeDirFonts(jreFontDirName + File.separator + f);
+                boolean loadFont = true;
+                BundledFontInfo fi = getBundledFontInfo(f);
+                if (versionCheckEnabled) {
+                    if (fi != null) {
+                        String verStr = getNativeFontVersion(fi.getPsName());
+                        if (logger != null) {
+                            logger.info("Checking bundled " + fi.getPsName());
+                        }
+                        if (verStr != null && parseFontVersion(verStr, ver) && !fi.isNewerThan(ver)) {
+                            if (logger != null) {
+                                logger.info("Skip loading. Newer or same version platform font detected " +
+                                             fi.getPsName() + " " + verStr);
+                            }
+                            loadFont = false;
+                        }
+                    } else {
+                        if (logger != null) {
+                            FontUtilities.getLogger().warning("JREFonts: No BundledFontInfo for : " + f);
+                        }
+                    }
+                }
+                if (loadFont) {
+                    String fontPath = jreFontDirName + File.separator + f;
+                    loadNativeDirFonts(fontPath);
+                    if (logger != null && fi != null) {
+                        String verStr = getNativeFontVersion(fi.getPsName());
+                        logger.info("Loaded " + fi.getPsName() + " (" + verStr + ")");
+                    }
+                }
             }
         }
     }
@@ -173,6 +203,7 @@ public final class CFontManager extends SunFontManager {
 
     private native void loadNativeDirFonts(String fontPath);
     private native void loadNativeFonts();
+    native String getNativeFontVersion(String psName);
 
     void registerFont(String fontName, String fontFamilyName) {
         // Use different family for specific font faces
