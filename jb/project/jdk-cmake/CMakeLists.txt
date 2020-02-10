@@ -1088,7 +1088,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
             ../../../src/java.desktop/macosx/native/libawt_lwawt/awt/CFileDialog.h
             ../../../src/java.desktop/macosx/native/libawt_lwawt/awt/AWTWindow.h
             ../../../src/java.desktop/macosx/native/libawt_lwawt/awt/LWCToolkit.h
-            ../../../src/java.desktop/macosx/native/libawt_lwawt/awt/CGraphicsConfig.m
             ../../../src/java.desktop/macosx/native/libawt_lwawt/awt/CDesktopPeer.m
             ../../../src/java.desktop/macosx/native/libawt_lwawt/awt/PrintModel.h
             ../../../src/java.desktop/macosx/native/libawt_lwawt/awt/CTrayIcon.m
@@ -1342,7 +1341,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux"
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/multi_font.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/multiVis.h
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_Event.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/awt/robot_common.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_util.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/list.h
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/gtk2_interface.h
@@ -1355,7 +1353,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux"
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/canvas.h
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_AWTEvent.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/multi_font.h
-            ../../../src/java.desktop/unix/native/libawt_xawt/awt/robot_common.h
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/sun_awt_X11_GtkFileDialogPeer.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_GraphicsEnv.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_InputMethod.c
