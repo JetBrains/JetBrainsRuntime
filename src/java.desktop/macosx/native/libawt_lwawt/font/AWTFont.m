@@ -1368,6 +1368,35 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     Java_sun_font_CFontManager_loadNativeDirFonts
+ * Method:    getNativeFontVersion
+ * Signature: (Ljava/lang/String;)Ljava/lang/String;
+ */
+JNIEXPORT JNICALL jstring
+Java_sun_font_CFontManager_getNativeFontVersion
+        (JNIEnv *env, jclass clz, jstring psName)
+{
+    jstring result = NULL;
+JNI_COCOA_ENTER(env);
+    NSString *psNameStr = JavaStringToNSString(env, psName);
+    CTFontRef sFont = CTFontCreateWithName(psNameStr, 13, nil);
+    CFStringRef sFontPSName = CTFontCopyName(sFont, kCTFontPostScriptNameKey);
+    // CTFontCreateWithName always returns some font,
+    // so we need to check if it is right one
+    if ([psNameStr isEqualToString:sFontPSName]) {
+        CFStringRef fontVersionStr = CTFontCopyName(sFont,
+                                                    kCTFontVersionNameKey);
+        result = NSStringToJavaString(env, fontVersionStr);
+        CFRelease(fontVersionStr);
+    }
+
+    CFRelease(sFontPSName);
+    CFRelease(sFont);
+JNI_COCOA_EXIT(env);
+    return result;
+}
+
+/*
+ * Class:     Java_sun_font_CFontManager_loadNativeDirFonts
  * Method:    loadNativeDirFonts
  * Signature: (Ljava/lang/String;)V;
  */
