@@ -111,10 +111,6 @@ public abstract class FileFont extends PhysicalFont {
         return 1; // DEFAULT_CHARSET
     }
 
-    int getFontDataSize() {
-        return fileSize;
-    }
-
     /*
      * This is the public interface. The subclasses need to implement
      * this. The returned block may be longer than the requested length.

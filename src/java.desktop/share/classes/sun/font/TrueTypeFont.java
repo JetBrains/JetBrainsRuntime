@@ -181,7 +181,6 @@ public class TrueTypeFont extends FileFont {
     private String localeFullName;
 
     private Byte supportedCharset;
-    private int fontDataSize;
 
     public TrueTypeFont(String platname, Object nativeNames, int fIndex,
                  boolean javaRasterizer)
@@ -540,13 +539,11 @@ public class TrueTypeFont extends FileFont {
                 fontIndex = fIndex;
                 buffer = readBlock(TTCHEADERSIZE+4*fIndex, 4);
                 headerOffset = buffer.getInt();
-                fontDataSize = Math.max(0, fileSize - headerOffset);
                 break;
 
             case v1ttTag:
             case trueTag:
             case ottoTag:
-                fontDataSize = fileSize;
                 break;
 
             default:
@@ -1782,11 +1779,6 @@ public class TrueTypeFont extends FileFont {
     }
 
     private static native void getSupportedCharsetsForFamily(String familyName, Map<String, Byte> supportedCharsets);
-
-    @Override
-    int getFontDataSize() {
-        return fontDataSize;
-    }
 
     @Override
     public String toString() {
