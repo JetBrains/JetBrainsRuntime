@@ -495,7 +495,6 @@ set(SOURCE_FILES
 ../../../src/hotspot/cpu/aarch64/vtableStubs_aarch64.cpp
 ../../../src/hotspot/cpu/aarch64/relocInfo_aarch64.hpp
 ../../../src/hotspot/cpu/aarch64/vm_version_aarch64.hpp
-../../../src/hotspot/cpu/aarch64/cpustate_aarch64.hpp
 ../../../src/hotspot/cpu/aarch64/immediate_aarch64.cpp
 ../../../src/hotspot/cpu/aarch64/vmreg_aarch64.cpp
 ../../../src/hotspot/cpu/aarch64/jniFastGetField_aarch64.cpp
@@ -520,7 +519,6 @@ set(SOURCE_FILES
 ../../../src/hotspot/cpu/aarch64/c1_FrameMap_aarch64.hpp
 ../../../src/hotspot/cpu/aarch64/templateTable_aarch64.cpp
 ../../../src/hotspot/cpu/aarch64/vmStructs_aarch64.hpp
-../../../src/hotspot/cpu/aarch64/decode_aarch64.hpp
 ../../../src/hotspot/cpu/aarch64/c1_CodeStubs_aarch64.cpp
 ../../../src/hotspot/cpu/aarch64/nativeInst_aarch64.hpp
 ../../../src/hotspot/cpu/aarch64/codeBuffer_aarch64.hpp
@@ -529,7 +527,6 @@ set(SOURCE_FILES
 ../../../src/hotspot/cpu/aarch64/assembler_aarch64.cpp
 ../../../src/hotspot/cpu/aarch64/register_aarch64.cpp
 ../../../src/hotspot/cpu/aarch64/vm_version_ext_aarch64.cpp
-../../../src/hotspot/cpu/aarch64/aarch64_call.cpp
 ../../../src/hotspot/cpu/aarch64/macroAssembler_aarch64.hpp
 ../../../src/hotspot/cpu/aarch64/bytecodes_aarch64.hpp
 ../../../src/hotspot/cpu/aarch64/c1_MacroAssembler_aarch64.hpp
@@ -1175,13 +1172,11 @@ set(SOURCE_FILES
 ../../../src/hotspot/share/jfr/recorder/stringpool/jfrStringPoolBuffer.hpp
 ../../../src/hotspot/share/jfr/recorder/repository/jfrChunkWriter.cpp
 ../../../src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.hpp
-../../../src/hotspot/share/jfr/recorder/repository/jfrChunkSizeNotifier.hpp
 ../../../src/hotspot/share/jfr/recorder/repository/jfrChunkState.hpp
 ../../../src/hotspot/share/jfr/recorder/repository/jfrRepository.cpp
 ../../../src/hotspot/share/jfr/recorder/repository/jfrChunkState.cpp
 ../../../src/hotspot/share/jfr/recorder/repository/jfrRepository.hpp
 ../../../src/hotspot/share/jfr/recorder/repository/jfrChunkWriter.hpp
-../../../src/hotspot/share/jfr/recorder/repository/jfrChunkSizeNotifier.cpp
 ../../../src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp
 ../../../src/hotspot/share/jfr/recorder/checkpoint/jfrCheckpointBlob.hpp
 ../../../src/hotspot/share/jfr/recorder/checkpoint/jfrCheckpointWriter.cpp
@@ -1254,7 +1249,6 @@ set(SOURCE_FILES
 ../../../src/hotspot/share/jfr/leakprofiler/checkpoint/objectSampleDescription.hpp
 ../../../src/hotspot/share/jfr/leakprofiler/checkpoint/rootResolver.hpp
 ../../../src/hotspot/share/jfr/leakprofiler/leakProfiler.hpp
-../../../src/hotspot/share/jfr/leakprofiler/emitEventOperation.hpp
 ../../../src/hotspot/share/jfr/leakprofiler/sampling/objectSample.hpp
 ../../../src/hotspot/share/jfr/leakprofiler/sampling/objectSampler.hpp
 ../../../src/hotspot/share/jfr/leakprofiler/sampling/sampleList.cpp
@@ -1270,7 +1264,6 @@ set(SOURCE_FILES
 ../../../src/hotspot/share/jfr/leakprofiler/utilities/rootType.hpp
 ../../../src/hotspot/share/jfr/leakprofiler/utilities/unifiedOop.hpp
 ../../../src/hotspot/share/jfr/leakprofiler/startOperation.hpp
-../../../src/hotspot/share/jfr/leakprofiler/emitEventOperation.cpp
 ../../../src/hotspot/share/jfr/leakprofiler/chains/edgeUtils.cpp
 ../../../src/hotspot/share/jfr/leakprofiler/chains/rootSetClosure.cpp
 ../../../src/hotspot/share/jfr/leakprofiler/chains/edge.hpp
@@ -1481,7 +1474,6 @@ set(SOURCE_FILES
 ../../../src/hotspot/share/runtime/basicLock.hpp
 ../../../src/hotspot/share/runtime/compilationPolicy.cpp
 ../../../src/hotspot/share/runtime/java.hpp
-../../../src/hotspot/share/runtime/simpleThresholdPolicy.cpp
 ../../../src/hotspot/share/runtime/objectMonitor.inline.hpp
 ../../../src/hotspot/share/runtime/mutexLocker.cpp
 ../../../src/hotspot/share/runtime/serviceThread.cpp
@@ -1524,7 +1516,6 @@ set(SOURCE_FILES
 ../../../src/hotspot/share/runtime/compilationPolicy.hpp
 ../../../src/hotspot/share/runtime/basicLock.cpp
 ../../../src/hotspot/share/runtime/java.cpp
-../../../src/hotspot/share/runtime/simpleThresholdPolicy.hpp
 ../../../src/hotspot/share/runtime/perfData.inline.hpp
 ../../../src/hotspot/share/runtime/statSampler.hpp
 ../../../src/hotspot/share/runtime/vm_operations.cpp
@@ -1557,7 +1548,6 @@ set(SOURCE_FILES
 ../../../src/hotspot/share/runtime/handshake.hpp
 ../../../src/hotspot/share/runtime/thread.inline.hpp
 ../../../src/hotspot/share/runtime/perfMemory.hpp
-../../../src/hotspot/share/runtime/simpleThresholdPolicy.inline.hpp
 ../../../src/hotspot/share/runtime/javaCalls.cpp
 ../../../src/hotspot/share/runtime/reflection.cpp
 ../../../src/hotspot/share/runtime/icache.cpp

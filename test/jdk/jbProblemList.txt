@@ -146,7 +146,7 @@ java/awt/EventQueue/6980209/bug6980209.java                                     
 java/awt/FileDialog/8003399/bug8003399.java                                         8198334 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java                      8160558 windows-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.html                      8202882 linux-all
-java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                        8194751 linux-all
+java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                        8194751 linux-all,macosx-all
 java/awt/Focus/8013611/JDK8013611.java                                              8175366,8213522 windows-all,macosx-all,linux-all
 java/awt/Focus/6378278/InputVerifierTest.java                                       8198616,8047703 macosx-all,linux-4.15,windows-all
 java/awt/Focus/6382144/EndlessLoopTest.java                                         8198617,8047703 generic-all
@@ -559,7 +559,7 @@ java/awt/Paint/PaintNativeOnUpdate.java                                         
 java/awt/Paint/bug8024864.java                                                      8176512 windows-all,macosx-all,linux-all
 java/awt/PrintJob/PrinterException.java                                             8194045 generic-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java                 7107528 linux-all,macosx-all,windows-all
-java/awt/Robot/CheckCommonColors/CheckCommonColors.java                             8215105 macosx-all
+java/awt/Robot/CheckCommonColors/CheckCommonColors.java                             8237925 macosx-all,windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java                            8215105 macosx-all,windows-all
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java                           8157173 generic-all
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java                                   8129827 generic-all
@@ -596,6 +596,7 @@ java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java              
 java/awt/Window/Grab/GrabTest.java                                                  8196019 macosx-all,windows-all,linux-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            8215132,8194941 macosx-all,windows-all,linux-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java                              8159904 macosx-all,windows-all,linux-all
+java/awt/Window/OwnedWindowsLeak/OwnedWindowsLeak.java                              8225116 windows-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java                       8061236 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java                           8208509 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8197936 macosx-all,windows-all,linux-4.18.16-200.fc28.x86_64,linux-all (linux-all timeout reproduced with Adopt)
@@ -605,7 +606,7 @@ java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java                    
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java                  8078999,8198690 macosx-all,linux-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java       8013450 macosx-all,linux-all,windows-all (windows: commit testing time out)
 java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java                   8198690,8165218 macosx-all,linux-all,windows-all
-java/awt/Window/ShapedAndTranslucentWindows/Translucent.java                        8222328 linux-all,windows-all
+java/awt/Window/ShapedAndTranslucentWindows/Translucent.java                        8222328 linux-all,windows-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java                  8194129 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java             8194129 macosx-all,windows-all,linux-all
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java                                      6847593,8194045 macosx-all,windows-all,linux-all
@@ -674,6 +675,7 @@ java/awt/image/DrawImage/IncorrectDestinationOffset.java                        
 java/awt/image/DrawImage/IncorrectSourceOffset.java                                 8196086 windows-all
 java/awt/image/DrawImage/IncorrectUnmanagedImageRotatedClip.java                    8196087 windows-all
 java/awt/image/MultiResolutionImage/MultiResolutionDrawImageWithTransformTest.java  8198390 generic-all
+java/awt/image/multiresolution/MenuMultiresolutionIconTest.java                     8151301 macosx-all,windows-all (windows - nobug commit testing)
 java/awt/image/multiresolution/MultiresolutionIconTest.java                         8169187 macosx-all,linux-all,windows-all
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java              8204214,8193941 macosx-all,windows-all,linux-all
 java/awt/image/VolatileImage/BitmaskVolatileImage.java                              8133102 linux-all
@@ -831,6 +833,7 @@ sun/security/pkcs11/tls/TestKeyMaterial.java                                    
 sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                                     8209398 generic-all
 
 security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java    8224768 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/LuxTrustCA.java   8237888 generic-all
 
 ############################################################################
 
@@ -941,7 +944,7 @@ javax/swing/JPopupMenu/6987844/bug6987844.java                                  
 javax/swing/JPopupMenu/7156657/bug7156657.java                                      8171381 macosx-all,windows-all
 javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java                           8202880 linux-all,windows-all,macosx-all
 javax/swing/JRadioButton/8033699/bug8033699.java                                    8197552,8064920 macosx-all,windows-all,linux-all
-javax/swing/JRadioButton/8041561/bug8041561.java                                    8194941 linux-all
+javax/swing/JRadioButton/8041561/bug8041561.java                                    8194941,8233555 linux-all,macosx-all,windows-all (windows - nobug commit testing)
 javax/swing/JRadioButton/8075609/bug8075609.java                                    8197552 macosx-all,windows-all,linux-all
 javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java                 8197552 macosx-all,windows-all,linux-all
 javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java                         8221902 windows-all,linux-all (windows: commit testing)
@@ -1039,7 +1042,7 @@ javax/swing/text/TableView/TableViewLayoutTest.java                             
 javax/swing/text/Utilities/8134721/bug8134721.java                                  8199062 generic-all
 javax/swing/text/Utilities/8142966/SwingFontMetricsTest.java                        8199529 windows-all
 javax/swing/text/View/8014863/bug8014863.java                                       8072110 windows-all,linux-all
-javax/swing/text/html/CSS/4530474/bug4530474.java                                   8194941 linux-all
+javax/swing/text/html/CSS/4530474/bug4530474.java                                   8194941,8151301 linux-all,macosx-all,windows-all (windows - nobug commit testing)
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java                         8072110 windows-all,linux-all
 javax/swing/text/html/StyleSheet/BackgroundImage/BackgroundImagePosition.java       8198409 generic-all
 javax/swing/text/html/StyleSheet/bug4936917.java                                    8208569 macosx-all
@@ -1248,3 +1251,7 @@ javax/swing/JTextArea/4697612/bug4697612.java                                   
 javax/swing/LookAndFeel/8145547/DemandGTK.java                                      JBR-1977 linux-aarch64
 javax/swing/LookAndFeel/8146276/NimbusGlueTest.java                                 JBR-1977 linux-aarch64
 sanity/client/SwingSet/src/GridBagLayoutDemoTest.java                               JBR-1977 linux-aarch64
+
+jb/java/jcef/JCEFStartupTest.java                                                   JBR-1996,JBR-2094 macosx-all,linux-i386,windows-x86
+jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    generic-all
+jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java                       generic-all
