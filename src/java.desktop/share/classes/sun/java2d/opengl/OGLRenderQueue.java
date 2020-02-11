@@ -25,6 +25,7 @@
 
 package sun.java2d.opengl;
 
+import sun.awt.InvokeOnToolkitHelper;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
@@ -151,7 +152,7 @@ public class OGLRenderQueue extends RenderQueue {
     }
 
     private class QueueFlusher implements Runnable {
-        private boolean needsFlush;
+        private volatile boolean needsFlush;
         private Runnable task;
         private Error error;
         private final Thread thread;
@@ -165,28 +166,49 @@ public class OGLRenderQueue extends RenderQueue {
             thread.start();
         }
 
-        public synchronized void flushNow() {
-            // wake up the flusher
-            needsFlush = true;
-            notify();
+        public void flushNow() {
+            flushNow(null);
+        }
 
-            // wait for flush to complete
-            while (needsFlush) {
+        private void flushNow(Runnable task) {
+            Error err;
+            synchronized (this) {
+                if (task != null) {
+                    this.task = task;
+                }
+                // wake up the flusher
+                needsFlush = true;
+                notifyAll();
+
+                // wait for flush to complete
                 try {
-                    wait();
+                    wait(100);
                 } catch (InterruptedException e) {
                 }
+                err = error;
             }
-
+            if (needsFlush) {
+                // if we still wait for flush then avoid potential deadlock
+                err = InvokeOnToolkitHelper.invokeAndBlock(() -> {
+                    synchronized (QueueFlusher.this) {
+                        while (needsFlush) {
+                            try {
+                                QueueFlusher.this.wait();
+                            } catch (InterruptedException e) {
+                            }
+                        }
+                        return error;
+                    }
+                });
+            }
             // re-throw any error that may have occurred during the flush
-            if (error != null) {
-                throw error;
+            if (err != null) {
+                throw err;
             }
         }
 
-        public synchronized void flushAndInvokeNow(Runnable task) {
-            this.task = task;
-            flushNow();
+        public void flushAndInvokeNow(Runnable task) {
+            flushNow(task);
         }
 
         public synchronized void run() {
@@ -240,7 +262,7 @@ public class OGLRenderQueue extends RenderQueue {
                     task = null;
                     // allow the waiting thread to continue
                     needsFlush = false;
-                    notify();
+                    notifyAll();
                 }
             }
         }
