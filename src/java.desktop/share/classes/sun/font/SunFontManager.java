@@ -262,6 +262,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private Locale lastDefaultLocale;
 
     public static boolean noType1Font;
+    public static boolean versionCheckEnabled;
 
     /* Used to indicate required return type from toArray(..); */
     private static String[] STR_ARRAY = new String[0];
@@ -379,6 +380,9 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                case 4: longAddresses = false; break;
                default: throw new RuntimeException("Unexpected address size");
                }
+
+               versionCheckEnabled =
+                       !("true".equals(System.getProperty("java2d.font.noVersionCheck")));
 
                noType1Font =
                    "true".equals(System.getProperty("sun.java2d.noType1Font"));
@@ -3919,7 +3923,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         return jreFontMap.get(fileName);
     }
 
-    protected boolean parseFontVersion(String versionString, int[] version) {
+    protected static boolean parseFontVersion(String versionString, int[] version) {
         int i = 0;
         boolean foundDigit = false;
         version[0] = version[1] = version[2] = 0;
@@ -3942,7 +3946,12 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
             buf.append(versionString.charAt(i));
             i++;
         }
-        version[0] = Integer.parseInt(buf.toString());
+        try {
+            version[0] = Integer.parseInt(buf.toString());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+
         if (!foundDot) {
             return true;
         }
@@ -3962,7 +3971,11 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
             return true;
         }
 
-        version[1] = Integer.parseInt(buf.toString());
+        try {
+            version[1] = Integer.parseInt(buf.toString());
+        } catch (NumberFormatException e) {
+            return true;
+        }
 
         if (!foundDot) {
             return true;
@@ -3984,8 +3997,11 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         if (!foundDigit) {
             return true;
         }
-        version[2] = Integer.parseInt(buf.toString());
 
+        try {
+            version[2] = Integer.parseInt(buf.toString());
+        } catch (NumberFormatException e) {
+        }
         return true;
     }
 }

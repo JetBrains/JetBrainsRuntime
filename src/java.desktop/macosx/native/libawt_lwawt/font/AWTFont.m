@@ -1415,18 +1415,24 @@ Java_sun_font_CFontManager_getNativeFontVersion
 JNF_COCOA_ENTER(env);
     NSString *psNameStr = JNFJavaToNSString(env, psName);
     CTFontRef sFont = CTFontCreateWithName(psNameStr, 13, nil);
-    CFStringRef sFontPSName = CTFontCopyName(sFont, kCTFontPostScriptNameKey);
-    // CTFontCreateWithName always returns some font,
-    // so we need to check if it is right one
-    if ([psNameStr isEqualToString:sFontPSName]) {
-        CFStringRef fontVersionStr = CTFontCopyName(sFont,
-                                                    kCTFontVersionNameKey);
-        result = JNFNSToJavaString(env, fontVersionStr);
-        CFRelease(fontVersionStr);
-    }
+    if (sFont != NULL) {
+        CFStringRef sFontPSName = CTFontCopyName(sFont, kCTFontPostScriptNameKey);
 
-    CFRelease(sFontPSName);
-    CFRelease(sFont);
+        // CTFontCreateWithName always returns some font,
+        // so we need to check if it is right one
+        if (sFontPSName != NULL && [psNameStr isEqualToString:sFontPSName]) {
+            CFStringRef fontVersionStr = CTFontCopyName(sFont,
+                                                        kCTFontVersionNameKey);
+            if (fontVersionStr != NULL) {
+                result = JNFNSToJavaString(env, fontVersionStr);
+                CFRelease(fontVersionStr);
+            }
+        }
+        if (sFontPSName != NULL) {
+            CFRelease(sFontPSName);
+        }
+        CFRelease(sFont);
+    }
 JNF_COCOA_EXIT(env);
     return result;
 }

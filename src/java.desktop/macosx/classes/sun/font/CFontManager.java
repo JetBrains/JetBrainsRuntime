@@ -146,7 +146,6 @@ public final class CFontManager extends SunFontManager {
                 new File(jreFontDirName).list(getTrueTypeFilter()));
         if (files != null) {
             PlatformLogger logger = FontUtilities.getLogger();
-            boolean versionCheckEnabled = !("true".equals(System.getProperty("java2d.font.noVersionCheck")));
             int [] ver = new int[3];
             for (String f : files) {
                 boolean loadFont = true;
