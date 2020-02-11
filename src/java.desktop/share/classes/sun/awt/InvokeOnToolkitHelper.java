@@ -1,5 +1,7 @@
 package sun.awt;
 
+import sun.font.FontUtilities;
+
 import java.awt.*;
 import java.awt.event.InvocationEvent;
 import java.security.AccessController;
@@ -36,12 +38,12 @@ public class InvokeOnToolkitHelper {
      * <p>
      * If Toolkit posts invocation events caused by the callable, those events are intercepted and dispatched on EDT out of order.
      * <p>
-     * When called on non-EDT, the method invokes the callable in place.
+     * When called on non-EDT, or on non-macOS, the method invokes the callable in place.
      */
     public static <T> T invokeAndBlock(Callable<T> callable) {
         if (callable == null) return null;
 
-        if (EventQueue.isDispatchThread()) {
+        if (FontUtilities.isMacOSX && EventQueue.isDispatchThread()) {
             InvokeOnToolkitHelper invoker = getInstance(Thread.currentThread());
             if (invoker != null) {
                 return invoker.invoke(callable);
