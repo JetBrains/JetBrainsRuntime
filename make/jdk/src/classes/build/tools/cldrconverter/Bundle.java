@@ -297,7 +297,6 @@ class Bundle {
         }
 
         // First, weed out any empty timezone or metazone names from myMap.
-        // Fill in any missing abbreviations if locale is "en".
         for (Iterator<String> it = myMap.keySet().iterator(); it.hasNext();) {
             String key = it.next();
             if (key.startsWith(CLDRConverter.TIMEZONE_ID_PREFIX)
@@ -309,10 +308,6 @@ class Bundle {
                     // Remove those from the map.
                     it.remove();
                     continue;
-                }
-
-                if (id.equals("en")) {
-                    fillInJREs(key, nameMap);
                 }
             }
         }
@@ -624,42 +619,6 @@ class Bundle {
             }
         }
         return null;
-    }
-
-    static List<Object[]> jreTimeZoneNames = Arrays.asList(TimeZoneNames.getContents());
-    private void fillInJREs(String key, Map<String, String> map) {
-        String tzid = null;
-
-        if (key.startsWith(CLDRConverter.METAZONE_ID_PREFIX)) {
-            // Look for tzid
-            String meta = key.substring(CLDRConverter.METAZONE_ID_PREFIX.length());
-            if (meta.equals("GMT")) {
-                tzid = meta;
-            } else {
-                for (String tz : CLDRConverter.handlerMetaZones.keySet()) {
-                    if (CLDRConverter.handlerMetaZones.get(tz).equals(meta)) {
-                        tzid = tz;
-                        break;
-                    }
-                }
-            }
-        } else {
-            tzid = key.substring(CLDRConverter.TIMEZONE_ID_PREFIX.length());
-        }
-
-        if (tzid != null) {
-            for (Object[] jreZone : jreTimeZoneNames) {
-                if (jreZone[0].equals(tzid)) {
-                    for (int i = 0; i < ZONE_NAME_KEYS.length; i++) {
-                        if (map.get(ZONE_NAME_KEYS[i]) == null) {
-                            String[] jreNames = (String[])jreZone[1];
-                            map.put(ZONE_NAME_KEYS[i], jreNames[i]);
-                        }
-                    }
-                    break;
-                }
-            }
-        }
     }
 
     private void convert(CalendarType calendarType, char cldrLetter, int count, StringBuilder sb) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -4232,9 +4232,15 @@ public final class DateTimeFormatterBuilder {
                 char nextNextChar = text.charAt(position + 1);
                 if (context.charEquals(nextChar, 'U') && context.charEquals(nextNextChar, 'T')) {
                     if (length >= position + 3 && context.charEquals(text.charAt(position + 2), 'C')) {
-                        return parseOffsetBased(context, text, position, position + 3, OffsetIdPrinterParser.INSTANCE_ID_ZERO);
+                        // There are localized zone texts that start with "UTC", e.g.
+                        // "UTC\u221210:00" (MINUS SIGN instead of HYPHEN-MINUS) in French.
+                        // Exclude those ZoneText cases.
+                        if (!(this instanceof ZoneTextPrinterParser)) {
+                            return parseOffsetBased(context, text, position, position + 3, OffsetIdPrinterParser.INSTANCE_ID_ZERO);
+                        }
+                    } else {
+                        return parseOffsetBased(context, text, position, position + 2, OffsetIdPrinterParser.INSTANCE_ID_ZERO);
                     }
-                    return parseOffsetBased(context, text, position, position + 2, OffsetIdPrinterParser.INSTANCE_ID_ZERO);
                 } else if (context.charEquals(nextChar, 'G') && length >= position + 3 &&
                         context.charEquals(nextNextChar, 'M') && context.charEquals(text.charAt(position + 2), 'T')) {
                     if (length >= position + 4 && context.charEquals(text.charAt(position + 3), '0')) {
