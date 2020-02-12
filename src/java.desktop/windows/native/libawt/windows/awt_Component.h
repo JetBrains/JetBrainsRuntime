@@ -69,15 +69,6 @@ const UINT MAX_ACP_STR_LEN = 7; // ANSI CP identifiers are no longer than this
 const int ALL_MK_BUTTONS = MK_LBUTTON|MK_MBUTTON|MK_RBUTTON;
 const int X_BUTTONS = MK_XBUTTON1|MK_XBUTTON2;
 
-// The allowable difference between coordinates of the WM_TOUCH event and the
-// corresponding WM_LBUTTONDOWN/WM_LBUTTONUP event letting to associate these
-// events, when their coordinates are slightly different.
-const int TOUCH_MOUSE_COORDS_DELTA = 10;
-const long TOUCH_LONG_PRESS = 500;
-const int TOUCH_BEGIN = 2;
-const int TOUCH_UPDATE = 3;
-const int TOUCH_END = 4;
-
 // Whether to check for embedded frame and adjust location
 #define CHECK_EMBEDDED 0
 #define DONT_CHECK_EMBEDDED 1
@@ -794,10 +785,8 @@ private:
     UINT m_mouseButtonClickAllowed;
 
     BOOL m_isTouchScroll;
-    BOOL m_isLongPress;
     POINT m_touchBeginPoint;
     POINT m_lastTouchPoint;
-    jlong m_touchBeginTime;
 
     BOOL m_bSubclassed;
     BOOL m_bPauseDestroy;
