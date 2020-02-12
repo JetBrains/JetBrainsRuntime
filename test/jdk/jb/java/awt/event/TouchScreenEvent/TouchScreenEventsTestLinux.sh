@@ -25,24 +25,20 @@
 # password for sudo
 PASSWORD=${BUPWD}
 
-echo "Preparing env for the test:"
-
-echo "> sudo groupadd uinput"
-echo ${PASSWORD} | sudo -S groupadd uinput
-echo "result=$?"
-
-echo "> sudo usermod -a -G uinput `whoami`"
-echo ${PASSWORD} | sudo -S usermod -a -G uinput `whoami`
-echo "result=$?"
-
-echo "> sudo chmod g+rw /dev/uinput"
-echo ${PASSWORD} | sudo -S chmod g+rw /dev/uinput
-echo "result=$?"
-
-echo "> sudo chgrp uinput /dev/uinput"
-echo ${PASSWORD} | sudo -S chgrp uinput /dev/uinput
+echo "Allow current user write to /dev/uinput:"
+echo "> sudo chown `whoami` /dev/uinput"
+echo ${PASSWORD} | sudo -S chown `whoami` /dev/uinput
 echo "result=$?"
 
 echo "Launching TouchScreenEventsTest.java:"
 echo "> $TESTJAVA/bin/java $TESTVMOPTS -cp $TESTCLASSES TouchScreenEventsTest"
 $TESTJAVA/bin/java $TESTVMOPTS -cp $TESTCLASSES TouchScreenEventsTest
+result=$?
+echo "result=$result"
+
+echo "Restore permissions for /dev/uinput:"
+echo "> sudo chown root /dev/uinput"
+echo ${PASSWORD} | sudo -S chown root /dev/uinput
+echo "result=$?"
+
+exit $result
