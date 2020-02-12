@@ -534,7 +534,7 @@ public:
     POINT TouchCoordsToLocal(LONG x, LONG y);
     void SendMouseWheelEventFromTouch(POINT p, jint modifiers, jint scrollType, jint pixels);
     void SendMouseEventFromTouch(jint id, POINT p, jint modifiers, jint clickCount, jint button);
-    void SendButtonPressEventFromTouch(POINT p, jint modifiers, jint button);
+    void SendButtonPressEventFromTouch(POINT p, jint modifiers);
 
     // NB: 64-bit: vkey is wParam of the message, but other API's take
     // vkey parameters of type UINT, so we do the cast before dispatching.

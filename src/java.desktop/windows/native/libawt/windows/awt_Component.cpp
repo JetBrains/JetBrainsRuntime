@@ -2426,18 +2426,17 @@ void AwtComponent::SendMouseWheelEventFromTouch(POINT p, jint modifiers, jint sc
 
 void AwtComponent::SendMouseEventFromTouch(jint id, POINT p, jint modifiers, jint clickCount, jint button)
 {
-    const jboolean popupTrigger = (button == java_awt_event_MouseEvent_BUTTON3) ? JNI_TRUE : JNI_FALSE;
     SendMouseEvent(id, ::JVM_CurrentTimeMillis(NULL, 0), p.x, p.y,
-                   modifiers, clickCount, popupTrigger, button,
-                   /*msg*/ nullptr, /*causedByTouchEvent*/ TRUE);
+                   modifiers, clickCount, /*popupTrigger*/ JNI_FALSE,
+                   button, /*msg*/ nullptr, /*causedByTouchEvent*/ TRUE);
 }
 
-void AwtComponent::SendButtonPressEventFromTouch(POINT p, jint modifiers, jint button)
+void AwtComponent::SendButtonPressEventFromTouch(POINT p, jint modifiers)
 {
     SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_MOVED, p, modifiers, 0, java_awt_event_MouseEvent_NOBUTTON);
-    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_PRESSED, p, modifiers, 1, button);
-    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_RELEASED, p, modifiers, 1, button);
-    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_CLICKED, p, modifiers, 1, button);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_PRESSED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_RELEASED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_CLICKED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
 }
 
 void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
@@ -2451,12 +2450,10 @@ void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
     const POINT p = TouchCoordsToLocal(touchInput.x, touchInput.y);
 
     if (touchInput.dwFlags & TOUCHEVENTF_DOWN) {
-        DTRACE_PRINTLN2("Touch Begin at: %i,%i", p.x, p.y);
         m_touchBeginPoint = p;
         m_isTouchScroll = FALSE;
         SendMouseWheelEventFromTouch(p, modifiers, sun_awt_event_TouchEvent_TOUCH_BEGIN, 1);
     } else if (touchInput.dwFlags & TOUCHEVENTF_MOVE) {
-        DTRACE_PRINTLN2("Touch Update at: %i,%i", p.x, p.y);
         if (!m_isTouchScroll && IsInsideTouchClickBoundaries(p)) {
             return;
         }
@@ -2464,24 +2461,20 @@ void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
 
         const jint deltaY = ScaleDownY(static_cast<int>(m_lastTouchPoint.y - p.y));
         if (deltaY != 0) {
-            DTRACE_PRINTLN1("Vertical touch scroll, delta in pixels: %i", deltaY);
             const jint scrollModifiers = modifiers & ~java_awt_event_InputEvent_SHIFT_DOWN_MASK;
             SendMouseWheelEventFromTouch(p, scrollModifiers, sun_awt_event_TouchEvent_TOUCH_UPDATE, deltaY);
         }
         
         const jint deltaX = ScaleDownX(static_cast<int>(m_lastTouchPoint.x - p.x));
         if (deltaX != 0) {
-            DTRACE_PRINTLN1("Horizntal touch scroll, delta in pixels: %i", deltaX);
             const jint scrollModifiers = modifiers | java_awt_event_InputEvent_SHIFT_DOWN_MASK;
             SendMouseWheelEventFromTouch(p, scrollModifiers, sun_awt_event_TouchEvent_TOUCH_UPDATE, deltaX);
         }
     } else if (touchInput.dwFlags & TOUCHEVENTF_UP) {
-        DTRACE_PRINTLN2("Touch End at: %i,%i", p.x, p.y);
         SendMouseWheelEventFromTouch(p, modifiers, sun_awt_event_TouchEvent_TOUCH_END, 1);
 
         if (!m_isTouchScroll) {
-            DTRACE_PRINTLN2("Touch Press at: %i,%i", p.x, p.y);
-            SendButtonPressEventFromTouch(p, modifiers, java_awt_event_MouseEvent_BUTTON1);
+            SendButtonPressEventFromTouch(p, modifiers);
         }
     }
 
