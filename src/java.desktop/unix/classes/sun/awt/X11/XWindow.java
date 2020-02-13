@@ -47,6 +47,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     private static PlatformLogger eventLog = PlatformLogger.getLogger("sun.awt.X11.event.XWindow");
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.X11.focus.XWindow");
     private static PlatformLogger keyEventLog = PlatformLogger.getLogger("sun.awt.X11.kye.XWindow");
+    private static PlatformLogger touchEventLog = PlatformLogger.getLogger("sun.awt.event.TouchEvent");
   /* If a motion comes in while a multi-click is pending,
    * allow a smudge factor so that moving the mouse by a small
    * amount does not wipe out the multi-click state variables.
@@ -62,6 +63,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     // all touch scrolls are measured in pixels
     private static int touchBeginX = 0, touchBeginY = 0;
     private static int trackingId = 0;
+    private static long lastTouchUpdateTime = 0;
     private static boolean isTouchScroll = false;
 
     // used to check if we need to re-create surfaceData.
@@ -805,29 +807,53 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
 
         switch (dev.get_evtype()) {
             case XConstants.XI_TouchBegin:
+                if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                    touchEventLog.finest("Touch Begin at: " + x + ", " + y);
+                }
                 isTouchScroll = false;
                 touchBeginX = x;
                 touchBeginY = y;
+                lastTouchUpdateTime = jWhen;
                 sendWheelEventFromTouch(dev, jWhen, scrollModifiers, touchBeginX, touchBeginY, TouchEvent.TOUCH_BEGIN, 1);
                 break;
             case XConstants.XI_TouchUpdate:
+                if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                    touchEventLog.finest("Touch Update at: " + x + ", " + y);
+                }
+                lastTouchUpdateTime = jWhen;
+
                 if (!isTouchScroll && isInsideTouchClickBoundaries(x, y)) {
                     return;
                 }
                 isTouchScroll = true;
 
-                if (lastY - y != 0) {
-                    sendWheelEventFromTouch(dev, jWhen, scrollModifiers, x, y, TouchEvent.TOUCH_UPDATE, lastY - y);
+                int deltaY = lastY - y;
+                if (deltaY != 0) {
+                    if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                        touchEventLog.finest("Vertical touch scroll, delta: " + deltaY);
+                    }
+                    sendWheelEventFromTouch(dev, jWhen, scrollModifiers, x, y, TouchEvent.TOUCH_UPDATE, deltaY);
                 }
-                // horizontal scroll
-                if (lastX - x != 0) {
+
+                int deltaX = lastX - x;
+                if (deltaX != 0) {
+                    if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                        touchEventLog.finest("Horizontal touch scroll, delta: " + deltaX);
+                    }
                     int horizontalScrollMods = scrollModifiers | InputEvent.SHIFT_DOWN_MASK;
-                    sendWheelEventFromTouch(dev, jWhen, horizontalScrollMods, x, y, TouchEvent.TOUCH_UPDATE, lastX - x);
+                    sendWheelEventFromTouch(dev, jWhen, horizontalScrollMods, x, y, TouchEvent.TOUCH_UPDATE, deltaX);
                 }
                 break;
             case XConstants.XI_TouchEnd:
+                if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                    touchEventLog.finest("Touch End at: " + x + ", " + y);
+                }
                 sendWheelEventFromTouch(dev, jWhen, scrollModifiers, x, y, TouchEvent.TOUCH_END, 1);
+
                 if (!isTouchScroll) {
+                    if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                        touchEventLog.finest("Touch Press at: " + x + ", " + y);
+                    }
                     sendButtonPressFromTouch(dev, jWhen, modifiers, touchBeginX, touchBeginY);
                 }
 
@@ -850,7 +876,16 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     }
 
     private static boolean isTouchReleased() {
-        return trackingId == 0;
+        if (trackingId == 0) {
+            return true;
+        }
+
+        // recovery from situation when TOUCH_END event didn't occurred
+        long msFromLastUpdate = Math.abs(System.currentTimeMillis() - lastTouchUpdateTime);
+        if (msFromLastUpdate >= TouchEvent.NO_UPDATE_TIMEOUT) {
+            touchEventLog.warning("Release touch processing, milliseconds from last update: " + msFromLastUpdate);
+        }
+        return msFromLastUpdate >= TouchEvent.NO_UPDATE_TIMEOUT;
     }
 
     private void sendButtonPressFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y) {
