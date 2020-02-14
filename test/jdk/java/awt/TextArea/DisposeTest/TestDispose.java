@@ -1,4 +1,20 @@
 /*
+ * Copyright 2000-2020 JetBrains s.r.o.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
  * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -38,11 +54,14 @@ import java.awt.Frame;
 import java.awt.TextArea;
 import java.awt.Robot;
 import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 public class TestDispose {
+
+    public static final int TIMEOUT = 60;
 
     public static Frame frame = null;
     public static TextArea textArea = null;
@@ -57,33 +76,33 @@ public class TestDispose {
             ex.printStackTrace();
             throw new RuntimeException("Unexpected failure");
         }
+        try {
+            SwingUtilities.invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    frame = new JFrame("Test");
 
+                    textArea = new TextArea("editable textArea");
+                    textArea.setEditable(true);
+                    // textArea.setEditable(false); // this testcase passes if textArea is non-editable
 
-        SwingUtilities.invokeAndWait(new Runnable() {
-            @Override
-            public void run() {
-                frame = new JFrame("Test");
+                    frame.setLayout(new FlowLayout());
+                    frame.add(textArea);
 
-                textArea = new TextArea("editable textArea");
-                textArea.setEditable(true);
-                // textArea.setEditable(false); // this testcase passes if textArea is non-editable
-
-                frame.setLayout(new FlowLayout());
-                frame.add(textArea);
-
-                frame.pack();
-                frame.setVisible(true);
-            }
-        });
-        robot.waitForIdle();
-
-        SwingUtilities.invokeAndWait(new Runnable() {
-            @Override
-            public void run() {
-                frame.dispose();
-            }
-        });
-        robot.waitForIdle();
+                    frame.pack();
+                    frame.setVisible(true);
+                }
+            });
+            robot.waitForIdle();
+        } finally {
+            SwingUtilities.invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    frame.dispose();
+                }
+            });
+            robot.waitForIdle();
+        }
     }
 
     public static void main(String[] args) throws Exception{
@@ -94,10 +113,21 @@ public class TestDispose {
                 }
             });
 
-            System.out.println(System.getProperty("java.home")+"/bin/java TestDispose workprocess");
-            worker = Runtime.getRuntime().exec(System.getProperty("java.home")+"/bin/java TestDispose workprocess");
-            worker.waitFor();
-            return;
+            System.out.println(System.getProperty("java.home") + "/bin/java -cp "
+                    + System.getProperty("java.class.path") + " " + TestDispose.class.getName() + " workprocess");
+            worker = new ProcessBuilder(System.getProperty("java.home")+"/bin/java",
+                    "-cp", System.getProperty("java.class.path"), TestDispose.class.getName(), "workprocess")
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .start();
+            if(worker.waitFor(TIMEOUT, TimeUnit.SECONDS)) {
+                if(worker.exitValue() != 0) {
+                    throw new RuntimeException("TEST ERROR: subprocess has finished abnormally");
+                }
+                System.out.println("TEST PASSED");
+                return;
+            } else {
+                throw new RuntimeException("TEST FAILED: subprocess has not finished for " + TIMEOUT + " sec");
+            }
         }
 
         TestDispose app = new TestDispose();

@@ -197,7 +197,6 @@ java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java         
 java/awt/FontMetrics/FontCrash.java                                                 8198336 windows-all
 java/awt/FontMetrics/MaxAdvanceIsMax.java                                           8221304 solaris-all,macosx-all
 java/awt/Frame/DisposeParentGC/DisposeParentGC.java                                 8079786,8055833 macosx-all,linux-all
-java/awt/Frame/DisposeStressTest/DisposeStressTest.html                             JBR-1905 macosx-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/FramesGC/FramesGC.java                                               8079069 macosx-all
 java/awt/Frame/FrameLocation/FrameLocation.java                                     8019803 macosx-all
@@ -568,10 +567,8 @@ java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java         
 java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java          8061235,8159592,8134231 macosx-all,windows-all,linux-all
 java/awt/SplashScreen/MultiResolutionSplash/unix/UnixMultiResolutionSplashTest.java 8203004 linux-all
 java/awt/TextArea/AutoScrollOnSelectAndAppend/AutoScrollOnSelectAndAppend.java      8213120 macosx-all,linux-all, windows-all (windows, linux - time out)
-java/awt/TextArea/DisposeTest/TestDispose.java                                      JBR-1905 generic-all
 java/awt/TextArea/TextAreaScrolling/TextAreaScrolling.java                          8196300 windows-all
 java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java               8169533 macosx-all,windows-all
-java/awt/TextField/DisposeTest/TestDispose.java                                     JBR-1905 macosx-all
 java/awt/Toolkit/DesktopProperties/rfe4758438.java                                  8193547 linux-all
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java                       8208514 windows-all
 java/awt/Toolkit/RealSync/Test.java                                                 6849383 generic-all

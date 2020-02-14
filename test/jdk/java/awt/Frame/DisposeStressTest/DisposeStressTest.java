@@ -83,6 +83,7 @@ public class DisposeStressTest extends Applet
    public void start ()
     {
         for (int i = 0; i < 1000; i++) {
+            System.out.println("i = " + i);
             Frame f = new Frame();
             f.setBounds(10, 10, 10, 10);
             f.show();

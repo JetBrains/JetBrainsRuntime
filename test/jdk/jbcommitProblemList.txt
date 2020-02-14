@@ -32,6 +32,7 @@ java/awt/Focus/RequestFocusAndHideTest/RequestFocusAndHideTest.java             
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                             nobug linux-all,macosx-all,windows-all reproduced with Adopt, OpenJDK
 java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThreadsTest.java nobug macosx-all,windows-all
 java/awt/Frame/8158918/SetExtendedState.java                                                nobug linux-all
+java/awt/Frame/DisposeStressTest/DisposeStressTest.html                                     JBR-1905 macosx-all
 java/awt/Frame/FrameLocation/FrameLocation.java                                             nobug linux-all
 java/awt/Frame/FrameSize/TestFrameSize.java                                                 nobug linux-all,mac-osx
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java                               nobug linux-all,windows-all
