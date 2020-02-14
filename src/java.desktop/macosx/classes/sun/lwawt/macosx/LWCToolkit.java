@@ -472,7 +472,7 @@ public final class LWCToolkit extends LWToolkit {
     public Insets getScreenInsets(final GraphicsConfiguration gc) {
         CGraphicsDevice gd = ((CGraphicsConfig) gc).getDevice();
         // Avoid deadlock with input methods
-        return InvokeOnToolkitHelper.invokeAndBlock(gd::getScreenInsets);
+        return AWTThreading.executeWaitToolkit(gd::getScreenInsets);
     }
 
     @Override
@@ -726,7 +726,7 @@ public final class LWCToolkit extends LWToolkit {
         final long mediator = createAWTRunLoopMediator();
 
         InvocationEvent invocationEvent =
-                new InvocationEvent(component,
+                AWTThreading.createAndTrackInvocationEvent(component,
                         runnable,
                         () -> {
                             if (mediator != 0) {
@@ -735,17 +735,16 @@ public final class LWCToolkit extends LWToolkit {
                         },
                         true);
 
-        if (!InvokeOnToolkitHelper.offer(invocationEvent)) {
-            if (component != null) {
-                AppContext appContext = SunToolkit.targetToAppContext(component);
-                SunToolkit.postEvent(appContext, invocationEvent);
+        if (component != null) {
+            AppContext appContext = SunToolkit.targetToAppContext(component);
+            SunToolkit.postEvent(appContext, invocationEvent);
 
-                // 3746956 - flush events from PostEventQueue to prevent them from getting stuck and causing a deadlock
-                SunToolkit.flushPendingEvents(appContext);
-            } else {
-                // This should be the equivalent to EventQueue.invokeAndWait
-                ((LWCToolkit) Toolkit.getDefaultToolkit()).getSystemEventQueueForInvokeAndWait().postEvent(invocationEvent);
-            }
+            // 3746956 - flush events from PostEventQueue to prevent them from getting stuck and causing a deadlock
+            SunToolkit.flushPendingEvents(appContext);
+        }
+        else {
+            // This should be the equivalent to EventQueue.invokeAndWait
+            ((LWCToolkit)Toolkit.getDefaultToolkit()).getSystemEventQueueForInvokeAndWait().postEvent(invocationEvent);
         }
 
         doAWTRunLoop(mediator, nonBlockingRunLoop);
