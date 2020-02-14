@@ -443,6 +443,26 @@ public:
   }
 #endif // !AARCH64
 
+  void fpush(FloatRegisterSet reg_set) {
+    fstmdbd(SP, reg_set, writeback);
+  }
+
+  void fpop(FloatRegisterSet reg_set) {
+    fldmiad(SP, reg_set, writeback);
+  }
+
+  void fpush_hardfp(FloatRegisterSet reg_set) {
+#ifndef __SOFTFP__
+    fpush(reg_set);
+#endif
+  }
+
+  void fpop_hardfp(FloatRegisterSet reg_set) {
+#ifndef __SOFTFP__
+    fpop(reg_set);
+#endif
+  }
+
   // Order access primitives
   enum Membar_mask_bits {
     StoreStore = 1 << 3,

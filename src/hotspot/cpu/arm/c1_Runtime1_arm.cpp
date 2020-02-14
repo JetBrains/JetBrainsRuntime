@@ -270,7 +270,7 @@ static OopMap* save_live_registers(StubAssembler* sasm, bool save_fpu_registers 
   __ push(RegisterSet(FP) | RegisterSet(LR));
   __ push(RegisterSet(R0, R6) | RegisterSet(R8, R10) | R12 | altFP_7_11);
   if (save_fpu_registers) {
-    __ fstmdbd(SP, FloatRegisterSet(D0, fpu_save_size / 2), writeback);
+    __ fpush(FloatRegisterSet(D0, fpu_save_size / 2));
   } else {
     __ sub(SP, SP, fpu_save_size * wordSize);
   }
@@ -316,7 +316,7 @@ static void restore_live_registers(StubAssembler* sasm,
   }
 #else
   if (restore_fpu_registers) {
-    __ fldmiad(SP, FloatRegisterSet(D0, fpu_save_size / 2), writeback);
+    __ fpop(FloatRegisterSet(D0, fpu_save_size / 2));
     if (!restore_R0) {
       __ add(SP, SP, (R1_offset - fpu_save_size) * wordSize);
     }
