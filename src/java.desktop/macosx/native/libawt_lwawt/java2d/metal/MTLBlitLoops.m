@@ -140,7 +140,7 @@ void fillTxQuad(
 
 //#define TRACE_drawTex2Tex
 
-static void drawTex2Tex(MTLContext *mtlc,
+void drawTex2Tex(MTLContext *mtlc,
                         id<MTLTexture> src, id<MTLTexture> dst,
                         jboolean isSrcOpaque, jboolean isDstOpaque,
                         jint sx1, jint sy1, jint sx2, jint sy2,
