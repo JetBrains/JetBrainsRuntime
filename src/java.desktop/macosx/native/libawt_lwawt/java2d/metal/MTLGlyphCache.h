@@ -46,7 +46,6 @@ typedef struct {
     jint          height;
     jint          cellWidth;
     jint          cellHeight;
-    jboolean      isFull;
     MTLFlushFunc     *Flush;
 } MTLGlyphCacheInfo;
 
@@ -77,6 +76,8 @@ MTLGlyphCache_Init(jint width, jint height,
                      MTLFlushFunc *func);
 MTLCacheCellInfo *
 MTLGlyphCache_AddGlyph(MTLGlyphCacheInfo *cache, struct GlyphInfo *glyph);
+bool
+MTLGlyphCache_IsCacheFull(MTLGlyphCacheInfo *cache, GlyphInfo *glyph);
 void
 MTLGlyphCache_Invalidate(MTLGlyphCacheInfo *cache);
 void

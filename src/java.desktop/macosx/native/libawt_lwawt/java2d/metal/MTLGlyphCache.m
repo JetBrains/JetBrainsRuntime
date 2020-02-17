@@ -81,7 +81,6 @@ MTLGlyphCache_Init(jint width, jint height,
     gcinfo->height = height;
     gcinfo->cellWidth = cellWidth;
     gcinfo->cellHeight = cellHeight;
-    gcinfo->isFull = JNI_FALSE;
     gcinfo->Flush = func;
 
     return gcinfo;
@@ -118,132 +117,83 @@ MTLGlyphCache_AddGlyph(MTLGlyphCacheInfo *cache, GlyphInfo *glyph)
         return NULL;
     }
 
-    if (!cache->isFull) {
-        jint x, y;
+    jint x, y;
 
-        if (cache->head == NULL) {
+    if (cache->head == NULL) {
+        x = 0;
+        y = 0;
+    } else {
+        x = cache->tail->x + cache->cellWidth;
+        y = cache->tail->y;
+        if ((x + cache->cellWidth) > cache->width) {
             x = 0;
-            y = 0;
-        } else {
-            x = cache->tail->x + cache->cellWidth;
-            y = cache->tail->y;
-            if ((x + cache->cellWidth) > cache->width) {
-                x = 0;
-                y += cache->cellHeight;
-                if ((y + cache->cellHeight) > cache->height) {
-                    // no room left for a new cell; we'll go through the
-                    // isFull path below
-                    cache->isFull = JNI_TRUE;
-                }
-            }
-        }
-
-        if (!cache->isFull) {
-            // create new CacheCellInfo
-            cellinfo = (MTLCacheCellInfo *)malloc(sizeof(MTLCacheCellInfo));
-            if (cellinfo == NULL) {
-                J2dTraceLn(J2D_TRACE_ERROR, "could not allocate CellInfo");
-                return NULL;
-            }
-
-            cellinfo->cacheInfo = cache;
-            cellinfo->glyphInfo = glyph;
-            cellinfo->timesRendered = 0;
-            cellinfo->x = x;
-            cellinfo->y = y;
-            cellinfo->leftOff = 0;
-            cellinfo->rightOff = 0;
-            cellinfo->tx1 = (jfloat)cellinfo->x / cache->width;
-            cellinfo->ty1 = (jfloat)cellinfo->y / cache->height;
-            cellinfo->tx2 = cellinfo->tx1 + ((jfloat)w / cache->width);
-            cellinfo->ty2 = cellinfo->ty1 + ((jfloat)h / cache->height);
-
-            if (cache->head == NULL) {
-                // initialize the head cell
-                cache->head = cellinfo;
-            } else {
-                // update existing tail cell
-                cache->tail->next = cellinfo;
-            }
-
-            // add the new cell to the end of the list
-            cache->tail = cellinfo;
-            cellinfo->next = NULL;
-            cellinfo->nextGCI = NULL;
+            y += cache->cellHeight;
         }
     }
 
-    if (cache->isFull) {
-        /**
-         * Search through the cells, and for each cell:
-         *   - reset its timesRendered counter to zero
-         *   - toss it to the end of the list
-         * Eventually we will find a cell that either:
-         *   - is empty, or
-         *   - has been used less than the threshold
-         * When we find such a cell, we will:
-         *   - break out of the loop
-         *   - invalidate any glyph that may be residing in that cell
-         *   - update the cell with the new resident glyph's information
-         *
-         * The goal here is to keep the glyphs rendered most often in the
-         * cache, while younger glyphs hang out near the end of the list.
-         * Those young glyphs that have only been used a few times will move
-         * towards the head of the list and will eventually be kicked to
-         * the curb.
-         *
-         * In the worst-case scenario, all cells will be occupied and they
-         * will all have timesRendered counts above the threshold, so we will
-         * end up iterating through all the cells exactly once.  Since we are
-         * resetting their counters along the way, we are guaranteed to
-         * eventually hit the original "head" cell, whose counter is now zero.
-         * This avoids the possibility of an infinite loop.
-         */
-
-        do {
-            // the head cell will be updated on each iteration
-            MTLCacheCellInfo *current = cache->head;
-
-            if ((current->glyphInfo == NULL) ||
-                (current->timesRendered < TIMES_RENDERED_THRESHOLD))
-            {
-                // all bow before the chosen one (we will break out of the
-                // loop now that we've found an appropriate cell)
-                cellinfo = current;
-            }
-
-            // move cell to the end of the list; update existing head and
-            // tail pointers
-            cache->head = current->next;
-            cache->tail->next = current;
-            cache->tail = current;
-            current->next = NULL;
-            current->timesRendered = 0;
-        } while (cellinfo == NULL);
-
-        if (cellinfo->glyphInfo != NULL) {
-            // flush in case any pending vertices are depending on the
-            // glyph that is about to be kicked out
-            if (cache->Flush != NULL) {
-                cache->Flush();
-            }
-
-            // if the cell is occupied, notify the base glyph that the
-            // cached version for this cache is about to be kicked out
-            MTLGlyphCache_RemoveCellInfo(cellinfo->glyphInfo, cellinfo);
-        }
-
-        // update cellinfo with glyph's occupied region information
-        cellinfo->glyphInfo = glyph;
-        cellinfo->tx2 = cellinfo->tx1 + ((jfloat)w / cache->width);
-        cellinfo->ty2 = cellinfo->ty1 + ((jfloat)h / cache->height);
+    // create new CacheCellInfo
+    cellinfo = (MTLCacheCellInfo *)malloc(sizeof(MTLCacheCellInfo));
+    if (cellinfo == NULL) {
+        J2dTraceLn(J2D_TRACE_ERROR, "could not allocate CellInfo");
+        return NULL;
     }
+
+    cellinfo->cacheInfo = cache;
+    cellinfo->glyphInfo = glyph;
+    cellinfo->timesRendered = 0;
+    cellinfo->x = x;
+    cellinfo->y = y;
+    cellinfo->leftOff = 0;
+    cellinfo->rightOff = 0;
+    cellinfo->tx1 = (jfloat)cellinfo->x / cache->width;
+    cellinfo->ty1 = (jfloat)cellinfo->y / cache->height;
+    cellinfo->tx2 = cellinfo->tx1 + ((jfloat)w / cache->width);
+    cellinfo->ty2 = cellinfo->ty1 + ((jfloat)h / cache->height);
+
+    if (cache->head == NULL) {
+        // initialize the head cell
+        cache->head = cellinfo;
+    } else {
+        // update existing tail cell
+        cache->tail->next = cellinfo;
+    }
+
+    // add the new cell to the end of the list
+    cache->tail = cellinfo;
+    cellinfo->next = NULL;
+    cellinfo->nextGCI = NULL;
 
     // add cache cell to the glyph's cells list
     MTLGlyphCache_AddCellInfo(glyph, cellinfo);
     return cellinfo;
 }
 
+
+bool
+MTLGlyphCache_IsCacheFull(MTLGlyphCacheInfo *cache, GlyphInfo *glyph)
+{
+    jint w = glyph->width;
+    jint h = glyph->height;
+
+    J2dTraceLn(J2D_TRACE_INFO, "MTLGlyphCache_IsCacheFull");
+
+    jint x, y;
+
+    if (cache->head == NULL) {
+        return JNI_FALSE;
+    } else {
+        x = cache->tail->x + cache->cellWidth;
+        y = cache->tail->y;
+        if ((x + cache->cellWidth) > cache->width) {
+            x = 0;
+            y += cache->cellHeight;
+            if ((y + cache->cellHeight) > cache->height) {
+                return JNI_TRUE;
+            }
+        }
+    }
+    return JNI_FALSE;
+}
 /**
  * Invalidates all cells in the cache.  Note that this method does not
  * attempt to compact the cache in any way; it just invalidates any cells
