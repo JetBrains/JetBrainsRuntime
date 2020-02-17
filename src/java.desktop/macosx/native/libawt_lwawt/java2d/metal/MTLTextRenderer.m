@@ -207,6 +207,7 @@ MTLTR_InitGlyphCache(MTLContext *mtlc)
 id<MTLTexture>
 MTLTR_GetGlyphCacheTexture()
 {
+    J2dTraceLn(J2D_TRACE_INFO, "MTLTR_GetGlyphCacheTexture");
     if (glyphCacheAA != NULL) {
         return glyphCacheAA->texture;
     }
@@ -218,7 +219,7 @@ MTLTR_GetGlyphCacheTexture()
  * associated with the given MTLContext.
  */
 static void
-MTLTR_AddToGlyphCache(GlyphInfo *glyph)
+MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc)
 {
     MTLCacheCellInfo *ccinfo;
     MTLGlyphCacheInfo *gcinfo;
@@ -230,6 +231,12 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph)
         return;
     }
 
+    bool isCacheFull = MTLGlyphCache_IsCacheFull(gcinfo, glyph);
+    if (isCacheFull) {
+        MTLGlyphCache_Free(gcinfo);
+        MTLTR_InitGlyphCache(mtlc);
+        gcinfo = glyphCacheAA;
+    }
     MTLGlyphCache_AddGlyph(gcinfo, glyph);
     ccinfo = (MTLCacheCellInfo *) glyph->cellInfo;
 
@@ -404,7 +411,7 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
 
     if (ginfo->cellInfo == NULL) {
         // attempt to add glyph to accelerated glyph cache
-        MTLTR_AddToGlyphCache(ginfo);
+        MTLTR_AddToGlyphCache(ginfo, mtlc);
 
         if (ginfo->cellInfo == NULL) {
             // we'll just no-op in the rare case that the cell is NULL
