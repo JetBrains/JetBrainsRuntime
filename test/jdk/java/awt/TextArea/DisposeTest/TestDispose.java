@@ -45,7 +45,7 @@ import javax.swing.SwingUtilities;
 
 public class TestDispose {
 
-    public static final int TIMEOUT = 60;
+    public static final int TIMEOUT = 30;
 
     public static Frame frame = null;
     public static TextArea textArea = null;
