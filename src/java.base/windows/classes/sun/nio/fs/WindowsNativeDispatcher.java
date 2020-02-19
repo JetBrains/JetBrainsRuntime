@@ -316,6 +316,45 @@ class WindowsNativeDispatcher {
      */
     static native void FindClose(long handle) throws WindowsException;
 
+    static QueryDirectoryInformation OpenNtQueryDirectoryInformation(String path, NativeBuffer buffer) throws WindowsException {
+        try (NativeBuffer pathBuffer = asNativeBuffer(path)) {
+            long comp = Blocker.begin();
+            try {
+                QueryDirectoryInformation data = new QueryDirectoryInformation();
+                OpenNtQueryDirectoryInformation0(pathBuffer.address(), buffer.address(), buffer.size(), data);
+                return data;
+            } finally {
+                Blocker.end(comp);
+            }
+       } 
+    }
+    static class QueryDirectoryInformation {
+        private long handle;
+        private int volSerialNumber;
+
+        private QueryDirectoryInformation() { }
+        public long handle()         { return handle; }
+        public int volSerialNumber() { return volSerialNumber; }
+    }
+    private static native void OpenNtQueryDirectoryInformation0(long lpFileName, long buffer, int bufferSize, QueryDirectoryInformation obj)
+        throws WindowsException;
+
+    static boolean NextNtQueryDirectoryInformation(QueryDirectoryInformation data, NativeBuffer buffer) throws WindowsException {
+        long comp = Blocker.begin();
+        try {
+            return NextNtQueryDirectoryInformation0(data.handle(), buffer.address(), buffer.size());
+        } finally {
+            Blocker.end(comp);
+        }
+    }
+
+    private static native boolean NextNtQueryDirectoryInformation0(long handle, long buffer, int bufferSize)
+        throws WindowsException;
+
+    static void CloseNtQueryDirectoryInformation(QueryDirectoryInformation data) throws WindowsException {
+        CloseHandle(data.handle);
+    }
+
     /**
      * GetFileInformationByHandle(
      *   HANDLE hFile,
