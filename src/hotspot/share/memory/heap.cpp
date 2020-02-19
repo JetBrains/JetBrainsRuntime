@@ -421,6 +421,9 @@ void CodeHeap::add_to_freelist(HeapBlock* a) {
   FreeBlock* b = (FreeBlock*)a;
   _freelist_length++;
 
+  _blob_count--;
+  assert(_blob_count >= 0, "sanity");
+
   assert(b != _freelist, "cannot be removed twice");
 
 
