@@ -148,6 +148,23 @@ class WindowsFileAttributeViews {
         }
     }
 
+    private static class BasicWithKey extends Basic {
+        BasicWithKey(WindowsPath file, boolean followLinks) {
+            super(file, followLinks);
+        }
+
+        @Override
+        public WindowsFileAttributes readAttributes() throws IOException {
+            file.checkRead();
+            try {
+                return WindowsFileAttributes.getWithFileKey(file, followLinks);
+            } catch (WindowsException x) {
+                x.rethrowAsIOException(file);
+                return null;    // keep compiler happy
+            }
+        }
+    }
+
     static class Dos extends Basic implements DosFileAttributeView {
         private static final String READONLY_NAME = "readonly";
         private static final String ARCHIVE_NAME = "archive";
@@ -285,6 +302,10 @@ class WindowsFileAttributeViews {
 
     static Basic createBasicView(WindowsPath file, boolean followLinks) {
         return new Basic(file, followLinks);
+    }
+
+    static Basic createBasicWithKeyView(WindowsPath file, boolean followLinks) {
+        return new BasicWithKey(file, followLinks);
     }
 
     static Dos createDosView(WindowsPath file, boolean followLinks) {
