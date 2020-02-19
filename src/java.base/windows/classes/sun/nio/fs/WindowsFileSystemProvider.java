@@ -165,6 +165,8 @@ class WindowsFileSystemProvider
         boolean followLinks = Util.followLinks(options);
         if (view == BasicFileAttributeView.class)
             return (V) WindowsFileAttributeViews.createBasicView(file, followLinks);
+        if (view == BasicWithKeyFileAttributeView.class)
+            return (V) WindowsFileAttributeViews.createBasicWithKeyView(file, followLinks);
         if (view == DosFileAttributeView.class)
             return (V) WindowsFileAttributeViews.createDosView(file, followLinks);
         if (view == AclFileAttributeView.class)
@@ -202,6 +204,8 @@ class WindowsFileSystemProvider
         boolean followLinks = Util.followLinks(options);
         if (name.equals("basic"))
             return WindowsFileAttributeViews.createBasicView(file, followLinks);
+        if (name.equals("basicwithkey"))
+            return WindowsFileAttributeViews.createBasicWithKeyView(file, followLinks);
         if (name.equals("dos"))
             return WindowsFileAttributeViews.createDosView(file, followLinks);
         if (name.equals("acl"))
