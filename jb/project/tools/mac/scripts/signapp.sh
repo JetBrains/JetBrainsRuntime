@@ -37,11 +37,7 @@ BUILD_NAME="$(ls "$EXPLODED")"
 if test -d $EXPLODED/$BUILD_NAME/Contents/Home/jmods; then
   mv $EXPLODED/$BUILD_NAME/Contents/Home/jmods $BACKUP_JMODS
 fi
-if test -d $EXPLODED/$BUILD_NAME/Contents/Home/Frameworks; then
-  mv $EXPLODED/$BUILD_NAME/Contents/Home/Frameworks $BACKUP_JMODS
-fi
 
-#log "$INPUT_FILE unzipped and removed"
 log "$INPUT_FILE extracted and removed"
 
 APPLICATION_PATH="$EXPLODED/$BUILD_NAME"
@@ -127,9 +123,6 @@ log "Zipping $BUILD_NAME to $INPUT_FILE ..."
   #ditto -c -k --sequesterRsrc --keepParent "$BUILD_NAME" "../$INPUT_FILE"
   if test -d $BACKUP_JMODS/jmods; then
     mv $BACKUP_JMODS/jmods $EXPLODED/$BUILD_NAME/Contents/Home
-  fi
-  if test -d $BACKUP_JMODS/Frameworks; then
-    mv $BACKUP_JMODS/Frameworks $EXPLODED/$BUILD_NAME/Contents/Home
   fi
 
   COPYFILE_DISABLE=1 tar -pczf $INPUT_FILE --exclude='*.dSYM' --exclude='man' -C $EXPLODED $BUILD_NAME

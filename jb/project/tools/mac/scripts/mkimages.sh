@@ -38,7 +38,8 @@ function create_jbr {
   grep -v "^JAVA_VERSION" $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/release | grep -v "^MODULES" >> $JRE_HOME/release
   cp -R $BASE_DIR/$JBRSDK_BUNDLE/Contents/MacOS $JRE_CONTENTS
   cp $BASE_DIR/$JBRSDK_BUNDLE/Contents/Info.plist $JRE_CONTENTS
-  cp -a jcef_mac/Frameworks $JRE_HOME
+  cp -a jcef_mac/Frameworks $JRE_JRE_CONTENTS
+  cp -a jcef_mac/Helpers    $JRE_JRE_CONTENTS
 
   echo Creating $JBR.tar.gz ...
   COPYFILE_DISABLE=1 tar -pczf $JBR.tar.gz --exclude='*.dSYM' --exclude='man' -C $BASE_DIR $JBR_BUNDLE || exit $?
