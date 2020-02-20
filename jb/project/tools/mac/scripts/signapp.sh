@@ -39,11 +39,11 @@ if test -d $EXPLODED/$BUILD_NAME/Contents/Home/jmods; then
 fi
 if test -f $EXPLODED/$BUILD_NAME/Contents/MacOS/libjli.dylib; then
   mv $EXPLODED/$BUILD_NAME/Contents/MacOS/libjli.dylib $BACKUP_JMODS
+fi
 if test -d $EXPLODED/$BUILD_NAME/Contents/Home/Frameworks; then
   mv $EXPLODED/$BUILD_NAME/Contents/Home/Frameworks $BACKUP_JMODS
 fi
 
-#log "$INPUT_FILE unzipped and removed"
 log "$INPUT_FILE extracted and removed"
 
 APPLICATION_PATH="$EXPLODED/$BUILD_NAME"
