@@ -417,6 +417,7 @@ public abstract class JComponent extends Container implements Serializable,
      * AA text hints.
      */
     private transient Object aaHint;
+    private transient Object fmHint;
     private transient Object lcdRenderingHint;
 
     static {
@@ -722,6 +723,8 @@ public abstract class JComponent extends Container implements Serializable,
         // aaText shouldn't persist between look and feels, reset it.
         aaHint = UIManager.getDefaults().get(
                 RenderingHints.KEY_TEXT_ANTIALIASING);
+        fmHint = UIManager.getDefaults().get(
+                RenderingHints.KEY_FRACTIONALMETRICS);
         lcdRenderingHint = UIManager.getDefaults().get(
                 RenderingHints.KEY_TEXT_LCD_CONTRAST);
         ComponentUI oldUI = ui;
@@ -4103,6 +4106,8 @@ public abstract class JComponent extends Container implements Serializable,
     public final Object getClientProperty(Object key) {
         if (key == RenderingHints.KEY_TEXT_ANTIALIASING) {
             return aaHint;
+        } else if (key == RenderingHints.KEY_FRACTIONALMETRICS) {
+            return fmHint;
         } else if (key == RenderingHints.KEY_TEXT_LCD_CONTRAST) {
             return lcdRenderingHint;
         }
@@ -4146,6 +4151,9 @@ public abstract class JComponent extends Container implements Serializable,
     public final void putClientProperty(Object key, Object value) {
         if (key == RenderingHints.KEY_TEXT_ANTIALIASING) {
             aaHint = value;
+            return;
+        } else if (key == RenderingHints.KEY_FRACTIONALMETRICS) {
+            fmHint = value;
             return;
         } else if (key == RenderingHints.KEY_TEXT_LCD_CONTRAST) {
             lcdRenderingHint = value;
