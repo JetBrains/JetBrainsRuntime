@@ -38,7 +38,8 @@ function create_jbr {
   grep -v "^JAVA_VERSION" $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/release | grep -v "^MODULES" >> $JRE_HOME/release
   cp -R $BASE_DIR/$JBRSDK_BUNDLE/Contents/MacOS $JRE_CONTENTS
   cp $BASE_DIR/$JBRSDK_BUNDLE/Contents/Info.plist $JRE_CONTENTS
-  cp -a jcef_mac/Frameworks $JRE_HOME
+  cp -a jcef_mac/Frameworks $JRE_CONTENTS || exit $?
+  cp -a jcef_mac/Helpers    $JRE_CONTENTS || exit $?
 
   echo Creating $JBR.tar.gz ...
   COPYFILE_DISABLE=1 tar -pczf $JBR.tar.gz --exclude='*.dSYM' --exclude='man' -C $BASE_DIR $JBR_BUNDLE || exit $?
@@ -73,7 +74,8 @@ cp -a build/macosx-x86_64-normal-server-release/images/jdk-bundle/jdk-$JBSDK_VER
   $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
 echo Creating $JBSDK.tar.gz ...
-cp -a jcef_mac/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/
+cp -a jcef_mac/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
+cp -a jcef_mac/Helpers    $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 
 COPYFILE_DISABLE=1 tar -pczf $JBSDK.tar.gz -C $BASE_DIR \
   --exclude='._*' --exclude='.DS_Store' --exclude='*~' \
