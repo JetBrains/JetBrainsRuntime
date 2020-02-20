@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -233,7 +233,7 @@ class CounterDecay : public AllStatic {
 public:
   static void decay();
   static bool is_decay_needed() {
-    return (((os::javaTimeNanos() - _last_timestamp) / NANOUNITS) * MILLIUNITS) > CounterDecayMinIntervalLength;
+    return ((os::javaTimeNanos() - _last_timestamp) / (NANOUNITS / MILLIUNITS)) > CounterDecayMinIntervalLength;
   }
   static void update_last_timestamp() { _last_timestamp = os::javaTimeNanos(); }
 };
