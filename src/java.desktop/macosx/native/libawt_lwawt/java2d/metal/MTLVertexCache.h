@@ -32,12 +32,7 @@
 /**
  * Constants that control the size of the vertex cache.
  */
-#define MTLVC_MAX_INDEX         192
-
-/**
- * Constants that control the size of the texture pool.
- */
-#define MTLVC_MAX_TEX_INDEX     32
+#define MTLVC_MAX_INDEX         1536
 
 /**
  * Constants that control the size of the texture tile cache used for

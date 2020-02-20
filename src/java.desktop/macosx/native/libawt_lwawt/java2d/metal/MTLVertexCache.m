@@ -271,8 +271,7 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
     J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_AddMaskQuad: %d",
                 maskCacheIndex);
 
-    if (maskCacheIndex >= MTLVC_MASK_CACHE_MAX_INDEX ||
-        vertexCacheIndex >= MTLVC_MAX_INDEX)
+    if (maskCacheIndex >= MTLVC_MASK_CACHE_MAX_INDEX)
     {
         J2dTraceLn2(J2D_TRACE_INFO, "maskCacheIndex = %d, vertexCacheIndex = %d", maskCacheIndex, vertexCacheIndex);
         MTLVertexCache_FlushVertexCache(mtlc);

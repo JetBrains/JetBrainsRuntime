@@ -44,8 +44,8 @@
  * The following constants define the inner and outer bounds of the
  * accelerated glyph cache.
  */
-#define MTLTR_CACHE_WIDTH       1024
-#define MTLTR_CACHE_HEIGHT      1024
+#define MTLTR_CACHE_WIDTH       512
+#define MTLTR_CACHE_HEIGHT      512
 #define MTLTR_CACHE_CELL_WIDTH  32
 #define MTLTR_CACHE_CELL_HEIGHT 32
 
@@ -129,7 +129,7 @@ static jboolean lastRGBOrder = JNI_TRUE;
  *     (MTLTR_CACHED_DEST_HEIGHT >= MTLTR_CACHE_CELL_HEIGHT) &&
  *     (MTLTR_CACHED_DEST_HEIGHT >= MTLTR_NOCACHE_TILE_SIZE)
  */
-#define MTLTR_CACHED_DEST_WIDTH  1024
+#define MTLTR_CACHED_DEST_WIDTH  512
 #define MTLTR_CACHED_DEST_HEIGHT (MTLTR_CACHE_CELL_HEIGHT * 2)
 
 /**
