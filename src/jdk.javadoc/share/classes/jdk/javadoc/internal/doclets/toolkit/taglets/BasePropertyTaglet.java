@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,23 +49,14 @@ public abstract class BasePropertyTaglet extends BaseTaglet {
     }
 
     /**
-     * This method returns the text to be put in the resulting javadoc before
-     * the property name.
+     * Returns the text to be included in the documentation before the property name.
      *
-     * @param tagletWriter the taglet writer for output
-     * @return the string to be put in the resulting javadoc.
+     * @param tagletWriter the taglet-writer used by the doclet
+     * @return the text to be included in the documentation before the property name
      */
     abstract String getText(TagletWriter tagletWriter);
 
-    /**
-     * Given the <code>Tag</code> representation of this custom
-     * tag, return its string representation, which is output
-     * to the generated page.
-     * @param element
-     * @param tag the <code>Tag</code> representation of this custom tag.
-     * @param tagletWriter the taglet writer for output.
-     * @return the TagletOutput representation of this <code>Tag</code>.
-     */
+    @Override
     public Content getTagletOutput(Element element, DocTree tag, TagletWriter tagletWriter) {
         return tagletWriter.propertyTagOutput(element, tag, getText(tagletWriter));
     }

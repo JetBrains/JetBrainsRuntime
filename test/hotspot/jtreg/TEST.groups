@@ -177,6 +177,7 @@ ctw_3 = \
   applications/ctw/modules/jdk_compiler.java \
   applications/ctw/modules/jdk_internal_vm_compiler.java \
   applications/ctw/modules/jdk_localedata.java \
+  applications/ctw/modules/jdk_localedata_2.java \
   applications/ctw/modules/jdk_scripting_nashorn.java \
 
 tier1_gc = \
@@ -552,7 +553,7 @@ vmTestbase_largepages = \
   vmTestbase/metaspace/stressDictionary/StressDictionary.java \
   vmTestbase/metaspace/stressHierarchy/stressHierarchy001/TestDescription.java \
   vmTestbase/metaspace/stressHierarchy/stressHierarchy011/TestDescription.java \
-  vmTestbase/metaspace/flags/maxMetaspaceSize/TestDescription.java \
+  vmTestbase/metaspace/flags/maxMetaspaceSize/TestMaxMetaspaceSize.java \
   vmTestbase/metaspace/shrink_grow/ShrinkGrowTest/ShrinkGrowTest.java \
   vmTestbase/metaspace/shrink_grow/ShrinkGrowMultiJVM/ShrinkGrowMultiJVM.java \
   vmTestbase/metaspace/shrink_grow/CompressedClassSpaceSize/TestDescription.java
