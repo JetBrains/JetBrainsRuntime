@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,9 +32,28 @@ import java.text.CollationKey;
 import java.text.Collator;
 import java.text.ParseException;
 import java.text.RuleBasedCollator;
-import java.util.*;
-import java.util.AbstractMap.SimpleEntry;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -87,6 +106,7 @@ import com.sun.source.util.TreePath;
 import com.sun.tools.javac.model.JavacTypes;
 import jdk.javadoc.internal.doclets.formats.html.SearchIndexItem;
 import jdk.javadoc.internal.doclets.toolkit.BaseConfiguration;
+import jdk.javadoc.internal.doclets.toolkit.BaseOptions;
 import jdk.javadoc.internal.doclets.toolkit.CommentUtils.DocCommentDuo;
 import jdk.javadoc.internal.doclets.toolkit.Messages;
 import jdk.javadoc.internal.doclets.toolkit.Resources;
@@ -112,17 +132,19 @@ import static jdk.javadoc.internal.doclets.toolkit.builders.ConstantsSummaryBuil
  */
 public class Utils {
     public final BaseConfiguration configuration;
-    public final Messages messages;
-    public final Resources resources;
+    private final BaseOptions options;
+    private final Messages messages;
+    private final Resources resources;
     public final DocTrees docTrees;
     public final Elements elementUtils;
     public final Types typeUtils;
-    public final JavaScriptScanner javaScriptScanner;
+    private final JavaScriptScanner javaScriptScanner;
 
     public Utils(BaseConfiguration c) {
         configuration = c;
+        options = configuration.getOptions();
         messages = configuration.getMessages();
-        resources = configuration.getResources();
+        resources = configuration.getDocResources();
         elementUtils = c.docEnv.getElementUtils();
         typeUtils = c.docEnv.getTypeUtils();
         docTrees = c.docEnv.getDocTrees();
@@ -390,7 +412,7 @@ public class Utils {
     }
 
     public boolean isProperty(String name) {
-        return configuration.javafx && name.endsWith("Property");
+        return options.javafx() && name.endsWith("Property");
     }
 
     public String getPropertyName(String name) {
@@ -934,7 +956,7 @@ public class Utils {
      * @return
      */
     public TypeMirror getDeclaredType(Collection<TypeMirror> values,
-            TypeElement enclosing, TypeMirror target) {
+                                      TypeElement enclosing, TypeMirror target) {
         TypeElement targetElement = asTypeElement(target);
         List<? extends TypeParameterElement> targetTypeArgs = targetElement.getTypeParameters();
         if (targetTypeArgs.isEmpty()) {
@@ -1387,8 +1409,8 @@ public class Utils {
         if (!text.contains("\t"))
             return text;
 
-        final int tabLength = configuration.sourcetab;
-        final String whitespace = configuration.tabSpaces;
+        final int tabLength = options.sourceTabSize();
+        final String whitespace = " ".repeat(tabLength);
         final int textLength = text.length();
         StringBuilder result = new StringBuilder(textLength);
         int pos = 0;
@@ -1520,7 +1542,7 @@ public class Utils {
         if (!isIncluded(e)) {
             return false;
         }
-        if (configuration.javafx &&
+        if (options.javafx() &&
                 hasBlockTag(e, DocTree.Kind.UNKNOWN_BLOCK_TAG, "treatAsPrivate")) {
             return true;
         }
@@ -1533,8 +1555,7 @@ public class Utils {
      * @return true if there are no comments, false otherwise
      */
     public boolean isSimpleOverride(ExecutableElement m) {
-        if (!configuration.summarizeOverriddenMethods ||
-                !isIncluded(m)) {
+        if (!options.summarizeOverriddenMethods() || !isIncluded(m)) {
             return false;
         }
 
@@ -2020,10 +2041,8 @@ public class Utils {
                         return result;
                     }
                     if (hasParameters(e1) && hasParameters(e2)) {
-                        @SuppressWarnings("unchecked")
-                        List<VariableElement> parameters1 = (List<VariableElement>)((ExecutableElement)e1).getParameters();
-                        @SuppressWarnings("unchecked")
-                        List<VariableElement> parameters2 = (List<VariableElement>)((ExecutableElement)e2).getParameters();
+                        List<? extends VariableElement> parameters1 = ((ExecutableElement)e1).getParameters();
+                        List<? extends VariableElement> parameters2 = ((ExecutableElement)e2).getParameters();
                         result = compareParameters(false, parameters1, parameters2);
                         if (result != 0) {
                             return result;
@@ -2546,7 +2565,7 @@ public class Utils {
         }.visit(e);
     }
 
-    EnumSet<ElementKind> nestedKinds = EnumSet.of(ANNOTATION_TYPE, CLASS, ENUM, INTERFACE);
+    Set<ElementKind> nestedKinds = EnumSet.of(ANNOTATION_TYPE, CLASS, ENUM, INTERFACE);
     void recursiveGetItems(Collection<Element> list, Element e, boolean filter, ElementKind... select) {
         list.addAll(getItems0(e, filter, select));
         List<Element> classes = getItems0(e, filter, nestedKinds);
@@ -2559,7 +2578,7 @@ public class Utils {
     }
 
     private List<Element> getItems0(Element te, boolean filter, ElementKind... select) {
-        EnumSet<ElementKind> kinds = EnumSet.copyOf(Arrays.asList(select));
+        Set<ElementKind> kinds = EnumSet.copyOf(Arrays.asList(select));
         return getItems0(te, filter, kinds);
     }
 
@@ -3002,14 +3021,14 @@ public class Utils {
         return  doctree.getKind() == match;
     }
 
-    private final WeakSoftHashMap wksMap = new WeakSoftHashMap(this);
+    private final CommentHelperCache commentHelperCache = new CommentHelperCache(this);
 
     public CommentHelper getCommentHelper(Element element) {
-        return wksMap.computeIfAbsent(element);
+        return commentHelperCache.computeIfAbsent(element);
     }
 
     public void removeCommentHelper(Element element) {
-        wksMap.remove(element);
+        commentHelperCache.remove(element);
     }
 
     public List<? extends DocTree> getBlockTags(Element element) {
@@ -3177,13 +3196,13 @@ public class Utils {
     }
 
     public DocCommentTree getDocCommentTree(Element element) {
-        CommentHelper ch = wksMap.get(element);
+        CommentHelper ch = commentHelperCache.get(element);
         if (ch != null) {
-            return ch.dctree;
+            return ch.dcTree;
         }
         DocCommentTree dcTree = getDocCommentTree0(element);
         if (dcTree != null) {
-            wksMap.put(element, new CommentHelper(configuration, element, getTreePath(element), dcTree));
+            commentHelperCache.put(element, new CommentHelper(configuration, element, getTreePath(element), dcTree));
         }
         return dcTree;
     }
@@ -3297,105 +3316,47 @@ public class Utils {
         return outer;
     }
 
-    static class WeakSoftHashMap implements Map<Element, CommentHelper> {
+    /**
+     * A memory-sensitive cache for {@link CommentHelper} objects,
+     * which are expensive to compute.
+     */
+    private static class CommentHelperCache {
 
-        private final WeakHashMap<Element, SoftReference<CommentHelper>> wkMap;
+        private final Map<Element, SoftReference<CommentHelper>> map;
         private final Utils utils;
-        public WeakSoftHashMap(Utils utils) {
-            wkMap = new WeakHashMap<>();
+
+        public CommentHelperCache(Utils utils) {
+            map = new HashMap<>();
             this.utils = utils;
         }
 
-        @Override
-        public boolean containsKey(Object key) {
-            return wkMap.containsKey(key);
-        }
-
-        @Override
-        public Collection<CommentHelper> values() {
-            Set<CommentHelper> out = new LinkedHashSet<>();
-            for (SoftReference<CommentHelper> v : wkMap.values()) {
-                out.add(v.get());
-            }
-            return out;
-        }
-
-        @Override
-        public boolean containsValue(Object value) {
-            return wkMap.containsValue(new SoftReference<>((CommentHelper)value));
-        }
-
-        @Override
-        public CommentHelper remove(Object key) {
-            SoftReference<CommentHelper> value = wkMap.remove(key);
+        public CommentHelper remove(Element key) {
+            SoftReference<CommentHelper> value = map.remove(key);
             return value == null ? null : value.get();
         }
 
-
-        @Override
         public CommentHelper put(Element key, CommentHelper value) {
-            SoftReference<CommentHelper> nvalue = wkMap.put(key, new SoftReference<>(value));
-            return nvalue == null ? null : nvalue.get();
+            SoftReference<CommentHelper> prev = map.put(key, new SoftReference<>(value));
+            return prev == null ? null : prev.get();
         }
 
-        @Override
         public CommentHelper get(Object key) {
-            SoftReference<CommentHelper> value = wkMap.get(key);
+            SoftReference<CommentHelper> value = map.get(key);
             return value == null ? null : value.get();
-        }
-
-        @Override
-        public int size() {
-            return wkMap.size();
-        }
-
-        @Override
-        public boolean isEmpty() {
-            return wkMap.isEmpty();
-        }
-
-        @Override
-        public void clear() {
-            wkMap.clear();
         }
 
         public CommentHelper computeIfAbsent(Element key) {
-            if (wkMap.containsKey(key)) {
-                SoftReference<CommentHelper> value = wkMap.get(key);
+            SoftReference<CommentHelper> refValue = map.get(key);
+            if (refValue != null) {
+                CommentHelper value = refValue.get();
                 if (value != null) {
-                    CommentHelper cvalue = value.get();
-                    if (cvalue != null) {
-                        return cvalue;
-                    }
+                    return value;
                 }
             }
             CommentHelper newValue = new CommentHelper(utils.configuration, key, utils.getTreePath(key),
                     utils.getDocCommentTree(key));
-            wkMap.put(key, new SoftReference<>(newValue));
+            map.put(key, new SoftReference<>(newValue));
             return newValue;
-        }
-
-
-        @Override
-        public void putAll(Map<? extends Element, ? extends CommentHelper> map) {
-            for (Map.Entry<? extends Element, ? extends CommentHelper> entry : map.entrySet()) {
-                put(entry.getKey(), entry.getValue());
-            }
-        }
-
-        @Override
-        public Set<Element> keySet() {
-            return wkMap.keySet();
-        }
-
-        @Override
-        public Set<Entry<Element, CommentHelper>> entrySet() {
-            Set<Entry<Element, CommentHelper>> out = new LinkedHashSet<>();
-            for (Element e : wkMap.keySet()) {
-                SimpleEntry<Element, CommentHelper> n = new SimpleEntry<>(e, get(e));
-                out.add(n);
-            }
-            return out;
         }
     }
 
@@ -3413,6 +3374,7 @@ public class Utils {
             this.second = second;
         }
 
+        @Override
         public String toString() {
             StringBuffer out = new StringBuffer();
             out.append(first + ":" + second);
