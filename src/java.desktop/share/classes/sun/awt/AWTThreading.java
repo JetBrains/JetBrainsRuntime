@@ -159,7 +159,20 @@ public class AWTThreading {
                     instance.invocations.push(new TrackingQueue());
                 }
                 final TrackingQueue queue = instance.invocations.peek();
-                InvocationEvent event = new InvocationEvent(source, runnable, listener, catchThrowables) {
+                Runnable safeListener = listener;
+                if (listener != null) {
+                    // guarantees a single run of the passed 'listener'
+                    safeListener = new Runnable() {
+                        Runnable origListener = listener;
+                        @Override
+                        public void run() {
+                            if (origListener != null) origListener.run();
+                            origListener = null;
+                        }
+                    };
+                }
+                // guarantees a single dispatch of the event
+                InvocationEvent event = new InvocationEvent(source, runnable, safeListener, catchThrowables) {
                     final SoftReference<TrackingQueue> queueRef = new SoftReference<>(queue);
 
                     @Override
