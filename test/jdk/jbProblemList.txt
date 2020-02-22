@@ -1008,7 +1008,7 @@ javax/swing/UIDefaults/8133926/InternalFrameIcon.java                           
 javax/swing/UIDefaults/8149879/InternalResourceBundle.java                          8199054 windows-all
 javax/swing/UITest/UITest.java                                                      8198392 generic-all
 javax/swing/border/Test6981576.java                                                 8198339 generic-all
-javax/swing/dnd/7171812/bug7171812.java                                             8041447 macosx-all,windows-all
+javax/swing/dnd/7171812/bug7171812.java                                             8041447 macosx-all,windows-all,linux-all
 javax/swing/dnd/8139050/NativeErrorsInTableDnD.java                                 8202765 macosx-all,linux-all
 javax/swing/plaf/basic/BasicComboBoxEditor/Test8015336.java                         8198394 generic-all
 javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945 macosx-all,linux-all,windows-all
