@@ -265,9 +265,7 @@ static jboolean
 MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
                               MTLContext *mtlc, 
                               MTLSDOps *dstOps,
-                              MTLPooledTextureHandle *glyphTexture,
-                              id<MTLTexture> dstTexture,
-                              jint contrast, jint x, jint y, jint w, jint h)
+                              jint contrast)
 {
     // create the LCD text shader, if necessary
     if (templateLCDPipelineDesc == nil) {
@@ -293,15 +291,13 @@ MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
         templateLCDPipelineDesc.label = @"template_lcd";
     }
 
-    id<MTLRenderPipelineState> pipelineState = 
-                [mtlc.pipelineStateStorage 
+    id<MTLRenderPipelineState> pipelineState =
+                [mtlc.pipelineStateStorage
                     getPipelineState:templateLCDPipelineDesc
                     vertexShaderId:@"vert_txt"
                     fragmentShaderId:@"lcd_color"
                    ];
 
-
-    NSLog(@"shader %@", [mtlc.pipelineStateStorage getShader:@"fragmentShaderId"]);
     [encoder setRenderPipelineState:pipelineState];
 
     double g = 0;
@@ -319,6 +315,9 @@ MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
     jfloat radj, gadj, badj;
     jfloat clr[4];
     jint col = [mtlc.paint getColor];
+
+    J2dTraceLn1(J2D_TRACE_INFO, "primary color %x", col);
+
     clr[0] = ((col >> 16) & 0xFF)/255.0f;
     clr[1] = ((col >> 8) & 0xFF)/255.0f;
     clr[2] = ((col) & 0xFF)/255.0f;
@@ -332,11 +331,7 @@ MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
             {radj, gadj, badj},
             {g, g, g},
             {ig, ig, ig}};
-    [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];//FrameUniformBuffer];
-
-
-    [encoder setFragmentTexture:glyphTexture.texture atIndex:0];
-    [encoder setFragmentTexture:dstTexture atIndex:1];
+    [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
 
     return JNI_TRUE;
 }
@@ -519,6 +514,28 @@ MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
     return JNI_TRUE;
 }
 
+static struct TxtVertex txtVertices[6];
+static jint vertexCacheIndex = 0;
+
+#define LCD_ADD_VERTEX(TX, TY, DX, DY, DZ) \
+    do { \
+        struct TxtVertex *v = &txtVertices[vertexCacheIndex++]; \
+        v->txtpos[0] = TX; \
+        v->txtpos[1] = TY; \
+        v->position[0]= DX; \
+        v->position[1] = DY; \
+    } while (0)
+
+#define LCD_ADD_TRIANGLES(TX1, TY1, TX2, TY2, DX1, DY1, DX2, DY2) \
+    do { \
+        LCD_ADD_VERTEX(TX1, TY1, DX1, DY1, 0); \
+        LCD_ADD_VERTEX(TX2, TY1, DX2, DY1, 0); \
+        LCD_ADD_VERTEX(TX2, TY2, DX2, DY2, 0); \
+        LCD_ADD_VERTEX(TX2, TY2, DX2, DY2, 0); \
+        LCD_ADD_VERTEX(TX1, TY2, DX1, DY2, 0); \
+        LCD_ADD_VERTEX(TX1, TY1, DX1, DY1, 0); \
+    } while (0)
+
 static jboolean
 MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                           GlyphInfo *ginfo, jint x, jint y,
@@ -527,37 +544,53 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                           id<MTLTexture> dstTexture)
 {
     jfloat tx1, ty1, tx2, ty2;
-    jfloat dtx1, dty1, dtx2, dty2;
+    jfloat dtx1=0, dty1=0, dtx2=0, dty2=0;
     jint tw, th;
-    jint sx, sy, sw, sh, dxadj, dyadj;
+    jint sx=0, sy=0, sw=0, sh=0, dxadj=0, dyadj=0;
     jint x0;
     jint w = ginfo->width;
     jint h = ginfo->height;
+    //MTLPooledTextureHandle *blitTexture = nil;
+    id<MTLTexture> blitTexture = nil;
 
     J2dTraceLn2(J2D_TRACE_INFO, "MTLTR_DrawLCDGlyphNoCache x %d, y%d", x, y);
     J2dTraceLn3(J2D_TRACE_INFO, "MTLTR_DrawLCDGlyphNoCache rowBytesOffset=%d, rgbOrder=%d, contrast=%d", rowBytesOffset, rgbOrder, contrast);
 
-    MTLPooledTextureHandle *blitTexture = [mtlc.texturePool getTexture:MTLC_BLIT_TILE_SIZE height:MTLC_BLIT_TILE_SIZE format:MTLPixelFormatBGRA8Unorm];
-    if (blitTexture == nil) {
-        J2dTraceLn(J2D_TRACE_ERROR, "can't obtain temporary texture object from pool");
-        return JNI_FALSE;
-    }
 
     id<MTLRenderCommandEncoder> encoder = nil;
+
+    MTLTextureDescriptor *textureDescriptor =
+        [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
+                                                            width:w
+                                                            height:h
+                                                            mipmapped:NO];
+
+    blitTexture = [mtlc.device newTextureWithDescriptor:textureDescriptor];
+    [textureDescriptor release];
+
+    /*MTLCommandBufferWrapper * cbw = [mtlc getCommandBufferWrapper];
+    blitTexture = [mtlc.texturePool getTexture:w height:h format:MTLPixelFormatBGRA8Unorm];
+    [cbw registerPooledTexture: blitTexture];
+    [blitTexture release];*/
 
     if (glyphMode != MODE_NO_CACHE_LCD) {
         if (glyphMode == MODE_USE_CACHE_GRAY) {
             MTLTR_DisableGlyphVertexCache(mtlc);
         }
-        MTLVertexCache_EnableMaskCache(mtlc, dstOps);
-        encoder = [mtlc.encoderManager getTextureEncoder:dstTexture isSrcOpaque:YES isDstOpaque:YES];
-        if (!MTLTR_EnableLCDGlyphModeState(encoder, mtlc, dstOps, blitTexture,
-                                           dstTexture, contrast, x, y, w, h))
+
+        if (blitTexture == nil) {
+            J2dTraceLn(J2D_TRACE_ERROR, "can't obtain temporary texture object from pool");
+            return JNI_FALSE;
+        }
+
+
+        glyphMode = MODE_NO_CACHE_LCD;
+    }
+        encoder = [mtlc.encoderManager getTextureEncoder:dstOps->pTexture isSrcOpaque:YES isDstOpaque:YES];
+        if (!MTLTR_EnableLCDGlyphModeState(encoder, mtlc, dstOps,contrast))
         {
             return JNI_FALSE;
         }
-        glyphMode = MODE_NO_CACHE_LCD;
-    }
 
     x0 = x;
     tx1 = 0.0f;
@@ -567,42 +600,38 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     tw = MTLTR_NOCACHE_TILE_SIZE;
     th = MTLTR_NOCACHE_TILE_SIZE;
 
-    for (sy = 0; sy < h; sy += th, y += th) {
+    // copy LCD mask into glyph texture tile
+    MTLRegion region = {
+        {0, 0, 0},
+        {w, h, 1}
+    };
+    NSUInteger bytesPerRow = 3 * ginfo->width;
+    [blitTexture replaceRegion:region
+                 mipmapLevel:0
+                 withBytes:ginfo->image + rowBytesOffset
+                 bytesPerRow:bytesPerRow];
+
+    /*for (sy = 1; sy < h; sy += th, y += th) {
         x = x0;
         sh = ((sy + th) > h) ? (h - sy) : th;
 
         for (sx = 0; sx < w; sx += tw, x += tw) {
-            sw = ((sx + tw) > w) ? (w - sx) : tw;
+            sw = ((sx + tw) > w) ? (w - sx) : tw;*/
 
             J2dTraceLn7(J2D_TRACE_INFO, "sx = %d sy = %d x = %d y = %d sw = %d sh = %d w = %d", sx, sy, x, y, sw, sh, w);
-            // copy LCD mask into glyph texture tile
-            MTLRegion region = {
-                {0,  0,   0},
-                {sw, sh, 1}
-            };
-            NSUInteger bytesPerRow = 4 * ginfo->width;
-            [blitTexture.texture replaceRegion:region
-                         mipmapLevel:0
-                         withBytes:ginfo->image + rowBytesOffset
-                         bytesPerRow:bytesPerRow];
 
-    struct Vertex vertices[4] = {
-        {{x, y}},
-        {{x + sw, y}},
-        {{x + sw, y + sh}},
-        {{x, y + sh}},
-    };
-    [encoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
 
             // update the lower-right glyph texture coordinates
-            tx2 = ((jfloat)sw) / MTLC_BLIT_TILE_SIZE;
-            ty2 = ((jfloat)sh) / MTLC_BLIT_TILE_SIZE;
+            //tx2 = ((jfloat)sw) / MTLC_BLIT_TILE_SIZE;
+            //ty2 = ((jfloat)sh) / MTLC_BLIT_TILE_SIZE;
+            tx2 = 1.0f;
+            ty2 = 1.0f;
 
             // this accounts for lower-left origin of the destination region
-            dxadj = x;
-            dyadj = dstOps->height - (y + sh);
+           // dxadj = x;
+            //dyadj = dstOps->height - (y + sh);
 
-            J2dTraceLn4(J2D_TRACE_INFO, "MTLTR_DrawLCDGlyphNoCache xOffset %d yOffset %d, dxadj %d, dyadj %d", dstOps->xOffset, dstOps->yOffset, dxadj, dyadj);
+            J2dTraceLn5(J2D_TRACE_INFO, "xOffset %d yOffset %d, dxadj %d, dyadj %d dstOps->height %d", dstOps->xOffset, dstOps->yOffset, dxadj, dyadj, dstOps->height);
 
             dtx1 = ((jfloat)dxadj) / dstOps->textureWidth;
             dtx2 = ((float)dxadj + sw) / dstOps->textureWidth;
@@ -610,25 +639,32 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
             dty1 = ((jfloat)dyadj + sh) / dstOps->textureHeight;
             dty2 = ((jfloat)dyadj) / dstOps->textureHeight;
 
-            MTLRegion region1 = {
-                {dtx1,  dty1,   0},
-                {dtx2, dty2, 1}
-            };
-           J2dTraceLn4(J2D_TRACE_INFO, "OGLTR_DrawLCDGlyphNoCache tx1 %f, ty1 %f, tx2 %f, ty2 %f", tx1, ty1, tx2, ty2);
-           J2dTraceLn2(J2D_TRACE_INFO, "MTLTR_DrawLCDGlyphNoCache textureWidth %d textureHeight %d", dstOps->textureWidth, dstOps->textureHeight);
-           J2dTraceLn4(J2D_TRACE_INFO, "MTLTR_DrawLCDGlyphNoCache dtx1 %f, dty1 %f, dtx2 %f, dty2 %f", dtx1, dty1, dtx2, dty2);
+           J2dTraceLn4(J2D_TRACE_INFO, "tx1 %f, ty1 %f, tx2 %f, ty2 %f", tx1, ty1, tx2, ty2);
+           J2dTraceLn2(J2D_TRACE_INFO, "textureWidth %d textureHeight %d", dstOps->textureWidth, dstOps->textureHeight);
+           J2dTraceLn4(J2D_TRACE_INFO, "dtx1 %f, dty1 %f, dtx2 %f, dty2 %f", dtx1, dty1, dtx2, dty2);
 
-            id<MTLTexture> tex = dstOps->pTexture;
-            //[tex replaceRegion:region1
-              //           mipmapLevel:0
-                //         withBytes:blitTexture.texture
-                  //       bytesPerRow:bytesPerRow];
+            LCD_ADD_TRIANGLES(tx1, ty1, tx2, ty2, x, y, x+w, y+h);
 
-            drawTex2Tex(mtlc, dstTexture, dstOps->pTexture, YES, YES, 0, 0, sw, sh, dxadj, dyadj+sh, dxadj+sw, dyadj);
+            [encoder setVertexBytes:txtVertices length:vertexCacheIndex * sizeof(struct TxtVertex) atIndex:MeshVertexBuffer];
+            [encoder setFragmentTexture:blitTexture atIndex:0];
+            [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
 
-        }
-    }
-            
+            [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+
+//        }
+//    }
+    [mtlc.encoderManager endEncoder];
+    [blitTexture release];
+
+    MTLCommandBufferWrapper* cbwrapper = [mtlc pullCommandBufferWrapper];
+
+    id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+    [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+        [cbwrapper release];
+    }];
+
+    [commandbuf commit];
+    [commandbuf waitUntilCompleted];
     return JNI_TRUE;
 }
 
@@ -704,6 +740,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         }
 
         J2dTraceLn2(J2D_TRACE_INFO, "Glyph width = %d height = %d", ginfo->width, ginfo->height);
+        J2dTraceLn1(J2D_TRACE_INFO, "rowBytes = %d", ginfo->rowBytes);
         //TODO : Right now we have initial texture mapping logic
         // as we implement LCD, cache usage add new selection condition.
         if (grayscale) {
@@ -760,11 +797,12 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
      * This state management needs to be extended for other glyphmodes
      * when they are implemented.
      */
-    if (glyphMode == MODE_NO_CACHE_GRAY ||
-        glyphMode == MODE_NO_CACHE_LCD) {
-        MTLVertexCache_DisableMaskCache(mtlc);
-    } else {
-        MTLTR_DisableGlyphVertexCache(mtlc);
+    if (glyphMode != MODE_NO_CACHE_LCD) {
+        if (glyphMode == MODE_NO_CACHE_GRAY) {
+            MTLVertexCache_DisableMaskCache(mtlc);
+        } else {
+            MTLTR_DisableGlyphVertexCache(mtlc);
+        }
     }
 }
 
