@@ -190,15 +190,18 @@ fragment float4 lcd_color(
         TxtShaderInOut vert [[stage_in]],
         texture2d<float, access::sample> glyphTexture [[texture(0)]],
         texture2d<float, access::sample> dstTexture [[texture(1)]],
-        constant LCDFrameUniforms& uniforms [[buffer(1)]]) {
+        constant LCDFrameUniforms& uniforms [[buffer(1)]]) 
+{
     float3 src_adj = uniforms.src_adj;
     float3 gamma = uniforms.gamma;
     float3 invgamma = uniforms.invgamma;
+
     constexpr sampler glyphTextureSampler (mag_filter::linear,
                                       min_filter::linear);
-    float2 coord = vert.texCoords;
+
     // load the RGB value from the glyph image at the current texcoord
-    float3 glyph_clr = float3(glyphTexture.sample(glyphTextureSampler, coord));
+    float3 glyph_clr = float3(glyphTexture.sample(glyphTextureSampler, vert.texCoords));
+
     if (glyph_clr.r == 0.0f && glyph_clr.g == 0.0f && glyph_clr.b == 0.0f) {
         // zero coverage, so skip this fragment
         discard_fragment();
@@ -206,11 +209,15 @@ fragment float4 lcd_color(
     constexpr sampler dstTextureSampler (mag_filter::linear,
                                       min_filter::linear);
     // load the RGB value from the corresponding destination pixel
-    float3 dst_clr = float3(dstTexture.sample(dstTextureSampler, coord));
+    float3 dst_clr = float3(dstTexture.sample(dstTextureSampler, vert.texCoords));
+
     // gamma adjust the dest color
     float3 dst_adj = pow(dst_clr.rgb, gamma);
+
     // linearly interpolate the three color values
     float3 result = mix(dst_adj, src_adj, glyph_clr);
+
     // gamma re-adjust the resulting color (alpha is always set to 1.0)
     return float4(pow(result.rgb, invgamma), 1.0);
+
 }
