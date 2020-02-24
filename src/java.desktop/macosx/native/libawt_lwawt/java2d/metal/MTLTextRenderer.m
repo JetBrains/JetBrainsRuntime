@@ -172,9 +172,11 @@ static SurfaceDataBounds previousGlyphBounds;
  * as intensity values (which work well with the GL_MODULATE function).
  */
 static jboolean
-MTLTR_InitGlyphCache(MTLContext *mtlc)
+MTLTR_InitGlyphCache(MTLContext *mtlc, jboolean lcdCache)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_InitGlyphCache");
+    MTLPixelFormat pixelFormat =
+        lcdCache ? MTLPixelFormatRGBA8Unorm : MTLPixelFormatA8Unorm;
 
     MTLGlyphCacheInfo *gcinfo;
     // init glyph cache data structure
@@ -191,7 +193,7 @@ MTLTR_InitGlyphCache(MTLContext *mtlc)
     }
 
     MTLTextureDescriptor *textureDescriptor =
-        [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatA8Unorm
+        [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:pixelFormat
                                                             width:MTLTR_CACHE_WIDTH
                                                             height:MTLTR_CACHE_HEIGHT
                                                             mipmapped:NO];
@@ -199,7 +201,11 @@ MTLTR_InitGlyphCache(MTLContext *mtlc)
     gcinfo->texture = [mtlc.device newTextureWithDescriptor:textureDescriptor];
     [textureDescriptor release];
 
-    glyphCacheAA = gcinfo;
+    if (lcdCache) {
+        glyphCacheLCD = gcinfo;
+    } else {
+        glyphCacheAA = gcinfo;
+    }
 
     return JNI_TRUE;
 }
@@ -219,13 +225,18 @@ MTLTR_GetGlyphCacheTexture()
  * associated with the given MTLContext.
  */
 static void
-MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc)
+MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
+                      MTLPixelFormat pixelFormat)
 {
     MTLCacheCellInfo *ccinfo;
     MTLGlyphCacheInfo *gcinfo;
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_AddToGlyphCache");
-    gcinfo = glyphCacheAA;
+    if (pixelFormat == MTLPixelFormatA8Unorm) {
+        gcinfo = glyphCacheAA;
+    } else {
+        gcinfo = glyphCacheLCD;
+    }
 
     if ((gcinfo == NULL) || (glyph->image == NULL)) {
         return;
@@ -234,7 +245,11 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc)
     bool isCacheFull = MTLGlyphCache_IsCacheFull(gcinfo, glyph);
     if (isCacheFull) {
         MTLGlyphCache_Free(gcinfo);
-        MTLTR_InitGlyphCache(mtlc);
+        if (pixelFormat == MTLPixelFormatA8Unorm) {
+            MTLTR_InitGlyphCache(mtlc, JNI_FALSE);
+        } else {
+            MTLTR_InitGlyphCache(mtlc, JNI_TRUE);
+        }
         gcinfo = glyphCacheAA;
     }
     MTLGlyphCache_AddGlyph(gcinfo, glyph);
@@ -346,7 +361,7 @@ J2dTraceLn(J2D_TRACE_INFO, "MTLTR_EnableGlyphVertexCache");
     }
 
     if (glyphCacheAA == NULL) {
-        if (!MTLTR_InitGlyphCache(mtlc)) {
+        if (!MTLTR_InitGlyphCache(mtlc, JNI_FALSE)) {
             return;
         }
     }
@@ -406,7 +421,7 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
 
     if (ginfo->cellInfo == NULL) {
         // attempt to add glyph to accelerated glyph cache
-        MTLTR_AddToGlyphCache(ginfo, mtlc);
+        MTLTR_AddToGlyphCache(ginfo, mtlc, MTLPixelFormatA8Unorm);
 
         if (ginfo->cellInfo == NULL) {
             // we'll just no-op in the rare case that the cell is NULL
@@ -466,9 +481,46 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, MTLSDOps *dstOps,
                            GlyphInfo *ginfo, jint x, jint y,
                            jint glyphIndex, jint totalGlyphs,
                            jboolean rgbOrder, jint contrast,
-                           id<MTLTexture> dstTextureID)
+                           id<MTLTexture> dstTexture)
 {
-    //TODO
+    CacheCellInfo *cell;
+    jint dx1, dy1, dx2, dy2;
+    jfloat dtx1, dty1, dtx2, dty2;
+
+    if (glyphMode != MODE_USE_CACHE_LCD) {
+        if (glyphMode == MODE_NO_CACHE_GRAY) {
+            MTLVertexCache_DisableMaskCache(mtlc);
+        } else if (glyphMode == MODE_USE_CACHE_GRAY) {
+            MTLTR_DisableGlyphVertexCache(mtlc);
+        }
+
+        if (glyphCacheLCD == NULL) {
+            if (!MTLTR_InitGlyphCache(mtlc, JNI_TRUE)) {
+                return JNI_FALSE;
+            }
+        }
+
+        if (rgbOrder != lastRGBOrder) {
+            // need to invalidate the cache in this case; see comments
+            // for lastRGBOrder above
+            MTLGlyphCache_Invalidate(glyphCacheLCD);
+            lastRGBOrder = rgbOrder;
+        }
+
+        glyphMode = MODE_USE_CACHE_LCD;
+    }
+
+    if (ginfo->cellInfo == NULL) {
+        // attempt to add glyph to accelerated glyph cache
+        // TODO : Handle RGB order
+        MTLTR_AddToGlyphCache(ginfo, mtlc, MTLPixelFormatRGBA8Unorm);
+
+        if (ginfo->cellInfo == NULL) {
+            // we'll just no-op in the rare case that the cell is NULL
+            return JNI_TRUE;
+        }
+    }
+    // TODO : Updating cache bounds and texture mapping.
     return JNI_TRUE;
 }
 
@@ -574,7 +626,9 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     [blitTexture release];*/
 
     if (glyphMode != MODE_NO_CACHE_LCD) {
-        if (glyphMode == MODE_USE_CACHE_GRAY) {
+        if (glyphMode == MODE_NO_CACHE_GRAY) {
+            MTLVertexCache_DisableMaskCache(mtlc);
+        } else if (glyphMode == MODE_USE_CACHE_GRAY) {
             MTLTR_DisableGlyphVertexCache(mtlc);
         }
 
