@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.sun.tools.attach.VirtualMachine;
 import jdk.jfr.EventType;
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.Recording;
@@ -51,7 +52,15 @@ import jdk.test.lib.Asserts;
 import jdk.test.lib.jfr.CommonHelper;
 import jdk.test.lib.jfr.Events;
 
+import javax.management.JMX;
+import javax.management.MBeanServerConnection;
+import javax.management.ObjectName;
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
+
 public class JmxHelper {
+    private static final String LOCAL_CONNECTION_ADDRESS = "com.sun.management.jmxremote.localConnectorAddress";
 
     public static RecordingInfo getJmxRecording(long recId) {
         for (RecordingInfo r : getFlighteRecorderMXBean().getRecordings()) {
@@ -278,4 +287,18 @@ public class JmxHelper {
         return ManagementFactory.getPlatformMXBean(FlightRecorderMXBean.class);
     }
 
+    public static long getPID(){
+        return ManagementFactory.getRuntimeMXBean().getPid();
+    }
+
+    public static FlightRecorderMXBean getFlighteRecorderMXBean(long pid) throws Exception {
+        VirtualMachine targetVM = VirtualMachine.attach("" + pid);
+        String jmxServiceUrl = targetVM.getAgentProperties().getProperty(LOCAL_CONNECTION_ADDRESS);
+        JMXServiceURL jmxURL = new JMXServiceURL(jmxServiceUrl);
+        JMXConnector connector = JMXConnectorFactory.connect(jmxURL);
+        MBeanServerConnection connection = connector.getMBeanServerConnection();
+
+        ObjectName objectName = new ObjectName("jdk.management.jfr:type=FlightRecorder");
+        return JMX.newMXBeanProxy(connection, objectName, FlightRecorderMXBean.class);
+    }
 }
