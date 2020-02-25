@@ -87,7 +87,7 @@ public class AWTThreading {
                                 public Thread newThread(Runnable r) {
                                     Thread t = factory.newThread(r);
                                     t.setDaemon(true);
-                                    t.setName("AWT-" + AWTThreading.class.getSimpleName() + " " + t.getName());
+                                    t.setName(AWTThreading.class.getSimpleName() + " " + t.getName());
                                     return t;
                                 }
                             })
@@ -163,37 +163,42 @@ public class AWTThreading {
                     instance.invocations.push(new TrackingQueue());
                 }
                 final TrackingQueue queue = instance.invocations.peek();
-                Runnable safeListener = listener;
-                if (listener != null) {
-                    // guarantees a single run of the passed 'listener'
-                    safeListener = new Runnable() {
-                        Runnable origListener = listener;
-                        @Override
-                        public void run() {
-                            if (origListener != null) origListener.run();
-                            origListener = null;
-                        }
-                    };
-                }
-                // guarantees a single dispatch of the event
-                InvocationEvent event = new InvocationEvent(source, runnable, safeListener, catchThrowables) {
-                    final SoftReference<TrackingQueue> queueRef = new SoftReference<>(queue);
+                final InvocationEvent[] eventRef = new InvocationEvent[1];
 
+                queue.add(eventRef[0] = new InvocationEvent(
+                        source,
+                        runnable,
+                        // Wrap the original completion listener so that it:
+                        // - guarantees a single run either from dispatch or dispose
+                        // - removes the invocation event from the tracking queue
+                        new Runnable() {
+                            SoftReference<TrackingQueue> queueRef = new SoftReference<>(queue);
+
+                            @Override
+                            public void run() {
+                                if (queueRef != null) {
+                                    if (listener != null) {
+                                        listener.run();
+                                    }
+                                    TrackingQueue q = queueRef.get();
+                                    if (q != null) {
+                                        q.remove(eventRef[0]);
+                                        q.clear();
+                                    }
+                                    queueRef = null;
+                                }
+                            }
+                        },
+                        catchThrowables)
+                {
                     @Override
                     public void dispatch() {
                         if (!isDispatched()) {
                             super.dispatch();
-
-                            TrackingQueue queue = queueRef.get();
-                            if (queue != null) {
-                                queue.remove(this);
-                                queueRef.clear();
-                            }
                         }
                     }
-                };
-                queue.add(event);
-                return event;
+                });
+                return eventRef[0];
             }
         }
         return new InvocationEvent(source, runnable, listener, catchThrowables);
