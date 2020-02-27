@@ -173,7 +173,7 @@ class DragSourceFrame extends JFrame implements DragGestureListener {
     void initUI() {
         this.setLocation(0, 0);
         JPanel contentPane = new JPanel(null);
-        contentPane.setPreferredSize(new Dimension(100, 100));
+        contentPane.setPreferredSize(new Dimension(50, 50));
 
         sourcePanel = new JPanel() {
             @Override
@@ -181,10 +181,10 @@ class DragSourceFrame extends JFrame implements DragGestureListener {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setColor(this.getBackground());
-                g2.fillRect(0, 0, 100, 100);
+                g2.fillRect(0, 0, 50, 50);
             }
         };
-        sourcePanel.setBounds(0, 0, 100, 100);
+        sourcePanel.setBounds(0, 0, 50,50);
         sourcePanel.setEnabled(true);
         sourcePanel.setBackground(Color.white);
 
@@ -298,7 +298,7 @@ class DropTargetFrame extends JFrame {
     void initUI(Point frameLocation) {
         this.setLocation(frameLocation);
         JPanel contentPane = new JPanel(null);
-        contentPane.setPreferredSize(new Dimension(400, 400));
+        contentPane.setPreferredSize(new Dimension(200,200));
 
         dtPanel = new JPanel() {
             @Override
@@ -306,11 +306,11 @@ class DropTargetFrame extends JFrame {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setColor(this.getBackground());
-                g2.fillRect(0, 0, 200, 200);
+                g2.fillRect(0, 0, 100,100);
             }
         };
 
-        dtPanel.setBounds(100, 100, 200, 200);
+        dtPanel.setBounds(50,50, 100, 100);
         dtPanel.setEnabled(true);
         dtPanel.setBackground(Color.white);
         dtPanel.setDropTarget(new DropTarget(dtPanel, DnDConstants.ACTION_COPY_OR_MOVE, new DropTargetAdapter() {
