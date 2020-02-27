@@ -155,12 +155,12 @@ static void initTemplatePipelineDescriptors() {
         return;
     }
     if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-        _color == other->_color;
+        _color = other->_color;
         return;
     }
 
     if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-        _color == other->_color;
+        _color = other->_color;
         _paintTexture = other->_paintTexture;
         _anchor = other->_anchor;
         return;
