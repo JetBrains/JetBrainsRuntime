@@ -2,6 +2,9 @@
 
 #include "GraphicsPrimitiveMgr.h"
 
+// A special value for xor composite
+const int XOR_COMPOSITE_RULE = 20;
+
 extern const SurfaceRasterFlags defaultRasterFlags;
 
 static void setBlendingFactors(
@@ -97,6 +100,7 @@ static void setBlendingFactors(
             stencilNeeded:stencilNeeded];
 }
 
+
 // Base method to obtain MTLRenderPipelineState.
 // NOTE: parameters compositeRule, srcFlags, dstFlags are used to set MTLRenderPipelineColorAttachmentDescriptor multipliers
 - (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
@@ -108,24 +112,30 @@ static void setBlendingFactors(
                                        dstFlags:(const SurfaceRasterFlags *)dstFlags
                                   stencilNeeded:(bool)stencilNeeded;
 {
+    const jboolean useXorComposite = (compositeRule == XOR_COMPOSITE_RULE);
     const jboolean useComposite = compositeRule >= 0
-            && compositeRule < java_awt_AlphaComposite_MAX_RULE
-            && srcFlags != NULL && dstFlags != NULL;
+        && compositeRule < java_awt_AlphaComposite_MAX_RULE
+        && srcFlags != NULL && dstFlags != NULL;
 
     // Calculate index by flags and compositeRule
     // TODO: reimplement, use map with convenient key (calculated by all arguments)
     int subIndex = 0;
-    if (useComposite) {
-        if (!srcFlags->isPremultiplied)
-            subIndex |= 1;
-        if (srcFlags->isOpaque)
-            subIndex |= 1 << 1;
-        if (!dstFlags->isPremultiplied)
-            subIndex |= 1 << 2;
-        if (dstFlags->isOpaque)
-            subIndex |= 1 << 3;
-    } else
-        compositeRule = RULE_Src;
+    if (useXorComposite) {
+        // compositeRule value is already XOR_COMPOSITE_RULE
+    }
+    else {
+        if (useComposite) {
+            if (!srcFlags->isPremultiplied)
+                subIndex |= 1;
+            if (srcFlags->isOpaque)
+                subIndex |= 1 << 1;
+            if (!dstFlags->isPremultiplied)
+                subIndex |= 1 << 2;
+            if (dstFlags->isOpaque)
+                subIndex |= 1 << 3;
+        } else
+            compositeRule = RULE_Src;
+    }
 
     if (stencilNeeded) {
         subIndex |= 1 << 4;
@@ -150,7 +160,14 @@ static void setBlendingFactors(
             pipelineDesc.vertexFunction = vertexShader;
             pipelineDesc.fragmentFunction = fragmentShader;
 
-            if (useComposite) {
+            if (useXorComposite) {
+                pipelineDesc.colorAttachments[0].blendingEnabled = YES;
+ 
+                pipelineDesc.colorAttachments[0].rgbBlendOperation = MTLBlendOperationAdd;
+                pipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOneMinusDestinationColor;
+                pipelineDesc.colorAttachments[0].destinationRGBBlendFactor =  MTLBlendFactorOneMinusSourceColor;
+
+            } else if (useComposite) {
                 setBlendingFactors(
                         pipelineDesc.colorAttachments[0],
                         compositeRule,
@@ -194,6 +211,21 @@ static void setBlendingFactors(
     }
     return result;
 }
+
+- (id<MTLRenderPipelineState>) getXorModePipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
+                                 vertexShaderId:(NSString *)vertexShaderId
+                               fragmentShaderId:(NSString *)fragmentShaderId
+                                                  srcFlags:(const SurfaceRasterFlags * )srcFlags
+                                                  dstFlags:(const SurfaceRasterFlags * )dstFlags
+                                             stencilNeeded:(bool)stencilNeeded {
+            return [self getPipelineState:pipelineDescriptor
+                   vertexShaderId:vertexShaderId
+                 fragmentShaderId:fragmentShaderId
+                    compositeRule:XOR_COMPOSITE_RULE
+                         srcFlags:NULL
+                         dstFlags:NULL
+                    stencilNeeded:stencilNeeded];
+} 
 @end
 
 static void setBlendingFactors(
@@ -354,5 +386,4 @@ static void setBlendingFactors(
             cad.blendingEnabled = NO;
         }
     }
-
 }

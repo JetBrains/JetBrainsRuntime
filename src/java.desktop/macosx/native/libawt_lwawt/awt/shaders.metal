@@ -173,6 +173,28 @@ fragment half4 frag_tp(
     //TODO : implement alpha component value if source is transparent
 }
 
+fragment half4 frag_tp_xorMode(
+        TxtShaderInOut vert [[stage_in]],
+        texture2d<float, access::sample> renderTexture [[texture(0)]],
+        constant int& xorColor[[buffer(0)]])
+{
+    constexpr sampler textureSampler (address::repeat,
+                                      mag_filter::nearest,
+                                      min_filter::nearest);
+
+    float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
+
+    pixelColor.r = float( (unsigned char)(pixelColor.r * 255.0) ^ ((xorColor >> 16) & 0xFF) ) / 255.0f;
+    pixelColor.g = float( (unsigned char)(pixelColor.g * 255.0) ^ ((xorColor >> 8) & 0xFF)) / 255.0f;
+    pixelColor.b = float( (unsigned char)(pixelColor.b * 255.0) ^ (xorColor & 0xFF)) / 255.0f;
+    pixelColor.a = 1.0;
+
+    return half4(pixelColor.r, pixelColor.g, pixelColor.b, 1.0);
+
+    // This implementation defaults alpha to 1.0 as if source is opaque
+    //TODO : implement alpha component value if source is transparent
+}
+
 /* The variables involved in the equation can be expressed as follows:
  *
  *   Cs = Color component of the source (foreground color) [0.0, 1.0]

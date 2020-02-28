@@ -102,6 +102,13 @@
                 dstFlags:(const SurfaceRasterFlags *)dstFlags
     pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage;
 
+- (void)setXorModePipelineState:(id<MTLRenderCommandEncoder>)encoder
+               composite:(MTLComposite *)composite
+           isStencilUsed:(jboolean)isStencilUsed
+               isTexture:(jboolean)isTexture
+                srcFlags:(const SurfaceRasterFlags *)srcFlags
+                dstFlags:(const SurfaceRasterFlags *)dstFlags
+    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage;
 @end
 
 #endif /* MTLPaints_h_Included */

@@ -134,7 +134,13 @@ static void initTemplatePipelineDescriptors() {
         return _color == other->_color;
     }
     if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-        return _paintTexture == other->_paintTexture;
+        return _paintTexture == other->_paintTexture
+               && _anchor.xParams[0] == other->_anchor.xParams[0]
+               && _anchor.xParams[1] == other->_anchor.xParams[1]
+               && _anchor.xParams[2] == other->_anchor.xParams[2]
+               && _anchor.yParams[0] == other->_anchor.yParams[0]
+               && _anchor.yParams[1] == other->_anchor.yParams[1]
+               && _anchor.yParams[2] == other->_anchor.yParams[2];
     }
 
     J2dTraceLn1(J2D_TRACE_ERROR, "Unimplemented paint mode %d", _paintState);
@@ -192,6 +198,8 @@ static void initTemplatePipelineDescriptors() {
 - (void)reset {
     _paintState = sun_java2d_SunGraphics2D_PAINT_UNDEFINED;
     _paintTexture = nil;
+    _anchor.xParams[0] = _anchor.xParams[1] = _anchor.xParams[2] = 0.0f;
+    _anchor.yParams[0] = _anchor.yParams[1] = _anchor.yParams[2] = 0.0f; 
 }
 
 - (void)setColor:(jint)pixelColor {
@@ -374,6 +382,86 @@ static void initTemplatePipelineDescriptors() {
 
     [encoder setRenderPipelineState:pipelineState];
 }
+
+
+// For the current paint mode: and for XOR composite - a separate method is added as fragment shader differ in some cases
+// 1. Selects vertex+fragment shaders (and corresponding pipelineDesc) and set pipelineState
+// 2. Set vertex and fragment buffers
+- (void)setXorModePipelineState:(id<MTLRenderCommandEncoder>)encoder
+               composite:(MTLComposite *)composite
+           isStencilUsed:(jboolean)isStencilUsed
+               isTexture:(jboolean)isTexture
+                srcFlags:(const SurfaceRasterFlags *)srcFlags
+                dstFlags:(const SurfaceRasterFlags *)dstFlags
+    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage {
+    initTemplatePipelineDescriptors();
+
+    const bool stencil = isStencilUsed == JNI_TRUE;
+    jint xorColor = (jint) [composite getXorColor];
+
+    id<MTLRenderPipelineState> pipelineState = nil;
+    if (isTexture) {
+          pipelineState = [pipelineStateStorage getXorModePipelineState:templateTexturePipelineDesc
+                                          vertexShaderId:@"vert_txt"
+                                        fragmentShaderId:@"frag_txt"
+                                                srcFlags:srcFlags
+                                                dstFlags:dstFlags
+                                           stencilNeeded:stencil];
+
+        if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
+            struct TxtFrameUniforms uf = {RGBA_TO_V4(_color ^ xorColor), 1, srcFlags->isOpaque, dstFlags->isOpaque };
+            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+        } else {
+            struct TxtFrameUniforms uf = {RGBA_TO_V4(0 ^ xorColor), 0, srcFlags->isOpaque, dstFlags->isOpaque };
+            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+        }
+        [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
+    } else {
+        if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
+
+            pipelineState = [pipelineStateStorage getXorModePipelineState:templateRenderPipelineDesc
+                                        vertexShaderId:@"vert_col"
+                                      fragmentShaderId:@"frag_col"
+                                              srcFlags:srcFlags
+                                              dstFlags:dstFlags
+                                         stencilNeeded:stencil];
+
+            // Calculate _color ^ xorColor for RGB components
+            // This color gets XORed with destination framebuffer pixel color
+            struct FrameUniforms uf = {RGBA_TO_V4(_color ^ xorColor)};
+            [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+
+        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
+
+            pipelineState = [pipelineStateStorage getXorModePipelineState:templateRenderPipelineDesc
+                                        vertexShaderId:@"vert_grad"
+                                      fragmentShaderId:@"frag_grad"
+                                              srcFlags:srcFlags
+                                              dstFlags:dstFlags
+                                         stencilNeeded:stencil];
+
+                struct GradFrameUniforms uf = {
+                        {_p0, _p1, _p3},
+                        RGBA_TO_V4(_pixel1 ^ xorColor),
+                        RGBA_TO_V4(_pixel2 ^ xorColor)};
+                [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
+            } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
+
+                pipelineState = [pipelineStateStorage getXorModePipelineState:templateRenderPipelineDesc
+                                            vertexShaderId:@"vert_tp"
+                                          fragmentShaderId:@"frag_tp_xorMode"
+                                                  srcFlags:srcFlags
+                                                  dstFlags:dstFlags
+                                             stencilNeeded:stencil];
+
+                [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
+                [encoder setFragmentTexture:_paintTexture atIndex: 0];
+                [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
+            }
+        }
+    [encoder setRenderPipelineState:pipelineState];
+}
+
 @end
 
 /************************* GradientPaint support ****************************/

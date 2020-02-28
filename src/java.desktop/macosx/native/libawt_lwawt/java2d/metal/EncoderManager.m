@@ -1,6 +1,7 @@
 #include "EncoderManager.h"
-
 #include "MTLContext.h"
+#include "sun_java2d_SunGraphics2D.h"
+
 
 // NOTE: uncomment to disable comparing cached encoder states with requested (for debugging)
 // #define ALWAYS_UPDATE_ENCODER_STATES
@@ -167,14 +168,24 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     _isAA = isAA;
     _srcFlags = *srcFlags;
 
-    [paint setPipelineState:encoder
-                  composite:_composite
-              isStencilUsed:isStencilUsed
-                  isTexture:_isTexture
-                       isAA:isAA
-                   srcFlags:&_srcFlags
-                   dstFlags:&_dstFlags
-       pipelineStateStorage:_pipelineStateStorage];
+    if ((jint)[composite getCompositeState] == sun_java2d_SunGraphics2D_COMP_XOR) {
+        [paint setXorModePipelineState:encoder
+                      composite:_composite
+                  isStencilUsed:isStencilUsed
+                      isTexture:_isTexture
+                       srcFlags:&_srcFlags
+                       dstFlags:&_dstFlags
+           pipelineStateStorage:_pipelineStateStorage];
+    } else {
+        [paint setPipelineState:encoder
+                      composite:_composite
+                  isStencilUsed:isStencilUsed
+                      isTexture:_isTexture
+                           isAA:isAA
+                       srcFlags:&_srcFlags
+                       dstFlags:&_dstFlags
+           pipelineStateStorage:_pipelineStateStorage];
+    }
 }
 
 - (void) updateClip:(id<MTLRenderCommandEncoder>)encoder clip:(MTLClip *)clip forceUpdate:(jboolean)forceUpdate

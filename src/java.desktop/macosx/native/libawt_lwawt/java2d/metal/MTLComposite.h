@@ -6,7 +6,7 @@
 #include <jni.h>
 
 /**
- * The MTLComposite class represents alpha composite mode
+ * The MTLComposite class represents composite mode
  * */
 
 @interface MTLComposite : NSObject
@@ -18,7 +18,13 @@
 - (void)setRule:(jint)rule extraAlpha:(jfloat)extraAlpha;
 - (void)reset;
 
+- (void)setXORComposite:(jint)color;
+- (void)setAlphaComposite:(jint)rule;
+
+
+- (jint)getCompositeState;
 - (jint)getRule;
+- (jint)getXorColor;
 
 - (jboolean)isBlendingDisabled:(jboolean) isSrcOpaque;
 - (NSString *)getDescription; // creates autorelease string
