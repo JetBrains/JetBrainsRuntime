@@ -95,7 +95,7 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
 }
 
 @synthesize textureFunction,
-            vertexCacheEnabled, device, library, pipelineStateStorage,
+            vertexCacheEnabled, aaEnabled, device, library, pipelineStateStorage,
             commandQueue, vertexBuffer,
             texturePool;
 

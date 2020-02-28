@@ -1,7 +1,7 @@
 #include "EncoderManager.h"
 #include "MTLContext.h"
 #include "sun_java2d_SunGraphics2D.h"
-
+#import "common.h"
 
 // NOTE: uncomment to disable comparing cached encoder states with requested (for debugging)
 // #define ALWAYS_UPDATE_ENCODER_STATES
@@ -16,8 +16,10 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 - (void)dealloc;
 
 - (void)reset:(id<MTLTexture>)destination
+                aaDest:(id<MTLTexture>)aaDestination
            isDstOpaque:(jboolean)isDstOpaque
-    isDstPremultiplied:(jboolean)isDstPremultiplied;
+    isDstPremultiplied:(jboolean)isDstPremultiplied
+                  isAA:(jboolean)isAA;
 
 - (void)updateEncoder:(id<MTLRenderCommandEncoder>)encoder
                 paint:(MTLPaint *)paint
@@ -37,6 +39,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 
     // Persistent encoder properties
     id<MTLTexture> _destination;
+    id<MTLTexture> _aaDestination;
     SurfaceRasterFlags _dstFlags;
 
     //
@@ -66,7 +69,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     self = [super init];
     if (self) {
         _destination = nil;
-
+        _aaDestination = nil;
         _composite = [[MTLComposite alloc] init];
         _paint = [[MTLPaint alloc] init];
         _transform = [[MTLTransform alloc] init];
@@ -88,11 +91,13 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 }
 
 - (void)reset:(id<MTLTexture>)destination
+                aaDest:(id<MTLTexture>)aaDestination
            isDstOpaque:(jboolean)isDstOpaque
     isDstPremultiplied:(jboolean)isDstPremultiplied
                   isAA:(jboolean)isAA
 {
     _destination = destination;
+    _aaDestination = aaDestination;
     _dstFlags.isOpaque = isDstOpaque;
     _dstFlags.isPremultiplied = isDstPremultiplied;
     _isAA = isAA;
@@ -199,7 +204,17 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
         return;
 
     [_clip copyFrom:clip];
-    [_clip setScissorOrStencil:encoder destWidth:_destination.width destHeight:_destination.height device:_device];
+    if (_aaDestination != nil) {
+      [_clip setScissorOrStencil:encoder
+                       destWidth:_aaDestination.width
+                      destHeight:_aaDestination.height
+                          device:_device];
+    } else {
+      [_clip setScissorOrStencil:encoder
+                       destWidth:_destination.width
+                      destHeight:_destination.height
+                          device:_device];
+    }
 }
 
 - (void)updateTransform:(id <MTLRenderCommandEncoder>)encoder
@@ -211,7 +226,16 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
         return;
 
     [_transform copyFrom:transform];
-    [_transform setVertexMatrix:encoder destWidth:_destination.width destHeight:_destination.height];
+    if (_aaDestination != nil) {
+      [_transform setVertexMatrix:encoder
+                        destWidth:_aaDestination.width
+                       destHeight:_aaDestination.height];
+    } else {
+      [_transform setVertexMatrix:encoder
+                        destWidth:_destination.width
+                       destHeight:_destination.height];
+
+    }
 }
 
 @end
@@ -223,6 +247,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 
     // 'Persistent' properties of encoder
     id<MTLTexture> _destination;
+    id<MTLTexture> _aaDestination;
     BOOL _useStencil;
 
     // 'Mutable' states of encoder
@@ -234,6 +259,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     if (self) {
         _encoder = nil;
         _destination = nil;
+        _aaDestination = nil;
         _useStencil = NO;
         _encoderStates = [[EncoderStates alloc] init];
 
@@ -256,16 +282,23 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     return [self getRenderEncoder:dstOps->pTexture isDstOpaque:dstOps->isOpaque];
 }
 
-- (id<MTLRenderCommandEncoder>) getAARenderEncoder:(id<MTLTexture> _Nonnull) dstTxt
-{
-    return [self getEncoder:dstTxt isOpaque:JNI_TRUE isTexture:JNI_FALSE isAA:JNI_TRUE srcFlags:NULL];
-
+- (id<MTLRenderCommandEncoder> _Nonnull)getAARenderEncoder:(const BMTLSDOps * _Nonnull)dstOps {
+  id<MTLTexture> dstTxt = dstOps->pTexture;
+  return [self getEncoder:dstTxt
+                 isOpaque:dstOps->isOpaque
+                isTexture:JNI_FALSE
+                     isAA:JNI_TRUE
+                 srcFlags:NULL];
 }
 
 - (id<MTLRenderCommandEncoder> _Nonnull)getRenderEncoder:(id<MTLTexture> _Nonnull)dest
                                              isDstOpaque:(bool)isOpaque
 {
-    return [self getEncoder:dest isOpaque:isOpaque isTexture:JNI_FALSE isAA:JNI_FALSE srcFlags:NULL];
+    return [self getEncoder:dest
+                 isOpaque:isOpaque
+                isTexture:JNI_FALSE
+                     isAA:JNI_FALSE
+                 srcFlags:NULL];
 }
 
 - (id<MTLRenderCommandEncoder> _Nonnull) getTextureEncoder:(const BMTLSDOps * _Nonnull)dstOps
@@ -294,96 +327,116 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     return [self getTextureEncoder:dest isSrcOpaque:isSrcOpaque isDstOpaque:isDstOpaque isAA:JNI_FALSE];
 }
 
-- (id<MTLRenderCommandEncoder> _Nonnull) getEncoder:(id<MTLTexture> _Nonnull)dest
-                                  isOpaque:(jboolean)isOpaque
-                                 isTexture:(jboolean)isTexture
-                                      isAA:(jboolean)isAA
-                                  srcFlags:(const SurfaceRasterFlags * _Nullable)srcFlags
-{
-    //
-    // 1. check whether it's necessary to call endEncoder
-    //
-    jboolean needEnd = JNI_FALSE;
-    if (_encoder != nil ) {
-        if (_destination != dest || isAA != _encoderStates.aa) {
-            J2dTraceLn2(J2D_TRACE_VERBOSE, "end common encoder because of dest change: %p -> %p", _destination, dest);
-            needEnd = JNI_TRUE;
-        } else if ((_useStencil == NO) != ([_mtlc.clip isShape] == NO)) {
-            // 1. When mode changes RECT -> SHAPE we must recreate encoder with stencilAttachment (todo: consider
-            // the case when current encoder already has stencil)
-            //
-            // 2. When mode changes SHAPE -> RECT it seems that we can use the same encoder with disabled stencil test,
-            // but [encoder setDepthStencilState:nil] causes crash, so we have to recreate encoder in such case
-            J2dTraceLn2(J2D_TRACE_VERBOSE, "end common encoder because toggle stencil: %d -> %d", (int)_useStencil, (int)[_mtlc.clip isShape]);
-            needEnd = JNI_TRUE;
-        }
+- (id<MTLRenderCommandEncoder> _Nonnull)
+    getEncoder:(id<MTLTexture> _Nonnull)dest
+      isOpaque:(jboolean)isOpaque
+     isTexture:(jboolean)isTexture
+          isAA:(jboolean)isAA
+      srcFlags:(const SurfaceRasterFlags *_Nullable)srcFlags {
+  //
+  // 1. check whether it's necessary to call endEncoder
+  //
+  jboolean needEnd = JNI_FALSE;
+  if (_encoder != nil) {
+    if (_destination != dest || isAA != _encoderStates.aa) {
+      J2dTraceLn2(J2D_TRACE_VERBOSE,
+                  "end common encoder because of dest change: %p -> %p",
+                  _destination, dest);
+      needEnd = JNI_TRUE;
+    } else if ((_useStencil == NO) != ([_mtlc.clip isShape] == NO)) {
+      // 1. When mode changes RECT -> SHAPE we must recreate encoder with
+      // stencilAttachment (todo: consider the case when current encoder already
+      // has stencil)
+      //
+      // 2. When mode changes SHAPE -> RECT it seems that we can use the same
+      // encoder with disabled stencil test, but [encoder
+      // setDepthStencilState:nil] causes crash, so we have to recreate encoder
+      // in such case
+      J2dTraceLn2(J2D_TRACE_VERBOSE,
+                  "end common encoder because toggle stencil: %d -> %d",
+                  (int)_useStencil, (int)[_mtlc.clip isShape]);
+      needEnd = JNI_TRUE;
     }
-    if (needEnd)
-        [self endEncoder];
+  }
+  if (needEnd)
+    [self endEncoder];
 
-    //
-    // 2. recreate encoder if necessary
-    //
-    jboolean forceUpdate = JNI_FALSE;
+  //
+  // 2. recreate encoder if necessary
+  //
+  jboolean forceUpdate = JNI_FALSE;
 #ifdef ALWAYS_UPDATE_ENCODER_STATES
-    forceUpdate = JNI_TRUE;
+  forceUpdate = JNI_TRUE;
 #endif // ALWAYS_UPDATE_ENCODER_STATES
 
-    if (_encoder == nil) {
-        _destination = dest;
-        _useStencil = [_mtlc.clip isShape];
-        forceUpdate = JNI_TRUE;
+  if (_encoder == nil) {
+    _destination = dest;
+    _useStencil = [_mtlc.clip isShape];
+    forceUpdate = JNI_TRUE;
 
-        MTLCommandBufferWrapper * cbw = [_mtlc getCommandBufferWrapper];
-        MTLRenderPassDescriptor * rpd = [MTLRenderPassDescriptor renderPassDescriptor];
-        MTLRenderPassColorAttachmentDescriptor * ca = rpd.colorAttachments[0];
-        if (isAA && !isTexture) {
-            MTLTexturePoolItem *ti = [_mtlc.texturePool getTexture:dest.width
-                                      height:dest.height format:dest.pixelFormat isMultiSample:YES];
-            [cbw registerPooledTexture: ti];
-            [ti release];
-            ca.texture = ti.texture;
-            ca.resolveTexture = dest;
-            ca.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
-            ca.loadAction = MTLLoadActionClear;
-            ca.storeAction =  MTLStoreActionMultisampleResolve;
-        } else {
-            ca.texture = dest;
-            ca.loadAction = MTLLoadActionLoad;
-            ca.storeAction = MTLStoreActionStore;
-        }
+    MTLCommandBufferWrapper *cbw = [_mtlc getCommandBufferWrapper];
+    MTLRenderPassDescriptor *rpd =
+        [MTLRenderPassDescriptor renderPassDescriptor];
+    MTLRenderPassColorAttachmentDescriptor *ca = rpd.colorAttachments[0];
+    if (isAA && !isTexture) {
+      MTLTexturePoolItem *tiBuf = [_mtlc.texturePool getTexture:dest.width
+                                                      height:dest.height
+                                                      format:MTLPixelFormatBGRA8Unorm];
+      [cbw registerPooledTexture:tiBuf];
+      [tiBuf release];
+      _aaDestination = tiBuf.texture;
 
-        if (_useStencil) {
-            // If you enable stencil testing or stencil writing, the MTLRenderPassDescriptor must include a stencil attachment.
-            rpd.stencilAttachment.texture = _mtlc.clip.stencilTextureRef;
-            rpd.stencilAttachment.loadAction = MTLLoadActionLoad;
-            rpd.stencilAttachment.storeAction = MTLStoreActionDontCare;
-        }
-
-        // J2dTraceLn1(J2D_TRACE_VERBOSE, "created render encoder to draw on tex=%p", dest);
-        _encoder = [[cbw getCommandBuffer] renderCommandEncoderWithDescriptor:rpd];
-        [rpd release];
-
-        [_encoderStates reset:dest
-                  isDstOpaque:isOpaque
-           isDstPremultiplied:YES
-                         isAA:isAA];
+      MTLTexturePoolItem *ti = [_mtlc.texturePool getTexture:dest.width
+                                                      height:dest.height
+                                                      format:_aaDestination.pixelFormat
+                                               isMultiSample:YES];
+      [cbw registerPooledTexture:ti];
+      [ti release];
+      ca.texture = ti.texture;
+      ca.resolveTexture = _aaDestination;
+      ca.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 0.0f);
+      ca.loadAction = MTLLoadActionClear;
+      ca.storeAction = MTLStoreActionMultisampleResolve;
+    } else {
+      ca.texture = dest;
+      ca.loadAction = MTLLoadActionLoad;
+      ca.storeAction = MTLStoreActionStore;
     }
 
-    //
-    // 3. update encoder states
-    //
-    [_encoderStates updateEncoder:_encoder
-                            paint:_mtlc.paint
-                        composite:_mtlc.composite
-                        isTexture:isTexture
-                             isAA:isAA
-                         srcFlags:srcFlags
-                             clip:_mtlc.clip
-                        transform:_mtlc.transform
-                      forceUpdate:forceUpdate];
+    if (_useStencil) {
+      // If you enable stencil testing or stencil writing, the
+      // MTLRenderPassDescriptor must include a stencil attachment.
+      rpd.stencilAttachment.texture = _mtlc.clip.stencilTextureRef;
+      rpd.stencilAttachment.loadAction = MTLLoadActionLoad;
+      rpd.stencilAttachment.storeAction = MTLStoreActionDontCare;
+    }
 
-    return _encoder;
+    // J2dTraceLn1(J2D_TRACE_VERBOSE, "created render encoder to draw on
+    // tex=%p", dest);
+    _encoder = [[cbw getCommandBuffer] renderCommandEncoderWithDescriptor:rpd];
+    [rpd release];
+
+    [_encoderStates reset:dest
+               aaDest:_aaDestination
+               isDstOpaque:isOpaque
+        isDstPremultiplied:YES
+                      isAA:isAA];
+  }
+
+  //
+  // 3. update encoder states
+  //
+  [_encoderStates updateEncoder:_encoder
+                          paint:_mtlc.paint
+                      composite:_mtlc.composite
+                      isTexture:isTexture
+                           isAA:isAA
+                       srcFlags:srcFlags
+                           clip:_mtlc.clip
+                      transform:_mtlc.transform
+                    forceUpdate:forceUpdate];
+
+  return _encoder;
 }
 
 - (id<MTLBlitCommandEncoder> _Nonnull) createBlitEncoder {
@@ -393,8 +446,35 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 
 - (void) endEncoder {
     if (_encoder != nil) {
-        [_encoder endEncoding];
-        [_encoder release];
+      [_encoder endEncoding];
+      [_encoder release];
+      _encoder = nil;
+        if (_aaDestination != nil) {
+          id<MTLTexture> aaDest = _aaDestination;
+          _aaDestination = nil;
+          NSUInteger _w = _destination.width;
+          NSUInteger _h = _destination.height;
+          _encoder = [self getTextureEncoder:_destination
+                                 isSrcOpaque:JNI_FALSE
+                                 isDstOpaque:JNI_TRUE
+                                        isAA:JNI_TRUE];
+
+          struct TxtVertex quadTxVerticesBuffer[] = {
+              {{0, 0}, {0, 0}},
+              {{0,_h}, {0, 1}},
+              {{_w, 0},{1, 0}},
+              {{0, _h},{0, 1}},
+              {{_w, _h}, {1, 1}},
+              {{_w, 0}, {1, 0}}
+          };
+
+          [_encoder setVertexBytes:quadTxVerticesBuffer length:sizeof(quadTxVerticesBuffer) atIndex:MeshVertexBuffer];
+          [_encoder setFragmentTexture:aaDest atIndex: 0];
+          [_encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+          [_encoder endEncoding];
+          [_encoder release];
+        }
+
         _encoder = nil;
         _destination = nil;
     }
