@@ -73,16 +73,11 @@ static void initTemplatePipelineDescriptors() {
     templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
     templateTexturePipelineDesc.label = @"template_texture";
 
-    templateAATexturePipelineDesc = [[MTLRenderPipelineDescriptor new] autorelease];
-    templateAATexturePipelineDesc.sampleCount = 1;
-    templateAATexturePipelineDesc.vertexDescriptor = vertDesc;
-    templateAATexturePipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatR8Unorm;
-    templateAATexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
-    templateAATexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].offset = 2*sizeof(float);
-    templateAATexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
-    templateAATexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stride = sizeof(struct TxtVertex);
-    templateAATexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepRate = 1;
-    templateAATexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
+    templateAATexturePipelineDesc = [[templateTexturePipelineDesc copy] autorelease];
+    templateAATexturePipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+    templateAATexturePipelineDesc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
+    templateAATexturePipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    templateAATexturePipelineDesc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
     templateAATexturePipelineDesc.label = @"template_aa_texture";
 
 }
@@ -343,13 +338,8 @@ static void initTemplatePipelineDescriptors() {
                                                           dstFlags:dstFlags
                                                      stencilNeeded:stencil];
 
-            if (isAA) {
-                struct FrameUniforms uf = { {1.0f, 1.0f, 1.0f, 1.0f} };
-                [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-            } else {
-                struct FrameUniforms uf = {RGBA_TO_V4(_color)};
-                [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-            }
+            struct FrameUniforms uf = {RGBA_TO_V4(_color)};
+            [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
         } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
             pipelineState = [pipelineStateStorage getPipelineState:templateRenderPipelineDesc
                                                     vertexShaderId:@"vert_grad"

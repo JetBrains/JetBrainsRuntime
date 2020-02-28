@@ -650,7 +650,6 @@ MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
         return;
     }
 
-    id<MTLTexture> dest = dstOps->pTexture;
     J2dTraceLn7(J2D_TRACE_INFO,
                 "MTLRenderer_FillAAParallelogram "
                 "(x=%6.2f y=%6.2f "
@@ -658,7 +657,7 @@ MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
                 "dx2=%6.2f dy2=%6.2f dst tex=%p)",
                 fx11, fy11,
                 dx21, dy21,
-                dx12, dy12, dest);
+                dx12, dy12, dstOps->pTexture);
 
     struct Vertex verts[QUAD_VERTEX_COUNT] = {
             { {fx11, fy11}},
@@ -667,36 +666,11 @@ MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
             { {fx11 + dx21 + dx12, fy11+ dy21 + dy12}
             }};
 
-    jfloat x0 = verts[0].position[0];
-    jfloat y0 = verts[0].position[1];
-    jfloat x1 = verts[0].position[0];
-    jfloat y1 = verts[0].position[1];
-    for (int i = 1; i < 4; i++) {
-        jfloat x = verts[i].position[0];
-        jfloat y = verts[i].position[1];
-        if (x0 > x) x0 = x;
-        if (y0 > y) y0 = y;
-        if (x1 < x) x1 = x;
-        if (y1 < y) y1 = y;
-    }
-
-
-    jint ox = (jint)floorf(x0);
-    jint oy = (jint)floorf(y0);
-    jint w = (jint)ceilf(x1 - floorf(x0));
-    jint h = (jint)ceilf(y1 - floorf(y0));
-    for (int i = 0; i < 4; i++) {
-        verts[i].position[0] -= ox;
-        verts[i].position[1] -= oy;
-    }
     id<MTLTexture> dstTxt = dstOps->pTexture;
-    MTLCommandBufferWrapper * cbw = [mtlc getCommandBufferWrapper];
-    MTLTexturePoolItem *ti = [mtlc.texturePool getTexture:w
-                                                   height:h format:MTLPixelFormatR8Unorm];
-    [cbw registerPooledTexture: ti];
-    [ti release];
+
     // Encode render command.
-    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getAARenderEncoder:ti.texture];
+    id<MTLRenderCommandEncoder> mtlEncoder =
+        [mtlc.encoderManager getAARenderEncoder:dstOps];
 
     if (mtlEncoder == nil) {
         return;
@@ -704,24 +678,6 @@ MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
 
     [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount: QUAD_VERTEX_COUNT];
-
-    mtlEncoder = [mtlc.encoderManager getTextureEncoder:dstTxt
-                                            isSrcOpaque:JNI_FALSE
-                                            isDstOpaque:JNI_TRUE
-                                                   isAA:JNI_TRUE];
-
-    struct TxtVertex quadTxVerticesBuffer[] = {
-            {{ox, oy}, {0, 0}},
-            {{ox, oy + h}, {0, 1}},
-            {{ox + w, oy},{1, 0}},
-            {{ox, oy + h},{0, 1}},
-            {{ox + w, oy + h}, {1, 1}},
-            {{ox + w, oy}, {1, 0}}
-    };
-
-    [mtlEncoder setVertexBytes:quadTxVerticesBuffer length:sizeof(quadTxVerticesBuffer) atIndex:MeshVertexBuffer];
-    [mtlEncoder setFragmentTexture:ti.texture atIndex: 0];
-    [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
 }
 
 void

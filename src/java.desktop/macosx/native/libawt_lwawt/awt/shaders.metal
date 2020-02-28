@@ -120,14 +120,13 @@ fragment half4 frag_txt(
 
 fragment half4 aa_frag_txt(
         TxtShaderInOut vert [[stage_in]],
-texture2d<float, access::sample> renderTexture [[texture(0)]],
-constant TxtFrameUniforms& uniforms [[buffer(1)]]
+        texture2d<float, access::sample> renderTexture [[texture(0)]],
+        constant TxtFrameUniforms& uniforms [[buffer(1)]]
 )
 {
     constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
-    float pixelColor = renderTexture.sample(textureSampler, vert.texCoords).x;
-    float4 c = pixelColor*uniforms.color;
-    return half4(c.r, c.g, c.b, pixelColor);
+    float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
+    return half4(pixelColor.r, pixelColor.g, pixelColor.b, pixelColor.a);
 }
 
 fragment half4 frag_grad(GradShaderInOut in [[stage_in]],

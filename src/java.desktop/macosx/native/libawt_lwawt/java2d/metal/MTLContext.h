@@ -65,6 +65,7 @@
 
 @property jint          textureFunction;
 @property jboolean      vertexCacheEnabled;
+@property jboolean      aaEnabled;
 
 @property (readonly, strong)   id<MTLDevice>   device;
 @property (strong) id<MTLLibrary>              library;

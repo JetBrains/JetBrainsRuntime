@@ -1,3 +1,4 @@
+#import <limits.h>
 #ifndef MTLClip_h_Included
 #define MTLClip_h_Included
 
@@ -40,16 +41,16 @@ enum Clip {
 - (void)endShapeClip:(BMTLSDOps *)dstOps context:(MTLContext *)mtlc;
 
 - (void)setScissorOrStencil:(id<MTLRenderCommandEncoder>)encoder
-                  destWidth:(jint)dw
-                 destHeight:(jint)dh
+                  destWidth:(NSUInteger)dw
+                 destHeight:(NSUInteger)dh
                      device:(id<MTLDevice>)device;
 
 - (void)setMaskGenerationPipelineState:(id<MTLRenderCommandEncoder>)encoder
-                             destWidth:(jint)dw
-                            destHeight:(jint)dh
+                             destWidth:(NSUInteger)dw
+                            destHeight:(NSUInteger)dh
                   pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage;
 
-- (NSString *)getDescription; // creates autorelease string
+- (NSString *)getDescription __unused; // creates autorelease string
 @end
 
 #endif // MTLClip_h_Included
