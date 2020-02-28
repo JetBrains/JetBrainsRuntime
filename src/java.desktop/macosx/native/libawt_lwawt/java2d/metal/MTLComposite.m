@@ -23,10 +23,19 @@
 - (BOOL)isEqual:(MTLComposite *)other {
     if (self == other)
         return YES;
-    return _extraAlpha == other->_extraAlpha
-           && _compositeRule == other->_compositeRule
-           && _compState == other->_compState
-           && (_compState != sun_java2d_SunGraphics2D_COMP_XOR || _xorPixel == other->_xorPixel);
+
+    if (_compState == other->_compState) {
+        if (_compState == sun_java2d_SunGraphics2D_COMP_XOR) {
+            return _xorPixel == other->_xorPixel;
+        }
+
+        if (_compState == sun_java2d_SunGraphics2D_COMP_ALPHA) {
+            return _extraAlpha == other->_extraAlpha
+                   && _compositeRule == other->_compositeRule;
+        }
+    }
+
+    return NO;
 }
 
 - (void)copyFrom:(MTLComposite *)other {
@@ -42,11 +51,13 @@
 }
 
 - (void)setRule:(jint)rule extraAlpha:(jfloat)extraAlpha {
+    _compState = sun_java2d_SunGraphics2D_COMP_ALPHA;
     _extraAlpha = extraAlpha;
     _compositeRule = rule;
 }
 
 - (void)reset {
+    _compState = sun_java2d_SunGraphics2D_COMP_ISCOPY;
     _compositeRule = java_awt_AlphaComposite_SRC;
     _extraAlpha = 1.f;
 }
@@ -139,6 +150,26 @@
         return JNI_FALSE;
     }
     return isSrcOpaque;
+}
+
+- (void)setAlphaComposite:(jint)rule {
+    _compState = sun_java2d_SunGraphics2D_COMP_ALPHA;
+    [self setRule:rule];
+}
+
+
+- (jint)getCompositeState {
+    return _compState;
+}
+
+
+-(void)setXORComposite:(jint)color {
+    _compState = sun_java2d_SunGraphics2D_COMP_XOR;
+    _xorPixel = color;
+}
+
+-(jint)getXorColor {
+    return _xorPixel;
 }
 
 @end

@@ -257,9 +257,9 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
 }
 
 - (void)setXorComposite:(jint)xp {
-    //TODO
-    J2dTraceLn1(J2D_TRACE_ERROR,
-                "MTLContext.setXorComposite: xorPixel=%08x -- :TODO", xp);
+    J2dTraceLn1(J2D_TRACE_INFO, "MTLContext.setXorComposite: xorPixel=%08x", xp);
+
+    [_composite setXORComposite:xp];
 }
 
 - (jboolean)isBlendingDisabled:(jboolean) isSrcOpaque {
