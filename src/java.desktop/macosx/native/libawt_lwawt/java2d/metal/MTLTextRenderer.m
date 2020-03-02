@@ -602,7 +602,6 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     jint x0;
     jint w = ginfo->width;
     jint h = ginfo->height;
-    //MTLPooledTextureHandle *blitTexture = nil;
     id<MTLTexture> blitTexture = nil;
 
     J2dTraceLn2(J2D_TRACE_INFO, "MTLTR_DrawLCDGlyphNoCache x %d, y%d", x, y);
@@ -620,11 +619,6 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     blitTexture = [mtlc.device newTextureWithDescriptor:textureDescriptor];
     [textureDescriptor release];
 
-    /*MTLCommandBufferWrapper * cbw = [mtlc getCommandBufferWrapper];
-    blitTexture = [mtlc.texturePool getTexture:w height:h format:MTLPixelFormatBGRA8Unorm];
-    [cbw registerPooledTexture: blitTexture];
-    [blitTexture release];*/
-
     if (glyphMode != MODE_NO_CACHE_LCD) {
         if (glyphMode == MODE_NO_CACHE_GRAY) {
             MTLVertexCache_DisableMaskCache(mtlc);
@@ -640,11 +634,11 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
         glyphMode = MODE_NO_CACHE_LCD;
     }
-        encoder = [mtlc.encoderManager getTextureEncoder:dstOps->pTexture isSrcOpaque:YES isDstOpaque:YES];
-        if (!MTLTR_EnableLCDGlyphModeState(encoder, mtlc, dstOps,contrast))
-        {
-            return JNI_FALSE;
-        }
+    encoder = [mtlc.encoderManager getTextureEncoder:dstOps->pTexture isSrcOpaque:YES isDstOpaque:YES];
+    if (!MTLTR_EnableLCDGlyphModeState(encoder, mtlc, dstOps,contrast))
+    {
+        return JNI_FALSE;
+    }
 
     x0 = x;
     tx1 = 0.0f;
@@ -654,59 +648,56 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     tw = MTLTR_NOCACHE_TILE_SIZE;
     th = MTLTR_NOCACHE_TILE_SIZE;
 
+    unsigned int imageBytes = w * h *4;
+    unsigned char imageData[imageBytes];
+    memset(&imageData, 0, sizeof(imageData));
+
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            imageData[(i * w * 4) + j * 4] = ginfo->image[(i * w * 3) + j * 3];
+            imageData[(i * w * 4) + j * 4 + 1] = ginfo->image[(i * w * 3) + j * 3 + 1];
+            imageData[(i * w * 4) + j * 4 + 2] = ginfo->image[(i * w * 3) + j * 3 + 2];
+            imageData[(i * w * 4) + j * 4 + 3] = 0xFF;
+        }
+    }
+
     // copy LCD mask into glyph texture tile
-    MTLRegion region = {
-        {0, 0, 0},
-        {w, h, 1}
-    };
-    NSUInteger bytesPerRow = 3 * ginfo->width;
+    MTLRegion region = MTLRegionMake2D(0, 0, w, h);
+
+    NSUInteger bytesPerRow = 4 * ginfo->width;
     [blitTexture replaceRegion:region
                  mipmapLevel:0
-                 withBytes:ginfo->image + rowBytesOffset
+                 withBytes:imageData
                  bytesPerRow:bytesPerRow];
 
-    /*for (sy = 1; sy < h; sy += th, y += th) {
-        x = x0;
-        sh = ((sy + th) > h) ? (h - sy) : th;
-
-        for (sx = 0; sx < w; sx += tw, x += tw) {
-            sw = ((sx + tw) > w) ? (w - sx) : tw;*/
-
-            J2dTraceLn7(J2D_TRACE_INFO, "sx = %d sy = %d x = %d y = %d sw = %d sh = %d w = %d", sx, sy, x, y, sw, sh, w);
+    J2dTraceLn7(J2D_TRACE_INFO, "sx = %d sy = %d x = %d y = %d sw = %d sh = %d w = %d", sx, sy, x, y, sw, sh, w);
 
 
-            // update the lower-right glyph texture coordinates
-            //tx2 = ((jfloat)sw) / MTLC_BLIT_TILE_SIZE;
-            //ty2 = ((jfloat)sh) / MTLC_BLIT_TILE_SIZE;
-            tx2 = 1.0f;
-            ty2 = 1.0f;
+    // update the lower-right glyph texture coordinates
+    tx2 = 1.0f;
+    ty2 = 1.0f;
 
-            // this accounts for lower-left origin of the destination region
-           // dxadj = x;
-            //dyadj = dstOps->height - (y + sh);
+    J2dTraceLn5(J2D_TRACE_INFO, "xOffset %d yOffset %d, dxadj %d, dyadj %d dstOps->height %d", dstOps->xOffset, dstOps->yOffset, dxadj, dyadj, dstOps->height);
 
-            J2dTraceLn5(J2D_TRACE_INFO, "xOffset %d yOffset %d, dxadj %d, dyadj %d dstOps->height %d", dstOps->xOffset, dstOps->yOffset, dxadj, dyadj, dstOps->height);
-
-            dtx1 = ((jfloat)dxadj) / dstOps->textureWidth;
-            dtx2 = ((float)dxadj + sw) / dstOps->textureWidth;
+    dtx1 = ((jfloat)dxadj) / dstOps->textureWidth;
+    dtx2 = ((float)dxadj + sw) / dstOps->textureWidth;
   
-            dty1 = ((jfloat)dyadj + sh) / dstOps->textureHeight;
-            dty2 = ((jfloat)dyadj) / dstOps->textureHeight;
+    dty1 = ((jfloat)dyadj + sh) / dstOps->textureHeight;
+    dty2 = ((jfloat)dyadj) / dstOps->textureHeight;
 
-           J2dTraceLn4(J2D_TRACE_INFO, "tx1 %f, ty1 %f, tx2 %f, ty2 %f", tx1, ty1, tx2, ty2);
-           J2dTraceLn2(J2D_TRACE_INFO, "textureWidth %d textureHeight %d", dstOps->textureWidth, dstOps->textureHeight);
-           J2dTraceLn4(J2D_TRACE_INFO, "dtx1 %f, dty1 %f, dtx2 %f, dty2 %f", dtx1, dty1, dtx2, dty2);
+    J2dTraceLn4(J2D_TRACE_INFO, "tx1 %f, ty1 %f, tx2 %f, ty2 %f", tx1, ty1, tx2, ty2);
+    J2dTraceLn2(J2D_TRACE_INFO, "textureWidth %d textureHeight %d", dstOps->textureWidth, dstOps->textureHeight);
+    J2dTraceLn4(J2D_TRACE_INFO, "dtx1 %f, dty1 %f, dtx2 %f, dty2 %f", dtx1, dty1, dtx2, dty2);
 
-            LCD_ADD_TRIANGLES(tx1, ty1, tx2, ty2, x, y, x+w, y+h);
+    LCD_ADD_TRIANGLES(tx1, ty1, tx2, ty2, x, y, x+w, y+h);
 
-            [encoder setVertexBytes:txtVertices length:vertexCacheIndex * sizeof(struct TxtVertex) atIndex:MeshVertexBuffer];
-            [encoder setFragmentTexture:blitTexture atIndex:0];
-            [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
+    [encoder setVertexBytes:txtVertices length:sizeof(txtVertices) atIndex:MeshVertexBuffer];
+    [encoder setFragmentTexture:blitTexture atIndex:0];
+    [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
 
-            [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
 
-//        }
-//    }
+    vertexCacheIndex = 0;
     [mtlc.encoderManager endEncoder];
     [blitTexture release];
 
@@ -719,6 +710,7 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
     [commandbuf commit];
     [commandbuf waitUntilCompleted];
+
     return JNI_TRUE;
 }
 
