@@ -69,10 +69,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     //
     // enable X11_DISABLE_OVERRIDE_FLAG by default (users haven't found side-effects), see
     //  https://youtrack.jetbrains.com/issue/JBR-1680#focus=streamItem-27-3924178.0-0
-    private static final boolean X11_DISABLE_OVERRIDE_FLAG =
-            GetPropertyAction.privilegedGetProperty("x11.disable.override.flag", "true").equalsIgnoreCase("true");
-    private static final boolean X11_DISABLE_OVERRIDE_XWINDOWPEER =
-            GetPropertyAction.privilegedGetProperty("x11.disable.override.xwindowpeer", "false").equalsIgnoreCase("true");
+    private static final boolean X11_DISABLE_OVERRIDE_FLAG;
+    private static final boolean X11_DISABLE_OVERRIDE_XWINDOWPEER;
 
     // should be synchronized on awtLock
     private static Set<XWindowPeer> windows = new HashSet<XWindowPeer>();
@@ -150,6 +148,17 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
      * It holds int's value.
      */
     private static final int MAXIMUM_BUFFER_LENGTH_NET_WM_ICON = (2<<15) - 1;
+
+    static {
+        /* https://userbase.kde.org/KDE_System_Administration/Environment_Variables#KDE_FULL_SESSION */
+        final String kdeSession = AccessController.doPrivileged((PrivilegedAction<String>) () -> System.getenv("KDE_FULL_SESSION"));
+        final boolean isKDE = kdeSession != null && !kdeSession.isEmpty();
+
+        X11_DISABLE_OVERRIDE_FLAG =
+                GetPropertyAction.privilegedGetProperty("x11.disable.override.flag", isKDE ? "true" : "false").equalsIgnoreCase("true");
+        X11_DISABLE_OVERRIDE_XWINDOWPEER =
+                GetPropertyAction.privilegedGetProperty("x11.disable.override.xwindowpeer", "false").equalsIgnoreCase("true");
+    }
 
     void preInit(XCreateWindowParams params) {
         target = (Component)params.get(TARGET);
