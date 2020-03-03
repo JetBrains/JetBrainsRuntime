@@ -4,10 +4,12 @@
 #   JBSDK_VERSION    - specifies the current version of OpenJDK e.g. 11_0_6
 #   JDK_BUILD_NUMBER - specifies the number of OpenJDK build or the value of --with-version-build argument to configure
 #   build_number     - specifies the number of JetBrainsRuntime build
+#   bundle_type      - specifies bundle to bu built; possible values:
+#                        jcef - the bundles 1) jbr with jcef+javafx, 2) jbrsdk and 3) test will be created
+#                        jfx  - the bundle 1) jbr with javafx only will be created
 #
 # jbrsdk-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
 # jbr-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
-# jbrlw-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
 #
 # $ ./java --version
 # openjdk 11.0.6 2020-01-14
@@ -18,34 +20,54 @@
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
+bundle_type=$4
 
 function create_jbr {
-  if [ -d "$BASE_DIR/$JBR_BUNDLE" ]; then
-    rm -rf $BASE_DIR/$JBR_BUNDLE
-  fi
 
-  if [ ! -z "$1" ]; then
+  case "$1" in
+  "${bundle_type}_lw")
+    JBR_BASE_NAME=jbr_${bundle_type}_lw-$JBSDK_VERSION
     grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
-  else
+    ;;
+  "jfx")
+    JBR_BASE_NAME=jbr_${bundle_type}-$JBSDK_VERSION
     cat modules.list > modules_tmp.list
-  fi
+    ;;
+  "jcef")
+    JBR_BASE_NAME=jbr-$JBSDK_VERSION
+    cat modules.list > modules_tmp.list
+    ;;
+  *)
+    echo "***ERR*** bundle was not specified" && exit $?
+    ;;
+  esac
+  rm -rf $BASE_DIR/$JBR_BUNDLE
+
+  JBR=$JBR_BASE_NAME-linux-x64-b$build_number
 
   echo Running jlink....
   $JSDK/bin/jlink \
     --module-path $JSDK/jmods --no-man-pages --compress=2 \
     --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output $BASE_DIR/$JBR_BUNDLE
 
-  cp -R jcef_linux_x64/* $BASE_DIR/$JBR_BUNDLE/lib || exit $?
+  if [ "$bundle_type" == "jcef" ]; then
+    cp -R $BASE_DIR/$JBR_BUNDLE $BASE_DIR/jbr
+    cp -R jcef_linux_x64/* $BASE_DIR/$JBR_BUNDLE/lib || exit $?
+  fi
   grep -v "^JAVA_VERSION" $JSDK/release | grep -v "^MODULES" >> $BASE_DIR/$JBR_BUNDLE/release
 
   echo Creating $JBR.tar.gz ...
-  tar -pcf $JBR.tar -C $BASE_DIR $JBR_BUNDLE || exit $?
+  rm -rf ${BASE_DIR}/jbr
+  cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
+  tar -pcf $JBR.tar -C $BASE_DIR jbr || exit $?
   gzip $JBR.tar || exit $?
 }
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
-JBR_BASE_NAME=jbr-$JBSDK_VERSION
-JBRLW_BASE_NAME=jbrlw-$JBSDK_VERSION
+
+if [ "$bundle_type" == "jfx" ]; then
+  git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+fi
 
 sh configure \
   --disable-warnings-as-errors \
@@ -70,24 +92,27 @@ JBRSDK_BUNDLE=jbrsdk
 
 rm -rf $BASE_DIR/$JBRSDK_BUNDLE
 cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || exit $?
-cp -R jcef_linux_x64/* $BASE_DIR/$JBRSDK_BUNDLE/lib || exit $?
 
-echo Creating $JBSDK.tar.gz ...
-tar -pcf $JBSDK.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man -C $BASE_DIR $JBRSDK_BUNDLE || exit $?
-gzip $JBSDK.tar || exit $?
+if [ "$bundle_type" == "jcef" ]; then
+  cp -R jcef_linux_x64/* $BASE_DIR/$JBRSDK_BUNDLE/lib || exit $?
 
-JBR=$JBR_BASE_NAME-linux-x64-b$build_number
-JBR_BUNDLE=jbr
-create_jbr
+  echo Creating $JBSDK.tar.gz ...
+  tar -pcf $JBSDK.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man -C $BASE_DIR $JBRSDK_BUNDLE || exit $?
+  gzip $JBSDK.tar || exit $?
+fi
 
-JBR=$JBRLW_BASE_NAME-linux-x64-b$build_number
-JBR_BUNDLE=jbrlw
-create_jbr "lw"
+JBR_BUNDLE=jbr_${bundle_type}
+create_jbr ${bundle_type}
 
-make test-image || exit $?
+JBR_BUNDLE=jbr_${bundle_type}_lw
+create_jbr ${bundle_type}_lw
 
-JBRSDK_TEST=$JBRSDK_BASE_NAME-linux-test-x64-b$build_number
+if [ "$bundle_type" == "jcef" ]; then
+  make test-image || exit $?
 
-echo Creating $JBSDK_TEST.tar.gz ...
-tar -pcf $JBRSDK_TEST.tar -C $BASE_DIR --exclude='test/jdk/demos' test || exit $?
-gzip $JBRSDK_TEST.tar || exit $?
+  JBRSDK_TEST=$JBRSDK_BASE_NAME-linux-test-x64-b$build_number
+
+  echo Creating $JBSDK_TEST.tar.gz ...
+  tar -pcf $JBRSDK_TEST.tar -C $BASE_DIR --exclude='test/jdk/demos' test || exit $?
+  gzip $JBRSDK_TEST.tar || exit $?
+fi
