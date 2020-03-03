@@ -10,7 +10,6 @@
 #
 # jbrsdk-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
 # jbr-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
-# jbrlw-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
 #
 # $ ./java --version
 # openjdk 11.0.6 2020-01-14
