@@ -1,0 +1,33 @@
+Index: src/java.desktop/share/classes/module-info.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/java.desktop/share/classes/module-info.java	(revision 08d1926f8b7c74da0e1144e0ce5912e7589c4688)
++++ src/java.desktop/share/classes/module-info.java	(date 1583207610780)
+@@ -109,10 +109,7 @@
+     // see make/GensrcModuleInfo.gmk
+     exports sun.awt to
+         jdk.accessibility,
+-        jdk.unsupported.desktop,
+-        jcef;
+-
+-    exports java.awt.peer to jcef;
++        jdk.unsupported.desktop;
+ 
+     exports java.awt.dnd.peer to jdk.unsupported.desktop;
+     exports sun.awt.dnd to jdk.unsupported.desktop;
+Index: modules.list
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- modules.list	(revision 08d1926f8b7c74da0e1144e0ce5912e7589c4688)
++++ modules.list	(date 1583207610776)
+@@ -60,5 +60,4 @@
+ jdk.unsupported,
+ jdk.xml.dom,
+ jdk.zipfs,
+-jdk.hotspot.agent,
+-jcef
++jdk.hotspot.agent
