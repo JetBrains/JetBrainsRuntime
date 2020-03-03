@@ -4733,6 +4733,8 @@ void MacroAssembler::string_indexof_char(Register str1, Register cnt1,
   Register ch1 = rscratch1;
   Register result_tmp = rscratch2;
 
+  cbz(cnt1, NOMATCH);
+
   cmp(cnt1, 4);
   br(LT, DO1_SHORT);
 
