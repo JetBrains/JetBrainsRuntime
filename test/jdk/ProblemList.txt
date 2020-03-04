@@ -496,6 +496,8 @@ java/awt/xembed/server/RunTestXEmbed.java 7034201 linux-all
 java/awt/Modal/ModalFocusTransferTests/FocusTransferDialogsDocModalTest.java 8164473 linux-all
 
 
+java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223 linux-all,solaris-all,windows-all
+
 ############################################################################
 
 # jdk_beans
