@@ -208,8 +208,7 @@ const Type *LoadBarrierNode::bottom_type() const {
 }
 
 const TypePtr* LoadBarrierNode::adr_type() const {
-  ShouldNotReachHere();
-  return NULL;
+  return TypeRawPtr::BOTTOM;
 }
 
 const Type *LoadBarrierNode::Value(PhaseGVN *phase) const {
