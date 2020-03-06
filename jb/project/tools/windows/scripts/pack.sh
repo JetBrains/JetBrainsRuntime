@@ -43,7 +43,7 @@ function pack_jbr {
   echo Creating $JBR.tar.gz ...
   rm -rf $BASE_DIR/jbr && rsync -a $BASE_DIR/$JBR_BUNDLE jbr || exit 1
 
-  /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR $JBR_BUNDLE || exit 1
+  /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR jbr || exit 1
 }
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
