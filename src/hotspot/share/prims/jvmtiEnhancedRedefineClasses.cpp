@@ -491,11 +491,6 @@ void VM_EnhancedRedefineClasses::doit() {
     flush_dependent_code(NULL, thread);
   // }
 
-    // Adjust constantpool caches for all classes that reference methods of the evolved class.
-    ClearCpoolCacheAndUnpatch clear_cpool_cache(thread);
-    ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
-
-
   // JSR-292 support
   if (_any_class_has_resolved_methods) {
     bool trace_name_printed = false;
@@ -1896,6 +1891,9 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
   }
   */
 
+  // Adjust constantpool caches for all classes that reference methods of the evolved class.
+  ClearCpoolCacheAndUnpatch clear_cpool_cache(THREAD);
+  ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
 
   {
     ResourceMark rm(THREAD);
