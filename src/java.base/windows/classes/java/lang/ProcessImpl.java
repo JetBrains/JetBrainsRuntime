@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -491,6 +491,7 @@ final class ProcessImpl extends Process {
             else {
                 FileDescriptor stdin_fd = new FileDescriptor();
                 fdAccess.setHandle(stdin_fd, stdHandles[0]);
+                fdAccess.registerCleanup(stdin_fd);
                 stdin_stream = new BufferedOutputStream(
                     new FileOutputStream(stdin_fd));
             }
@@ -500,6 +501,7 @@ final class ProcessImpl extends Process {
             else {
                 FileDescriptor stdout_fd = new FileDescriptor();
                 fdAccess.setHandle(stdout_fd, stdHandles[1]);
+                fdAccess.registerCleanup(stdout_fd);
                 stdout_stream = new BufferedInputStream(
                     new PipeInputStream(stdout_fd));
             }
@@ -509,6 +511,7 @@ final class ProcessImpl extends Process {
             else {
                 FileDescriptor stderr_fd = new FileDescriptor();
                 fdAccess.setHandle(stderr_fd, stdHandles[2]);
+                fdAccess.registerCleanup(stderr_fd);
                 stderr_stream = new PipeInputStream(stderr_fd);
             }
 
