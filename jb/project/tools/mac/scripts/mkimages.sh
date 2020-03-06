@@ -23,62 +23,67 @@ build_number=$3
 bundle_type=$4
 
 function create_jbr {
-  mkdir -p $JRE_CONTENTS
-
-  if [ -d "$JRE_HOME" ]; then
-    rm -rf $JRE_HOME
-  fi
 
   case "$1" in
-  'lw')
-    JBR_BASE_NAME=jbr_${bundle_type}_lw-$JBSDK_VERSION
+  "${bundle_type}_lw")
+    JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
     grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
     ;;
-  'jfx')
-    JBR_BASE_NAME=jbr-$JBSDK_VERSION
+  "jfx")
+    JBR_BASE_NAME=jbr-${JBSDK_VERSION}
     cat modules.list > modules_tmp.list
     ;;
-  'jcef')
-    JBR_BASE_NAME=jbr_${bundle_type}-$JBSDK_VERSION
+  "jcef")
+    JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
     cat modules.list > modules_tmp.list
     ;;
   *)
     echo "***ERR*** bundle was not specified" && exit $?
     ;;
   esac
+  rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 
-  JBR=$JBR_BASE_NAME-osx-x64-b$build_number
+  JRE_CONTENTS=${BASE_DIR}/${JBR_BUNDLE}/Contents
+  JRE_HOME=${JRE_CONTENTS}/Home
+  if [ -d "${JRE_CONTENTS}" ]; then
+    rm -rf ${JRE_CONTENTS}
+  fi
+  mkdir -p ${JRE_CONTENTS}
 
-  $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/bin/jlink \
-      --module-path $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/jmods --no-man-pages --compress=2 \
-      --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output $JRE_HOME  || exit $?
-  grep -v "^JAVA_VERSION" $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/release | grep -v "^MODULES" >> $JRE_HOME/release
-  cp -R $BASE_DIR/$JBRSDK_BUNDLE/Contents/MacOS $JRE_CONTENTS
-  cp $BASE_DIR/$JBRSDK_BUNDLE/Contents/Info.plist $JRE_CONTENTS
+  JBR=${JBR_BASE_NAME}-osx-x64-b${build_number}
 
-  if [ "$bundle_type" == "jcef" ]; then
-    rm -rf $JRE_CONTENTS/Frameworks || exit $?
-    rm -rf $JRE_CONTENTS/Helpers    || exit $?
-    cp -a jcef_mac/Frameworks $JRE_CONTENTS || exit $?
-    cp -a jcef_mac/Helpers    $JRE_CONTENTS || exit $?
+  ${BASE_DIR}/$JBRSDK_BUNDLE/Contents/Home/bin/jlink \
+      --module-path ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/jmods --no-man-pages --compress=2 \
+      --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output ${JRE_HOME}  || exit $?
+  grep -v "^JAVA_VERSION" ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release | grep -v "^MODULES" >> ${JRE_HOME}/release
+  cp -R ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/MacOS ${JRE_CONTENTS}
+  cp ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Info.plist ${JRE_CONTENTS}
+
+  if [ "${bundle_type}" == "jcef" ]; then
+    rm -rf ${JRE_CONTENTS}/Frameworks || exit $?
+    rm -rf ${JRE_CONTENTS}/Helpers    || exit $?
+    cp -a jcef_mac/Frameworks ${JRE_CONTENTS} || exit $?
+    cp -a jcef_mac/Helpers    ${JRE_CONTENTS} || exit $?
   fi
 
-  echo Creating $JBR.tar.gz ...
-  COPYFILE_DISABLE=1 tar -pczf $JBR.tar.gz --exclude='*.dSYM' --exclude='man' -C $BASE_DIR $JBR_BUNDLE || exit $?
+  echo Creating ${JBR}.tar.gz ...
+  rm -rf ${BASE_DIR}/jbr
+  cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
+  COPYFILE_DISABLE=1 tar -pczf ${JBR}.tar.gz --exclude='*.dSYM' --exclude='man' -C ${BASE_DIR} jbr || exit $?
 }
 
-JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
+JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 
-if [ "$bundle_type" == "jfx" ]; then
-  patch -p0 < jb/project/tools/exclude_jcef_module.patch
+if [ "${bundle_type}" == "jfx" ]; then
+  git apply -p0 < jb/project/tools/exclude_jcef_module.patch
 fi
 
 sh configure \
   --disable-warnings-as-errors \
   --with-debug-level=release \
   --with-version-pre= \
-  --with-version-build=$JDK_BUILD_NUMBER \
-  --with-version-opt=b$build_number \
+  --with-version-build=${JDK_BUILD_NUMBER} \
+  --with-version-opt=b${build_number} \
   --with-import-modules=./modular-sdk \
   --with-boot-jdk=`/usr/libexec/java_home -v 11` \
   --enable-cds=yes || exit $?
@@ -86,7 +91,7 @@ sh configure \
 make images CONF=macosx-x86_64-normal-server-release || exit $?
 
 JSDK=build/macosx-x86_64-normal-server-release/images/jdk-bundle
-JBSDK=$JBRSDK_BASE_NAME-osx-x64-b$build_number
+JBSDK=${JBRSDK_BASE_NAME}-osx-x64-b${build_number}
 
 BASE_DIR=jre
 JBRSDK_BUNDLE=jbrsdk
@@ -108,12 +113,11 @@ if [ "$bundle_type" == "jcef" ]; then
     $JBRSDK_BUNDLE || exit $?
 fi
 
-JBR_BUNDLE=jbr
-JRE_CONTENTS=$BASE_DIR/$JBR_BUNDLE/Contents
-JRE_HOME=$JRE_CONTENTS/Home
-
+JBR_BUNDLE=jbr_${bundle_type}
 create_jbr $bundle_type
-create_jbr "lw"
+
+JBR_BUNDLE=jbr_${bundle_type}_lw
+create_jbr "${bundle_type}_lw"
 
 if [ "$bundle_type" == "jcef" ]; then
   make test-image || exit $?

@@ -25,17 +25,14 @@ bundle_type=$4
 function pack_jbr {
 
   case "$1" in
-  'lw')
-    JBR_BASE_NAME=jbr_${bundle_type}_lw-$JBSDK_VERSION
-    grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
+  "${bundle_type}_lw")
+    JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
     ;;
-  'jfx')
-    JBR_BASE_NAME=jbr-$JBSDK_VERSION
-    cat modules.list > modules_tmp.list
+  "jfx")
+    JBR_BASE_NAME=jbr-${JBSDK_VERSION}
     ;;
-  'jcef')
-    JBR_BASE_NAME=jbr_${bundle_type}-$JBSDK_VERSION
-    cat modules.list > modules_tmp.list
+  "jcef")
+    JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
     ;;
   *)
     echo "***ERR*** bundle was not specified" && exit $?
@@ -44,27 +41,28 @@ function pack_jbr {
 
   JBR=$JBR_BASE_NAME-windows-x64-b$build_number
   echo Creating $JBR.tar.gz ...
+  rm -rf $BASE_DIR/jbr && rsync -a $BASE_DIR/$JBR_BUNDLE jbr || exit 1
+
   /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR $JBR_BUNDLE || exit 1
 }
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 JBR_BASE_NAME=jbr-$JBSDK_VERSION
-JBRLW_BASE_NAME=jbrlw-$JBSDK_VERSION
 
 JSDK=build/windows-x86_64-normal-server-release/images/jdk
 JBSDK=$JBRSDK_BASE_NAME-windows-x64-b$build_number
+BASE_DIR=.
 
 if [ "$bundle_type" == "jcef" ]; then
   JBRSDK_BUNDLE=jbrsdk
-  BASE_DIR=build/windows-x86_64-normal-server-release/images
   echo Creating $JBSDK.tar.gz ...
   /usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || exit 1
 fi
 
-
-JBR_BUNDLE=jbr
+JBR_BUNDLE=jbr_${bundle_type}
 pack_jbr $bundle_type
-pack_jbr "lw"
+JBR_BUNDLE=jbr_${bundle_type}_lw
+pack_jbr ${bundle_type}_lw
 
 if [ "$bundle_type" == "jcef" ]; then
   JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number
