@@ -49,6 +49,7 @@
 #include "runtime/deoptimization.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/relocator.hpp"
+#include "runtime/fieldDescriptor.inline.hpp"
 #include "utilities/bitMap.inline.hpp"
 #include "prims/jvmtiThreadState.inline.hpp"
 #include "utilities/events.hpp"
@@ -489,6 +490,11 @@ void VM_EnhancedRedefineClasses::doit() {
   // if (_max_redefinition_flags > Klass::ModifyClass) {
     flush_dependent_code(NULL, thread);
   // }
+
+    // Adjust constantpool caches for all classes that reference methods of the evolved class.
+    ClearCpoolCacheAndUnpatch clear_cpool_cache(thread);
+    ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
+
 
   // JSR-292 support
   if (_any_class_has_resolved_methods) {
@@ -1890,9 +1896,6 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
   }
   */
 
-  // Adjust constantpool caches for all classes that reference methods of the evolved class.
-  ClearCpoolCacheAndUnpatch clear_cpool_cache(THREAD);
-  ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
 
   {
     ResourceMark rm(THREAD);
@@ -1905,7 +1908,6 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
     Events::log_redefinition(THREAD, "redefined class name=%s, count=%d",
                              new_class->external_name(),
                              java_lang_Class::classRedefinedCount(new_class->java_mirror()));
-
   }
   _timer_rsc_phase2.stop();
 } // end redefine_single_class()
