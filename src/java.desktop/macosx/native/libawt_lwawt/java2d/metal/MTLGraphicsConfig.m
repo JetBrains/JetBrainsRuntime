@@ -76,6 +76,31 @@ Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
 {
     J2dRlsTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfig_initMTL");
 
+    FILE *f = popen("system_profiler SPDisplaysDataType", "r");
+    int ch = getc(f);
+    bool metalSupport = FALSE;
+    while (ch != EOF)
+    {
+        char str[60];
+
+        if (fgets(str, 60, f) != NULL) {
+            // Check for string
+            // "Metal:	Supported, feature set macOS GPUFamily1 v4"
+            if (strstr(str, "Metal") != NULL) {
+                puts(str);
+                metalSupport = JNI_TRUE;
+                break;
+            }
+        }
+    }
+    pclose(f);
+    if (!metalSupport) {
+        fprintf(stderr, "Metal support not present");
+        return JNI_FALSE;
+    } else {
+        fprintf(stderr, "Metal support is present");
+    }
+
     if (!MTLFuncs_OpenLibrary()) {
         return JNI_FALSE;
     }
