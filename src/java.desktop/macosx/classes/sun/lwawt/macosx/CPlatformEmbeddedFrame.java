@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,10 +29,14 @@ import java.awt.*;
 import java.awt.event.FocusEvent;
 
 import sun.java2d.SurfaceData;
+import sun.java2d.macos.MacOSFlags;
+import sun.java2d.metal.MTLLayer;
 import sun.java2d.opengl.CGLLayer;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.PlatformWindow;
+import sun.lwawt.macosx.CFRetainedResource;
 import sun.util.logging.PlatformLogger;
+
 
 /*
  * Provides a lightweight implementation of the EmbeddedFrame.
@@ -42,7 +46,7 @@ public class CPlatformEmbeddedFrame implements PlatformWindow {
     private static final PlatformLogger focusLogger = PlatformLogger.getLogger(
             "sun.lwawt.macosx.focus.CPlatformEmbeddedFrame");
 
-    private CGLLayer windowLayer;
+    private CFRetainedResource windowLayer;
     private LWWindowPeer peer;
     private CEmbeddedFrame target;
 
@@ -52,7 +56,11 @@ public class CPlatformEmbeddedFrame implements PlatformWindow {
     @Override // PlatformWindow
     public void initialize(Window target, final LWWindowPeer peer, PlatformWindow owner) {
         this.peer = peer;
-        this.windowLayer = new CGLLayer(peer);
+        if (MacOSFlags.isMetalEnabled()) {
+            this.windowLayer = new MTLLayer(peer);
+        } else {
+            this.windowLayer = new CGLLayer(peer);
+        }
         this.target = (CEmbeddedFrame)target;
     }
 
@@ -63,12 +71,20 @@ public class CPlatformEmbeddedFrame implements PlatformWindow {
 
     @Override
     public long getLayerPtr() {
-        return windowLayer.getPointer();
+        if (MacOSFlags.isMetalEnabled()) {
+            return ((MTLLayer)windowLayer).getPointer();
+        } else {
+            return ((CGLLayer)windowLayer).getPointer();
+        }
     }
 
     @Override
     public void dispose() {
-        windowLayer.dispose();
+        if (MacOSFlags.isMetalEnabled()) {
+            ((MTLLayer)windowLayer).dispose();
+        } else {
+            ((CGLLayer)windowLayer).dispose();
+        }
     }
 
     @Override
@@ -99,12 +115,20 @@ public class CPlatformEmbeddedFrame implements PlatformWindow {
 
     @Override
     public SurfaceData getScreenSurface() {
-        return windowLayer.getSurfaceData();
+        if (MacOSFlags.isMetalEnabled()) {
+            return ((MTLLayer)windowLayer).getSurfaceData();
+        } else {
+            return ((CGLLayer)windowLayer).getSurfaceData();
+        }
     }
 
     @Override
     public SurfaceData replaceSurfaceData() {
-        return windowLayer.replaceSurfaceData();
+        if (MacOSFlags.isMetalEnabled()) {
+            return ((MTLLayer)windowLayer).replaceSurfaceData();
+        } else {
+            return ((CGLLayer)windowLayer).replaceSurfaceData();
+        }
     }
 
     @Override
