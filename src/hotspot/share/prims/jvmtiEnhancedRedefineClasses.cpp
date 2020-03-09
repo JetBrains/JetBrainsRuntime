@@ -491,6 +491,11 @@ void VM_EnhancedRedefineClasses::doit() {
     flush_dependent_code(NULL, thread);
   // }
 
+    // Adjust constantpool caches for all classes that reference methods of the evolved class.
+    ClearCpoolCacheAndUnpatch clear_cpool_cache(thread);
+    ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
+
+
   // JSR-292 support
   if (_any_class_has_resolved_methods) {
     bool trace_name_printed = false;
@@ -1383,86 +1388,23 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
     }
   }
 
-// Unevolving classes may point to methods of the_class directly
+// Unevolving classes may point to old methods directly
 // from their constant pool caches, itables, and/or vtables. We
-// use the ClassLoaderDataGraph::classes_do() facility and this helper
-// to fix up these pointers.
-// Adjust cpools and vtables closure
+// use the SystemDictionary::classes_do() facility and this helper
+// to fix up these pointers. Additional field offsets and vtable indices
+// in the constant pool cache entries are fixed.
+//
+// Note: We currently don't support updating the vtable in
+// arrayKlassOops. See Open Issues in jvmtiRedefineClasses.hpp.
 void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
-  // This is a very busy routine. We don't want too much tracing
-  // printed out.
-  bool trace_name_printed = false;
-  InstanceKlass *the_class = InstanceKlass::cast(_the_class_oop);
+  if (!k->is_instance_klass()) {
+	return;
+  }
 
-  // If the class being redefined is java.lang.Object, we need to fix all
-  // array class vtables also
-  if (k->is_array_klass() && _the_class_oop == SystemDictionary::Object_klass()) {
-    k->vtable().adjust_method_entries(the_class, &trace_name_printed);
-  } else if (k->is_instance_klass()) {
-    HandleMark hm(_thread);
-    InstanceKlass *ik = InstanceKlass::cast(k);
+  HandleMark hm(_thread);
+  InstanceKlass *ik = InstanceKlass::cast(k);
 
-    // HotSpot specific optimization! HotSpot does not currently
-    // support delegation from the bootstrap class loader to a
-    // user-defined class loader. This means that if the bootstrap
-    // class loader is the initiating class loader, then it will also
-    // be the defining class loader. This also means that classes
-    // loaded by the bootstrap class loader cannot refer to classes
-    // loaded by a user-defined class loader. Note: a user-defined
-    // class loader can delegate to the bootstrap class loader.
-    //
-    // If the current class being redefined has a user-defined class
-    // loader as its defining class loader, then we can skip all
-    // classes loaded by the bootstrap class loader.
-    bool is_user_defined =
-            InstanceKlass::cast(_the_class_oop)->class_loader() != NULL;
-    if (is_user_defined && ik->class_loader() == NULL) {
-       return;
-    }
-
-    // Fix the vtable embedded in the_class and subclasses of the_class,
-    // if one exists. We discard scratch_class and we don't keep an
-    // InstanceKlass around to hold obsolete methods so we don't have
-    // any other InstanceKlass embedded vtables to update. The vtable
-    // holds the Method*s for virtual (but not final) methods.
-    // Default methods, or concrete methods in interfaces are stored
-    // in the vtable, so if an interface changes we need to check
-    // adjust_method_entries() for every InstanceKlass, which will also
-    // adjust the default method vtable indices.
-    // We also need to adjust any default method entries that are
-    // not yet in the vtable, because the vtable setup is in progress.
-    // This must be done after we adjust the default_methods and
-    // default_vtable_indices for methods already in the vtable.
-    // If redefining Unsafe, walk all the vtables looking for entries.
-// FIXME - code from standard redefine - if needed, it should switch to new_class
-//    if (ik->vtable_length() > 0 && (_the_class_oop->is_interface()
-//        || _the_class_oop == SystemDictionary::internal_Unsafe_klass()
-//        || ik->is_subtype_of(_the_class_oop))) {
-//      // ik->vtable() creates a wrapper object; rm cleans it up
-//      ResourceMark rm(_thread);
-//
-//      ik->vtable()->adjust_method_entries(the_class, &trace_name_printed);
-//      ik->adjust_default_methods(the_class, &trace_name_printed);
-//    }
-
-    // If the current class has an itable and we are either redefining an
-    // interface or if the current class is a subclass of the_class, then
-    // we potentially have to fix the itable. If we are redefining an
-    // interface, then we have to call adjust_method_entries() for
-    // every InstanceKlass that has an itable since there isn't a
-    // subclass relationship between an interface and an InstanceKlass.
-    // If redefining Unsafe, walk all the itables looking for entries.
-// FIXME - code from standard redefine - if needed, it should switch to new_class
-//    if (ik->itable_length() > 0 && (_the_class_oop->is_interface()
-//        || _the_class_oop == SystemDictionary::internal_Unsafe_klass()
-//        || ik->is_subclass_of(_the_class_oop))) {
-//      // ik->itable() creates a wrapper object; rm cleans it up
-//      ResourceMark rm(_thread);
-//
-//      ik->itable()->adjust_method_entries(the_class, &trace_name_printed);
-//    }
-
-   constantPoolHandle other_cp = constantPoolHandle(ik->constants());
+  constantPoolHandle other_cp = constantPoolHandle(ik->constants());
 
   // Update host klass of anonymous classes (for example, produced by lambdas) to newest version.
   if (ik->is_anonymous() && ik->host_klass()->new_version() != NULL) {
@@ -1490,7 +1432,6 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
   // If bytecode rewriting is enabled, we also need to unpatch bytecode to force resolution of zeroed entries
   if (RewriteBytecodes) {
     ik->methods_do(unpatch_bytecode);
-  }
   }
 }
 
@@ -1891,9 +1832,6 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
   }
   */
 
-  // Adjust constantpool caches for all classes that reference methods of the evolved class.
-  ClearCpoolCacheAndUnpatch clear_cpool_cache(THREAD);
-  ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
 
   {
     ResourceMark rm(THREAD);
