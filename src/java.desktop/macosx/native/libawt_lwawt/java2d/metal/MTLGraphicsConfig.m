@@ -77,9 +77,8 @@ Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
     J2dRlsTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfig_initMTL");
 
     FILE *f = popen("system_profiler SPDisplaysDataType", "r");
-    int ch = getc(f);
     bool metalSupport = FALSE;
-    while (ch != EOF)
+    while (getc(f) != EOF)
     {
         char str[60];
 
@@ -95,10 +94,10 @@ Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
     }
     pclose(f);
     if (!metalSupport) {
-        fprintf(stderr, "Metal support not present");
+        fprintf(stderr, "Metal support not present\n");
         return JNI_FALSE;
     } else {
-        fprintf(stderr, "Metal support is present");
+        fprintf(stderr, "Metal support is present\n");
     }
 
     if (!MTLFuncs_OpenLibrary()) {
