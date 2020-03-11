@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # The following parameters must be specified:
 #   JBSDK_VERSION    - specifies the current version of OpenJDK e.g. 11_0_6
@@ -71,8 +71,7 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --disable-ccache \
   --enable-cds=yes || exit 1
 make clean CONF=windows-x86_64-normal-server-release || exit 1
-make JOBS=7 LOG=info images CONF=windows-x86_64-normal-server-release || exit 1
-make JOBS=7 LOG=info test-image || exit 1
+make JOBS=7 LOG=info images CONF=windows-x86_64-normal-server-release test-image || exit 1
 
 JSDK=build/windows-x86_64-normal-server-release/images/jdk
 JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
