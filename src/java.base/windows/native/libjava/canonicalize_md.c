@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -331,15 +331,22 @@ int
 canonicalize(char* orig_path, char* result, int size) {
     wchar_t* wpath = NULL;
     wchar_t* wresult = NULL;
-    size_t conv;
-    size_t path_len = strlen(orig_path);
+    int wpath_len;
     int ret = -1;
 
-    if ((wpath = (wchar_t*) malloc(sizeof(wchar_t) * (path_len + 1))) == NULL) {
+    /* Get required buffer size to convert to Unicode */
+    wpath_len = MultiByteToWideChar(CP_THREAD_ACP, MB_ERR_INVALID_CHARS,
+                                    orig_path, -1, NULL, 0);
+    if (wpath_len == 0) {
         goto finish;
     }
 
-    if (mbstowcs_s(&conv, wpath, path_len + 1, orig_path, path_len) != 0) {
+    if ((wpath = (wchar_t*) malloc(sizeof(wchar_t) * wpath_len)) == NULL) {
+        goto finish;
+    }
+
+    if (MultiByteToWideChar(CP_THREAD_ACP, MB_ERR_INVALID_CHARS,
+                            orig_path, -1, wpath, wpath_len) == 0) {
         goto finish;
     }
 
@@ -351,7 +358,8 @@ canonicalize(char* orig_path, char* result, int size) {
         goto finish;
     }
 
-    if (wcstombs_s(&conv, result, (size_t) size, wresult, (size_t) (size - 1)) != 0) {
+    if (WideCharToMultiByte(CP_THREAD_ACP, 0,
+                            wresult, -1, result, size, NULL, NULL) == 0) {
         goto finish;
     }
 
