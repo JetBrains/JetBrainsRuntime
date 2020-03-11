@@ -71,7 +71,7 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --disable-ccache \
   --enable-cds=yes || exit 1
 make clean CONF=windows-x86_64-normal-server-release || exit 1
-make JOBS=4 images CONF=windows-x86_64-normal-server-release || exit 1
+make JOBS=1 images CONF=windows-x86_64-normal-server-release || exit 1
 make -d test-image || exit 1
 
 JSDK=build/windows-x86_64-normal-server-release/images/jdk
