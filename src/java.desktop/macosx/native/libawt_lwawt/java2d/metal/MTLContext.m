@@ -384,14 +384,15 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
                     yp1:(jdouble)yp1
                     yp3:(jdouble)yp3
 {
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.setTexturePaint");
-
     BMTLSDOps *srcOps = (BMTLSDOps *)jlong_to_ptr(pSrcOps);
     
     if (srcOps == NULL || srcOps->pTexture == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext_setTexturePaint: texture paint - texture is null");
         return;
     }
+
+    J2dTraceLn1(J2D_TRACE_INFO, "MTLContext.setTexturePaint [tex=%p]", srcOps->pTexture);
+
 
     [_paint setTexture:useMask
                textureID:srcOps->pTexture

@@ -51,6 +51,7 @@ struct StencilShaderInOut {
 struct TxtShaderInOut {
     float4 position [[position]];
     float2 texCoords;
+    float2 tpCoords;
 };
 
 struct GradShaderInOut {
@@ -92,6 +93,24 @@ vertex TxtShaderInOut vert_txt(TxtVertexInput in [[stage_in]], constant Transfor
     return out;
 }
 
+vertex TxtShaderInOut vert_txt_tp(TxtVertexInput in [[stage_in]], constant AnchorData& anchorData [[buffer(FrameUniformBuffer)]], constant TransformMatrix& transform [[buffer(MatrixBuffer)]])
+{
+    TxtShaderInOut out;
+    float4 pos4 = float4(in.position, 0.0, 1.0);
+    out.position = transform.transformMatrix * pos4;
+
+    // Compute texture coordinates here w.r.t. anchor rect of texture paint
+    out.tpCoords.x = (anchorData.xParams[0] * in.position.x) +
+                      (anchorData.xParams[1] * in.position.y) +
+                      (anchorData.xParams[2] * out.position.w);
+    out.tpCoords.y = (anchorData.yParams[0] * in.position.x) +
+                      (anchorData.yParams[1] * in.position.y) +
+                      (anchorData.yParams[2] * out.position.w);
+    out.texCoords = in.texCoords;
+
+    return out;
+}
+
 fragment half4 frag_col(ColShaderInOut in [[stage_in]]) {
     return in.color;
 }
@@ -116,6 +135,22 @@ fragment half4 frag_txt(
         return half4(c.r, c.g, c.b , c.a);
     }
     return half4(pixelColor.r, pixelColor.g, pixelColor.b, srcA);
+}
+
+fragment half4 frag_txt_tp(TxtShaderInOut vert [[stage_in]],
+                       texture2d<float, access::sample> renderTexture [[texture(0)]],
+                       texture2d<float, access::sample> paintTexture [[texture(1)]])
+{
+    constexpr sampler textureSampler (address::repeat,
+      mag_filter::nearest,
+      min_filter::nearest);
+
+    float4 renderColor = renderTexture.sample(textureSampler, vert.texCoords);
+    float4 paintColor = paintTexture.sample(textureSampler, vert.tpCoords);
+    return half4(paintColor.r*renderColor.a,
+                 paintColor.g*renderColor.a,
+                 paintColor.b*renderColor.a,
+                 renderColor.a);
 }
 
 fragment half4 aa_frag_txt(

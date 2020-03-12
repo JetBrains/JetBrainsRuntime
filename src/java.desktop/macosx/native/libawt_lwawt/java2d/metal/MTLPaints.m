@@ -301,32 +301,55 @@ static void initTemplatePipelineDescriptors() {
     id<MTLRenderPipelineState> pipelineState = nil;
     if (isTexture) {
 
+      if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
+        pipelineState = [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
+                                                vertexShaderId:@"vert_txt_tp"
+                                              fragmentShaderId:@"frag_txt_tp"
+                                                 compositeRule:[composite getRule]
+                                                          isAA:JNI_FALSE
+                                                      srcFlags:srcFlags
+                                                      dstFlags:dstFlags
+                                                 stencilNeeded:stencil];
+        [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
+        [encoder setFragmentTexture:_paintTexture atIndex: 1];
+
+        struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0, srcFlags->isOpaque,
+                                      dstFlags->isOpaque};
+        [encoder setFragmentBytes:&uf length:sizeof(uf)
+                          atIndex:FrameUniformBuffer];
+
+      } else {
         if (isAA) {
-            pipelineState = [pipelineStateStorage getPipelineState:templateAATexturePipelineDesc
-                                                    vertexShaderId:@"vert_txt"
-                                                  fragmentShaderId:@"aa_frag_txt"
-                                                     compositeRule:[composite getRule]
-                                                              isAA:JNI_FALSE
-                                                          srcFlags:srcFlags
-                                                          dstFlags:dstFlags
-                                                     stencilNeeded:stencil];
+          pipelineState = [pipelineStateStorage
+              getPipelineState:templateAATexturePipelineDesc
+                vertexShaderId:@"vert_txt"
+              fragmentShaderId:@"aa_frag_txt"
+                 compositeRule:[composite getRule]
+                          isAA:JNI_FALSE
+                      srcFlags:srcFlags
+                      dstFlags:dstFlags
+                 stencilNeeded:stencil];
+
         } else {
-            pipelineState = [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
-                                                    vertexShaderId:@"vert_txt"
-                                                  fragmentShaderId:@"frag_txt"
-                                                     compositeRule:[composite getRule]
-                                                              isAA:JNI_FALSE
-                                                          srcFlags:srcFlags
-                                                          dstFlags:dstFlags
-                                                     stencilNeeded:stencil];
+          pipelineState =
+              [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
+                                      vertexShaderId:@"vert_txt"
+                                    fragmentShaderId:@"frag_txt"
+                                       compositeRule:[composite getRule]
+                                                isAA:JNI_FALSE
+                                            srcFlags:srcFlags
+                                            dstFlags:dstFlags
+                                       stencilNeeded:stencil];
         }
+
         if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-            struct TxtFrameUniforms uf = {RGBA_TO_V4(_color), 1, srcFlags->isOpaque, dstFlags->isOpaque };
-            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+          struct TxtFrameUniforms uf = {RGBA_TO_V4(_color), 1, srcFlags->isOpaque, dstFlags->isOpaque };
+          [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
         } else {
-            struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0, srcFlags->isOpaque, dstFlags->isOpaque };
-            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+          struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0, srcFlags->isOpaque, dstFlags->isOpaque };
+          [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
         }
+      }
     } else {
         if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
             pipelineState = [pipelineStateStorage getPipelineState:templateRenderPipelineDesc
