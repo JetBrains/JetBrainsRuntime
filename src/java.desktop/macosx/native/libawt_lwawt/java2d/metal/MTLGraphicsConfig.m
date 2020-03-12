@@ -95,7 +95,6 @@ Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
     pclose(f);
     if (!metalSupport) {
         fprintf(stderr, "Metal support not present\n");
-        return JNI_FALSE;
     } else {
         fprintf(stderr, "Metal support is present\n");
     }
