@@ -20,70 +20,38 @@
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
-bundle_type=$4
-
-function create_jbr {
-
-  case "$1" in
-  "${bundle_type}_lw")
-    grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
-    ;;
-  "jfx")
-    cat modules.list > modules_tmp.list
-    ;;
-  "jcef")
-    cat modules.list > modules_tmp.list
-    ;;
-  *)
-    echo "***ERR*** bundle was not specified" && exit $?
-    ;;
-  esac
-  rm -rf ${JBR_BUNDLE}
-
-  ${JSDK}/bin/jlink \
-    --module-path ${JSDK}/jmods --no-man-pages --compress=2 \
-    --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output ${JBR_BUNDLE} || exit $?
-  if [ "${bundle_type}" == "jcef" ]; then
-    cp -R jcef_win_x64/* ${JBR_BUNDLE}/bin
-  fi
-  echo Modifying release info ...
-  grep -v \"^JAVA_VERSION\" ${JSDK}/release | grep -v \"^MODULES\" >> ${JBR_BUNDLE}/release
-}
 
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 WORK_DIR=$(pwd)
-
-if [ "${bundle_type}" == "jfx" ]; then
-  git apply -p0 < jb/project/tools/exclude_jcef_module.patch
-fi
 
 PATH="/usr/local/bin:/usr/bin:${PATH}"
 ./configure \
   --disable-warnings-as-errors \
   --disable-debug-symbols \
-  --with-target-bits=64 \
+  --with-target-bits=32 \
   --with-version-pre= \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
-  --with-import-modules=${WORK_DIR}/modular-sdk \
   --with-toolchain-version=2015 \
   --with-boot-jdk=${BOOT_JDK} \
   --disable-ccache \
   --enable-cds=yes || exit 1
-make clean CONF=windows-x86_64-normal-server-release || exit 1
-make JOBS=7 LOG=info images CONF=windows-x86_64-normal-server-release test-image || exit 1
+make clean CONF=windows-x86-normal-server-release || exit 1
+make LOG=info images CONF=windows-x86-normal-server-release test-image || exit 1
 
-JSDK=build/windows-x86_64-normal-server-release/images/jdk
-JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
-
-BASE_DIR=build/windows-x86_64-normal-server-release/images
+JBSDK=${JBRSDK_BASE_NAME}-windows-x86-b${build_number}
+BASE_DIR=build/windows-x86-normal-server-release/images
+JSDK=${BASE_DIR}/jdk
 JBRSDK_BUNDLE=jbrsdk
 
 rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE} && rsync -a --exclude demo --exclude sample ${JSDK}/ ${JBRSDK_BUNDLE} || exit 1
-cp -R jcef_win_x64/* ${JBRSDK_BUNDLE}/bin
 
-JBR_BUNDLE=jbr_${bundle_type}
-create_jbr ${bundle_type}
+JBR_BUNDLE=jbr
+rm -rf ${JBR_BUNDLE}
+grep -v javafx modules.list | grep -v "jdk.internal.vm\|jdk.aot\|jcef" > modules.list.x86
+${JSDK}/bin/jlink \
+  --module-path ${JSDK}/jmods --no-man-pages --compress=2 \
+  --add-modules $(xargs < modules.list.x86 | sed s/" "//g) --output ${JBR_BUNDLE} || exit $?
 
-JBR_BUNDLE=jbr_${bundle_type}_lw
-create_jbr ${bundle_type}_lw
+echo Modifying release info ...
+grep -v \"^JAVA_VERSION\" ${JSDK}/release | grep -v \"^MODULES\" >> ${JBR_BUNDLE}/release
