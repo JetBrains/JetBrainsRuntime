@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # The following parameters must be specified:
 #   JBSDK_VERSION    - specifies the current version of OpenJDK e.g. 11_0_6
