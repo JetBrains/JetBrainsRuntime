@@ -454,6 +454,7 @@ public:
   const Type* maybe_remove_speculative(bool include_speculative) const;
 
   virtual bool maybe_null() const { return true; }
+  virtual bool is_known_instance() const { return false; }
 
 private:
   // support arrays
@@ -1389,6 +1390,10 @@ public:
   // returns the equivalent ptr type for this compressed pointer
   const TypePtr *get_ptrtype() const {
     return _ptrtype;
+  }
+
+  bool is_known_instance() const {
+    return _ptrtype->is_known_instance();
   }
 
 #ifndef PRODUCT
