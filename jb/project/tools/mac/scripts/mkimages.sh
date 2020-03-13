@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # The following parameters must be specified:
 #   JBSDK_VERSION    - specifies the current version of OpenJDK e.g. 11_0_6
@@ -99,8 +99,7 @@ JBRSDK_BUNDLE=jbrsdk
 rm -rf $BASE_DIR
 mkdir $BASE_DIR || exit $?
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
-cp -a build/macosx-x86_64-normal-server-release/images/jdk-bundle/jdk-$JBSDK_VERSION_WITH_DOTS.jdk \
-  $BASE_DIR/$JBRSDK_BUNDLE || exit $?
+cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
 if [ "$bundle_type" == "jcef" ]; then
   echo Creating $JBSDK.tar.gz ...
