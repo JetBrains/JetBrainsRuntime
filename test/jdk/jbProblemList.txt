@@ -219,6 +219,7 @@ java/awt/Graphics/CopyScaledArea/CopyScaledAreaTest.java                        
 java/awt/Graphics/LineClipTest.java                                                 JRE-898 macosx-all
 java/awt/Graphics2D/CopyAreaOOB.java                                                7001973 windows-all,macosx-all,linux-all
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java               8197796 generic-all
+java/awt/Graphics2D/DrawString/LCDTextSrcEa.java                                    8223543 generic-all
 java/awt/Graphics2D/DrawString/RotTransText.java                                    8197797 generic-all
 java/awt/Graphics2D/DrawString/TextRenderingTest.java                               8169464 windows-all
 java/awt/Graphics2D/FillTexturePaint/FillTexturePaint.java                          8169463 windows-all
@@ -903,7 +904,7 @@ javax/swing/JFileChooser/DeserializedJFileChooser/DeserializedJFileChooserTest.j
 javax/swing/JFrame/8016356/bug8016356.java                                          8169955 windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java                           8193942 generic-all
 javax/swing/JInternalFrame/5066752/bug5066752.java                                  8207850 macosx-all,windows-all
-javax/swing/JInternalFrame/8020708/bug8020708.java                                  8226230 linux-all
+javax/swing/JInternalFrame/8020708/bug8020708.java                                  8226230 linux-all,windows-all
 javax/swing/JInternalFrame/8069348/bug8069348.java                                  8208570 macosx-all,windows-all,linux-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                  8203918 windows-all,linux-all
 javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all,linux-all
