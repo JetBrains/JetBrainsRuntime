@@ -551,7 +551,7 @@ java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java             
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java          7124407 macosx-all,windows-all,linux-all
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java     8157170 macosx-all,windows-all
 java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.html                         8148041 linux-all
-java/awt/MouseInfo/GetPointerInfoTest.java                                          8158798 windows-all
+java/awt/MouseInfo/GetPointerInfoTest.java                                          8130741 macosx-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java             7124230 generic-all
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java           8155744 windows-all,linux-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.html                     8168132 macosx-all,linux-all
