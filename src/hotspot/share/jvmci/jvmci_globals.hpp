@@ -71,7 +71,8 @@
                                                                             \
   NOT_COMPILER2(product(intx, MaxVectorSize, 64,                            \
           "Max vector size in bytes, "                                      \
-          "actual size could be less depending on elements type"))          \
+          "actual size could be less depending on elements type")           \
+          range(0, max_jint))                                               \
                                                                             \
   NOT_COMPILER2(product(bool, ReduceInitialCardMarks, true,                 \
           "Defer write barriers of young objects"))                         \
@@ -80,10 +81,11 @@
           "Trace level for JVMCI: "                                         \
           "1 means emit a message for each CompilerToVM call,"              \
           "levels greater than 1 provide progressively greater detail")     \
+          range(0, 6)                                                       \
                                                                             \
   experimental(intx, JVMCICounterSize, 0,                                   \
           "Reserved size for benchmark counters")                           \
-          range(0, max_jint)                                                \
+          range(0, 1000000)                                                 \
                                                                             \
   experimental(bool, JVMCICountersExcludeCompiler, true,                    \
           "Exclude JVMCI compiler threads from benchmark counters")         \
@@ -93,6 +95,7 @@
                                                                             \
   experimental(intx, JVMCINMethodSizeLimit, (80*K)*wordSize,                \
           "Maximum size of a compiled method.")                             \
+          range(0, max_jint)                                                \
                                                                             \
   experimental(intx, MethodProfileWidth, 0,                                 \
           "Number of methods to record in call profile")                    \
