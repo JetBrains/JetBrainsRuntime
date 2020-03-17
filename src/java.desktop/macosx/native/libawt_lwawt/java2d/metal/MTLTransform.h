@@ -15,7 +15,9 @@
                     M02:(jdouble) m02 M12:(jdouble) m12;
 - (void)resetTransform;
 
-- (void)setVertexMatrix:(id<MTLRenderCommandEncoder>)encoder destWidth:(jint)dw destHeight:(jint)dh;
+- (void)setVertexMatrix:(id<MTLRenderCommandEncoder>)encoder
+              destWidth:(NSUInteger)dw
+             destHeight:(NSUInteger)dh;
 @end
 
 #endif // MTLTransform_h_Included

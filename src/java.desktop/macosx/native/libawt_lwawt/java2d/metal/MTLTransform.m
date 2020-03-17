@@ -56,7 +56,9 @@
     _useTransform = JNI_FALSE;
 }
 
-- (void)setVertexMatrix:(id <MTLRenderCommandEncoder>)encoder destWidth:(jint)dw destHeight:(jint)dh {
+- (void)setVertexMatrix:(id<MTLRenderCommandEncoder>)encoder
+              destWidth:(NSUInteger)dw
+             destHeight:(NSUInteger)dh {
     // update matrix for vertex shader
     _normalize4x4.columns[0][0] = 2/(double)dw;
     _normalize4x4.columns[1][1] = -2/(double)dh;

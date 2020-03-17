@@ -16,7 +16,6 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 - (void)dealloc;
 
 - (void)reset:(id<MTLTexture>)destination
-                aaDest:(id<MTLTexture>)aaDestination
            isDstOpaque:(jboolean)isDstOpaque
     isDstPremultiplied:(jboolean)isDstPremultiplied
                   isAA:(jboolean)isAA;
@@ -39,7 +38,6 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 
     // Persistent encoder properties
     id<MTLTexture> _destination;
-    id<MTLTexture> _aaDestination;
     SurfaceRasterFlags _dstFlags;
 
     //
@@ -69,7 +67,6 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     self = [super init];
     if (self) {
         _destination = nil;
-        _aaDestination = nil;
         _composite = [[MTLComposite alloc] init];
         _paint = [[MTLPaint alloc] init];
         _transform = [[MTLTransform alloc] init];
@@ -91,13 +88,10 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 }
 
 - (void)reset:(id<MTLTexture>)destination
-                aaDest:(id<MTLTexture>)aaDestination
            isDstOpaque:(jboolean)isDstOpaque
     isDstPremultiplied:(jboolean)isDstPremultiplied
-                  isAA:(jboolean)isAA
-{
+                  isAA:(jboolean)isAA {
     _destination = destination;
-    _aaDestination = aaDestination;
     _dstFlags.isOpaque = isDstOpaque;
     _dstFlags.isPremultiplied = isDstPremultiplied;
     _isAA = isAA;
@@ -204,17 +198,10 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
         return;
 
     [_clip copyFrom:clip];
-    if (_aaDestination != nil) {
-      [_clip setScissorOrStencil:encoder
-                       destWidth:_aaDestination.width
-                      destHeight:_aaDestination.height
-                          device:_device];
-    } else {
-      [_clip setScissorOrStencil:encoder
-                       destWidth:_destination.width
-                      destHeight:_destination.height
-                          device:_device];
-    }
+    [_clip setScissorOrStencil:encoder
+                     destWidth:_destination.width
+                    destHeight:_destination.height
+                        device:_device];
 }
 
 - (void)updateTransform:(id <MTLRenderCommandEncoder>)encoder
@@ -226,16 +213,9 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
         return;
 
     [_transform copyFrom:transform];
-    if (_aaDestination != nil) {
-      [_transform setVertexMatrix:encoder
-                        destWidth:_aaDestination.width
-                       destHeight:_aaDestination.height];
-    } else {
-      [_transform setVertexMatrix:encoder
+    [_transform setVertexMatrix:encoder
                         destWidth:_destination.width
                        destHeight:_destination.height];
-
-    }
 }
 
 @end
@@ -417,7 +397,6 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     [rpd release];
 
     [_encoderStates reset:dest
-               aaDest:_aaDestination
                isDstOpaque:isOpaque
         isDstPremultiplied:YES
                       isAA:isAA];
