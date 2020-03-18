@@ -299,6 +299,7 @@ typedef enum {
 #define FLAG_IS_DEFAULT(name)         (JVMFlagEx::is_default(FLAG_MEMBER(name)))
 #define FLAG_IS_ERGO(name)            (JVMFlagEx::is_ergo(FLAG_MEMBER(name)))
 #define FLAG_IS_CMDLINE(name)         (JVMFlagEx::is_cmdline(FLAG_MEMBER(name)))
+#define FLAG_IS_JIMAGE_RESOURCE(name) (JVMFlagEx::is_jimage_resource(FLAG_MEMBER(name)))
 
 #define FLAG_SET_DEFAULT(name, value) ((name) = (value))
 
@@ -330,6 +331,7 @@ class JVMFlagEx : JVMFlag {
   static bool is_default(JVMFlags flag);
   static bool is_ergo(JVMFlags flag);
   static bool is_cmdline(JVMFlags flag);
+  static bool is_jimage_resource(JVMFlags flag);
 
   static void setOnCmdLine(JVMFlagsWithType flag);
 };
