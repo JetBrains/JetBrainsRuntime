@@ -56,6 +56,7 @@ struct TxtShaderInOut {
 
 struct GradShaderInOut {
     float4 position [[position]];
+    float2 texCoords;
 };
 
 vertex ColShaderInOut vert_col(VertexInput in [[stage_in]],
@@ -111,6 +112,15 @@ vertex TxtShaderInOut vert_txt_tp(TxtVertexInput in [[stage_in]], constant Ancho
     return out;
 }
 
+vertex GradShaderInOut vert_txt_grad(TxtVertexInput in [[stage_in]],
+                                     constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
+    GradShaderInOut out;
+    float4 pos4 = float4(in.position, 0.0, 1.0);
+    out.position = transform.transformMatrix*pos4;
+    out.texCoords = in.texCoords;
+    return out;
+}
+
 fragment half4 frag_col(ColShaderInOut in [[stage_in]]) {
     return in.color;
 }
@@ -150,6 +160,24 @@ fragment half4 frag_txt_tp(TxtShaderInOut vert [[stage_in]],
     return half4(paintColor.r*renderColor.a,
                  paintColor.g*renderColor.a,
                  paintColor.b*renderColor.a,
+                 renderColor.a);
+}
+
+fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
+                         constant GradFrameUniforms& uniforms [[buffer(0)]],
+                         texture2d<float, access::sample> renderTexture [[texture(0)]])
+{
+    constexpr sampler textureSampler (address::repeat, mag_filter::nearest,
+                                      min_filter::nearest);
+
+    float4 renderColor = renderTexture.sample(textureSampler, in.texCoords);
+
+    float3 v = float3(in.position.x, in.position.y, 1);
+    float  a = (dot(v,uniforms.params)-0.25)*2.0;
+    float4 c = mix(uniforms.color1, uniforms.color2, a);
+    return half4(c.r*renderColor.a,
+                 c.g*renderColor.a,
+                 c.b*renderColor.a,
                  renderColor.a);
 }
 

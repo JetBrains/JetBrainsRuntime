@@ -318,6 +318,21 @@ static void initTemplatePipelineDescriptors() {
         [encoder setFragmentBytes:&uf length:sizeof(uf)
                           atIndex:FrameUniformBuffer];
 
+      } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
+        pipelineState = [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
+                                                vertexShaderId:@"vert_txt_grad"
+                                              fragmentShaderId:@"frag_txt_grad"
+                                                 compositeRule:[composite getRule]
+                                                          isAA:JNI_FALSE
+                                                      srcFlags:srcFlags
+                                                      dstFlags:dstFlags
+                                                 stencilNeeded:stencil];
+        struct GradFrameUniforms uf = {
+            {_p0, _p1, _p3},
+            RGBA_TO_V4(_pixel1),
+            RGBA_TO_V4(_pixel2)};
+        [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
+
       } else {
         if (isAA) {
           pipelineState = [pipelineStateStorage
