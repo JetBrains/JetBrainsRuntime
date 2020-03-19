@@ -26,22 +26,22 @@ function create_jbr {
 
   case "$1" in
   "${bundle_type}_lw")
-    JBR_BASE_NAME=jbr_${bundle_type}_lw-$JBSDK_VERSION
+    JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
     grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
     ;;
-  "jfx")
-    JBR_BASE_NAME=jbr_${bundle_type}-$JBSDK_VERSION
+  "jfx" | "jcef")
+    JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
     cat modules.list > modules_tmp.list
     ;;
-  "jcef")
-    JBR_BASE_NAME=jbr-$JBSDK_VERSION
+  "jfx_jcef")
+    JBR_BASE_NAME=jbr-${JBSDK_VERSION}
     cat modules.list > modules_tmp.list
     ;;
   *)
-    echo "***ERR*** bundle was not specified" && exit $?
+    echo "***ERR*** bundle was not specified" && exit 1
     ;;
   esac
-  rm -rf $BASE_DIR/$JBR_BUNDLE
+  rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 
   JBR=$JBR_BASE_NAME-linux-x64-b$build_number
 
@@ -50,7 +50,7 @@ function create_jbr {
     --module-path $JSDK/jmods --no-man-pages --compress=2 \
     --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output $BASE_DIR/$JBR_BUNDLE
 
-  if [ "$bundle_type" == "jcef" ]; then
+  if [[ "$bundle_type" == *jcef* ]]; then
     cp -R $BASE_DIR/$JBR_BUNDLE $BASE_DIR/jbr
     cp -R jcef_linux_x64/* $BASE_DIR/$JBR_BUNDLE/lib || exit $?
   fi
@@ -61,24 +61,30 @@ function create_jbr {
   cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
   tar -pcf $JBR.tar -C $BASE_DIR jbr || exit $?
   gzip $JBR.tar || exit $?
+  rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 }
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 
-if [ "$bundle_type" == "jfx" ]; then
-  git apply -p0 < jb/project/tools/exclude_jcef_module.patch
-fi
+git checkout -- modules.list src/java.desktop/share/classes/module-info.java
+case "$bundle_type" in
+  "jfx")
+    git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+    ;;
+  "jcef")
+    git apply -p0 < jb/project/tools/exclude_jfx_module.patch
+    ;;
+esac
 
 sh configure \
   --disable-warnings-as-errors \
   --with-debug-level=release \
-  --with-version-build=$JDK_BUILD_NUMBER \
   --with-version-pre= \
-  --with-version-opt=b$build_number \
+  --with-version-build=${JDK_BUILD_NUMBER} \
+  --with-version-opt=b${build_number} \
   --with-import-modules=./modular-sdk \
   --enable-cds=yes || exit $?
 
-make clean CONF=linux-x86_64-normal-server-release || exit $?
 make images CONF=linux-x86_64-normal-server-release || exit $?
 
 JSDK=build/linux-x86_64-normal-server-release/images/jdk
@@ -93,21 +99,20 @@ JBRSDK_BUNDLE=jbrsdk
 rm -rf $BASE_DIR/$JBRSDK_BUNDLE
 cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
-if [ "$bundle_type" == "jcef" ]; then
+if [[ "$bundle_type" == *jcef* ]]; then
   cp -R jcef_linux_x64/* $BASE_DIR/$JBRSDK_BUNDLE/lib || exit $?
-
+fi
+if [ "$bundle_type" == "jfx_jcef" ]; then
   echo Creating $JBSDK.tar.gz ...
-  tar -pcf $JBSDK.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man -C $BASE_DIR $JBRSDK_BUNDLE || exit $?
+  tar -pcf $JBSDK.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
+    -C $BASE_DIR $JBRSDK_BUNDLE || exit $?
   gzip $JBSDK.tar || exit $?
 fi
 
 JBR_BUNDLE=jbr_${bundle_type}
 create_jbr ${bundle_type}
 
-JBR_BUNDLE=jbr_${bundle_type}_lw
-create_jbr ${bundle_type}_lw
-
-if [ "$bundle_type" == "jcef" ]; then
+if [ "$bundle_type" == "jfx_jcef" ]; then
   make test-image || exit $?
 
   JBRSDK_TEST=$JBRSDK_BASE_NAME-linux-test-x64-b$build_number
