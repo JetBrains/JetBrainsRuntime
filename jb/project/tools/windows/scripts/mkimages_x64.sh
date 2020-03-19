@@ -28,14 +28,11 @@ function create_jbr {
   "${bundle_type}_lw")
     grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
     ;;
-  "jfx")
-    cat modules.list > modules_tmp.list
-    ;;
-  "jcef")
+  "jfx" | "jcef" | "jfx_jcef")
     cat modules.list > modules_tmp.list
     ;;
   *)
-    echo "***ERR*** bundle was not specified" && exit $?
+    echo "***ERR*** bundle was not specified" && exit 1
     ;;
   esac
   rm -rf ${JBR_BUNDLE}
@@ -43,7 +40,8 @@ function create_jbr {
   ${JSDK}/bin/jlink \
     --module-path ${JSDK}/jmods --no-man-pages --compress=2 \
     --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output ${JBR_BUNDLE} || exit $?
-  if [ "${bundle_type}" == "jcef" ]; then
+  if [[ "${bundle_type}" == *jcef* ]]
+  then
     cp -R jcef_win_x64/* ${JBR_BUNDLE}/bin
   fi
   echo Modifying release info ...
@@ -53,9 +51,17 @@ function create_jbr {
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 WORK_DIR=$(pwd)
 
-if [ "${bundle_type}" == "jfx" ]; then
-  git apply -p0 < jb/project/tools/exclude_jcef_module.patch
-fi
+git checkout -- modules.list src/java.desktop/share/classes/module-info.java
+case "$bundle_type" in
+  "jfx")
+    echo "Excluding jcef modules"
+    git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+    ;;
+  "jcef")
+    echo "Excluding jfx modules"
+    git apply -p0 < jb/project/tools/exclude_jfx_module.patch
+    ;;
+esac
 
 PATH="/usr/local/bin:/usr/bin:${PATH}"
 ./configure \
@@ -70,12 +76,17 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --with-boot-jdk=${BOOT_JDK} \
   --disable-ccache \
   --enable-cds=yes || exit 1
-make clean CONF=windows-x86_64-normal-server-release || exit 1
-make LOG=info images CONF=windows-x86_64-normal-server-release test-image || exit 1
+
+if [ "$bundle_type" == "jfx_jcef" ]; then
+  make LOG=info images CONF=windows-x86_64-normal-server-release test-image || exit 1
+else
+  make LOG=info images CONF=windows-x86_64-normal-server-release || exit 1
+fi
 
 JSDK=build/windows-x86_64-normal-server-release/images/jdk
-JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
-
+if [[ "$bundle_type" == *jcef* ]]; then
+  JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
+fi
 BASE_DIR=build/windows-x86_64-normal-server-release/images
 JBRSDK_BUNDLE=jbrsdk
 
@@ -85,5 +96,5 @@ cp -R jcef_win_x64/* ${JBRSDK_BUNDLE}/bin
 JBR_BUNDLE=jbr_${bundle_type}
 create_jbr ${bundle_type}
 
-JBR_BUNDLE=jbr_${bundle_type}_lw
-create_jbr ${bundle_type}_lw
+#JBR_BUNDLE=jbr_${bundle_type}_lw
+#create_jbr ${bundle_type}_lw
