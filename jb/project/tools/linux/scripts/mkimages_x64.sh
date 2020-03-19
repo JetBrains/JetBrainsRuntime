@@ -26,15 +26,15 @@ function create_jbr {
 
   case "$1" in
   "${bundle_type}_lw")
-    JBR_BASE_NAME=jbr_${bundle_type}_lw-$JBSDK_VERSION
+    JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
     grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
     ;;
   "jfx" | "jcef")
-    JBR_BASE_NAME=jbr_${bundle_type}-$JBSDK_VERSION
+    JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
     cat modules.list > modules_tmp.list
     ;;
   "jfx_jcef")
-    JBR_BASE_NAME=jbr-$JBSDK_VERSION
+    JBR_BASE_NAME=jbr-${JBSDK_VERSION}
     cat modules.list > modules_tmp.list
     ;;
   *)
@@ -79,13 +79,12 @@ esac
 sh configure \
   --disable-warnings-as-errors \
   --with-debug-level=release \
-  --with-version-build=$JDK_BUILD_NUMBER \
   --with-version-pre= \
-  --with-version-opt=b$build_number \
+  --with-version-build=${JDK_BUILD_NUMBER} \
+  --with-version-opt=b${build_number} \
   --with-import-modules=./modular-sdk \
   --enable-cds=yes || exit $?
 
-make clean CONF=linux-x86_64-normal-server-release || exit $?
 make images CONF=linux-x86_64-normal-server-release || exit $?
 
 JSDK=build/linux-x86_64-normal-server-release/images/jdk

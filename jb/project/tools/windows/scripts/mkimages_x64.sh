@@ -51,7 +51,7 @@ function create_jbr {
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 WORK_DIR=$(pwd)
 
-git checkout -- .
+#git checkout -- .
 case "$bundle_type" in
   "jfx")
     echo "Excluding jcef modules"

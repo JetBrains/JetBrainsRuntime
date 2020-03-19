@@ -23,29 +23,24 @@ build_number=$3
 bundle_type=$4
 
 function create_jbr {
-  echo "====>"$1
-  if [ "$1" == "${bundle_type}_lw" ]
-  then
-    echo "case1 $1"
+
+  case "$1" in
+  "${bundle_type}_lw")
     JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
     grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
-  else
-  if [ "$1" == "jfx" ] || [ "$1" == "jcef" ]
-  then
-    echo "case2 $1"
+    ;;
+  "jfx" | "jcef")
     JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
     cat modules.list > modules_tmp.list
-  else
-  if [ "$1" == "jfx_jcef" ]
-    then
-      echo "case3 $1"
-      JBR_BASE_NAME=jbr-${JBSDK_VERSION}
-      cat modules.list > modules_tmp.list
-    else
-      echo "***ERR*** bundle was not specified" && exit 1
-  fi
-  fi
-  fi
+    ;;
+  "jfx_jcef")
+    JBR_BASE_NAME=jbr-${JBSDK_VERSION}
+    cat modules.list > modules_tmp.list
+    ;;
+  *)
+    echo "***ERR*** bundle was not specified" && exit 1
+    ;;
+  esac
   rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 
   JRE_CONTENTS=${BASE_DIR}/${JBR_BUNDLE}/Contents
@@ -81,15 +76,14 @@ function create_jbr {
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 
 git checkout -- .
-if [ "$bundle_type" == "jfx" ]; then
-  echo "Excluding jcef modules"
-  git apply -p0 < jb/project/tools/exclude_jcef_module.patch
-else
-if [ "$bundle_type" == "jcef" ]; then
-  echo "Excluding jfx modules"
-  git apply -p0 < jb/project/tools/exclude_jfx_module.patch
-fi
-fi
+case "$bundle_type" in
+  "jfx")
+    git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+    ;;
+  "jcef")
+    git apply -p0 < jb/project/tools/exclude_jfx_module.patch
+    ;;
+esac
 
 sh configure \
   --disable-warnings-as-errors \
