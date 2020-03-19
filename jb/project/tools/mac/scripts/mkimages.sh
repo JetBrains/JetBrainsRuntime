@@ -23,24 +23,29 @@ build_number=$3
 bundle_type=$4
 
 function create_jbr {
-
-  case "$1" in
-  "${bundle_type}_lw")
+  echo "====>"$1
+  if [ "$1" == "${bundle_type}_lw" ]
+  then
+    echo "case1 $1"
     JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
     grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
-    ;;
-  "jfx")
+  else
+  if [ "$1" == "jfx" ] || [ "$1" == "jcef" ]
+  then
+    echo "case2 $1"
     JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
     cat modules.list > modules_tmp.list
-    ;;
-  "jcef")
-    JBR_BASE_NAME=jbr-${JBSDK_VERSION}
-    cat modules.list > modules_tmp.list
-    ;;
-  *)
-    echo "***ERR*** bundle was not specified" && exit $?
-    ;;
-  esac
+  else
+  if [ "$1" == "jfx_jcef" ]
+    then
+      echo "case3 $1"
+      JBR_BASE_NAME=jbr-${JBSDK_VERSION}
+      cat modules.list > modules_tmp.list
+    else
+      echo "***ERR*** bundle was not specified" && exit 1
+  fi
+  fi
+  fi
   rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 
   JRE_CONTENTS=${BASE_DIR}/${JBR_BUNDLE}/Contents
@@ -59,7 +64,7 @@ function create_jbr {
   cp -R ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/MacOS ${JRE_CONTENTS}
   cp ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Info.plist ${JRE_CONTENTS}
 
-  if [ "${bundle_type}" == "jcef" ]; then
+  if [[ "${bundle_type}" == *jcef* ]]; then
     rm -rf ${JRE_CONTENTS}/Frameworks || exit $?
     rm -rf ${JRE_CONTENTS}/Helpers    || exit $?
     cp -a jcef_mac/Frameworks ${JRE_CONTENTS} || exit $?
@@ -70,12 +75,20 @@ function create_jbr {
   rm -rf ${BASE_DIR}/jbr
   cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
   COPYFILE_DISABLE=1 tar -pczf ${JBR}.tar.gz --exclude='*.dSYM' --exclude='man' -C ${BASE_DIR} jbr || exit $?
+  rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 }
 
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 
-if [ "${bundle_type}" == "jfx" ]; then
+git checkout -- .
+if [ "$bundle_type" == "jfx" ]; then
+  echo "Excluding jcef modules"
   git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+else
+if [ "$bundle_type" == "jcef" ]; then
+  echo "Excluding jfx modules"
+  git apply -p0 < jb/project/tools/exclude_jfx_module.patch
+fi
 fi
 
 sh configure \
@@ -101,11 +114,12 @@ mkdir $BASE_DIR || exit $?
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
-if [ "$bundle_type" == "jcef" ]; then
-  echo Creating $JBSDK.tar.gz ...
+if [[ "$bundle_type" == *jcef ]]; then
   cp -a jcef_mac/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
   cp -a jcef_mac/Helpers    $BASE_DIR/$JBRSDK_BUNDLE/Contents/
-
+fi
+if [ "$bundle_type" == "jfx_jcef" ]; then
+  echo Creating $JBSDK.tar.gz ...
   COPYFILE_DISABLE=1 tar -pczf $JBSDK.tar.gz -C $BASE_DIR \
     --exclude='._*' --exclude='.DS_Store' --exclude='*~' \
     --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
@@ -113,17 +127,17 @@ if [ "$bundle_type" == "jcef" ]; then
 fi
 
 JBR_BUNDLE=jbr_${bundle_type}
-create_jbr $bundle_type
+create_jbr "${bundle_type}" || exit $?
 
-JBR_BUNDLE=jbr_${bundle_type}_lw
-create_jbr "${bundle_type}_lw"
+#JBR_BUNDLE=jbr_${bundle_type}_lw
+#create_jbr "${bundle_type}_lw"
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ "$bundle_type" == "jfx_jcef" ]; then
   make test-image || exit $?
 
   JBRSDK_TEST=$JBRSDK_BASE_NAME-osx-test-x64-b$build_number
 
-  echo Creating $JBSDK_TEST.tar.gz ...
+  echo Creating $JBRSDK_TEST.tar.gz ...
   COPYFILE_DISABLE=1 tar -pczf $JBRSDK_TEST.tar.gz -C build/macosx-x86_64-normal-server-release/images \
     --exclude='test/jdk/demos' test || exit $?
 fi
