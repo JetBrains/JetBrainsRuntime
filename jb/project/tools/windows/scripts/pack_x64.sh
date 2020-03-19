@@ -28,14 +28,14 @@ function pack_jbr {
   "${bundle_type}_lw")
     JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
     ;;
-  "jfx")
+  "jfx" | "jcef")
     JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
     ;;
-  "jcef")
+  "jfx_jcef")
     JBR_BASE_NAME=jbr-${JBSDK_VERSION}
     ;;
   *)
-    echo "***ERR*** bundle was not specified" && exit $?
+    echo "***ERR*** bundle was not specified" && exit 1
     ;;
   esac
 
@@ -45,6 +45,7 @@ function pack_jbr {
   cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
 
   /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR jbr || exit 1
+  #rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 }
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
@@ -55,7 +56,7 @@ JSDK=$IMAGES_DIR/jdk
 JBSDK=$JBRSDK_BASE_NAME-windows-x64-b$build_number
 BASE_DIR=.
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ "$bundle_type" == "jfx_jcef" ]; then
   JBRSDK_BUNDLE=jbrsdk
   echo Creating $JBSDK.tar.gz ...
   /usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || exit 1
@@ -63,10 +64,8 @@ fi
 
 JBR_BUNDLE=jbr_${bundle_type}
 pack_jbr $bundle_type
-JBR_BUNDLE=jbr_${bundle_type}_lw
-pack_jbr ${bundle_type}_lw
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ "$bundle_type" == "jfx_jcef" ]; then
   JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number
   echo Creating $JBRSDK_TEST.tar.gz ...
   /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || exit 1
