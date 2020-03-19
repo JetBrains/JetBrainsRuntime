@@ -50,7 +50,7 @@ function create_jbr {
     --module-path $JSDK/jmods --no-man-pages --compress=2 \
     --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output $BASE_DIR/$JBR_BUNDLE
 
-  if [ "$bundle_type" == "jcef" ]; then
+  if [[ "$bundle_type" == *jcef* ]]; then
     cp -R $BASE_DIR/$JBR_BUNDLE $BASE_DIR/jbr
     cp -R jcef_linux_x64/* $BASE_DIR/$JBR_BUNDLE/lib || exit $?
   fi
@@ -66,7 +66,7 @@ function create_jbr {
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 
-git checkout -- .
+git checkout -- modules.list src
 case "$bundle_type" in
   "jfx")
     git apply -p0 < jb/project/tools/exclude_jcef_module.patch
@@ -99,7 +99,7 @@ JBRSDK_BUNDLE=jbrsdk
 rm -rf $BASE_DIR/$JBRSDK_BUNDLE
 cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
-if [[ "$bundle_type" == *jcef ]]; then
+if [[ "$bundle_type" == *jcef* ]]; then
   cp -R jcef_linux_x64/* $BASE_DIR/$JBRSDK_BUNDLE/lib || exit $?
 fi
 if [ "$bundle_type" == "jfx_jcef" ]; then
@@ -111,9 +111,6 @@ fi
 
 JBR_BUNDLE=jbr_${bundle_type}
 create_jbr ${bundle_type}
-
-JBR_BUNDLE=jbr_${bundle_type}_lw
-create_jbr ${bundle_type}_lw
 
 if [ "$bundle_type" == "jfx_jcef" ]; then
   make test-image || exit $?

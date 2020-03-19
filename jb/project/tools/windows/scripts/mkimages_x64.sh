@@ -51,7 +51,7 @@ function create_jbr {
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 WORK_DIR=$(pwd)
 
-#git checkout -- .
+git checkout -- modules.list src
 case "$bundle_type" in
   "jfx")
     echo "Excluding jcef modules"
@@ -76,7 +76,6 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --with-boot-jdk=${BOOT_JDK} \
   --disable-ccache \
   --enable-cds=yes || exit 1
-make clean CONF=windows-x86_64-normal-server-release || exit 1
 
 if [ "$bundle_type" == "jfx_jcef" ]; then
   make LOG=info images CONF=windows-x86_64-normal-server-release test-image || exit 1
@@ -85,7 +84,7 @@ else
 fi
 
 JSDK=build/windows-x86_64-normal-server-release/images/jdk
-if [[ "$bundle_type" == *jcef ]]; then
+if [[ "$bundle_type" == *jcef* ]]; then
   JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
 fi
 BASE_DIR=build/windows-x86_64-normal-server-release/images

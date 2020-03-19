@@ -64,8 +64,6 @@ fi
 
 JBR_BUNDLE=jbr_${bundle_type}
 pack_jbr $bundle_type
-#JBR_BUNDLE=jbr_${bundle_type}_lw
-#pack_jbr ${bundle_type}_lw
 
 if [ "$bundle_type" == "jfx_jcef" ]; then
   JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number

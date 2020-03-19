@@ -75,7 +75,7 @@ function create_jbr {
 
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 
-git checkout -- .
+git checkout -- modules.list src
 case "$bundle_type" in
   "jfx")
     git apply -p0 < jb/project/tools/exclude_jcef_module.patch
@@ -108,7 +108,7 @@ mkdir $BASE_DIR || exit $?
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
-if [[ "$bundle_type" == *jcef ]]; then
+if [[ "$bundle_type" == *jcef* ]]; then
   cp -a jcef_mac/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
   cp -a jcef_mac/Helpers    $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 fi
@@ -122,9 +122,6 @@ fi
 
 JBR_BUNDLE=jbr_${bundle_type}
 create_jbr "${bundle_type}" || exit $?
-
-#JBR_BUNDLE=jbr_${bundle_type}_lw
-#create_jbr "${bundle_type}_lw"
 
 if [ "$bundle_type" == "jfx_jcef" ]; then
   make test-image || exit $?
