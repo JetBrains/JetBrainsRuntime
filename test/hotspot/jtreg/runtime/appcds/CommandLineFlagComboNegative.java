@@ -71,8 +71,6 @@ public class CommandLineFlagComboNegative {
                 "Class data sharing is inconsistent with other specified options", 1) );
             testTable.add( new TestVector("-XX:+UseCompressedClassPointers", "-XX:-UseCompressedClassPointers",
                 "Class data sharing is inconsistent with other specified options", 1) );
-            testTable.add( new TestVector("-XX:-UseAppCDS", "-XX:+UseAppCDS",
-                "Ignoring obsolete option UseAppCDS; AppCDS is automatically enabled", 0) );
         }
     }
 
@@ -88,9 +86,14 @@ public class CommandLineFlagComboNegative {
 
             TestCommon.checkDump(dumpOutput, "Loading classes to share");
 
-            OutputAnalyzer execOutput = TestCommon.exec(appJar, testEntry.testOptionForExecuteStep, "Hello");
-            execOutput.shouldContain(testEntry.expectedErrorMsg);
-            execOutput.shouldHaveExitValue(testEntry.expectedErrorCode);
+            TestCommon.run(
+                "-cp", appJar,
+                testEntry.testOptionForExecuteStep,
+                "Hello")
+                .assertAbnormalExit(output -> {
+                    output.shouldContain(testEntry.expectedErrorMsg)
+                          .shouldHaveExitValue(testEntry.expectedErrorCode);
+                    });
         }
     }
 
