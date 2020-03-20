@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # The following parameters must be specified:
 #   JBSDK_VERSION    - specifies the current version of OpenJDK e.g. 11_0_6
@@ -28,14 +28,14 @@ function pack_jbr {
   "${bundle_type}_lw")
     JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
     ;;
+  "jfx_jcef" | "jcef")
+    JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
+    ;;
   "jfx")
     JBR_BASE_NAME=jbr-${JBSDK_VERSION}
     ;;
-  "jcef")
-    JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
-    ;;
   *)
-    echo "***ERR*** bundle was not specified" && exit $?
+    echo "***ERR*** bundle was not specified" && exit 1
     ;;
   esac
 
@@ -50,11 +50,12 @@ function pack_jbr {
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 JBR_BASE_NAME=jbr-$JBSDK_VERSION
 
-JSDK=build/windows-x86_64-normal-server-release/images/jdk
+IMAGES_DIR=build/windows-x86_64-normal-server-release/images
+JSDK=$IMAGES_DIR/jdk
 JBSDK=$JBRSDK_BASE_NAME-windows-x64-b$build_number
 BASE_DIR=.
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ "$bundle_type" == "jfx_jcef" ]; then
   JBRSDK_BUNDLE=jbrsdk
   echo Creating $JBSDK.tar.gz ...
   /usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || exit 1
@@ -62,11 +63,9 @@ fi
 
 JBR_BUNDLE=jbr_${bundle_type}
 pack_jbr $bundle_type
-JBR_BUNDLE=jbr_${bundle_type}_lw
-pack_jbr ${bundle_type}_lw
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ "$bundle_type" == "jfx_jcef" ]; then
   JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number
   echo Creating $JBRSDK_TEST.tar.gz ...
-  /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $BASE_DIR --exclude='test/jdk/demos' test || exit 1
+  /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || exit 1
 fi
