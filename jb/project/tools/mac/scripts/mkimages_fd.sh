@@ -67,6 +67,8 @@ if [ -d "$JRE_HOME" ]; then
   rm -rf $JRE_HOME
 fi
 
+JBR=${JBR_BASE_NAME}-osx-x64-fastdebug-b${build_number}
+
 $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/bin/jlink \
     --module-path $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/jmods --no-man-pages --compress=2 \
     --add-modules $(xargs < modules.list | sed s/" "//g) --output $JRE_HOME  || exit $?
