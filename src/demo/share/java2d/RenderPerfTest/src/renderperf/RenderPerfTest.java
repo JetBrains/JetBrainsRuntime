@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020 Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -234,6 +234,26 @@ public class RenderPerfTest {
 
         void setPaint(Graphics2D g2d, int id) {
             g2d.setColor(colors[id % colors.length]);
+        }
+    }
+
+    static class LargeTextParticleRenderer extends TextParticleRenderer {
+
+        LargeTextParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            setPaint(g2d, id);
+            Font font = new Font("LucidaGrande", Font.PLAIN, 32);
+            g2d.setFont(font);
+            g2d.drawString("The quick brown fox jumps over the lazy dog",
+                    (int)(x[id] - r), (int)(y[id] - r));
+            g2d.drawString("The quick brown fox jumps over the lazy dog",
+                    (int)(x[id] - r), (int)y[id]);
+            g2d.drawString("The quick brown fox jumps over the lazy dog",
+                    (int)(x[id] - r), (int)(y[id] + r));
         }
     }
 
@@ -568,6 +588,7 @@ public class RenderPerfTest {
     private static final ParticleRenderer wiredQuadRenderer = new WiredQuadParticleRenderer(N, R);
     private static final ParticleRenderer imgRenderer = new ImgParticleRenderer(N, R);
     private static final ParticleRenderer textRenderer = new TextParticleRenderer(N, R);
+    private static final ParticleRenderer largeTextRenderer = new LargeTextParticleRenderer(N, R);
     private static final ParticleRenderer whiteTextRenderer = new WhiteTextParticleRenderer(R);
 
     private static final Configurable AA = (Graphics2D g2d) ->
@@ -682,6 +703,17 @@ public class RenderPerfTest {
         (new PerfMeter("TextGray")).exec(createPR(textRenderer).configure(TextAA)).report();
     }
 
+    public void testLargeTextBubblesNoAA() throws Exception {
+        (new PerfMeter("LargeTextNoAA")).exec(createPR(largeTextRenderer)).report();
+    }
+
+    public void testLargeTextBubblesLCD() throws Exception {
+        (new PerfMeter("LargeTextLCD")).exec(createPR(largeTextRenderer).configure(TextLCD)).report();
+    }
+
+    public void testLargeTextBubblesGray() throws Exception {
+        (new PerfMeter("LargeTextGray")).exec(createPR(largeTextRenderer).configure(TextAA)).report();
+    }
     public void testWhiteTextBubblesNoAA() throws Exception {
         (new PerfMeter("WhiteTextNoAA")).exec(createPR(whiteTextRenderer)).report();
     }
