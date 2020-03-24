@@ -317,6 +317,10 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
     J2dTraceLn1(J2D_TRACE_VERBOSE,
                 "MTLRenderQueue_CheckPreviousOp: new op=%d", op);
 
+    if (op == MTL_OP_SET_COLOR) {
+        return; // SET_COLOR should not cause endEncoder
+    }
+
     if (mtlPreviousOp == MTL_OP_INIT) {
         mtlPreviousOp = op;
         return;
@@ -830,7 +834,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_COLOR:
             {
-                CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                CHECK_PREVIOUS_OP(MTL_OP_SET_COLOR);
                 jint pixel = NEXT_INT(b);
                 [mtlc setColorPaint:pixel];
             }
@@ -1003,7 +1007,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         }
     }
 
-    CHECK_PREVIOUS_OP(MTL_OP_INIT);
     if (mtlc != NULL) {
         [mtlc.encoderManager endEncoder];
         MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
@@ -1027,6 +1030,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             }
         }
     }
+    RESET_PREVIOUS_OP();
 }
 
 /**

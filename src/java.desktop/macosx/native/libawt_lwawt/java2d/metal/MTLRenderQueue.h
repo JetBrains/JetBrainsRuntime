@@ -46,6 +46,7 @@
 enum {
   MTL_OP_INIT,
   MTL_OP_AA,
+  MTL_OP_SET_COLOR,
   MTL_OP_OTHER
 };
 
@@ -53,7 +54,7 @@ enum {
  * These macros now simply delegate to the CheckPreviousOp() method.
  */
 #define CHECK_PREVIOUS_OP(op) MTLRenderQueue_CheckPreviousOp(op)
-#define RESET_PREVIOUS_OP() CHECK_PREVIOUS_OP(MTL_OP_INIT)
+#define RESET_PREVIOUS_OP() {mtlPreviousOp = MTL_OP_INIT;}
 
 /*
  * Increments a pointer (buf) by the given number of bytes.
