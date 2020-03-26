@@ -186,6 +186,7 @@
 
             id <MTLTexture> tex = [[self.device newTextureWithDescriptor:textureDescriptor] autorelease];
             minDeltaTpi = [[[MTLTexturePoolItem alloc] initWithTexture:tex] autorelease];
+            minDeltaTpi.isMultiSample = isMultiSample;
             NSMutableArray * cell = _cells[cellY0 * _poolCellWidth + cellX0];
             if (cell == NULL) {
                 cell = [[NSMutableArray arrayWithCapacity:10] retain];
