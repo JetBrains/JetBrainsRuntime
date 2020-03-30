@@ -208,7 +208,7 @@ abstract class HandshakeContext implements ConnectionContext {
     /**
      * Constructor for PostHandshakeContext
      */
-    HandshakeContext(TransportContext conContext) {
+    protected HandshakeContext(TransportContext conContext) {
         this.sslContext = conContext.sslContext;
         this.conContext = conContext;
         this.sslConfig = conContext.sslConfig;
@@ -218,6 +218,7 @@ abstract class HandshakeContext implements ConnectionContext {
         this.handshakeOutput = new HandshakeOutStream(conContext.outputRecord);
         this.delegatedActions = new LinkedList<>();
 
+        this.handshakeConsumers = new LinkedHashMap<>();
         this.handshakeProducers = null;
         this.handshakeHash = null;
         this.activeProtocols = null;
