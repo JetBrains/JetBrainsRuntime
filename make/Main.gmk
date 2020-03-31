@@ -80,7 +80,7 @@ ifneq ($(CREATING_BUILDJDK), true)
 
   interim-cldrconverter:
 	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f CopyInterimCLDRConverter.gmk)
- 
+
 interim-tzdb:
 	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f CopyInterimTZDB.gmk)
 
@@ -140,7 +140,7 @@ ifneq ($(CREATING_BUILDJDK), true)
   define DeclareModuleInfoRecipe
     $1-gensrc-moduleinfo:
 	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) \
-	    -f GensrcModuleInfo.gmk MODULE=$1)
+	    -f gensrc/GensrcModuleInfo.gmk MODULE=$1)
 
     $1-gensrc: $1-gensrc-moduleinfo
   endef
