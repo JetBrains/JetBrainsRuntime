@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@
  * @library /lib/testlibrary /test/lib
  * @modules java.management
  *          java.base/jdk.internal
+ * @requires (vm.debug == false)
  * @build jdk.testlibrary.*
  * @build TimSortStackSize2
  * @run driver ClassFileInstaller sun.hotspot.WhiteBox
