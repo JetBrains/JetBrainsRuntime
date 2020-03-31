@@ -641,6 +641,13 @@ AC_DEFUN_ONCE([BASIC_SETUP_PATHS],
   AC_MSG_RESULT([$TOPDIR])
   AC_SUBST(TOPDIR)
 
+  if test "x$CUSTOM_ROOT" != x; then
+    WORKSPACE_ROOT="${CUSTOM_ROOT}"
+  else
+    WORKSPACE_ROOT="${TOPDIR}"
+  fi
+  AC_SUBST(WORKSPACE_ROOT)
+
   # We can only call BASIC_FIXUP_PATH after BASIC_CHECK_PATHS_WINDOWS.
   BASIC_FIXUP_PATH(CURDIR)
   BASIC_FIXUP_PATH(TOPDIR)
@@ -867,11 +874,6 @@ AC_DEFUN_ONCE([BASIC_SETUP_OUTPUT_DIR],
       AC_MSG_RESULT([in build directory with custom name])
     fi
 
-    if test "x$CUSTOM_ROOT" != x; then
-      WORKSPACE_ROOT="${CUSTOM_ROOT}"
-    else
-      WORKSPACE_ROOT="${TOPDIR}"
-    fi
     OUTPUTDIR="${WORKSPACE_ROOT}/build/${CONF_NAME}"
     $MKDIR -p "$OUTPUTDIR"
     if test ! -d "$OUTPUTDIR"; then
@@ -928,7 +930,6 @@ AC_DEFUN_ONCE([BASIC_SETUP_OUTPUT_DIR],
   AC_SUBST(SPEC)
   AC_SUBST(CONF_NAME)
   AC_SUBST(OUTPUTDIR)
-  AC_SUBST(WORKSPACE_ROOT)
   AC_SUBST(CONFIGURESUPPORT_OUTPUTDIR)
 
   # The spec.gmk file contains all variables for the make system.
