@@ -95,6 +95,7 @@ import javax.swing.text.View;
  *   <li>list-style-image
  *   <li>list-style-type
  *   <li>list-style-position
+ *   <li>overflow-wrap
  * </ul>
  * The following are modeled, but currently not rendered.
  * <ul><li>font-variant
@@ -493,6 +494,14 @@ public class CSS implements Serializable {
             new Attribute("margin-top", "0", false);
 
         /**
+         * CSS attribute "overflow-wrap".
+         *
+         * TODO: make public when upstreaming the fix
+         */
+        static final Attribute OVERFLOW_WRAP =
+                new Attribute("overflow-wrap", "normal", true);
+
+        /**
          * CSS attribute "padding".
          */
         public static final Attribute PADDING =
@@ -595,7 +604,8 @@ public class CSS implements Serializable {
             PADDING_TOP, TEXT_ALIGN, TEXT_DECORATION, TEXT_INDENT, TEXT_TRANSFORM,
             VERTICAL_ALIGN, WORD_SPACING, WHITE_SPACE, WIDTH,
             BORDER_SPACING, CAPTION_SIDE,
-            MARGIN_LEFT_LTR, MARGIN_LEFT_RTL, MARGIN_RIGHT_LTR, MARGIN_RIGHT_RTL
+            MARGIN_LEFT_LTR, MARGIN_LEFT_RTL, MARGIN_RIGHT_LTR, MARGIN_RIGHT_RTL,
+            OVERFLOW_WRAP
         };
 
         private static final Attribute[] ALL_MARGINS =
