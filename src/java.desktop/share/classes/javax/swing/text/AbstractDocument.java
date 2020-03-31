@@ -1608,7 +1608,12 @@ public abstract class AbstractDocument implements Document, Serializable {
     /**
      * Document property that indicates if a character has been inserted
      * into the document that is more than one byte long.  GlyphView uses
-     * this to determine if it should use BreakIterator.
+     * this to determine if it should use BreakIterator. This property should
+     * not be publicly exposed, since it is used for implementation convenience
+     * only.  As a side effect, copies of this property may be in its subclasses
+     * that live in different packages (e.g. HTMLDocument as of now), so those
+     * copies should also be taken care of when this property needs to be
+     * modified.
      */
     static final Object MultiByteProperty = "multiByte";
 
