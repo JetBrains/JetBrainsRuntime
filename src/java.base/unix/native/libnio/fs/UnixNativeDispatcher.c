@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1177,8 +1177,11 @@ Java_sun_nio_fs_UnixNativeDispatcher_getpwnam0(JNIEnv* env, jclass this,
 
         if (res != 0 || p == NULL || p->pw_name == NULL || *(p->pw_name) == '\0') {
             /* not found or error */
-            if (errno != 0 && errno != ENOENT && errno != ESRCH)
+            if (errno != 0 && errno != ENOENT && errno != ESRCH &&
+                errno != EBADF && errno != EPERM)
+            {
                 throwUnixException(env, errno);
+            }
         } else {
             uid = p->pw_uid;
         }
@@ -1219,7 +1222,9 @@ Java_sun_nio_fs_UnixNativeDispatcher_getgrnam0(JNIEnv* env, jclass this,
         retry = 0;
         if (res != 0 || g == NULL || g->gr_name == NULL || *(g->gr_name) == '\0') {
             /* not found or error */
-            if (errno != 0 && errno != ENOENT && errno != ESRCH) {
+            if (errno != 0 && errno != ENOENT && errno != ESRCH &&
+                errno != EBADF && errno != EPERM)
+            {
                 if (errno == ERANGE) {
                     /* insufficient buffer size so need larger buffer */
                     buflen += ENT_BUF_SIZE;
