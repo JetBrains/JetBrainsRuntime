@@ -899,9 +899,6 @@ jdk/internal/platform/docker/TestDockerMemoryMetrics.java       8227317    linux
 
 ############################################################################
 
-java/awt/image/DrawImage/UnmanagedDrawImagePerformance.java                         JBR-2064 macosx-all
-java/awt/Window/WindowsLeak/WindowsLeak.java                                        JBR-2064 macosx-all
-
 # no printer found
 java/awt/print/PrinterJob/ExceptionTest.java                                        nobug generic-all
 java/awt/print/PrinterJob/ImagePrinting/NullClipARGB.java                           nobug generic-all
