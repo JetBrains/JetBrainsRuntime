@@ -24,8 +24,11 @@
  */
 package javax.swing.text.html;
 
+import sun.swing.text.GlyphViewAccessor;
+
 import java.awt.*;
 import java.text.BreakIterator;
+import java.util.Locale;
 import javax.swing.event.DocumentEvent;
 import javax.swing.text.*;
 
@@ -61,6 +64,7 @@ public class InlineView extends LabelView {
      * @see View#insertUpdate
      */
     public void insertUpdate(DocumentEvent e, Shape a, ViewFactory f) {
+        wrapAnywhereMinimumSpan = -1;
         super.insertUpdate(e, a, f);
     }
 
@@ -77,6 +81,7 @@ public class InlineView extends LabelView {
      * @see View#removeUpdate
      */
     public void removeUpdate(DocumentEvent e, Shape a, ViewFactory f) {
+        wrapAnywhereMinimumSpan = -1;
         super.removeUpdate(e, a, f);
     }
 
@@ -90,6 +95,7 @@ public class InlineView extends LabelView {
      * @see View#changedUpdate
      */
     public void changedUpdate(DocumentEvent e, Shape a, ViewFactory f) {
+        wrapAnywhereMinimumSpan = -1;
         super.changedUpdate(e, a, f);
         StyleSheet sheet = getStyleSheet();
         attr = sheet.getViewAttributes(this);
@@ -206,6 +212,8 @@ public class InlineView extends LabelView {
             nowrap = false;
         }
 
+        wrapAnywhere = "anywhere".equals(a.getAttribute(CSS.Attribute.OVERFLOW_WRAP));
+
         HTMLDocument doc = (HTMLDocument)getDocument();
         // fetches background color from stylesheet if specified
         Color bg = doc.getBackground(a);
@@ -224,6 +232,41 @@ public class InlineView extends LabelView {
         return doc.getStyleSheet();
     }
 
+    @Override
+    public float getMinimumSpan(int axis) {
+        if (axis == View.X_AXIS && wrapAnywhere) {
+            if (wrapAnywhereMinimumSpan < 0) {
+                wrapAnywhereMinimumSpan = 0;
+                int startOffset = getStartOffset();
+                int endOffset = getEndOffset();
+                Document doc = getDocument();
+                if ((doc != null) && Boolean.TRUE.equals(doc.getProperty(HTMLDocument.MultiByteProperty))) {
+                    Container c = getContainer();
+                    Locale locale = (c == null ? Locale.getDefault() : c.getLocale());
+                    BreakIterator breaker = BreakIterator.getCharacterInstance(locale);
+                    int[] breakSpots = GlyphViewAccessor.getAccessor().calcBreakSpots(this, breaker);
+                    int lastBreak = endOffset;
+                    for (int breakSpot : breakSpots) {
+                        wrapAnywhereMinimumSpan = Math.max(wrapAnywhereMinimumSpan,
+                                getPartialSpan(breakSpot, lastBreak));
+                        lastBreak = breakSpot;
+                    }
+                    wrapAnywhereMinimumSpan = Math.max(wrapAnywhereMinimumSpan,
+                            getPartialSpan(startOffset, lastBreak));
+                } else {
+                    for (int i = startOffset ; i < endOffset; i++) {
+                        wrapAnywhereMinimumSpan = Math.max(wrapAnywhereMinimumSpan,
+                                getPartialSpan(i, i + 1));
+                    }
+                }
+            }
+            return wrapAnywhereMinimumSpan;
+        }
+        return super.getMinimumSpan(axis);
+    }
+
+    private float wrapAnywhereMinimumSpan = -1;
+    private boolean wrapAnywhere;
     private boolean nowrap;
     private AttributeSet attr;
 }
