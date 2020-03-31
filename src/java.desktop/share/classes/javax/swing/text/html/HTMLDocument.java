@@ -1894,6 +1894,13 @@ public class HTMLDocument extends DefaultStyledDocument {
      */
     private static final String I18NProperty = "i18n";
 
+    /**
+     * Multi-byte property key.
+     *
+     * @see AbstractDocument#MultiByteProperty
+     */
+    static final String MultiByteProperty = "multiByte";
+
     static {
         contentAttributeSet = new SimpleAttributeSet();
         ((MutableAttributeSet)contentAttributeSet).
