@@ -327,8 +327,8 @@ typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
   nonstatic_field(ConstMethod,                 _size_of_parameters,                           u2)                                    \
   nonstatic_field(ObjArrayKlass,               _element_klass,                                Klass*)                                \
   nonstatic_field(ObjArrayKlass,               _bottom_klass,                                 Klass*)                                \
-  volatile_nonstatic_field(Symbol,             _length_and_refcount,                          unsigned int)                          \
-  nonstatic_field(Symbol,                      _identity_hash,                                short)                                 \
+  volatile_nonstatic_field(Symbol,             _hash_and_refcount,                            unsigned int)                          \
+  nonstatic_field(Symbol,                      _length,                                       u2)                                    \
   unchecked_nonstatic_field(Symbol,            _body,                                         sizeof(u1)) /* NOTE: no type */        \
   nonstatic_field(Symbol,                      _body[0],                                      u1)                                    \
   nonstatic_field(TypeArrayKlass,              _max_length,                                   jint)                                  \
@@ -522,7 +522,6 @@ typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
   nonstatic_field(ClassLoaderData,             _class_loader,                                 OopHandle)                             \
   nonstatic_field(ClassLoaderData,             _next,                                         ClassLoaderData*)                      \
   volatile_nonstatic_field(ClassLoaderData,    _klasses,                                      Klass*)                                \
-  nonstatic_field(ClassLoaderData,             _is_unsafe_anonymous,                          bool)                                  \
   volatile_nonstatic_field(ClassLoaderData,    _dictionary,                                   Dictionary*)                           \
                                                                                                                                      \
   static_ptr_volatile_field(ClassLoaderDataGraph, _head,                                      ClassLoaderData*)                      \
@@ -791,15 +790,8 @@ typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
   volatile_nonstatic_field(OSThread,           _state,                                        ThreadState)                           \
                                                                                                                                      \
   /************************/                                                                                                         \
-  /* OopMap and OopMapSet */                                                                                                         \
+  /* ImmutableOopMap      */                                                                                                         \
   /************************/                                                                                                         \
-                                                                                                                                     \
-  nonstatic_field(OopMap,                      _pc_offset,                                    int)                                   \
-  nonstatic_field(OopMap,                      _omv_count,                                    int)                                   \
-  nonstatic_field(OopMap,                      _write_stream,                                 CompressedWriteStream*)                \
-  nonstatic_field(OopMapSet,                   _om_count,                                     int)                                   \
-  nonstatic_field(OopMapSet,                   _om_size,                                      int)                                   \
-  nonstatic_field(OopMapSet,                   _om_data,                                      OopMap**)                              \
                                                                                                                                      \
   nonstatic_field(ImmutableOopMapSet,          _count,                                        int)                                   \
   nonstatic_field(ImmutableOopMapSet,          _size,                                         int)                                   \
@@ -1449,11 +1441,9 @@ typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
   declare_toplevel_type(Deoptimization::UnrollBlock)                      \
                                                                           \
   /************************/                                              \
-  /* OopMap and OopMapSet */                                              \
+  /* ImmutableOopMap      */                                              \
   /************************/                                              \
                                                                           \
-  declare_toplevel_type(OopMap)                                           \
-  declare_toplevel_type(OopMapSet)                                        \
   declare_toplevel_type(ImmutableOopMapSet)                               \
   declare_toplevel_type(ImmutableOopMapPair)                              \
   declare_toplevel_type(ImmutableOopMap)                                  \
@@ -1994,9 +1984,7 @@ typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
   declare_toplevel_type(ObjectMonitor*)                                   \
   declare_toplevel_type(PaddedObjectMonitor*)                             \
   declare_toplevel_type(oop*)                                             \
-  declare_toplevel_type(OopMap**)                                         \
   declare_toplevel_type(OopMapCache*)                                     \
-  declare_toplevel_type(OopMapSet*)                                       \
   declare_toplevel_type(VMReg)                                            \
   declare_toplevel_type(OSThread*)                                        \
    declare_integer_type(ReferenceType)                                    \

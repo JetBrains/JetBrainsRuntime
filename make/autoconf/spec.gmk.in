@@ -303,6 +303,9 @@ ENABLE_HEADLESS_ONLY := @ENABLE_HEADLESS_ONLY@
 
 ENABLE_LINKTIME_GC := @ENABLE_LINKTIME_GC@
 
+# Ship debug symbols (e.g. pdbs on Windows)
+SHIP_DEBUG_SYMBOLS := @SHIP_DEBUG_SYMBOLS@
+
 ENABLE_FULL_DOCS := @ENABLE_FULL_DOCS@
 
 # JDK_OUTPUTDIR specifies where a working jvm is built.
@@ -655,7 +658,7 @@ BUILD_JAVA_FLAGS := @BOOTCYCLE_JVM_ARGS_BIG@
 BUILD_JAVA=@FIXPATH@ $(BUILD_JDK)/bin/java $(BUILD_JAVA_FLAGS)
 BUILD_JAR=@FIXPATH@ $(BUILD_JDK)/bin/jar
 
-# Interim langtools and rmic modules and arguments
+# Interim langtools modules and arguments
 INTERIM_LANGTOOLS_BASE_MODULES := java.compiler jdk.compiler jdk.javadoc
 INTERIM_LANGTOOLS_MODULES := $(addsuffix .interim, $(INTERIM_LANGTOOLS_BASE_MODULES))
 INTERIM_LANGTOOLS_ADD_EXPORTS := \
@@ -673,15 +676,6 @@ INTERIM_LANGTOOLS_ARGS := \
     #
 JAVAC_MAIN_CLASS = -m jdk.compiler.interim/com.sun.tools.javac.Main
 JAVADOC_MAIN_CLASS = -m jdk.javadoc.interim/jdk.javadoc.internal.tool.Main
-
-INTERIM_RMIC_BASE_MODULES := jdk.rmic
-INTERIM_RMIC_MODULES := $(addsuffix .interim, $(INTERIM_RMIC_BASE_MODULES))
-    #
-# Use = to delay expansion of PathList since it's not available in this file.
-INTERIM_RMIC_ARGS = --limit-modules java.base,jdk.compiler,jdk.javadoc \
-    --module-path $(call PathList, $(BUILDTOOLS_OUTPUTDIR)/interim_rmic_modules \
-        $(BUILDTOOLS_OUTPUTDIR)/interim_langtools_modules) \
-    #
 
 # You run the new javac using the boot jdk with $(BOOT_JDK)/bin/java $(NEW_JAVAC) ...
 # Use = assignment to be able to override in bootcycle-spec.gmk
@@ -913,10 +907,16 @@ GRAAL_BUILDER_IMAGE_DIR := $(IMAGES_OUTPUTDIR)/$(GRAAL_BUILDER_IMAGE_SUBDIR)
 # Macosx bundles directory definitions
 JDK_MACOSX_BUNDLE_SUBDIR=jdk-bundle
 JRE_MACOSX_BUNDLE_SUBDIR=jre-bundle
+JDK_MACOSX_BUNDLE_SUBDIR_SIGNED=jdk-bundle-signed
+JRE_MACOSX_BUNDLE_SUBDIR_SIGNED=jre-bundle-signed
 JDK_MACOSX_BUNDLE_DIR=$(IMAGES_OUTPUTDIR)/$(JDK_MACOSX_BUNDLE_SUBDIR)
 JRE_MACOSX_BUNDLE_DIR=$(IMAGES_OUTPUTDIR)/$(JRE_MACOSX_BUNDLE_SUBDIR)
-JDK_MACOSX_CONTENTS_SUBDIR=jdk-$(VERSION_NUMBER).jdk/Contents
-JRE_MACOSX_CONTENTS_SUBDIR=jre-$(VERSION_NUMBER).jre/Contents
+JDK_MACOSX_BUNDLE_DIR_SIGNED=$(IMAGES_OUTPUTDIR)/$(JDK_MACOSX_BUNDLE_SUBDIR_SIGNED)
+JRE_MACOSX_BUNDLE_DIR_SIGNED=$(IMAGES_OUTPUTDIR)/$(JRE_MACOSX_BUNDLE_SUBDIR_SIGNED)
+JDK_MACOSX_BUNDLE_TOP_DIR=jdk-$(VERSION_NUMBER).jdk
+JRE_MACOSX_BUNDLE_TOP_DIR=jre-$(VERSION_NUMBER).jre
+JDK_MACOSX_CONTENTS_SUBDIR=$(JDK_MACOSX_BUNDLE_TOP_DIR)/Contents
+JRE_MACOSX_CONTENTS_SUBDIR=$(JRE_MACOSX_BUNDLE_TOP_DIR)/Contents
 JDK_MACOSX_CONTENTS_DIR=$(JDK_MACOSX_BUNDLE_DIR)/$(JDK_MACOSX_CONTENTS_SUBDIR)
 JRE_MACOSX_CONTENTS_DIR=$(JRE_MACOSX_BUNDLE_DIR)/$(JRE_MACOSX_CONTENTS_SUBDIR)
 

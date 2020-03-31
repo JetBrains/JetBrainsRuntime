@@ -232,7 +232,6 @@ class SignatureIterator: public ResourceObj {
   // bitfields from the fingerprint.  Otherwise, the
   // symbol is parsed.
   template<typename T> inline void do_parameters_on(T* callback); // iterates over parameters only
-  void skip_parameters();   // skips over parameters to find return type
   BasicType return_type();  // computes the value on the fly if necessary
 
   static bool fp_is_static(fingerprint_t fingerprint) {
@@ -478,8 +477,6 @@ class SignatureStream : public StackObj {
   Symbol*      _previous_name;    // cache the previously looked up symbol to avoid lookups
   GrowableArray<Symbol*>* _names; // symbols created while parsing that need to be dereferenced
 
-  inline int scan_non_primitive(BasicType type);
-
   Symbol* find_symbol();
 
   enum { _s_field = 0, _s_method = 1, _s_method_return = 3 };
@@ -487,9 +484,9 @@ class SignatureStream : public StackObj {
     _state |= -2;   // preserve s_method bit
     assert(is_done(), "Unable to set state to done");
   }
+  int scan_type(BasicType bt);
 
  public:
-  bool is_method_signature() const               { return (_state & (int)_s_method) != 0; }
   bool at_return_type() const                    { return _state == (int)_s_method_return; }
   bool is_done() const                           { return _state < 0; }
   void next();
@@ -504,8 +501,6 @@ class SignatureStream : public StackObj {
 
   const u1* raw_bytes() const  { return _signature->bytes() + _begin; }
   int       raw_length() const { return _end - _begin; }
-  int       raw_begin() const  { return _begin; }
-  int       raw_end() const    { return _end; }
   int raw_symbol_begin() const { return _begin + (has_envelope() ? 1 : 0); }
   int raw_symbol_end() const   { return _end  -  (has_envelope() ? 1 : 0); }
   char raw_char_at(int i) const {
@@ -541,12 +536,78 @@ class SignatureStream : public StackObj {
   // (The argument is clipped to array_prefix_length(),
   // and if it ends up as zero this call is a nop.
   // The default is value skips all brackets '['.)
-  int skip_array_prefix(int prefix_length = 9999);
+ private:
+  int skip_whole_array_prefix();
+ public:
+  int skip_array_prefix(int max_skip_length) {
+    if (_type != T_ARRAY) {
+      return 0;
+    }
+     if (_array_prefix > max_skip_length) {
+      // strip some but not all levels of T_ARRAY
+      _array_prefix -= max_skip_length;
+      _begin += max_skip_length;
+      return max_skip_length;
+    }
+    return skip_whole_array_prefix();
+  }
+  int skip_array_prefix() {
+    if (_type != T_ARRAY) {
+      return 0;
+    }
+    return skip_whole_array_prefix();
+  }
 
   // free-standing lookups (bring your own CL/PD pair)
   enum FailureMode { ReturnNull, NCDFError, CachedOrNull };
   Klass* as_klass(Handle class_loader, Handle protection_domain, FailureMode failure_mode, TRAPS);
   oop as_java_mirror(Handle class_loader, Handle protection_domain, FailureMode failure_mode, TRAPS);
+};
+
+// Specialized SignatureStream: used for invoking SystemDictionary to either find
+//                              or resolve the underlying type when iterating over a
+//                              Java descriptor (or parts of it).
+class ResolvingSignatureStream : public SignatureStream {
+  Klass*       _load_origin;
+  bool         _handles_cached;
+  Handle       _class_loader;       // cached when needed
+  Handle       _protection_domain;  // cached when needed
+
+  void initialize_load_origin(Klass* load_origin) {
+    _load_origin = load_origin;
+    _handles_cached = (load_origin == NULL);
+  }
+  void need_handles(TRAPS) {
+    if (!_handles_cached) {
+      cache_handles(THREAD);
+      _handles_cached = true;
+    }
+  }
+  void cache_handles(TRAPS);
+
+ public:
+  ResolvingSignatureStream(Symbol* signature, Klass* load_origin, bool is_method = true);
+  ResolvingSignatureStream(Symbol* signature, Handle class_loader, Handle protection_domain, bool is_method = true);
+  ResolvingSignatureStream(const Method* method);
+  ResolvingSignatureStream(fieldDescriptor& field);
+
+  Klass* load_origin()            { return _load_origin; }
+  Handle class_loader(TRAPS)      { need_handles(THREAD); return _class_loader; }
+  Handle protection_domain(TRAPS) { need_handles(THREAD); return _protection_domain; }
+
+  Klass* as_klass_if_loaded(TRAPS);
+  Klass* as_klass(FailureMode failure_mode, TRAPS) {
+    need_handles(THREAD);
+    return SignatureStream::as_klass(_class_loader, _protection_domain,
+                                     failure_mode, THREAD);
+  }
+  oop as_java_mirror(FailureMode failure_mode, TRAPS) {
+    if (is_reference()) {
+      need_handles(THREAD);
+    }
+    return SignatureStream::as_java_mirror(_class_loader, _protection_domain,
+                                           failure_mode, THREAD);
+  }
 };
 
 // Here is how all the SignatureIterator classes invoke the

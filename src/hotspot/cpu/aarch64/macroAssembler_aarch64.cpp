@@ -47,6 +47,7 @@
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/thread.hpp"
+#include "utilities/powerOfTwo.hpp"
 #ifdef COMPILER1
 #include "c1/c1_LIRAssembler.hpp"
 #endif
@@ -55,6 +56,7 @@
 #include "opto/compile.hpp"
 #include "opto/intrinsicnode.hpp"
 #include "opto/node.hpp"
+#include "opto/output.hpp"
 #endif
 
 #ifdef PRODUCT
@@ -744,7 +746,7 @@ address MacroAssembler::trampoline_call(Address entry, CodeBuffer *cbuf) {
     CompileTask* task = ciEnv::current()->task();
     in_scratch_emit_size =
       (task != NULL && is_c2_compile(task->comp_level()) &&
-       Compile::current()->in_scratch_emit_size());
+       Compile::current()->output()->in_scratch_emit_size());
 #endif
     if (!in_scratch_emit_size) {
       address stub = emit_trampoline_stub(offset(), entry.target());
@@ -4858,6 +4860,8 @@ void MacroAssembler::string_indexof_char(Register str1, Register cnt1,
   Register cnt1_neg = cnt1;
   Register ch1 = rscratch1;
   Register result_tmp = rscratch2;
+
+  cbz(cnt1, NOMATCH);
 
   cmp(cnt1, (u1)4);
   br(LT, DO1_SHORT);

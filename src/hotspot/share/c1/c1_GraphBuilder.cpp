@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/vm_version.hpp"
 #include "utilities/bitMap.inline.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 class BlockListBuilder {
  private:
@@ -607,9 +608,15 @@ class MemoryBuffer: public CompilationResourceObj {
       return load;
     }
 
-    if (RoundFPResults && UseSSE < 2 && load->type()->is_float_kind()) {
-      // can't skip load since value might get rounded as a side effect
-      return load;
+    if (strict_fp_requires_explicit_rounding && load->type()->is_float_kind()) {
+#ifdef IA32
+      if (UseSSE < 2) {
+        // can't skip load since value might get rounded as a side effect
+        return load;
+      }
+#else
+      Unimplemented();
+#endif // IA32
     }
 
     ciField* field = load->field();
@@ -2272,17 +2279,23 @@ void GraphBuilder::throw_op(int bci) {
 
 
 Value GraphBuilder::round_fp(Value fp_value) {
-  // no rounding needed if SSE2 is used
-  if (RoundFPResults && UseSSE < 2) {
-    // Must currently insert rounding node for doubleword values that
-    // are results of expressions (i.e., not loads from memory or
-    // constants)
-    if (fp_value->type()->tag() == doubleTag &&
-        fp_value->as_Constant() == NULL &&
-        fp_value->as_Local() == NULL &&       // method parameters need no rounding
-        fp_value->as_RoundFP() == NULL) {
-      return append(new RoundFP(fp_value));
+  if (strict_fp_requires_explicit_rounding) {
+#ifdef IA32
+    // no rounding needed if SSE2 is used
+    if (UseSSE < 2) {
+      // Must currently insert rounding node for doubleword values that
+      // are results of expressions (i.e., not loads from memory or
+      // constants)
+      if (fp_value->type()->tag() == doubleTag &&
+          fp_value->as_Constant() == NULL &&
+          fp_value->as_Local() == NULL &&       // method parameters need no rounding
+          fp_value->as_RoundFP() == NULL) {
+        return append(new RoundFP(fp_value));
+      }
     }
+#else
+    Unimplemented();
+#endif // IA32
   }
   return fp_value;
 }
@@ -3766,15 +3779,38 @@ bool GraphBuilder::try_inline_full(ciMethod* callee, bool holder_known, bool ign
   // Proper inlining of methods with jsrs requires a little more work.
   if (callee->has_jsrs()                 ) INLINE_BAILOUT("jsrs not handled properly by inliner yet");
 
-  // When SSE2 is used on intel, then no special handling is needed
-  // for strictfp because the enum-constant is fixed at compile time,
-  // the check for UseSSE2 is needed here
-  if (strict_fp_requires_explicit_rounding && UseSSE < 2 && method()->is_strict() != callee->is_strict()) {
-    INLINE_BAILOUT("caller and callee have different strict fp requirements");
+  if (strict_fp_requires_explicit_rounding &&
+      method()->is_strict() != callee->is_strict()) {
+#ifdef IA32
+    // If explicit rounding is required, do not inline strict code into non-strict code (or the reverse).
+    // When SSE2 is present, no special handling is needed.
+    if (UseSSE < 2) {
+      INLINE_BAILOUT("caller and callee have different strict fp requirements");
+    }
+#else
+    Unimplemented();
+#endif // IA32
   }
 
   if (is_profiling() && !callee->ensure_method_data()) {
     INLINE_BAILOUT("mdo allocation failed");
+  }
+
+  const bool is_invokedynamic = (bc == Bytecodes::_invokedynamic);
+  const bool has_receiver = (bc != Bytecodes::_invokestatic && !is_invokedynamic);
+
+  const int args_base = state()->stack_size() - callee->arg_size();
+  assert(args_base >= 0, "stack underflow during inlining");
+
+  Value recv = NULL;
+  if (has_receiver) {
+    assert(!callee->is_static(), "callee must not be static");
+    assert(callee->arg_size() > 0, "must have at least a receiver");
+
+    recv = state()->stack_at(args_base);
+    if (recv->is_null_obj()) {
+      INLINE_BAILOUT("receiver is always null");
+    }
   }
 
   // now perform tests that are based on flag settings
@@ -3819,21 +3855,11 @@ bool GraphBuilder::try_inline_full(ciMethod* callee, bool holder_known, bool ign
 
   BlockBegin* orig_block = block();
 
-  const bool is_invokedynamic = bc == Bytecodes::_invokedynamic;
-  const bool has_receiver = (bc != Bytecodes::_invokestatic && !is_invokedynamic);
-
-  const int args_base = state()->stack_size() - callee->arg_size();
-  assert(args_base >= 0, "stack underflow during inlining");
-
   // Insert null check if necessary
-  Value recv = NULL;
   if (has_receiver) {
     // note: null check must happen even if first instruction of callee does
     //       an implicit null check since the callee is in a different scope
     //       and we must make sure exception handling does the right thing
-    assert(!callee->is_static(), "callee must not be static");
-    assert(callee->arg_size() > 0, "must have at least a receiver");
-    recv = state()->stack_at(args_base);
     null_check(recv);
   }
 

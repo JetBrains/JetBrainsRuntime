@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -107,8 +107,7 @@ public class TestHtmlTag extends JavadocTester {
         checkExit(Exit.OK);
 
         checkOutput("pkg3/package-summary.html", true,
-                "<div class=\"contentContainer\">\n"
-                + "<section class=\"packageDescription\" id=\"package.description\">\n"
+                "<section class=\"package-description\" id=\"package.description\">\n"
                 + "<div class=\"block\"><p>This is the first line. Note the newlines before the &lt;p&gt; is relevant.</div>\n"
                 + "</section>");
 
@@ -155,7 +154,7 @@ public class TestHtmlTag extends JavadocTester {
                 + " </ol></div>");
 
         checkOutput("pkg3/A.ActivationDesc.html", true,
-                "<pre>public class <span class=\"typeNameLabel\">A.ActivationDesc</span>\n"
+                "<pre>public class <span class=\"type-name-label\">A.ActivationDesc</span>\n"
                 + "extends java.lang.Object\n"
                 + "implements java.io.Serializable</pre>\n"
                 + "<div class=\"block\">An activation descriptor contains the information necessary to activate\n"
@@ -176,7 +175,7 @@ public class TestHtmlTag extends JavadocTester {
                 + " during reinitialization/activation.</div>");
 
         checkOutput("pkg3/A.ActivationGroupID.html", true,
-                "<pre>public class <span class=\"typeNameLabel\">A.ActivationGroupID</span>\n"
+                "<pre>public class <span class=\"type-name-label\">A.ActivationGroupID</span>\n"
                 + "extends java.lang.Object\n"
                 + "implements java.io.Serializable</pre>\n"
                 + "<div class=\"block\">The identifier for a registered activation group serves several purposes:\n"
@@ -190,6 +189,6 @@ public class TestHtmlTag extends JavadocTester {
                 + " group within the activation system. This group id is passed as one of the\n"
                 + " arguments to the activation group's special constructor when an\n"
                 + " activation group is created/recreated.</div>\n"
-                + "<dl>");
+                + "<dl class=\"notes\">");
     }
 }

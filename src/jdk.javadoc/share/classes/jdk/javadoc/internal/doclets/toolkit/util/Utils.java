@@ -95,8 +95,11 @@ import javax.tools.StandardLocation;
 import com.sun.source.doctree.DocCommentTree;
 import com.sun.source.doctree.DocTree;
 import com.sun.source.doctree.DocTree.Kind;
+import com.sun.source.doctree.EndElementTree;
 import com.sun.source.doctree.ParamTree;
 import com.sun.source.doctree.SerialFieldTree;
+import com.sun.source.doctree.StartElementTree;
+import com.sun.source.doctree.TextTree;
 import com.sun.source.doctree.UnknownBlockTagTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.LineMap;
@@ -214,11 +217,10 @@ public class Utils {
      *                    documentation is getting generated.
      */
     public List<Element> excludeDeprecatedMembers(List<? extends Element> members) {
-        List<Element> excludeList = members.stream()
-                .filter((member) -> (!isDeprecated(member)))
-                .sorted(makeGeneralPurposeComparator())
-                .collect(Collectors.<Element, List<Element>>toCollection(ArrayList::new));
-        return excludeList;
+        return members.stream()
+                      .filter(member -> !isDeprecated(member))
+                      .sorted(makeGeneralPurposeComparator())
+                      .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -230,8 +232,8 @@ public class Utils {
      */
     public ExecutableElement findMethod(TypeElement te, ExecutableElement method) {
         for (Element m : getMethods(te)) {
-            if (executableMembersEqual(method, (ExecutableElement)m)) {
-                return (ExecutableElement)m;
+            if (executableMembersEqual(method, (ExecutableElement) m)) {
+                return (ExecutableElement) m;
             }
         }
         return null;
@@ -253,7 +255,6 @@ public class Utils {
      * @param e2 the second method to compare.
      * @return true if member1 overrides/hides or is overridden/hidden by member2.
      */
-
     public boolean executableMembersEqual(ExecutableElement e1, ExecutableElement e2) {
         // TODO: investigate if Elements.hides(..) will work here.
         if (isStatic(e1) && isStatic(e2)) {
@@ -273,7 +274,7 @@ public class Utils {
                     }
                 }
                 if (j == parameters1.size()) {
-                return true;
+                    return true;
                 }
             }
             return false;
@@ -508,7 +509,7 @@ public class Utils {
             }
 
             void addModifiers(Set<Modifier> modifiers) {
-                modifiers.stream().map(Modifier::toString).forEach(this::append);
+                modifiers.stream().map(Modifier::toString).forEachOrdered(this::append);
             }
 
             void append(String s) {
@@ -522,7 +523,7 @@ public class Utils {
                 append(s);
                 if (trailingSpace) {
                     sb.append(" ");
-                    }
+                }
                 return sb.toString();
             }
 
@@ -665,7 +666,7 @@ public class Utils {
     /**
      * Get the signature. It is the parameter list, type is qualified.
      * For instance, for a method {@code mymethod(String x, int y)},
-     * it will return {@code(java.lang.String,int)}.
+     * it will return {@code (java.lang.String,int)}.
      *
      * @param e
      * @return String
@@ -929,9 +930,7 @@ public class Utils {
 
     public SortedSet<TypeElement> getTypeElementsAsSortedSet(Iterable<TypeElement> typeElements) {
         SortedSet<TypeElement> set = new TreeSet<>(makeGeneralPurposeComparator());
-        for (TypeElement te : typeElements) {
-            set.add(te);
-        }
+        typeElements.forEach(set::add);
         return set;
     }
 
@@ -1247,7 +1246,7 @@ public class Utils {
      */
     public String getDimension(TypeMirror t) {
         return new SimpleTypeVisitor9<String, Void>() {
-            StringBuilder dimension = new StringBuilder("");
+            StringBuilder dimension = new StringBuilder();
             @Override
             public String visitArray(ArrayType t, Void p) {
                 dimension.append("[]");
@@ -1334,7 +1333,6 @@ public class Utils {
      *                      If false, the first letter of the name is capitalized.
      * @return
      */
-
     public String getTypeElementName(TypeElement te, boolean lowerCaseOnly) {
         String typeName = "";
         if (isInterface(te)) {
@@ -1659,6 +1657,40 @@ public class Utils {
         return secondaryCollator.compare(s1, s2);
     }
 
+    public String getHTMLTitle(Element element) {
+        List<? extends DocTree> preamble = getPreamble(element);
+        StringBuilder sb = new StringBuilder();
+        boolean titleFound = false;
+        loop:
+        for (DocTree dt : preamble) {
+            switch (dt.getKind()) {
+                case START_ELEMENT:
+                    StartElementTree nodeStart = (StartElementTree)dt;
+                    if (Utils.toLowerCase(nodeStart.getName().toString()).equals("title")) {
+                        titleFound = true;
+                    }
+                    break;
+
+                case END_ELEMENT:
+                    EndElementTree nodeEnd = (EndElementTree)dt;
+                    if (Utils.toLowerCase(nodeEnd.getName().toString()).equals("title")) {
+                        break loop;
+                    }
+                    break;
+
+                case TEXT:
+                    TextTree nodeText = (TextTree)dt;
+                    if (titleFound)
+                        sb.append(nodeText.getBody());
+                    break;
+
+                default:
+                    // do nothing
+            }
+        }
+        return sb.toString().trim();
+    }
+
     private static class DocCollator {
         private final Map<String, CollationKey> keys;
         private final Collator instance;
@@ -1802,6 +1834,7 @@ public class Utils {
     }
 
     private Comparator<Element> overrideUseComparator = null;
+
     /**
      * Returns a Comparator for overrides and implements,
      * used primarily on methods, compares the name first,
@@ -2011,6 +2044,7 @@ public class Utils {
     }
 
     private Comparator<Element> classUseComparator = null;
+
     /**
      * Comparator for ClassUse presentations, and sorts as follows:
      * 1. member names
@@ -2342,7 +2376,7 @@ public class Utils {
         if (modulePackageMap == null) {
             modulePackageMap = new HashMap<>();
             Set<PackageElement> pkgs = configuration.getIncludedPackageElements();
-            pkgs.forEach((pkg) -> {
+            pkgs.forEach(pkg -> {
                 ModuleElement mod = elementUtils.getModuleOf(pkg);
                 modulePackageMap.computeIfAbsent(mod, m -> new HashSet<>()).add(pkg);
             });
@@ -2383,7 +2417,7 @@ public class Utils {
 
     public String getModifiers(RequiresDirective rd) {
         StringBuilder modifiers = new StringBuilder();
-        String sep="";
+        String sep = "";
         if (rd.isTransitive()) {
             modifiers.append("transitive");
             sep = " ";
@@ -3272,11 +3306,7 @@ public class Utils {
     }
 
     public  List<? extends DocTree> getReturnTrees(Element element) {
-        List<DocTree> out = new ArrayList<>();
-        for (DocTree dt : getBlockTags(element, RETURN)) {
-            out.add(dt);
-        }
-        return out;
+        return new ArrayList<>(getBlockTags(element, RETURN));
     }
 
     public List<? extends DocTree> getUsesTrees(Element element) {
@@ -3288,11 +3318,7 @@ public class Utils {
         if (dcTree == null) {
             return Collections.emptyList();
         }
-        List<DocTree> out = new ArrayList<>();
-        for (DocTree dt : dcTree.getFirstSentence()) {
-            out.add(dt);
-        }
-        return out;
+        return new ArrayList<>(dcTree.getFirstSentence());
     }
 
     public ModuleElement containingModule(Element e) {
@@ -3361,9 +3387,10 @@ public class Utils {
     }
 
     /**
-     * A simple pair container.
-     * @param <K> first a value
-     * @param <L> second another value
+     * A container holding a pair of values (tuple).
+     *
+     * @param <K> the type of the first value
+     * @param <L> the type of the second value
      */
     public static class Pair<K, L> {
         public final K first;
@@ -3376,9 +3403,7 @@ public class Utils {
 
         @Override
         public String toString() {
-            StringBuffer out = new StringBuffer();
-            out.append(first + ":" + second);
-            return out.toString();
+            return first + ":" + second;
         }
     }
 }

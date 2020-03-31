@@ -77,11 +77,8 @@ class G1DirtyCardQueueSet: public PtrQueueSet {
   };
 
   // A lock-free FIFO of BufferNodes, linked through their next() fields.
-  // This class has a restriction that pop() cannot return the last buffer
-  // in the queue, or what was the last buffer for a concurrent push/append
-  // operation.  It is expected that there will be a later push/append that
-  // will make that buffer available to a future pop(), or there will
-  // eventually be a complete transfer via take_all().
+  // This class has a restriction that pop() may return NULL when there are
+  // buffers in the queue if there is a concurrent push/append operation.
   class Queue {
     BufferNode* volatile _head;
     DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, sizeof(BufferNode*));
@@ -105,9 +102,10 @@ class G1DirtyCardQueueSet: public PtrQueueSet {
     void append(BufferNode& first, BufferNode& last);
 
     // Thread-safe attempt to remove and return the first buffer in the queue.
-    // Returns NULL if the queue is empty, or if only one buffer is found.
-    // Uses GlobalCounter critical sections to address the ABA problem; this
-    // works with the buffer allocator's use of GlobalCounter synchronization.
+    // Returns NULL if the queue is empty, or if a concurrent push/append
+    // interferes.  Uses GlobalCounter critical sections to address the ABA
+    // problem; this works with the buffer allocator's use of GlobalCounter
+    // synchronization.
     BufferNode* pop();
 
     // Take all the buffers from the queue, leaving the queue empty.
@@ -180,10 +178,6 @@ class G1DirtyCardQueueSet: public PtrQueueSet {
     PausedBuffers();
     DEBUG_ONLY(~PausedBuffers();)
 
-    // Test whether there are any paused lists.
-    // Thread-safe, but the answer may change immediately.
-    bool is_empty() const;
-
     // Thread-safe add the buffer to paused list for next safepoint.
     // precondition: not at safepoint.
     // precondition: does not have paused buffers from a previous safepoint.
@@ -218,7 +212,7 @@ class G1DirtyCardQueueSet: public PtrQueueSet {
   // If the queue contains more cards than configured here, the
   // mutator must start doing some of the concurrent refinement work.
   size_t _max_cards;
-  size_t _max_cards_padding;
+  volatile size_t _padded_max_cards;
   static const size_t MaxCardsUnlimited = SIZE_MAX;
 
   // Array of cumulative dirty cards refined by mutator threads.
@@ -230,7 +224,6 @@ class G1DirtyCardQueueSet: public PtrQueueSet {
 
   // Thread-safe add a buffer to paused list for next safepoint.
   // precondition: not at safepoint.
-  // precondition: does not have paused buffers from a previous safepoint.
   void record_paused_buffer(BufferNode* node);
   void enqueue_paused_buffers_aux(const HeadTail& paused);
   // Thread-safe transfer paused buffers for previous safepoints to the queue.
@@ -252,11 +245,13 @@ class G1DirtyCardQueueSet: public PtrQueueSet {
   // processed and removed from the buffer.
   bool refine_buffer(BufferNode* node, uint worker_id, size_t* total_refined_cards);
 
-  bool mut_process_buffer(BufferNode* node);
+  // Deal with buffer after a call to refine_buffer.  If fully processed,
+  // deallocate the buffer.  Otherwise, record it as paused.
+  void handle_refined_buffer(BufferNode* node, bool fully_processed);
 
-  // If the number of completed buffers is > stop_at, then remove and
-  // return a completed buffer from the list.  Otherwise, return NULL.
-  BufferNode* get_completed_buffer(size_t stop_at = 0);
+  // Remove and return a completed buffer from the list, or return NULL
+  // if none available.
+  BufferNode* get_completed_buffer();
 
 public:
   G1DirtyCardQueueSet(BufferNode::Allocator* allocator);
@@ -271,11 +266,6 @@ public:
   static uint num_par_ids();
 
   static void handle_zero_index_for_thread(Thread* t);
-
-  // Either process the entire buffer and return true, or enqueue the
-  // buffer and return false.  If the buffer is completely processed,
-  // it can be reused in place.
-  bool process_or_enqueue_completed_buffer(BufferNode* node);
 
   virtual void enqueue_completed_buffer(BufferNode* node);
 
@@ -302,6 +292,17 @@ public:
 
   G1BufferNodeList take_all_completed_buffers();
 
+  // Helper for G1DirtyCardQueue::handle_completed_buffer().
+  // Enqueue the buffer, and optionally perform refinement by the mutator.
+  // Mutator refinement is only done by Java threads, and only if there
+  // are more than max_cards (possibly padded) cards in the completed
+  // buffers.
+  //
+  // Mutator refinement, if performed, stops processing a buffer if
+  // SuspendibleThreadSet::should_yield(), recording the incompletely
+  // processed buffer for later processing of the remainder.
+  void handle_completed_buffer(BufferNode* node);
+
   // If there are more than stop_at cards in the completed buffers, pop
   // a buffer, refine its contents, and return true.  Otherwise return
   // false.
@@ -323,19 +324,18 @@ public:
   // If any threads have partial logs, add them to the global list of logs.
   void concatenate_logs();
 
-  void set_max_cards(size_t m) {
-    _max_cards = m;
-  }
-  size_t max_cards() const {
-    return _max_cards;
-  }
+  // Threshold for mutator threads to also do refinement when there
+  // are concurrent refinement threads.
+  size_t max_cards() const;
 
-  void set_max_cards_padding(size_t padding) {
-    _max_cards_padding = padding;
-  }
-  size_t max_cards_padding() const {
-    return _max_cards_padding;
-  }
+  // Set threshold for mutator threads to also do refinement.
+  void set_max_cards(size_t value);
+
+  // Artificially increase mutator refinement threshold.
+  void set_max_cards_padding(size_t padding);
+
+  // Discard artificial increase of mutator refinement threshold.
+  void discard_max_cards_padding();
 
   // Total dirty cards refined by mutator threads.
   size_t total_mutator_refined_cards() const;

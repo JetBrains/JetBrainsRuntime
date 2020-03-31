@@ -969,8 +969,7 @@ Klass* SystemDictionary::find_instance_or_array_klass(Symbol* class_name,
     if (t != T_OBJECT) {
       k = Universe::typeArrayKlassObj(t);
     } else {
-      Symbol* obj_class = ss.as_symbol();
-      k = SystemDictionary::find(obj_class, class_loader, protection_domain, THREAD);
+      k = SystemDictionary::find(ss.as_symbol(), class_loader, protection_domain, THREAD);
     }
     if (k != NULL) {
       k = k->array_klass_or_null(ndims);
@@ -1256,6 +1255,48 @@ bool SystemDictionary::is_shared_class_visible(Symbol* class_name,
   }
 }
 
+bool SystemDictionary::check_shared_class_super_type(InstanceKlass* child, InstanceKlass* super_type,
+                                                     Handle class_loader,  Handle protection_domain,
+                                                     bool is_superclass, TRAPS) {
+  assert(super_type->is_shared(), "must be");
+
+  Klass *found = resolve_super_or_fail(child->name(), super_type->name(),
+                                       class_loader, protection_domain, is_superclass, CHECK_0);
+  if (found == super_type) {
+    return true;
+  } else {
+    // The dynamically resolved super type is not the same as the one we used during dump time,
+    // so we cannot use the child class.
+    return false;
+  }
+}
+
+bool SystemDictionary::check_shared_class_super_types(InstanceKlass* ik, Handle class_loader,
+                                                      Handle protection_domain, TRAPS) {
+  // Check the superclass and interfaces. They must be the same
+  // as in dump time, because the layout of <ik> depends on
+  // the specific layout of ik->super() and ik->local_interfaces().
+  //
+  // If unexpected superclass or interfaces are found, we cannot
+  // load <ik> from the shared archive.
+
+  if (ik->super() != NULL &&
+      !check_shared_class_super_type(ik, InstanceKlass::cast(ik->super()),
+                                     class_loader, protection_domain, true, THREAD)) {
+    return false;
+  }
+
+  Array<InstanceKlass*>* interfaces = ik->local_interfaces();
+  int num_interfaces = interfaces->length();
+  for (int index = 0; index < num_interfaces; index++) {
+    if (!check_shared_class_super_type(ik, interfaces->at(index), class_loader, protection_domain, false, THREAD)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 InstanceKlass* SystemDictionary::load_shared_class(InstanceKlass* ik,
                                                    Handle class_loader,
                                                    Handle protection_domain,
@@ -1271,39 +1312,8 @@ InstanceKlass* SystemDictionary::load_shared_class(InstanceKlass* ik,
     return NULL;
   }
 
-  // Resolve the superclass and interfaces. They must be the same
-  // as in dump time, because the layout of <ik> depends on
-  // the specific layout of ik->super() and ik->local_interfaces().
-  //
-  // If unexpected superclass or interfaces are found, we cannot
-  // load <ik> from the shared archive.
-
-  if (ik->super() != NULL) {
-    Symbol*  cn = ik->super()->name();
-    Klass *s = resolve_super_or_fail(class_name, cn,
-                                     class_loader, protection_domain, true, CHECK_NULL);
-    if (s != ik->super()) {
-      // The dynamically resolved super class is not the same as the one we used during dump time,
-      // so we cannot use ik.
-      return NULL;
-    } else {
-      assert(s->is_shared(), "must be");
-    }
-  }
-
-  Array<InstanceKlass*>* interfaces = ik->local_interfaces();
-  int num_interfaces = interfaces->length();
-  for (int index = 0; index < num_interfaces; index++) {
-    InstanceKlass* k = interfaces->at(index);
-    Symbol* name  = k->name();
-    Klass* i = resolve_super_or_fail(class_name, name, class_loader, protection_domain, false, CHECK_NULL);
-    if (k != i) {
-      // The dynamically resolved interface class is not the same as the one we used during dump time,
-      // so we cannot use ik.
-      return NULL;
-    } else {
-      assert(i->is_shared(), "must be");
-    }
+  if (!check_shared_class_super_types(ik, class_loader, protection_domain, THREAD)) {
+    return NULL;
   }
 
   InstanceKlass* new_ik = KlassFactory::check_shared_class_file_load_hook(
@@ -1336,11 +1346,16 @@ InstanceKlass* SystemDictionary::load_shared_class(InstanceKlass* ik,
     ik->restore_unshareable_info(loader_data, protection_domain, CHECK_NULL);
   }
 
+  load_shared_class_misc(ik, loader_data, CHECK_NULL);
+  return ik;
+}
+
+void SystemDictionary::load_shared_class_misc(InstanceKlass* ik, ClassLoaderData* loader_data, TRAPS) {
   ik->print_class_load_logging(loader_data, NULL, NULL);
 
   // For boot loader, ensure that GetSystemPackage knows that a class in this
   // package was loaded.
-  if (class_loader.is_null()) {
+  if (loader_data->is_the_null_class_loader_data()) {
     int path_index = ik->shared_classpath_index();
     ResourceMark rm(THREAD);
     ClassLoader::add_package(ik->name()->as_C_string(), path_index, THREAD);
@@ -1372,8 +1387,37 @@ InstanceKlass* SystemDictionary::load_shared_class(InstanceKlass* ik,
       }
     }
   }
+}
 
-  return ik;
+void SystemDictionary::quick_resolve(InstanceKlass* klass, ClassLoaderData* loader_data, Handle domain, TRAPS) {
+  assert(!Universe::is_fully_initialized(), "We can make short cuts only during VM initialization");
+  assert(klass->is_shared(), "Must be shared class");
+  if (klass->class_loader_data() != NULL) {
+    return;
+  }
+
+  // add super and interfaces first
+  Klass* super = klass->super();
+  if (super != NULL && super->class_loader_data() == NULL) {
+    assert(super->is_instance_klass(), "Super should be instance klass");
+    quick_resolve(InstanceKlass::cast(super), loader_data, domain, CHECK);
+  }
+
+  Array<InstanceKlass*>* ifs = klass->local_interfaces();
+  for (int i = 0; i < ifs->length(); i++) {
+    InstanceKlass* ik = ifs->at(i);
+    if (ik->class_loader_data()  == NULL) {
+      quick_resolve(ik, loader_data, domain, CHECK);
+    }
+  }
+
+  klass->restore_unshareable_info(loader_data, domain, THREAD);
+  load_shared_class_misc(klass, loader_data, CHECK);
+  Dictionary* dictionary = loader_data->dictionary();
+  unsigned int hash = dictionary->compute_hash(klass->name());
+  dictionary->add_klass(hash, klass->name(), klass);
+  add_to_hierarchy(klass, CHECK);
+  assert(klass->is_loaded(), "Must be in at least loaded state");
 }
 #endif // INCLUDE_CDS
 
@@ -1785,7 +1829,9 @@ InstanceKlass* SystemDictionary::find_class(Symbol* class_name, ClassLoaderData*
 
 void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
   assert(k != NULL, "just checking");
-  assert_locked_or_safepoint(Compile_lock);
+  if (Universe::is_fully_initialized()) {
+    assert_locked_or_safepoint(Compile_lock);
+  }
 
   k->set_init_state(InstanceKlass::loaded);
   // make sure init_state store is already done.
@@ -1798,7 +1844,9 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
 
   // Now flush all code that depended on old class hierarchy.
   // Note: must be done *after* linking k into the hierarchy (was bug 12/9/97)
-  CodeCache::flush_dependents_on(k);
+  if (Universe::is_fully_initialized()) {
+    CodeCache::flush_dependents_on(k);
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -1917,8 +1965,19 @@ bool SystemDictionary::resolve_wk_klass(WKID id, TRAPS) {
   Symbol* symbol = vmSymbols::symbol_at((vmSymbols::SID)sid);
   InstanceKlass** klassp = &_well_known_klasses[id];
 
-  if ((*klassp) == NULL) {
-    Klass* k = resolve_or_fail(symbol, true, CHECK_0);
+#if INCLUDE_CDS
+  if (UseSharedSpaces && !JvmtiExport::should_post_class_prepare()) {
+    InstanceKlass* k = *klassp;
+    assert(k->is_shared_boot_class(), "must be");
+
+    ClassLoaderData* loader_data = ClassLoaderData::the_null_class_loader_data();
+    quick_resolve(k, loader_data, Handle(), CHECK_false);
+    return true;
+  }
+#endif // INCLUDE_CDS
+
+  if (!is_wk_klass_loaded(*klassp)) {
+    Klass* k = resolve_or_fail(symbol, true, CHECK_false);
     (*klassp) = InstanceKlass::cast(k);
   }
   return ((*klassp) != NULL);
@@ -1936,7 +1995,7 @@ void SystemDictionary::resolve_wk_klasses_until(WKID limit_id, WKID &start_id, T
 }
 
 void SystemDictionary::resolve_well_known_classes(TRAPS) {
-  assert(WK_KLASS(Object_klass) == NULL, "well-known classes should only be initialized once");
+  assert(!Object_klass_loaded(), "well-known classes should only be initialized once");
 
   // Create the ModuleEntry for java.base.  This call needs to be done here,
   // after vmSymbols::initialize() is called but before any classes are pre-loaded.
@@ -1984,10 +2043,6 @@ void SystemDictionary::resolve_well_known_classes(TRAPS) {
   java_lang_Class::compute_offsets();
 
   // Fixup mirrors for classes loaded before java.lang.Class.
-  // These calls iterate over the objects currently in the perm gen
-  // so calling them at this point is matters (not before when there
-  // are fewer objects and not later after there are more objects
-  // in the perm gen.
   Universe::initialize_basic_type_mirrors(CHECK);
   Universe::fixup_mirrors(CHECK);
 
@@ -2025,8 +2080,8 @@ void SystemDictionary::resolve_well_known_classes(TRAPS) {
 
 #ifdef ASSERT
   if (UseSharedSpaces) {
-    assert(JvmtiExport::is_early_phase(),
-           "All well known classes must be resolved in JVMTI early phase");
+    JVMTI_ONLY(assert(JvmtiExport::is_early_phase(),
+                      "All well known classes must be resolved in JVMTI early phase"));
     for (int i = FIRST_WKID; i < last; i++) {
       InstanceKlass* k = _well_known_klasses[i];
       assert(k->is_shared(), "must not be replaced by JVMTI class file load hook");
@@ -2482,8 +2537,8 @@ static bool is_always_visible_class(oop mirror) {
           InstanceKlass::cast(klass)->is_same_class_package(SystemDictionary::MethodHandle_klass()));  // java.lang.invoke
 }
 
-// Find or construct the Java mirror (java.lang.Class instance) for a
-// for the given field type signature, as interpreted relative to the
+// Find or construct the Java mirror (java.lang.Class instance) for
+// the given field type signature, as interpreted relative to the
 // given class loader.  Handles primitives, void, references, arrays,
 // and all other reflectable types, except method types.
 // N.B.  Code in reflection should use this entry point.
@@ -2493,57 +2548,33 @@ Handle SystemDictionary::find_java_mirror_for_type(Symbol* signature,
                                                    Handle protection_domain,
                                                    SignatureStream::FailureMode failure_mode,
                                                    TRAPS) {
-  Handle empty;
-
   assert(accessing_klass == NULL || (class_loader.is_null() && protection_domain.is_null()),
          "one or the other, or perhaps neither");
-
-  SignatureStream ss(signature, false);
 
   // What we have here must be a valid field descriptor,
   // and all valid field descriptors are supported.
   // Produce the same java.lang.Class that reflection reports.
-  if (ss.is_primitive() || (ss.type() == T_VOID)) {
+  if (accessing_klass != NULL) {
+    class_loader      = Handle(THREAD, accessing_klass->class_loader());
+    protection_domain = Handle(THREAD, accessing_klass->protection_domain());
+  }
+  ResolvingSignatureStream ss(signature, class_loader, protection_domain, false);
+  oop mirror_oop = ss.as_java_mirror(failure_mode, CHECK_NH);
+  if (mirror_oop == NULL) {
+    return Handle();  // report failure this way
+  }
+  Handle mirror(THREAD, mirror_oop);
 
-    // It's a primitive.  (Void has a primitive mirror too.)
-    return Handle(THREAD, java_lang_Class::primitive_mirror(ss.type()));
-
-  } else if (ss.is_reference()) {
-
-    // It's a reference type.
-    if (accessing_klass != NULL) {
-      class_loader      = Handle(THREAD, accessing_klass->class_loader());
-      protection_domain = Handle(THREAD, accessing_klass->protection_domain());
-    }
-    Klass* constant_type_klass;
-    if (failure_mode == SignatureStream::ReturnNull) {
-      constant_type_klass = resolve_or_null(signature, class_loader, protection_domain,
-                                            CHECK_(empty));
-    } else {
-      bool throw_error = (failure_mode == SignatureStream::NCDFError);
-      constant_type_klass = resolve_or_fail(signature, class_loader, protection_domain,
-                                            throw_error, CHECK_(empty));
-    }
-    if (constant_type_klass == NULL) {
-      return Handle();  // report failure this way
-    }
-    Handle mirror(THREAD, constant_type_klass->java_mirror());
-
+  if (accessing_klass != NULL) {
     // Check accessibility, emulating ConstantPool::verify_constant_pool_resolve.
-    if (accessing_klass != NULL) {
-      Klass* sel_klass = constant_type_klass;
+    Klass* sel_klass = java_lang_Class::as_Klass(mirror());
+    if (sel_klass != NULL) {
       bool fold_type_to_class = true;
       LinkResolver::check_klass_accessability(accessing_klass, sel_klass,
-                                              fold_type_to_class, CHECK_(empty));
+                                              fold_type_to_class, CHECK_NH);
     }
-
-    return mirror;
-
   }
-
-  // Fall through to an error.
-  assert(false, "unsupported mirror syntax");
-  THROW_MSG_(vmSymbols::java_lang_InternalError(), "unsupported mirror syntax", empty);
+  return mirror;
 }
 
 

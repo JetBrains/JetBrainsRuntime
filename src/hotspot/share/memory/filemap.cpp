@@ -210,6 +210,8 @@ void FileMapHeader::populate(FileMapInfo* mapinfo, size_t alignment) {
   _narrow_oop_mode = CompressedOops::mode();
   _narrow_oop_base = CompressedOops::base();
   _narrow_oop_shift = CompressedOops::shift();
+  _compressed_oops = UseCompressedOops;
+  _compressed_class_ptrs = UseCompressedClassPointers;
   _max_heap_size = MaxHeapSize;
   _narrow_klass_shift = CompressedKlassPointers::shift();
   if (HeapShared::is_heap_object_archiving_allowed()) {
@@ -289,6 +291,23 @@ void SharedClassPathEntry::set_name(const char* name, TRAPS) {
   size_t len = strlen(name) + 1;
   _name = MetadataFactory::new_array<char>(ClassLoaderData::the_null_class_loader_data(), (int)len, THREAD);
   strcpy(_name->data(), name);
+}
+
+void SharedClassPathEntry::copy_from(SharedClassPathEntry* ent, ClassLoaderData* loader_data, TRAPS) {
+  _type = ent->_type;
+  _timestamp = ent->_timestamp;
+  _filesize = ent->_filesize;
+  _from_class_path_attr = ent->_from_class_path_attr;
+  set_name(ent->name(), THREAD);
+
+  if (ent->is_jar() && !ent->is_signed() && ent->manifest() != NULL) {
+    Array<u1>* buf = MetadataFactory::new_array<u1>(loader_data,
+                                                    ent->manifest_size(),
+                                                    THREAD);
+    char* p = (char*)(buf->data());
+    memcpy(p, ent->manifest(), ent->manifest_size());
+    set_manifest(buf);
+  }
 }
 
 const char* SharedClassPathEntry::name() const {
@@ -379,8 +398,24 @@ void SharedPathTable::dumptime_init(ClassLoaderData* loader_data, Thread* THREAD
   num_entries += FileMapInfo::num_non_existent_class_paths();
   size_t bytes = entry_size * num_entries;
 
-  _table = MetadataFactory::new_array<u8>(loader_data, (int)(bytes + 7 / 8), THREAD);
+  _table = MetadataFactory::new_array<u8>(loader_data, (int)bytes, THREAD);
   _size = num_entries;
+}
+
+// Make a copy of the _shared_path_table for use during dynamic CDS dump.
+// It is needed because some Java code continues to execute after dynamic dump has finished.
+// However, during dynamic dump, we have modified FileMapInfo::_shared_path_table so
+// FileMapInfo::shared_path(i) returns incorrect information in ClassLoader::record_result().
+void FileMapInfo::copy_shared_path_table(ClassLoaderData* loader_data, Thread* THREAD) {
+  size_t entry_size = sizeof(SharedClassPathEntry);
+  size_t bytes = entry_size * _shared_path_table.size();
+
+  _saved_shared_path_table = SharedPathTable(MetadataFactory::new_array<u8>(loader_data, (int)bytes, THREAD),
+                                             _shared_path_table.size());
+
+  for (int i = 0; i < _shared_path_table.size(); i++) {
+    _saved_shared_path_table.path_at(i)->copy_from(shared_path(i), loader_data, THREAD);
+  }
 }
 
 void FileMapInfo::allocate_shared_path_table() {
@@ -407,6 +442,8 @@ void FileMapInfo::allocate_shared_path_table() {
   }
 
   assert(i == _shared_path_table.size(), "number of shared path entry mismatch");
+
+  copy_shared_path_table(loader_data, THREAD);
 }
 
 int FileMapInfo::add_shared_classpaths(int i, const char* which, ClassPathEntry *cpe, TRAPS) {
@@ -933,10 +970,6 @@ bool FileMapInfo::get_base_archive_name_from_header(const char* archive_name,
   os::free(dynamic_header);
   os::close(fd);
   return true;
-}
-
-void FileMapInfo::restore_shared_path_table() {
-  _shared_path_table = _current_info->header()->shared_path_table();
 }
 
 // Read the FileMapInfo information from the file.
@@ -1745,7 +1778,16 @@ void FileMapInfo::map_heap_regions() {
 
 bool FileMapInfo::map_heap_data(MemRegion **heap_mem, int first,
                                 int max, int* num, bool is_open_archive) {
-  MemRegion * regions = new MemRegion[max];
+  MemRegion* regions = MemRegion::create_array(max, mtInternal);
+
+  struct Cleanup {
+    MemRegion* _regions;
+    uint _length;
+    bool _aborted;
+    Cleanup(MemRegion* regions, uint length) : _regions(regions), _length(length), _aborted(true) { }
+    ~Cleanup() { if (_aborted) { MemRegion::destroy_array(_regions, _length); } }
+  } cleanup(regions, max);
+
   FileMapRegion* si;
   int region_num = 0;
 
@@ -1805,6 +1847,7 @@ bool FileMapInfo::map_heap_data(MemRegion **heap_mem, int first,
     }
   }
 
+  cleanup._aborted = false;
   // the shared heap data is mapped successfully
   *heap_mem = regions;
   *num = region_num;
@@ -1915,14 +1958,19 @@ void FileMapInfo::assert_mark(bool check) {
   }
 }
 
-void FileMapInfo::metaspace_pointers_do(MetaspaceClosure* it) {
-  _shared_path_table.metaspace_pointers_do(it);
+void FileMapInfo::metaspace_pointers_do(MetaspaceClosure* it, bool use_copy) {
+  if (use_copy) {
+    _saved_shared_path_table.metaspace_pointers_do(it);
+  } else {
+    _shared_path_table.metaspace_pointers_do(it);
+  }
 }
 
 FileMapInfo* FileMapInfo::_current_info = NULL;
 FileMapInfo* FileMapInfo::_dynamic_archive_info = NULL;
 bool FileMapInfo::_heap_pointers_need_patching = false;
 SharedPathTable FileMapInfo::_shared_path_table;
+SharedPathTable FileMapInfo::_saved_shared_path_table;
 bool FileMapInfo::_validating_shared_path_table = false;
 bool FileMapInfo::_memory_mapping_failed = false;
 GrowableArray<const char*>* FileMapInfo::_non_existent_class_paths = NULL;
@@ -2039,6 +2087,14 @@ bool FileMapHeader::validate() {
   if (_allow_archiving_with_java_agent) {
     warning("This archive was created with AllowArchivingWithJavaAgent. It should be used "
             "for testing purposes only and should not be used in a production environment");
+  }
+
+  log_info(cds)("Archive was created with UseCompressedOops = %d, UseCompressedClassPointers = %d",
+                          compressed_oops(), compressed_class_pointers());
+  if (compressed_oops() != UseCompressedOops || compressed_class_pointers() != UseCompressedClassPointers) {
+    FileMapInfo::fail_continue("Unable to use shared archive.\nThe saved state of UseCompressedOops and UseCompressedClassPointers is "
+                               "different from runtime, CDS will be disabled.");
+    return false;
   }
 
   return true;

@@ -914,6 +914,7 @@ class ZipFileSystem extends FileSystem {
             checkWritable();
             beginRead();    // only need a read lock, the "update()" will obtain
                             // the write lock when the channel is closed
+            ensureOpen();
             try {
                 Entry e = getEntry(path);
                 if (e != null) {
@@ -1075,7 +1076,7 @@ class ZipFileSystem extends FileSystem {
                 }
                 public int write(ByteBuffer src, long position)
                     throws IOException
-                    {
+                {
                    return fch.write(src, position);
                 }
                 public MappedByteBuffer map(MapMode mode,
@@ -1113,10 +1114,6 @@ class ZipFileSystem extends FileSystem {
     // the outstanding input streams that need to be closed
     private Set<InputStream> streams =
         Collections.synchronizedSet(new HashSet<>());
-
-    // the ex-channel and ex-path that need to close when their outstanding
-    // input streams are all closed by the obtainers.
-    private final Set<ExistingChannelCloser> exChClosers = new HashSet<>();
 
     private final Set<Path> tmppaths = Collections.synchronizedSet(new HashSet<>());
     private Path getTempPathForEntry(byte[] path) throws IOException {
@@ -1711,14 +1708,6 @@ class ZipFileSystem extends FileSystem {
 
     // sync the zip file system, if there is any update
     private void sync() throws IOException {
-        // check ex-closer
-        if (!exChClosers.isEmpty()) {
-            for (ExistingChannelCloser ecc : exChClosers) {
-                if (ecc.closeAndDeleteIfDone()) {
-                    exChClosers.remove(ecc);
-                }
-            }
-        }
         if (!hasUpdate)
             return;
         PosixFileAttributes attrs = getPosixAttributes(zfpath);
@@ -1729,8 +1718,33 @@ class ZipFileSystem extends FileSystem {
             byte[] buf = null;
             Entry e;
 
+            final IndexNode manifestInode = inodes.get(
+                    IndexNode.keyOf(getBytes("/META-INF/MANIFEST.MF")));
+            final Iterator<IndexNode> inodeIterator = inodes.values().iterator();
+            boolean manifestProcessed = false;
+
             // write loc
-            for (IndexNode inode : inodes.values()) {
+            while (inodeIterator.hasNext()) {
+                final IndexNode inode;
+
+                // write the manifest inode (if any) first so that
+                // java.util.jar.JarInputStream can find it
+                if (manifestInode == null) {
+                    inode = inodeIterator.next();
+                } else {
+                    if (manifestProcessed) {
+                        // advance to next node, filtering out the manifest
+                        // which was already written
+                        inode = inodeIterator.next();
+                        if (inode == manifestInode) {
+                            continue;
+                        }
+                    } else {
+                        inode = manifestInode;
+                        manifestProcessed = true;
+                    }
+                }
+
                 if (inode instanceof Entry) {    // an updated inode
                     e = (Entry)inode;
                     try {
@@ -1781,22 +1795,8 @@ class ZipFileSystem extends FileSystem {
             end.cenlen = written - end.cenoff;
             end.write(os, written, forceEnd64);
         }
-        if (!streams.isEmpty()) {
-            //
-            // There are outstanding input streams open on existing "ch",
-            // so, don't close the "cha" and delete the "file for now, let
-            // the "ex-channel-closer" to handle them
-            Path path = createTempFileInSameDirectoryAs(zfpath);
-            ExistingChannelCloser ecc = new ExistingChannelCloser(path,
-                                                                  ch,
-                                                                  streams);
-            Files.move(zfpath, path, REPLACE_EXISTING);
-            exChClosers.add(ecc);
-            streams = Collections.synchronizedSet(new HashSet<>());
-        } else {
-            ch.close();
-            Files.delete(zfpath);
-        }
+        ch.close();
+        Files.delete(zfpath);
 
         // Set the POSIX permissions of the original Zip File if available
         // before moving the temp file
@@ -3138,36 +3138,6 @@ class ZipFileSystem extends FileSystem {
         @Override
         public Set<PosixFilePermission> permissions() {
             return storedPermissions().orElse(Set.copyOf(defaultPermissions));
-        }
-    }
-
-    private static class ExistingChannelCloser {
-        private final Path path;
-        private final SeekableByteChannel ch;
-        private final Set<InputStream> streams;
-        ExistingChannelCloser(Path path,
-                              SeekableByteChannel ch,
-                              Set<InputStream> streams) {
-            this.path = path;
-            this.ch = ch;
-            this.streams = streams;
-        }
-
-        /**
-         * If there are no more outstanding streams, close the channel and
-         * delete the backing file
-         *
-         * @return true if we're done and closed the backing file,
-         *         otherwise false
-         * @throws IOException
-         */
-        private boolean closeAndDeleteIfDone() throws IOException {
-            if (streams.isEmpty()) {
-                ch.close();
-                Files.delete(path);
-                return true;
-            }
-            return false;
         }
     }
 

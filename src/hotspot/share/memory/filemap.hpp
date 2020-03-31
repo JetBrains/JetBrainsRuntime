@@ -95,6 +95,7 @@ public:
     _manifest = manifest;
   }
   bool check_non_existent() const;
+  void copy_from(SharedClassPathEntry* ent, ClassLoaderData* loader_data, TRAPS);
 };
 
 struct ArchiveHeapOopmapInfo {
@@ -187,6 +188,8 @@ class FileMapHeader: private CDSFileMapHeaderBase {
   uintx  _max_heap_size;            // java max heap size during dumping
   CompressedOops::Mode _narrow_oop_mode; // compressed oop encoding mode
   int     _narrow_klass_shift;      // save narrow klass base and shift
+  bool    _compressed_oops;         // save the flag UseCompressedOops
+  bool    _compressed_class_ptrs;   // save the flag UseCompressedClassPointers
   size_t  _cloned_vtables_offset;   // The address of the first cloned vtable
   size_t  _serialized_data_offset;  // Data accessed using {ReadClosure,WriteClosure}::serialize()
   size_t  _i2i_entry_code_buffers_offset;
@@ -264,7 +267,8 @@ public:
   char* mapped_base_address()              const { return _mapped_base_address; }
   bool has_platform_or_app_classes()       const { return _has_platform_or_app_classes; }
   size_t ptrmap_size_in_bits()             const { return _ptrmap_size_in_bits; }
-
+  bool compressed_oops()                   const { return _compressed_oops; }
+  bool compressed_class_pointers()         const { return _compressed_class_ptrs; }
   // FIXME: These should really return int
   jshort max_used_path_index()             const { return _max_used_path_index; }
   jshort app_module_paths_start_index()    const { return _app_module_paths_start_index; }
@@ -332,6 +336,7 @@ private:
 
   // TODO: Probably change the following to be non-static
   static SharedPathTable       _shared_path_table;
+  static SharedPathTable       _saved_shared_path_table;
   static bool                  _validating_shared_path_table;
 
   // FileMapHeader describes the shared space data in the file to be
@@ -353,9 +358,12 @@ public:
   static SharedPathTable shared_path_table() {
     return _shared_path_table;
   }
-  void restore_shared_path_table();
+  static SharedPathTable saved_shared_path_table() {
+    return _saved_shared_path_table;
+  }
+
   bool init_from_file(int fd);
-  static void metaspace_pointers_do(MetaspaceClosure* it);
+  static void metaspace_pointers_do(MetaspaceClosure* it, bool use_copy = true);
 
   void log_paths(const char* msg, int start_idx, int end_idx);
 
@@ -479,6 +487,7 @@ public:
   static void stop_sharing_and_unmap(const char* msg);
 
   static void allocate_shared_path_table();
+  static void copy_shared_path_table(ClassLoaderData* loader_data, Thread* THREAD);
   static int add_shared_classpaths(int i, const char* which, ClassPathEntry *cpe, TRAPS);
   static void check_nonempty_dir_in_shared_path_table();
   bool validate_shared_path_table();

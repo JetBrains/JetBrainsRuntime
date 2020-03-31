@@ -72,11 +72,7 @@ jint G1ConcurrentRefineThreadControl::initialize(G1ConcurrentRefine* cr, uint nu
   _cr = cr;
   _num_max_threads = num_max_threads;
 
-  _threads = NEW_C_HEAP_ARRAY_RETURN_NULL(G1ConcurrentRefineThread*, num_max_threads, mtGC);
-  if (_threads == NULL) {
-    vm_shutdown_during_initialization("Could not allocate thread holder array.");
-    return JNI_ENOMEM;
-  }
+  _threads = NEW_C_HEAP_ARRAY(G1ConcurrentRefineThread*, num_max_threads, mtGC);
 
   for (uint i = 0; i < num_max_threads; i++) {
     if (UseDynamicNumberOfGCThreads && i != 0 /* Always start first thread. */) {
@@ -303,13 +299,6 @@ G1ConcurrentRefine* G1ConcurrentRefine::create(jint* ecode) {
                                                   yellow_zone,
                                                   red_zone,
                                                   min_yellow_zone_size);
-
-  if (cr == NULL) {
-    *ecode = JNI_ENOMEM;
-    vm_shutdown_during_initialization("Could not create G1ConcurrentRefine");
-    return NULL;
-  }
-
   *ecode = cr->initialize();
   return cr;
 }
@@ -462,10 +451,8 @@ bool G1ConcurrentRefine::do_refinement_step(uint worker_id,
   size_t curr_cards = dcqs.num_cards();
   // If the number of the cards falls down into the yellow zone,
   // that means that the transition period after the evacuation pause has ended.
-  // Since the value written to the DCQS is the same for all threads, there is no
-  // need to synchronize.
-  if (dcqs.max_cards_padding() > 0 && curr_cards <= yellow_zone()) {
-    dcqs.set_max_cards_padding(0);
+  if (curr_cards <= yellow_zone()) {
+    dcqs.discard_max_cards_padding();
   }
 
   maybe_activate_more_threads(worker_id, curr_cards);

@@ -55,14 +55,10 @@ G1DirtyCardQueue::~G1DirtyCardQueue() {
 }
 
 void G1DirtyCardQueue::handle_completed_buffer() {
-  assert(_buf != NULL, "precondition");
+  assert(!is_empty(), "precondition");
   BufferNode* node = BufferNode::make_node_from_buffer(_buf, index());
-  G1DirtyCardQueueSet* dcqs = dirty_card_qset();
-  if (dcqs->process_or_enqueue_completed_buffer(node)) {
-    reset();                    // Buffer fully processed, reset index.
-  } else {
-    allocate_buffer();          // Buffer enqueued, get a new one.
-  }
+  allocate_buffer();
+  dirty_card_qset()->handle_completed_buffer(node);
 }
 
 // Assumed to be zero by concurrent threads.
@@ -77,7 +73,7 @@ G1DirtyCardQueueSet::G1DirtyCardQueueSet(BufferNode::Allocator* allocator) :
   _free_ids(par_ids_start(), num_par_ids()),
   _process_cards_threshold(ProcessCardsThresholdNever),
   _max_cards(MaxCardsUnlimited),
-  _max_cards_padding(0),
+  _padded_max_cards(MaxCardsUnlimited),
   _mutator_refined_cards_counters(NEW_C_HEAP_ARRAY(size_t, num_par_ids(), mtGC))
 {
   ::memset(_mutator_refined_cards_counters, 0, num_par_ids() * sizeof(size_t));
@@ -138,7 +134,6 @@ void G1DirtyCardQueueSet::Queue::append(BufferNode& first, BufferNode& last) {
   assert(last.next() == NULL, "precondition");
   BufferNode* old_tail = Atomic::xchg(&_tail, &last);
   if (old_tail == NULL) {       // Was empty.
-    assert(Atomic::load(&_head) == NULL, "invariant");
     Atomic::store(&_head, &first);
   } else {
     assert(old_tail->next() == NULL, "invariant");
@@ -146,53 +141,65 @@ void G1DirtyCardQueueSet::Queue::append(BufferNode& first, BufferNode& last) {
   }
 }
 
-// pop gets the queue head as the candidate result (returning NULL if the
-// queue head was NULL), and then gets that result node's "next" value.  If
-// that "next" value is NULL and the queue head hasn't changed, then there
-// is only one element in the accessible part of the list (the sequence from
-// head to a node with a NULL "next" value).  We can't return that element,
-// because it may be the old tail of a concurrent push/append that has not
-// yet had its "next" field set to the new tail.  So return NULL in this case.
-// Otherwise, attempt to cmpxchg that "next" value into the queue head,
-// retrying the whole operation if that fails. This is the "usual" lock-free
-// pop from the head of a singly linked list, with the additional restriction
-// on taking the last element.
 BufferNode* G1DirtyCardQueueSet::Queue::pop() {
   Thread* current_thread = Thread::current();
   while (true) {
     // Use a critical section per iteration, rather than over the whole
-    // operation.  We're not guaranteed to make progress, because of possible
-    // contention on the queue head.  Lingering in one CS the whole time could
-    // lead to excessive allocation of buffers, because the CS blocks return
-    // of released buffers to the free list for reuse.
+    // operation.  We're not guaranteed to make progress.  Lingering in one
+    // CS could lead to excessive allocation of buffers, because the CS
+    // blocks return of released buffers to the free list for reuse.
     GlobalCounter::CriticalSection cs(current_thread);
 
     BufferNode* result = Atomic::load_acquire(&_head);
-    // Check for empty queue.  Only needs to be done on first iteration,
-    // since we never take the last element, but it's messy to make use
-    // of that and we expect one iteration to be the common case.
-    if (result == NULL) return NULL;
+    if (result == NULL) return NULL; // Queue is empty.
 
     BufferNode* next = Atomic::load_acquire(BufferNode::next_ptr(*result));
     if (next != NULL) {
-      next = Atomic::cmpxchg(&_head, result, next);
-      if (next == result) {
+      // The "usual" lock-free pop from the head of a singly linked list.
+      if (result == Atomic::cmpxchg(&_head, result, next)) {
         // Former head successfully taken; it is not the last.
         assert(Atomic::load(&_tail) != result, "invariant");
         assert(result->next() != NULL, "invariant");
         result->set_next(NULL);
         return result;
       }
-      // cmpxchg failed; try again.
-    } else if (result == Atomic::load_acquire(&_head)) {
-      // If follower of head is NULL and head hasn't changed, then only
-      // the one element is currently accessible.  We don't take the last
-      // accessible element, because there may be a concurrent add using it.
-      // The check for unchanged head isn't needed for correctness, but the
-      // retry on change may sometimes let us get a buffer after all.
-      return NULL;
+      // Lost the race; try again.
+      continue;
     }
-    // Head changed; try again.
+
+    // next is NULL.  This case is handled differently from the "usual"
+    // lock-free pop from the head of a singly linked list.
+
+    // If _tail == result then result is the only element in the list. We can
+    // remove it from the list by first setting _tail to NULL and then setting
+    // _head to NULL, the order being important.  We set _tail with cmpxchg in
+    // case of a concurrent push/append/pop also changing _tail.  If we win
+    // then we've claimed result.
+    if (Atomic::cmpxchg(&_tail, result, (BufferNode*)NULL) == result) {
+      assert(result->next() == NULL, "invariant");
+      // Now that we've claimed result, also set _head to NULL.  But we must
+      // be careful of a concurrent push/append after we NULLed _tail, since
+      // it may have already performed its list-was-empty update of _head,
+      // which we must not overwrite.
+      Atomic::cmpxchg(&_head, result, (BufferNode*)NULL);
+      return result;
+    }
+
+    // If _head != result then we lost the race to take result; try again.
+    if (result != Atomic::load_acquire(&_head)) {
+      continue;
+    }
+
+    // An in-progress concurrent operation interfered with taking the head
+    // element when it was the only element.  A concurrent pop may have won
+    // the race to clear the tail but not yet cleared the head. Alternatively,
+    // a concurrent push/append may have changed the tail but not yet linked
+    // result->next().  We cannot take result in either case.  We don't just
+    // try again, because we could spin for a long time waiting for that
+    // concurrent operation to finish.  In the first case, returning NULL is
+    // fine; we lost the race for the only element to another thread.  We
+    // also return NULL for the second case, and let the caller cope.
+    return NULL;
   }
 }
 
@@ -216,20 +223,14 @@ void G1DirtyCardQueueSet::enqueue_completed_buffer(BufferNode* cbn) {
   }
 }
 
-BufferNode* G1DirtyCardQueueSet::get_completed_buffer(size_t stop_at) {
-  enqueue_previous_paused_buffers();
-
-  // Check for insufficient cards to satisfy request.  We only do this once,
-  // up front, rather than on each iteration below, since the test is racy
-  // regardless of when we do it.
-  if (Atomic::load_acquire(&_num_cards) <= stop_at) {
-    return NULL;
-  }
-
+BufferNode* G1DirtyCardQueueSet::get_completed_buffer() {
   BufferNode* result = _completed.pop();
-  if (result != NULL) {
-    Atomic::sub(&_num_cards, buffer_size() - result->index());
+  if (result == NULL) {         // Unlikely if no paused buffers.
+    enqueue_previous_paused_buffers();
+    result = _completed.pop();
+    if (result == NULL) return NULL;
   }
+  Atomic::sub(&_num_cards, buffer_size() - result->index());
   return result;
 }
 
@@ -287,31 +288,24 @@ G1DirtyCardQueueSet::PausedBuffers::PausedBuffers() : _plist(NULL) {}
 
 #ifdef ASSERT
 G1DirtyCardQueueSet::PausedBuffers::~PausedBuffers() {
-  assert(is_empty(), "invariant");
+  assert(Atomic::load(&_plist) == NULL, "invariant");
 }
 #endif // ASSERT
-
-bool G1DirtyCardQueueSet::PausedBuffers::is_empty() const {
-  return Atomic::load(&_plist) == NULL;
-}
 
 void G1DirtyCardQueueSet::PausedBuffers::add(BufferNode* node) {
   assert_not_at_safepoint();
   PausedList* plist = Atomic::load_acquire(&_plist);
-  if (plist != NULL) {
-    // Already have a next list, so use it.  We know it's a next list because
-    // of the precondition that take_previous() has already been called.
-    assert(plist->is_next(), "invariant");
-  } else {
+  if (plist == NULL) {
     // Try to install a new next list.
     plist = new PausedList();
     PausedList* old_plist = Atomic::cmpxchg(&_plist, (PausedList*)NULL, plist);
     if (old_plist != NULL) {
-      // Some other thread installed a new next list. Use it instead.
+      // Some other thread installed a new next list.  Use it instead.
       delete plist;
       plist = old_plist;
     }
   }
+  assert(plist->is_next(), "invariant");
   plist->add(node);
 }
 
@@ -355,6 +349,8 @@ G1DirtyCardQueueSet::HeadTail G1DirtyCardQueueSet::PausedBuffers::take_all() {
 void G1DirtyCardQueueSet::record_paused_buffer(BufferNode* node) {
   assert_not_at_safepoint();
   assert(node->next() == NULL, "precondition");
+  // Ensure there aren't any paused buffers from a previous safepoint.
+  enqueue_previous_paused_buffers();
   // Cards for paused buffers are included in count, to contribute to
   // notification checking after the coming safepoint if it doesn't GC.
   // Note that this means the queue's _num_cards differs from the number
@@ -373,25 +369,7 @@ void G1DirtyCardQueueSet::enqueue_paused_buffers_aux(const HeadTail& paused) {
 
 void G1DirtyCardQueueSet::enqueue_previous_paused_buffers() {
   assert_not_at_safepoint();
-  // The fast-path still satisfies the precondition for record_paused_buffer
-  // and PausedBuffers::add, even with a racy test.  If there are paused
-  // buffers from a previous safepoint, is_empty() will return false; there
-  // will have been a safepoint between recording and test, so there can't be
-  // a false negative (is_empty() returns true) while such buffers are present.
-  // If is_empty() is false, there are two cases:
-  //
-  // (1) There were paused buffers from a previous safepoint.  A concurrent
-  // caller may take and enqueue them first, but that's okay; the precondition
-  // for a possible later record_paused_buffer by this thread will still hold.
-  //
-  // (2) There are paused buffers for a requested next safepoint.
-  //
-  // In each of those cases some effort may be spent detecting and dealing
-  // with those circumstances; any wasted effort in such cases is expected to
-  // be well compensated by the fast path.
-  if (!_paused.is_empty()) {
-    enqueue_paused_buffers_aux(_paused.take_previous());
-  }
+  enqueue_paused_buffers_aux(_paused.take_previous());
 }
 
 void G1DirtyCardQueueSet::enqueue_all_paused_buffers() {
@@ -562,73 +540,61 @@ bool G1DirtyCardQueueSet::refine_buffer(BufferNode* node,
   return buffered_cards.refine();
 }
 
-#ifndef ASSERT
-#define assert_fully_consumed(node, buffer_size)
-#else
-#define assert_fully_consumed(node, buffer_size)                \
-  do {                                                          \
-    size_t _afc_index = (node)->index();                        \
-    size_t _afc_size = (buffer_size);                           \
-    assert(_afc_index == _afc_size,                             \
-           "Buffer was not fully consumed as claimed: index: "  \
-           SIZE_FORMAT ", size: " SIZE_FORMAT,                  \
-            _afc_index, _afc_size);                             \
-  } while (0)
-#endif // ASSERT
-
-bool G1DirtyCardQueueSet::process_or_enqueue_completed_buffer(BufferNode* node) {
-  if (Thread::current()->is_Java_thread()) {
-    // If the number of buffers exceeds the limit, make this Java
-    // thread do the processing itself.  Calculation is racy but we
-    // don't need precision here.  The add of padding could overflow,
-    // which is treated as unlimited.
-    size_t limit = max_cards() + max_cards_padding();
-    if ((num_cards() > limit) && (limit >= max_cards())) {
-      if (mut_process_buffer(node)) {
-        return true;
-      }
-      // Buffer was incompletely processed because of a pending safepoint
-      // request.  Unlike with refinement thread processing, for mutator
-      // processing the buffer did not come from the completed buffer queue,
-      // so it is okay to add it to the queue rather than to the paused set.
-      // Indeed, it can't be added to the paused set because we didn't pass
-      // through enqueue_previous_paused_buffers.
-    }
+void G1DirtyCardQueueSet::handle_refined_buffer(BufferNode* node,
+                                                bool fully_processed) {
+  if (fully_processed) {
+    assert(node->index() == buffer_size(),
+           "Buffer not fully consumed: index: " SIZE_FORMAT ", size: " SIZE_FORMAT,
+           node->index(), buffer_size());
+    deallocate_buffer(node);
+  } else {
+    assert(node->index() < buffer_size(), "Buffer fully consumed.");
+    // Buffer incompletely processed because there is a pending safepoint.
+    // Record partially processed buffer, to be finished later.
+    record_paused_buffer(node);
   }
-  enqueue_completed_buffer(node);
-  return false;
 }
 
-bool G1DirtyCardQueueSet::mut_process_buffer(BufferNode* node) {
+void G1DirtyCardQueueSet::handle_completed_buffer(BufferNode* new_node) {
+  enqueue_completed_buffer(new_node);
+
+  // No need for mutator refinement if number of cards is below limit.
+  if (Atomic::load(&_num_cards) <= Atomic::load(&_padded_max_cards)) {
+    return;
+  }
+
+  // Only Java threads perform mutator refinement.
+  if (!Thread::current()->is_Java_thread()) {
+    return;
+  }
+
+  BufferNode* node = get_completed_buffer();
+  if (node == NULL) return;     // Didn't get a buffer to process.
+
+  // Refine cards in buffer.
+
   uint worker_id = _free_ids.claim_par_id(); // temporarily claim an id
   uint counter_index = worker_id - par_ids_start();
   size_t* counter = &_mutator_refined_cards_counters[counter_index];
-  bool result = refine_buffer(node, worker_id, counter);
+  bool fully_processed = refine_buffer(node, worker_id, counter);
   _free_ids.release_par_id(worker_id); // release the id
 
-  if (result) {
-    assert_fully_consumed(node, buffer_size());
-  }
-  return result;
+  // Deal with buffer after releasing id, to let another thread use id.
+  handle_refined_buffer(node, fully_processed);
 }
 
 bool G1DirtyCardQueueSet::refine_completed_buffer_concurrently(uint worker_id,
                                                                size_t stop_at,
                                                                size_t* total_refined_cards) {
-  BufferNode* node = get_completed_buffer(stop_at);
-  if (node == NULL) {
-    return false;
-  } else if (refine_buffer(node, worker_id, total_refined_cards)) {
-    assert_fully_consumed(node, buffer_size());
-    // Done with fully processed buffer.
-    deallocate_buffer(node);
-    return true;
-  } else {
-    // Buffer incompletely processed because there is a pending safepoint.
-    // Record partially processed buffer, to be finished later.
-    record_paused_buffer(node);
-    return true;
-  }
+  // Not enough cards to trigger processing.
+  if (Atomic::load(&_num_cards) <= stop_at) return false;
+
+  BufferNode* node = get_completed_buffer();
+  if (node == NULL) return false; // Didn't get a buffer to process.
+
+  bool fully_processed = refine_buffer(node, worker_id, total_refined_cards);
+  handle_refined_buffer(node, fully_processed);
+  return true;
 }
 
 void G1DirtyCardQueueSet::abandon_logs() {
@@ -669,4 +635,29 @@ void G1DirtyCardQueueSet::concatenate_logs() {
   enqueue_all_paused_buffers();
   verify_num_cards();
   set_max_cards(old_limit);
+}
+
+size_t G1DirtyCardQueueSet::max_cards() const {
+  return _max_cards;
+}
+
+void G1DirtyCardQueueSet::set_max_cards(size_t value) {
+  _max_cards = value;
+  Atomic::store(&_padded_max_cards, value);
+}
+
+void G1DirtyCardQueueSet::set_max_cards_padding(size_t padding) {
+  // Compute sum, clipping to max.
+  size_t limit = _max_cards + padding;
+  if (limit < padding) {        // Check for overflow.
+    limit = MaxCardsUnlimited;
+  }
+  Atomic::store(&_padded_max_cards, limit);
+}
+
+void G1DirtyCardQueueSet::discard_max_cards_padding() {
+  // Being racy here is okay, since all threads store the same value.
+  if (_max_cards != Atomic::load(&_padded_max_cards)) {
+    Atomic::store(&_padded_max_cards, _max_cards);
+  }
 }

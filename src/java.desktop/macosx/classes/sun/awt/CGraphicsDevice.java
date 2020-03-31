@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,7 @@ public final class CGraphicsDevice extends GraphicsDevice
         this.displayID = displayID;
         config = MacOSFlags.isMetalEnabled() ?
                 MTLGraphicsConfig.getConfig(this, displayID, 0) :
-                CGLGraphicsConfig.getConfig(this, displayID, 0);
+                CGLGraphicsConfig.getConfig(this);
         // initializes default device state, might be redundant step since we
         // call "displayChanged()" later anyway, but we do not want to leave the
         // device in an inconsistent state after construction

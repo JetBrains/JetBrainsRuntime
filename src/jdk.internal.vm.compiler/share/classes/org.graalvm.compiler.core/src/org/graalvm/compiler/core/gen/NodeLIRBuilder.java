@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,9 @@ package org.graalvm.compiler.core.gen;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.core.common.GraalOptions.MatchExpressions;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.AllTargets;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
-import static org.graalvm.compiler.core.common.GraalOptions.MatchExpressions;
 import static org.graalvm.compiler.debug.DebugOptions.LogVerbose;
 import static org.graalvm.compiler.lir.LIR.verifyBlock;
 
@@ -417,9 +417,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         }
     }
 
-    @Override
     @SuppressWarnings("try")
-    public void matchBlock(Block block, StructuredGraph graph, StructuredGraph.ScheduleResult schedule) {
+    public void matchBlock(Block block, StructuredGraph.ScheduleResult schedule) {
         try (DebugCloseable matchScope = gen.getMatchScope(block)) {
             // Allow NodeLIRBuilder subclass to specialize code generation of any interesting groups
             // of instructions
@@ -544,37 +543,20 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
         if (node instanceof IsNullNode) {
-            emitNullCheckBranch((IsNullNode) node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
+            LIRKind kind = gen.getLIRKind(((IsNullNode) node).getValue().stamp(NodeView.DEFAULT));
+            Value nullValue = gen.emitConstant(kind, ((IsNullNode) node).nullConstant());
+            gen.emitCompareBranch(kind.getPlatformKind(), operand(((IsNullNode) node).getValue()), nullValue, Condition.EQ, false, trueSuccessor, falseSuccessor, trueSuccessorProbability);
         } else if (node instanceof CompareNode) {
-            emitCompareBranch((CompareNode) node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
+            PlatformKind kind = gen.getLIRKind(((CompareNode) node).getX().stamp(NodeView.DEFAULT)).getPlatformKind();
+            gen.emitCompareBranch(kind, operand(((CompareNode) node).getX()), operand(((CompareNode) node).getY()), ((CompareNode) node).condition().asCondition(),
+                            ((CompareNode) node).unorderedIsTrue(), trueSuccessor, falseSuccessor, trueSuccessorProbability);
         } else if (node instanceof LogicConstantNode) {
-            emitConstantBranch(((LogicConstantNode) node).getValue(), trueSuccessor, falseSuccessor);
+            gen.emitJump(((LogicConstantNode) node).getValue() ? trueSuccessor : falseSuccessor);
         } else if (node instanceof IntegerTestNode) {
-            emitIntegerTestBranch((IntegerTestNode) node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
+            gen.emitIntegerTestBranch(operand(((IntegerTestNode) node).getX()), operand(((IntegerTestNode) node).getY()), trueSuccessor, falseSuccessor, trueSuccessorProbability);
         } else {
             throw GraalError.unimplemented(node.toString());
         }
-    }
-
-    private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        LIRKind kind = gen.getLIRKind(node.getValue().stamp(NodeView.DEFAULT));
-        Value nullValue = gen.emitConstant(kind, node.nullConstant());
-        gen.emitCompareBranch(kind.getPlatformKind(), operand(node.getValue()), nullValue, Condition.EQ, false, trueSuccessor, falseSuccessor, trueSuccessorProbability);
-    }
-
-    public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        PlatformKind kind = gen.getLIRKind(compare.getX().stamp(NodeView.DEFAULT)).getPlatformKind();
-        gen.emitCompareBranch(kind, operand(compare.getX()), operand(compare.getY()), compare.condition().asCondition(), compare.unorderedIsTrue(), trueSuccessor, falseSuccessor,
-                        trueSuccessorProbability);
-    }
-
-    public void emitIntegerTestBranch(IntegerTestNode test, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
-        gen.emitIntegerTestBranch(operand(test.getX()), operand(test.getY()), trueSuccessor, falseSuccessor, trueSuccessorProbability);
-    }
-
-    public void emitConstantBranch(boolean value, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock) {
-        LabelRef block = value ? trueSuccessorBlock : falseSuccessorBlock;
-        gen.emitJump(block);
     }
 
     @Override
@@ -642,7 +624,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
-    @Override
     public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments) {
         // for each argument, load it into the correct location
         Value[] result = new Value[arguments.size()];
@@ -769,19 +750,18 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         append(new FullInfopointOp(stateFor(i, i.getState()), i.getReason()));
     }
 
-    @Override
-    public void setSourcePosition(NodeSourcePosition position) {
+    private void setSourcePosition(NodeSourcePosition position) {
         gen.setSourcePosition(position);
     }
 
     @Override
-    public LIRGeneratorTool getLIRGeneratorTool() {
+    public LIRGenerator getLIRGeneratorTool() {
         return gen;
     }
 
     @Override
     public void emitReadExceptionObject(ValueNode node) {
-        LIRGeneratorTool lirGenTool = getLIRGeneratorTool();
+        LIRGenerator lirGenTool = getLIRGeneratorTool();
         Value returnRegister = lirGenTool.getRegisterConfig().getReturnRegister(node.getStackKind()).asValue(
                         LIRKind.fromJavaKind(lirGenTool.target().arch, node.getStackKind()));
         lirGenTool.emitIncomingValues(new Value[]{returnRegister});

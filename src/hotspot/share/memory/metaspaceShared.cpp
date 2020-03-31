@@ -294,23 +294,21 @@ void MetaspaceShared::initialize_dumptime_shared_and_meta_spaces() {
   //   ArchiveCompactor will copy the class metadata into this space, first the RW parts,
   //   then the RO parts.
 
-  assert(UseCompressedOops && UseCompressedClassPointers,
-      "UseCompressedOops and UseCompressedClassPointers must be set");
-
   size_t max_archive_size = align_down(cds_total * 3 / 4, reserve_alignment);
   ReservedSpace tmp_class_space = _shared_rs.last_part(max_archive_size);
   CompressedClassSpaceSize = align_down(tmp_class_space.size(), reserve_alignment);
   _shared_rs = _shared_rs.first_part(max_archive_size);
 
-  // Set up compress class pointers.
-  CompressedKlassPointers::set_base((address)_shared_rs.base());
-  // Set narrow_klass_shift to be LogKlassAlignmentInBytes. This is consistent
-  // with AOT.
-  CompressedKlassPointers::set_shift(LogKlassAlignmentInBytes);
-  // Set the range of klass addresses to 4GB.
-  CompressedKlassPointers::set_range(cds_total);
-
-  Metaspace::initialize_class_space(tmp_class_space);
+  if (UseCompressedClassPointers) {
+    // Set up compress class pointers.
+    CompressedKlassPointers::set_base((address)_shared_rs.base());
+    // Set narrow_klass_shift to be LogKlassAlignmentInBytes. This is consistent
+    // with AOT.
+    CompressedKlassPointers::set_shift(LogKlassAlignmentInBytes);
+    // Set the range of klass addresses to 4GB.
+    CompressedKlassPointers::set_range(cds_total);
+    Metaspace::initialize_class_space(tmp_class_space);
+  }
   log_info(cds)("narrow_klass_base = " PTR_FORMAT ", narrow_klass_shift = %d",
                 p2i(CompressedKlassPointers::base()), CompressedKlassPointers::shift());
 
@@ -465,6 +463,9 @@ void MetaspaceShared::serialize(SerializeClosure* soc) {
   SystemDictionaryShared::serialize_dictionary_headers(soc);
 
   InstanceMirrorKlass::serialize_offsets(soc);
+
+  // Dump/restore well known classes (pointers)
+  SystemDictionaryShared::serialize_well_known_klasses(soc);
   soc->do_tag(--tag);
 
   serialize_cloned_cpp_vtptrs(soc);
@@ -1374,7 +1375,7 @@ public:
         it->push(_global_klass_objects->adr_at(i));
       }
     }
-    FileMapInfo::metaspace_pointers_do(it);
+    FileMapInfo::metaspace_pointers_do(it, false);
     SystemDictionaryShared::dumptime_classes_do(it);
     Universe::metaspace_pointers_do(it);
     SymbolTable::metaspace_pointers_do(it);
@@ -1701,27 +1702,22 @@ class LinkSharedClassesClosure : public KlassClosure {
   void do_klass(Klass* k) {
     if (k->is_instance_klass()) {
       InstanceKlass* ik = InstanceKlass::cast(k);
-      // Link the class to cause the bytecodes to be rewritten and the
-      // cpcache to be created. Class verification is done according
-      // to -Xverify setting.
-      _made_progress |= MetaspaceShared::try_link_class(ik, THREAD);
-      guarantee(!HAS_PENDING_EXCEPTION, "exception in link_class");
+      // For dynamic CDS dump, only link classes loaded by the builtin class loaders.
+      bool do_linking = DumpSharedSpaces ? true : !ik->is_shared_unregistered_class();
+      if (do_linking) {
+        // Link the class to cause the bytecodes to be rewritten and the
+        // cpcache to be created. Class verification is done according
+        // to -Xverify setting.
+        _made_progress |= MetaspaceShared::try_link_class(ik, THREAD);
+        guarantee(!HAS_PENDING_EXCEPTION, "exception in link_class");
 
-      ik->constants()->resolve_class_constants(THREAD);
-    }
-  }
-};
-
-class CheckSharedClassesClosure : public KlassClosure {
-  bool    _made_progress;
- public:
-  CheckSharedClassesClosure() : _made_progress(false) {}
-
-  void reset()               { _made_progress = false; }
-  bool made_progress() const { return _made_progress; }
-  void do_klass(Klass* k) {
-    if (k->is_instance_klass() && InstanceKlass::cast(k)->check_sharing_error_state()) {
-      _made_progress = true;
+        if (DumpSharedSpaces) {
+          // The following function is used to resolve all Strings in the statically
+          // dumped classes to archive all the Strings. The archive heap is not supported
+          // for the dynamic archive.
+          ik->constants()->resolve_class_constants(THREAD);
+        }
+      }
     }
   }
 };
@@ -1735,18 +1731,6 @@ void MetaspaceShared::link_and_cleanup_shared_classes(TRAPS) {
     ClassLoaderDataGraph::unlocked_loaded_classes_do(&link_closure);
     guarantee(!HAS_PENDING_EXCEPTION, "exception in link_class");
   } while (link_closure.made_progress());
-
-  if (_has_error_classes) {
-    // Mark all classes whose super class or interfaces failed verification.
-    CheckSharedClassesClosure check_closure;
-    do {
-      // Not completely sure if we need to do this iteratively. Anyway,
-      // we should come here only if there are unverifiable classes, which
-      // shouldn't happen in normal cases. So better safe than sorry.
-      check_closure.reset();
-      ClassLoaderDataGraph::unlocked_loaded_classes_do(&check_closure);
-    } while (check_closure.made_progress());
-  }
 }
 
 void MetaspaceShared::prepare_for_dumping() {
@@ -1873,10 +1857,11 @@ int MetaspaceShared::preload_classes(const char* class_list_path, TRAPS) {
 
 // Returns true if the class's status has changed
 bool MetaspaceShared::try_link_class(InstanceKlass* ik, TRAPS) {
-  assert(DumpSharedSpaces, "should only be called during dumping");
-  if (ik->init_state() < InstanceKlass::linked) {
+  Arguments::assert_is_dumping_archive();
+  if (ik->init_state() < InstanceKlass::linked &&
+      !SystemDictionaryShared::has_class_failed_verification(ik)) {
     bool saved = BytecodeVerificationLocal;
-    if (ik->loader_type() == 0 && ik->class_loader() == NULL) {
+    if (ik->is_shared_unregistered_class() && ik->class_loader() == NULL) {
       // The verification decision is based on BytecodeVerificationRemote
       // for non-system classes. Since we are using the NULL classloader
       // to load non-system classes for customized class loaders during dumping,
@@ -1892,7 +1877,7 @@ bool MetaspaceShared::try_link_class(InstanceKlass* ik, TRAPS) {
       log_warning(cds)("Preload Warning: Verification failed for %s",
                     ik->external_name());
       CLEAR_PENDING_EXCEPTION;
-      ik->set_in_error_state();
+      SystemDictionaryShared::set_class_has_failed_verification(ik);
       _has_error_classes = true;
     }
     BytecodeVerificationLocal = saved;
@@ -2181,8 +2166,8 @@ MapArchiveResult MetaspaceShared::map_archives(FileMapInfo* static_mapinfo, File
           // map_heap_regions() compares the current narrow oop and klass encodings
           // with the archived ones, so it must be done after all encodings are determined.
           static_mapinfo->map_heap_regions();
+          CompressedKlassPointers::set_range(CompressedClassSpaceSize);
         }
-        CompressedKlassPointers::set_range(CompressedClassSpaceSize);
       });
   } else {
     unmap_archive(static_mapinfo);

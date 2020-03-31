@@ -80,7 +80,7 @@ import jdk.javadoc.internal.doclets.formats.html.markup.Head;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlAttr;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlDocument;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
+import jdk.javadoc.internal.doclets.formats.html.markup.TagName;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
 import jdk.javadoc.internal.doclets.formats.html.markup.Links;
 import jdk.javadoc.internal.doclets.formats.html.markup.RawHtml;
@@ -153,6 +153,8 @@ public class HtmlDocletWriter {
      */
     public final HtmlConfiguration configuration;
 
+    protected final SearchIndexItems searchItems;
+
     protected final HtmlOptions options;
 
     protected final Utils utils;
@@ -203,13 +205,14 @@ public class HtmlDocletWriter {
     Map<String, Integer> indexAnchorTable = new HashMap<>();
 
     /**
-     * Constructor to construct the HtmlStandardWriter object.
+     * Creates an {@code HtmlDocletWriter}.
      *
      * @param configuration the configuration for this doclet
      * @param path the file to be generated.
      */
     public HtmlDocletWriter(HtmlConfiguration configuration, DocPath path) {
         this.configuration = configuration;
+        this.searchItems = configuration.searchItems;
         this.options = configuration.getOptions();
         this.contents = configuration.contents;
         this.messages = configuration.messages;
@@ -283,30 +286,6 @@ public class HtmlDocletWriter {
         private static final Pattern docrootPattern =
                 Pattern.compile(Pattern.quote("{@docroot}"), Pattern.CASE_INSENSITIVE);
 
-    /**
-     * Get the script to show or hide the All classes link.
-     *
-     * @param id id of the element to show or hide
-     * @return a content tree for the script
-     */
-    public Content getAllClassesLinkScript(String id) {
-        Script script = new Script("<!--\n" +
-                "  allClassesLink = document.getElementById(")
-                .appendStringLiteral(id)
-                .append(");\n" +
-                "  if(window==top) {\n" +
-                "    allClassesLink.style.display = \"block\";\n" +
-                "  }\n" +
-                "  else {\n" +
-                "    allClassesLink.style.display = \"none\";\n" +
-                "  }\n" +
-                "  //-->\n");
-        Content div = HtmlTree.DIV(script.asContent());
-        Content div_noscript = HtmlTree.DIV(contents.noScriptMessage);
-        Content noScript = HtmlTree.NOSCRIPT(div_noscript);
-        div.add(noScript);
-        return div;
-    }
 
     /**
      * Add method information.
@@ -339,13 +318,13 @@ public class HtmlDocletWriter {
      * Adds the tags information.
      *
      * @param e the Element for which the tags will be generated
-     * @param htmltree the documentation tree to which the tags will be added
+     * @param htmlTree the documentation tree to which the tags will be added
      */
-    protected void addTagsInfo(Element e, Content htmltree) {
+    protected void addTagsInfo(Element e, Content htmlTree) {
         if (options.noComment()) {
             return;
         }
-        Content dl = new HtmlTree(HtmlTag.DL);
+        HtmlTree dl = HtmlTree.DL(HtmlStyle.notes);
         if (utils.isExecutableElement(e) && !utils.isConstructor(e)) {
             addMethodInfo((ExecutableElement)e, dl);
         }
@@ -354,7 +333,7 @@ public class HtmlDocletWriter {
             configuration.tagletManager.getBlockTaglets(e),
                 getTagletWriterInstance(false), output);
         dl.add(output);
-        htmltree.add(dl);
+        htmlTree.add(dl);
     }
 
     /**
@@ -461,7 +440,7 @@ public class HtmlDocletWriter {
                 .setIndex(options.createIndex(), mainBodyScript)
                 .addContent(extraHeadContent);
 
-        Content htmlTree = HtmlTree.HTML(configuration.getLocale().getLanguage(), head.toContent(), body);
+        Content htmlTree = HtmlTree.HTML(configuration.getLocale().getLanguage(), head, body);
         HtmlDocument htmlDocument = new HtmlDocument(htmlComment, htmlTree);
         htmlDocument.write(DocFile.createFileForOutput(configuration, path));
     }
@@ -1324,8 +1303,11 @@ public class HtmlDocletWriter {
      * @param isFirstSentence  true if text is first sentence
      * @return a Content object
      */
-    public Content commentTagsToContent(DocTree holderTag, Element element,
-            List<? extends DocTree> tags, boolean isFirstSentence) {
+    public Content commentTagsToContent(DocTree holderTag,
+                                        Element element,
+                                        List<? extends DocTree> tags,
+                                        boolean isFirstSentence)
+    {
         return commentTagsToContent(holderTag, element, tags, isFirstSentence, false);
     }
 
@@ -1343,13 +1325,16 @@ public class HtmlDocletWriter {
      * @param inSummary       if the comment tags are added into the summary section
      * @return a Content object
      */
-    public Content commentTagsToContent(DocTree holderTag, Element element,
-            List<? extends DocTree> trees, boolean isFirstSentence, boolean inSummary) {
-
+    public Content commentTagsToContent(DocTree holderTag,
+                                        Element element,
+                                        List<? extends DocTree> trees,
+                                        boolean isFirstSentence,
+                                        boolean inSummary)
+    {
         final Content result = new ContentBuilder() {
             @Override
-            public void add(CharSequence text) {
-                super.add(utils.normalizeNewlines(text));
+            public ContentBuilder add(CharSequence text) {
+                return super.add(utils.normalizeNewlines(text));
             }
         };
         CommentHelper ch = utils.getCommentHelper(element);
@@ -1409,7 +1394,7 @@ public class HtmlDocletWriter {
                             quote = "\"";
                             break;
                         case SINGLE:
-                            quote = "\'";
+                            quote = "'";
                             break;
                         default:
                             quote = "";
@@ -2110,7 +2095,7 @@ public class HtmlDocletWriter {
      * @return an HtmlTree for the BODY tag
      */
     public HtmlTree getBody(String title) {
-        HtmlTree body = new HtmlTree(HtmlTag.BODY);
+        HtmlTree body = new HtmlTree(TagName.BODY);
         body.put(HtmlAttr.CLASS, getBodyClass());
 
         this.winTitle = title;

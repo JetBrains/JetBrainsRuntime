@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,15 +113,16 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryMap;
 import org.graalvm.compiler.nodes.memory.MemoryMapNode;
-import org.graalvm.compiler.nodes.memory.MemoryNode;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.MemoryProxy;
+import org.graalvm.compiler.nodes.spi.MemoryEdgeProxy;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -929,13 +930,15 @@ public class SnippetTemplate {
 
             assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
-            new FloatingReadPhase(true, true).apply(snippetCopy);
+            if (((StructuredGraph) replacee.graph()).isAfterFloatingReadPhase()) {
+                new FloatingReadPhase(true, true).apply(snippetCopy);
+            }
 
             if (!guardsStage.requiresValueProxies()) {
                 new RemoveValueProxyPhase().apply(snippetCopy);
             }
 
-            MemoryAnchorNode anchor = snippetCopy.add(new MemoryAnchorNode());
+            MemoryAnchorNode anchor = snippetCopy.add(new MemoryAnchorNode(info.privateLocations));
             snippetCopy.start().replaceAtUsages(InputType.Memory, anchor);
 
             this.snippet = snippetCopy;
@@ -1285,9 +1288,9 @@ public class SnippetTemplate {
         EconomicSet<LocationIdentity> kills = EconomicSet.create(Equivalence.DEFAULT);
         kills.addAll(memoryMap.getLocations());
 
-        if (replacee instanceof MemoryCheckpoint.Single) {
+        if (replacee instanceof SingleMemoryKill) {
             // check if some node in snippet graph also kills the same location
-            LocationIdentity locationIdentity = ((MemoryCheckpoint.Single) replacee).getKilledLocationIdentity();
+            LocationIdentity locationIdentity = ((SingleMemoryKill) replacee).getKilledLocationIdentity();
             if (locationIdentity.isAny()) {
                 assert !(memoryMap.getLastLocationAccess(any()) instanceof MemoryAnchorNode) : replacee + " kills ANY_LOCATION, but snippet does not";
                 // if the replacee kills ANY_LOCATION, the snippet can kill arbitrary locations
@@ -1296,7 +1299,7 @@ public class SnippetTemplate {
             assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
             kills.remove(locationIdentity);
         }
-        assert !(replacee instanceof MemoryCheckpoint.Multi) : replacee + " multi not supported (yet)";
+        assert !(replacee instanceof MultiMemoryKill) : replacee + " multi not supported (yet)";
 
         // remove ANY_LOCATION if it's just a kill by the start node
         if (memoryMap.getLastLocationAccess(any()) instanceof MemoryAnchorNode) {
@@ -1324,7 +1327,7 @@ public class SnippetTemplate {
     private static class MemoryInputMap implements MemoryMap {
 
         private final LocationIdentity locationIdentity;
-        private final MemoryNode lastLocationAccess;
+        private final MemoryKill lastLocationAccess;
 
         MemoryInputMap(ValueNode replacee) {
             if (replacee instanceof MemoryAccess) {
@@ -1338,7 +1341,7 @@ public class SnippetTemplate {
         }
 
         @Override
-        public MemoryNode getLastLocationAccess(LocationIdentity location) {
+        public MemoryKill getLastLocationAccess(LocationIdentity location) {
             if (locationIdentity != null && locationIdentity.equals(location)) {
                 return lastLocationAccess;
             } else {
@@ -1366,15 +1369,15 @@ public class SnippetTemplate {
         }
 
         @Override
-        public MemoryNode getLastLocationAccess(LocationIdentity locationIdentity) {
+        public MemoryKill getLastLocationAccess(LocationIdentity locationIdentity) {
             MemoryMapNode memoryMap = returnNode.getMemoryMap();
             assert memoryMap != null : "no memory map stored for this snippet graph (snippet doesn't have a ReturnNode?)";
-            MemoryNode lastLocationAccess = memoryMap.getLastLocationAccess(locationIdentity);
+            MemoryKill lastLocationAccess = memoryMap.getLastLocationAccess(locationIdentity);
             assert lastLocationAccess != null : locationIdentity;
             if (lastLocationAccess == memoryAnchor) {
                 return super.getLastLocationAccess(locationIdentity);
             } else {
-                return (MemoryNode) duplicates.get(ValueNodeUtil.asNode(lastLocationAccess));
+                return (MemoryKill) duplicates.get(ValueNodeUtil.asNode(lastLocationAccess));
             }
         }
 
@@ -1420,8 +1423,8 @@ public class SnippetTemplate {
     private static LocationIdentity getLocationIdentity(Node node) {
         if (node instanceof MemoryAccess) {
             return ((MemoryAccess) node).getLocationIdentity();
-        } else if (node instanceof MemoryProxy) {
-            return ((MemoryProxy) node).getLocationIdentity();
+        } else if (node instanceof MemoryEdgeProxy) {
+            return ((MemoryEdgeProxy) node).getLocationIdentity();
         } else if (node instanceof MemoryPhiNode) {
             return ((MemoryPhiNode) node).getLocationIdentity();
         } else {
@@ -1439,7 +1442,7 @@ public class SnippetTemplate {
             if (location != null) {
                 for (Position pos : usage.inputPositions()) {
                     if (pos.getInputType() == InputType.Memory && pos.get(usage) == node) {
-                        MemoryNode replacement = map.getLastLocationAccess(location);
+                        MemoryKill replacement = map.getLastLocationAccess(location);
                         if (replacement == null) {
                             assert mayRemoveLocation || LocationIdentity.any().equals(location) ||
                                             CollectionsUtil.anyMatch(info.privateLocations, Predicate.isEqual(location)) : "Snippet " +
@@ -1507,7 +1510,7 @@ public class SnippetTemplate {
             if (returnNode != null && !(replacee instanceof ControlSinkNode)) {
                 ReturnNode returnDuplicate = (ReturnNode) duplicates.get(returnNode);
                 returnValue = returnDuplicate.result();
-                if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryCheckpoint) {
+                if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryKill) {
                     replacer.replace(replacee, null);
                 } else {
                     assert returnValue != null || replacee.hasNoUsages();
@@ -1665,7 +1668,7 @@ public class SnippetTemplate {
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             MemoryAnchorNode anchorDuplicate = null;
             if (memoryAnchor != null) {
-                anchorDuplicate = replaceeGraph.add(new MemoryAnchorNode());
+                anchorDuplicate = replaceeGraph.add(new MemoryAnchorNode(info.privateLocations));
                 replacements.put(memoryAnchor, anchorDuplicate);
             }
             List<Node> floatingNodes = new ArrayList<>(nodes.size() - 2);
@@ -1790,7 +1793,7 @@ public class SnippetTemplate {
             } else if (args.info.isVarargsParameter(i)) {
                 assert args.values[i] instanceof Varargs;
                 Varargs varargs = (Varargs) args.values[i];
-                assert checkVarargs(metaAccess, method, signature, i, args.info.getParameterName(i), varargs);
+                assert checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
             }
         }
         return true;

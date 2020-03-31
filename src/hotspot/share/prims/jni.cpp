@@ -32,6 +32,7 @@
 #include "classfile/classLoader.hpp"
 #include "classfile/javaClasses.hpp"
 #include "classfile/javaClasses.inline.hpp"
+#include "classfile/moduleEntry.hpp"
 #include "classfile/modules.hpp"
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
@@ -397,13 +398,13 @@ JNI_ENTRY(jclass, jni_FindClass(JNIEnv *env, const char *name))
     // Special handling to make sure JNI_OnLoad and JNI_OnUnload are executed
     // in the correct class context.
     if (k->class_loader() == NULL &&
-        k->name() == vmSymbols::java_lang_ClassLoader_NativeLibrary()) {
+        k->name() == vmSymbols::jdk_internal_loader_NativeLibraries()) {
       JavaValue result(T_OBJECT);
       JavaCalls::call_static(&result, k,
                              vmSymbols::getFromClass_name(),
                              vmSymbols::void_class_signature(),
                              CHECK_NULL);
-      // When invoked from JNI_OnLoad, NativeLibrary::getFromClass returns
+      // When invoked from JNI_OnLoad, NativeLibraries::getFromClass returns
       // a non-NULL Class object.  When invoked from JNI_OnUnload,
       // it will return NULL to indicate no context.
       oop mirror = (oop) result.get_jobject();
@@ -2540,7 +2541,7 @@ JNI_ENTRY(Return, \
   Return ret = NULL;\
   DT_RETURN_MARK(New##Result##Array, Return, (const Return&)ret);\
 \
-  oop obj= oopFactory::Allocator(len, CHECK_0); \
+  oop obj= oopFactory::Allocator(len, CHECK_NULL); \
   ret = (Return) JNIHandles::make_local(env, obj); \
   return ret;\
 JNI_END
@@ -2811,17 +2812,26 @@ JNI_ENTRY(jint, jni_RegisterNatives(JNIEnv *env, jclass clazz,
 
   Klass* k = java_lang_Class::as_Klass(JNIHandles::resolve_non_null(clazz));
 
-  // There are no restrictions on native code registering native methods, which
-  // allows agents to redefine the bindings to native methods. But we issue a
-  // warning if any code running outside of the boot/platform loader is rebinding
-  // any native methods in classes loaded by the boot/platform loader.
-  Klass* caller = thread->security_get_caller_class(1);
+  // There are no restrictions on native code registering native methods,
+  // which allows agents to redefine the bindings to native methods, however
+  // we issue a warning if any code running outside of the boot/platform
+  // loader is rebinding any native methods in classes loaded by the
+  // boot/platform loader that are in named modules. That will catch changes
+  // to platform classes while excluding classes added to the bootclasspath.
   bool do_warning = false;
-  oop cl = k->class_loader();
-  if (cl ==  NULL || SystemDictionary::is_platform_class_loader(cl)) {
-    // If no caller class, or caller class has a different loader, then
-    // issue a warning below.
-    do_warning = (caller == NULL) || caller->class_loader() != cl;
+
+  // Only instanceKlasses can have native methods
+  if (k->is_instance_klass()) {
+    oop cl = k->class_loader();
+    InstanceKlass* ik = InstanceKlass::cast(k);
+    // Check for a platform class
+    if ((cl ==  NULL || SystemDictionary::is_platform_class_loader(cl)) &&
+        ik->module()->is_named()) {
+      Klass* caller = thread->security_get_caller_class(1);
+      // If no caller class, or caller class has a different loader, then
+      // issue a warning below.
+      do_warning = (caller == NULL) || caller->class_loader() != cl;
+    }
   }
 
 
@@ -3659,7 +3669,17 @@ static void post_thread_start_event(const JavaThread* jt) {
   EventThreadStart event;
   if (event.should_commit()) {
     event.set_thread(JFR_THREAD_ID(jt));
-    event.commit();
+    event.set_parentThread((traceid)0);
+#if INCLUDE_JFR
+    if (EventThreadStart::is_stacktrace_enabled()) {
+      jt->jfr_thread_local()->set_cached_stack_trace_id((traceid)0);
+      event.commit();
+      jt->jfr_thread_local()->clear_cached_stack_trace();
+    } else
+#endif
+    {
+      event.commit();
+    }
   }
 }
 
@@ -3671,7 +3691,8 @@ extern const struct JNIInvokeInterface_ jni_InvokeInterface;
 
 // Global invocation API vars
 volatile int vm_created = 0;
-// Indicate whether it is safe to recreate VM
+// Indicate whether it is safe to recreate VM. Recreation is only
+// possible after a failed initial creation attempt in some cases.
 volatile int safe_to_recreate_vm = 1;
 struct JavaVM_ main_vm = {&jni_InvokeInterface};
 
@@ -3741,8 +3762,14 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
   if (Atomic::xchg(&vm_created, 1) == 1) {
     return JNI_EEXIST;   // already created, or create attempt in progress
   }
+
+  // If a previous creation attempt failed but can be retried safely,
+  // then safe_to_recreate_vm will have been reset to 1 after being
+  // cleared here. If a previous creation attempt succeeded and we then
+  // destroyed that VM, we will be prevented from trying to recreate
+  // the VM in the same process, as the value will still be 0.
   if (Atomic::xchg(&safe_to_recreate_vm, 0) == 0) {
-    return JNI_ERR;  // someone tried and failed and retry not allowed.
+    return JNI_ERR;
   }
 
   assert(vm_created == 1, "vm_created is true during the creation");
@@ -3935,9 +3962,14 @@ static jint attach_current_thread(JavaVM *vm, void **penv, void *_args, bool dae
 
   Thread* t = Thread::current_or_null();
   if (t != NULL) {
-    // If the thread has been attached this operation is a no-op
-    *(JNIEnv**)penv = ((JavaThread*) t)->jni_environment();
-    return JNI_OK;
+    // If executing from an atexit hook we may be in the VMThread.
+    if (t->is_Java_thread()) {
+      // If the thread has been attached this operation is a no-op
+      *(JNIEnv**)penv = ((JavaThread*) t)->jni_environment();
+      return JNI_OK;
+    } else {
+      return JNI_ERR;
+    }
   }
 
   // Create a thread and mark it as attaching so it will be skipped by the
@@ -4035,7 +4067,7 @@ static jint attach_current_thread(JavaVM *vm, void **penv, void *_args, bool dae
 jint JNICALL jni_AttachCurrentThread(JavaVM *vm, void **penv, void *_args) {
   HOTSPOT_JNI_ATTACHCURRENTTHREAD_ENTRY(vm, penv, _args);
   if (vm_created == 0) {
-  HOTSPOT_JNI_ATTACHCURRENTTHREAD_RETURN((uint32_t) JNI_ERR);
+    HOTSPOT_JNI_ATTACHCURRENTTHREAD_RETURN((uint32_t) JNI_ERR);
     return JNI_ERR;
   }
 
@@ -4048,18 +4080,30 @@ jint JNICALL jni_AttachCurrentThread(JavaVM *vm, void **penv, void *_args) {
 
 jint JNICALL jni_DetachCurrentThread(JavaVM *vm)  {
   HOTSPOT_JNI_DETACHCURRENTTHREAD_ENTRY(vm);
+  if (vm_created == 0) {
+    HOTSPOT_JNI_DETACHCURRENTTHREAD_RETURN(JNI_ERR);
+    return JNI_ERR;
+  }
 
   JNIWrapper("DetachCurrentThread");
 
+  Thread* current = Thread::current_or_null();
+
   // If the thread has already been detached the operation is a no-op
-  if (Thread::current_or_null() == NULL) {
+  if (current == NULL) {
     HOTSPOT_JNI_DETACHCURRENTTHREAD_RETURN(JNI_OK);
     return JNI_OK;
   }
 
+  // If executing from an atexit hook we may be in the VMThread.
+  if (!current->is_Java_thread()) {
+    HOTSPOT_JNI_DETACHCURRENTTHREAD_RETURN((uint32_t) JNI_ERR);
+    return JNI_ERR;
+  }
+
   VM_Exit::block_if_vm_exited();
 
-  JavaThread* thread = JavaThread::current();
+  JavaThread* thread = (JavaThread*) current;
   if (thread->has_last_Java_frame()) {
     HOTSPOT_JNI_DETACHCURRENTTHREAD_RETURN((uint32_t) JNI_ERR);
     // Can't detach a thread that's running java, that can't work.

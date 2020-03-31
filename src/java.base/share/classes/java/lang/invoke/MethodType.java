@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,8 +91,9 @@ import static java.lang.invoke.MethodType.fromDescriptor;
  * A method type may be loaded by an {@code ldc} instruction which refers
  * to a suitable {@code CONSTANT_MethodType} constant pool entry.
  * The entry refers to a {@code CONSTANT_Utf8} spelling for the descriptor string.
- * (For full details on method type constants,
- * see sections 4.4.8 and 5.4.3.5 of the Java Virtual Machine Specification.)
+ * (For full details on method type constants, see sections {@jvms
+ * 4.4.8} and {@jvms 5.4.3.5} of the Java Virtual Machine
+ * Specification.)
  * <p>
  * When the JVM materializes a {@code MethodType} from a descriptor string,
  * all classes named in the descriptor must be accessible, and will be loaded.
@@ -1378,12 +1379,12 @@ s.writeObject(this.parameterArray());
 
             /**
              * This implementation returns {@code true} if {@code obj} is another
-             * {@code WeakEntry} whose referent is equals to this referent, or
-             * if {@code obj} is equals to the referent of this. This allows
+             * {@code WeakEntry} whose referent is equal to this referent, or
+             * if {@code obj} is equal to the referent of this. This allows
              * lookups to be made without wrapping in a {@code WeakEntry}.
              *
              * @param obj the object to compare
-             * @return true if {@code obj} is equals to this or the referent of this
+             * @return true if {@code obj} is equal to this or the referent of this
              * @see MethodType#equals(Object)
              * @see Object#equals(Object)
              */

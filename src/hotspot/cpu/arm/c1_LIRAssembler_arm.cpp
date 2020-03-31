@@ -37,6 +37,7 @@
 #include "oops/objArrayKlass.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "utilities/powerOfTwo.hpp"
 #include "vmreg_arm.inline.hpp"
 
 #define __ _masm->
@@ -290,11 +291,13 @@ void LIR_Assembler::return_op(LIR_Opr result) {
 }
 
 int LIR_Assembler::safepoint_poll(LIR_Opr tmp, CodeEmitInfo* info) {
-  if (info != NULL) {
-    add_debug_info_for_branch(info);
-  }
+
   int offset = __ offset();
-  __ read_polling_page(Rtemp, relocInfo::poll_type);
+  __ get_polling_page(Rtemp);
+  __ relocate(relocInfo::poll_type);
+  add_debug_info_for_branch(info); // help pc_desc_at to find correct scope for current PC
+  __ ldr(Rtemp, Address(Rtemp));
+
   return offset;
 }
 

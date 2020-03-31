@@ -28,7 +28,6 @@ package jdk.javadoc.internal.doclets.formats.html;
 import jdk.javadoc.internal.doclets.formats.html.markup.Head;
 
 import java.io.*;
-import java.util.List;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ModuleElement;
@@ -37,10 +36,9 @@ import javax.lang.model.element.TypeElement;
 import javax.tools.FileObject;
 
 import jdk.javadoc.doclet.DocletEnvironment;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlAttr;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlDocument;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
+import jdk.javadoc.internal.doclets.formats.html.markup.TagName;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
 import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
 import jdk.javadoc.internal.doclets.toolkit.Content;
@@ -212,7 +210,7 @@ public class SourceToHTMLConverter {
                     .resolve(configuration.docPaths.forPackage(te))
                     .invert();
             Content body = getHeader();
-            Content pre = new HtmlTree(HtmlTag.PRE);
+            Content pre = new HtmlTree(TagName.PRE);
             try (LineNumberReader reader = new LineNumberReader(r)) {
                 while ((line = reader.readLine()) != null) {
                     addLineNo(pre, lineno);
@@ -245,8 +243,7 @@ public class SourceToHTMLConverter {
                 .setGenerator(HtmlDocletWriter.getGenerator(getClass()))
                 .addDefaultScript(false)
                 .setStylesheets(configuration.getMainStylesheet(), configuration.getAdditionalStylesheets());
-        Content htmlTree = HtmlTree.HTML(configuration.getLocale().getLanguage(),
-                head.toContent(), body);
+        Content htmlTree = HtmlTree.HTML(configuration.getLocale().getLanguage(), head, body);
         HtmlDocument htmlDocument = new HtmlDocument(htmlTree);
         messages.notice("doclet.Generating_0", path.getPath());
         htmlDocument.write(DocFile.createFileForOutput(configuration, path));
@@ -273,16 +270,13 @@ public class SourceToHTMLConverter {
     }
 
     protected void addStylesheets(Content tree) {
-        List<String> stylesheets = options.additionalStylesheets();
-        if (!stylesheets.isEmpty()) {
-            stylesheets.forEach((ssheet) -> {
-                DocFile file = DocFile.createFileForInput(configuration, ssheet);
-                DocPath ssheetPath = DocPath.create(file.getName());
-                HtmlTree slink = HtmlTree.LINK("stylesheet", "text/css", relativePath.resolve(ssheetPath).getPath(),
-                        "Style");
-                tree.add(slink);
-            });
-        }
+        options.additionalStylesheets().forEach(css -> {
+            DocFile file = DocFile.createFileForInput(configuration, css);
+            DocPath cssPath = DocPath.create(file.getName());
+            HtmlTree slink = HtmlTree.LINK("stylesheet", "text/css", relativePath.resolve(cssPath).getPath(),
+                                           "Style");
+            tree.add(slink);
+        });
     }
 
     /**
@@ -291,7 +285,7 @@ public class SourceToHTMLConverter {
      * @return the header content for the HTML file
      */
     private static Content getHeader() {
-        return new HtmlTree(HtmlTag.BODY).put(HtmlAttr.CLASS, "source");
+        return new HtmlTree(TagName.BODY).setStyle(HtmlStyle.source);
     }
 
     /**
@@ -301,7 +295,7 @@ public class SourceToHTMLConverter {
      * @param lineno The line number
      */
     private static void addLineNo(Content pre, int lineno) {
-        HtmlTree span = new HtmlTree(HtmlTag.SPAN);
+        HtmlTree span = new HtmlTree(TagName.SPAN);
         span.setStyle(HtmlStyle.sourceLineNo);
         if (lineno < 10) {
             span.add("00" + Integer.toString(lineno));

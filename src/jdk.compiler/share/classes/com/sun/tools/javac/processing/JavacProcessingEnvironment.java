@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1636,6 +1636,11 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
                 }
                 if (node.sym != null) {
                     node.sym.completer = new ImplicitCompleter(topLevel);
+                    List<? extends RecordComponent> recordComponents = node.sym.getRecordComponents();
+                    for (RecordComponent rc : recordComponents) {
+                        List<JCAnnotation> originalAnnos = rc.getOriginalAnnos();
+                        originalAnnos.stream().forEach(a -> visitAnnotation(a));
+                    }
                 }
                 node.sym = null;
             }
@@ -1758,7 +1763,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
             pkg = s;
         } else {
             String moduleName = s.substring(0, slash);
-            if (!SourceVersion.isIdentifier(moduleName)) {
+            if (!SourceVersion.isName(moduleName)) {
                 return warnAndNoMatches(s, p, log, lint);
             }
             module = Pattern.quote(moduleName + "/");

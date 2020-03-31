@@ -46,6 +46,7 @@
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "utilities/macros.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 // Implementation of AddressLiteral
 
@@ -2053,6 +2054,7 @@ void MacroAssembler::fast_unlock(Register Roop, Register Rbox, Register Rscratch
   bind(done);
 
 }
+#endif // COMPILER2
 
 void MacroAssembler::safepoint_poll(Register tmp1, Label& slow_path) {
   if (SafepointMechanism::uses_thread_local_poll()) {
@@ -2080,5 +2082,3 @@ void MacroAssembler::read_polling_page(Register dest, relocInfo::relocType rtype
   ldr(dest, Address(dest));
 }
 
-
-#endif // COMPILER2

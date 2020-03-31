@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,6 +74,7 @@
 #include "utilities/elfFile.hpp"
 #include "utilities/growableArray.hpp"
 #include "utilities/macros.hpp"
+#include "utilities/powerOfTwo.hpp"
 #include "utilities/vmError.hpp"
 
 // put OS-includes here
@@ -717,9 +718,8 @@ void os::Linux::expand_stack_to(address bottom) {
 bool os::Linux::manually_expand_stack(JavaThread * t, address addr) {
   assert(t!=NULL, "just checking");
   assert(t->osthread()->expanding_stack(), "expand should be set");
-  assert(t->stack_base() != NULL, "stack_base was not initialized");
 
-  if (addr <  t->stack_base() && addr >= t->stack_reserved_zone_base()) {
+  if (t->is_in_usable_stack(addr)) {
     sigset_t mask_all, old_sigset;
     sigfillset(&mask_all);
     pthread_sigmask(SIG_SETMASK, &mask_all, &old_sigset);
@@ -2301,6 +2301,19 @@ void os::Linux::print_proc_sys_info(outputStream* st) {
 void os::Linux::print_full_memory_info(outputStream* st) {
   st->print("\n/proc/meminfo:\n");
   _print_ascii_file("/proc/meminfo", st);
+  st->cr();
+
+  // some information regarding THPs; for details see
+  // https://www.kernel.org/doc/Documentation/vm/transhuge.txt
+  st->print_cr("/sys/kernel/mm/transparent_hugepage/enabled:");
+  if (!_print_ascii_file("/sys/kernel/mm/transparent_hugepage/enabled", st)) {
+    st->print_cr("  <Not Available>");
+  }
+  st->cr();
+  st->print_cr("/sys/kernel/mm/transparent_hugepage/defrag (defrag/compaction efforts parameter):");
+  if (!_print_ascii_file("/sys/kernel/mm/transparent_hugepage/defrag", st)) {
+    st->print_cr("  <Not Available>");
+  }
   st->cr();
 }
 
@@ -4319,7 +4332,7 @@ int os::java_to_os_priority[CriticalPriority + 1] = {
 static int prio_init() {
   if (ThreadPriorityPolicy == 1) {
     if (geteuid() != 0) {
-      if (!FLAG_IS_DEFAULT(ThreadPriorityPolicy)) {
+      if (!FLAG_IS_DEFAULT(ThreadPriorityPolicy) && !FLAG_IS_JIMAGE_RESOURCE(ThreadPriorityPolicy)) {
         warning("-XX:ThreadPriorityPolicy=1 may require system level permission, " \
                 "e.g., being the root user. If the necessary permission is not " \
                 "possessed, changes to priority will be silently ignored.");
@@ -5126,8 +5139,9 @@ void os::Linux::numa_init() {
   } else {
     if ((Linux::numa_max_node() < 1) || Linux::is_bound_to_single_node()) {
       // If there's only one node (they start from 0) or if the process
-      // is bound explicitly to a single node using membind, disable NUMA.
-      UseNUMA = false;
+      // is bound explicitly to a single node using membind, disable NUMA unless
+      // user explicilty forces NUMA optimizations on single-node/UMA systems
+      UseNUMA = ForceNUMA;
     } else {
 
       LogTarget(Info,os) log;
@@ -5165,10 +5179,6 @@ void os::Linux::numa_init() {
       UseAdaptiveSizePolicy = false;
       UseAdaptiveNUMAChunkSizing = false;
     }
-  }
-
-  if (!UseNUMA && ForceNUMA) {
-    UseNUMA = true;
   }
 }
 

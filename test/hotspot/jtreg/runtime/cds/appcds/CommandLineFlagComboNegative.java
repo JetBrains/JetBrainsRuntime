@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@
  *          E.g. use compressed oops for creating and archive, but then
  *               execute w/o compressed oops
  * @requires vm.cds
+ * @requires vm.bits == 64 & vm.opt.final.UseCompressedOops == true
  * @library /test/lib
  * @compile test-classes/Hello.java
  * @run driver CommandLineFlagComboNegative
@@ -58,19 +59,16 @@ public class CommandLineFlagComboNegative {
     private ArrayList<TestVector> testTable = new ArrayList<TestVector>();
 
     private void initTestTable() {
-        // These options are not applicable on 32-bit platforms
-        if (Platform.is64bit()) {
-            testTable.add( new TestVector("-XX:ObjectAlignmentInBytes=8", "-XX:ObjectAlignmentInBytes=16",
+        testTable.add( new TestVector("-XX:ObjectAlignmentInBytes=8", "-XX:ObjectAlignmentInBytes=16",
+            "An error has occurred while processing the shared archive file", 1) );
+        if (!TestCommon.isDynamicArchive()) {
+            testTable.add( new TestVector("-XX:ObjectAlignmentInBytes=64", "-XX:ObjectAlignmentInBytes=32",
                 "An error has occurred while processing the shared archive file", 1) );
-            if (!TestCommon.isDynamicArchive()) {
-                testTable.add( new TestVector("-XX:ObjectAlignmentInBytes=64", "-XX:ObjectAlignmentInBytes=32",
-                    "An error has occurred while processing the shared archive file", 1) );
-            }
-            testTable.add( new TestVector("-XX:+UseCompressedOops", "-XX:-UseCompressedOops",
-                "Class data sharing is inconsistent with other specified options", 1) );
-            testTable.add( new TestVector("-XX:+UseCompressedClassPointers", "-XX:-UseCompressedClassPointers",
-                "Class data sharing is inconsistent with other specified options", 1) );
         }
+        testTable.add( new TestVector("-XX:+UseCompressedOops", "-XX:-UseCompressedOops",
+            "The saved state of UseCompressedOops and UseCompressedClassPointers is different from runtime, CDS will be disabled.", 1) );
+        testTable.add( new TestVector("-XX:+UseCompressedClassPointers", "-XX:-UseCompressedClassPointers",
+           "The saved state of UseCompressedOops and UseCompressedClassPointers is different from runtime, CDS will be disabled.", 1) );
     }
 
     private void runTests() throws Exception
@@ -88,6 +86,7 @@ public class CommandLineFlagComboNegative {
             TestCommon.run(
                 "-cp", appJar,
                 testEntry.testOptionForExecuteStep,
+                "-Xlog:cds", // for checking log message
                 "Hello")
                 .assertAbnormalExit(output -> {
                     output.shouldContain(testEntry.expectedErrorMsg)
