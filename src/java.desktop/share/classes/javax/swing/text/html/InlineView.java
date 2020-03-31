@@ -235,32 +235,32 @@ public class InlineView extends LabelView {
         if (axis == View.X_AXIS && wrapAnywhere) {
             if (wrapAnywhereMinimumSpan < 0) {
                 wrapAnywhereMinimumSpan = 0;
-                BreakIterator breaker = getCharacterBreakIterator();
-                int[] breakSpots = calcBreakSpots(breaker);
-                int lastBreak = getEndOffset();
-                for (int breakSpot : breakSpots) {
+                int startOffset = getStartOffset();
+                int endOffset = getEndOffset();
+                Document doc = getDocument();
+                if ((doc != null) && Boolean.TRUE.equals(doc.getProperty(HTMLDocument.MultiByteProperty))) {
+                    Container c = getContainer();
+                    Locale locale = (c == null ? Locale.getDefault() : c.getLocale());
+                    BreakIterator breaker = BreakIterator.getCharacterInstance(locale);
+                    int[] breakSpots = calcBreakSpots(breaker);
+                    int lastBreak = endOffset;
+                    for (int breakSpot : breakSpots) {
+                        wrapAnywhereMinimumSpan = Math.max(wrapAnywhereMinimumSpan,
+                                getPartialSpan(breakSpot, lastBreak));
+                        lastBreak = breakSpot;
+                    }
                     wrapAnywhereMinimumSpan = Math.max(wrapAnywhereMinimumSpan,
-                            getPartialSpan(breakSpot, lastBreak));
-                    lastBreak = breakSpot;
+                            getPartialSpan(startOffset, lastBreak));
+                } else {
+                    for (int i = startOffset ; i < endOffset; i++) {
+                        wrapAnywhereMinimumSpan = Math.max(wrapAnywhereMinimumSpan,
+                                getPartialSpan(i, i + 1));
+                    }
                 }
-                wrapAnywhereMinimumSpan = Math.max(wrapAnywhereMinimumSpan,
-                        getPartialSpan(getStartOffset(), lastBreak));
             }
             return wrapAnywhereMinimumSpan;
         }
         return super.getMinimumSpan(axis);
-    }
-
-    private BreakIterator getCharacterBreakIterator() {
-        Document doc = getDocument();
-        if ((doc != null) && Boolean.TRUE.equals(
-                doc.getProperty(HTMLDocument.MultiByteProperty))) {
-            Container c = getContainer();
-            Locale locale = (c == null ? Locale.getDefault() : c.getLocale());
-            return BreakIterator.getCharacterInstance(locale);
-        } else {
-            return new CharacterBreakIterator();
-        }
     }
 
     private float wrapAnywhereMinimumSpan = -1;
