@@ -42,6 +42,7 @@ import javax.swing.text.*;
 class LineView extends ParagraphView {
     /** Last place painted at. */
     int tabBase;
+    private boolean wrap;
 
     /**
      * Creates a LineView object.
@@ -71,7 +72,7 @@ class LineView extends ParagraphView {
      * @see View#getPreferredSpan
      */
     public float getMinimumSpan(int axis) {
-        return getPreferredSpan(axis);
+        return wrap ? super.getMinimumSpan(axis) : getPreferredSpan(axis);
     }
 
     /**
@@ -120,7 +121,7 @@ class LineView extends ParagraphView {
      *   is the height inside of the inset area.
      */
     protected void layout(int width, int height) {
-        super.layout(Integer.MAX_VALUE - 1, height);
+        super.layout(wrap ? width : Integer.MAX_VALUE - 1, height);
     }
 
     /**
@@ -183,5 +184,11 @@ class LineView extends ParagraphView {
      */
     protected int getCharactersPerTab() {
         return 8;
+    }
+
+    protected void setPropertiesFromAttributes() {
+        super.setPropertiesFromAttributes();
+        View parent = getParent();
+        wrap = parent != null && parent.getAttributes().containsAttribute(CSS.Attribute.WHITE_SPACE, "pre-wrap");
     }
 }
