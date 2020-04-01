@@ -828,6 +828,7 @@ security/infra/java/security/cert/CertPathValidator/certification/DTrustCA.java 
 security/infra/java/security/cert/CertPathValidator/certification/LetsEncryptCA.java 8194170 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/QuoVadisCA.java   8194170 generic-all
 
+sun/security/lib/cacerts/VerifyCACerts.java                                         8240268 generic-all
 sun/security/pkcs11/ec/TestKeyFactory.java                                          8026976 generic-all
 sun/security/pkcs11/Secmod/AddTrustedCert.java                                      8180837 generic-all
 sun/security/pkcs11/tls/TestKeyMaterial.java                                        8180837 generic-all
