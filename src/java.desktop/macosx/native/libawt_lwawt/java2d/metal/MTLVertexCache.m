@@ -93,10 +93,9 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
                                                 atIndex:MeshVertexBuffer];
 
         [encoder setFragmentTexture:maskCacheTex.texture atIndex: 0];
-        for (int i = 0; i < maskCacheIndex; i++) {
-            J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache : draw texture at index %d", i);
-            [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:i*6 vertexCount:6];
-        }
+        J2dTraceLn1(J2D_TRACE_INFO,
+            "MTLVertexCache_FlushVertexCache : encode %d characters", (vertexCacheIndex / 6));
+        [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vertexCacheIndex];
     }
     vertexCacheIndex = 0;
     maskCacheIndex = 0;
@@ -118,10 +117,9 @@ MTLVertexCache_FlushGlyphVertexCache()
                                                 atIndex:MeshVertexBuffer];
         id<MTLTexture> glyphCacheTex = MTLTR_GetGlyphCacheTexture();
         [encoder setFragmentTexture:glyphCacheTex atIndex: 0];
-        for (int i = 0; i < vertexCacheIndex; i = i + 6) {
-            J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_FlushGlyphVertexCache : draw texture at index %d", (int)(i + 1)/6);
-            [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:i vertexCount:6];
-        }
+        J2dTraceLn1(J2D_TRACE_INFO,
+            "MTLVertexCache_FlushGlyphVertexCache : encode %d characters", (vertexCacheIndex / 6));
+        [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vertexCacheIndex];
     }
     vertexCacheIndex = 0;
 }
