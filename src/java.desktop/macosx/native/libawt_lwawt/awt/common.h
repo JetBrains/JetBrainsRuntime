@@ -70,6 +70,7 @@ struct TxtFrameUniforms {
     int mode;
     int isSrcOpaque;
     int isDstOpaque;
+    float extraAlpha;
 };
 
 struct AnchorData
