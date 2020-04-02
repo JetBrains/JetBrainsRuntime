@@ -4,6 +4,8 @@
 #import "MTLUtils.h"
 #include "MTLSurfaceDataBase.h"
 
+@class MTLComposite;
+
 /**
  * The MTLPipelineStatesStorage class used to obtain MTLRenderPipelineState
  * */
@@ -49,6 +51,16 @@ NSMutableDictionary<NSString*, id<MTLFunction>> * shaders;
                                  vertexShaderId:(NSString *)vertexShaderId
                                fragmentShaderId:(NSString *)fragmentShaderId
                                   compositeRule:(jint)compositeRule
+                                           isAA:(jboolean)isAA
+                                       srcFlags:(const SurfaceRasterFlags *)srcFlags
+                                       dstFlags:(const SurfaceRasterFlags *)dstFlags
+                                  stencilNeeded:(bool)stencilNeeded;
+
+- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
+                                 vertexShaderId:(NSString *)vertexShaderId
+                               fragmentShaderId:(NSString *)fragmentShaderId
+                                  compositeRule:(jint)compositeRule
+                                      composite:(MTLComposite*)composite
                                            isAA:(jboolean)isAA
                                        srcFlags:(const SurfaceRasterFlags *)srcFlags
                                        dstFlags:(const SurfaceRasterFlags *)dstFlags
