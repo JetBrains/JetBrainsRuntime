@@ -391,7 +391,10 @@ void CompileTask::log_task_done(CompileLog* log) {
 
   if (!_is_success) {
     const char* reason = _failure_reason != NULL ? _failure_reason : "unknown";
-    log->elem("failure reason='%s'", reason);
+    log->begin_elem("failure reason='");
+    log->text("%s", reason);
+    log->print("'");
+    log->end_elem();
   }
 
   // <task_done ... stamp='1.234'>  </task>
