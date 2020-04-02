@@ -304,8 +304,8 @@ final class CPlatformResponder {
         // otherwise, we use char ignoring modifiers
         int[] in = new int[] {
                 characterToGetKeyCode,
-                nsEvent.getModifierFlags(),
                 nsEvent.isHasDeadKey() ? 1 : 0,
+                nsEvent.getModifierFlags(),
                 nsEvent.getKeyCode()
         };
 
