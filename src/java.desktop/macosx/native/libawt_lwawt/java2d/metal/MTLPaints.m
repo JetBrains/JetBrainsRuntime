@@ -33,6 +33,7 @@
 
 #include "sun_java2d_SunGraphics2D.h"
 #include "sun_java2d_pipe_BufferedPaints.h"
+#import "MTLComposite.h"
 
 #define RGBA_TO_V4(c)              \
 {                                  \
@@ -314,7 +315,7 @@ static void initTemplatePipelineDescriptors() {
         [encoder setFragmentTexture:_paintTexture atIndex: 1];
 
         struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0, srcFlags->isOpaque,
-                                      dstFlags->isOpaque};
+                                      dstFlags->isOpaque, [composite getExtraAlpha]};
         [encoder setFragmentBytes:&uf length:sizeof(uf)
                           atIndex:FrameUniformBuffer];
 
@@ -351,6 +352,7 @@ static void initTemplatePipelineDescriptors() {
                                       vertexShaderId:@"vert_txt"
                                     fragmentShaderId:@"frag_txt"
                                        compositeRule:[composite getRule]
+                                           composite:composite
                                                 isAA:JNI_FALSE
                                             srcFlags:srcFlags
                                             dstFlags:dstFlags
@@ -358,10 +360,12 @@ static void initTemplatePipelineDescriptors() {
         }
 
         if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-          struct TxtFrameUniforms uf = {RGBA_TO_V4(_color), 1, srcFlags->isOpaque, dstFlags->isOpaque };
+          struct TxtFrameUniforms uf = {RGBA_TO_V4(_color), 1,
+                  srcFlags->isOpaque, dstFlags->isOpaque, [composite getExtraAlpha]};
           [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
         } else {
-          struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0, srcFlags->isOpaque, dstFlags->isOpaque };
+          struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0,
+                  srcFlags->isOpaque, dstFlags->isOpaque, [composite getExtraAlpha]};
           [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
         }
       }
@@ -437,10 +441,12 @@ static void initTemplatePipelineDescriptors() {
                                            stencilNeeded:stencil];
 
         if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-            struct TxtFrameUniforms uf = {RGBA_TO_V4(_color ^ xorColor), 1, srcFlags->isOpaque, dstFlags->isOpaque };
+            struct TxtFrameUniforms uf = {RGBA_TO_V4(_color ^ xorColor), 1,
+                    srcFlags->isOpaque, dstFlags->isOpaque, [composite getExtraAlpha]};
             [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
         } else {
-            struct TxtFrameUniforms uf = {RGBA_TO_V4(0 ^ xorColor), 0, srcFlags->isOpaque, dstFlags->isOpaque };
+            struct TxtFrameUniforms uf = {RGBA_TO_V4(0 ^ xorColor), 0,
+                    srcFlags->isOpaque, dstFlags->isOpaque, [composite getExtraAlpha]};
             [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
         }
         [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
