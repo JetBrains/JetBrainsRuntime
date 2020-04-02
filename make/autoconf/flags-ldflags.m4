@@ -72,8 +72,9 @@ AC_DEFUN([FLAGS_SETUP_LDFLAGS_HELPER],
     fi
 
     # Add -z defs, to forbid undefined symbols in object files.
-    # add relro (mark relocations read only) for all libs
-    BASIC_LDFLAGS="$BASIC_LDFLAGS -Wl,-z,defs -Wl,-z,relro"
+    # add -z,relro (mark relocations read only) for all libs
+    # add -z,now ("full relro" - more of the Global Offset Table GOT is marked read only)
+    BASIC_LDFLAGS="$BASIC_LDFLAGS -Wl,-z,defs -Wl,-z,relro -Wl,-z,now"
     # s390x : remove unused code+data in link step
     if test "x$OPENJDK_TARGET_CPU" = xs390x; then
       BASIC_LDFLAGS="$BASIC_LDFLAGS -Wl,--gc-sections -Wl,--print-gc-sections"
@@ -126,10 +127,6 @@ AC_DEFUN([FLAGS_SETUP_LDFLAGS_HELPER],
     if test "x$OPENJDK_TARGET_OS" = xlinux; then
       if test x$DEBUG_LEVEL = xrelease; then
         DEBUGLEVEL_LDFLAGS_JDK_ONLY="$DEBUGLEVEL_LDFLAGS_JDK_ONLY -Wl,-O1"
-      fi
-      if test x$DEBUG_LEVEL = xslowdebug; then
-        # do relocations at load
-        DEBUGLEVEL_LDFLAGS="-Wl,-z,now"
       fi
     fi
 
