@@ -1,6 +1,7 @@
 #import "MTLPipelineStatesStorage.h"
 
 #include "GraphicsPrimitiveMgr.h"
+#import "MTLComposite.h"
 
 // A special value for xor composite
 const int XOR_COMPOSITE_RULE = 20;
@@ -10,6 +11,7 @@ extern const SurfaceRasterFlags defaultRasterFlags;
 static void setBlendingFactors(
         MTLRenderPipelineColorAttachmentDescriptor * cad,
         int compositeRule,
+        MTLComposite* composite,
         const SurfaceRasterFlags * srcFlags, const SurfaceRasterFlags * dstFlags);
 
 @implementation MTLPipelineStatesStorage
@@ -100,6 +102,25 @@ static void setBlendingFactors(
             stencilNeeded:stencilNeeded];
 }
 
+- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
+                                 vertexShaderId:(NSString *)vertexShaderId
+                               fragmentShaderId:(NSString *)fragmentShaderId
+                                  compositeRule:(jint)compositeRule
+                                           isAA:(jboolean)isAA
+                                       srcFlags:(const SurfaceRasterFlags *)srcFlags
+                                       dstFlags:(const SurfaceRasterFlags *)dstFlags
+                                  stencilNeeded:(bool)stencilNeeded;
+{
+    return [self getPipelineState:pipelineDescriptor
+                   vertexShaderId:vertexShaderId
+                 fragmentShaderId:fragmentShaderId
+                    compositeRule:compositeRule
+                        composite:nil
+                             isAA:isAA
+                         srcFlags:srcFlags
+                         dstFlags:dstFlags
+                    stencilNeeded:stencilNeeded];
+}
 
 // Base method to obtain MTLRenderPipelineState.
 // NOTE: parameters compositeRule, srcFlags, dstFlags are used to set MTLRenderPipelineColorAttachmentDescriptor multipliers
@@ -107,6 +128,7 @@ static void setBlendingFactors(
                                  vertexShaderId:(NSString *)vertexShaderId
                                fragmentShaderId:(NSString *)fragmentShaderId
                                   compositeRule:(jint)compositeRule
+                                      composite:(MTLComposite*) composite
                                            isAA:(jboolean)isAA
                                        srcFlags:(const SurfaceRasterFlags *)srcFlags
                                        dstFlags:(const SurfaceRasterFlags *)dstFlags
@@ -144,6 +166,10 @@ static void setBlendingFactors(
     if (isAA) {
         subIndex |= 1 << 5;
     }
+
+    if ((composite != nil && FLT_LT([composite getExtraAlpha], 1.0f))) {
+        subIndex |= 1 << 6;
+    }
     int index = compositeRule*64 + subIndex;
 
     NSPointerArray * subStates = [self getSubStates:vertexShaderId fragmentShader:fragmentShaderId];
@@ -167,10 +193,14 @@ static void setBlendingFactors(
                 pipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOneMinusDestinationColor;
                 pipelineDesc.colorAttachments[0].destinationRGBBlendFactor =  MTLBlendFactorOneMinusSourceColor;
 
-            } else if (useComposite) {
+            } else if (useComposite ||
+                       (composite != nil  &&
+                        FLT_GE([composite getExtraAlpha], 1.0f)))
+            {
                 setBlendingFactors(
                         pipelineDesc.colorAttachments[0],
                         compositeRule,
+                        composite,
                         srcFlags, dstFlags
                 );
             }
@@ -231,6 +261,7 @@ static void setBlendingFactors(
 static void setBlendingFactors(
         MTLRenderPipelineColorAttachmentDescriptor * cad,
         int compositeRule,
+        MTLComposite* composite,
         const SurfaceRasterFlags * srcFlags,
         const SurfaceRasterFlags * dstFlags
 ) {
@@ -258,7 +289,10 @@ static void setBlendingFactors(
         case RULE_SrcOver: {
             // Ar = As + Ad*(1-As)
             // Cr = Cs + Cd*(1-As)
-            if (srcFlags->isOpaque) {
+            if (srcFlags->isOpaque &&
+                (composite == nil ||
+                 FLT_GE([composite getExtraAlpha], 1.0f)))
+            {
                 J2dTraceLn(J2D_TRACE_VERBOSE, "rule=RULE_Src, but blending is disabled because src is opaque");
                 cad.blendingEnabled = NO;
                 return;
@@ -274,7 +308,11 @@ static void setBlendingFactors(
             if (!srcFlags->isPremultiplied) {
                 cad.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
             }
+            if (composite != nil && FLT_LT([composite getExtraAlpha], 1.0f)) {
+                cad.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
+            }
             cad.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+
             J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_SrcOver");
             break;
         }

@@ -42,7 +42,7 @@
 #import <Accelerate/Accelerate.h>
 
 //#define TRACE_ISOBLIT
-//#define TRACE_BLIT
+#define TRACE_BLIT
 //#define DEBUG_ISOBLIT
 //#define DEBUG_BLIT
 
@@ -637,8 +637,112 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
                              jint srcx, jint srcy, jint dstx, jint dsty,
                              jint width, jint height)
 {
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_SurfaceToSwBlit -- :TODO");
+    BMTLSDOps *srcOps = (BMTLSDOps *)jlong_to_ptr(pSrcOps);
+    SurfaceDataOps *dstOps = (SurfaceDataOps *)jlong_to_ptr(pDstOps);
+    SurfaceDataRasInfo srcInfo, dstInfo;
+
+    if (dsttype < 0 || dsttype >= sizeof(RasterFormatInfos)/ sizeof(MTLRasterFormatInfo)) {
+        J2dTraceLn1(J2D_TRACE_ERROR, "MTLBlitLoops_SurfaceToSwBlit: destination pixel format %d isn't supported", dsttype);
+        return;
+    }
+
+    MTLRasterFormatInfo pf = RasterFormatInfos[dsttype];
+    MTLPixelFormat srcFormat = ((id <MTLTexture>) srcOps->pTexture).pixelFormat;
+    if (srcFormat != pf.format) {
+        J2dTraceLn(J2D_TRACE_ERROR,
+                   "MTLBlitLoops_SurfaceToSwBlit: src->dst pixel format conversion is not supported");
+    }
+
+    J2dTraceLn2(J2D_TRACE_INFO, "MTLBlitLoops_SurfaceToSwBlit: dst.pixelFormat=%d  src.pixelFormat=%d",
+                pf.format, srcFormat);
+
+    if (width <= 0 || height <= 0) {
+        J2dTraceLn(J2D_TRACE_WARNING,
+                   "MTLBlitLoops_SurfaceToSwBlit: dimensions are non-positive");
+        return;
+    }
+
+    RETURN_IF_NULL(srcOps);
+    RETURN_IF_NULL(dstOps);
+    RETURN_IF_NULL(mtlc);
+    RESET_PREVIOUS_OP();
+
+    srcInfo.bounds.x1 = srcx;
+    srcInfo.bounds.y1 = srcy;
+    srcInfo.bounds.x2 = srcx + width;
+    srcInfo.bounds.y2 = srcy + height;
+    dstInfo.bounds.x1 = dstx;
+    dstInfo.bounds.y1 = dsty;
+    dstInfo.bounds.x2 = dstx + width;
+    dstInfo.bounds.y2 = dsty + height;
+
+    if (dstOps->Lock(env, dstOps, &dstInfo, SD_LOCK_WRITE) != SD_SUCCESS) {
+        J2dTraceLn(J2D_TRACE_WARNING,
+                   "OGLBlitLoops_SurfaceToSwBlit: could not acquire dst lock");
+        return;
+    }
+
+    SurfaceData_IntersectBoundsXYXY(&srcInfo.bounds,
+                                    0, 0, srcOps->width, srcOps->height);
+    SurfaceData_IntersectBlitBounds(&dstInfo.bounds, &srcInfo.bounds,
+                                    srcx - dstx, srcy - dsty);
+
+    if (srcInfo.bounds.x2 > srcInfo.bounds.x1 &&
+        srcInfo.bounds.y2 > srcInfo.bounds.y1)
+    {
+        dstOps->GetRasInfo(env, dstOps, &dstInfo);
+        if (dstInfo.rasBase) {
+            void *pDst = dstInfo.rasBase;
+
+            srcx = srcInfo.bounds.x1;
+            srcy = srcInfo.bounds.y1;
+            dstx = dstInfo.bounds.x1;
+            dsty = dstInfo.bounds.y1;
+            width = srcInfo.bounds.x2 - srcInfo.bounds.x1;
+            height = srcInfo.bounds.y2 - srcInfo.bounds.y1;
+
+            pDst = PtrAddBytes(pDst, dstx * dstInfo.pixelStride);
+            pDst = PtrPixelsRow(pDst, dsty, dstInfo.scanStride);
+
+            id<MTLCommandBuffer> cb = [mtlc createBlitCommandBuffer];
+            id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
+
+            id<MTLBuffer> buff =
+                    [mtlc.device newBufferWithLength:width* height * 4
+                                             options:MTLResourceStorageModeShared];
+
+            [blitEncoder copyFromTexture:srcOps->pTexture
+                             sourceSlice:0
+                             sourceLevel:0
+                            sourceOrigin:MTLOriginMake(srcx, srcy, 0)
+                              sourceSize:MTLSizeMake(width, height, 1)
+                                toBuffer:buff
+                       destinationOffset:0
+                  destinationBytesPerRow:width*4
+                destinationBytesPerImage:width * height*4];
+            [blitEncoder endEncoding];
+
+            [cb commit];
+            [cb waitUntilCompleted];
+
+            char* pSrc = buff.contents;
+            for (int i=0; i < height; i++) {
+                memcpy(pDst, pSrc, width*4);
+                pSrc += width*4;
+                pDst += dstInfo.scanStride;
+            }
+
+            [buff release];
+
+            J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx=%d sy=%d w=%d h=%d",
+                        srcx, srcy, width, height);
+            J2dTraceLn2(J2D_TRACE_VERBOSE, "  dx=%d dy=%d",
+                        dstx, dsty);
+
+        }
+        SurfaceData_InvokeRelease(env, dstOps, &dstInfo);
+    }
+    SurfaceData_InvokeUnlock(env, dstOps, &dstInfo);
 }
 
 void

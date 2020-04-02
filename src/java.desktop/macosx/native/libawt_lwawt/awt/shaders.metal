@@ -144,7 +144,10 @@ fragment half4 frag_txt(
         float4 c = mix(pixelColor, uniforms.color, srcA);
         return half4(c.r, c.g, c.b , c.a);
     }
-    return half4(pixelColor.r, pixelColor.g, pixelColor.b, srcA);
+
+    return half4(pixelColor.r,
+                 pixelColor.g,
+                 pixelColor.b, srcA*uniforms.extraAlpha);
 }
 
 fragment half4 frag_txt_tp(TxtShaderInOut vert [[stage_in]],

@@ -5,6 +5,10 @@
 
 #include <jni.h>
 
+#define FLT_ACCURACY (0.99f)
+#define FLT_LT(x,y) ((x) < (y) - FLT_ACCURACY)
+#define FLT_GE(x,y) ((x) >= (y) - FLT_ACCURACY)
+
 /**
  * The MTLComposite class represents composite mode
  * */
@@ -25,6 +29,7 @@
 - (jint)getCompositeState;
 - (jint)getRule;
 - (jint)getXorColor;
+- (jfloat)getExtraAlpha;
 
 - (jboolean)isBlendingDisabled:(jboolean) isSrcOpaque;
 - (NSString *)getDescription; // creates autorelease string
