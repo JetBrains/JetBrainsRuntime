@@ -35,11 +35,13 @@ DIST=dist
 RESOURCES=resources
 
 RENDERPERF_CLASSES = $(CLASSES)/renderperf/RenderPerfTest.class
+RENDERPERFLCD_CLASSES = $(CLASSES)/renderperf/RenderPerfLCDTest.class
 RENDERPERF_SOURCES = $(SOURCEPATH)/renderperf/RenderPerfTest.java
+RENDERPERFLCD_SOURCES = $(SOURCEPATH)/renderperf/RenderPerfLCDTest.java
 
 RENDERPERF_RESOURCES = $(CLASSES)/renderperf/images/duke.png 
 
-all: mkdirs $(DIST)/RenderPerfTest.jar
+all: mkdirs $(DIST)/RenderPerfTest.jar $(DIST)/RenderPerfLCDTest.jar
 
 run: mkdirs $(DIST)/RenderPerfTest.jar
 	java -jar $(DIST)/RenderPerfTest.jar
@@ -49,13 +51,20 @@ $(DIST)/RenderPerfTest.jar: \
 	$(CLASSES)/renderperf.manifest
 	jar cvmf $(CLASSES)/renderperf.manifest $(DIST)/RenderPerfTest.jar -C $(CLASSES) .
 
+$(DIST)/RenderPerfLCDTest.jar: \
+	$(RENDERPERFLCD_CLASSES) $(RENDERPERFLCD_RESOURCES) \
+	$(CLASSES)/renderperflcd.manifest
+	jar cvmf $(CLASSES)/renderperflcd.manifest $(DIST)/RenderPerfLCDTest.jar -C $(CLASSES) .
 
-$(CLASSES)/renderperf/images/%: $(RESOURCES)/images/%
+$(CLASSES)/renderperf/images/%: $(RESOURCES)/renderperf/images/%
 	cp -r $< $@
 
 
 $(CLASSES)/renderperf.manifest:
 	echo "Main-Class: renderperf.RenderPerfTest" > $@
+
+$(CLASSES)/renderperflcd.manifest:
+	echo "Main-Class: renderperf.RenderPerfLCDTest" > $@
 
 $(DIST):
 	mkdir  $(DIST)
@@ -67,6 +76,9 @@ $(CLASSES):
 mkdirs: $(DIST) $(CLASSES)
 
 $(RENDERPERF_CLASSES): $(RENDERPERF_SOURCES)
+	javac -g:none -d $(CLASSES) -sourcepath $(SOURCEPATH) $<
+
+$(RENDERPERFLCD_CLASSES): $(RENDERPERFLCD_SOURCES)
 	javac -g:none -d $(CLASSES) -sourcepath $(SOURCEPATH) $<
 
 clean:
