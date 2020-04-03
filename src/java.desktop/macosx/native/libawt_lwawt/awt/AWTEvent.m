@@ -33,6 +33,7 @@
 
 #import "java_awt_event_InputEvent.h"
 #import "java_awt_event_KeyEvent.h"
+#import "sun_awt_event_KeyEvent.h"
 #import "LWCToolkit.h"
 
 #import "jni_util.h"
@@ -453,38 +454,38 @@ static NSDictionary* getDiacriticUnicharToVkCodeDictionary() {
     dispatch_once(&onceToken, ^{
          diacriticUnicharToVkCodeDictionary =
              [NSDictionary dictionaryWithObjectsAndKeys:
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_GRAVE], @"à",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_ACUTE], @"á",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_CIRCUMFLEX], @"â",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_TILDE], @"ã",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_DIAERESIS], @"ä",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_RING_ABOVE], @"å",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_AE], @"æ",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_C_WITH_CEDILLA], @"ç",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_GRAVE], @"è",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_ACUTE], @"é",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_CIRCUMFLEX], @"ê",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_DIAERESIS], @"ë",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_GRAVE], @"ì",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_ACUTE], @"í",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_CIRCUMFLEX], @"î",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_DIAERESIS], @"ï",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ETH], @"ð",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_N_WITH_TILDE], @"ñ",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_GRAVE], @"ò",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_ACUTE], @"ó",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_CIRCUMFLEX], @"ô",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_TILDE], @"õ",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_DIAERESIS], @"ö",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DIVISION_SIGN], @"÷",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_SLASH], @"ø",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_GRAVE], @"ù",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_ACUTE], @"ú",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_CIRCUMFLEX], @"û",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_DIAERESIS], @"ü",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_Y_WITH_ACUTE], @"ý",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_THORN], @"þ",
-                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_Y_WITH_DIAERESIS], @"ÿ",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_A_WITH_GRAVE], @"à",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_A_WITH_ACUTE], @"á",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_A_WITH_CIRCUMFLEX], @"â",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_A_WITH_TILDE], @"ã",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_A_WITH_DIAERESIS], @"ä",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_A_WITH_RING_ABOVE], @"å",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_AE], @"æ",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_C_WITH_CEDILLA], @"ç",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_E_WITH_GRAVE], @"è",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_E_WITH_ACUTE], @"é",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_E_WITH_CIRCUMFLEX], @"ê",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_E_WITH_DIAERESIS], @"ë",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_I_WITH_GRAVE], @"ì",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_I_WITH_ACUTE], @"í",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_I_WITH_CIRCUMFLEX], @"î",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_I_WITH_DIAERESIS], @"ï",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_ETH], @"ð",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_N_WITH_TILDE], @"ñ",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_O_WITH_GRAVE], @"ò",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_O_WITH_ACUTE], @"ó",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_O_WITH_CIRCUMFLEX], @"ô",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_O_WITH_TILDE], @"õ",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_O_WITH_DIAERESIS], @"ö",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_DIVISION_SIGN], @"÷",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_O_WITH_SLASH], @"ø",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_U_WITH_GRAVE], @"ù",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_U_WITH_ACUTE], @"ú",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_U_WITH_CIRCUMFLEX], @"û",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_U_WITH_DIAERESIS], @"ü",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_Y_WITH_ACUTE], @"ý",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_THORN], @"þ",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_Y_WITH_DIAERESIS], @"ÿ",
                   nil
              ];
              // This is ok to retain a singleton object
