@@ -69,7 +69,7 @@ function create_jbr {
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 
-git checkout -- modules.list src
+git checkout -- modules.list src/java.desktop/share/classes/module-info.java
 case "$bundle_type" in
   "jfx")
     git apply -p0 < jb/project/tools/exclude_jcef_module.patch
