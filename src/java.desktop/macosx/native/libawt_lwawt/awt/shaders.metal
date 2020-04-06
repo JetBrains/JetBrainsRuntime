@@ -129,17 +129,20 @@ fragment unsigned int frag_stencil(StencilShaderInOut in [[stage_in]]) {
     return in.color;
 }
 
+// NOTE:
+// 1. consider to make shaders without IF-conditions
+// 2. we can pass interpolation mode via uniforms and select corresponding sampler in shader
+//  but it can cause performance problems (something like getTextureSampler(hint) will be invoked
+//  for every pixel)
+
 fragment half4 frag_txt(
         TxtShaderInOut vert [[stage_in]],
         texture2d<float, access::sample> renderTexture [[texture(0)]],
-        constant TxtFrameUniforms& uniforms [[buffer(1)]]
-        )
-{
-    constexpr sampler textureSampler (mag_filter::linear,
-                                  min_filter::linear);
+        constant TxtFrameUniforms& uniforms [[buffer(1)]],
+        sampler textureSampler [[sampler(0)]]
+) {
     float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
     float srcA = uniforms.isSrcOpaque ? 1 : pixelColor.a;
-    // TODO: consider to make shaders without IF-conditions
     if (uniforms.mode) {
         float4 c = mix(pixelColor, uniforms.color, srcA);
         return half4(c.r, c.g, c.b , c.a);
@@ -152,12 +155,9 @@ fragment half4 frag_txt(
 
 fragment half4 frag_txt_tp(TxtShaderInOut vert [[stage_in]],
                        texture2d<float, access::sample> renderTexture [[texture(0)]],
-                       texture2d<float, access::sample> paintTexture [[texture(1)]])
-{
-    constexpr sampler textureSampler (address::repeat,
-      mag_filter::nearest,
-      min_filter::nearest);
-
+                       texture2d<float, access::sample> paintTexture [[texture(1)]],
+                       sampler textureSampler [[sampler(0)]]
+) {
     float4 renderColor = renderTexture.sample(textureSampler, vert.texCoords);
     float4 paintColor = paintTexture.sample(textureSampler, vert.tpCoords);
     return half4(paintColor.r*renderColor.a,
@@ -187,10 +187,9 @@ fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
 fragment half4 aa_frag_txt(
         TxtShaderInOut vert [[stage_in]],
         texture2d<float, access::sample> renderTexture [[texture(0)]],
-        constant TxtFrameUniforms& uniforms [[buffer(1)]]
-)
-{
-    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
+        constant TxtFrameUniforms& uniforms [[buffer(1)]],
+        sampler textureSampler [[sampler(0)]]
+) {
     float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
     return half4(pixelColor.r, pixelColor.g, pixelColor.b, pixelColor.a);
 }

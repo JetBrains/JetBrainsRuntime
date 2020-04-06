@@ -65,9 +65,15 @@ struct TxtVertex {
     float txtpos[2];
 };
 
+#define INTERPOLATION_NEAREST_NEIGHBOR 0
+#define INTERPOLATION_BILINEAR 1
+// NOTE: Metal samplers doesn't supports bicubic interpolation
+// see table 2.7 from https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
+// (probably we need to implement separate fragment shader with bicubic interpolation)
+
 struct TxtFrameUniforms {
     vector_float4 color;
-    int mode;
+    int mode; // NOTE: consider to use bit fields
     int isSrcOpaque;
     int isDstOpaque;
     float extraAlpha;

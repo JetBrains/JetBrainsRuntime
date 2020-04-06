@@ -98,6 +98,7 @@
                composite:(MTLComposite *)composite
            isStencilUsed:(jboolean)isStencilUsed
                isTexture:(jboolean)isTexture
+           interpolation:(int)interpolation
                 srcFlags:(const SurfaceRasterFlags *)srcFlags
                 dstFlags:(const SurfaceRasterFlags *)dstFlags
     pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage;
@@ -106,6 +107,7 @@
                composite:(MTLComposite *)composite
            isStencilUsed:(jboolean)isStencilUsed
                isTexture:(jboolean)isTexture
+           interpolation:(int)interpolation
                 srcFlags:(const SurfaceRasterFlags *)srcFlags
                 dstFlags:(const SurfaceRasterFlags *)dstFlags
     pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage;
