@@ -24,7 +24,7 @@ import static java.awt.event.KeyEvent.VK_A;
 
 /**
  * @test
- * @summary Tests that height of JEditorPane with zero margins on top and bottom is update when text is set
+ * @summary The test checks that height of JEditorPane with zero top and bottom insets is updated after changing text
  * @run main/othervm ZeroMargin
  */
 
@@ -39,19 +39,20 @@ public class ZeroMargin implements Runnable {
 
         ZeroMargin test = new ZeroMargin();
         try {
-            var r = new Robot();
+            Robot r = new Robot();
             SwingUtilities.invokeAndWait(test);
             r.waitForIdle();
             r.keyPress(VK_A);
+            r.keyRelease(VK_A);
             r.delay(500);
             if (test.htmlPane.getHeight() == 0) {
-                throw new RuntimeException("Error: Height of JEditorPane with text/html type did not update");
+                throw new RuntimeException("Height of JEditorPane with text/html type was not updated");
             }
             if (test.rtfPane.getHeight() == 0) {
-                throw new RuntimeException("Error: Height of JEditorPane with text/rtf type did not update");
+                throw new RuntimeException("Height of JEditorPane with text/rtf type was not updated");
             }
             if (test.plainPane.getHeight() == 0) {
-                throw new RuntimeException("Error: Height of JEditorPane with text/plain type did not update");
+                throw new RuntimeException("Height of JEditorPane with text/plain type was not updated");
             }
         } finally {
             SwingUtilities.invokeAndWait(() ->test.f.dispose());
