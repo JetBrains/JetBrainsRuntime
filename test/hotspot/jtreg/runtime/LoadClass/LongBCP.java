@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import jdk.test.lib.Platform;
 import jdk.test.lib.compiler.CompilerUtils;
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
@@ -116,8 +117,13 @@ public class LongBCP {
             bootCP, "Hello");
 
         output = new OutputAnalyzer(pb.start());
-        output.shouldContain("Hello World")
-              .shouldHaveExitValue(0);
+        if (!Platform.isWindows()) {
+            output.shouldContain("Hello World")
+                  .shouldHaveExitValue(0);
+        } else {
+            output.shouldContain("Could not find or load main class Hello")
+                  .shouldHaveExitValue(1);
+        }
 
         // total relative path length exceeds MAX_PATH
         destDir = Paths.get(destDir.toString(), "yyyyyyyy");
@@ -129,7 +135,12 @@ public class LongBCP {
             bootCP, "Hello");
 
         output = new OutputAnalyzer(pb.start());
-        output.shouldContain("Hello World")
-              .shouldHaveExitValue(0);
+        if (!Platform.isWindows()) {
+            output.shouldContain("Hello World")
+                  .shouldHaveExitValue(0);
+        } else {
+            output.shouldContain("Could not find or load main class Hello")
+                  .shouldHaveExitValue(1);
+        }
     }
 }
