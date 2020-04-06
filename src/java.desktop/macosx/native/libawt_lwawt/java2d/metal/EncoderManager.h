@@ -40,13 +40,19 @@
 - (id<MTLRenderCommandEncoder> _Nonnull)getTextureEncoder:(const BMTLSDOps * _Nonnull)dstOps
                                       isSrcOpaque:(bool)isSrcOpaque;
 
+- (id<MTLRenderCommandEncoder> _Nonnull) getTextureEncoder:(id<MTLTexture> _Nonnull)dest
+                                               isSrcOpaque:(bool)isSrcOpaque
+                                               isDstOpaque:(bool)isDstOpaque;
+
 - (id<MTLRenderCommandEncoder> _Nonnull)getTextureEncoder:(id<MTLTexture> _Nonnull)dest
                                       isSrcOpaque:(bool)isSrcOpaque
-                                      isDstOpaque:(bool)isDstOpaque;
+                                      isDstOpaque:(bool)isDstOpaque
+                                    interpolation:(int)interpolation;
 
 - (id<MTLRenderCommandEncoder> _Nonnull)getTextureEncoder:(id<MTLTexture> _Nonnull)dest
                                               isSrcOpaque:(bool)isSrcOpaque
                                               isDstOpaque:(bool)isDstOpaque
+                                            interpolation:(int)interpolation
                                                      isAA:(jboolean)isAA;
 
 // Base method to obtain any MTLRenderCommandEncoder
@@ -54,6 +60,7 @@
     getEncoder:(id<MTLTexture> _Nonnull)dest
       isOpaque:(jboolean)isOpaque
      isTexture:(jboolean)isTexture
+ interpolation:(int)interpolation
           isAA:(jboolean)isAA
       srcFlags:(const SurfaceRasterFlags *_Nullable)srcFlags;
 
