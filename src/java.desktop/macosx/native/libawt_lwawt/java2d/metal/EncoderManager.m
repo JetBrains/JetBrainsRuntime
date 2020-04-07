@@ -307,8 +307,8 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     return [self getTextureEncoder:dest
                        isSrcOpaque:isSrcOpaque
                        isDstOpaque:isDstOpaque
-                              isAA:JNI_FALSE
-                     interpolation:INTERPOLATION_NEAREST_NEIGHBOR];
+                     interpolation:INTERPOLATION_NEAREST_NEIGHBOR
+                              isAA:JNI_FALSE];
 }
 
 - (id<MTLRenderCommandEncoder> _Nonnull) getTextureEncoder:(id<MTLTexture> _Nonnull)dest
