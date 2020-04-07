@@ -306,7 +306,8 @@ final class CPlatformResponder {
                 characterToGetKeyCode,
                 nsEvent.isHasDeadKey() ? 1 : 0,
                 nsEvent.getModifierFlags(),
-                nsEvent.getKeyCode()
+                nsEvent.getKeyCode(),
+                /*useNationalLayouts*/ 1
         };
 
         int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
@@ -445,10 +446,10 @@ final class CPlatformResponder {
             char testCharIgnoringModifiers = charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0 ?
                     charsIgnoringModifiers.charAt(0) : KeyEvent.CHAR_UNDEFINED;
 
-            int[] in = new int[] {testCharIgnoringModifiers, isDeadChar ? 1 : 0, modifierFlags, keyCode};
+            int[] in = new int[] {testCharIgnoringModifiers, isDeadChar ? 1 : 0, modifierFlags, keyCode, /*useNationalLayouts*/ 0};
             int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
 
-            postsTyped = NSEvent.nsToJavaKeyInfoOld(in, out);
+            postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
             if (!postsTyped) {
                 testChar = KeyEvent.CHAR_UNDEFINED;
             }

@@ -288,11 +288,6 @@ final class NSEvent {
      * Converts NSEvent key info to AWT key info.
      */
     static native boolean nsToJavaKeyInfo(int[] in, int[] out);
-    /*
-     * Converts NSEvent key info to AWT key info.
-     */
-    static native boolean nsToJavaKeyInfoOld(int[] in, int[] out);
-
 
     /*
      * Converts NSEvent key modifiers to AWT key info.
