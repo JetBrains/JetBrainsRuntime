@@ -328,6 +328,18 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
 
     if (mtlc != NULL) {
         [mtlc.encoderManager endEncoder];
+
+        if (op == MTL_OP_RESET_PAINT || op == MTL_OP_SYNC) {
+            MTLCommandBufferWrapper *cbwrapper = [mtlc pullCommandBufferWrapper];
+            id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                [cbwrapper release];
+            }];
+            [commandbuf commit];
+            if (op == MTL_OP_SYNC) {
+                [commandbuf waitUntilCompleted];
+            }
+        }
     }
     mtlPreviousOp = op;
 }
@@ -337,7 +349,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     (JNIEnv *env, jobject mtlrq,
      jlong buf, jint limit)
 {
-    jboolean sync = JNI_FALSE;
     unsigned char *b, *end;
 
     J2dTraceLn1(J2D_TRACE_INFO,
@@ -803,12 +814,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_SYNC:
             {
-                CHECK_PREVIOUS_OP(MTL_OP_OTHER);
-                sync = JNI_TRUE;
-
-                // TODO
-                J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderQueue_SYNC -- :TODO");
-
+                CHECK_PREVIOUS_OP(MTL_OP_SYNC);
             }
             break;
 
@@ -828,7 +834,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         // paint-related ops
         case sun_java2d_pipe_BufferedOpCodes_RESET_PAINT:
             {
-              CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+              CHECK_PREVIOUS_OP(MTL_OP_RESET_PAINT);
               [mtlc resetPaint];
             }
             break;
@@ -1015,9 +1021,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             [cbwrapper release];
         }];
         [commandbuf commit];
-        if (sync) {
-            [commandbuf waitUntilCompleted];
-        }
         BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
         if (dstOps != NULL) {
             MTLSDOps *dstMTLOps = (MTLSDOps *)dstOps->privOps;
