@@ -26,6 +26,7 @@
 package sun.lwawt.macosx;
 
 import sun.awt.SunToolkit;
+import sun.awt.event.KeyEventProcessing;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.PlatformEventNotifier;
 import sun.util.logging.PlatformLogger;
@@ -59,7 +60,6 @@ final class CPlatformResponder {
     private int lastDraggedAbsoluteY;
     private int lastDraggedRelativeX;
     private int lastDraggedRelativeY;
-    private final static boolean useOldKeyEventProcessing = java.security.AccessController.doPrivileged((PrivilegedAction<Boolean>)()-> "true".equals(System.getProperty("com.jetbrains.use.old.keyevent.processing")));
 
 
     CPlatformResponder(final PlatformEventNotifier eventNotifier,
@@ -222,7 +222,7 @@ final class CPlatformResponder {
     void handleKeyEvent(NSEvent nsEvent)
     {
 
-        if (useOldKeyEventProcessing || isCyrillicKeyboardLayout()) {
+        if (!KeyEventProcessing.useNationalLayouts || isCyrillicKeyboardLayout()) {
             handleKeyEvent(
                     nsEvent.getType(),
                     nsEvent.getModifierFlags(),
