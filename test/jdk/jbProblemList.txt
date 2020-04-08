@@ -912,3 +912,9 @@ javax/print/attribute/AttributeTest.java                                        
 javax/print/attribute/GetCopiesSupported.java                                       nobug generic-all
 javax/print/attribute/SidesPageRangesTest.java                                      nobug generic-all
 javax/print/attribute/SupportedPrintableAreas.java                                  nobug generic-all
+
+java/awt/image/VolatileImage/CustomCompositeTest.java                               JBR-2262 generic-all
+java/awt/image/VolatileImage/TransparentVImage.java                                 JBR-2262 generic-all
+java/awt/image/VolatileImage/DrawHugeImageTest.java                                 JBR-2262 generic-all
+java/awt/image/DrawImage/IncorrectAlphaConversionBicubic.java                       JBR-2262 generic-all
+javax/swing/JLightweightFrame/ResizedMovedEvents.java                               JBR-2262 generic-all
