@@ -748,8 +748,11 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
             // NOTE: using of separate blitCommandBuffer can produce errors (draw into surface (with general cmd-buf)
             // can be unfinished when reading raster from blit cmd-buf).
             // Consider to use [mtlc.encoderManager createBlitEncoder] and [mtlc commitCommandBuffer:JNI_TRUE];
+            J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLBlitLoops_SurfaceToSwBlit: source texture %p", srcOps->pTexture);
+
             id<MTLCommandBuffer> cb = [mtlc createBlitCommandBuffer];
             id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
+            [blitEncoder synchronizeTexture:srcOps->pTexture slice:0 level:0];
             [blitEncoder copyFromTexture:srcOps->pTexture
                             sourceSlice:0
                             sourceLevel:0
