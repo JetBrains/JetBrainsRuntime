@@ -709,7 +709,7 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
 
             // Create MTLBuffer (or use static)
             MTLRasterFormatInfo rfi = RasterFormatInfos[dsttype];
-            const jboolean directCopy = dsttype == 0;
+            const jboolean directCopy = rfi.permuteMap == NULL;
 
             id<MTLBuffer> mtlbuf;
 #ifdef USE_STATIC_BUFFER
