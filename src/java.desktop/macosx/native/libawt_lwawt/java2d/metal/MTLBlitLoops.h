@@ -71,7 +71,7 @@ void MTLBlitTex2Tex(MTLContext *mtlc, id<MTLTexture> src, id<MTLTexture> dest);
 
 void drawTex2Tex(MTLContext *mtlc,
                         id<MTLTexture> src, id<MTLTexture> dst,
-                        jboolean isSrcOpaque, jboolean isDstOpaque,
+                        jboolean isSrcOpaque, jboolean isDstOpaque, jint hint,
                         jint sx1, jint sy1, jint sx2, jint sy2,
                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2);
 

@@ -99,6 +99,8 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
             commandQueue, vertexBuffer,
             texturePool;
 
+extern void initSamplers(id<MTLDevice> device);
+
 - (id)initWithDevice:(id<MTLDevice>)d shadersLib:(NSString*)shadersLib {
     self = [super init];
     if (self) {
@@ -131,6 +133,8 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
 
         // Create command queue
         commandQueue = [device newCommandQueue];
+
+        initSamplers(device);
     }
     return self;
 }

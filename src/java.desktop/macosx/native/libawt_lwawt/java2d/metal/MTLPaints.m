@@ -283,6 +283,62 @@ static void initTemplatePipelineDescriptors() {
     _anchor.yParams[2] = yp3;
 }
 
+static id<MTLSamplerState> samplerNearestClamp = nil;
+static id<MTLSamplerState> samplerLinearClamp = nil;
+static id<MTLSamplerState> samplerNearestRepeat = nil;
+static id<MTLSamplerState> samplerLinearRepeat = nil;
+
+void initSamplers(id<MTLDevice> device) {
+    // TODO: move this code into SamplerManager (need implement)
+
+    if (samplerNearestClamp != nil)
+        return;
+
+    MTLSamplerDescriptor *samplerDescriptor = [MTLSamplerDescriptor new];
+
+    samplerDescriptor.rAddressMode = MTLSamplerAddressModeClampToEdge;
+    samplerDescriptor.sAddressMode = MTLSamplerAddressModeClampToEdge;
+    samplerDescriptor.tAddressMode = MTLSamplerAddressModeClampToEdge;
+
+    samplerDescriptor.minFilter = MTLSamplerMinMagFilterNearest;
+    samplerDescriptor.magFilter = MTLSamplerMinMagFilterNearest;
+    samplerNearestClamp = [device newSamplerStateWithDescriptor:samplerDescriptor];
+
+    samplerDescriptor.minFilter = MTLSamplerMinMagFilterLinear;
+    samplerDescriptor.magFilter = MTLSamplerMinMagFilterLinear;
+    samplerLinearClamp = [device newSamplerStateWithDescriptor:samplerDescriptor];
+
+    samplerDescriptor.rAddressMode = MTLSamplerAddressModeRepeat;
+    samplerDescriptor.sAddressMode = MTLSamplerAddressModeRepeat;
+    samplerDescriptor.tAddressMode = MTLSamplerAddressModeRepeat;
+
+    samplerDescriptor.minFilter = MTLSamplerMinMagFilterNearest;
+    samplerDescriptor.magFilter = MTLSamplerMinMagFilterNearest;
+    samplerNearestRepeat = [device newSamplerStateWithDescriptor:samplerDescriptor];
+
+    samplerDescriptor.minFilter = MTLSamplerMinMagFilterLinear;
+    samplerDescriptor.magFilter = MTLSamplerMinMagFilterLinear;
+    samplerLinearRepeat = [device newSamplerStateWithDescriptor:samplerDescriptor];
+}
+
+static void setTxtUniforms(
+        id<MTLRenderCommandEncoder> encoder, int color, int mode, int interpolation, bool repeat, jfloat extraAlpha,
+        const SurfaceRasterFlags * srcFlags, const SurfaceRasterFlags * dstFlags
+) {
+    struct TxtFrameUniforms uf = {RGBA_TO_V4(color), mode, srcFlags->isOpaque, dstFlags->isOpaque, interpolation};
+    [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+
+    id<MTLSamplerState> sampler;
+    if (repeat) {
+        sampler = interpolation == INTERPOLATION_BILINEAR ? samplerLinearRepeat : samplerNearestRepeat;
+    } else {
+        sampler = interpolation == INTERPOLATION_BILINEAR ? samplerLinearClamp : samplerNearestClamp;
+    }
+    [encoder setFragmentSamplerState:sampler atIndex:0];
+}
+
+// TODO: need support hints for all shaders
+
 // For the current paint mode:
 // 1. Selects vertex+fragment shaders (and corresponding pipelineDesc) and set pipelineState
 // 2. Set vertex and fragment buffers
@@ -290,6 +346,7 @@ static void initTemplatePipelineDescriptors() {
                composite:(MTLComposite *)composite
            isStencilUsed:(jboolean)isStencilUsed
                isTexture:(jboolean)isTexture
+           interpolation:(int)interpolation
                     isAA:(jboolean)isAA
                 srcFlags:(const SurfaceRasterFlags *)srcFlags
                 dstFlags:(const SurfaceRasterFlags *)dstFlags
@@ -314,11 +371,7 @@ static void initTemplatePipelineDescriptors() {
         [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
         [encoder setFragmentTexture:_paintTexture atIndex: 1];
 
-        struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0, srcFlags->isOpaque,
-                                      dstFlags->isOpaque, [composite getExtraAlpha]};
-        [encoder setFragmentBytes:&uf length:sizeof(uf)
-                          atIndex:FrameUniformBuffer];
-
+        setTxtUniforms(encoder, 0, 0, interpolation, YES, [composite getExtraAlpha], srcFlags, dstFlags);
       } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
         pipelineState = [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
                                                 vertexShaderId:@"vert_txt_grad"
@@ -359,15 +412,7 @@ static void initTemplatePipelineDescriptors() {
                                        stencilNeeded:stencil];
         }
 
-        if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-          struct TxtFrameUniforms uf = {RGBA_TO_V4(_color), 1,
-                  srcFlags->isOpaque, dstFlags->isOpaque, [composite getExtraAlpha]};
-          [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-        } else {
-          struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0,
-                  srcFlags->isOpaque, dstFlags->isOpaque, [composite getExtraAlpha]};
-          [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-        }
+        setTxtUniforms(encoder, _color, _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? 1 : 0, interpolation, NO, [composite getExtraAlpha], srcFlags, dstFlags);
       }
     } else {
         if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
@@ -423,6 +468,7 @@ static void initTemplatePipelineDescriptors() {
                composite:(MTLComposite *)composite
            isStencilUsed:(jboolean)isStencilUsed
                isTexture:(jboolean)isTexture
+           interpolation:(int)interpolation
                 srcFlags:(const SurfaceRasterFlags *)srcFlags
                 dstFlags:(const SurfaceRasterFlags *)dstFlags
     pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage {
@@ -439,16 +485,8 @@ static void initTemplatePipelineDescriptors() {
                                                 srcFlags:srcFlags
                                                 dstFlags:dstFlags
                                            stencilNeeded:stencil];
-
-        if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-            struct TxtFrameUniforms uf = {RGBA_TO_V4(_color ^ xorColor), 1,
-                    srcFlags->isOpaque, dstFlags->isOpaque, [composite getExtraAlpha]};
-            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-        } else {
-            struct TxtFrameUniforms uf = {RGBA_TO_V4(0 ^ xorColor), 0,
-                    srcFlags->isOpaque, dstFlags->isOpaque, [composite getExtraAlpha]};
-            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-        }
+        const int col = _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? _color ^ xorColor : 0 ^ xorColor;
+        setTxtUniforms(encoder, col, _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? 1 : 0, interpolation, NO, [composite getExtraAlpha], srcFlags, dstFlags);
         [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
     } else {
         if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {

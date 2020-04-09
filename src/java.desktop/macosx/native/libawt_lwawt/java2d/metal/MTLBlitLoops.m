@@ -142,7 +142,7 @@ void fillTxQuad(
 
 void drawTex2Tex(MTLContext *mtlc,
                         id<MTLTexture> src, id<MTLTexture> dst,
-                        jboolean isSrcOpaque, jboolean isDstOpaque,
+                        jboolean isSrcOpaque, jboolean isDstOpaque, jint hint,
                         jint sx1, jint sy1, jint sx2, jint sy2,
                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
@@ -155,7 +155,9 @@ void drawTex2Tex(MTLContext *mtlc,
 
     id<MTLRenderCommandEncoder> encoder = [mtlc.encoderManager getTextureEncoder:dst
                                                                      isSrcOpaque:isSrcOpaque
-                                                                     isDstOpaque:isDstOpaque];
+                                                                     isDstOpaque:isDstOpaque
+                                                                   interpolation:hint
+    ];
 
     struct TxtVertex quadTxVerticesBuffer[6];
     fillTxQuad(quadTxVerticesBuffer, sx1, sy1, sx2, sy2, src.width, src.height, dx1, dy1, dx2, dy2, dst.width, dst.height);
@@ -249,7 +251,7 @@ id<MTLTexture> replaceTextureRegion(id<MTLTexture> dest, const SurfaceDataRasInf
 static void
 MTLBlitSwToTextureViaPooledTexture(
         MTLContext *mtlc, SurfaceDataRasInfo *srcInfo, BMTLSDOps * bmtlsdOps,
-        MTLRasterFormatInfo * rfi, jboolean useBlitEncoder,
+        MTLRasterFormatInfo * rfi, jboolean useBlitEncoder, jint hint,
         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     const int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
@@ -279,7 +281,7 @@ MTLBlitSwToTextureViaPooledTexture(
                    destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
         [blitEncoder endEncoding];
     } else {
-        drawTex2Tex(mtlc, swizzledTexture != nil ? swizzledTexture : texBuff, dest, !rfi->hasAlpha, bmtlsdOps->isOpaque,
+        drawTex2Tex(mtlc, swizzledTexture != nil ? swizzledTexture : texBuff, dest, !rfi->hasAlpha, bmtlsdOps->isOpaque, hint,
                     0, 0, sw, sh, dx1, dy1, dx2, dy2);
     }
 
@@ -485,7 +487,7 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
 #ifdef TRACE_ISOBLIT
     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via sampling]");
 #endif //TRACE_ISOBLIT
-    drawTex2Tex(mtlc, srcTex, dstTex, srcOps->isOpaque, dstOps->isOpaque, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+    drawTex2Tex(mtlc, srcTex, dstTex, srcOps->isOpaque, dstOps->isOpaque, hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 }
 
 /**
@@ -613,13 +615,13 @@ MTLBlitLoops_Blit(JNIEnv *env,
 #ifdef TRACE_BLIT
                     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via pooled + blit]");
 #endif //TRACE_BLIT
-                    MTLBlitSwToTextureViaPooledTexture(mtlc, &srcInfo, dstOps, &rfi, true, dx1, dy1, dx2, dy2);
+                    MTLBlitSwToTextureViaPooledTexture(mtlc, &srcInfo, dstOps, &rfi, true, hint, dx1, dy1, dx2, dy2);
                 }
             } else { // !useReplaceRegion
 #ifdef TRACE_BLIT
                 J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via pooled texture]");
 #endif //TRACE_BLIT
-                MTLBlitSwToTextureViaPooledTexture(mtlc, &srcInfo, dstOps, &rfi, false, dx1, dy1, dx2, dy2);
+                MTLBlitSwToTextureViaPooledTexture(mtlc, &srcInfo, dstOps, &rfi, false, hint, dx1, dy1, dx2, dy2);
             }
         }
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);
