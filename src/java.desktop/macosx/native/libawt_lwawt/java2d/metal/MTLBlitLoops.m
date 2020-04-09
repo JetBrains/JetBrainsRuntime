@@ -214,14 +214,14 @@ id<MTLTexture> replaceTextureRegion(id<MTLTexture> dest, const SurfaceDataRasInf
                 return nil;
             }
             vImage_Buffer srcBuf;
-            srcBuf.height = dw;
-            srcBuf.width = dh;
+            srcBuf.height = dh;
+            srcBuf.width = dw;
             srcBuf.rowBytes = srcInfo->scanStride;
             srcBuf.data = srcInfo->rasBase;
 
             vImage_Buffer destBuf;
-            destBuf.height = dw;
-            destBuf.width = dh;
+            destBuf.height = dh;
+            destBuf.width = dw;
             destBuf.rowBytes = dw*4;
             destBuf.data = buffer;
 
@@ -637,8 +637,164 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
                              jint srcx, jint srcy, jint dstx, jint dsty,
                              jint width, jint height)
 {
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_SurfaceToSwBlit -- :TODO");
+    J2dTraceLn6(J2D_TRACE_VERBOSE, "MTLBlitLoops_SurfaceToSwBlit: sx=%d sy=%d w=%d h=%d dx=%d dy=%d", srcx, srcy, width, height, dstx, dsty);
+
+    BMTLSDOps *srcOps = (BMTLSDOps *)jlong_to_ptr(pSrcOps);
+    SurfaceDataOps *dstOps = (SurfaceDataOps *)jlong_to_ptr(pDstOps);
+    SurfaceDataRasInfo srcInfo, dstInfo;
+
+    if (dsttype < 0 || dsttype >= sizeof(RasterFormatInfos)/ sizeof(MTLRasterFormatInfo)) {
+        J2dTraceLn1(J2D_TRACE_ERROR, "MTLBlitLoops_SurfaceToSwBlit: destination pixel format %d isn't supported", dsttype);
+        return;
+    }
+
+    if (width <= 0 || height <= 0) {
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_SurfaceToSwBlit: dimensions are non-positive");
+        return;
+    }
+
+    RETURN_IF_NULL(srcOps);
+    RETURN_IF_NULL(dstOps);
+    RETURN_IF_NULL(mtlc);
+
+    srcInfo.bounds.x1 = srcx;
+    srcInfo.bounds.y1 = srcy;
+    srcInfo.bounds.x2 = srcx + width;
+    srcInfo.bounds.y2 = srcy + height;
+    dstInfo.bounds.x1 = dstx;
+    dstInfo.bounds.y1 = dsty;
+    dstInfo.bounds.x2 = dstx + width;
+    dstInfo.bounds.y2 = dsty + height;
+
+    if (dstOps->Lock(env, dstOps, &dstInfo, SD_LOCK_WRITE) != SD_SUCCESS) {
+        J2dTraceLn(J2D_TRACE_WARNING,"MTLBlitLoops_SurfaceToSwBlit: could not acquire dst lock");
+        return;
+    }
+
+    SurfaceData_IntersectBoundsXYXY(&srcInfo.bounds,
+                                    0, 0, srcOps->width, srcOps->height);
+    SurfaceData_IntersectBlitBounds(&dstInfo.bounds, &srcInfo.bounds,
+                                    srcx - dstx, srcy - dsty);
+
+    if (srcInfo.bounds.x2 > srcInfo.bounds.x1 &&
+        srcInfo.bounds.y2 > srcInfo.bounds.y1)
+    {
+        dstOps->GetRasInfo(env, dstOps, &dstInfo);
+        if (dstInfo.rasBase) {
+            void *pDst = dstInfo.rasBase;
+
+            srcx = srcInfo.bounds.x1;
+            srcy = srcInfo.bounds.y1;
+            dstx = dstInfo.bounds.x1;
+            dsty = dstInfo.bounds.y1;
+            width = srcInfo.bounds.x2 - srcInfo.bounds.x1;
+            height = srcInfo.bounds.y2 - srcInfo.bounds.y1;
+
+            pDst = PtrAddBytes(pDst, dstx * dstInfo.pixelStride);
+            pDst = PtrPixelsRow(pDst, dsty, dstInfo.scanStride);
+
+            // this accounts for lower-left origin of the source region
+            srcx = srcOps->xOffset + srcx;
+            srcy = srcOps->yOffset + srcOps->height - srcy - height;
+            const int srcLength = width * height * 4; // NOTE: assume that src format is MTLPixelFormatBGRA8Unorm
+
+#ifdef DEBUG
+            void *pDstEnd = dstInfo.rasBase + (height - 1)*dstInfo.scanStride + width*dstInfo.pixelStride;
+            if (pDst + srcLength > pDstEnd) {
+                J2dTraceLn6(J2D_TRACE_ERROR, "MTLBlitLoops_SurfaceToSwBlit: length mismatch: dstx=%d, dsty=%d, w=%d, h=%d, pixStride=%d, scanStride=%d",
+                        dstx, dsty, width, height, dstInfo.pixelStride, dstInfo.scanStride);
+                return;
+            }
+#endif //DEBUG
+
+            // Create MTLBuffer (or use static)
+            MTLRasterFormatInfo rfi = RasterFormatInfos[dsttype];
+            const jboolean directCopy = dsttype == 0;
+
+            id<MTLBuffer> mtlbuf;
+#ifdef USE_STATIC_BUFFER
+            if (directCopy) {
+                // NOTE: theoretically we can use newBufferWithBytesNoCopy, but pDst must be allocated with special API
+                // mtlbuf = [mtlc.device
+                //          newBufferWithBytesNoCopy:pDst
+                //                            length:(NSUInteger) srcLength
+                //                           options:MTLResourceCPUCacheModeDefaultCache
+                //                       deallocator:nil];
+                //
+                // see https://developer.apple.com/documentation/metal/mtldevice/1433382-newbufferwithbytesnocopy?language=objc
+                //
+                // The storage allocation of the returned new MTLBuffer object is the same as the pointer input value.
+                // The existing memory allocation must be covered by a single VM region, typically allocated with vm_allocate or mmap.
+                // Memory allocated by malloc is specifically disallowed.
+            }
+
+            static id<MTLBuffer> mtlIntermediateBuffer = nil; // need to reimplement with MTLBufferManager
+            if (mtlIntermediateBuffer == nil || mtlIntermediateBuffer.length < srcLength) {
+                if (mtlIntermediateBuffer != nil) {
+                    [mtlIntermediateBuffer release];
+                }
+                mtlIntermediateBuffer = [mtlc.device newBufferWithLength:srcLength options:MTLResourceCPUCacheModeDefaultCache];
+            }
+            mtlbuf = mtlIntermediateBuffer;
+#else // USE_STATIC_BUFFER
+            mtlbuf = [mtlc.device newBufferWithLength:width*height*4 options:MTLResourceStorageModeShared];
+#endif // USE_STATIC_BUFFER
+
+            // Read from surface into MTLBuffer
+            // NOTE: using of separate blitCommandBuffer can produce errors (draw into surface (with general cmd-buf)
+            // can be unfinished when reading raster from blit cmd-buf).
+            // Consider to use [mtlc.encoderManager createBlitEncoder] and [mtlc commitCommandBuffer:JNI_TRUE];
+            J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLBlitLoops_SurfaceToSwBlit: source texture %p", srcOps->pTexture);
+
+            id<MTLCommandBuffer> cb = [mtlc createBlitCommandBuffer];
+            id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
+            [blitEncoder synchronizeTexture:srcOps->pTexture slice:0 level:0];
+            [blitEncoder copyFromTexture:srcOps->pTexture
+                            sourceSlice:0
+                            sourceLevel:0
+                           sourceOrigin:MTLOriginMake(srcx, srcy, 0)
+                             sourceSize:MTLSizeMake(width, height, 1)
+                               toBuffer:mtlbuf
+                      destinationOffset:0 /*offset already taken in: pDst = PtrAddBytes(pDst, dstx * dstInfo.pixelStride)*/
+                 destinationBytesPerRow:width*4
+               destinationBytesPerImage:width * height*4];
+            [blitEncoder endEncoding];
+
+            // Commit and wait for reading complete
+            [cb commit];
+            [cb waitUntilCompleted];
+
+            // Perform conversion if necessary
+            if (directCopy) {
+                memcpy(pDst, mtlbuf.contents, srcLength);
+            } else {
+                J2dTraceLn6(J2D_TRACE_VERBOSE,"MTLBlitLoops_SurfaceToSwBlit: dsttype=%d, raster conversion will be performed, dest rfi: %d, %d, %d, %d, hasA=%d",
+                            dsttype, rfi.permuteMap[0], rfi.permuteMap[1], rfi.permuteMap[2], rfi.permuteMap[3], rfi.hasAlpha);
+
+                // perform raster conversion: mtlIntermediateBuffer(8888) -> pDst(rfi)
+                // invoked only from rq-thread, so use static buffers
+                // but it's better to use thread-local buffers (or special buffer manager)
+                vImage_Buffer srcBuf;
+                srcBuf.height = height;
+                srcBuf.width = width;
+                srcBuf.rowBytes = 4*width;
+                srcBuf.data = mtlbuf.contents;
+
+                vImage_Buffer destBuf;
+                destBuf.height = height;
+                destBuf.width = width;
+                destBuf.rowBytes = dstInfo.scanStride;
+                destBuf.data = pDst;
+
+                vImagePermuteChannels_ARGB8888(&srcBuf, &destBuf, rfi.permuteMap, kvImageNoFlags);
+            }
+#ifndef USE_STATIC_BUFFER
+            [mtlbuf release];
+#endif // USE_STATIC_BUFFER
+        }
+        SurfaceData_InvokeRelease(env, dstOps, &dstInfo);
+    }
+    SurfaceData_InvokeUnlock(env, dstOps, &dstInfo);
 }
 
 void
@@ -657,6 +813,10 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
             sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(x, y, 0) sourceSize:MTLSizeMake(width, height, 1)
             toTexture:dstOps->pTexture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(x + dx, y + dy, 0)];
     [blitEncoder endEncoding];
+
+    // TODO:
+    //  1. check rect bounds
+    //  2. support CopyArea with extra-alpha (and with custom Composite if necessary)
 }
 
 #endif /* !HEADLESS */

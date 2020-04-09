@@ -172,4 +172,8 @@
     return _xorPixel;
 }
 
+- (jfloat)getExtraAlpha {
+    return _extraAlpha;
+}
+
 @end
