@@ -26,54 +26,15 @@
 #include "jni.h"
 
 #import <AppKit/AppKit.h>
+#import "JavaBaseAccessibility.h"
 
-//#define JAVA_AX_DEBUG 1
-//#define JAVA_AX_NO_IGNORES 1
-//#define JAVA_AX_DEBUG_PARMS 1
-
-
-@interface JavaComponentAccessibility : NSObject {
-    NSView *fView;
-    NSObject *fParent;
-
-    NSString *fNSRole;
-    NSString *fJavaRole;
-
-    jint fIndex;
-    jobject fAccessible;
-    jobject fComponent;
-
+@interface JavaComponentAccessibility : JavaBaseAccessibility {
     NSMutableDictionary *fActions;
     NSObject *fActionsLOCK;
 }
 
-- (id)initWithParent:(NSObject*)parent withEnv:(JNIEnv *)env withAccessible:(jobject)accessible withIndex:(jint)index withView:(NSView *)view withJavaRole:(NSString *)javaRole;
-- (void)unregisterFromCocoaAXSystem;
-- (void)postValueChanged;
-- (void)postSelectedTextChanged;
-- (void)postSelectionChanged;
-- (BOOL)isEqual:(id)anObject;
-- (BOOL)isAccessibleWithEnv:(JNIEnv *)env forAccessible:(jobject)accessible;
-
-+ (void)postFocusChanged:(id)message;
-
-+ (NSArray*)childrenOfParent:(JavaComponentAccessibility*)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored;
-+ (JavaComponentAccessibility *) createWithParent:(JavaComponentAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
-+ (JavaComponentAccessibility *) createWithAccessible:(jobject)jaccessible role:(NSString *)role index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
-+ (JavaComponentAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view;
-
 - (NSDictionary*)getActions:(JNIEnv *)env;
 - (void)getActionsWithEnv:(JNIEnv *)env;
-
-- (jobject)axContextWithEnv:(JNIEnv *)env;
-- (NSView*)view;
-- (NSWindow*)window;
-- (id)parent;
-- (NSString *)javaRole;
-- (BOOL)isMenu;
-- (BOOL)isSelected:(JNIEnv *)env;
-- (BOOL)isSelectable:(JNIEnv *)env;
-- (BOOL)isVisible:(JNIEnv *)env;
 
 // attribute names
 - (NSArray *)initializeAttributeNamesWithEnv:(JNIEnv *)env;
@@ -142,4 +103,45 @@
 - (id)accessibilityHitTest:(NSPoint)point withEnv:(JNIEnv *)env;
 - (id)accessibilityFocusedUIElement;
 
+@end
+
+@interface TabGroupAccessibility : JavaComponentAccessibility {
+    NSInteger _numTabs;
+}
+
+- (id)currentTabWithEnv:(JNIEnv *)env withAxContext:(jobject)axContext;
+- (NSArray *)tabControlsWithEnv:(JNIEnv *)env withTabGroupAxContext:(jobject)axContext withTabCode:(NSInteger)whichTabs allowIgnored:(BOOL)allowIgnored;
+- (NSArray *)contentsWithEnv:(JNIEnv *)env withTabGroupAxContext:(jobject)axContext withTabCode:(NSInteger)whichTabs allowIgnored:(BOOL)allowIgnored;
+- (NSArray *)initializeAttributeNamesWithEnv:(JNIEnv *)env;
+
+- (NSArray *)accessibilityArrayAttributeValues:(NSString *)attribute index:(NSUInteger)index maxCount:(NSUInteger)maxCount;
+- (NSArray *)accessibilityChildrenAttribute;
+- (id) accessibilityTabsAttribute;
+- (BOOL)accessibilityIsTabsAttributeSettable;
+- (NSArray *)accessibilityContentsAttribute;
+- (BOOL)accessibilityIsContentsAttributeSettable;
+- (id) accessibilityValueAttribute;
+
+@end
+
+@interface TabGroupControlAccessibility : JavaComponentAccessibility {
+    jobject fTabGroupAxContext;
+}
+- (id)initWithParent:(NSObject *)parent withEnv:(JNIEnv *)env withAccessible:(jobject)accessible withIndex:(jint)index withTabGroup:(jobject)tabGroup withView:(NSView *)view withJavaRole:(NSString *)javaRole;
+- (jobject)tabGroup;
+- (void)getActionsWithEnv:(JNIEnv *)env;
+
+- (id)accessibilityValueAttribute;
+@end
+
+@interface ScrollAreaAccessibility : JavaComponentAccessibility {
+
+}
+- (NSArray *)initializeAttributeNamesWithEnv:(JNIEnv *)env;
+- (NSArray *)accessibilityContentsAttribute;
+- (BOOL)accessibilityIsContentsAttributeSettable;
+- (id)accessibilityVerticalScrollBarAttribute;
+- (BOOL)accessibilityIsVerticalScrollBarAttributeSettable;
+- (id)accessibilityHorizontalScrollBarAttribute;
+- (BOOL)accessibilityIsHorizontalScrollBarAttributeSettable;
 @end
