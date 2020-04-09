@@ -506,7 +506,7 @@ java/awt/Robot/RobotWheelTest/RobotWheelTest.java 8129827 generic-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java 8202926 linux-all
 java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.java 8202860 linux-all
 java/awt/dnd/DisposeFrameOnDragCrash/DisposeFrameOnDragTest.java 8202790 macosx-all,linux-all
-java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.java               8215538 windows-all,macosx-all,linux-all (macosx-all,linux-all: commit)
+java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.java               8215538 windows-all,macosx-all,linux-all
 java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.html                   7124379,7188825 macosx-all,linux-all,windows-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.java 8202882 linux-all
 java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java 8030121 macosx-all,linux-all
@@ -918,3 +918,9 @@ java/awt/image/VolatileImage/TransparentVImage.java                             
 java/awt/image/VolatileImage/DrawHugeImageTest.java                                 JBR-2262 generic-all
 java/awt/image/DrawImage/IncorrectAlphaConversionBicubic.java                       JBR-2262 generic-all
 javax/swing/JLightweightFrame/ResizedMovedEvents.java                               JBR-2262 generic-all
+java/awt/image/DrawImage/IncorrectBounds.java                                       JBR-2262 generic-all
+java/awt/image/DrawImage/IncorrectClipXorModeSurface2Surface.java                   JBR-2262 generic-all
+java/awt/image/DrawImage/IncorrectClipXorModeSW2Surface.java                        JBR-2262 generic-all
+java/awt/image/DrawImage/IncorrectUnmanagedImageRotatedClip.java                    JBR-2262 generic-all
+java/awt/image/VolatileImage/DrawBufImgOp.java                                      JBR-2262 generic-all
+javax/swing/JMenuBar/MisplacedBorder/MisplacedBorder.java                           JBR-2262 generic-all
