@@ -337,23 +337,15 @@ MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
 
     [encoder setRenderPipelineState:pipelineState];
 
-    double g = 0;
-    double ig = 0;
-
-    // update the current contrast setting, if necessary
-    if (lastLCDContrast != contrast) {
-        g = ((double)contrast) / 100.0;
-        ig = 1.0 / g;
-        lastLCDContrast = contrast;
-    }
-
     // update the current color settings
     double gamma = ((double)contrast) / 100.0;
+    double invgamma = 1.0/gamma;
     jfloat radj, gadj, badj;
     jfloat clr[4];
     jint col = [mtlc.paint getColor];
 
-    J2dTraceLn1(J2D_TRACE_INFO, "primary color %x", col);
+    J2dTraceLn2(J2D_TRACE_INFO, "primary color %x, contrast %d", col, contrast);
+    J2dTraceLn2(J2D_TRACE_INFO, "gamma %f, invgamma %f", gamma, invgamma);
 
     clr[0] = ((col >> 16) & 0xFF)/255.0f;
     clr[1] = ((col >> 8) & 0xFF)/255.0f;
@@ -366,8 +358,8 @@ MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
 
     struct LCDFrameUniforms uf = {
             {radj, gadj, badj},
-            {g, g, g},
-            {ig, ig, ig}};
+            {gamma, gamma, gamma},
+            {invgamma, invgamma, invgamma}};
     [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
 
     return JNI_TRUE;
