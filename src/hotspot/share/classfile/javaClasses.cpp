@@ -3626,13 +3626,19 @@ void java_lang_invoke_DirectMethodHandle_StaticAccessor::set_static_offset(oop d
   dmh->long_field_put(_static_offset_offset, static_offset);
 }
 
+#define DIRECTMETHODHANDLE_STATIC_ACCESSOR_FIELDS_DO(macro) \
+  macro(_static_offset_offset, k, vmSymbols::static_offset_name(), long_signature, false)
 
 void java_lang_invoke_DirectMethodHandle_StaticAccessor::compute_offsets() {
-  Klass* klass_oop = SystemDictionary::DirectMethodHandle_StaticAccessor_klass();
-  if (klass_oop != NULL) {
-    compute_offset(_static_offset_offset, InstanceKlass::cast(klass_oop), vmSymbols::static_offset_name(), vmSymbols::long_signature());
-  }
+  InstanceKlass* k = SystemDictionary::DirectMethodHandle_StaticAccessor_klass();
+  DIRECTMETHODHANDLE_STATIC_ACCESSOR_FIELDS_DO(FIELD_COMPUTE_OFFSET);
 }
+
+#if INCLUDE_CDS
+void java_lang_invoke_DirectMethodHandle_StaticAccessor::serialize_offsets(SerializeClosure* f) {
+  DIRECTMETHODHANDLE_STATIC_ACCESSOR_FIELDS_DO(FIELD_SERIALIZE_OFFSET);
+}
+#endif
 
 // Support for java_lang_invoke_DirectMethodHandle$Accessor
 
@@ -3648,13 +3654,19 @@ void java_lang_invoke_DirectMethodHandle_Accessor::set_field_offset(oop dmh, int
   dmh->int_field_put(_field_offset_offset, field_offset);
 }
 
+#define DIRECTMETHODHANDLE_ACCESSOR_FIELDS_DO(macro) \
+  macro(_field_offset_offset, k, vmSymbols::field_offset_name(), int_signature, false)
 
 void java_lang_invoke_DirectMethodHandle_Accessor::compute_offsets() {
-  Klass* klass_oop = SystemDictionary::DirectMethodHandle_Accessor_klass();
-  if (klass_oop != NULL) {
-    compute_offset(_field_offset_offset, InstanceKlass::cast(klass_oop), vmSymbols::field_offset_name(), vmSymbols::int_signature());
-  }
+  InstanceKlass* k = SystemDictionary::DirectMethodHandle_Accessor_klass();
+  DIRECTMETHODHANDLE_ACCESSOR_FIELDS_DO(FIELD_COMPUTE_OFFSET);
 }
+
+#if INCLUDE_CDS
+void java_lang_invoke_DirectMethodHandle_Accessor::serialize_offsets(SerializeClosure* f) {
+  DIRECTMETHODHANDLE_ACCESSOR_FIELDS_DO(FIELD_SERIALIZE_OFFSET);
+}
+#endif
 
 // Support for java_lang_invoke_MethodHandle
 
