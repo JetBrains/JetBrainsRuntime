@@ -1,3 +1,5 @@
+// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+
 #import "JavaBaseAccessibility.h"
 
 #import "sun_lwawt_macosx_CAccessibility.h"
@@ -9,6 +11,7 @@
 
 #import <dlfcn.h>
 
+#import "JavaBaseAccessibility.h"
 #import "JavaAccessibilityAction.h"
 #import "JavaAccessibilityUtilities.h"
 #import "JavaTextAccessibility.h"
@@ -34,11 +37,30 @@ static jobject sAccessibilityClass = NULL;
 
 @implementation JavaBaseAccessibility
 
-- (id)initWithParent:(NSObject *)parent withEnv:(JNIEnv *)env withAccessible:(jobject)accessible withIndex:(jint)index withView:(NSView *)view withJavaRole:(NSString *)javaRole
+@synthesize platformAxObject;
+@synthesize javaAxObject;
+
+- (id)init
 {
     self = [super init];
-    if (self)
-    {
+    if (self) {
+        NSString *className = [self getPlatformAxObjectClassName];
+        self.platformAxObject = className != NULL ? [[NSClassFromString(className) alloc] init] : self; // defaults to [self]
+        self.platformAxObject.javaAxObject = self;
+    }
+    return self;
+}
+
+// to override in subclasses
+- (NSString *)getPlatformAxObjectClassName
+{
+    return NULL;
+}
+
+- (id)initWithParent:(NSObject *)parent withEnv:(JNIEnv *)env withAccessible:(jobject)accessible withIndex:(jint)index withView:(NSView *)view withJavaRole:(NSString *)javaRole
+{
+    self = [self init];
+    if (self) {
         fParent = [parent retain];
         fView = [view retain];
         fJavaRole = [javaRole retain];
@@ -90,43 +112,47 @@ static jobject sAccessibilityClass = NULL;
     [fView release];
     fView = nil;
 
+    if (self.platformAxObject != self) {
+        [self.platformAxObject dealloc];
+    }
+
     [super dealloc];
 }
 
 - (void)postValueChanged
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self, NSAccessibilityValueChangedNotification);
+    NSAccessibilityPostNotification(self.platformAxObject, NSAccessibilityValueChangedNotification);
 }
 
 - (void)postSelectedTextChanged
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self, NSAccessibilitySelectedTextChangedNotification);
+    NSAccessibilityPostNotification(self.platformAxObject, NSAccessibilitySelectedTextChangedNotification);
 }
 
 - (void)postSelectionChanged
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self, NSAccessibilitySelectedChildrenChangedNotification);
+    NSAccessibilityPostNotification(self.platformAxObject, NSAccessibilitySelectedChildrenChangedNotification);
 }
 
 - (void)postMenuOpened
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self, (NSString *)kAXMenuOpenedNotification);
+    NSAccessibilityPostNotification(self.platformAxObject, (NSString *)kAXMenuOpenedNotification);
 }
 
 - (void)postMenuClosed
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self, (NSString *)kAXMenuClosedNotification);
+    NSAccessibilityPostNotification(self.platformAxObject, (NSString *)kAXMenuClosedNotification);
 }
 
 - (void)postMenuItemSelected
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self, (NSString *)kAXMenuItemSelectedNotification);
+    NSAccessibilityPostNotification(self.platformAxObject, (NSString *)kAXMenuItemSelectedNotification);
 }
 
 - (BOOL)isEqual:(id)anObject
@@ -223,7 +249,8 @@ static jobject sAccessibilityClass = NULL;
         (*env)->DeleteLocalRef(env, jchild);
         (*env)->DeleteLocalRef(env, jchildJavaRole);
 
-        [children addObject:child];
+        [children addObject:child.platformAxObject];
+
         childIndex++;
     }
     (*env)->DeleteLocalRef(env, jchildrenAndRoles);
@@ -390,6 +417,64 @@ static jobject sAccessibilityClass = NULL;
     BOOL showing = isShowing(env, axContext, fComponent);
     (*env)->DeleteLocalRef(env, axContext);
     return showing;
+}
+
+- (NSSize)getSize
+{
+    JNIEnv* env = [ThreadUtilities getJNIEnv];
+    jobject axComponent = JNFCallStaticObjectMethod(env, sjm_getAccessibleComponent, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    NSSize size = getAxComponentSize(env, axComponent, fComponent);
+    (*env)->DeleteLocalRef(env, axComponent);
+
+    return size;
+}
+
+- (NSRect)getBounds
+{
+    JNIEnv* env = [ThreadUtilities getJNIEnv];
+    jobject axComponent = JNFCallStaticObjectMethod(env, sjm_getAccessibleComponent, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+
+    // NSAccessibility wants the bottom left point of the object in
+    // bottom left based screen coords
+
+    // Get the java screen coords, and make a NSPoint of the bottom left of the AxComponent.
+    NSSize size = getAxComponentSize(env, axComponent, fComponent);
+    NSPoint point = getAxComponentLocationOnScreen(env, axComponent, fComponent);
+    (*env)->DeleteLocalRef(env, axComponent);
+
+    point.y += size.height;
+    // Now make it into Cocoa screen coords.
+    point.y = [[[[self view] window] screen] frame].size.height - point.y;
+
+    return NSMakeRect(point.x, point.y, size.width, size.height);
+}
+
+- (id)getFocusedElement
+{
+    static JNF_STATIC_MEMBER_CACHE(jm_getFocusOwner, sjc_CAccessibility, "getFocusOwner", "(Ljava/awt/Component;)Ljavax/accessibility/Accessible;");
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    id value = nil;
+
+    NSWindow* hostWindow = [[self->fView window] retain];
+    jobject focused = JNFCallStaticObjectMethod(env, jm_getFocusOwner, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    [hostWindow release];
+
+    if (focused != NULL) {
+        if (JNFIsInstanceOf(env, focused, &sjc_Accessible)) {
+            value = [JavaComponentAccessibility createWithAccessible:focused withEnv:env withView:fView];
+            value = ((JavaBaseAccessibility *)value).platformAxObject;
+        }
+        (*env)->DeleteLocalRef(env, focused);
+    }
+
+    if (value == nil) {
+        value = self;
+    }
+#ifdef JAVA_AX_DEBUG
+    NSLog(@"%s: %@", __FUNCTION__, value);
+#endif
+    return value;
 }
 
 @end

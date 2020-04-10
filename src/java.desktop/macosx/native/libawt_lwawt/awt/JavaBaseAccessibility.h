@@ -1,3 +1,5 @@
+// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+
 #include "jni.h"
 
 #import <AppKit/AppKit.h>
@@ -12,7 +14,24 @@
 #define JAVA_AX_VISIBLE_CHILDREN (-3)
 // If the value is >=0, it's an index
 
-@interface JavaBaseAccessibility : NSAccessibilityElement {
+@class JavaBaseAccessibility;
+
+@protocol JavaAxObjectProvider
+
+@property (nonatomic, retain) JavaBaseAccessibility *javaAxObject;
+
+@end
+
+@protocol PlatformAxObjectProvider
+@required
+
+- (NSString *)getPlatformAxObjectClassName;
+
+@property (nonatomic, retain) NSObject <JavaAxObjectProvider> *platformAxObject;
+
+@end
+
+@interface JavaBaseAccessibility : NSObject <JavaAxObjectProvider, PlatformAxObjectProvider> {
     NSView *fView;
     NSObject *fParent;
 
@@ -48,5 +67,8 @@
 - (BOOL)isSelected:(JNIEnv *)env;
 - (BOOL)isSelectable:(JNIEnv *)env;
 - (BOOL)isVisible:(JNIEnv *)env;
+- (NSSize)getSize;
+- (NSRect)getBounds;
+- (id)getFocusedElement;
 
 @end

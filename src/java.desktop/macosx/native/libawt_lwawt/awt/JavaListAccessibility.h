@@ -7,10 +7,8 @@
 
 #import "JavaBaseAccessibility.h"
 
-@interface JavaListAccessibility : JavaBaseAccessibility<NSAccessibilityList> {
-}
+@interface JavaListAccessibility : JavaBaseAccessibility
 @end
 
-//@interface JavaRowAccessibility : JavaElementAccessibility<NSAccessibilityRow> {
-//}
-//@end
+@interface PlatformAxList : NSAccessibilityElement <NSAccessibilityList, JavaAxObjectProvider>
+@end
