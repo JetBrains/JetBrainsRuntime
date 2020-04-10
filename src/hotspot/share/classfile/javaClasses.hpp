@@ -67,6 +67,8 @@
   f(java_lang_invoke_LambdaForm) \
   f(java_lang_invoke_MethodType) \
   f(java_lang_invoke_CallSite) \
+  f(java_lang_invoke_DirectMethodHandle_StaticAccessor) \
+  f(java_lang_invoke_DirectMethodHandle_Accessor) \
   f(java_lang_invoke_MethodHandleNatives_CallSiteContext) \
   f(java_security_AccessControlContext) \
   f(java_lang_reflect_AccessibleObject) \
@@ -1077,6 +1079,7 @@ class java_lang_invoke_DirectMethodHandle_StaticAccessor: AllStatic {
   static bool is_instance(oop obj) {
     return obj != NULL && is_subclass(obj->klass());
   }
+  static void serialize_offsets(SerializeClosure* f) NOT_CDS_RETURN;
 };
 
 // Interface to java.lang.invoke.DirectMethodHandle$Accessor objects
@@ -1101,6 +1104,7 @@ class java_lang_invoke_DirectMethodHandle_Accessor: AllStatic {
   static bool is_instance(oop obj) {
     return obj != NULL && is_subclass(obj->klass());
   }
+  static void serialize_offsets(SerializeClosure* f) NOT_CDS_RETURN;
 };
 
 
