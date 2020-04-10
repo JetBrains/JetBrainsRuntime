@@ -69,17 +69,6 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // RetransformClasses.  Indicate which.
   JvmtiClassLoadKind          _class_load_kind;
 
-  // _index_map_count is just an optimization for knowing if
-  // _index_map_p contains any entries.
-  int                         _index_map_count;
-  intArray *                  _index_map_p;
-
-  // _operands_index_map_count is just an optimization for knowing if
-  // _operands_index_map_p contains any entries.
-  int                         _operands_cur_length;
-  int                         _operands_index_map_count;
-  intArray *                  _operands_index_map_p;
-
   GrowableArray<InstanceKlass*>*      _new_classes;
   jvmtiError                  _res;
 
