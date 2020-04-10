@@ -108,8 +108,6 @@ static NSObject *sAttributeNamesLOCK = nil;
         sAttributeNamesLOCK = [[NSObject alloc] init];
         sAttributeNamesForRoleCache = [[NSMutableDictionary alloc] initWithCapacity:60];
     }
-
-    [super initialize];
 }
 
 - (NSArray *)initializeAttributeNamesWithEnv:(JNIEnv *)env
@@ -548,7 +546,11 @@ static NSObject *sAttributeNamesLOCK = nil;
 // Element containing current element (id)
 - (id)accessibilityParentAttribute
 {
-    return NSAccessibilityUnignoredAncestor([self parent]);
+    id parent = [self parent];
+    if ([parent isKindOfClass:[JavaBaseAccessibility class]]) {
+        parent = ((JavaBaseAccessibility *)parent).platformAxObject;
+    }
+    return NSAccessibilityUnignoredAncestor(parent);
 }
 
 - (BOOL)accessibilityIsParentAttributeSettable
@@ -559,23 +561,8 @@ static NSObject *sAttributeNamesLOCK = nil;
 // Screen position of element's lower-left corner in lower-left relative screen coordinates (NSValue)
 - (NSValue *)accessibilityPositionAttribute
 {
-    JNIEnv* env = [ThreadUtilities getJNIEnv];
-    jobject axComponent = JNFCallStaticObjectMethod(env, sjm_getAccessibleComponent, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
-
-    // NSAccessibility wants the bottom left point of the object in
-    // bottom left based screen coords
-
-    // Get the java screen coords, and make a NSPoint of the bottom left of the AxComponent.
-    NSSize size = getAxComponentSize(env, axComponent, fComponent);
-    NSPoint point = getAxComponentLocationOnScreen(env, axComponent, fComponent);
-    (*env)->DeleteLocalRef(env, axComponent);
-
-    point.y += size.height;
-
-    // Now make it into Cocoa screen coords.
-    point.y = [[[[self view] window] screen] frame].size.height - point.y;
-
-    return [NSValue valueWithPoint:point];
+    NSRect bounds = [self getBounds];
+    return [NSValue valueWithPoint:NSMakePoint(bounds.origin.x, bounds.origin.y)];
 }
 
 - (BOOL)accessibilityIsPositionAttributeSettable
@@ -688,11 +675,7 @@ static NSObject *sAttributeNamesLOCK = nil;
 
 // Element size (NSValue)
 - (NSValue *)accessibilitySizeAttribute {
-    JNIEnv* env = [ThreadUtilities getJNIEnv];
-    jobject axComponent = JNFCallStaticObjectMethod(env, sjm_getAccessibleComponent, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
-    NSValue* size = [NSValue valueWithSize:getAxComponentSize(env, axComponent, fComponent)];
-    (*env)->DeleteLocalRef(env, axComponent);
-    return size;
+    return [NSValue valueWithSize:[self getSize]];
 }
 
 - (BOOL)accessibilityIsSizeAttributeSettable
@@ -939,7 +922,8 @@ static NSObject *sAttributeNamesLOCK = nil;
     if (JNFIsInstanceOf(env, jparent, &jc_Container)) {
         jobject jaccessible = JNFCallStaticObjectMethod(env, jm_accessibilityHitTest, jparent, (jfloat)point.x, (jfloat)point.y); // AWT_THREADING Safe (AWTRunLoop)
         if (jaccessible != NULL) {
-            value = [JavaComponentAccessibility createWithAccessible:jaccessible withEnv:env withView:fView];
+            value = [JavaBaseAccessibility createWithAccessible:jaccessible withEnv:env withView:fView];
+            value = ((JavaBaseAccessibility *)value).platformAxObject;
             (*env)->DeleteLocalRef(env, jaccessible);
         }
     }
@@ -960,29 +944,7 @@ static NSObject *sAttributeNamesLOCK = nil;
 
 - (id)accessibilityFocusedUIElement
 {
-    static JNF_STATIC_MEMBER_CACHE(jm_getFocusOwner, sjc_CAccessibility, "getFocusOwner", "(Ljava/awt/Component;)Ljavax/accessibility/Accessible;");
-
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    id value = nil;
-
-    NSWindow* hostWindow = [[self->fView window] retain];
-    jobject focused = JNFCallStaticObjectMethod(env, jm_getFocusOwner, fComponent); // AWT_THREADING Safe (AWTRunLoop)
-    [hostWindow release];
-
-    if (focused != NULL) {
-        if (JNFIsInstanceOf(env, focused, &sjc_Accessible)) {
-            value = [JavaComponentAccessibility createWithAccessible:focused withEnv:env withView:fView];
-        }
-        (*env)->DeleteLocalRef(env, focused);
-    }
-
-    if (value == nil) {
-        value = self;
-    }
-#ifdef JAVA_AX_DEBUG
-    NSLog(@"%s: %@", __FUNCTION__, value);
-#endif
-    return value;
+    return [self getFocusedElement];
 }
 
 @end
@@ -1269,16 +1231,18 @@ static BOOL ObjectEquals(JNIEnv *env, jobject a, jobject b, jobject component);
     if ([children count] <= 0) return nil;
 
     // The scroll bars are in the children.
-    JavaComponentAccessibility *aElement;
+    NSObject *aElement;
     NSEnumerator *enumerator = [children objectEnumerator];
-    while ((aElement = (JavaComponentAccessibility *)[enumerator nextObject])) {
-        if ([[aElement accessibilityRoleAttribute] isEqualToString:NSAccessibilityScrollBarRole]) {
-            jobject elementAxContext = [aElement axContextWithEnv:env];
-            if (isHorizontal(env, elementAxContext, fComponent)) {
+    while ((aElement = [enumerator nextObject])) {
+        if ([aElement respondsToSelector:@selector(accessibilityRoleAttribute)]) {
+            if ([[aElement accessibilityRoleAttribute] isEqualToString:NSAccessibilityScrollBarRole]) {
+                jobject elementAxContext = [((NSObject <JavaAxObjectProvider> *)aElement).javaAxObject axContextWithEnv:env];
+                if (isHorizontal(env, elementAxContext, fComponent)) {
+                    (*env)->DeleteLocalRef(env, elementAxContext);
+                    return aElement;
+                }
                 (*env)->DeleteLocalRef(env, elementAxContext);
-                return aElement;
             }
-            (*env)->DeleteLocalRef(env, elementAxContext);
         }
     }
 
@@ -1329,11 +1293,13 @@ static BOOL ObjectEquals(JNIEnv *env, jobject a, jobject b, jobject component);
 
     // The scroll bars are in the children. children less the scroll bars is the contents
     NSEnumerator *enumerator = [children objectEnumerator];
-    JavaComponentAccessibility *aElement;
-    while ((aElement = (JavaComponentAccessibility *)[enumerator nextObject])) {
-        if (![[aElement accessibilityRoleAttribute] isEqualToString:NSAccessibilityScrollBarRole]) {
-            // no scroll bars in contents
-            [(NSMutableArray *)contents addObject:aElement];
+    NSObject *aElement;
+    while ((aElement = [enumerator nextObject])) {
+        if ([aElement respondsToSelector:@selector(accessibilityRoleAttribute)]) {
+            if (![[aElement accessibilityRoleAttribute] isEqualToString:NSAccessibilityScrollBarRole]) {
+                // no scroll bars in contents
+                [(NSMutableArray *) contents addObject:aElement];
+            }
         }
     }
 
