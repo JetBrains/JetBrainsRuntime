@@ -5,10 +5,10 @@
 
 #endif // NATIVE_JAVALISTACCESSIBILITY_H
 
-#import "JavaBaseAccessibility.h"
+#import "JavaElementAccessibility.h"
 
-@interface JavaListAccessibility : JavaBaseAccessibility
+@interface JavaListAccessibility : JavaElementAccessibility
 @end
 
-@interface PlatformAxList : NSAccessibilityElement <NSAccessibilityList, JavaAxObjectProvider>
+@interface PlatformAxList : PlatformAxObject <NSAccessibilityList>
 @end
