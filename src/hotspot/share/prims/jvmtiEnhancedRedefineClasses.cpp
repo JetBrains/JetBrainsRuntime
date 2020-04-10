@@ -1411,6 +1411,18 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
     ik->set_host_klass(InstanceKlass::cast(ik->host_klass()->newest_version()));
   }
 
+  // Update implementor if there is only one, in this case implementor() can reference old class
+  if (ik->is_interface()) {
+    Klass* implKlass = ik->implementor();
+    if (implKlass != NULL && implKlass != ik && implKlass->new_version() != NULL) {
+      InstanceKlass* newest_impl = InstanceKlass::cast(implKlass->newest_version());
+      ik->init_implementor();
+      if (newest_impl->implements_interface(ik)) {
+        ik->add_implementor(newest_impl);
+      }
+    }
+  }
+
   for (int i = 0; i < other_cp->length(); i++) {
     if (other_cp->tag_at(i).is_klass()) {
       Klass* klass = other_cp->resolved_klass_at(i);
