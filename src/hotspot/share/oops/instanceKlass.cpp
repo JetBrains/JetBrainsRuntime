@@ -789,7 +789,7 @@ bool InstanceKlass::link_class_impl(bool throw_verifyerror, TRAPS) {
     if (!is_linked()) {
       if (!is_rewritten()) {
         // In cases, if class A is being redefined and class B->A (B is extended from A) and B is host class of anonymous class C
-        // then second redefinition fails with cannot cast klass exception. So we currently turn off bytecode verification 
+        // then second redefinition fails with cannot cast klass exception. So we currently turn off bytecode verification
         // on redefinition.
         if (!newest_version()->is_redefining()) {
           bool verify_ok = verify_code(throw_verifyerror, THREAD);
@@ -1139,6 +1139,14 @@ void InstanceKlass::init_implementor() {
   }
 }
 
+void InstanceKlass::init_implementor_from_redefine() {
+  assert(is_interface(), "not interface");
+  Klass** addr = adr_implementor();
+  assert(addr != NULL, "null addr");
+  if (addr != NULL) {
+    *addr = NULL;
+  }
+}
 
 void InstanceKlass::process_interfaces(Thread *thread) {
   // link this class into the implementors list of every interface it implements
