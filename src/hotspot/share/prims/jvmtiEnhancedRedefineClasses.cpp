@@ -1416,7 +1416,7 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
     Klass* implKlass = ik->implementor();
     if (implKlass != NULL && implKlass != ik && implKlass->new_version() != NULL) {
       InstanceKlass* newest_impl = InstanceKlass::cast(implKlass->newest_version());
-      ik->init_implementor();
+      ik->init_implementor_from_redefine();
       if (newest_impl->implements_interface(ik)) {
         ik->add_implementor(newest_impl);
       }
