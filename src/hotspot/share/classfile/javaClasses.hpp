@@ -1069,9 +1069,8 @@ class java_lang_invoke_DirectMethodHandle_StaticAccessor: AllStatic {
   static bool is_subclass(Klass* klass) {
     return klass->is_subclass_of(SystemDictionary::DirectMethodHandle_StaticAccessor_klass());
   }
-  static bool is_instance(oop obj) {
-    return obj != NULL && is_subclass(obj->klass());
-  }
+  static bool is_instance(oop obj);
+
   static void serialize_offsets(SerializeClosure* f) NOT_CDS_RETURN;
 };
 
@@ -1094,9 +1093,8 @@ class java_lang_invoke_DirectMethodHandle_Accessor: AllStatic {
   static bool is_subclass(Klass* klass) {
     return klass->is_subclass_of(SystemDictionary::DirectMethodHandle_Accessor_klass());
   }
-  static bool is_instance(oop obj) {
-    return obj != NULL && is_subclass(obj->klass());
-  }
+  static bool is_instance(oop obj);
+
   static void serialize_offsets(SerializeClosure* f) NOT_CDS_RETURN;
 };
 
