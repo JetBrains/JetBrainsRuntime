@@ -1020,6 +1020,7 @@ public:
   int  nof_implementors() const;
   void add_implementor(Klass* k);  // k is a new class that implements this interface
   void init_implementor();           // initialize
+  void init_implementor_from_redefine();           // initialize
 
   // link this class into the implementors list of every interface it implements
   void process_interfaces(Thread *thread);
