@@ -6,4 +6,18 @@
 @end
 
 @interface PlatformAxObject : NSAccessibilityElement <JavaAxObjectProvider>
+
+// begin of NSAccessibility protocol methods
+- (BOOL)isAccessibilityElement;
+- (NSString *)accessibilityLabel;
+- (NSArray *)accessibilityChildren;
+- (NSArray *)accessibilitySelectedChildren;
+- (NSRect)accessibilityFrame;
+- (id)accessibilityParent;
+- (BOOL)accessibilityIsIgnored;
+- (BOOL)isAccessibilityEnabled;
+- (id)accessibilityApplicationFocusedUIElement;
+- (id)getAccessibilityWindow;
+// end of NSAccessibility protocol methods
+
 @end
