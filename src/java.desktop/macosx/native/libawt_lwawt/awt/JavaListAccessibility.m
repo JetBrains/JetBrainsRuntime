@@ -6,7 +6,7 @@
 
 @implementation JavaListAccessibility
 
-- (NSString *)getPlatformAxObjectClassName
+- (NSString *)getPlatformAxElementClassName
 {
     return @"PlatformAxList";
 }

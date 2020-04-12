@@ -16,22 +16,22 @@
 
 @class JavaBaseAccessibility;
 
-@protocol JavaAxObjectProvider
+@protocol JavaBaseProvider
 
-@property (nonatomic, retain) JavaBaseAccessibility *javaAxObject;
+@property (nonatomic, retain) JavaBaseAccessibility *javaBase;
 
 @end
 
-@protocol PlatformAxObjectProvider
+@protocol PlatformAxElementProvider
 @required
 
-- (NSString *)getPlatformAxObjectClassName;
+- (NSString *)getPlatformAxElementClassName;
 
-@property (nonatomic, retain) NSObject <JavaAxObjectProvider> *platformAxObject;
+@property (nonatomic, retain) NSObject <JavaBaseProvider> *platformAxElement;
 
 @end
 
-@interface JavaBaseAccessibility : NSObject <JavaAxObjectProvider, PlatformAxObjectProvider> {
+@interface JavaBaseAccessibility : NSObject <JavaBaseProvider, PlatformAxElementProvider> {
     NSView *fView;
     NSObject *fParent;
 
