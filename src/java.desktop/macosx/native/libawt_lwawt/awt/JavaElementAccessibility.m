@@ -13,17 +13,17 @@ static void RaiseMustOverrideException(NSString *method)
 
 @implementation JavaElementAccessibility
 
-- (NSString *)getPlatformAxObjectClassName
+- (NSString *)getPlatformAxElementClassName
 {
-    RaiseMustOverrideException(@"getPlatformAxObjectClassName");
+    RaiseMustOverrideException(@"getPlatformAxElementClassName");
     return NULL;
 }
 
 @end
 
-@implementation PlatformAxObject
+@implementation PlatformAxElement
 
-@synthesize javaAxObject;
+@synthesize javaBase;
 
 - (BOOL)isAccessibilityElement
 {
@@ -39,7 +39,7 @@ static void RaiseMustOverrideException(NSString *method)
 - (NSArray *)accessibilityChildren
 {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    NSArray *children = [JavaBaseAccessibility childrenOfParent:self.javaAxObject
+    NSArray *children = [JavaBaseAccessibility childrenOfParent:self.javaBase
                                                         withEnv:env
                                                withChildrenCode:JAVA_AX_ALL_CHILDREN
                                                    allowIgnored:NO];
@@ -52,7 +52,7 @@ static void RaiseMustOverrideException(NSString *method)
 - (NSArray *)accessibilitySelectedChildren
 {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    NSArray *selectedChildren = [JavaBaseAccessibility childrenOfParent:self.javaAxObject
+    NSArray *selectedChildren = [JavaBaseAccessibility childrenOfParent:self.javaBase
                                                                 withEnv:env
                                                        withChildrenCode:JAVA_AX_SELECTED_CHILDREN
                                                            allowIgnored:NO];
@@ -64,13 +64,13 @@ static void RaiseMustOverrideException(NSString *method)
 
 - (NSRect)accessibilityFrame
 {
-    return [self.javaAxObject getBounds];
+    return [self.javaBase getBounds];
 }
 
 - (id)accessibilityParent
 {
-    JavaBaseAccessibility *parent = (JavaBaseAccessibility *) [self.javaAxObject parent];
-    return parent.platformAxObject;
+    JavaBaseAccessibility *parent = (JavaBaseAccessibility *) [self.javaBase parent];
+    return parent.platformAxElement;
 }
 
 - (BOOL)accessibilityIsIgnored
@@ -87,12 +87,12 @@ static void RaiseMustOverrideException(NSString *method)
 
 - (id)accessibilityApplicationFocusedUIElement
 {
-    return [self.javaAxObject getFocusedElement];
+    return [self.javaBase getFocusedElement];
 }
 
 - (id)getAccessibilityWindow
 {
-    return [self.javaAxObject window];
+    return [self.javaBase window];
 }
 
 @end

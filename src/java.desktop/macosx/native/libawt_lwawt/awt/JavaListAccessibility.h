@@ -10,5 +10,5 @@
 @interface JavaListAccessibility : JavaElementAccessibility
 @end
 
-@interface PlatformAxList : PlatformAxObject <NSAccessibilityList>
+@interface PlatformAxList : PlatformAxElement <NSAccessibilityList>
 @end
