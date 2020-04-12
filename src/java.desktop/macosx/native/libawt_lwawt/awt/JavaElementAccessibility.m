@@ -87,8 +87,12 @@ static void RaiseMustOverrideException(NSString *method)
 
 - (id)accessibilityApplicationFocusedUIElement
 {
-    return [self getFocusedElement];
+    return [self.javaAxObject getFocusedElement];
+}
+
+- (id)getAccessibilityWindow
+{
+    return [self.javaAxObject window];
 }
 
 @end
-
