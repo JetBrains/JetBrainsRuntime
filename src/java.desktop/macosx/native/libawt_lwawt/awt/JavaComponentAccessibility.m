@@ -548,7 +548,7 @@ static NSObject *sAttributeNamesLOCK = nil;
 {
     id parent = [self parent];
     if ([parent isKindOfClass:[JavaBaseAccessibility class]]) {
-        parent = ((JavaBaseAccessibility *)parent).platformAxObject;
+        parent = ((JavaBaseAccessibility *)parent).platformAxElement;
     }
     return NSAccessibilityUnignoredAncestor(parent);
 }
@@ -923,7 +923,7 @@ static NSObject *sAttributeNamesLOCK = nil;
         jobject jaccessible = JNFCallStaticObjectMethod(env, jm_accessibilityHitTest, jparent, (jfloat)point.x, (jfloat)point.y); // AWT_THREADING Safe (AWTRunLoop)
         if (jaccessible != NULL) {
             value = [JavaBaseAccessibility createWithAccessible:jaccessible withEnv:env withView:fView];
-            value = ((JavaBaseAccessibility *)value).platformAxObject;
+            value = ((JavaBaseAccessibility *)value).platformAxElement;
             (*env)->DeleteLocalRef(env, jaccessible);
         }
     }
@@ -1236,7 +1236,7 @@ static BOOL ObjectEquals(JNIEnv *env, jobject a, jobject b, jobject component);
     while ((aElement = [enumerator nextObject])) {
         if ([aElement respondsToSelector:@selector(accessibilityRoleAttribute)]) {
             if ([[aElement accessibilityRoleAttribute] isEqualToString:NSAccessibilityScrollBarRole]) {
-                jobject elementAxContext = [((NSObject <JavaAxObjectProvider> *)aElement).javaAxObject axContextWithEnv:env];
+                jobject elementAxContext = [((NSObject <JavaBaseProvider> *)aElement).javaBase axContextWithEnv:env];
                 if (isHorizontal(env, elementAxContext, fComponent)) {
                     (*env)->DeleteLocalRef(env, elementAxContext);
                     return aElement;

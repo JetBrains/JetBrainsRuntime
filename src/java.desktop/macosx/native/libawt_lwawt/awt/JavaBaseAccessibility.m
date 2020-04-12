@@ -37,22 +37,22 @@ static jobject sAccessibilityClass = NULL;
 
 @implementation JavaBaseAccessibility
 
-@synthesize platformAxObject;
-@synthesize javaAxObject;
+@synthesize platformAxElement;
+@synthesize javaBase;
 
 - (id)init
 {
     self = [super init];
     if (self) {
-        NSString *className = [self getPlatformAxObjectClassName];
-        self.platformAxObject = className != NULL ? [[NSClassFromString(className) alloc] init] : self; // defaults to [self]
-        self.platformAxObject.javaAxObject = self;
+        NSString *className = [self getPlatformAxElementClassName];
+        self.platformAxElement = className != NULL ? [[NSClassFromString(className) alloc] init] : self; // defaults to [self]
+        self.platformAxElement.javaBase = self;
     }
     return self;
 }
 
 // to override in subclasses
-- (NSString *)getPlatformAxObjectClassName
+- (NSString *)getPlatformAxElementClassName
 {
     return NULL;
 }
@@ -112,8 +112,8 @@ static jobject sAccessibilityClass = NULL;
     [fView release];
     fView = nil;
 
-    if (self.platformAxObject != self) {
-        [self.platformAxObject dealloc];
+    if (self.platformAxElement != self) {
+        [self.platformAxElement dealloc];
     }
 
     [super dealloc];
@@ -122,37 +122,37 @@ static jobject sAccessibilityClass = NULL;
 - (void)postValueChanged
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self.platformAxObject, NSAccessibilityValueChangedNotification);
+    NSAccessibilityPostNotification(self.platformAxElement, NSAccessibilityValueChangedNotification);
 }
 
 - (void)postSelectedTextChanged
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self.platformAxObject, NSAccessibilitySelectedTextChangedNotification);
+    NSAccessibilityPostNotification(self.platformAxElement, NSAccessibilitySelectedTextChangedNotification);
 }
 
 - (void)postSelectionChanged
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self.platformAxObject, NSAccessibilitySelectedChildrenChangedNotification);
+    NSAccessibilityPostNotification(self.platformAxElement, NSAccessibilitySelectedChildrenChangedNotification);
 }
 
 - (void)postMenuOpened
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self.platformAxObject, (NSString *)kAXMenuOpenedNotification);
+    NSAccessibilityPostNotification(self.platformAxElement, (NSString *)kAXMenuOpenedNotification);
 }
 
 - (void)postMenuClosed
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self.platformAxObject, (NSString *)kAXMenuClosedNotification);
+    NSAccessibilityPostNotification(self.platformAxElement, (NSString *)kAXMenuClosedNotification);
 }
 
 - (void)postMenuItemSelected
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification(self.platformAxObject, (NSString *)kAXMenuItemSelectedNotification);
+    NSAccessibilityPostNotification(self.platformAxElement, (NSString *)kAXMenuItemSelectedNotification);
 }
 
 - (BOOL)isEqual:(id)anObject
@@ -249,7 +249,7 @@ static jobject sAccessibilityClass = NULL;
         (*env)->DeleteLocalRef(env, jchild);
         (*env)->DeleteLocalRef(env, jchildJavaRole);
 
-        [children addObject:child.platformAxObject];
+        [children addObject:child.platformAxElement];
 
         childIndex++;
     }
@@ -463,7 +463,7 @@ static jobject sAccessibilityClass = NULL;
     if (focused != NULL) {
         if (JNFIsInstanceOf(env, focused, &sjc_Accessible)) {
             value = [JavaComponentAccessibility createWithAccessible:focused withEnv:env withView:fView];
-            value = ((JavaBaseAccessibility *)value).platformAxObject;
+            value = ((JavaBaseAccessibility *)value).platformAxElement;
         }
         (*env)->DeleteLocalRef(env, focused);
     }
