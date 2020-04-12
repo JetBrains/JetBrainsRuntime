@@ -5,7 +5,7 @@
 @interface JavaElementAccessibility : JavaBaseAccessibility
 @end
 
-@interface PlatformAxObject : NSAccessibilityElement <JavaAxObjectProvider>
+@interface PlatformAxElement : NSAccessibilityElement <JavaBaseProvider>
 
 // begin of NSAccessibility protocol methods
 - (BOOL)isAccessibilityElement;
