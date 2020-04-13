@@ -636,9 +636,9 @@ java/awt/event/HierarchyEvent/AncestorResized/AncestorResized.java              
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java                          8168646 generic-all
 java/awt/event/KeyEvent/CorrectTime/CorrectTime.java                                6626492 generic-all
 java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java                   8194045 generic-all
-java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java                    8169476 windows-all,linux-all
+java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java                    8169476 windows-all,linux-all,macosx-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java            8129778 generic-all
-java/awt/event/KeyEvent/KeyChar/KeyCharTest.java                                    8169474 windows-all,linux-all
+java/awt/event/KeyEvent/KeyChar/KeyCharTest.java                                    8169474 macosx-all,windows-all,linux-all
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java                                8129778 generic-all
 java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java                  8194045 generic-all
 java/awt/event/MouseEvent/EventTimeInFuture/EventTimeInFuture.java                  8032254,6626492 linux-all
