@@ -225,13 +225,15 @@ void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
 // TODO comment
 struct StoreBarrier {
   // TODO: j10 review change ::oop_store -> HeapAccess<>::oop_store
-  template <class T> static void oop_store(T* p, oop v) { HeapAccess<>::oop_store(p, v); }
+  template <class T> static void oop_store_not_null(T* p, oop v) { HeapAccess<IS_NOT_NULL>::oop_store(p, v); }
+  template <class T> static void oop_store(T* p) { HeapAccess<>::oop_store(p, oop(NULL)); }
 };
 
 
 // TODO comment
 struct StoreNoBarrier {
-  template <class T> static void oop_store(T* p, oop v) { RawAccess<IS_NOT_NULL>::oop_store(p, v); }
+  template <class T> static void oop_store_not_null(T* p, oop v) { RawAccess<IS_NOT_NULL>::oop_store(p, v); }
+  template <class T> static void oop_store(T* p) { RawAccess<>::oop_store(p, oop(NULL)); }
 };
 
 /**
@@ -309,6 +311,9 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
   bool update_direct_method_handle(oop obj) {
     // Always update member name first.
     oop mem_name = java_lang_invoke_DirectMethodHandle::member(obj);
+    if (mem_name == NULL) {
+      return true;
+    }
     if (!update_member_name(mem_name)) {
       return false;
     }
@@ -347,7 +352,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
         assert(obj == InstanceKlass::cast(klass)->java_mirror(), "just checking");
         if (klass->new_version() != NULL) {
           obj = InstanceKlass::cast(klass->new_version())->java_mirror();
-          S::oop_store(p, obj);
+          S::oop_store_not_null(p, obj);
           oop_updated = true;
         }
       }
@@ -363,7 +368,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
       if (!update_direct_method_handle(obj)) {
         // DMH is no longer valid, replace it with null reference.
         // See note above. We probably want to replace this with something more meaningful.
-        S::oop_store(p, NULL);
+        S::oop_store(p);
       }
     }
   }
@@ -1430,8 +1435,7 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
         // Constant pool entry points to redefined class -- update to the new version
         other_cp->klass_at_put(i, klass->newest_version());
       }
-      klass = other_cp->resolved_klass_at(i);
-      assert(klass->new_version() == NULL, "Must be new klass!");
+      assert(other_cp->resolved_klass_at(i)->new_version() == NULL, "Must be new klass!");
     }
   }
 
