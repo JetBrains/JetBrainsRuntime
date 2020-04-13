@@ -173,9 +173,9 @@ final class CRobot implements RobotPeer {
      */
     @Override
     public int getRGBPixel(int x, int y) {
-        int c[] = new int[1];
-        double scale = fDevice.getScaleFactor();
-        getScreenPixels(new Rectangle(x, y, (int) scale, (int) scale), c);
+        int scale = (int)Math.floor(fDevice.getScaleFactor());
+        int c[] = new int[scale * scale];
+        getScreenPixels(new Rectangle(x, y, scale, scale), c);
         return c[0];
     }
 
@@ -186,7 +186,8 @@ final class CRobot implements RobotPeer {
      */
     @Override
     public int [] getRGBPixels(final Rectangle bounds) {
-        int c[] = new int[bounds.width * bounds.height];
+        int scale = (int)Math.floor(fDevice.getScaleFactor());
+        int[] c = new int[bounds.width * bounds.height * scale * scale];
         getScreenPixels(bounds, c);
 
         return c;

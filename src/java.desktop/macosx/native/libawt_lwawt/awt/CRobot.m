@@ -28,7 +28,6 @@
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <ApplicationServices/ApplicationServices.h>
-#import <ThreadUtilities.h>
 
 #import "CRobotKeyCode.h"
 #import "LWCToolkit.h"
@@ -287,14 +286,9 @@ Java_sun_lwawt_macosx_CRobot_nativeGetScreenPixels
 
     CGRect screenRect = CGRectMake(picX / scale, picY / scale,
     				picWidth / scale, picHeight / scale);
-
-    __block CGImageRef screenPixelsImage = NULL;
-
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
-        screenPixelsImage = CGWindowListCreateImage(screenRect,
-                kCGWindowListOptionOnScreenOnly,
-                kCGNullWindowID, kCGWindowImageBestResolution);
-    }];
+    CGImageRef screenPixelsImage = CGWindowListCreateImage(screenRect,
+                                        kCGWindowListOptionOnScreenOnly,
+                                        kCGNullWindowID, kCGWindowImageBestResolution);
 
     if (screenPixelsImage == NULL) {
         return;
