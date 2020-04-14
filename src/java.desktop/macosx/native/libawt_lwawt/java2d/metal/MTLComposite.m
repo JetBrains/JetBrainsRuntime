@@ -141,13 +141,10 @@
 }
 
 - (jboolean)isBlendingDisabled:(jboolean)isSrcOpaque {
-    if (_compositeRule == java_awt_AlphaComposite_SRC) {
-        const jfloat epsilon = 0.001f;
-        return fabs(_extraAlpha - 1.0f) < epsilon;
-    }
-    if (_compositeRule != java_awt_AlphaComposite_SRC_OVER) {
-        // J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "\tuse blending for rule %d", alphaCompositeRule);
-        return JNI_FALSE;
+    if (_compositeRule == java_awt_AlphaComposite_SRC ||
+        _compositeRule == java_awt_AlphaComposite_SRC_OVER)
+    {
+        return FLT_LT(_extraAlpha, 1.0f);
     }
     return isSrcOpaque;
 }
