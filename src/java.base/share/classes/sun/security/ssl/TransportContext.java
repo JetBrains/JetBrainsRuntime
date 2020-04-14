@@ -90,7 +90,7 @@ class TransportContext implements ConnectionContext {
     // Called by SSLEngineImpl
     TransportContext(SSLContextImpl sslContext, SSLTransport transport,
             InputRecord inputRecord, OutputRecord outputRecord) {
-        this(sslContext, transport, new SSLConfiguration(sslContext, true),
+        this(sslContext, transport, new SSLConfiguration(sslContext, false),
                 inputRecord, outputRecord, true);
     }
 
