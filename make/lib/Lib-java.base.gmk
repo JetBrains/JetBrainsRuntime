@@ -107,9 +107,9 @@ ifeq ($(OPENJDK_TARGET_OS), macosx)
         DISABLED_WARNINGS_clang := deprecated-declarations, \
         LDFLAGS := $(LDFLAGS_JDKLIB) \
             -L$(SUPPORT_OUTPUTDIR)/modules_libs/java.base \
-            $(call SET_SHARED_LIBRARY_ORIGIN) \
-            -fobjc-link-runtime, \
+            $(call SET_SHARED_LIBRARY_ORIGIN), \
         LIBS := \
+            -lobjc \
             -framework JavaNativeFoundation \
             -framework CoreServices \
             -framework Security \
