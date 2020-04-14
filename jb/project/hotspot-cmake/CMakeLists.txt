@@ -1663,6 +1663,7 @@ set(SOURCE_FILES
 ../../../src/hotspot/share/prims/jvmtiGetLoadedClasses.hpp
 ../../../src/hotspot/share/prims/jvmtiAgentThread.hpp
 ../../../src/hotspot/share/prims/jvmtiCodeBlobEvents.cpp
+../../../src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 ../../../src/hotspot/share/prims/stackwalk.cpp
 ../../../src/hotspot/share/prims/privilegedStack.hpp
 ../../../src/hotspot/share/prims/jvmtiUtil.hpp
@@ -1684,6 +1685,7 @@ set(SOURCE_FILES
 ../../../src/hotspot/share/prims/stackwalk.hpp
 ../../../src/hotspot/share/prims/privilegedStack.cpp
 ../../../src/hotspot/share/prims/jvmtiCodeBlobEvents.hpp
+../../../src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 ../../../src/hotspot/share/prims/jvmtiUtil.cpp
 ../../../src/hotspot/share/prims/jvmtiEnvBase.cpp
 ../../../src/hotspot/share/prims/methodHandles.cpp
