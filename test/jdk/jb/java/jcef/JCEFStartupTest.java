@@ -19,15 +19,16 @@ import java.util.concurrent.TimeUnit;
  * @run main JCEFStartupTest
  */
 public class JCEFStartupTest {
-    static CefClient CEF_CLIENT = JBCefApp.getInstance().createClient();
-
     static final CountDownLatch LATCH = new CountDownLatch(1);
     static volatile boolean PASSED;
 
+    static volatile JBCefBrowser BROWSER;
+
     JCEFStartupTest() {
         JFrame frame = new JFrame("JCEF");
+        BROWSER = new JBCefBrowser();
 
-        CEF_CLIENT.addLoadHandler(new CefLoadHandlerAdapter() {
+        BROWSER.getCefClient().addLoadHandler(new CefLoadHandlerAdapter() {
             @Override
             public void onLoadStart(CefBrowser cefBrowser, CefFrame cefFrame, CefRequest.TransitionType transitionType) {
                 System.out.println("onLoadStart");
@@ -46,8 +47,7 @@ public class JCEFStartupTest {
             }
         });
 
-        CefBrowser browser = CEF_CLIENT.createBrowser("about:blank", false, false);
-        frame.add(browser.getUIComponent());
+        frame.add(BROWSER.getComponent());
 
         frame.setSize(640, 480);
         frame.setLocationRelativeTo(null);
@@ -64,7 +64,7 @@ public class JCEFStartupTest {
             e.printStackTrace();
         }
 
-        CEF_CLIENT.dispose();
+        BROWSER.dispose();
         JBCefApp.getInstance().getCefApp().dispose();
 
         if (!PASSED) {
