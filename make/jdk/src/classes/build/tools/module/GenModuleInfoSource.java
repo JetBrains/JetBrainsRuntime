@@ -414,7 +414,12 @@ public class GenModuleInfoSource {
                     Statement statement = getStatement(keyword, name);
                     switch (keyword) {
                         case "exports":
-                            if (exports.containsKey(name)) {
+                            /* JBR patch: Allow duplicate exports for module-info.java.extra files
+                             * This fixes failing builds when building with JFX
+                             * See https://bugs.openjdk.java.net/browse/JDK-8167314?focusedCommentId=14025789
+                             * and https://bugs.openjdk.java.net/browse/JDK-8195798
+                             */
+                            if (exports.containsKey(name) && !extraFile) {
                                 throw parser.newError("multiple " + keyword + " " + name);
                             }
                             exports.put(name, statement);
