@@ -58,6 +58,7 @@ import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
 import sun.awt.X11ComponentPeer;
 import sun.awt.X11GraphicsConfig;
+import sun.awt.event.KeyEventProcessing;
 import sun.awt.event.TouchEvent;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
@@ -1327,7 +1328,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
             );
         }
 
-        int jkeyToReturn = XKeysym.getLegacyJavaKeycodeOnly(ev); // someway backward compatible
+        int jkeyToReturn;
+        if (KeyEventProcessing.useNationalLayouts) {
+            // if jkeyToReturn is VK_UNDEFINED then look for keycode in extended key code
+            jkeyToReturn = jkc.getJavaKeycode();
+        } else {
+            jkeyToReturn = XKeysym.getLegacyJavaKeycodeOnly(ev); // someway backward compatible
+        }
+
         int jkeyExtended = jkc.getJavaKeycode() == java.awt.event.KeyEvent.VK_UNDEFINED ?
                            primaryUnicode2JavaKeycode( unicodeFromPrimaryKeysym ) :
                              jkc.getJavaKeycode();
@@ -1410,7 +1418,13 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         // is undefined, we still will have a guess of what was engraved on a keytop.
         int unicodeFromPrimaryKeysym = keysymToUnicode( xkeycodeToPrimaryKeysym(ev) ,0);
 
-        int jkeyToReturn = XKeysym.getLegacyJavaKeycodeOnly(ev); // someway backward compatible
+        int jkeyToReturn;
+        if (KeyEventProcessing.useNationalLayouts) {
+            // if jkeyToReturn is VK_UNDEFINED then look for keycode in extended key code
+            jkeyToReturn = jkc.getJavaKeycode();
+        } else {
+            jkeyToReturn = XKeysym.getLegacyJavaKeycodeOnly(ev); // someway backward compatible
+        }
         int jkeyExtended = jkc.getJavaKeycode() == java.awt.event.KeyEvent.VK_UNDEFINED ?
                            primaryUnicode2JavaKeycode( unicodeFromPrimaryKeysym ) :
                              jkc.getJavaKeycode();
