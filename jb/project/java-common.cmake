@@ -16,12 +16,12 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_ALLBSD_SOURCE -DTARGET_OS_FAMILY_bsd")
 endif ()
 
-if ("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN") #not shure about TARGET_COMPILER
+if ("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN") #not sure about TARGET_COMPILER
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTARGET_COMPILER_visCPP -DWIN64 -D_WINDOWS -DTARGET_OS_FAMILY_windows")
 endif ()
 
 add_custom_target(configure
-        COMMAND bash configure
+        COMMAND bash configure --disable-warnings-as-errors
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../)
 
 add_custom_target(build_images
