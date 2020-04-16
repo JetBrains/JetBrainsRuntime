@@ -487,7 +487,9 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
 #ifdef TRACE_ISOBLIT
     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via sampling]");
 #endif //TRACE_ISOBLIT
-    drawTex2Tex(mtlc, srcTex, dstTex, srcOps->isOpaque, dstOps->isOpaque, hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+    drawTex2Tex(mtlc, srcTex, dstTex,
+            [mtlc isBlendingDisabled:srcOps->isOpaque],
+            dstOps->isOpaque, hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 }
 
 /**

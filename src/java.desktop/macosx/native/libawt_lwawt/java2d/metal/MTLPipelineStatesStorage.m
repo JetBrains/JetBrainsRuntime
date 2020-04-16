@@ -265,8 +265,9 @@ static void setBlendingFactors(
         const SurfaceRasterFlags * srcFlags,
         const SurfaceRasterFlags * dstFlags
 ) {
-    if (compositeRule == RULE_Src) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_Src");
+    if (compositeRule == RULE_Src &&
+        (composite == nil || FLT_GE([composite getExtraAlpha], 1.0f))) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_Src but blending is disabled because src is opaque");
         return;
     }
 
@@ -293,7 +294,7 @@ static void setBlendingFactors(
                 (composite == nil ||
                  FLT_GE([composite getExtraAlpha], 1.0f)))
             {
-                J2dTraceLn(J2D_TRACE_VERBOSE, "rule=RULE_Src, but blending is disabled because src is opaque");
+                J2dTraceLn(J2D_TRACE_VERBOSE, "rule=RULE_SrcOver, but blending is disabled because src is opaque");
                 cad.blendingEnabled = NO;
                 return;
             }
