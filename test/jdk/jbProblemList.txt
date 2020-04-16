@@ -926,3 +926,5 @@ javax/print/attribute/AttributeTest.java                                        
 javax/print/attribute/GetCopiesSupported.java                                       nobug generic-all
 javax/print/attribute/SidesPageRangesTest.java                                      nobug generic-all
 javax/print/attribute/SupportedPrintableAreas.java                                  nobug generic-all
+
+java/awt/image/VolatileImage/DrawHugeImageTest.java                                 8242908 macosx-all
