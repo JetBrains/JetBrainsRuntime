@@ -1,6 +1,5 @@
 // Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
-import org.cef.CefClient;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefFrame;
 import org.cef.handler.CefLoadHandlerAdapter;
@@ -36,8 +35,6 @@ public class JCEFStartupTest {
             @Override
             public void onLoadEnd(CefBrowser cefBrowser, CefFrame cefFrame, int i) {
                 System.out.println("onLoadEnd");
-
-//                cefBrowser.close(false); <-- todo: makes jtreg fail on exit code
                 PASSED = true;
                 LATCH.countDown();
             }
@@ -55,6 +52,9 @@ public class JCEFStartupTest {
         frame.setVisible(true);
     }
 
+    /**
+     * Pass "cmd-q" to manually reproduce JBR-2222.
+     */
     public static void main(String[] args) {
         EventQueue.invokeLater(JCEFStartupTest::new);
 
@@ -64,7 +64,9 @@ public class JCEFStartupTest {
             e.printStackTrace();
         }
 
-        BROWSER.dispose();
+        if (!(args.length > 0 && args[0].equalsIgnoreCase("cmd-q"))) {
+            BROWSER.dispose();
+        }
         JBCefApp.getInstance().getCefApp().dispose();
 
         if (!PASSED) {
