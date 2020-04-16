@@ -1,5 +1,5 @@
-SRC#
-# Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+#
+# Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -97,6 +97,9 @@ HOTSPOT_SETUP_JVM_VARIANTS
 
 # With basic setup done, call the custom early hook.
 CUSTOM_EARLY_HOOK
+
+# This only needs debug level to be setup
+JDKOPT_ALLOW_ABSOLUTE_PATHS_IN_OUTPUT
 
 # Check if we have devkits, extra paths or sysroot set.
 BASIC_SETUP_DEVKIT

@@ -164,7 +164,6 @@ define SetupBuildLauncherBody
           -DLAUNCHER_NAME='"$(LAUNCHER_NAME)"' \
           -DPROGNAME='"$1"' \
           $$($1_CFLAGS), \
-      CFLAGS_linux := -fPIC, \
       CFLAGS_solaris := -KPIC -DHAVE_GETHRTIME, \
       CFLAGS_windows := $$($1_CFLAGS_windows), \
       LDFLAGS := $$(LDFLAGS_JDKEXE) \

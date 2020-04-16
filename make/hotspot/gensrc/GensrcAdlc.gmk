@@ -191,6 +191,9 @@ ifeq ($(call check-jvm-feature, compiler2), true)
 	$(NAWK) \
 	    'BEGIN { print "#line 1 \"$*\""; } \
 	     /^#line 999999$$/ {print "#line " (NR+1) " \"$*\""; next} \
+	     $(if $(call equals, $(ALLOW_ABSOLUTE_PATHS_IN_OUTPUT), false), \
+	       /^#line .*$$/ {sub("$(WORKSPACE_ROOT)/","")} \
+	     ) \
 	     {print}' \
 	    < $(ADLC_SUPPORT_DIR)/$* > $@
 
