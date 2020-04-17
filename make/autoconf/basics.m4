@@ -641,6 +641,13 @@ AC_DEFUN_ONCE([BASIC_SETUP_PATHS],
   AC_MSG_RESULT([$TOPDIR])
   AC_SUBST(TOPDIR)
 
+  if test "x$CUSTOM_ROOT" != x; then
+    WORKSPACE_ROOT="${CUSTOM_ROOT}"
+  else
+    WORKSPACE_ROOT="${TOPDIR}"
+  fi
+  AC_SUBST(WORKSPACE_ROOT)
+
   # We can only call BASIC_FIXUP_PATH after BASIC_CHECK_PATHS_WINDOWS.
   BASIC_FIXUP_PATH(CURDIR)
   BASIC_FIXUP_PATH(TOPDIR)
@@ -867,11 +874,7 @@ AC_DEFUN_ONCE([BASIC_SETUP_OUTPUT_DIR],
       AC_MSG_RESULT([in build directory with custom name])
     fi
 
-    if test "x$CUSTOM_ROOT" != x; then
-      OUTPUTDIR="${CUSTOM_ROOT}/build/${CONF_NAME}"
-    else
-      OUTPUTDIR="${TOPDIR}/build/${CONF_NAME}"
-    fi
+    OUTPUTDIR="${WORKSPACE_ROOT}/build/${CONF_NAME}"
     $MKDIR -p "$OUTPUTDIR"
     if test ! -d "$OUTPUTDIR"; then
       AC_MSG_ERROR([Could not create build directory $OUTPUTDIR])
