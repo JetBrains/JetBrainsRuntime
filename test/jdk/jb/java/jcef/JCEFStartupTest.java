@@ -1,6 +1,6 @@
 // Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
-import org.cef.CefClient;
+import org.cef.CefApp;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefFrame;
 import org.cef.handler.CefLoadHandlerAdapter;
@@ -19,15 +19,23 @@ import java.util.concurrent.TimeUnit;
  * @run main JCEFStartupTest
  */
 public class JCEFStartupTest {
-    static CefClient CEF_CLIENT = JBCefApp.getInstance().createClient();
-
     static final CountDownLatch LATCH = new CountDownLatch(1);
     static volatile boolean PASSED;
 
-    JCEFStartupTest() {
-        JFrame frame = new JFrame("JCEF");
+    static volatile JBCefBrowser ourBrowser;
 
-        CEF_CLIENT.addLoadHandler(new CefLoadHandlerAdapter() {
+    JCEFStartupTest() {
+        final JFrame frame = new JFrame("JCEF");
+
+        JBCefApp.setCefAppStateHandler((state) -> {
+            if (state == CefApp.CefAppState.TERMINATED) {
+                frame.dispose();
+            }
+            return null;
+        });
+
+        ourBrowser = new JBCefBrowser();
+        ourBrowser.getCefClient().addLoadHandler(new CefLoadHandlerAdapter() {
             @Override
             public void onLoadStart(CefBrowser cefBrowser, CefFrame cefFrame, CefRequest.TransitionType transitionType) {
                 System.out.println("onLoadStart");
@@ -35,8 +43,6 @@ public class JCEFStartupTest {
             @Override
             public void onLoadEnd(CefBrowser cefBrowser, CefFrame cefFrame, int i) {
                 System.out.println("onLoadEnd");
-
-//                cefBrowser.close(false); <-- todo: makes jtreg fail on exit code
                 PASSED = true;
                 LATCH.countDown();
             }
@@ -46,15 +52,16 @@ public class JCEFStartupTest {
             }
         });
 
-        CefBrowser browser = CEF_CLIENT.createBrowser("about:blank", false, false);
-        frame.add(browser.getUIComponent());
+        frame.add(ourBrowser.getComponent());
 
         frame.setSize(640, 480);
         frame.setLocationRelativeTo(null);
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.setVisible(true);
     }
 
+    /**
+     * Pass "cmd-q" to manually reproduce JBR-2222.
+     */
     public static void main(String[] args) {
         EventQueue.invokeLater(JCEFStartupTest::new);
 
@@ -64,7 +71,9 @@ public class JCEFStartupTest {
             e.printStackTrace();
         }
 
-        CEF_CLIENT.dispose();
+        if (!(args.length > 0 && args[0].equalsIgnoreCase("cmd-q"))) {
+            ourBrowser.dispose();
+        }
         JBCefApp.getInstance().getCefApp().dispose();
 
         if (!PASSED) {
