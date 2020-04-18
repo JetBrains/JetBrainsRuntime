@@ -94,7 +94,7 @@ public class JBCefBrowser {
     }
 
     public void dispose() {
-        myCefBrowser.close(false);
+//        myCefBrowser.close(false);
         myCefClient.dispose();
     }
 }
