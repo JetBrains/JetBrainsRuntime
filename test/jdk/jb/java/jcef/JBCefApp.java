@@ -9,6 +9,7 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 /**
  * @author Anton Tarasov
@@ -30,6 +31,8 @@ public abstract class JBCefApp {
     }
 
     private static JBCefApp INSTANCE;
+    private static Function<CefApp.CefAppState, Void> ourCefAppStateHandler;
+
     private final CefApp myCefApp;
 
     private static final AtomicBoolean ourInitialized = new AtomicBoolean(false);
@@ -42,7 +45,16 @@ public abstract class JBCefApp {
         settings.windowless_rendering_enabled = false;
         settings.log_severity = CefSettings.LogSeverity.LOGSEVERITY_ERROR;
         String[] appArgs = applyPlatformSettings(settings);
-        CefApp.addAppHandler(new CefAppHandlerAdapter(appArgs) {});
+        CefApp.addAppHandler(new CefAppHandlerAdapter(appArgs) {
+            @Override
+            public void stateHasChanged(CefApp.CefAppState state) {
+                if (ourCefAppStateHandler != null) {
+                    ourCefAppStateHandler.apply(state);
+                    return;
+                }
+                super.stateHasChanged(state);
+            }
+        });
         myCefApp = CefApp.getInstance(settings);
     }
 
@@ -129,6 +141,13 @@ public abstract class JBCefApp {
 
     public CefApp getCefApp() {
         return myCefApp;
+    }
+
+    public static void setCefAppStateHandler(Function<CefApp.CefAppState, Void> stateHandler) {
+        if (ourInitialized.get()) {
+            throw new IllegalStateException("JBCefApp has already been init'ed");
+        }
+        ourCefAppStateHandler = stateHandler;
     }
 
     public static double sysScale() {
