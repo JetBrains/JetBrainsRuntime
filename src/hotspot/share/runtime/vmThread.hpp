@@ -28,7 +28,7 @@
 #include "runtime/perfData.hpp"
 #include "runtime/thread.hpp"
 #include "runtime/task.hpp"
-#include "runtime/vm_operations.hpp"
+#include "runtime/vmOperations.hpp"
 
 //
 // Prioritized queue of VM operations.

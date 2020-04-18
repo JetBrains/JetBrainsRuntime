@@ -1038,6 +1038,7 @@ void java_lang_Class::archive_basic_type_mirrors(TRAPS) {
     if (m != NULL) {
       // Update the field at _array_klass_offset to point to the relocated array klass.
       oop archived_m = MetaspaceShared::archive_heap_object(m, THREAD);
+      assert(archived_m != NULL, "sanity");
       Klass *ak = (Klass*)(archived_m->metadata_field(_array_klass_offset));
       assert(ak != NULL || t == T_VOID, "should not be NULL");
       if (ak != NULL) {
@@ -1212,7 +1213,7 @@ oop java_lang_Class::process_archived_mirror(Klass* k, oop mirror,
 bool java_lang_Class::restore_archived_mirror(Klass *k,
                                               Handle class_loader, Handle module,
                                               Handle protection_domain, TRAPS) {
-  oop m = MetaspaceShared::materialize_archived_object(k->archived_java_mirror_raw());
+  oop m = MetaspaceShared::materialize_archived_object(k->archived_java_mirror_raw_narrow());
 
   if (m == NULL) {
     return false;

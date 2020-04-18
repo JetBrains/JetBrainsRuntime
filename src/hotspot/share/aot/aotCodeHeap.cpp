@@ -38,8 +38,9 @@
 #include "oops/method.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/os.hpp"
+#include "runtime/safepointVerifiers.hpp"
 #include "runtime/sharedRuntime.hpp"
-#include "runtime/vm_operations.hpp"
+#include "runtime/vmOperations.hpp"
 
 bool AOTLib::_narrow_oop_shift_initialized = false;
 int  AOTLib::_narrow_oop_shift = 0;
@@ -298,15 +299,25 @@ AOTCodeHeap::AOTCodeHeap(AOTLib* lib) :
 void AOTCodeHeap::publish_aot(const methodHandle& mh, AOTMethodData* method_data, int code_id) {
   // The method may be explicitly excluded by the user.
   // Or Interpreter uses an intrinsic for this method.
-  if (CompilerOracle::should_exclude(mh) || !AbstractInterpreter::can_be_compiled(mh)) {
+  // Or method has breakpoints.
+  if (CompilerOracle::should_exclude(mh) ||
+      !AbstractInterpreter::can_be_compiled(mh) ||
+      (mh->number_of_breakpoints() > 0)) {
     return;
   }
+  // Make sure no break points were set in the method in case of a safepoint
+  // in the following code until aot code is registered.
+  NoSafepointVerifier nsv;
 
   address code = method_data->_code;
   const char* name = method_data->_name;
   aot_metadata* meta = method_data->_meta;
 
   if (meta->scopes_pcs_begin() == meta->scopes_pcs_end()) {
+    // Switch off NoSafepointVerifier because log_info() may cause safepoint
+    // and it is fine because aot code will not be registered here.
+    PauseNoSafepointVerifier pnsv(&nsv);
+
     // When the AOT compiler compiles something big we fail to generate metadata
     // in CodeInstaller::gather_metadata. In that case the scopes_pcs_begin == scopes_pcs_end.
     // In all successful cases we always have 2 entries of scope pcs.
@@ -343,6 +354,7 @@ void AOTCodeHeap::publish_aot(const methodHandle& mh, AOTMethodData* method_data
 #endif
     Method::set_code(mh, aot);
     if (PrintAOT || (PrintCompilation && PrintAOT)) {
+      PauseNoSafepointVerifier pnsv(&nsv); // aot code is registered already
       aot->print_on(tty, NULL);
     }
     // Publish oop only after we are visible to CompiledMethodIterator
@@ -723,6 +735,14 @@ bool AOTCodeHeap::load_klass_data(InstanceKlass* ik, Thread* thread) {
 
   NOT_PRODUCT( klasses_seen++; )
 
+  // AOT does not support custom class loaders.
+  ClassLoaderData* cld = ik->class_loader_data();
+  if (!cld->is_builtin_class_loader_data()) {
+    log_trace(aot, class, load)("skip class  %s  for custom classloader %s (%p) tid=" INTPTR_FORMAT,
+                                ik->internal_name(), cld->loader_name(), cld, p2i(thread));
+    return false;
+  }
+
   AOTKlassData* klass_data = find_klass(ik);
   if (klass_data == NULL) {
     return false;
@@ -747,9 +767,10 @@ bool AOTCodeHeap::load_klass_data(InstanceKlass* ik, Thread* thread) {
 
   assert(klass_data->_class_id < _class_count, "invalid class id");
   AOTClass* aot_class = &_classes[klass_data->_class_id];
-  if (aot_class->_classloader != NULL && aot_class->_classloader != ik->class_loader_data()) {
-    log_trace(aot, class, load)("class  %s  in  %s already loaded for classloader %p vs %p tid=" INTPTR_FORMAT,
-                                ik->internal_name(), _lib->name(), aot_class->_classloader, ik->class_loader_data(), p2i(thread));
+  ClassLoaderData* aot_cld = aot_class->_classloader;
+  if (aot_cld != NULL && aot_cld != cld) {
+    log_trace(aot, class, load)("class  %s  in  %s already loaded for classloader %s (%p) vs %s (%p) tid=" INTPTR_FORMAT,
+                                ik->internal_name(), _lib->name(), aot_cld->loader_name(), aot_cld, cld->loader_name(), cld, p2i(thread));
     NOT_PRODUCT( aot_klasses_cl_miss++; )
     return false;
   }
@@ -762,9 +783,9 @@ bool AOTCodeHeap::load_klass_data(InstanceKlass* ik, Thread* thread) {
 
   NOT_PRODUCT( aot_klasses_found++; )
 
-  log_trace(aot, class, load)("found  %s  in  %s for classloader %p tid=" INTPTR_FORMAT, ik->internal_name(), _lib->name(), ik->class_loader_data(), p2i(thread));
+  log_trace(aot, class, load)("found  %s  in  %s for classloader %s (%p) tid=" INTPTR_FORMAT, ik->internal_name(), _lib->name(), cld->loader_name(), cld, p2i(thread));
 
-  aot_class->_classloader = ik->class_loader_data();
+  aot_class->_classloader = cld;
   // Set klass's Resolve (second) got cell.
   _klasses_got[klass_data->_got_index] = ik;
   if (ik->is_initialized()) {
@@ -917,16 +938,6 @@ int AOTCodeHeap::verify_icholder_relocations() {
   return count;
 }
 #endif
-
-void AOTCodeHeap::flush_evol_dependents_on(InstanceKlass* dependee) {
-  for (int index = 0; index < _method_count; index++) {
-    if (_code_to_aot[index]._state != in_use) {
-      continue; // Skip uninitialized entries.
-    }
-    AOTCompiledMethod* aot = _code_to_aot[index]._aot;
-    aot->flush_evol_dependents_on(dependee);
-  }
-}
 
 void AOTCodeHeap::metadata_do(void f(Metadata*)) {
   for (int index = 0; index < _method_count; index++) {

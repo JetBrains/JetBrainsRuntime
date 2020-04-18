@@ -522,7 +522,7 @@ var getJibProfilesProfiles = function (input, common, data) {
         .forEach(function (name) {
             var maketestName = name + "-testmake";
             profiles[maketestName] = concatObjects(profiles[name], testmakeBase);
-            profiles[maketestName].default_make_targets = [ "test-make" ];
+            profiles[maketestName].default_make_targets = [ "test-make", "test-compile-commands" ];
         });
 
     // Profiles for building the zero jvm variant. These are used for verification.
@@ -747,7 +747,8 @@ var getJibProfilesProfiles = function (input, common, data) {
         "run-test-prebuilt": {
             target_os: input.build_os,
             target_cpu: input.build_cpu,
-            dependencies: [ "jtreg", "gnumake", "boot_jdk", "jib", testedProfile + ".jdk",
+            dependencies: [
+                "jtreg", "gnumake", "boot_jdk", "devkit", "jib", testedProfile + ".jdk",
                 testedProfile + ".test"
             ],
             src: "src.conf",
@@ -781,7 +782,6 @@ var getJibProfilesProfiles = function (input, common, data) {
     // This gives us a guaranteed working version of lldb for the jtreg failure handler.
     if (input.build_os == "macosx") {
         macosxRunTestExtra = {
-            dependencies: [ "devkit" ],
             environment_path: input.get("devkit", "install_path")
                 + "/Xcode.app/Contents/Developer/usr/bin"
         };
@@ -844,11 +844,11 @@ var getJibProfilesDependencies = function (input, common) {
         windows_x64: "VS2017-15.5.5+1.0",
         linux_aarch64: (input.profile != null && input.profile.indexOf("arm64") >= 0
                     ? "gcc-linaro-aarch64-linux-gnu-4.8-2013.11_linux+1.0"
-                    : "gcc7.3.0-Fedora27+1.0"),
+                    : "gcc7.3.0-Fedora27+1.1"),
         linux_arm: (input.profile != null && input.profile.indexOf("hflt") >= 0
                     ? "gcc-linaro-arm-linux-gnueabihf-raspbian-2012.09-20120921_linux+1.0"
                     : (input.profile != null && input.profile.indexOf("arm32") >= 0
-                       ? "gcc7.3.0-Fedora27+1.0"
+                       ? "gcc7.3.0-Fedora27+1.1"
                        : "arm-linaro-4.7+1.0"
                        )
                     )
@@ -882,7 +882,10 @@ var getJibProfilesDependencies = function (input, common) {
             organization: common.organization,
             ext: "tar.gz",
             module: "devkit-" + devkit_platform,
-            revision: devkit_platform_revisions[devkit_platform]
+            revision: devkit_platform_revisions[devkit_platform],
+            environment: {
+                "DEVKIT_HOME": input.get("devkit", "home_path"),
+            }
         },
 
         build_devkit: {
@@ -982,14 +985,6 @@ var getJibProfilesDependencies = function (input, common) {
             environment_name: "GRAALUNIT_LIB"
         },
     };
-
-    // Need to add a value for the Visual Studio tools variable to make
-    // jaot be able to pick up the Visual Studio linker in testing.
-    if (input.target_os == "windows") {
-        dependencies.devkit.environment = {
-            VS120COMNTOOLS: input.get("devkit", "install_path") + "/Common7/Tools"
-        };
-    }
 
     return dependencies;
 };
@@ -1172,10 +1167,16 @@ var versionArgs = function(input, common) {
     var args = ["--with-version-build=" + common.build_number];
     if (input.build_type == "promoted") {
         args = concat(args,
-                      // This needs to be changed when we start building release candidates
-                      // with-version-pre must be set to ea for 'ea' and empty for fcs build
-                      "--with-version-pre=",
+                      "--with-version-pre=" + version_numbers.get("DEFAULT_PROMOTED_VERSION_PRE"),
                       "--without-version-opt");
+    } else if (input.build_type == "ci") {
+        var optString = input.build_id_data.ciBuildNumber;
+        var preString = input.build_id_data.projectName;
+        if (preString == "jdk") {
+            preString = version_numbers.get("DEFAULT_PROMOTED_VERSION_PRE");
+        }
+        args = concat(args, "--with-version-pre=" + preString,
+                     "--with-version-opt=" + optString);
     } else {
         args = concat(args, "--with-version-opt=" + common.build_id);
     }

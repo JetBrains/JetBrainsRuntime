@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation. Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -56,8 +58,6 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.Hashtable;
 import java.util.Locale;
-
-import static java.lang.Math.abs;
 
 import org.netbeans.jemmy.CharBindingMap;
 import org.netbeans.jemmy.ComponentChooser;
@@ -1214,6 +1214,48 @@ public class ComponentOperator extends Operator
             @Override
             public String toString() {
                 return "ComponentOperator.waitComponentLocation"
+                        + ".Waitable{description = " + getDescription() + '}';
+            }
+        });
+    }
+
+    /**
+     * Wait till the component reaches exact location on screen.
+     *
+     * @param exactLocation exact expected screen location.
+     */
+    public void waitComponentLocationOnScreen(Point exactlocation) {
+        waitComponentLocationOnScreen(exactlocation, exactlocation);
+    }
+
+    /**
+     * Wait till the component location on screen reaches between minLocation
+     * and maxLocation
+     *
+     * @param minLocation minimum expected location on screen.
+     * @param maxLocation maximum expected location on screen.
+     */
+    public void waitComponentLocationOnScreen(
+            final Point minLocation, final Point maxLocation) {
+        waitState(new ComponentChooser() {
+            @Override
+            public boolean checkComponent(Component comp) {
+                Point location = comp.getLocationOnScreen();
+                return location.x >= minLocation.x
+                        && location.x <= maxLocation.x
+                        && location.y >= minLocation.y
+                        && location.y <= maxLocation.y;
+            }
+
+            @Override
+            public String getDescription() {
+                return "Component location on screen reaches between :"
+                        + minLocation + "and " + maxLocation;
+            }
+
+            @Override
+            public String toString() {
+                return "ComponentOperator.waitComponentLocationOnScreen"
                         + ".Waitable{description = " + getDescription() + '}';
             }
         });

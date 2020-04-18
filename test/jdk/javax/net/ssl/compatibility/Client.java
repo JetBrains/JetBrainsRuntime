@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,15 +118,15 @@ public class Client {
         String serverName = System.getProperty(Utils.PROP_SERVER_NAME);
         String appProtocols = System.getProperty(Utils.PROP_APP_PROTOCOLS);
         boolean supportsSNIOnServer
-                = Utils.getBoolProperty(Utils.PROP_SUPPORTS_SNI_ON_SERVER);
+                = Boolean.getBoolean(Utils.PROP_SUPPORTS_SNI_ON_SERVER);
         boolean supportsSNIOnClient
-                = Utils.getBoolProperty(Utils.PROP_SUPPORTS_SNI_ON_CLIENT);
+                = Boolean.getBoolean(Utils.PROP_SUPPORTS_SNI_ON_CLIENT);
         boolean supportsALPNOnServer
-                = Utils.getBoolProperty(Utils.PROP_SUPPORTS_ALPN_ON_SERVER);
+                = Boolean.getBoolean(Utils.PROP_SUPPORTS_ALPN_ON_SERVER);
         boolean supportsALPNOnClient
-                = Utils.getBoolProperty(Utils.PROP_SUPPORTS_ALPN_ON_CLIENT);
+                = Boolean.getBoolean(Utils.PROP_SUPPORTS_ALPN_ON_CLIENT);
         boolean negativeCase
-                = Utils.getBoolProperty(Utils.PROP_NEGATIVE_CASE_ON_CLIENT);
+                = Boolean.getBoolean(Utils.PROP_NEGATIVE_CASE_ON_CLIENT);
         System.out.println(Utils.join(Utils.PARAM_DELIMITER,
                 "ClientJDK=" + System.getProperty(Utils.PROP_CLIENT_JDK),
                 "Protocol=" + protocol,
@@ -137,7 +137,7 @@ public class Client {
         Status status = Status.SUCCESS;
         Client client = null;
         try {
-            client = new Client(Cert.getCerts(cipherSuite));
+            client = new Client(Cert.getCerts(CipherSuite.cipherSuite(cipherSuite)));
             client.setEnabledProtocols(protocol);
             client.setEnabledCipherSuites(cipherSuite);
 

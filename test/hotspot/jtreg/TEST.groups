@@ -52,6 +52,9 @@ hotspot_handshake = \
 hotspot_serviceability = \
   serviceability
 
+hotspot_resourcehogs = \
+  resourcehogs
+
 hotspot_misc = \
   / \
  -applications \
@@ -166,6 +169,7 @@ ctw_3 = \
   applications/ctw/modules/jdk_compiler.java \
   applications/ctw/modules/jdk_internal_vm_compiler.java \
   applications/ctw/modules/jdk_localedata.java \
+  applications/ctw/modules/jdk_localedata_2.java \
   applications/ctw/modules/jdk_scripting_nashorn.java \
 
 tier1_gc = \
@@ -279,8 +283,7 @@ tier1_serviceability = \
   serviceability/sa \
   -serviceability/sa/ClhsdbScanOops.java \
   -serviceability/sa/TestJmapCore.java \
-  -serviceability/sa/TestJmapCoreMetaspace.java \
-  -serviceability/sa/TestHeapDumpForLargeArray.java
+  -serviceability/sa/TestJmapCoreMetaspace.java
 
 tier1 = \
   :tier1_common \

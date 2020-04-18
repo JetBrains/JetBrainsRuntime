@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2001, 2017, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2016, 2017, SAP SE and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, SAP SE and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -416,10 +416,6 @@ int NET_NonBlockingRead(int s, void* buf, size_t len) {
     BLOCKING_IO_RETURN_INT(s, recv(s, buf, len, MSG_NONBLOCK));
 }
 
-int NET_ReadV(int s, const struct iovec * vector, int count) {
-    BLOCKING_IO_RETURN_INT( s, readv(s, vector, count) );
-}
-
 int NET_RecvFrom(int s, void *buf, int len, unsigned int flags,
        struct sockaddr *from, socklen_t *fromlen) {
     BLOCKING_IO_RETURN_INT( s, recvfrom(s, buf, len, flags, from, fromlen) );
@@ -427,10 +423,6 @@ int NET_RecvFrom(int s, void *buf, int len, unsigned int flags,
 
 int NET_Send(int s, void *msg, int len, unsigned int flags) {
     BLOCKING_IO_RETURN_INT( s, send(s, msg, len, flags) );
-}
-
-int NET_WriteV(int s, const struct iovec * vector, int count) {
-    BLOCKING_IO_RETURN_INT( s, writev(s, vector, count) );
 }
 
 int NET_SendTo(int s, const void *msg, int len,  unsigned  int

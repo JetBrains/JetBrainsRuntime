@@ -993,7 +993,7 @@ void LIR_Assembler::stack2reg(LIR_Opr src, LIR_Opr dest, BasicType type) {
     if (type == T_ARRAY || type == T_OBJECT) {
       __ mem2reg_opt(dest->as_register(), frame_map()->address_for_slot(src->single_stack_ix()), true);
       __ verify_oop(dest->as_register());
-    } else if (type == T_METADATA) {
+    } else if (type == T_METADATA || type == T_ADDRESS) {
       __ mem2reg_opt(dest->as_register(), frame_map()->address_for_slot(src->single_stack_ix()), true);
     } else {
       __ mem2reg_opt(dest->as_register(), frame_map()->address_for_slot(src->single_stack_ix()), false);
@@ -1021,7 +1021,7 @@ void LIR_Assembler::reg2stack(LIR_Opr src, LIR_Opr dest, BasicType type, bool po
     if (type == T_OBJECT || type == T_ARRAY) {
       __ verify_oop(src->as_register());
       __ reg2mem_opt(src->as_register(), dst, true);
-    } else if (type == T_METADATA) {
+    } else if (type == T_METADATA || type == T_ADDRESS) {
       __ reg2mem_opt(src->as_register(), dst, true);
     } else {
       __ reg2mem_opt(src->as_register(), dst, false);
@@ -1307,6 +1307,15 @@ void LIR_Assembler::comp_op(LIR_Condition condition, LIR_Opr opr1, LIR_Opr opr2,
           __ z_clfi(reg1, c->as_jint());
         } else {
           __ z_cfi(reg1, c->as_jint());
+        }
+      } else if (c->type() == T_METADATA) {
+        // We only need, for now, comparison with NULL for metadata.
+        assert(condition == lir_cond_equal || condition == lir_cond_notEqual, "oops");
+        Metadata* m = c->as_metadata();
+        if (m == NULL) {
+          __ z_cghi(reg1, 0);
+        } else {
+          ShouldNotReachHere();
         }
       } else if (c->type() == T_OBJECT || c->type() == T_ARRAY) {
         // In 64bit oops are single register.

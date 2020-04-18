@@ -37,11 +37,6 @@ class JfrThreadGroupConstant : public JfrSerializer {
   void serialize(JfrCheckpointWriter& writer);
 };
 
-class ClassUnloadTypeSet : public JfrSerializer {
- public:
-  void serialize(JfrCheckpointWriter& writer);
-};
-
 class FlagValueOriginConstant : public JfrSerializer {
  public:
   void serialize(JfrCheckpointWriter& writer);
@@ -67,11 +62,6 @@ class GCWhenConstant : public JfrSerializer {
   void serialize(JfrCheckpointWriter& writer);
 };
 
-class G1HeapRegionTypeConstant : public JfrSerializer {
- public:
-  void serialize(JfrCheckpointWriter& writer);
-};
-
 class GCThresholdUpdaterConstant : public JfrSerializer {
  public:
   void serialize(JfrCheckpointWriter& writer);
@@ -83,11 +73,6 @@ class MetadataTypeConstant : public JfrSerializer {
 };
 
 class MetaspaceObjectTypeConstant : public JfrSerializer {
- public:
-  void serialize(JfrCheckpointWriter& writer);
-};
-
-class G1YCTypeConstant : public JfrSerializer {
  public:
   void serialize(JfrCheckpointWriter& writer);
 };
@@ -113,11 +98,6 @@ class CodeBlobTypeConstant : public JfrSerializer {
 };
 
 class VMOperationTypeConstant : public JfrSerializer {
- public:
-  void serialize(JfrCheckpointWriter& writer);
-};
-
-class TypeSet : public JfrSerializer {
  public:
   void serialize(JfrCheckpointWriter& writer);
 };

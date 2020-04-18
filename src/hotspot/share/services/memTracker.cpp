@@ -27,7 +27,7 @@
 #include "runtime/mutex.hpp"
 #include "runtime/orderAccess.hpp"
 #include "runtime/vmThread.hpp"
-#include "runtime/vm_operations.hpp"
+#include "runtime/vmOperations.hpp"
 #include "services/memBaseline.hpp"
 #include "services/memReporter.hpp"
 #include "services/mallocTracker.inline.hpp"

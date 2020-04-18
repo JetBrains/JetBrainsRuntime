@@ -32,6 +32,7 @@
 #include "interpreter/interpreter.hpp"
 #include "interpreter/interp_masm.hpp"
 #include "memory/resourceArea.hpp"
+#include "nativeInst_s390.hpp"
 #include "oops/compiledICHolder.hpp"
 #include "registerSaver_s390.hpp"
 #include "runtime/safepointMechanism.hpp"
@@ -1512,8 +1513,8 @@ nmethod *SharedRuntime::generate_native_wrapper(MacroAssembler *masm,
                                                 int compile_id,
                                                 BasicType *in_sig_bt,
                                                 VMRegPair *in_regs,
-                                                BasicType ret_type) {
-#ifdef COMPILER2
+                                                BasicType ret_type,
+                                                address critical_entry) {
   int total_in_args = method->size_of_parameters();
   if (method->is_method_handle_intrinsic()) {
     vmIntrinsics::ID iid = method->intrinsic_id();
@@ -1548,7 +1549,7 @@ nmethod *SharedRuntime::generate_native_wrapper(MacroAssembler *masm,
   ///////////////////////////////////////////////////////////////////////
 
   bool is_critical_native = true;
-  address native_func = method->critical_native_function();
+  address native_func = critical_entry;
   if (native_func == NULL) {
     native_func = method->native_function();
     is_critical_native = false;
@@ -2389,10 +2390,6 @@ nmethod *SharedRuntime::generate_native_wrapper(MacroAssembler *masm,
   }
 
   return nm;
-#else
-  ShouldNotReachHere();
-  return NULL;
-#endif // COMPILER2
 }
 
 static address gen_c2i_adapter(MacroAssembler  *masm,
@@ -2846,7 +2843,7 @@ void SharedRuntime::generate_deopt_blob() {
   // to Deoptimization::fetch_unroll_info below.
   // The (int) cast is necessary, because -((unsigned int)14)
   // is an unsigned int.
-  __ add2reg(Z_R14, -(int)HandlerImpl::size_deopt_handler());
+  __ add2reg(Z_R14, -(int)NativeCall::max_instruction_size());
 
   const Register   exec_mode_reg = Z_tmp_1;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,6 +89,9 @@
 #include "services/memTracker.hpp"
 #include "utilities/nativeCallStack.hpp"
 #endif // INCLUDE_NMT
+#if INCLUDE_AOT
+#include "aot/aotLoader.hpp"
+#endif // INCLUDE_AOT
 
 #ifdef LINUX
 #include "osContainer_linux.hpp"
@@ -1467,9 +1470,6 @@ WB_ENTRY(jobjectArray, WB_GetCodeHeapEntries(JNIEnv* env, jobject o, jint blob_t
       blobs.append(stub);
     }
   }
-  if (blobs.length() == 0) {
-    return NULL;
-  }
   ThreadToNativeFromVM ttn(thread);
   jobjectArray result = NULL;
   jclass clazz = env->FindClass(vmSymbols::java_lang_Object()->as_C_string());
@@ -2004,6 +2004,14 @@ WB_ENTRY(void, WB_DisableElfSectionCache(JNIEnv* env))
 #endif
 WB_END
 
+WB_ENTRY(jint, WB_AotLibrariesCount(JNIEnv* env, jobject o))
+  jint result = 0;
+#if INCLUDE_AOT
+  result = (jint) AOTLoader::heaps_count();
+#endif
+  return result;
+WB_END
+
 #define CC (char*)
 
 static JNINativeMethod methods[] = {
@@ -2228,6 +2236,7 @@ static JNINativeMethod methods[] = {
   {CC"isContainerized",           CC"()Z",            (void*)&WB_IsContainerized },
   {CC"printOsInfo",               CC"()V",            (void*)&WB_PrintOsInfo },
   {CC"disableElfSectionCache",    CC"()V",            (void*)&WB_DisableElfSectionCache },
+  {CC"aotLibrariesCount", CC"()I",                    (void*)&WB_AotLibrariesCount },
 };
 
 

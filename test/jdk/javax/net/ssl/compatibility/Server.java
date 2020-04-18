@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -103,12 +103,12 @@ public class Server {
         String protocol = System.getProperty(Utils.PROP_PROTOCOL);
         String cipherSuite = System.getProperty(Utils.PROP_CIPHER_SUITE);
         boolean clientAuth
-                = Utils.getBoolProperty(Utils.PROP_CLIENT_AUTH);
+                = Boolean.getBoolean(Utils.PROP_CLIENT_AUTH);
         String appProtocols = System.getProperty(Utils.PROP_APP_PROTOCOLS);
         boolean supportsALPN
-                = Utils.getBoolProperty(Utils.PROP_SUPPORTS_ALPN_ON_SERVER);
+                = Boolean.getBoolean(Utils.PROP_SUPPORTS_ALPN_ON_SERVER);
         boolean negativeCase
-                = Utils.getBoolProperty(Utils.PROP_NEGATIVE_CASE_ON_SERVER);
+                = Boolean.getBoolean(Utils.PROP_NEGATIVE_CASE_ON_SERVER);
 
         System.out.println(Utils.join(Utils.PARAM_DELIMITER,
                 "ServerJDK=" + System.getProperty(Utils.PROP_SERVER_JDK),
@@ -120,7 +120,7 @@ public class Server {
         Status status = Status.SUCCESS;
         Server server = null;
         try {
-            server = new Server(Cert.getCerts(cipherSuite));
+            server = new Server(Cert.getCerts(CipherSuite.cipherSuite(cipherSuite)));
             System.out.println("port=" + server.getPort());
             server.setNeedClientAuth(clientAuth);
             server.setEnabledProtocols(protocol);
@@ -146,14 +146,18 @@ public class Server {
                 server.close();
             }
 
-            // Cleanups port log.
-            if (!new File(Utils.PORT_LOG).delete()) {
-                throw new RuntimeException("Cannot delete port log");
-            }
+            deletePortFile();
         }
 
         System.out.println("STATUS: " + status);
         System.out.println("----- Server end -----");
+    }
+
+    private static void deletePortFile() {
+        File portFile = new File(Utils.PORT_LOG);
+        if (portFile.exists() && !portFile.delete()) {
+            throw new RuntimeException("Cannot delete port log");
+        }
     }
 
     private static void savePort(int port) throws IOException {

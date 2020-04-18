@@ -308,7 +308,7 @@ JfrThreadSampleClosure::JfrThreadSampleClosure(EventExecutionSample* events, Eve
   _added_native(0) {
 }
 
-class JfrThreadSampler : public Thread {
+class JfrThreadSampler : public NonJavaThread {
   friend class JfrThreadSampling;
  private:
   Semaphore _sample;
@@ -633,11 +633,4 @@ void JfrThreadSampling::set_native_sample_interval(size_t period) {
 
 void JfrThreadSampling::on_javathread_suspend(JavaThread* thread) {
   JfrThreadSampler::on_javathread_suspend(thread);
-}
-
-Thread* JfrThreadSampling::sampler_thread() {
-  if (_instance == NULL) {
-    return NULL;
-  }
-  return _instance->_sampler != NULL ? _instance->_sampler->_sampler_thread : NULL;
 }

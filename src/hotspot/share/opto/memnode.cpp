@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -4135,7 +4135,7 @@ intptr_t InitializeNode::find_next_fullword_store(uint start, PhaseGVN* phase) {
 Node* InitializeNode::complete_stores(Node* rawctl, Node* rawmem, Node* rawptr,
                                       intptr_t header_size,
                                       Node* size_in_bytes,
-                                      PhaseGVN* phase) {
+                                      PhaseIterGVN* phase) {
   assert(!is_complete(), "not already complete");
   assert(stores_are_sane(phase), "");
   assert(allocation() != NULL, "must be present");
@@ -4227,7 +4227,7 @@ Node* InitializeNode::complete_stores(Node* rawctl, Node* rawmem, Node* rawptr,
     }
 
     // Collect the store and move on:
-    st->set_req(MemNode::Memory, inits);
+    phase->replace_input_of(st, MemNode::Memory, inits);
     inits = st;                 // put it on the linearized chain
     set_req(i, zmem);           // unhook from previous position
 

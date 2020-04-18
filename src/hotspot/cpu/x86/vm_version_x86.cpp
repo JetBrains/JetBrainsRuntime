@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -366,26 +366,29 @@ class VM_Version_StubGenerator: public StubCodeGenerator {
     //
     intx saved_useavx = UseAVX;
     intx saved_usesse = UseSSE;
-    // check _cpuid_info.sef_cpuid7_ebx.bits.avx512f
-    __ lea(rsi, Address(rbp, in_bytes(VM_Version::sef_cpuid7_offset())));
-    __ movl(rax, 0x10000);
-    __ andl(rax, Address(rsi, 4)); // xcr0 bits sse | ymm
-    __ cmpl(rax, 0x10000);
-    __ jccb(Assembler::notEqual, legacy_setup); // jump if EVEX is not supported
-    // check _cpuid_info.xem_xcr0_eax.bits.opmask
-    // check _cpuid_info.xem_xcr0_eax.bits.zmm512
-    // check _cpuid_info.xem_xcr0_eax.bits.zmm32
-    __ movl(rax, 0xE0);
-    __ andl(rax, Address(rbp, in_bytes(VM_Version::xem_xcr0_offset()))); // xcr0 bits sse | ymm
-    __ cmpl(rax, 0xE0);
-    __ jccb(Assembler::notEqual, legacy_setup); // jump if EVEX is not supported
 
-    __ lea(rsi, Address(rbp, in_bytes(VM_Version::std_cpuid1_offset())));
-    __ movl(rax, Address(rsi, 0));
-    __ cmpl(rax, 0x50654);              // If it is Skylake
-    __ jcc(Assembler::equal, legacy_setup);
     // If UseAVX is unitialized or is set by the user to include EVEX
     if (use_evex) {
+      // check _cpuid_info.sef_cpuid7_ebx.bits.avx512f
+      __ lea(rsi, Address(rbp, in_bytes(VM_Version::sef_cpuid7_offset())));
+      __ movl(rax, 0x10000);
+      __ andl(rax, Address(rsi, 4)); // xcr0 bits sse | ymm
+      __ cmpl(rax, 0x10000);
+      __ jccb(Assembler::notEqual, legacy_setup); // jump if EVEX is not supported
+      // check _cpuid_info.xem_xcr0_eax.bits.opmask
+      // check _cpuid_info.xem_xcr0_eax.bits.zmm512
+      // check _cpuid_info.xem_xcr0_eax.bits.zmm32
+      __ movl(rax, 0xE0);
+      __ andl(rax, Address(rbp, in_bytes(VM_Version::xem_xcr0_offset()))); // xcr0 bits sse | ymm
+      __ cmpl(rax, 0xE0);
+      __ jccb(Assembler::notEqual, legacy_setup); // jump if EVEX is not supported
+
+      if (FLAG_IS_DEFAULT(UseAVX)) {
+        __ lea(rsi, Address(rbp, in_bytes(VM_Version::std_cpuid1_offset())));
+        __ movl(rax, Address(rsi, 0));
+        __ cmpl(rax, 0x50654);              // If it is Skylake
+        __ jcc(Assembler::equal, legacy_setup);
+      }
       // EVEX setup: run in lowest evex mode
       VM_Version::set_evex_cpuFeatures(); // Enable temporary to pass asserts
       UseAVX = 3;
@@ -454,27 +457,28 @@ class VM_Version_StubGenerator: public StubCodeGenerator {
     VM_Version::set_cpuinfo_cont_addr(__ pc());
     // Returns here after signal. Save xmm0 to check it later.
 
-    // check _cpuid_info.sef_cpuid7_ebx.bits.avx512f
-    __ lea(rsi, Address(rbp, in_bytes(VM_Version::sef_cpuid7_offset())));
-    __ movl(rax, 0x10000);
-    __ andl(rax, Address(rsi, 4));
-    __ cmpl(rax, 0x10000);
-    __ jcc(Assembler::notEqual, legacy_save_restore);
-    // check _cpuid_info.xem_xcr0_eax.bits.opmask
-    // check _cpuid_info.xem_xcr0_eax.bits.zmm512
-    // check _cpuid_info.xem_xcr0_eax.bits.zmm32
-    __ movl(rax, 0xE0);
-    __ andl(rax, Address(rbp, in_bytes(VM_Version::xem_xcr0_offset()))); // xcr0 bits sse | ymm
-    __ cmpl(rax, 0xE0);
-    __ jcc(Assembler::notEqual, legacy_save_restore);
-
-    __ lea(rsi, Address(rbp, in_bytes(VM_Version::std_cpuid1_offset())));
-    __ movl(rax, Address(rsi, 0));
-    __ cmpl(rax, 0x50654);              // If it is Skylake
-    __ jcc(Assembler::equal, legacy_save_restore);
-
     // If UseAVX is unitialized or is set by the user to include EVEX
     if (use_evex) {
+      // check _cpuid_info.sef_cpuid7_ebx.bits.avx512f
+      __ lea(rsi, Address(rbp, in_bytes(VM_Version::sef_cpuid7_offset())));
+      __ movl(rax, 0x10000);
+      __ andl(rax, Address(rsi, 4));
+      __ cmpl(rax, 0x10000);
+      __ jcc(Assembler::notEqual, legacy_save_restore);
+      // check _cpuid_info.xem_xcr0_eax.bits.opmask
+      // check _cpuid_info.xem_xcr0_eax.bits.zmm512
+      // check _cpuid_info.xem_xcr0_eax.bits.zmm32
+      __ movl(rax, 0xE0);
+      __ andl(rax, Address(rbp, in_bytes(VM_Version::xem_xcr0_offset()))); // xcr0 bits sse | ymm
+      __ cmpl(rax, 0xE0);
+      __ jcc(Assembler::notEqual, legacy_save_restore);
+
+      if (FLAG_IS_DEFAULT(UseAVX)) {
+        __ lea(rsi, Address(rbp, in_bytes(VM_Version::std_cpuid1_offset())));
+        __ movl(rax, Address(rsi, 0));
+        __ cmpl(rax, 0x50654);              // If it is Skylake
+        __ jcc(Assembler::equal, legacy_save_restore);
+      }
       // EVEX check: run in lowest evex mode
       VM_Version::set_evex_cpuFeatures(); // Enable temporary to pass asserts
       UseAVX = 3;
@@ -657,11 +661,14 @@ void VM_Version::get_processor_features() {
     }
   }
   if (FLAG_IS_DEFAULT(UseAVX)) {
-    FLAG_SET_DEFAULT(UseAVX, use_avx_limit);
-    if (is_intel_family_core() && _model == CPU_MODEL_SKYLAKE && _stepping < 5) {
-      FLAG_SET_DEFAULT(UseAVX, 2);  //Set UseAVX=2 for Skylake
+    // Don't use AVX-512 on older Skylakes unless explicitly requested.
+    if (use_avx_limit > 2 && is_intel_skylake() && _stepping < 5) {
+      FLAG_SET_DEFAULT(UseAVX, 2);
+    } else {
+      FLAG_SET_DEFAULT(UseAVX, use_avx_limit);
     }
-  } else if (UseAVX > use_avx_limit) {
+  }
+  if (UseAVX > use_avx_limit) {
     warning("UseAVX=%d is not supported on this CPU, setting it to UseAVX=%d", (int) UseAVX, use_avx_limit);
     FLAG_SET_DEFAULT(UseAVX, use_avx_limit);
   } else if (UseAVX < 0) {
@@ -676,7 +683,7 @@ void VM_Version::get_processor_features() {
     _features &= ~CPU_AVX512BW;
     _features &= ~CPU_AVX512VL;
     _features &= ~CPU_AVX512_VPOPCNTDQ;
-    _features &= ~CPU_VPCLMULQDQ;
+    _features &= ~CPU_AVX512_VPCLMULQDQ;
     _features &= ~CPU_VAES;
   }
 

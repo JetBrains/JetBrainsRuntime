@@ -2104,7 +2104,7 @@ void Compile::inline_incrementally(PhaseIterGVN& igvn) {
         // PhaseIdealLoop is expensive so we only try it once we are
         // out of live nodes and we only try it again if the previous
         // helped got the number of nodes down significantly
-        PhaseIdealLoop ideal_loop( igvn, false, true );
+        PhaseIdealLoop ideal_loop(igvn, LoopOptsNone);
         if (failing())  return;
         low_live_nodes = live_nodes();
         _major_progress = true;
@@ -2155,6 +2155,21 @@ void Compile::inline_incrementally(PhaseIterGVN& igvn) {
 }
 
 
+bool Compile::optimize_loops(int& loop_opts_cnt, PhaseIterGVN& igvn, LoopOptsMode mode) {
+  if(loop_opts_cnt > 0) {
+    debug_only( int cnt = 0; );
+    while(major_progress() && (loop_opts_cnt > 0)) {
+      TracePhase tp("idealLoop", &timers[_t_idealLoop]);
+      assert( cnt++ < 40, "infinite cycle in loop optimization" );
+      PhaseIdealLoop ideal_loop(igvn, mode);
+      loop_opts_cnt--;
+      if (failing())  return false;
+      if (major_progress()) print_method(PHASE_PHASEIDEALLOOP_ITERATIONS, 2);
+    }
+  }
+  return true;
+}
+
 //------------------------------Optimize---------------------------------------
 // Given a graph, optimize it.
 void Compile::Optimize() {
@@ -2193,9 +2208,9 @@ void Compile::Optimize() {
     igvn.optimize();
   }
 
-  print_method(PHASE_ITER_GVN1, 2);
-
   if (failing())  return;
+
+  print_method(PHASE_ITER_GVN1, 2);
 
   inline_incrementally(igvn);
 
@@ -2245,7 +2260,7 @@ void Compile::Optimize() {
     if (has_loops()) {
       // Cleanup graph (remove dead nodes).
       TracePhase tp("idealLoop", &timers[_t_idealLoop]);
-      PhaseIdealLoop ideal_loop( igvn, false, true );
+      PhaseIdealLoop ideal_loop(igvn, LoopOptsNone);
       if (major_progress()) print_method(PHASE_PHASEIDEAL_BEFORE_EA, 2);
       if (failing())  return;
     }
@@ -2280,7 +2295,7 @@ void Compile::Optimize() {
   if((loop_opts_cnt > 0) && (has_loops() || has_split_ifs())) {
     {
       TracePhase tp("idealLoop", &timers[_t_idealLoop]);
-      PhaseIdealLoop ideal_loop( igvn, true );
+      PhaseIdealLoop ideal_loop(igvn, LoopOptsDefault);
       loop_opts_cnt--;
       if (major_progress()) print_method(PHASE_PHASEIDEALLOOP1, 2);
       if (failing())  return;
@@ -2288,7 +2303,7 @@ void Compile::Optimize() {
     // Loop opts pass if partial peeling occurred in previous pass
     if(PartialPeelLoop && major_progress() && (loop_opts_cnt > 0)) {
       TracePhase tp("idealLoop", &timers[_t_idealLoop]);
-      PhaseIdealLoop ideal_loop( igvn, false );
+      PhaseIdealLoop ideal_loop(igvn, LoopOptsSkipSplitIf);
       loop_opts_cnt--;
       if (major_progress()) print_method(PHASE_PHASEIDEALLOOP2, 2);
       if (failing())  return;
@@ -2296,7 +2311,7 @@ void Compile::Optimize() {
     // Loop opts pass for loop-unrolling before CCP
     if(major_progress() && (loop_opts_cnt > 0)) {
       TracePhase tp("idealLoop", &timers[_t_idealLoop]);
-      PhaseIdealLoop ideal_loop( igvn, false );
+      PhaseIdealLoop ideal_loop(igvn, LoopOptsSkipSplitIf);
       loop_opts_cnt--;
       if (major_progress()) print_method(PHASE_PHASEIDEALLOOP3, 2);
     }
@@ -2332,16 +2347,8 @@ void Compile::Optimize() {
 
   // Loop transforms on the ideal graph.  Range Check Elimination,
   // peeling, unrolling, etc.
-  if(loop_opts_cnt > 0) {
-    debug_only( int cnt = 0; );
-    while(major_progress() && (loop_opts_cnt > 0)) {
-      TracePhase tp("idealLoop", &timers[_t_idealLoop]);
-      assert( cnt++ < 40, "infinite cycle in loop optimization" );
-      PhaseIdealLoop ideal_loop( igvn, true);
-      loop_opts_cnt--;
-      if (major_progress()) print_method(PHASE_PHASEIDEALLOOP_ITERATIONS, 2);
-      if (failing())  return;
-    }
+  if (!optimize_loops(loop_opts_cnt, igvn, LoopOptsDefault)) {
+    return;
   }
 
 #if INCLUDE_ZGC
@@ -4257,6 +4264,13 @@ Node* Compile::constrained_convI2L(PhaseGVN* phase, Node* value, const TypeInt* 
   return phase->transform(new ConvI2LNode(value, ltype));
 }
 
+void Compile::print_inlining_stream_free() {
+  if (_print_inlining_stream != NULL) {
+    _print_inlining_stream->~stringStream();
+    _print_inlining_stream = NULL;
+  }
+}
+
 // The message about the current inlining is accumulated in
 // _print_inlining_stream and transfered into the _print_inlining_list
 // once we know whether inlining succeeds or not. For regular
@@ -4267,13 +4281,21 @@ Node* Compile::constrained_convI2L(PhaseGVN* phase, Node* value, const TypeInt* 
 // when the inlining is attempted again.
 void Compile::print_inlining_init() {
   if (print_inlining() || print_intrinsics()) {
+    // print_inlining_init is actually called several times.
+    print_inlining_stream_free();
     _print_inlining_stream = new stringStream();
+    // Watch out: The memory initialized by the constructor call PrintInliningBuffer()
+    // will be copied into the only initial element. The default destructor of
+    // PrintInliningBuffer will be called when leaving the scope here. If it
+    // would destuct the  enclosed stringStream _print_inlining_list[0]->_ss
+    // would be destructed, too!
     _print_inlining_list = new (comp_arena())GrowableArray<PrintInliningBuffer>(comp_arena(), 1, 1, PrintInliningBuffer());
   }
 }
 
 void Compile::print_inlining_reinit() {
   if (print_inlining() || print_intrinsics()) {
+    print_inlining_stream_free();
     // Re allocate buffer when we change ResourceMark
     _print_inlining_stream = new stringStream();
   }
@@ -4287,7 +4309,7 @@ void Compile::print_inlining_commit() {
   assert(print_inlining() || print_intrinsics(), "PrintInlining off?");
   // Transfer the message from _print_inlining_stream to the current
   // _print_inlining_list buffer and clear _print_inlining_stream.
-  _print_inlining_list->at(_print_inlining_idx).ss()->write(_print_inlining_stream->as_string(), _print_inlining_stream->size());
+  _print_inlining_list->at(_print_inlining_idx).ss()->write(_print_inlining_stream->base(), _print_inlining_stream->size());
   print_inlining_reset();
 }
 
@@ -4368,9 +4390,16 @@ void Compile::process_print_inlining() {
   if (do_print_inlining) {
     ResourceMark rm;
     stringStream ss;
+    assert(_print_inlining_list != NULL, "process_print_inlining should be called only once.");
     for (int i = 0; i < _print_inlining_list->length(); i++) {
       ss.print("%s", _print_inlining_list->adr_at(i)->ss()->as_string());
+      _print_inlining_list->at(i).freeStream();
     }
+    // Reset _print_inlining_list, it only contains destructed objects.
+    // It is on the arena, so it will be freed when the arena is reset.
+    _print_inlining_list = NULL;
+    // _print_inlining_stream won't be used anymore, either.
+    print_inlining_stream_free();
     size_t end = ss.size();
     _print_inlining_output = NEW_ARENA_ARRAY(comp_arena(), char, end+1);
     strncpy(_print_inlining_output, ss.base(), end+1);

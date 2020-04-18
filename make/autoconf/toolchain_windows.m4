@@ -185,6 +185,8 @@ AC_DEFUN([TOOLCHAIN_FIND_VISUAL_STUDIO_BAT_FILE],
   eval SDK_INSTALL_DIR="\${VS_SDK_INSTALLDIR_${VS_VERSION}}"
   eval VS_ENV_ARGS="\${VS_ENV_ARGS_${VS_VERSION}}"
 
+  VS_ENV_CMD=""
+
   # When using --with-tools-dir, assume it points to the correct and default
   # version of Visual Studio or that --with-toolchain-version was also set.
   if test "x$with_tools_dir" != x; then
@@ -201,8 +203,6 @@ AC_DEFUN([TOOLCHAIN_FIND_VISUAL_STUDIO_BAT_FILE],
       AC_MSG_ERROR([Cannot locate a valid Visual Studio installation])
     fi
   fi
-
-  VS_ENV_CMD=""
 
   if test "x$VS_COMNTOOLS" != x; then
     TOOLCHAIN_CHECK_POSSIBLE_VISUAL_STUDIO_ROOT([${VS_VERSION}],
@@ -693,7 +693,7 @@ AC_DEFUN([TOOLCHAIN_SETUP_VS_RUNTIME_DLLS],
   if test "x$USE_UCRT" = "xtrue"; then
     AC_MSG_CHECKING([for UCRT DLL dir])
     if test "x$with_ucrt_dll_dir" != x; then
-      if test -z "$(ls -d "$with_ucrt_dll_dir/*.dll" 2> /dev/null)"; then
+      if test -z "$(ls -d "$with_ucrt_dll_dir/"*.dll 2> /dev/null)"; then
         AC_MSG_RESULT([no])
         AC_MSG_ERROR([Could not find any dlls in $with_ucrt_dll_dir])
       else
@@ -713,8 +713,16 @@ AC_DEFUN([TOOLCHAIN_SETUP_VS_RUNTIME_DLLS],
       fi
       UCRT_DLL_DIR="$CYGWIN_WINDOWSSDKDIR/Redist/ucrt/DLLs/$dll_subdir"
       if test -z "$(ls -d "$UCRT_DLL_DIR/"*.dll 2> /dev/null)"; then
-        AC_MSG_RESULT([no])
-        AC_MSG_ERROR([Could not find any dlls in $UCRT_DLL_DIR])
+        # Try with version subdir
+        UCRT_DLL_DIR="`ls -d $CYGWIN_WINDOWSSDKDIR/Redist/*/ucrt/DLLs/$dll_subdir \
+            2> /dev/null | $SORT -d | $HEAD -n1`"
+        if test -z "$UCRT_DLL_DIR" \
+            || test -z "$(ls -d "$UCRT_DLL_DIR/"*.dll 2> /dev/null)"; then
+          AC_MSG_RESULT([no])
+          AC_MSG_ERROR([Could not find any dlls in $UCRT_DLL_DIR])
+        else
+          AC_MSG_RESULT($UCRT_DLL_DIR)
+        fi
       else
         AC_MSG_RESULT($UCRT_DLL_DIR)
       fi

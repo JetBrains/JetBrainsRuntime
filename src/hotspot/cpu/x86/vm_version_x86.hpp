@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -241,7 +241,7 @@ class VM_Version : public Abstract_VM_Version {
                            : 1,
                       gfni : 1,
                       vaes : 1,
-                vpclmulqdq : 1,
+         avx512_vpclmulqdq : 1,
                avx512_vnni : 1,
              avx512_bitalg : 1,
                            : 1,
@@ -334,7 +334,7 @@ protected:
 #define CPU_FMA ((uint64_t)UCONST64(0x800000000))      // FMA instructions
 #define CPU_VZEROUPPER ((uint64_t)UCONST64(0x1000000000))       // Vzeroupper instruction
 #define CPU_AVX512_VPOPCNTDQ ((uint64_t)UCONST64(0x2000000000)) // Vector popcount
-#define CPU_VPCLMULQDQ ((uint64_t)UCONST64(0x4000000000)) //Vector carryless multiplication
+#define CPU_AVX512_VPCLMULQDQ ((uint64_t)UCONST64(0x4000000000)) //Vector carryless multiplication
 #define CPU_VAES ((uint64_t)UCONST64(0x8000000000))    // Vector AES instructions
 
   enum Extended_Family {
@@ -544,8 +544,8 @@ protected:
           result |= CPU_AVX512VL;
         if (_cpuid_info.sef_cpuid7_ecx.bits.avx512_vpopcntdq != 0)
           result |= CPU_AVX512_VPOPCNTDQ;
-        if (_cpuid_info.sef_cpuid7_ecx.bits.vpclmulqdq != 0)
-          result |= CPU_VPCLMULQDQ;
+        if (_cpuid_info.sef_cpuid7_ecx.bits.avx512_vpclmulqdq != 0)
+          result |= CPU_AVX512_VPCLMULQDQ;
         if (_cpuid_info.sef_cpuid7_ecx.bits.vaes != 0)
           result |= CPU_VAES;
       }
@@ -831,12 +831,15 @@ public:
   static bool supports_fma()        { return (_features & CPU_FMA) != 0 && supports_avx(); }
   static bool supports_vzeroupper() { return (_features & CPU_VZEROUPPER) != 0; }
   static bool supports_vpopcntdq()  { return (_features & CPU_AVX512_VPOPCNTDQ) != 0; }
-  static bool supports_vpclmulqdq() { return (_features & CPU_VPCLMULQDQ) != 0; }
+  static bool supports_avx512_vpclmulqdq() { return (_features & CPU_AVX512_VPCLMULQDQ) != 0; }
   static bool supports_vaes()       { return (_features & CPU_VAES) != 0; }
 
   // Intel features
   static bool is_intel_family_core() { return is_intel() &&
                                        extended_cpu_family() == CPU_FAMILY_INTEL_CORE; }
+
+  static bool is_intel_skylake() { return is_intel_family_core() &&
+                                          extended_cpu_model() == CPU_MODEL_SKYLAKE; }
 
   static bool is_intel_tsc_synched_at_init()  {
     if (is_intel_family_core()) {

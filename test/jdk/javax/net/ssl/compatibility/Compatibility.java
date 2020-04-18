@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,8 @@
  *     Note that, this is a manual test. For more details about the test and
  *     its usages, please look through README.
  *
- * @library /test/lib
- * @compile -source 1.6 -target 1.6 JdkUtils.java Parameter.java Server.java Client.java
+ * @library /test/lib ../TLSCommon
+ * @compile -source 1.6 -target 1.6 JdkUtils.java Server.java Client.java
  * @run main/manual Compatibility
  */
 
@@ -57,19 +57,32 @@ import jdk.test.lib.process.OutputAnalyzer;
 
 public class Compatibility {
 
-    public static void main(String[] args) throws Throwable {
-        String javaSecurityFile
-                = System.getProperty("test.src") + "/java.security";
-        boolean debug = Utils.getBoolProperty("debug");
+    protected List<UseCase> getUseCases() {
+        return UseCase.getAllUseCases();
+    }
 
-        Set<JdkInfo> jdkInfos = jdkInfoList();
+    protected Set<JdkInfo> getJdkInfos() {
+        return jdkInfoList();
+    }
 
-        System.out.println("Test start");
+    protected List<TestCase> runTest() throws Exception {
+        Set<JdkInfo> jdkInfos = getJdkInfos();
 
         List<TestCase> testCases = new ArrayList<>();
         ExecutorService executor = Executors.newCachedThreadPool();
         PrintStream origStdOut = System.out;
         PrintStream origStdErr = System.err;
+
+        boolean debug = Boolean.getBoolean("debug");
+
+        String securityPropertiesFile = System.getProperty(
+                "test.security.properties",
+                System.getProperty("test.src") + "/java.security");
+        System.out.println("security properties: " + securityPropertiesFile);
+
+        // If true, server and client CANNOT be a same JDK
+        boolean disallowSameEndpoint = Boolean.getBoolean("disallowSameEndpoint");
+        System.out.println("disallowSameEndpoint: " + disallowSameEndpoint);
 
         try (PrintStream printStream = new PrintStream(
                 new FileOutputStream(Utils.TEST_LOG, true))) {
@@ -79,22 +92,18 @@ public class Compatibility {
             System.out.println(Utils.startHtml());
             System.out.println(Utils.startPre());
 
-            for (UseCase useCase : UseCase.getAllUseCases()) {
+            for (UseCase useCase : getUseCases()) {
                 for (JdkInfo serverJdk : jdkInfos) {
-                    if (useCase.ignoredByJdk(serverJdk)) {
-                        continue;
-                    }
-
                     Map<String, String> props = new LinkedHashMap<>();
                     if (debug) {
-                        props.put("javax.net.debug", "ssl");
+                        props.put("javax.net.debug", "all");
                     }
-                    props.put("java.security.properties", javaSecurityFile);
+                    props.put("java.security.properties", securityPropertiesFile);
 
-                    props.put(Utils.PROP_PROTOCOL, useCase.protocol.version);
+                    props.put(Utils.PROP_PROTOCOL, useCase.protocol.name);
                     props.put(Utils.PROP_CIPHER_SUITE, useCase.cipherSuite.name());
-                    props.put(Utils.PROP_CLIENT_AUTH, useCase.clientAuth.name());
-                    if (useCase.appProtocol != AppProtocol.NONE) {
+                    props.put(Utils.PROP_CLIENT_AUTH, String.valueOf(useCase.clientAuth));
+                    if (useCase.appProtocol != UseCase.AppProtocol.NONE) {
                         props.put(Utils.PROP_APP_PROTOCOLS,
                                 Utils.join(Utils.VALUE_DELIMITER,
                                         useCase.appProtocol.appProtocols));
@@ -109,14 +118,14 @@ public class Compatibility {
                             serverJdk.supportsALPN + "");
 
                     for (JdkInfo clientJdk : jdkInfos) {
-                        if (useCase.ignoredByJdk(clientJdk)) {
+                        if (disallowSameEndpoint && clientJdk == serverJdk) {
                             continue;
                         }
 
                         TestCase testCase = new TestCase(serverJdk, clientJdk,
                                 useCase);
                         System.out.println(Utils.anchorName(testCase.toString(),
-                                "----- Case start -----"));
+                                "===== Case start ====="));
                         System.out.println(testCase.toString());
 
                         props.put(Utils.PROP_NEGATIVE_CASE_ON_SERVER,
@@ -138,7 +147,7 @@ public class Compatibility {
                                 clientJdk.supportsSNI + "");
                         props.put(Utils.PROP_SUPPORTS_ALPN_ON_CLIENT,
                                 clientJdk.supportsALPN + "");
-                        if (useCase.serverName != ServerName.NONE) {
+                        if (useCase.serverName != UseCase.ServerName.NONE) {
                             props.put(Utils.PROP_SERVER_NAME,
                                     useCase.serverName.name);
                         }
@@ -158,7 +167,7 @@ public class Compatibility {
                                 "ServerStatus=%s, ClientStatus=%s, CaseStatus=%s%n",
                                 serverStatus, clientStatus, testCase.getStatus());
 
-                        System.out.println("----- Case end -----");
+                        System.out.println("===== Case end =====");
                     }
                 }
             }
@@ -170,14 +179,73 @@ public class Compatibility {
         System.setErr(origStdErr);
         executor.shutdown();
 
+        return testCases;
+    }
+
+    // Generates the test result report.
+    protected boolean generateReport(List<TestCase> testCases)
+            throws IOException {
+        boolean failed = false;
+        StringBuilder report = new StringBuilder();
+        report.append(Utils.startHtml());
+        report.append(Utils.tableStyle());
+        report.append(Utils.startTable());
+        report.append(Utils.row(
+                "No.",
+                "ServerJDK",
+                "ClientJDK",
+                "Protocol",
+                "CipherSuite",
+                "ClientAuth",
+                "SNI",
+                "ALPN",
+                "Status"));
+        for (int i = 0, size = testCases.size(); i < size; i++) {
+            TestCase testCase = testCases.get(i);
+
+            report.append(Utils.row(
+                    Utils.anchorLink(
+                            Utils.TEST_LOG,
+                            testCase.toString(),
+                            i + ""),
+                    testCase.serverJdk.version,
+                    testCase.clientJdk.version,
+                    testCase.useCase.protocol.name,
+                    testCase.useCase.cipherSuite,
+                    Utils.boolToStr(
+                            testCase.useCase.clientAuth),
+                    Utils.boolToStr(
+                            testCase.useCase.serverName == UseCase.ServerName.EXAMPLE),
+                    Utils.boolToStr(
+                            testCase.useCase.appProtocol == UseCase.AppProtocol.EXAMPLE),
+                    testCase.getStatus()));
+            failed = failed
+                    || testCase.getStatus() == Status.FAIL
+                    || testCase.getStatus() == Status.UNEXPECTED_SUCCESS;
+        }
+        report.append(Utils.endTable());
+        report.append(Utils.endHtml());
+
+        generateFile("report.html", report.toString());
+        return failed;
+    }
+
+    protected void run() throws Exception {
+        System.out.println("Test start");
+        List<TestCase> testCases= runTest();
         System.out.println("Test end");
-        System.out.println("Report is being generated...");
+
         boolean failed = generateReport(testCases);
-        System.out.println("Report is generated.");
+        System.out.println("Report was generated.");
+
         if (failed) {
             throw new RuntimeException("At least one case failed. "
                     + "Please check logs for more details.");
         }
+    }
+
+    public static void main(String[] args) throws Throwable {
+        new Compatibility().run();;
     }
 
     private static Status getStatus(String log) {
@@ -211,13 +279,10 @@ public class Compatibility {
     }
 
     // Retrieves JDK info from the file which is specified by jdkListFile.
-    // If no such file or no JDK is specified by the file, the current testing
-    // JDK will be used.
-    private static Set<JdkInfo> jdkInfoList() throws Throwable {
-        List<String> jdkList = jdkList("jdkListFile");
-        if (jdkList.size() == 0) {
-            jdkList.add(System.getProperty("test.jdk"));
-        }
+    // And the current testing JDK, which is specified by test.jdk, always be used.
+    private static Set<JdkInfo> jdkInfoList() {
+        List<String> jdkList = jdkList();
+        jdkList.add(System.getProperty("test.jdk"));
 
         Set<JdkInfo> jdkInfoList = new LinkedHashSet<>();
         for (String jdkPath : jdkList) {
@@ -230,14 +295,16 @@ public class Compatibility {
         return jdkInfoList;
     }
 
-    private static List<String> jdkList(String listFileProp) throws IOException {
-        String listFile = System.getProperty(listFileProp);
-        System.out.println(listFileProp + "=" + listFile);
+    private static List<String> jdkList() {
+        String listFile = System.getProperty("jdkListFile");
+        System.out.println("jdk list file: " + listFile);
         if (listFile != null && Files.exists(Paths.get(listFile))) {
             try (Stream<String> lines = Files.lines(Paths.get(listFile))) {
                 return lines.filter(line -> {
                     return !line.trim().isEmpty();
                 }).collect(Collectors.toList());
+            } catch (IOException e) {
+                throw new RuntimeException("Cannot get jdk list", e);
             }
         } else {
             return new ArrayList<>();
@@ -279,54 +346,6 @@ public class Compatibility {
     private static OutputAnalyzer runClient(String jdkPath,
             Map<String, String> props) {
         return ProcessUtils.java(jdkPath, props, Client.class);
-    }
-
-    // Generates the test result report.
-    private static boolean generateReport(List<TestCase> testCases)
-            throws IOException {
-        boolean failed = false;
-        StringBuilder report = new StringBuilder();
-        report.append(Utils.startHtml());
-        report.append(Utils.tableStyle());
-        report.append(Utils.startTable());
-        report.append(Utils.row(
-                "No.",
-                "ServerJDK",
-                "ClientJDK",
-                "Protocol",
-                "CipherSuite",
-                "ClientAuth",
-                "SNI",
-                "ALPN",
-                "Status"));
-        for (int i = 0, size = testCases.size(); i < size; i++) {
-            TestCase testCase = testCases.get(i);
-
-            report.append(Utils.row(
-                    Utils.anchorLink(
-                            Utils.TEST_LOG,
-                            testCase.toString(),
-                            i + ""),
-                    testCase.serverJdk.version,
-                    testCase.clientJdk.version,
-                    testCase.useCase.protocol.version,
-                    testCase.useCase.cipherSuite,
-                    Utils.boolToStr(
-                            testCase.useCase.clientAuth == ClientAuth.TRUE),
-                    Utils.boolToStr(
-                            testCase.useCase.serverName == ServerName.EXAMPLE),
-                    Utils.boolToStr(
-                            testCase.useCase.appProtocol == AppProtocol.EXAMPLE),
-                    testCase.getStatus()));
-            failed = failed
-                    || testCase.getStatus() == Status.FAIL
-                    || testCase.getStatus() == Status.UNEXPECTED_SUCCESS;
-        }
-        report.append(Utils.endTable());
-        report.append(Utils.endHtml());
-
-        generateFile("report.html", report.toString());
-        return failed;
     }
 
     private static void generateFile(String path, String content)

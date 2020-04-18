@@ -94,15 +94,21 @@ class WorkerThread;
 
 // Class hierarchy
 // - Thread
-//   - NamedThread
-//     - VMThread
-//     - ConcurrentGCThread
-//     - WorkerThread
-//       - GangWorker
-//       - GCTaskThread
 //   - JavaThread
 //     - various subclasses eg CompilerThread, ServiceThread
-//   - WatcherThread
+//   - NonJavaThread
+//     - NamedThread
+//       - VMThread
+//       - ConcurrentGCThread
+//       - WorkerThread
+//         - GangWorker
+//         - GCTaskThread
+//     - WatcherThread
+//     - JfrThreadSampler
+//
+// All Thread subclasses must be either JavaThread or NonJavaThread.
+// This means !t->is_Java_thread() iff t is a NonJavaThread, or t is
+// a partially constructed/destroyed Thread.
 
 class Thread: public ThreadShadow {
   friend class VMStructs;
@@ -380,7 +386,7 @@ class Thread: public ThreadShadow {
 
   // Constructor
   Thread();
-  virtual ~Thread();
+  virtual ~Thread() = 0;        // Thread is abstract.
 
   // Manage Thread::current()
   void initialize_thread_current();
@@ -638,7 +644,7 @@ protected:
 
   bool    on_local_stack(address adr) const {
     // QQQ this has knowledge of direction, ought to be a stack method
-    return (_stack_base >= adr && adr >= stack_end());
+    return (_stack_base > adr && adr >= stack_end());
   }
 
   uintptr_t self_raw_id()                    { return _self_raw_id; }
@@ -771,9 +777,47 @@ inline Thread* Thread::current_or_null_safe() {
   return NULL;
 }
 
+class NonJavaThread: public Thread {
+  friend class VMStructs;
+
+  NonJavaThread* volatile _next;
+
+  class List;
+  static List _the_list;
+
+ public:
+  NonJavaThread();
+  ~NonJavaThread();
+
+  class Iterator;
+};
+
+// Provides iteration over the list of NonJavaThreads.  Because list
+// management occurs in the NonJavaThread constructor and destructor,
+// entries in the list may not be fully constructed instances of a
+// derived class.  Threads created after an iterator is constructed
+// will not be visited by the iterator.  The scope of an iterator is a
+// critical section; there must be no safepoint checks in that scope.
+class NonJavaThread::Iterator : public StackObj {
+  uint _protect_enter;
+  NonJavaThread* _current;
+
+  // Noncopyable.
+  Iterator(const Iterator&);
+  Iterator& operator=(const Iterator&);
+
+public:
+  Iterator();
+  ~Iterator();
+
+  bool end() const { return _current == NULL; }
+  NonJavaThread* current() const { return _current; }
+  void step();
+};
+
 // Name support for threads.  non-JavaThread subclasses with multiple
 // uniquely named instances should derive from this.
-class NamedThread: public Thread {
+class NamedThread: public NonJavaThread {
   friend class VMStructs;
   enum {
     max_name_len = 64
@@ -818,7 +862,7 @@ class WorkerThread: public NamedThread {
 };
 
 // A single WatcherThread is used for simulating timer interrupts.
-class WatcherThread: public Thread {
+class WatcherThread: public NonJavaThread {
   friend class VMStructs;
  public:
   virtual void run();

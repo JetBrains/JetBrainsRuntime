@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,17 +29,19 @@
 #include "jfr/recorder/checkpoint/types/jfrTypeManager.hpp"
 #include "jfr/utilities/jfrDoublyLinkedList.hpp"
 #include "jfr/utilities/jfrIterator.hpp"
+#include "memory/resourceArea.hpp"
+#include "runtime/handles.inline.hpp"
 #include "runtime/safepoint.hpp"
+#include "runtime/semaphore.hpp"
 #include "runtime/thread.inline.hpp"
 #include "utilities/exceptions.hpp"
-#include "runtime/semaphore.hpp"
 
 class JfrSerializerRegistration : public JfrCHeapObj {
  private:
   JfrSerializerRegistration* _next;
   JfrSerializerRegistration* _prev;
   JfrSerializer* _serializer;
-  mutable JfrCheckpointBlobHandle _cache;
+  mutable JfrBlobHandle _cache;
   JfrTypeId _id;
   bool _permit_cache;
 
@@ -115,7 +117,7 @@ typedef StopOnNullIterator<const List> Iterator;
 static List types;
 static List safepoint_types;
 
-void JfrTypeManager::clear() {
+void JfrTypeManager::destroy() {
   SerializerRegistrationGuard guard;
   Iterator iter(types);
   JfrSerializerRegistration* registration;
@@ -147,44 +149,27 @@ void JfrTypeManager::write_safepoint_types(JfrCheckpointWriter& writer) {
   }
 }
 
-void JfrTypeManager::write_type_set() {
-  // can safepoint here because of Module_lock
-  MutexLockerEx lock(SafepointSynchronize::is_at_safepoint() ? NULL : Module_lock);
-  JfrCheckpointWriter writer(true, true, Thread::current());
-  TypeSet set;
-  set.serialize(writer);
-}
-
-void JfrTypeManager::write_type_set_for_unloaded_classes() {
-  assert(SafepointSynchronize::is_at_safepoint(), "invariant");
-  JfrCheckpointWriter writer(false, true, Thread::current());
-  ClassUnloadTypeSet class_unload_set;
-  class_unload_set.serialize(writer);
-}
-
-void JfrTypeManager::create_thread_checkpoint(JavaThread* jt) {
+void JfrTypeManager::create_thread_blob(JavaThread* jt) {
   assert(jt != NULL, "invariant");
+  ResourceMark rm(jt);
+  HandleMark hm(jt);
   JfrThreadConstant type_thread(jt);
   JfrCheckpointWriter writer(false, true, jt);
   writer.write_type(TYPE_THREAD);
   type_thread.serialize(writer);
   // create and install a checkpoint blob
-  jt->jfr_thread_local()->set_thread_checkpoint(writer.checkpoint_blob());
-  assert(jt->jfr_thread_local()->has_thread_checkpoint(), "invariant");
+  jt->jfr_thread_local()->set_thread_blob(writer.move());
+  assert(jt->jfr_thread_local()->has_thread_blob(), "invariant");
 }
 
 void JfrTypeManager::write_thread_checkpoint(JavaThread* jt) {
   assert(jt != NULL, "JavaThread is NULL!");
   ResourceMark rm(jt);
-  if (jt->jfr_thread_local()->has_thread_checkpoint()) {
-    JfrCheckpointWriter writer(false, false, jt);
-    jt->jfr_thread_local()->thread_checkpoint()->write(writer);
-  } else {
-    JfrThreadConstant type_thread(jt);
-    JfrCheckpointWriter writer(false, true, jt);
-    writer.write_type(TYPE_THREAD);
-    type_thread.serialize(writer);
-  }
+  HandleMark hm(jt);
+  JfrThreadConstant type_thread(jt);
+  JfrCheckpointWriter writer(false, true, jt);
+  writer.write_type(TYPE_THREAD);
+  type_thread.serialize(writer);
 }
 
 #ifdef ASSERT
@@ -224,11 +209,9 @@ bool JfrTypeManager::initialize() {
   register_type(TYPE_GCCAUSE, false, true, new GCCauseConstant());
   register_type(TYPE_GCNAME, false, true, new GCNameConstant());
   register_type(TYPE_GCWHEN, false, true, new GCWhenConstant());
-  register_type(TYPE_G1HEAPREGIONTYPE, false, true, new G1HeapRegionTypeConstant());
   register_type(TYPE_GCTHRESHOLDUPDATER, false, true, new GCThresholdUpdaterConstant());
   register_type(TYPE_METADATATYPE, false, true, new MetadataTypeConstant());
   register_type(TYPE_METASPACEOBJECTTYPE, false, true, new MetaspaceObjectTypeConstant());
-  register_type(TYPE_G1YCTYPE, false, true, new G1YCTypeConstant());
   register_type(TYPE_REFERENCETYPE, false, true, new ReferenceTypeConstant());
   register_type(TYPE_NARROWOOPMODE, false, true, new NarrowOopModeConstant());
   register_type(TYPE_COMPILERPHASETYPE, false, true, new CompilerPhaseTypeConstant());

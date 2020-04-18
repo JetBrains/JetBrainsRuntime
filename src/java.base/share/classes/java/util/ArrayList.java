@@ -1163,7 +1163,7 @@ public class ArrayList<E> extends AbstractList<E>
             this.parent = parent;
             this.offset = parent.offset + fromIndex;
             this.size = toIndex - fromIndex;
-            this.modCount = root.modCount;
+            this.modCount = parent.modCount;
         }
 
         public E set(int index, E element) {
@@ -1316,7 +1316,7 @@ public class ArrayList<E> extends AbstractList<E>
             return new ListIterator<E>() {
                 int cursor = index;
                 int lastRet = -1;
-                int expectedModCount = root.modCount;
+                int expectedModCount = SubList.this.modCount;
 
                 public boolean hasNext() {
                     return cursor != SubList.this.size;
@@ -1360,7 +1360,7 @@ public class ArrayList<E> extends AbstractList<E>
                         final Object[] es = root.elementData;
                         if (offset + i >= es.length)
                             throw new ConcurrentModificationException();
-                        for (; i < size && modCount == expectedModCount; i++)
+                        for (; i < size && root.modCount == expectedModCount; i++)
                             action.accept(elementAt(es, offset + i));
                         // update once at end to reduce heap write traffic
                         cursor = i;
@@ -1386,7 +1386,7 @@ public class ArrayList<E> extends AbstractList<E>
                         SubList.this.remove(lastRet);
                         cursor = lastRet;
                         lastRet = -1;
-                        expectedModCount = root.modCount;
+                        expectedModCount = SubList.this.modCount;
                     } catch (IndexOutOfBoundsException ex) {
                         throw new ConcurrentModificationException();
                     }
@@ -1412,7 +1412,7 @@ public class ArrayList<E> extends AbstractList<E>
                         SubList.this.add(i, e);
                         cursor = i + 1;
                         lastRet = -1;
-                        expectedModCount = root.modCount;
+                        expectedModCount = SubList.this.modCount;
                     } catch (IndexOutOfBoundsException ex) {
                         throw new ConcurrentModificationException();
                     }

@@ -162,6 +162,35 @@ proper quoting of command line arguments through.)
 As far as possible, the names of the keywords have been standardized between
 test suites.
 
+### General keywords (TEST_OPTS)
+
+Some keywords are valid across different test suites. If you want to run
+tests from multiple test suites, or just don't want to care which test suite specific
+control variable to use, then you can use the general TEST_OPTS control variable.
+
+There are also some keywords that applies globally to the test runner system,
+not to any specific test suites. These are also available as TEST_OPTS keywords.
+
+#### JOBS
+
+Currently only applies to JTReg.
+
+#### TIMEOUT_FACTOR
+
+Currently only applies to JTReg.
+
+#### VM_OPTIONS
+
+Applies to JTReg, GTest and Micro.
+
+#### JAVA_OPTIONS
+
+Applies to JTReg, GTest and Micro.
+
+#### AOT_MODULES
+
+Applies to JTReg and GTest.
+
 ### JTReg keywords
 
 #### JOBS
@@ -171,7 +200,7 @@ Defaults to TEST_JOBS (if set by `--with-test-jobs=`), otherwise it defaults to
 JOBS, except for Hotspot, where the default is *number of CPU cores/2*, but
 never more than 12.
 
-#### TIMEOUT
+#### TIMEOUT_FACTOR
 The timeout factor (`-timeoutFactor`).
 
 Defaults to 4.
@@ -205,6 +234,24 @@ to disable the limits.
 
 Defaults to 512m, except for hotspot, where it defaults to 0 (no limit).
 
+#### KEYWORDS
+
+JTReg kewords sent to JTReg using `-k`. Please be careful in making sure that
+spaces and special characters (like `!`) are properly quoted. To avoid some
+issues, the special value `%20` can be used instead of space.
+
+#### EXTRA_PROBLEM_LISTS
+
+Use additional problem lists file or files, in addition to the default
+ProblemList.txt located at the JTReg test roots.
+
+If multiple file names are specified, they should be separated by space (or, to
+help avoid quoting issues, the special value `%20`).
+
+The file names should be either absolute, or relative to the JTReg test root of
+the tests to be run.
+
+
 #### OPTIONS
 Additional options to the JTReg test framework.
 
@@ -215,6 +262,12 @@ Additional Java options to JTReg (`-javaoption`).
 
 #### VM_OPTIONS
 Additional VM options to JTReg (`-vmoption`).
+
+#### AOT_MODULES
+
+Generate AOT modules before testing for the specified module, or set of
+modules. If multiple modules are specified, they should be separated by space
+(or, to help avoid quoting issues, the special value `%20`).
 
 ### Gtest keywords
 
@@ -230,6 +283,12 @@ Additional options to the Gtest test framework.
 
 Use `GTEST="OPTIONS=--help"` to see all available Gtest options.
 
+#### AOT_MODULES
+
+Generate AOT modules before testing for the specified module, or set of
+modules. If multiple modules are specified, they should be separated by space
+(or, to help avoid quoting issues, the special value `%20`).
+
 ## Notes for Specific Tests
 
 ### Docker Tests
@@ -244,6 +303,35 @@ To run these tests correctly, additional parameters for the correct docker image
 required on Ubuntu 18.04 by using `JAVA_OPTIONS`.
 
     $ make run-test TEST="jtreg:test/hotspot/jtreg/containers/docker" JTREG="JAVA_OPTIONS=-Djdk.test.docker.image.name=ubuntu -Djdk.test.docker.image.version=latest"
+
+### Client UI Tests
+
+Some Client UI tests use key sequences which may be reserved by the operating
+system. Usually that causes the test failure. So it is highly recommended to disable
+system key shortcuts prior testing. The steps to access and disable system key shortcuts
+for various platforms are provided below.
+
+#### MacOS
+Choose Apple menu; System Preferences, click Keyboard, then click Shortcuts;
+select or deselect desired shortcut.
+
+For example, test/jdk/javax/swing/TooltipManager/JMenuItemToolTipKeyBindingsTest/JMenuItemToolTipKeyBindingsTest.java fails
+on MacOS because it uses `CTRL + F1` key sequence to show or hide tooltip message
+but the key combination is reserved by the operating system. To run the test correctly
+the default global key shortcut should be disabled using the steps described above, and then deselect
+"Turn keyboard access on or off" option which is responsible for `CTRL + F1` combination.
+
+#### Linux
+Open the Activities overview and start typing Settings; Choose Settings, click Devices,
+then click Keyboard; set or override desired shortcut.
+
+#### Windows
+Type `gpedit` in the Search and then click Edit group policy; navigate to
+User Configuration -> Administrative Templates -> Windows Components -> File Explorer;
+in the right-side pane look for "Turn off Windows key hotkeys" and double click on it;
+enable or disable hotkeys.
+
+Note: restart is required to make the settings take effect.
 
 ---
 # Override some definitions in the global css file that are not optimal for

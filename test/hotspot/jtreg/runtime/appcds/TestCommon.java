@@ -73,6 +73,10 @@ public class TestCommon extends CDSTestUtils {
         return currentArchiveName;
     }
 
+    public static void setCurrentArchiveName(String archiveName) {
+        currentArchiveName = archiveName;
+    }
+
     // Attempt to clean old archives to preserve space
     // Archives are large artifacts (20Mb or more), and much larger than
     // most other artifacts created in jtreg testing.

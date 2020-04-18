@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ import org.jtregext.GuiTestListener;
 import com.sun.swingset3.demos.scrollpane.ScrollPaneDemo;
 import static com.sun.swingset3.demos.scrollpane.ScrollPaneDemo.DEMO_TITLE;
 import static org.testng.AssertJUnit.*;
+import javax.swing.UIManager;
 import org.testng.annotations.Test;
 import org.netbeans.jemmy.ClassReference;
 import org.netbeans.jemmy.operators.JFrameOperator;
@@ -44,13 +45,14 @@ import org.testng.annotations.Listeners;
  *          java.logging
  * @build org.jemmy2ext.JemmyExt
  * @build com.sun.swingset3.demos.scrollpane.ScrollPaneDemo
- * @run testng ScrollPaneDemoTest
+ * @run testng/timeout=600 ScrollPaneDemoTest
  */
 @Listeners(GuiTestListener.class)
 public class ScrollPaneDemoTest {
 
-    @Test
-    public void test() throws Exception {
+    @Test(dataProvider = "availableLookAndFeels", dataProviderClass = TestHelpers.class)
+    public void test(String lookAndFeel) throws Exception {
+        UIManager.setLookAndFeel(lookAndFeel);
 
         new ClassReference(ScrollPaneDemo.class.getName()).startApplication();
 

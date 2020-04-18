@@ -131,7 +131,7 @@ class TransportContext implements ConnectionContext {
         this.isUnsureMode = isUnsureMode;
 
         // initial security parameters
-        this.conSession = SSLSessionImpl.nullSession;
+        this.conSession = new SSLSessionImpl();
         this.protocolVersion = this.sslConfig.maximumProtocolVersion;
         this.clientVerifyData = emptyByteArray;
         this.serverVerifyData = emptyByteArray;
@@ -159,14 +159,20 @@ class TransportContext implements ConnectionContext {
                 if (handshakeContext == null) {
                     if (type == SSLHandshake.KEY_UPDATE.id ||
                             type == SSLHandshake.NEW_SESSION_TICKET.id) {
-                        if (isNegotiated &&
-                                protocolVersion.useTLS13PlusSpec()) {
-                            handshakeContext = new PostHandshakeContext(this);
-                        } else {
+                        if (!isNegotiated) {
+                            throw fatal(Alert.UNEXPECTED_MESSAGE,
+                                    "Unexpected unnegotiated post-handshake" +
+                                            " message: " +
+                                            SSLHandshake.nameOf(type));
+                        }
+
+                        if (!PostHandshakeContext.isConsumable(this, type)) {
                             throw fatal(Alert.UNEXPECTED_MESSAGE,
                                     "Unexpected post-handshake message: " +
                                     SSLHandshake.nameOf(type));
                         }
+
+                        handshakeContext = new PostHandshakeContext(this);
                     } else {
                         handshakeContext = sslConfig.isClientMode ?
                                 new ClientHandshakeContext(sslContext, this) :

@@ -623,8 +623,8 @@ void PhaseIdealLoop::do_peeling( IdealLoopTree *loop, Node_List &old_new ) {
 
 
   // Step 4: Correct dom-depth info.  Set to loop-head depth.
-  int dd = dom_depth(head);
-  set_idom(head, head->in(1), dd);
+  int dd = dom_depth(head->skip_strip_mined());
+  set_idom(head->skip_strip_mined(), head->skip_strip_mined()->in(LoopNode::EntryControl), dd);
   for (uint j3 = 0; j3 < loop->_body.size(); j3++) {
     Node *old = loop->_body.at(j3);
     Node *nnn = old_new[old->_idx];
@@ -2892,16 +2892,17 @@ void IdealLoopTree::adjust_loop_exit_prob( PhaseIdealLoop *phase ) {
 }
 
 #ifdef ASSERT
-static CountedLoopNode* locate_pre_from_main(CountedLoopNode *cl) {
-  Node *ctrl  = cl->skip_predicates();
+static CountedLoopNode* locate_pre_from_main(CountedLoopNode* main_loop) {
+  assert(!main_loop->is_main_no_pre_loop(), "Does not have a pre loop");
+  Node* ctrl = main_loop->skip_predicates();
   assert(ctrl->Opcode() == Op_IfTrue || ctrl->Opcode() == Op_IfFalse, "");
-  Node *iffm = ctrl->in(0);
+  Node* iffm = ctrl->in(0);
   assert(iffm->Opcode() == Op_If, "");
-  Node *p_f = iffm->in(0);
+  Node* p_f = iffm->in(0);
   assert(p_f->Opcode() == Op_IfFalse, "");
-  CountedLoopEndNode *pre_end = p_f->in(0)->as_CountedLoopEnd();
-  assert(pre_end->loopnode()->is_pre_loop(), "");
-  return pre_end->loopnode();
+  CountedLoopNode* pre_loop = p_f->in(0)->as_CountedLoopEnd()->loopnode();
+  assert(pre_loop->is_pre_loop(), "No pre loop found");
+  return pre_loop;
 }
 #endif
 
@@ -2927,7 +2928,7 @@ void IdealLoopTree::remove_main_post_loops(CountedLoopNode *cl, PhaseIdealLoop *
   }
 
   CountedLoopNode* main_head = next_head->as_CountedLoop();
-  if (!main_head->is_main_loop()) {
+  if (!main_head->is_main_loop() || main_head->is_main_no_pre_loop()) {
     return;
   }
 

@@ -27,12 +27,14 @@ import static org.testng.Assert.assertTrue;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.ToolTipManager;
+import javax.swing.UIManager;
 import javax.swing.plaf.metal.MetalLookAndFeel;
 
 import org.jtregext.GuiTestListener;
 import org.netbeans.jemmy.ClassReference;
 import org.netbeans.jemmy.ComponentChooser;
 import org.netbeans.jemmy.TimeoutExpiredException;
+import org.netbeans.jemmy.Timeouts;
 import org.netbeans.jemmy.operators.ComponentOperator;
 import org.netbeans.jemmy.operators.JButtonOperator;
 import org.netbeans.jemmy.operators.JCheckBoxMenuItemOperator;
@@ -58,7 +60,7 @@ import org.testng.annotations.Test;
  *          java.logging
  * @build org.jemmy2ext.JemmyExt
  * @build SwingSet2
- * @run testng SwingSet2DemoTest
+ * @run testng/timeout=600 SwingSet2DemoTest
  */
 @Listeners(GuiTestListener.class)
 public class SwingSet2DemoTest {
@@ -66,6 +68,7 @@ public class SwingSet2DemoTest {
     private static final String OCEAN_THEME_NAME = "Ocean";
     private static final String STEEL_THEME_NAME = "Steel";
     private static final int TOOLTIP_DISMISS_DELAY = 60000;
+    private final static long TOOLTIP_TIMEOUT = 5000;
 
     /**
      * Testing check box menu item, radio button menu item, nested menus and
@@ -74,8 +77,9 @@ public class SwingSet2DemoTest {
      *
      * @throws Exception
      */
-    @Test
-    public void test() throws Exception {
+    @Test(dataProvider = "availableLookAndFeels", dataProviderClass = TestHelpers.class)
+    public void test(String lookAndFeel) throws Exception {
+        UIManager.setLookAndFeel(lookAndFeel);
 
         new ClassReference(SwingSet2.class.getCanonicalName()).startApplication();
         JFrameOperator frameOperator = new JFrameOperator(SwingSet2.FRAME_TITLE);
@@ -155,6 +159,8 @@ public class SwingSet2DemoTest {
         // tooltip is showing for demo toggle button
         toolTipMenuItem.push();
         toolTipMenuItem.waitSelected(false);
+        // Set tooltip timeout as 5 seconds
+        testComp.getTimeouts().setTimeout("JToolTipOperator.WaitToolTipTimeout", TOOLTIP_TIMEOUT);
         boolean isToolTipTimeout = false;
         try {
             testComp.showToolTip();

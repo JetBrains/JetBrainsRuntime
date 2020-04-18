@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,7 @@ enum Alert {
     HANDSHAKE_FAILURE       ((byte)40,  "handshake_failure", true),
     NO_CERTIFICATE          ((byte)41,  "no_certificate", true),
     BAD_CERTIFICATE         ((byte)42,  "bad_certificate", true),
-    UNSUPPORTED_CERTIFCATE  ((byte)43,  "unsupported_certificate", true),
+    UNSUPPORTED_CERTIFICATE ((byte)43,  "unsupported_certificate", true),
     CERTIFICATE_REVOKED     ((byte)44,  "certificate_revoked", true),
     CERTIFICATE_EXPIRED     ((byte)45,  "certificate_expired", true),
     CERTIFICATE_UNKNOWN     ((byte)46,  "certificate_unknown", true),
@@ -265,7 +265,7 @@ enum Alert {
                     // It's OK to get a no_certificate alert from a client of
                     // which we requested client authentication.  However,
                     // if we required it, then this is not acceptable.
-                     if (tc.sslConfig.isClientMode ||
+                    if (tc.sslConfig.isClientMode ||
                             alert != Alert.NO_CERTIFICATE ||
                             (tc.sslConfig.clientAuthType !=
                                     ClientAuthType.CLIENT_AUTH_REQUESTED)) {
@@ -273,8 +273,10 @@ enum Alert {
                             "received handshake warning: " + alert.description);
                     } else {
                         // Otherwise ignore the warning but remove the
-                        // CertificateVerify handshake consumer so the state
-                        // machine doesn't expect it.
+                        // Certificate and CertificateVerify handshake
+                        // consumer so the state machine doesn't expect it.
+                        tc.handshakeContext.handshakeConsumers.remove(
+                                SSLHandshake.CERTIFICATE.id);
                         tc.handshakeContext.handshakeConsumers.remove(
                                 SSLHandshake.CERTIFICATE_VERIFY.id);
                     }

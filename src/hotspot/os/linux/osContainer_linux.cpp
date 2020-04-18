@@ -104,7 +104,45 @@ class CgroupSubsystem: CHeapObj<mtInternal> {
     char *subsystem_path() { return _path; }
 };
 
-CgroupSubsystem* memory = NULL;
+class CgroupMemorySubsystem: CgroupSubsystem {
+ friend class OSContainer;
+
+ private:
+    /* Some container runtimes set limits via cgroup
+     * hierarchy. If set to true consider also memory.stat
+     * file if everything else seems unlimited */
+    bool _uses_mem_hierarchy;
+    volatile jlong _memory_limit_in_bytes;
+    volatile jlong _next_check_counter;
+
+ public:
+    CgroupMemorySubsystem(char *root, char *mountpoint) : CgroupSubsystem::CgroupSubsystem(root, mountpoint) {
+      _uses_mem_hierarchy = false;
+      _memory_limit_in_bytes = -1;
+      _next_check_counter = min_jlong;
+
+    }
+
+    bool is_hierarchical() { return _uses_mem_hierarchy; }
+    void set_hierarchical(bool value) { _uses_mem_hierarchy = value; }
+
+    bool should_check_memory_limit() {
+      return os::elapsed_counter() > _next_check_counter;
+    }
+    jlong memory_limit_in_bytes() { return _memory_limit_in_bytes; }
+    void set_memory_limit_in_bytes(jlong value) {
+      _memory_limit_in_bytes = value;
+      // max memory limit is unlikely to change, but we want to remain
+      // responsive to configuration changes. A very short (20ms) grace time
+      // between re-read avoids excessive overhead during startup without
+      // significantly reducing the VMs ability to promptly react to reduced
+      // memory availability
+      _next_check_counter = os::elapsed_counter() + (NANOSECS_PER_SEC/50);
+    }
+
+};
+
+CgroupMemorySubsystem* memory = NULL;
 CgroupSubsystem* cpuset = NULL;
 CgroupSubsystem* cpu = NULL;
 CgroupSubsystem* cpuacct = NULL;
@@ -113,21 +151,24 @@ typedef char * cptr;
 
 PRAGMA_DIAG_PUSH
 PRAGMA_FORMAT_NONLITERAL_IGNORED
-template <typename T> int subsystem_file_contents(CgroupSubsystem* c,
+template <typename T> int subsystem_file_line_contents(CgroupSubsystem* c,
                                               const char *filename,
+                                              const char *matchline,
                                               const char *scan_fmt,
                                               T returnval) {
   FILE *fp = NULL;
   char *p;
   char file[MAXPATHLEN+1];
   char buf[MAXPATHLEN+1];
+  char discard[MAXPATHLEN+1];
+  bool found_match = false;
 
   if (c == NULL) {
-    log_debug(os, container)("subsystem_file_contents: CgroupSubsytem* is NULL");
+    log_debug(os, container)("subsystem_file_line_contents: CgroupSubsytem* is NULL");
     return OSCONTAINER_ERROR;
   }
   if (c->subsystem_path() == NULL) {
-    log_debug(os, container)("subsystem_file_contents: subsystem path is NULL");
+    log_debug(os, container)("subsystem_file_line_contents: subsystem path is NULL");
     return OSCONTAINER_ERROR;
   }
 
@@ -142,16 +183,32 @@ template <typename T> int subsystem_file_contents(CgroupSubsystem* c,
   log_trace(os, container)("Path to %s is %s", filename, file);
   fp = fopen(file, "r");
   if (fp != NULL) {
-    p = fgets(buf, MAXPATHLEN, fp);
-    if (p != NULL) {
-      int matched = sscanf(p, scan_fmt, returnval);
-      if (matched == 1) {
+    int err = 0;
+    while ((p = fgets(buf, MAXPATHLEN, fp)) != NULL) {
+      found_match = false;
+      if (matchline == NULL) {
+        // single-line file case
+        int matched = sscanf(p, scan_fmt, returnval);
+        found_match = (matched == 1);
+      } else {
+        // multi-line file case
+        if (strstr(p, matchline) != NULL) {
+          // discard matchline string prefix
+          int matched = sscanf(p, scan_fmt, discard, returnval);
+          found_match = (matched == 2);
+        } else {
+          continue; // substring not found
+        }
+      }
+      if (found_match) {
         fclose(fp);
         return 0;
       } else {
+        err = 1;
         log_debug(os, container)("Type %s not found in file %s", scan_fmt, file);
       }
-    } else {
+    }
+    if (err == 0) {
       log_debug(os, container)("Empty file %s", file);
     }
   } else {
@@ -168,10 +225,11 @@ PRAGMA_DIAG_POP
   return_type variable;                                                   \
 {                                                                         \
   int err;                                                                \
-  err = subsystem_file_contents(subsystem,                                \
-                                filename,                                 \
-                                scan_fmt,                                 \
-                                &variable);                               \
+  err = subsystem_file_line_contents(subsystem,                           \
+                                     filename,                            \
+                                     NULL,                                \
+                                     scan_fmt,                            \
+                                     &variable);                          \
   if (err != 0)                                                           \
     return (return_type) OSCONTAINER_ERROR;                               \
                                                                           \
@@ -183,12 +241,29 @@ PRAGMA_DIAG_POP
   char variable[bufsize];                                                 \
 {                                                                         \
   int err;                                                                \
-  err = subsystem_file_contents(subsystem,                                \
-                                filename,                                 \
-                                scan_fmt,                                 \
-                                variable);                                \
+  err = subsystem_file_line_contents(subsystem,                           \
+                                     filename,                            \
+                                     NULL,                                \
+                                     scan_fmt,                            \
+                                     variable);                           \
   if (err != 0)                                                           \
     return (return_type) NULL;                                            \
+                                                                          \
+  log_trace(os, container)(logstring, variable);                          \
+}
+
+#define GET_CONTAINER_INFO_LINE(return_type, subsystem, filename,         \
+                           matchline, logstring, scan_fmt, variable)      \
+  return_type variable;                                                   \
+{                                                                         \
+  int err;                                                                \
+  err = subsystem_file_line_contents(subsystem,                           \
+                                filename,                                 \
+                                matchline,                                \
+                                scan_fmt,                                 \
+                                &variable);                               \
+  if (err != 0)                                                           \
+    return (return_type) OSCONTAINER_ERROR;                               \
                                                                           \
   log_trace(os, container)(logstring, variable);                          \
 }
@@ -248,7 +323,7 @@ void OSContainer::init() {
     }
     while ((token = strsep(&cptr, ",")) != NULL) {
       if (strcmp(token, "memory") == 0) {
-        memory = new CgroupSubsystem(tmproot, tmpmount);
+        memory = new CgroupMemorySubsystem(tmproot, tmpmount);
       } else if (strcmp(token, "cpuset") == 0) {
         cpuset = new CgroupSubsystem(tmproot, tmpmount);
       } else if (strcmp(token, "cpu") == 0) {
@@ -326,6 +401,10 @@ void OSContainer::init() {
     while ((token = strsep(&controllers, ",")) != NULL) {
       if (strcmp(token, "memory") == 0) {
         memory->set_subsystem_path(base);
+        jlong hierarchy = uses_mem_hierarchy();
+        if (hierarchy > 0) {
+          memory->set_hierarchical(true);
+        }
       } else if (strcmp(token, "cpuset") == 0) {
         cpuset->set_subsystem_path(base);
       } else if (strcmp(token, "cpu") == 0) {
@@ -342,6 +421,7 @@ void OSContainer::init() {
   // command line arguments have been processed.
   if ((mem_limit = memory_limit_in_bytes()) > 0) {
     os::Linux::set_physical_memory(mem_limit);
+    log_info(os, container)("Memory Limit is: " JLONG_FORMAT, mem_limit);
   }
 
   _is_containerized = true;
@@ -356,6 +436,21 @@ const char * OSContainer::container_type() {
   }
 }
 
+/* uses_mem_hierarchy
+ *
+ * Return whether or not hierarchical cgroup accounting is being
+ * done.
+ *
+ * return:
+ *    A number > 0 if true, or
+ *    OSCONTAINER_ERROR for not supported
+ */
+jlong OSContainer::uses_mem_hierarchy() {
+  GET_CONTAINER_INFO(jlong, memory, "/memory.use_hierarchy",
+                    "Use Hierarchy is: " JLONG_FORMAT, JLONG_FORMAT, use_hierarchy);
+  return use_hierarchy;
+}
+
 
 /* memory_limit_in_bytes
  *
@@ -367,11 +462,32 @@ const char * OSContainer::container_type() {
  *    OSCONTAINER_ERROR for not supported
  */
 jlong OSContainer::memory_limit_in_bytes() {
+  if (!memory->should_check_memory_limit()) {
+    return memory->memory_limit_in_bytes();
+  }
+  jlong memory_limit = read_memory_limit_in_bytes();
+  // Update CgroupMemorySubsystem to avoid re-reading container settings too often
+  memory->set_memory_limit_in_bytes(memory_limit);
+  return memory_limit;
+}
+
+jlong OSContainer::read_memory_limit_in_bytes() {
   GET_CONTAINER_INFO(julong, memory, "/memory.limit_in_bytes",
                      "Memory Limit is: " JULONG_FORMAT, JULONG_FORMAT, memlimit);
 
   if (memlimit >= _unlimited_memory) {
-    log_trace(os, container)("Memory Limit is: Unlimited");
+    log_trace(os, container)("Non-Hierarchical Memory Limit is: Unlimited");
+    if (memory->is_hierarchical()) {
+      const char* matchline = "hierarchical_memory_limit";
+      char* format = "%s " JULONG_FORMAT;
+      GET_CONTAINER_INFO_LINE(julong, memory, "/memory.stat", matchline,
+                             "Hierarchical Memory Limit is: " JULONG_FORMAT, format, hier_memlimit)
+      if (hier_memlimit >= _unlimited_memory) {
+        log_trace(os, container)("Hierarchical Memory Limit is: Unlimited");
+      } else {
+        return (jlong)hier_memlimit;
+      }
+    }
     return (jlong)-1;
   }
   else {
@@ -383,7 +499,18 @@ jlong OSContainer::memory_and_swap_limit_in_bytes() {
   GET_CONTAINER_INFO(julong, memory, "/memory.memsw.limit_in_bytes",
                      "Memory and Swap Limit is: " JULONG_FORMAT, JULONG_FORMAT, memswlimit);
   if (memswlimit >= _unlimited_memory) {
-    log_trace(os, container)("Memory and Swap Limit is: Unlimited");
+    log_trace(os, container)("Non-Hierarchical Memory and Swap Limit is: Unlimited");
+    if (memory->is_hierarchical()) {
+      const char* matchline = "hierarchical_memsw_limit";
+      char* format = "%s " JULONG_FORMAT;
+      GET_CONTAINER_INFO_LINE(julong, memory, "/memory.stat", matchline,
+                             "Hierarchical Memory and Swap Limit is : " JULONG_FORMAT, format, hier_memlimit)
+      if (hier_memlimit >= _unlimited_memory) {
+        log_trace(os, container)("Hierarchical Memory and Swap Limit is: Unlimited");
+      } else {
+        return (jlong)hier_memlimit;
+      }
+    }
     return (jlong)-1;
   } else {
     return (jlong)memswlimit;

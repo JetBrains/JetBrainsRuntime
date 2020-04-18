@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import static com.sun.swingset3.demos.splitpane.SplitPaneDemo.*;
 import java.awt.Component;
 import java.awt.event.KeyEvent;
 import javax.swing.JSplitPane;
+import javax.swing.UIManager;
 
 import static org.jemmy2ext.JemmyExt.*;
 
@@ -40,6 +41,7 @@ import org.netbeans.jemmy.operators.JFrameOperator;
 import org.netbeans.jemmy.operators.JRadioButtonOperator;
 import org.netbeans.jemmy.operators.JSplitPaneOperator;
 import org.netbeans.jemmy.operators.JTextFieldOperator;
+import org.netbeans.jemmy.util.LookAndFeel;
 
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
@@ -59,13 +61,14 @@ import static org.testng.AssertJUnit.*;
  *          java.logging
  * @build org.jemmy2ext.JemmyExt
  * @build com.sun.swingset3.demos.splitpane.SplitPaneDemo
- * @run testng SplitPaneDemoTest
+ * @run testng/timeout=600 SplitPaneDemoTest
  */
 @Listeners(GuiTestListener.class)
 public class SplitPaneDemoTest {
 
-    @Test
-    public void test() throws Exception {
+    @Test(dataProvider = "availableLookAndFeels", dataProviderClass = TestHelpers.class)
+    public void test(String lookAndFeel) throws Exception {
+        UIManager.setLookAndFeel(lookAndFeel);
 
         new ClassReference(SplitPaneDemo.class.getCanonicalName()).startApplication();
 
@@ -73,21 +76,29 @@ public class SplitPaneDemoTest {
 
         JSplitPaneOperator splitPane = new JSplitPaneOperator(frame);
 
-        // Toggle OneTouch Expandable
-        checkOneTouch(frame, splitPane, true);
-        checkOneTouch(frame, splitPane, false);
+        // OneTouch feature is not available in GTK L&F
+        if(!LookAndFeel.isGTK()) {
+            // Toggle OneTouch Expandable
+            checkOneTouch(frame, splitPane, true);
+            checkOneTouch(frame, splitPane, false);
+        }
 
         // Check changing divider size to minimum and maximum values
         changeDividerSize(frame, splitPane, 50);
         changeDividerSize(frame, splitPane, 6);
 
-        // Check moving the divider
-        checkDividerMoves(frame, splitPane, false);
-        checkDividerMoves(frame, splitPane, true);
 
-        // Check different minumum Day/Night sizes
-        changeMinimumSizes(frame, splitPane, 100);
-        changeMinimumSizes(frame, splitPane, 0);
+        // TODO Skipping this code for Motif L&F as the fix for "CODETOOLS-7902324"
+        // is deferred now
+        if(!LookAndFeel.isMotif()) {
+            // Check moving the divider
+            checkDividerMoves(frame, splitPane, false);
+            checkDividerMoves(frame, splitPane, true);
+
+            // Check different minumum Day/Night sizes
+            changeMinimumSizes(frame, splitPane, 100);
+            changeMinimumSizes(frame, splitPane, 0);
+        }
     }
 
     // Check for different day and night minimum size

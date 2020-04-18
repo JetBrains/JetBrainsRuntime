@@ -80,7 +80,7 @@ ifneq ($(CREATING_BUILDJDK), true)
 
   interim-cldrconverter:
 	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f CopyInterimCLDRConverter.gmk)
- 
+
 interim-tzdb:
 	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f CopyInterimTZDB.gmk)
 
@@ -140,7 +140,7 @@ ifneq ($(CREATING_BUILDJDK), true)
   define DeclareModuleInfoRecipe
     $1-gensrc-moduleinfo:
 	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) \
-	    -f GensrcModuleInfo.gmk MODULE=$1)
+	    -f gensrc/GensrcModuleInfo.gmk MODULE=$1)
 
     $1-gensrc: $1-gensrc-moduleinfo
   endef
@@ -265,6 +265,52 @@ hotspot-ide-project:
 
 ALL_TARGETS += $(HOTSPOT_VARIANT_TARGETS) $(HOTSPOT_VARIANT_GENSRC_TARGETS) \
     $(HOTSPOT_VARIANT_LIBS_TARGETS) hotspot-ide-project
+
+################################################################################
+# Generate libs and launcher targets for creating compile_commands.json fragments
+define DeclareCompileCommandsRecipe
+  $1-compile-commands:
+	$$(call LogInfo, Generating compile_commands.json fragments for $1)
+	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f Main.gmk $1-only \
+	    GENERATE_COMPILE_COMMANDS_ONLY=true)
+
+  COMPILE_COMMANDS_TARGETS_$2 += $1-compile-commands
+endef
+
+$(foreach t, $(HOTSPOT_VARIANT_LIBS_TARGETS), \
+  $(eval $(call DeclareCompileCommandsRecipe,$t,HOTSPOT)) \
+)
+
+$(foreach t, $(LIBS_TARGETS) $(LAUNCHER_TARGETS), \
+  $(eval $(call DeclareCompileCommandsRecipe,$t,JDK)) \
+)
+
+compile-commands compile-commands-hotspot:
+	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f CompileCommands.gmk)
+
+ALL_TARGETS += $(COMPILE_COMMANDS_TARGETS_HOTSPOT) $(COMPILE_COMMANDS_TARGETS_JDK)
+ALL_TARGETS += compile-commands compile-commands-hotspot
+
+################################################################################
+# VS Code projects
+vscode-project:
+	+($(CD) $(TOPDIR)/make/vscode && $(MAKE) $(MAKE_ARGS) -f CreateVSCodeProject.gmk \
+      VSCODE_INDEXER=cpptools)
+
+vscode-project-clangd:
+	+($(CD) $(TOPDIR)/make/vscode && $(MAKE) $(MAKE_ARGS) -f CreateVSCodeProject.gmk \
+      VSCODE_INDEXER=clangd)
+
+vscode-project-rtags:
+	+($(CD) $(TOPDIR)/make/vscode && $(MAKE) $(MAKE_ARGS) -f CreateVSCodeProject.gmk \
+      VSCODE_INDEXER=rtags)
+
+vscode-project-ccls:
+	+($(CD) $(TOPDIR)/make/vscode && $(MAKE) $(MAKE_ARGS) -f CreateVSCodeProject.gmk \
+      VSCODE_INDEXER=ccls)
+
+ALL_TARGETS += vscode-project vscode-project-clangd vscode-project-rtags \
+  vscode-project-ccls
 
 ################################################################################
 # Build demos targets
@@ -563,8 +609,12 @@ test-jdk-jtreg-native:
 test-make:
 	($(CD) $(TOPDIR)/test/make && $(MAKE) $(MAKE_ARGS) -f TestMake.gmk $(TEST_TARGET))
 
+test-compile-commands:
+	($(CD) $(TOPDIR)/test/make && $(MAKE) $(MAKE_ARGS) -f TestMake.gmk test-compile-commands)
+
 ALL_TARGETS += test test-hotspot-jtreg test-hotspot-jtreg-native \
-    test-hotspot-internal test-hotspot-gtest test-jdk-jtreg-native test-make
+    test-hotspot-internal test-hotspot-gtest test-jdk-jtreg-native test-make \
+    test-compile-commands
 
 ################################################################################
 # Bundles
@@ -636,7 +686,6 @@ else
 
   # Declare dependencies between hotspot-<variant>* targets
   $(foreach v, $(JVM_VARIANTS), \
-      $(eval hotspot-$v: hotspot-$v-gensrc hotspot-$v-libs) \
       $(eval hotspot-$v-gensrc: java.base-copy) \
       $(eval hotspot-$v-libs: hotspot-$v-gensrc java.base-copy) \
   )
@@ -699,16 +748,17 @@ else
   # copied and processed.
   java.desktop-gensrc-src: java.base-gensrc java.base-copy
 
-  # The annotation processing for jdk.internal.vm.ci and jdk.internal.vm.compiler
-  # needs classes from the current JDK.
-  jdk.internal.vm.ci-gensrc-src: $(addsuffix -java, \
-      $(call FindTransitiveDepsForModule, jdk.internal.vm.ci))
+  # The annotation processing for jdk.internal.vm.compiler
+  # and jdk.internal.vm.compiler.management needs classes from the current JDK.
   jdk.internal.vm.compiler-gensrc-src: $(addsuffix -java, \
       $(call FindTransitiveDepsForModule, jdk.internal.vm.compiler))
+  jdk.internal.vm.compiler.management-gensrc-src: $(addsuffix -java, \
+      $(call FindTransitiveDepsForModule, jdk.internal.vm.compiler.management))
 
-  # For jdk.internal.vm.compiler, the gensrc step is generating a module-info.java.extra
+  # For these modules, the gensrc step is generating a module-info.java.extra
   # file to be processed by the gensrc-moduleinfo target.
   jdk.internal.vm.compiler-gensrc-moduleinfo: jdk.internal.vm.compiler-gensrc-src
+  jdk.internal.vm.compiler.management-gensrc-moduleinfo: jdk.internal.vm.compiler.management-gensrc-src
 
   jdk.jdeps-gendata: java rmic
 
@@ -742,6 +792,25 @@ else
   $(foreach m, $(COPY_MODULES), $(eval $m_JMOD_DEPS += $m-copy))
   $(foreach m, $(ALL_MODULES), $(eval $m-jmod: $($(m)_JMOD_DEPS)))
   $(foreach m, $(INTERIM_IMAGE_MODULES), $(eval $m-interim-jmod: $($(m)_JMOD_DEPS)))
+
+  # Setup the minimal set of generated native source dependencies for hotspot
+  $(foreach v, $(JVM_VARIANTS), \
+    $(eval hotspot-$v-libs-compile-commands: hotspot-$v-gensrc) \
+    $(foreach m, $(filter java.desktop jdk.hotspot.agent, $(GENSRC_MODULES)), \
+      $(eval hotspot-$v-libs-compile-commands: $m-gensrc)) \
+  )
+
+  # For the full JDK compile commands, create all possible generated sources
+  $(foreach m, $(GENSRC_MODULES), $(eval $m-libs-compile-commands: $m-gensrc))
+  $(foreach m, $(filter $(JAVA_MODULES), $(LIBS_MODULES)), $(eval $m-libs-compile-commands: $m-java))
+
+  compile-commands-hotspot: $(COMPILE_COMMANDS_TARGETS_HOTSPOT)
+  compile-commands: $(COMPILE_COMMANDS_TARGETS_HOTSPOT) $(COMPILE_COMMANDS_TARGETS_JDK)
+
+  vscode-project: compile-commands
+  vscode-project-clangd: compile-commands
+  vscode-project-rtags: compile-commands
+  vscode-project-ccls: compile-commands
 
   # Jmods cannot be created until we have the jmod tool ready to run. During
   # a normal build we run it from the exploded image, but when cross compiling
@@ -857,6 +926,8 @@ else
 
   test-make: clean-test-make
 
+  test-compile-commands: compile-commands
+
   build-test-lib: exploded-image-optimize
 
   build-test-failure-handler: interim-langtools
@@ -910,6 +981,10 @@ JVM_TOOLS_TARGETS ?= buildtools-hotspot
 buildtools: buildtools-langtools interim-langtools interim-rmic \
     buildtools-jdk $(JVM_TOOLS_TARGETS)
 
+# Declare dependencies from hotspot-<variant> targets
+$(foreach v, $(JVM_VARIANTS), \
+  $(eval hotspot-$v: hotspot-$v-gensrc hotspot-$v-libs) \
+)
 hotspot: $(HOTSPOT_VARIANT_TARGETS)
 
 # Create targets hotspot-libs and hotspot-gensrc.
@@ -1086,7 +1161,7 @@ CLEAN_MODULE_PHASE_TARGETS := $(addprefix clean-, $(foreach m, $(ALL_MODULES), \
 
 # Remove everything, except the output from configure.
 clean: $(CLEAN_DIR_TARGETS)
-	($(CD) $(OUTPUTDIR) && $(RM) -r build*.log*)
+	($(CD) $(OUTPUTDIR) && $(RM) -r build*.log* compile_commands.json)
 	$(ECHO) Cleaned all build artifacts.
 
 clean-docs:

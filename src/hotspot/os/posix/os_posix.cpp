@@ -46,6 +46,7 @@
 #include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
+#include <utmpx.h>
 
 // Todo: provide a os::get_max_process_id() or similar. Number of processes
 // may have been configured, can be read more accurately from proc fs etc.
@@ -363,10 +364,35 @@ struct tm* os::gmtime_pd(const time_t* clock, struct tm*  res) {
 void os::Posix::print_load_average(outputStream* st) {
   st->print("load average:");
   double loadavg[3];
-  os::loadavg(loadavg, 3);
-  st->print("%0.02f %0.02f %0.02f", loadavg[0], loadavg[1], loadavg[2]);
+  int res = os::loadavg(loadavg, 3);
+  if (res != -1) {
+    st->print("%0.02f %0.02f %0.02f", loadavg[0], loadavg[1], loadavg[2]);
+  } else {
+    st->print(" Unavailable");
+  }
   st->cr();
 }
+
+// boot/uptime information;
+// unfortunately it does not work on macOS and Linux because the utx chain has no entry
+// for reboot at least on my test machines
+void os::Posix::print_uptime_info(outputStream* st) {
+  int bootsec = -1;
+  int currsec = time(NULL);
+  struct utmpx* ent;
+  setutxent();
+  while ((ent = getutxent())) {
+    if (!strcmp("system boot", ent->ut_line)) {
+      bootsec = ent->ut_tv.tv_sec;
+      break;
+    }
+  }
+
+  if (bootsec != -1) {
+    os::print_dhm(st, "OS uptime:", (long) (currsec-bootsec));
+  }
+}
+
 
 void os::Posix::print_rlimit_info(outputStream* st) {
   st->print("rlimit:");
@@ -386,6 +412,10 @@ void os::Posix::print_rlimit_info(outputStream* st) {
 #if defined(AIX)
   st->print(", NPROC ");
   st->print("%d", sysconf(_SC_CHILD_MAX));
+  st->print(", THREADS ");
+  getrlimit(RLIMIT_THREADS, &rlim);
+  if (rlim.rlim_cur == RLIM_INFINITY) st->print("infinity");
+  else st->print(UINT64_FORMAT, uint64_t(rlim.rlim_cur));
 #elif !defined(SOLARIS)
   st->print(", NPROC ");
   getrlimit(RLIMIT_NPROC, &rlim);
@@ -402,6 +432,11 @@ void os::Posix::print_rlimit_info(outputStream* st) {
   getrlimit(RLIMIT_AS, &rlim);
   if (rlim.rlim_cur == RLIM_INFINITY) st->print("infinity");
   else st->print(UINT64_FORMAT "k", uint64_t(rlim.rlim_cur) / 1024);
+
+  st->print(", CPU ");
+  getrlimit(RLIMIT_CPU, &rlim);
+  if (rlim.rlim_cur == RLIM_INFINITY) st->print("infinity");
+  else st->print(UINT64_FORMAT, uint64_t(rlim.rlim_cur));
 
   st->print(", DATA ");
   getrlimit(RLIMIT_DATA, &rlim);
@@ -784,6 +819,9 @@ static const struct {
 #endif
   {  SIGHUP,      "SIGHUP" },
   {  SIGILL,      "SIGILL" },
+#ifdef SIGINFO
+  {  SIGINFO,     "SIGINFO" },
+#endif
   {  SIGINT,      "SIGINT" },
 #ifdef SIGIO
   {  SIGIO,       "SIGIO" },

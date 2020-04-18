@@ -589,7 +589,7 @@ AC_DEFUN([TOOLCHAIN_FIND_COMPILER],
 AC_DEFUN([TOOLCHAIN_EXTRACT_LD_VERSION],
 [
   LINKER=[$]$1
-  LINKER_NAME=$2
+  LINKER_NAME="$2"
 
   if test "x$TOOLCHAIN_TYPE" = xsolstudio; then
     # cc -Wl,-V output typically looks like
@@ -709,12 +709,18 @@ AC_DEFUN_ONCE([TOOLCHAIN_DETECT_TOOLCHAIN_CORE],
       AC_MSG_RESULT([yes])
     fi
     LDCXX="$LD"
+    # jaotc being a windows program expects the linker to be supplied with exe suffix.
+    LD_JAOTC="$LD$EXE_SUFFIX"
   else
     # All other toolchains use the compiler to link.
     LD="$CC"
     LDCXX="$CXX"
+    # jaotc expects 'ld' as the linker rather than the compiler.
+    BASIC_CHECK_TOOLS([LD_JAOTC], ld)
+    BASIC_FIXUP_EXECUTABLE(LD_JAOTC)
   fi
   AC_SUBST(LD)
+  AC_SUBST(LD_JAOTC)
   # FIXME: it should be CXXLD, according to standard (cf CXXCPP)
   AC_SUBST(LDCXX)
 
@@ -1019,6 +1025,12 @@ AC_DEFUN_ONCE([TOOLCHAIN_MISC_CHECKS],
   if test "x$TOOLCHAIN_TYPE" = xgcc; then
     # If this is a --hash-style=gnu system, use --hash-style=both, why?
     HAS_GNU_HASH=`$CC -dumpspecs 2>/dev/null | $GREP 'hash-style=gnu'`
+    # This is later checked when setting flags.
+  fi
+
+  if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
+    # Check if linker has -z noexecstack.
+    HAS_NOEXECSTACK=`$CC -Wl,--help 2>/dev/null | $GREP 'z noexecstack'`
     # This is later checked when setting flags.
   fi
 

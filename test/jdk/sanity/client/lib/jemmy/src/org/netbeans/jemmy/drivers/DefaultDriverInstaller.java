@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation. Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,6 +24,8 @@
  */
 package org.netbeans.jemmy.drivers;
 
+import javax.swing.UIManager;
+
 import org.netbeans.jemmy.ClassReference;
 import org.netbeans.jemmy.JemmyException;
 import org.netbeans.jemmy.JemmyProperties;
@@ -37,7 +41,7 @@ import org.netbeans.jemmy.drivers.lists.ListKeyboardDriver;
 import org.netbeans.jemmy.drivers.menus.DefaultJMenuDriver;
 import org.netbeans.jemmy.drivers.menus.QueueJMenuDriver;
 import org.netbeans.jemmy.drivers.scrolling.JScrollBarDriver;
-import org.netbeans.jemmy.drivers.scrolling.JSliderDriver;
+import org.netbeans.jemmy.drivers.scrolling.KeyboardJSliderScrollDriver;
 import org.netbeans.jemmy.drivers.scrolling.JSplitPaneDriver;
 import org.netbeans.jemmy.drivers.scrolling.ScrollPaneDriver;
 import org.netbeans.jemmy.drivers.scrolling.ScrollbarDriver;
@@ -48,6 +52,8 @@ import org.netbeans.jemmy.drivers.trees.JTreeMouseDriver;
 import org.netbeans.jemmy.drivers.windows.DefaultFrameDriver;
 import org.netbeans.jemmy.drivers.windows.DefaultInternalFrameDriver;
 import org.netbeans.jemmy.drivers.windows.DefaultWindowDriver;
+import org.netbeans.jemmy.drivers.windows.InternalFramePopupMenuDriver;
+import org.netbeans.jemmy.util.LookAndFeel;
 
 /**
  * Installs all necessary drivers for Jemmy operators except low-level drivers
@@ -104,7 +110,7 @@ public class DefaultDriverInstaller extends ArrayDriverInstaller {
                     new ScrollPaneDriver(),
                     new JScrollBarDriver(),
                     new JSplitPaneDriver(),
-                    new JSliderDriver(),
+                    new KeyboardJSliderScrollDriver(),
                     createSpinnerDriver(),
                     new ButtonMouseDriver(),
                     new JTabMouseDriver(),
@@ -117,9 +123,9 @@ public class DefaultDriverInstaller extends ArrayDriverInstaller {
                     new ChoiceDriver(),
                     new DefaultFrameDriver(),
                     new DefaultWindowDriver(),
-                    new DefaultInternalFrameDriver(),
-                    new DefaultInternalFrameDriver(),
-                    new DefaultInternalFrameDriver(),
+                    LookAndFeel.isMotif()? new InternalFramePopupMenuDriver(): new DefaultInternalFrameDriver(),
+                    LookAndFeel.isMotif()? new InternalFramePopupMenuDriver(): new DefaultInternalFrameDriver(),
+                    LookAndFeel.isMotif()? new InternalFramePopupMenuDriver(): new DefaultInternalFrameDriver(),
                     new APIFocusDriver(),
                     new MouseFocusDriver(),
                     (shortcutEvents ? new QueueJMenuDriver() : new DefaultJMenuDriver()),

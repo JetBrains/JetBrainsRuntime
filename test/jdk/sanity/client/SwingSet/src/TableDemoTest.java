@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JTable;
+import javax.swing.UIManager;
 
 import org.jtregext.GuiTestListener;
 import org.netbeans.jemmy.ClassReference;
@@ -63,7 +64,7 @@ import com.sun.swingset3.demos.table.TableDemo;
  *          java.logging
  * @build org.jemmy2ext.JemmyExt
  * @build com.sun.swingset3.demos.table.TableDemo
- * @run testng TableDemoTest
+ * @run testng/timeout=600 TableDemoTest
  */
 @Listeners(GuiTestListener.class)
 public class TableDemoTest {
@@ -104,8 +105,9 @@ public class TableDemoTest {
      *
      * @throws Exception
      */
-    @Test
-    public void test() throws Exception {
+    @Test(dataProvider = "availableLookAndFeels", dataProviderClass = TestHelpers.class)
+    public void test(String lookAndFeel) throws Exception {
+        UIManager.setLookAndFeel(lookAndFeel);
 
         new ClassReference(TableDemo.class.getCanonicalName()).startApplication();
 

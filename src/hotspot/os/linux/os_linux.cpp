@@ -2041,11 +2041,14 @@ int os::get_loaded_modules_info(os::LoadedModulesCallbackFunc callback, void *pa
       u8 base, top, offset, inode;
       char permissions[5];
       char device[6];
-      char name[PATH_MAX + 1];
+      char name[sizeof(line)];
 
       // Parse fields from line
-      sscanf(line, UINT64_FORMAT_X "-" UINT64_FORMAT_X " %4s " UINT64_FORMAT_X " %7s " INT64_FORMAT " %s",
+      int matches = sscanf(line, UINT64_FORMAT_X "-" UINT64_FORMAT_X " %4s " UINT64_FORMAT_X " %5s " INT64_FORMAT " %s",
              &base, &top, permissions, &offset, device, &inode, name);
+      // the last entry 'name' is empty for some entries, so we might have 6 matches instead of 7 for some lines
+      if (matches < 6) continue;
+      if (matches == 6) name[0] = '\0';
 
       // Filter by device id '00:00' so that we only get file system mapped files.
       if (strcmp(device, "00:00") != 0) {
@@ -2078,6 +2081,8 @@ void os::print_os_info(outputStream* st) {
   os::Linux::print_distro_info(st);
 
   os::Posix::print_uname_info(st);
+
+  os::Linux::print_uptime_info(st);
 
   // Print warning if unsafe chroot environment detected
   if (unsafe_chroot_detected) {
@@ -2263,6 +2268,15 @@ void os::Linux::print_ld_preload_file(outputStream* st) {
   _print_ascii_file("/etc/ld.so.preload", st, "\n/etc/ld.so.preload:");
   st->cr();
 }
+
+void os::Linux::print_uptime_info(outputStream* st) {
+  struct sysinfo sinfo;
+  int ret = sysinfo(&sinfo);
+  if (ret == 0) {
+    os::print_dhm(st, "OS uptime:", (long) sinfo.uptime);
+  }
+}
+
 
 void os::Linux::print_container_info(outputStream* st) {
   if (!OSContainer::is_containerized()) {
@@ -5946,11 +5960,21 @@ int os::get_core_path(char* buffer, size_t bufferSize) {
     core_pattern[ret] = '\0';
   }
 
+  // Replace the %p in the core pattern with the process id. NOTE: we do this
+  // only if the pattern doesn't start with "|", and we support only one %p in
+  // the pattern.
   char *pid_pos = strstr(core_pattern, "%p");
+  const char* tail = (pid_pos != NULL) ? (pid_pos + 2) : "";  // skip over the "%p"
   int written;
 
   if (core_pattern[0] == '/') {
-    written = jio_snprintf(buffer, bufferSize, "%s", core_pattern);
+    if (pid_pos != NULL) {
+      *pid_pos = '\0';
+      written = jio_snprintf(buffer, bufferSize, "%s%d%s", core_pattern,
+                             current_process_id(), tail);
+    } else {
+      written = jio_snprintf(buffer, bufferSize, "%s", core_pattern);
+    }
   } else {
     char cwd[PATH_MAX];
 
@@ -5963,6 +5987,10 @@ int os::get_core_path(char* buffer, size_t bufferSize) {
       written = jio_snprintf(buffer, bufferSize,
                              "\"%s\" (or dumping to %s/core.%d)",
                              &core_pattern[1], p, current_process_id());
+    } else if (pid_pos != NULL) {
+      *pid_pos = '\0';
+      written = jio_snprintf(buffer, bufferSize, "%s/%s%d%s", p, core_pattern,
+                             current_process_id(), tail);
     } else {
       written = jio_snprintf(buffer, bufferSize, "%s/%s", p, core_pattern);
     }

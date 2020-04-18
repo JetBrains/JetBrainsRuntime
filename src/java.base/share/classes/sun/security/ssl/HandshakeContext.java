@@ -163,8 +163,10 @@ abstract class HandshakeContext implements ConnectionContext {
         this.conContext = conContext;
         this.sslConfig = (SSLConfiguration)conContext.sslConfig.clone();
 
+        this.algorithmConstraints = new SSLAlgorithmConstraints(
+                sslConfig.userSpecifiedAlgorithmConstraints);
         this.activeProtocols = getActiveProtocols(sslConfig.enabledProtocols,
-                sslConfig.enabledCipherSuites, sslConfig.algorithmConstraints);
+                sslConfig.enabledCipherSuites, algorithmConstraints);
         if (activeProtocols.isEmpty()) {
             throw new SSLHandshakeException(
                 "No appropriate protocol (protocol is disabled or " +
@@ -180,12 +182,10 @@ abstract class HandshakeContext implements ConnectionContext {
         }
         this.maximumActiveProtocol = maximumVersion;
         this.activeCipherSuites = getActiveCipherSuites(this.activeProtocols,
-                sslConfig.enabledCipherSuites, sslConfig.algorithmConstraints);
+                sslConfig.enabledCipherSuites, algorithmConstraints);
         if (activeCipherSuites.isEmpty()) {
             throw new SSLHandshakeException("No appropriate cipher suite");
         }
-        this.algorithmConstraints =
-                new SSLAlgorithmConstraints(sslConfig.algorithmConstraints);
 
         this.handshakeConsumers = new LinkedHashMap<>();
         this.handshakeProducers = new HashMap<>();
@@ -208,7 +208,7 @@ abstract class HandshakeContext implements ConnectionContext {
     /**
      * Constructor for PostHandshakeContext
      */
-    HandshakeContext(TransportContext conContext) {
+    protected HandshakeContext(TransportContext conContext) {
         this.sslContext = conContext.sslContext;
         this.conContext = conContext;
         this.sslConfig = conContext.sslConfig;
@@ -218,6 +218,7 @@ abstract class HandshakeContext implements ConnectionContext {
         this.handshakeOutput = new HandshakeOutStream(conContext.outputRecord);
         this.delegatedActions = new LinkedList<>();
 
+        this.handshakeConsumers = new LinkedHashMap<>();
         this.handshakeProducers = null;
         this.handshakeHash = null;
         this.activeProtocols = null;

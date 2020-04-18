@@ -570,7 +570,6 @@ void SharedRuntime::generate_trampoline(MacroAssembler *masm, address destinatio
   __ bctr();
 }
 
-#ifdef COMPILER2
 static int reg2slot(VMReg r) {
   return r->reg2stack() + SharedRuntime::out_preserve_stack_slots();
 }
@@ -578,7 +577,6 @@ static int reg2slot(VMReg r) {
 static int reg2offset(VMReg r) {
   return (r->reg2stack() + SharedRuntime::out_preserve_stack_slots()) * VMRegImpl::stack_slot_size;
 }
-#endif
 
 // ---------------------------------------------------------------------------
 // Read the array of BasicTypes from a signature, and compute where the
@@ -1279,7 +1277,6 @@ AdapterHandlerEntry* SharedRuntime::generate_i2c2i_adapters(MacroAssembler *masm
   return AdapterHandlerLibrary::new_entry(fingerprint, i2c_entry, c2i_entry, c2i_unverified_entry);
 }
 
-#ifdef COMPILER2
 // An oop arg. Must pass a handle not the oop itself.
 static void object_move(MacroAssembler* masm,
                         int frame_size_in_slots,
@@ -1788,8 +1785,6 @@ static void gen_special_dispatch(MacroAssembler* masm,
                                                  receiver_reg, member_reg, /*for_compiler_entry:*/ true);
 }
 
-#endif // COMPILER2
-
 // ---------------------------------------------------------------------------
 // Generate a native wrapper for a given method. The method takes arguments
 // in the Java compiled code convention, marshals them to the native
@@ -1824,8 +1819,8 @@ nmethod *SharedRuntime::generate_native_wrapper(MacroAssembler *masm,
                                                 int compile_id,
                                                 BasicType *in_sig_bt,
                                                 VMRegPair *in_regs,
-                                                BasicType ret_type) {
-#ifdef COMPILER2
+                                                BasicType ret_type,
+                                                address critical_entry) {
   if (method->is_method_handle_intrinsic()) {
     vmIntrinsics::ID iid = method->intrinsic_id();
     intptr_t start = (intptr_t)__ pc();
@@ -1849,7 +1844,7 @@ nmethod *SharedRuntime::generate_native_wrapper(MacroAssembler *masm,
   }
 
   bool is_critical_native = true;
-  address native_func = method->critical_native_function();
+  address native_func = critical_entry;
   if (native_func == NULL) {
     native_func = method->native_function();
     is_critical_native = false;
@@ -2083,7 +2078,7 @@ nmethod *SharedRuntime::generate_native_wrapper(MacroAssembler *masm,
 
   // Check ic: object class == cached class?
   if (!method_is_static) {
-  Register ic = as_Register(Matcher::inline_cache_reg_encode());
+  Register ic = R19_inline_cache_reg;
   Register receiver_klass = r_temp_1;
 
   __ cmpdi(CCR0, R3_ARG1, 0);
@@ -2608,12 +2603,10 @@ nmethod *SharedRuntime::generate_native_wrapper(MacroAssembler *masm,
 
   // Handler for pending exceptions (out-of-line).
   // --------------------------------------------------------------------------
-
   // Since this is a native call, we know the proper exception handler
   // is the empty function. We just pop this frame and then jump to
   // forward_exception_entry.
   if (!is_critical_native) {
-  __ align(InteriorEntryAlignment);
   __ bind(handle_pending_exception);
 
   __ pop_frame();
@@ -2626,7 +2619,6 @@ nmethod *SharedRuntime::generate_native_wrapper(MacroAssembler *masm,
   // --------------------------------------------------------------------------
 
   if (!method_is_static) {
-  __ align(InteriorEntryAlignment);
   __ bind(ic_miss);
 
   __ b64_patchable((address)SharedRuntime::get_ic_miss_stub(),
@@ -2653,10 +2645,6 @@ nmethod *SharedRuntime::generate_native_wrapper(MacroAssembler *masm,
   }
 
   return nm;
-#else
-  ShouldNotReachHere();
-  return NULL;
-#endif // COMPILER2
 }
 
 // This function returns the adjust size (in number of words) to a c2i adapter
@@ -2833,7 +2821,7 @@ void SharedRuntime::generate_deopt_blob() {
   // We can't grab a free register here, because all registers may
   // contain live values, so let the RegisterSaver do the adjustment
   // of the return pc.
-  const int return_pc_adjustment_no_exception = -HandlerImpl::size_deopt_handler();
+  const int return_pc_adjustment_no_exception = -MacroAssembler::bl64_patchable_size;
 
   // Push the "unpack frame"
   // Save everything in sight.

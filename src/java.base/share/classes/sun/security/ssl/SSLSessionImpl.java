@@ -36,7 +36,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import javax.crypto.SecretKey;
@@ -67,11 +66,6 @@ import javax.net.ssl.SSLSessionContext;
  * @author David Brownell
  */
 final class SSLSessionImpl extends ExtendedSSLSession {
-
-    /*
-     * we only really need a single null session
-     */
-    static final SSLSessionImpl         nullSession = new SSLSessionImpl();
 
     /*
      * The state of a single session, as described in section 7.1
@@ -142,7 +136,7 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      * be used either by a client or by a server, as a connection is
      * first opened and before handshaking begins.
      */
-    private SSLSessionImpl() {
+    SSLSessionImpl() {
         this.protocolVersion = ProtocolVersion.NONE;
         this.cipherSuite = CipherSuite.C_NULL;
         this.sessionId = new SessionId(false, null);
@@ -286,18 +280,20 @@ final class SSLSessionImpl extends ExtendedSSLSession {
         return masterSecret;
     }
 
-    Optional<SecretKey> getResumptionMasterSecret() {
-        return Optional.ofNullable(resumptionMasterSecret);
+    SecretKey getResumptionMasterSecret() {
+        return resumptionMasterSecret;
     }
 
-    synchronized Optional<SecretKey> getPreSharedKey() {
-        return Optional.ofNullable(preSharedKey);
+    synchronized SecretKey getPreSharedKey() {
+        return preSharedKey;
     }
 
-    synchronized Optional<SecretKey> consumePreSharedKey() {
-        Optional<SecretKey> result = Optional.ofNullable(preSharedKey);
-        preSharedKey = null;
-        return result;
+    synchronized SecretKey consumePreSharedKey() {
+        try {
+            return preSharedKey;
+        } finally {
+            preSharedKey = null;
+        }
     }
 
     int getTicketAgeAdd() {
@@ -312,10 +308,12 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      * be used once. This method will return the identity and then clear it
      * so it cannot be used again.
      */
-    synchronized Optional<byte[]> consumePskIdentity() {
-        Optional<byte[]> result = Optional.ofNullable(pskIdentity);
-        pskIdentity = null;
-        return result;
+    synchronized byte[] consumePskIdentity() {
+        try {
+            return pskIdentity;
+        } finally {
+            pskIdentity = null;
+        }
     }
 
     void setPeerCertificates(X509Certificate[] peer) {
@@ -774,15 +772,6 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      */
     @Override
     public synchronized void invalidate() {
-        //
-        // Can't invalidate the NULL session -- this would be
-        // attempted when we get a handshaking error on a brand
-        // new connection, with no "real" session yet.
-        //
-        if (this == nullSession) {
-            return;
-        }
-
         if (context != null) {
             context.remove(sessionId);
             context = null;

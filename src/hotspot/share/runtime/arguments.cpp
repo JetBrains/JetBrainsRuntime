@@ -1590,7 +1590,7 @@ static void no_shared_spaces(const char* message) {
   if (RequireSharedSpaces) {
     jio_fprintf(defaultStream::error_stream(),
       "Class data sharing is inconsistent with other specified options.\n");
-    vm_exit_during_initialization("Unable to use shared archive.", message);
+    vm_exit_during_initialization("Unable to use shared archive", message);
   } else {
     FLAG_SET_DEFAULT(UseSharedSpaces, false);
   }
@@ -2927,6 +2927,20 @@ jint Arguments::parse_each_vm_init_arg(const JavaVMInitArgs* args, bool* patch_m
         return JNI_EINVAL;
       }
       if (FLAG_SET_CMDLINE(bool, DisplayVMOutputToStdout, true) != JVMFlag::SUCCESS) {
+        return JNI_EINVAL;
+      }
+    } else if (match_option(option, "-XX:+ErrorFileToStderr")) {
+      if (FLAG_SET_CMDLINE(bool, ErrorFileToStdout, false) != JVMFlag::SUCCESS) {
+        return JNI_EINVAL;
+      }
+      if (FLAG_SET_CMDLINE(bool, ErrorFileToStderr, true) != JVMFlag::SUCCESS) {
+        return JNI_EINVAL;
+      }
+    } else if (match_option(option, "-XX:+ErrorFileToStdout")) {
+      if (FLAG_SET_CMDLINE(bool, ErrorFileToStderr, false) != JVMFlag::SUCCESS) {
+        return JNI_EINVAL;
+      }
+      if (FLAG_SET_CMDLINE(bool, ErrorFileToStdout, true) != JVMFlag::SUCCESS) {
         return JNI_EINVAL;
       }
     } else if (match_option(option, "-XX:+ExtendedDTraceProbes")) {

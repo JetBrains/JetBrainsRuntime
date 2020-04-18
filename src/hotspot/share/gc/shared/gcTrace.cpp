@@ -38,6 +38,10 @@
 #include "utilities/ticks.hpp"
 #if INCLUDE_G1GC
 #include "gc/g1/evacuationInfo.hpp"
+#include "gc/g1/g1HeapRegionTraceType.hpp"
+ #if INCLUDE_JFR
+ #include "jfr/metadata/jfrSerializer.hpp"
+ #endif
 #endif
 
 void GCTracer::report_gc_start_impl(GCCause::Cause cause, const Ticks& timestamp) {
@@ -189,6 +193,45 @@ void G1MMUTracer::report_mmu(double time_slice_sec, double gc_time_sec, double m
   send_g1_mmu_event(time_slice_sec * MILLIUNITS,
                     gc_time_sec * MILLIUNITS,
                     max_time_sec * MILLIUNITS);
+}
+
+#if INCLUDE_JFR
+class G1HeapRegionTypeConstant : public JfrSerializer {
+public:
+  void serialize(JfrCheckpointWriter& writer) {
+  static const u4 nof_entries = G1HeapRegionTraceType::G1HeapRegionTypeEndSentinel;
+  writer.write_count(nof_entries);
+  for (u4 i = 0; i < nof_entries; ++i) {
+    writer.write_key(i);
+    writer.write(G1HeapRegionTraceType::to_string((G1HeapRegionTraceType::Type)i));
+  }
+}
+};
+
+class G1YCTypeConstant : public JfrSerializer {
+public:
+  void serialize(JfrCheckpointWriter& writer) {
+    static const u4 nof_entries = G1YCTypeEndSentinel;
+    writer.write_count(nof_entries);
+    for (u4 i = 0; i < nof_entries; ++i) {
+      writer.write_key(i);
+      writer.write(G1YCTypeHelper::to_string((G1YCType)i));
+    }
+  }
+};
+
+static void register_jfr_type_constants() {
+  JfrSerializer::register_serializer(TYPE_G1HEAPREGIONTYPE, false, true,
+                                     new G1HeapRegionTypeConstant());
+
+  JfrSerializer::register_serializer(TYPE_G1YCTYPE, false, true,
+                                     new G1YCTypeConstant());
+}
+
+#endif
+
+void G1NewTracer::initialize() {
+  JFR_ONLY(register_jfr_type_constants());
 }
 
 void G1NewTracer::report_yc_type(G1YCType type) {

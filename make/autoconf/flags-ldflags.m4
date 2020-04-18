@@ -72,12 +72,14 @@ AC_DEFUN([FLAGS_SETUP_LDFLAGS_HELPER],
     fi
 
     # Add -z defs, to forbid undefined symbols in object files.
-    BASIC_LDFLAGS="$BASIC_LDFLAGS -Wl,-z,defs"
+    # add relro (mark relocations read only) for all libs
+    BASIC_LDFLAGS="$BASIC_LDFLAGS -Wl,-z,defs -Wl,-z,relro"
+    # s390x : remove unused code+data in link step
+    if test "x$OPENJDK_TARGET_CPU" = xs390x; then
+      BASIC_LDFLAGS="$BASIC_LDFLAGS -Wl,--gc-sections -Wl,--print-gc-sections"
+    fi
 
-    BASIC_LDFLAGS_JVM_ONLY="-Wl,-z,noexecstack -Wl,-O1 -Wl,-z,relro"
-
-    BASIC_LDFLAGS_JDK_LIB_ONLY="-Wl,-z,noexecstack"
-    LIBJSIG_NOEXECSTACK_LDFLAGS="-Wl,-z,noexecstack"
+    BASIC_LDFLAGS_JVM_ONLY="-Wl,-O1"
 
   elif test "x$TOOLCHAIN_TYPE" = xclang; then
     BASIC_LDFLAGS_JVM_ONLY="-mno-omit-leaf-frame-pointer -mstack-alignment=16 \
@@ -103,6 +105,12 @@ AC_DEFUN([FLAGS_SETUP_LDFLAGS_HELPER],
     BASIC_LDFLAGS_JVM_ONLY="-opt:icf,8 -subsystem:windows"
   fi
 
+  if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
+    if test -n "$HAS_NOEXECSTACK"; then
+      BASIC_LDFLAGS="$BASIC_LDFLAGS -Wl,-z,noexecstack"
+    fi
+  fi
+
   # Setup OS-dependent LDFLAGS
   if test "x$TOOLCHAIN_TYPE" = xclang || test "x$TOOLCHAIN_TYPE" = xgcc; then
     if test "x$OPENJDK_TARGET_OS" = xmacosx; then
@@ -118,9 +126,6 @@ AC_DEFUN([FLAGS_SETUP_LDFLAGS_HELPER],
     if test "x$OPENJDK_TARGET_OS" = xlinux; then
       if test x$DEBUG_LEVEL = xrelease; then
         DEBUGLEVEL_LDFLAGS_JDK_ONLY="$DEBUGLEVEL_LDFLAGS_JDK_ONLY -Wl,-O1"
-      else
-        # mark relocations read only on (fast/slow) debug builds
-        DEBUGLEVEL_LDFLAGS_JDK_ONLY="-Wl,-z,relro"
       fi
       if test x$DEBUG_LEVEL = xslowdebug; then
         # do relocations at load
@@ -140,6 +145,17 @@ AC_DEFUN([FLAGS_SETUP_LDFLAGS_HELPER],
   # Setup LDFLAGS for linking executables
   if test "x$TOOLCHAIN_TYPE" = xgcc; then
     EXECUTABLE_LDFLAGS="$EXECUTABLE_LDFLAGS -Wl,--allow-shlib-undefined"
+    # Enabling pie on 32 bit builds prevents the JVM from allocating a continuous
+    # java heap.
+    if test "x$OPENJDK_TARGET_CPU_BITS" != "x32"; then
+      EXECUTABLE_LDFLAGS="$EXECUTABLE_LDFLAGS -pie"
+    fi
+  fi
+
+  if test "x$ALLOW_ABSOLUTE_PATHS_IN_OUTPUT" = "xfalse"; then
+    if test "x$TOOLCHAIN_TYPE" = xmicrosoft; then
+      BASIC_LDFLAGS="$BASIC_LDFLAGS -pdbaltpath:%_PDB%"
+    fi
   fi
 
   # Export some intermediate variables for compatibility

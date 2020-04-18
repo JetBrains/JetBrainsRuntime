@@ -11,14 +11,14 @@
       span.underline{text-decoration: underline;}
       div.column{display: inline-block; vertical-align: top; width: 50%;}
   </style>
-  <link rel="stylesheet" href="../make/data/docs-resources/resources/jdk-default.css">
+  <link rel="stylesheet" href="../make/data/docs-resources/resources/jdk-default.css" />
   <!--[if lt IE 9]>
     <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
   <![endif]-->
   <style type="text/css">pre, code, tt { color: #1d6ae5; }</style>
 </head>
 <body>
-<header>
+<header id="title-block-header">
 <h1 class="title">Testing the JDK</h1>
 </header>
 <nav id="TOC">
@@ -32,11 +32,13 @@
 </ul></li>
 <li><a href="#test-results-and-summary">Test results and summary</a></li>
 <li><a href="#test-suite-control">Test suite control</a><ul>
+<li><a href="#general-keywords-test_opts">General keywords (TEST_OPTS)</a></li>
 <li><a href="#jtreg-keywords">JTReg keywords</a></li>
 <li><a href="#gtest-keywords">Gtest keywords</a></li>
 </ul></li>
 <li><a href="#notes-for-specific-tests">Notes for Specific Tests</a><ul>
 <li><a href="#docker-tests">Docker Tests</a></li>
+<li><a href="#client-ui-tests">Client UI Tests</a></li>
 </ul></li>
 </ul>
 </nav>
@@ -89,11 +91,24 @@ TEST FAILURE</code></pre>
 <p>To separate multiple keyword=value pairs, use <code>;</code> (semicolon). Since the shell normally eats <code>;</code>, the recommended usage is to write the assignment inside qoutes, e.g. <code>JTREG=&quot;...;...&quot;</code>. This will also make sure spaces are preserved, as in <code>JTREG=&quot;VM_OPTIONS=-XshowSettings -Xlog:gc+ref=debug&quot;</code>.</p>
 <p>(Other ways are possible, e.g. using backslash: <code>JTREG=JOBS=1\;TIMEOUT=8</code>. Also, as a special technique, the string <code>%20</code> will be replaced with space for certain options, e.g. <code>JTREG=VM_OPTIONS=-XshowSettings%20-Xlog:gc+ref=debug</code>. This can be useful if you have layers of scripts and have trouble getting proper quoting of command line arguments through.)</p>
 <p>As far as possible, the names of the keywords have been standardized between test suites.</p>
-<h3 id="jtreg-keywords">JTReg keywords</h3>
+<h3 id="general-keywords-test_opts">General keywords (TEST_OPTS)</h3>
+<p>Some keywords are valid across different test suites. If you want to run tests from multiple test suites, or just don’t want to care which test suite specific control variable to use, then you can use the general TEST_OPTS control variable.</p>
+<p>There are also some keywords that applies globally to the test runner system, not to any specific test suites. These are also available as TEST_OPTS keywords.</p>
 <h4 id="jobs">JOBS</h4>
+<p>Currently only applies to JTReg.</p>
+<h4 id="timeout_factor">TIMEOUT_FACTOR</h4>
+<p>Currently only applies to JTReg.</p>
+<h4 id="vm_options">VM_OPTIONS</h4>
+<p>Applies to JTReg, GTest and Micro.</p>
+<h4 id="java_options">JAVA_OPTIONS</h4>
+<p>Applies to JTReg, GTest and Micro.</p>
+<h4 id="aot_modules">AOT_MODULES</h4>
+<p>Applies to JTReg and GTest.</p>
+<h3 id="jtreg-keywords">JTReg keywords</h3>
+<h4 id="jobs-1">JOBS</h4>
 <p>The test concurrency (<code>-concurrency</code>).</p>
 <p>Defaults to TEST_JOBS (if set by <code>--with-test-jobs=</code>), otherwise it defaults to JOBS, except for Hotspot, where the default is <em>number of CPU cores/2</em>, but never more than 12.</p>
-<h4 id="timeout">TIMEOUT</h4>
+<h4 id="timeout_factor-1">TIMEOUT_FACTOR</h4>
 <p>The timeout factor (<code>-timeoutFactor</code>).</p>
 <p>Defaults to 4.</p>
 <h4 id="test_mode">TEST_MODE</h4>
@@ -112,13 +127,21 @@ TEST FAILURE</code></pre>
 <p>Limit memory consumption (<code>-Xmx</code> and <code>-vmoption:-Xmx</code>, or none).</p>
 <p>Limit memory consumption for JTReg test framework and VM under test. Set to 0 to disable the limits.</p>
 <p>Defaults to 512m, except for hotspot, where it defaults to 0 (no limit).</p>
+<h4 id="keywords">KEYWORDS</h4>
+<p>JTReg kewords sent to JTReg using <code>-k</code>. Please be careful in making sure that spaces and special characters (like <code>!</code>) are properly quoted. To avoid some issues, the special value <code>%20</code> can be used instead of space.</p>
+<h4 id="extra_problem_lists">EXTRA_PROBLEM_LISTS</h4>
+<p>Use additional problem lists file or files, in addition to the default ProblemList.txt located at the JTReg test roots.</p>
+<p>If multiple file names are specified, they should be separated by space (or, to help avoid quoting issues, the special value <code>%20</code>).</p>
+<p>The file names should be either absolute, or relative to the JTReg test root of the tests to be run.</p>
 <h4 id="options">OPTIONS</h4>
 <p>Additional options to the JTReg test framework.</p>
 <p>Use <code>JTREG=&quot;OPTIONS=--help all&quot;</code> to see all available JTReg options.</p>
-<h4 id="java_options">JAVA_OPTIONS</h4>
+<h4 id="java_options-1">JAVA_OPTIONS</h4>
 <p>Additional Java options to JTReg (<code>-javaoption</code>).</p>
-<h4 id="vm_options">VM_OPTIONS</h4>
+<h4 id="vm_options-1">VM_OPTIONS</h4>
 <p>Additional VM options to JTReg (<code>-vmoption</code>).</p>
+<h4 id="aot_modules-1">AOT_MODULES</h4>
+<p>Generate AOT modules before testing for the specified module, or set of modules. If multiple modules are specified, they should be separated by space (or, to help avoid quoting issues, the special value <code>%20</code>).</p>
 <h3 id="gtest-keywords">Gtest keywords</h3>
 <h4 id="repeat">REPEAT</h4>
 <p>The number of times to repeat the tests (<code>--gtest_repeat</code>).</p>
@@ -126,11 +149,23 @@ TEST FAILURE</code></pre>
 <h4 id="options-1">OPTIONS</h4>
 <p>Additional options to the Gtest test framework.</p>
 <p>Use <code>GTEST=&quot;OPTIONS=--help&quot;</code> to see all available Gtest options.</p>
+<h4 id="aot_modules-2">AOT_MODULES</h4>
+<p>Generate AOT modules before testing for the specified module, or set of modules. If multiple modules are specified, they should be separated by space (or, to help avoid quoting issues, the special value <code>%20</code>).</p>
 <h2 id="notes-for-specific-tests">Notes for Specific Tests</h2>
 <h3 id="docker-tests">Docker Tests</h3>
 <p>Docker tests with default parameters may fail on systems with glibc versions not compatible with the one used in the default docker image (e.g., Oracle Linux 7.6 for x86). For example, they pass on Ubuntu 16.04 but fail on Ubuntu 18.04 if run like this on x86:</p>
 <pre><code>$ make run-test TEST=&quot;jtreg:test/hotspot/jtreg/containers/docker&quot;</code></pre>
 <p>To run these tests correctly, additional parameters for the correct docker image are required on Ubuntu 18.04 by using <code>JAVA_OPTIONS</code>.</p>
 <pre><code>$ make run-test TEST=&quot;jtreg:test/hotspot/jtreg/containers/docker&quot; JTREG=&quot;JAVA_OPTIONS=-Djdk.test.docker.image.name=ubuntu -Djdk.test.docker.image.version=latest&quot;</code></pre>
+<h3 id="client-ui-tests">Client UI Tests</h3>
+<p>Some Client UI tests use key sequences which may be reserved by the operating system. Usually that causes the test failure. So it is highly recommended to disable system key shortcuts prior testing. The steps to access and disable system key shortcuts for various platforms are provided below.</p>
+<h4 id="macos">MacOS</h4>
+<p>Choose Apple menu; System Preferences, click Keyboard, then click Shortcuts; select or deselect desired shortcut.</p>
+<p>For example, test/jdk/javax/swing/TooltipManager/JMenuItemToolTipKeyBindingsTest/JMenuItemToolTipKeyBindingsTest.java fails on MacOS because it uses <code>CTRL + F1</code> key sequence to show or hide tooltip message but the key combination is reserved by the operating system. To run the test correctly the default global key shortcut should be disabled using the steps described above, and then deselect “Turn keyboard access on or off” option which is responsible for <code>CTRL + F1</code> combination.</p>
+<h4 id="linux">Linux</h4>
+<p>Open the Activities overview and start typing Settings; Choose Settings, click Devices, then click Keyboard; set or override desired shortcut.</p>
+<h4 id="windows">Windows</h4>
+<p>Type <code>gpedit</code> in the Search and then click Edit group policy; navigate to User Configuration -&gt; Administrative Templates -&gt; Windows Components -&gt; File Explorer; in the right-side pane look for “Turn off Windows key hotkeys” and double click on it; enable or disable hotkeys.</p>
+<p>Note: restart is required to make the settings take effect.</p>
 </body>
 </html>

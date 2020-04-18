@@ -874,9 +874,6 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
   product(bool, ReduceSignalUsage, false,                                   \
           "Reduce the use of OS signals in Java and/or the VM")             \
                                                                             \
-  develop_pd(bool, ShareVtableStubs,                                        \
-          "Share vtable stubs (smaller code but worse branch prediction")   \
-                                                                            \
   develop(bool, LoadLineNumberTables, true,                                 \
           "Tell whether the class file parser loads line number tables")    \
                                                                             \
@@ -1314,6 +1311,12 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
                                                                             \
   product(bool, DisplayVMOutputToStdout, false,                             \
           "If DisplayVMOutput is true, display all VM output to stdout")    \
+                                                                            \
+  product(bool, ErrorFileToStderr, false,                                   \
+          "If true, error data is printed to stderr instead of a file")     \
+                                                                            \
+  product(bool, ErrorFileToStdout, false,                                   \
+          "If true, error data is printed to stdout instead of a file")     \
                                                                             \
   product(bool, UseHeavyMonitors, false,                                    \
           "use heavyweight instead of lightweight Java monitors")           \

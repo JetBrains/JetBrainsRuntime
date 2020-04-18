@@ -41,7 +41,6 @@
 #include "interpreter/linkResolver.hpp"
 #include "interpreter/oopMapCache.hpp"
 #include "jfr/jfrEvents.hpp"
-#include "jfr/support/jfrThreadId.hpp"
 #include "jvmtifiles/jvmtiEnv.hpp"
 #include "logging/log.hpp"
 #include "logging/logConfiguration.hpp"
@@ -86,6 +85,7 @@
 #include "runtime/prefetch.inline.hpp"
 #include "runtime/safepoint.hpp"
 #include "runtime/safepointMechanism.inline.hpp"
+#include "runtime/safepointVerifiers.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/statSampler.hpp"
 #include "runtime/stubRoutines.hpp"
@@ -101,7 +101,7 @@
 #include "runtime/vframeArray.hpp"
 #include "runtime/vframe_hp.hpp"
 #include "runtime/vmThread.hpp"
-#include "runtime/vm_operations.hpp"
+#include "runtime/vmOperations.hpp"
 #include "runtime/vm_version.hpp"
 #include "services/attachListener.hpp"
 #include "services/management.hpp"
@@ -114,6 +114,7 @@
 #include "utilities/events.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/preserveException.hpp"
+#include "utilities/singleWriterSynchronizer.hpp"
 #include "utilities/vmError.hpp"
 #if INCLUDE_JVMCI
 #include "jvmci/jvmciCompiler.hpp"
@@ -167,13 +168,6 @@ void universe_post_module_init();  // must happen after call_initPhase2
 // Current thread is maintained as a thread-local variable
 THREAD_LOCAL_DECL Thread* Thread::_thr_current = NULL;
 #endif
-// Class hierarchy
-// - Thread
-//   - VMThread
-//   - WatcherThread
-//   - ConcurrentMarkSweepThread
-//   - JavaThread
-//     - CompilerThread
 
 // ======= Thread ========
 // Support for forcing alignment of thread objects for biased locking
@@ -374,6 +368,8 @@ void Thread::call_run() {
 
   register_thread_stack_with_NMT();
 
+  JFR_ONLY(Jfr::on_thread_start(this);)
+
   log_debug(os, thread)("Thread " UINTX_FORMAT " stack dimensions: "
     PTR_FORMAT "-" PTR_FORMAT " (" SIZE_FORMAT "k).",
     os::current_thread_id(), p2i(stack_base() - stack_size()),
@@ -398,15 +394,12 @@ void Thread::call_run() {
 }
 
 Thread::~Thread() {
-  JFR_ONLY(Jfr::on_thread_destruct(this);)
-
   // Notify the barrier set that a thread is being destroyed. Note that a barrier
   // set might not be available if we encountered errors during bootstrapping.
   BarrierSet* const barrier_set = BarrierSet::barrier_set();
   if (barrier_set != NULL) {
     barrier_set->on_thread_destroy(this);
   }
-
 
   // stack_base can be NULL if the thread is never started or exited before
   // record_stack_base_and_size called. Although, we would like to ensure
@@ -874,7 +867,9 @@ bool Thread::claim_oops_do_par_case(int strong_roots_parity) {
 }
 
 void Thread::oops_do(OopClosure* f, CodeBlobClosure* cf) {
-  active_handles()->oops_do(f);
+  if (active_handles() != NULL) {
+    active_handles()->oops_do(f);
+  }
   // Do oop for ThreadShadow
   f->do_oop((oop*)&_pending_exception);
   handle_area()->oops_do(f);
@@ -1032,7 +1027,7 @@ bool Thread::is_in_stack(address adr) const {
   address end = os::current_stack_pointer();
   // Allow non Java threads to call this without stack_base
   if (_stack_base == NULL) return true;
-  if (stack_base() >= adr && adr >= end) return true;
+  if (stack_base() > adr && adr >= end) return true;
 
   return false;
 }
@@ -1231,13 +1226,62 @@ void JavaThread::allocate_threadObj(Handle thread_group, const char* thread_name
                           THREAD);
 }
 
+// List of all NonJavaThreads and safe iteration over that list.
+
+class NonJavaThread::List {
+public:
+  NonJavaThread* volatile _head;
+  SingleWriterSynchronizer _protect;
+
+  List() : _head(NULL), _protect() {}
+};
+
+NonJavaThread::List NonJavaThread::_the_list;
+
+NonJavaThread::Iterator::Iterator() :
+  _protect_enter(_the_list._protect.enter()),
+  _current(OrderAccess::load_acquire(&_the_list._head))
+{}
+
+NonJavaThread::Iterator::~Iterator() {
+  _the_list._protect.exit(_protect_enter);
+}
+
+void NonJavaThread::Iterator::step() {
+  assert(!end(), "precondition");
+  _current = OrderAccess::load_acquire(&_current->_next);
+}
+
+NonJavaThread::NonJavaThread() : Thread(), _next(NULL) {
+  // Add this thread to _the_list.
+  MutexLockerEx lock(NonJavaThreadsList_lock, Mutex::_no_safepoint_check_flag);
+  _next = _the_list._head;
+  OrderAccess::release_store(&_the_list._head, this);
+}
+
+NonJavaThread::~NonJavaThread() {
+  JFR_ONLY(Jfr::on_thread_exit(this);)
+  // Remove this thread from _the_list.
+  MutexLockerEx lock(NonJavaThreadsList_lock, Mutex::_no_safepoint_check_flag);
+  NonJavaThread* volatile* p = &_the_list._head;
+  for (NonJavaThread* t = *p; t != NULL; p = &t->_next, t = *p) {
+    if (t == this) {
+      *p = this->_next;
+      // Wait for any in-progress iterators.
+      _the_list._protect.synchronize();
+      break;
+    }
+  }
+}
+
 // NamedThread --  non-JavaThread subclasses with multiple
 // uniquely named instances should derive from this.
-NamedThread::NamedThread() : Thread() {
-  _name = NULL;
-  _processed_thread = NULL;
-  _gc_id = GCId::undefined();
-}
+NamedThread::NamedThread() :
+  NonJavaThread(),
+  _name(NULL),
+  _processed_thread(NULL),
+  _gc_id(GCId::undefined())
+{}
 
 NamedThread::~NamedThread() {
   if (_name != NULL) {
@@ -1277,7 +1321,7 @@ WatcherThread* WatcherThread::_watcher_thread   = NULL;
 bool WatcherThread::_startable = false;
 volatile bool  WatcherThread::_should_terminate = false;
 
-WatcherThread::WatcherThread() : Thread() {
+WatcherThread::WatcherThread() : NonJavaThread() {
   assert(watcher_thread() == NULL, "we can only allocate one WatcherThread");
   if (os::create_thread(this, os::watcher_thread)) {
     _watcher_thread = this;
@@ -1740,12 +1784,7 @@ void JavaThread::run() {
 
   if (JvmtiExport::should_post_thread_life()) {
     JvmtiExport::post_thread_start(this);
-  }
 
-  EventThreadStart event;
-  if (event.should_commit()) {
-    event.set_thread(JFR_THREAD_ID(this));
-    event.commit();
   }
 
   // We call another function to do the rest so we are sure that the stack addresses used
@@ -1849,17 +1888,7 @@ void JavaThread::exit(bool destroy_vm, ExitType exit_type) {
         CLEAR_PENDING_EXCEPTION;
       }
     }
-
-    // Called before the java thread exit since we want to read info
-    // from java_lang_Thread object
-    EventThreadEnd event;
-    if (event.should_commit()) {
-      event.set_thread(JFR_THREAD_ID(this));
-      event.commit();
-    }
-
-    // Call after last event on thread
-    JFR_ONLY(Jfr::on_thread_exit(this);)
+    JFR_ONLY(Jfr::on_java_thread_dismantle(this);)
 
     // Call Thread.exit(). We try 3 times in case we got another Thread.stop during
     // the execution of the method. If that is not enough, then we don't really care. Thread.stop
@@ -1953,6 +1982,7 @@ void JavaThread::exit(bool destroy_vm, ExitType exit_type) {
   // These things needs to be done while we are still a Java Thread. Make sure that thread
   // is in a consistent state, in case GC happens
   assert(_privileged_stack_top == NULL, "must be NULL when we get here");
+  JFR_ONLY(Jfr::on_thread_exit(this);)
 
   if (active_handles() != NULL) {
     JNIHandleBlock* block = active_handles();
@@ -3402,35 +3432,12 @@ static inline void *prefetch_and_load_ptr(void **addr, intx prefetch_interval) {
 // All JavaThreads
 #define ALL_JAVA_THREADS(X) DO_JAVA_THREADS(ThreadsSMRSupport::get_java_thread_list(), X)
 
-// All non-JavaThreads (i.e., every non-JavaThread in the system).
+// All NonJavaThreads (i.e., every non-JavaThread in the system).
 void Threads::non_java_threads_do(ThreadClosure* tc) {
-  // Someday we could have a table or list of all non-JavaThreads.
-  // For now, just manually iterate through them.
-  tc->do_thread(VMThread::vm_thread());
-  if (Universe::heap() != NULL) {
-    Universe::heap()->gc_threads_do(tc);
+  NoSafepointVerifier nsv(!SafepointSynchronize::is_at_safepoint(), false);
+  for (NonJavaThread::Iterator njti; !njti.end(); njti.step()) {
+    tc->do_thread(njti.current());
   }
-  WatcherThread *wt = WatcherThread::watcher_thread();
-  // Strictly speaking, the following NULL check isn't sufficient to make sure
-  // the data for WatcherThread is still valid upon being examined. However,
-  // considering that WatchThread terminates when the VM is on the way to
-  // exit at safepoint, the chance of the above is extremely small. The right
-  // way to prevent termination of WatcherThread would be to acquire
-  // Terminator_lock, but we can't do that without violating the lock rank
-  // checking in some cases.
-  if (wt != NULL) {
-    tc->do_thread(wt);
-  }
-
-#if INCLUDE_JFR
-  Thread* sampler_thread = Jfr::sampler_thread();
-  if (sampler_thread != NULL) {
-    tc->do_thread(sampler_thread);
-  }
-
-#endif
-
-  // If CompilerThreads ever become non-JavaThreads, add them here
 }
 
 // All JavaThreads

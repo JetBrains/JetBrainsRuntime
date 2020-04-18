@@ -25,13 +25,13 @@
 #ifndef SHARE_VM_JFR_SUPPORT_JFRTHREADLOCAL_HPP
 #define SHARE_VM_JFR_SUPPORT_JFRTHREADLOCAL_HPP
 
-#include "jfr/recorder/checkpoint/jfrCheckpointBlob.hpp"
+#include "jfr/utilities/jfrBlob.hpp"
 #include "jfr/utilities/jfrTypes.hpp"
-#include "utilities/sizes.hpp"
 
 class JavaThread;
 class JfrBuffer;
 class JfrStackFrame;
+class Thread;
 
 class JfrThreadLocal {
  private:
@@ -41,7 +41,7 @@ class JfrThreadLocal {
   JfrBuffer* _shelved_buffer;
   mutable JfrStackFrame* _stackframes;
   mutable traceid _trace_id;
-  JfrCheckpointBlobHandle _thread_cp;
+  JfrBlobHandle _thread;
   u8 _data_lost;
   traceid _stack_trace_id;
   jlong _user_time;
@@ -56,7 +56,7 @@ class JfrThreadLocal {
   JfrBuffer* install_java_buffer() const;
   JfrStackFrame* install_stackframes() const;
 
-  void set_dead();
+  static void release(JfrThreadLocal* tl, Thread* t);
 
  public:
   JfrThreadLocal();
@@ -207,24 +207,16 @@ class JfrThreadLocal {
     return _dead;
   }
 
-  bool has_thread_checkpoint() const;
-  void set_thread_checkpoint(const JfrCheckpointBlobHandle& handle);
-  const JfrCheckpointBlobHandle& thread_checkpoint() const;
+  bool has_thread_blob() const;
+  void set_thread_blob(const JfrBlobHandle& handle);
+  const JfrBlobHandle& thread_blob() const;
 
-  static JfrBuffer* acquire(Thread* t, size_t size = 0);
-  static void release(JfrBuffer* buffer, Thread* t);
-  static void destroy_stackframes(Thread* t);
-  static void on_exit(JavaThread* t);
-  static void on_destruct(Thread* t);
+  static void on_start(Thread* t);
+  static void on_exit(Thread* t);
 
   // Code generation
-  static ByteSize trace_id_offset() {
-    return in_ByteSize(offset_of(JfrThreadLocal, _trace_id));
-  }
-
-  static ByteSize java_event_writer_offset() {
-    return in_ByteSize(offset_of(JfrThreadLocal, _java_event_writer));
-  }
+  static ByteSize trace_id_offset();
+  static ByteSize java_event_writer_offset();
 };
 
 #endif // SHARE_VM_JFR_SUPPORT_JFRTHREADLOCAL_HPP
