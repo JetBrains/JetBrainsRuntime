@@ -1,5 +1,6 @@
 // Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
+import org.cef.CefApp;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefFrame;
 import org.cef.handler.CefLoadHandlerAdapter;
@@ -21,13 +22,20 @@ public class JCEFStartupTest {
     static final CountDownLatch LATCH = new CountDownLatch(1);
     static volatile boolean PASSED;
 
-    static volatile JBCefBrowser BROWSER;
+    static volatile JBCefBrowser ourBrowser;
 
     JCEFStartupTest() {
-        JFrame frame = new JFrame("JCEF");
-        BROWSER = new JBCefBrowser();
+        final JFrame frame = new JFrame("JCEF");
 
-        BROWSER.getCefClient().addLoadHandler(new CefLoadHandlerAdapter() {
+        JBCefApp.setCefAppStateHandler((state) -> {
+            if (state == CefApp.CefAppState.TERMINATED) {
+                frame.dispose();
+            }
+            return null;
+        });
+
+        ourBrowser = new JBCefBrowser();
+        ourBrowser.getCefClient().addLoadHandler(new CefLoadHandlerAdapter() {
             @Override
             public void onLoadStart(CefBrowser cefBrowser, CefFrame cefFrame, CefRequest.TransitionType transitionType) {
                 System.out.println("onLoadStart");
@@ -44,11 +52,10 @@ public class JCEFStartupTest {
             }
         });
 
-        frame.add(BROWSER.getComponent());
+        frame.add(ourBrowser.getComponent());
 
         frame.setSize(640, 480);
         frame.setLocationRelativeTo(null);
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.setVisible(true);
     }
 
@@ -65,7 +72,7 @@ public class JCEFStartupTest {
         }
 
         if (!(args.length > 0 && args[0].equalsIgnoreCase("cmd-q"))) {
-            BROWSER.dispose();
+            ourBrowser.dispose();
         }
         JBCefApp.getInstance().getCefApp().dispose();
 
