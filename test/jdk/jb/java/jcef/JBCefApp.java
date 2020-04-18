@@ -128,8 +128,10 @@ public abstract class JBCefApp {
             settings.resources_dir_path = JCEF_PATH;
             settings.locales_dir_path = JCEF_PATH + "/locales";
             settings.browser_subprocess_path = JCEF_PATH + "/jcef_helper";
+            double scale = sysScale();
+            System.setProperty("jcef.forceDeviceScaleFactor", Double.toString(scale));
             return new String[] {
-                "--force-device-scale-factor=" + sysScale()
+                "--force-device-scale-factor=" + scale
             };
         }
     }
@@ -151,7 +153,7 @@ public abstract class JBCefApp {
 
     public static double sysScale() {
         try {
-            GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().getDefaultTransform().getScaleX();
+            return GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().getDefaultTransform().getScaleX();
         } catch (NullPointerException ignore) {}
         return 1.0;
     }
