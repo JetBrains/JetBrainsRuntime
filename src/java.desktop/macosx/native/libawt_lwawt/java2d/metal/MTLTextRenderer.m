@@ -252,12 +252,16 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
 {
     MTLCacheCellInfo *ccinfo;
     MTLGlyphCacheInfo *gcinfo;
+    jboolean isLCD = JNI_FALSE;
+    jint w = glyph->width;
+    jint h = glyph->height;
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_AddToGlyphCache");
     if (pixelFormat == MTLPixelFormatA8Unorm) {
         gcinfo = glyphCacheAA;
     } else {
         gcinfo = glyphCacheLCD;
+        isLCD = JNI_TRUE;
     }
 
     if ((gcinfo == NULL) || (glyph->image == NULL)) {
@@ -267,12 +271,13 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
     bool isCacheFull = MTLGlyphCache_IsCacheFull(gcinfo, glyph);
     if (isCacheFull) {
         MTLGlyphCache_Free(gcinfo);
-        if (pixelFormat == MTLPixelFormatA8Unorm) {
+        if (!isLCD) {
             MTLTR_InitGlyphCache(mtlc, JNI_FALSE);
+            gcinfo = glyphCacheAA;
         } else {
             MTLTR_InitGlyphCache(mtlc, JNI_TRUE);
+            gcinfo = glyphCacheLCD;
         }
-        gcinfo = glyphCacheAA;
     }
     MTLGlyphCache_AddGlyph(gcinfo, glyph);
     ccinfo = (MTLCacheCellInfo *) glyph->cellInfo;
@@ -281,13 +286,34 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
         // store glyph image in texture cell
         MTLRegion region = {
                 {ccinfo->x,  ccinfo->y,   0},
-                {glyph->width, glyph->height, 1}
+                {w, h, 1}
         };
-        NSUInteger bytesPerRow = 1 * glyph->width;
-        [gcinfo->texture replaceRegion:region
-                         mipmapLevel:0
-                         withBytes:glyph->image
-                         bytesPerRow:bytesPerRow];
+        if (!isLCD) {
+            NSUInteger bytesPerRow = 1 * w;
+            [gcinfo->texture replaceRegion:region
+                             mipmapLevel:0
+                             withBytes:glyph->image
+                             bytesPerRow:bytesPerRow];
+        } else {
+            unsigned int imageBytes = w * h * 4;
+            unsigned char imageData[imageBytes];
+            memset(&imageData, 0, sizeof(imageData));
+
+            for (int i = 0; i < h; i++) {
+                for (int j = 0; j < w; j++) {
+                    imageData[(i * w * 4) + j * 4] = glyph->image[(i * w * 3) + j * 3];
+                    imageData[(i * w * 4) + j * 4 + 1] = glyph->image[(i * w * 3) + j * 3 + 1];
+                    imageData[(i * w * 4) + j * 4 + 2] = glyph->image[(i * w * 3) + j * 3 + 2];
+                    imageData[(i * w * 4) + j * 4 + 3] = 0xFF;
+                }
+            }
+
+            NSUInteger bytesPerRow = 4 * w;
+            [gcinfo->texture replaceRegion:region
+                             mipmapLevel:0
+                             withBytes:imageData
+                             bytesPerRow:bytesPerRow];
+        }
     }
 }
 
@@ -801,14 +827,6 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
     return JNI_TRUE;
 }
-
-static jboolean
-MTLTR_DrawColorGlyphNoCache(MTLContext *mtlc, GlyphInfo *ginfo, jint x, jint y)
-{
-    //TODO
-    return JNI_TRUE;
-}
-
 
 // see DrawGlyphList.c for more on this macro...
 #define FLOOR_ASSIGN(l, r) \
