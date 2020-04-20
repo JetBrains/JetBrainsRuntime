@@ -65,8 +65,10 @@ struct TxtVertex {
     float txtpos[2];
 };
 
-#define INTERPOLATION_NEAREST_NEIGHBOR 0
-#define INTERPOLATION_BILINEAR 1
+// These values are mapped from AffineTransformOp
+#define INTERPOLATION_NEAREST_NEIGHBOR 1
+#define INTERPOLATION_BILINEAR 2
+// #define INTERPOLATION_BICUBIC 3
 // NOTE: Metal samplers doesn't supports bicubic interpolation
 // see table 2.7 from https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
 // (probably we need to implement separate fragment shader with bicubic interpolation)
