@@ -525,7 +525,7 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
             MTLTR_DisableGlyphVertexCache(mtlc);
         }
 
-        if (glyphCacheLCD == NULL) {
+        /*if (glyphCacheLCD == NULL) {
             if (!MTLTR_InitGlyphCache(mtlc, JNI_TRUE)) {
                 return JNI_FALSE;
             }
@@ -536,12 +536,12 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
             // for lastRGBOrder above
             MTLGlyphCache_Invalidate(glyphCacheLCD);
             lastRGBOrder = rgbOrder;
-        }
+        }*/
 
         glyphMode = MODE_USE_CACHE_LCD;
     }
 
-    if (ginfo->cellInfo == NULL) {
+    /*if (ginfo->cellInfo == NULL) {
         // attempt to add glyph to accelerated glyph cache
         // TODO : Handle RGB order
         MTLTR_AddToGlyphCache(ginfo, mtlc, MTLPixelFormatRGBA8Unorm);
@@ -550,7 +550,7 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
             // we'll just no-op in the rare case that the cell is NULL
             return JNI_TRUE;
         }
-    }
+    }*/
     encoder = [mtlc.encoderManager getTextureEncoder:dstOps->pTexture isSrcOpaque:YES isDstOpaque:YES];
     if (!MTLTR_EnableLCDGlyphModeState(encoder, mtlc, dstOps,contrast))
     {
@@ -928,15 +928,14 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         }
     }
     /*
-     * This state management needs to be extended for other glyphmodes
-     * when they are implemented.
+     * Only in case of grayscale text drawing we need to flush
+     * cache. Still in case of LCD we are not using any intermediate
+     * cache.
      */
-    if (glyphMode != MODE_NO_CACHE_LCD) {
-        if (glyphMode == MODE_NO_CACHE_GRAY) {
-            MTLVertexCache_DisableMaskCache(mtlc);
-        } else {
-            MTLTR_DisableGlyphVertexCache(mtlc);
-        }
+    if (glyphMode == MODE_NO_CACHE_GRAY) {
+        MTLVertexCache_DisableMaskCache(mtlc);
+    } else if (glyphMode == MODE_USE_CACHE_GRAY) {
+        MTLTR_DisableGlyphVertexCache(mtlc);
     }
 }
 
