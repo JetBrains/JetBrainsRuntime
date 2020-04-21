@@ -893,8 +893,6 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
 
         J2dTraceLn2(J2D_TRACE_INFO, "Glyph width = %d height = %d", ginfo->width, ginfo->height);
         J2dTraceLn1(J2D_TRACE_INFO, "rowBytes = %d", ginfo->rowBytes);
-        //TODO : Right now we have initial texture mapping logic
-        // as we implement LCD, cache usage add new selection condition.
         if (grayscale) {
             // grayscale or monochrome glyph data
             if (ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
@@ -920,17 +918,18 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                 }
             }
 
-            // TODO: Implement LCD text rendering
             if (rowBytesOffset == 0 &&
                 ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
             {
+                // Start using MTLTR_DrawLCDGlyphViaCache() once we have
+                // working glyphCacheLCD
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD cache -- :TODO");
-                ok = MTLTR_DrawLCDGlyphViaCache(mtlc, dstOps,
-                                                ginfo, x, y,
-                                                glyphCounter, totalGlyphs,
-                                                rgbOrder, lcdContrast,
-                                                dstTexture);
+                ok = MTLTR_DrawLCDGlyphNoCache(mtlc, dstOps,
+                                               ginfo, x, y,
+                                               rowBytesOffset,
+                                               rgbOrder, lcdContrast,
+                                               dstTexture);
             } else {
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD no cache");
                 ok = MTLTR_DrawLCDGlyphNoCache(mtlc, dstOps,
