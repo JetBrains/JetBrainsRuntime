@@ -640,7 +640,7 @@ public:
     AbstractGangTask("Parallel Safepoint Cleanup"),
     _cleanup_threads_cl(ParallelSPCleanupThreadClosure(counters)),
     _num_workers(num_workers),
-    _subtasks(SubTasksDone(SafepointSynchronize::SAFEPOINT_CLEANUP_NUM_TASKS)),
+    _subtasks(SafepointSynchronize::SAFEPOINT_CLEANUP_NUM_TASKS),
     _counters(counters) {}
 
   void work(uint worker_id) {
