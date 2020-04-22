@@ -1835,8 +1835,11 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
         return AwtWindow::WmNcCalcSize(wParam, lpncsp, retVal);
     }
     RECT insets;
+
     GetSysInsets(&insets, this);
     RECT* rect = &lpncsp->rgrc[0];
+
+    UpdateFrameMargins();
 
     rect->left += insets.left;
     rect->right -= insets.right;
@@ -1882,17 +1885,43 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
     return mrConsume;
 }
 
+void AwtFrame::UpdateFrameMargins()
+{
+    MARGINS margins = {};
+    RECT frame = {};
+    GetSysInsets(&frame, this);
+
+    // We removed the whole top part of the frame (see handling of
+    // WM_NCCALCSIZE) so the top border is missing now. We add it back here.
+    // Note #1: You might wonder why we don't remove just the title bar instead
+    //  of removing the whole top part of the frame and then adding the little
+    //  top border back. I tried to do this but it didn't work: DWM drew the
+    //  whole title bar anyways on top of the window. It seems that DWM only
+    //  wants to draw either nothing or the whole top part of the frame.
+    // Note #2: For some reason if you try to set the top margin to just the
+    //  top border height (what we want to do), then there is a transparency
+    //  bug when the window is inactive, so I've decided to add the whole top
+    //  part of the frame instead and then we will hide everything that we
+    //  don't need (that is, the whole thing but the little 1 pixel wide border
+    //  at the top) in the WM_PAINT handler. This eliminates the transparency
+    //  bug and it's what a lot of Win32 apps that customize the title bar do
+    //  so it should work fine.
+
+    margins.cyTopHeight = -frame.top;
+
+    // Extend the frame into the client area. microsoft/terminal#2735 - Just log
+    // the failure here, don't crash. If DWM crashes for any reason, calling
+    // THROW_IF_FAILED() will cause us to take a trip upstate. Just log, and
+    // we'll fix ourselves when DWM comes back
+
+    DwmExtendFrameIntoClientArea(GetHWnd(), &margins);
+}
+
 MsgRouting AwtFrame::WmPaint(HDC hDC)
 {
     PAINTSTRUCT ps;
 
     auto dc = BeginPaint(GetHWnd(), &ps);
-
-    MARGINS margins = {};
-    RECT frame = {};
-    GetSysInsets(&frame, this);
-    margins.cyTopHeight = -frame.top;
-    DwmExtendFrameIntoClientArea(GetHWnd(), &margins);
 
     const int topBorderHeight = 1;
 
@@ -1903,27 +1932,7 @@ MsgRouting AwtFrame::WmPaint(HDC hDC)
 
         ::FillRect(dc, &rcTopBorder, GetStockBrush(BLACK_BRUSH));
     }
-
-    if (ps.rcPaint.bottom > topBorderHeight)
-    {
-        RECT rcRest = ps.rcPaint;
-        rcRest.top = topBorderHeight;
-
-        const auto backgroundBrush = static_cast<HBRUSH>(GetStockObject(DKGRAY_BRUSH));
-
-        // To hide the original title bar, we have to paint on top of it with
-        // the alpha component set to 255. This is a hack to do it with GDI.
-        // See NonClientIslandWindow::_UpdateFrameMargins for more information.
-        HDC opaqueDc;
-        BP_PAINTPARAMS params = { sizeof(params), BPPF_NOCLIP | BPPF_ERASE };
-        HPAINTBUFFER buf = BeginBufferedPaint(dc, &rcRest, BPBF_TOPDOWNDIB, &params, &opaqueDc);
-
-        if (!buf || !opaqueDc)
-            return mrConsume;
-        FillRect(opaqueDc, &rcRest, backgroundBrush);
-        BufferedPaintSetAlpha(buf, NULL, 255);
-        EndBufferedPaint(buf, TRUE);
-    }
+    AwtWindow::WmPaint(dc);
 
     EndPaint(GetHWnd(), &ps);
 

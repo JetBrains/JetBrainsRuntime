@@ -2005,6 +2005,7 @@ MsgRouting AwtWindow::WmSize(UINT type, int w, int h)
 
 MsgRouting AwtWindow::WmPaint(HDC)
 {
+    m_insets.top = -1;
     PaintUpdateRgn(&m_insets);
     return mrConsume;
 }

@@ -174,6 +174,8 @@ protected:
 private:
     LRESULT ProxyWindowProc(UINT message, WPARAM wParam, LPARAM lParam, MsgRouting &mr);
 
+    void UpdateFrameMargins();
+
     /* The frame's embedding parent (if any) */
     HWND m_parentWnd;
 
