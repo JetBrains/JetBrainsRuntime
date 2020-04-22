@@ -185,6 +185,7 @@ final class SignatureAlgorithmsExtension {
             if (chc.localSupportedSignAlgs == null) {
                 chc.localSupportedSignAlgs =
                     SignatureScheme.getSupportedAlgorithms(
+                            chc.sslConfig,
                             chc.algorithmConstraints, chc.activeProtocols);
             }
 
@@ -277,6 +278,7 @@ final class SignatureAlgorithmsExtension {
             // update the context
             List<SignatureScheme> sss =
                     SignatureScheme.getSupportedAlgorithms(
+                            shc.sslConfig,
                             shc.algorithmConstraints, shc.negotiatedProtocol,
                             spec.signatureSchemes);
             shc.peerRequestedSignatureSchemes = sss;
@@ -410,6 +412,7 @@ final class SignatureAlgorithmsExtension {
             // Produce the extension.
             List<SignatureScheme> sigAlgs =
                     SignatureScheme.getSupportedAlgorithms(
+                            shc.sslConfig,
                             shc.algorithmConstraints,
                             List.of(shc.negotiatedProtocol));
 
@@ -510,6 +513,7 @@ final class SignatureAlgorithmsExtension {
             // update the context
             List<SignatureScheme> sss =
                     SignatureScheme.getSupportedAlgorithms(
+                            chc.sslConfig,
                             chc.algorithmConstraints, chc.negotiatedProtocol,
                             spec.signatureSchemes);
             chc.peerRequestedSignatureSchemes = sss;
