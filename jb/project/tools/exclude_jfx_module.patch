@@ -3,8 +3,8 @@ IDEA additional info:
 Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
 <+>UTF-8
 ===================================================================
---- modules.list	(revision 57ff1dba25206f9f078b48995aa8744e51b1dd2a)
-+++ modules.list	(date 1584500341724)
+--- modules.list	(revision ab073976c4f85f154ff1421b7ac888eee86b6595)
++++ modules.list	(date 1588171510146)
 @@ -20,13 +20,6 @@
  java.transaction.xa,
  java.xml,
@@ -18,4 +18,4 @@ Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
 -javafx.web,
  jdk.accessibility,
  jdk.aot,
- jdk.charsets,
+ jdk.attach,
