@@ -873,7 +873,7 @@ javax/swing/ToolTipManager/Test6256140.java                                     
 javax/swing/text/View/8014863/bug8014863.java 8233561 macosx-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java 8233561 macosx-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java 8233569 macosx-all
-javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java 233570 macosx-all
+javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java                         8233570 macosx-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java                              8208566 macosx-all,windows-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java                      8233635,8197552 macosx-all,windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8233559 macosx-all
@@ -904,7 +904,8 @@ javax/swing/JMenu/4213634/bug4213634.java                                       
 javax/swing/JMenu/4692443/bug4692443.java                                           8171998,8197552 macosx-all,windows-all
 javax/swing/JMenu/4515762/bug4515762.java                                           8233643,8197552 macosx-all,windows-all
 javax/swing/JMenu/6470128/bug6470128.java                                           8015598 macosx-all,windows-all
-javax/swing/JInternalFrame/8020708/bug8020708.java 8233644,8226230 macosx-all,linux-all
+javax/swing/JInternalFrame/8020708/bug8020708.java                                  8233644,8226230 macosx-all,linux-all
+javax/swing/JInternalFrame/8146321/JInternalFrameIconTest.java                      8225045 linux-all
 javax/swing/JColorChooser/Test8051548.java                                          8233647,8197552 macosx-all,windows-all
 
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8225012 windows-all,macosx-all
