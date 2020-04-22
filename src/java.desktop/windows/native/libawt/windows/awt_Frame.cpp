@@ -40,6 +40,10 @@
 #include <sun_awt_windows_WEmbeddedFrame.h>
 #include <sun_awt_windows_WEmbeddedFramePeer.h>
 
+#pragma comment (lib,"Gdiplus.lib")
+#pragma comment(lib, "UXTheme")
+#pragma comment (lib, "Dwmapi.lib")
+#pragma comment (lib, "Shcore.lib")
 
 /* IMPORTANT! Read the README.JNI file for notes on JNI converted AWT code.
  */
@@ -1875,6 +1879,54 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
         // rect->top += yBorder;
     }
     retVal = 0L;
+    return mrConsume;
+}
+
+MsgRouting AwtFrame::WmPaint(HDC hDC)
+{
+    PAINTSTRUCT ps;
+
+    auto dc = BeginPaint(GetHWnd(), &ps);
+
+    MARGINS margins = {};
+    RECT frame = {};
+    GetSysInsets(&frame, this);
+    margins.cyTopHeight = -frame.top;
+    DwmExtendFrameIntoClientArea(GetHWnd(), &margins);
+
+    const int topBorderHeight = 1;
+
+    if (ps.rcPaint.top < topBorderHeight)
+    {
+        RECT rcTopBorder = ps.rcPaint;
+        rcTopBorder.bottom = topBorderHeight;
+
+        ::FillRect(dc, &rcTopBorder, GetStockBrush(BLACK_BRUSH));
+    }
+
+    if (ps.rcPaint.bottom > topBorderHeight)
+    {
+        RECT rcRest = ps.rcPaint;
+        rcRest.top = topBorderHeight;
+
+        const auto backgroundBrush = static_cast<HBRUSH>(GetStockObject(DKGRAY_BRUSH));
+
+        // To hide the original title bar, we have to paint on top of it with
+        // the alpha component set to 255. This is a hack to do it with GDI.
+        // See NonClientIslandWindow::_UpdateFrameMargins for more information.
+        HDC opaqueDc;
+        BP_PAINTPARAMS params = { sizeof(params), BPPF_NOCLIP | BPPF_ERASE };
+        HPAINTBUFFER buf = BeginBufferedPaint(dc, &rcRest, BPBF_TOPDOWNDIB, &params, &opaqueDc);
+
+        if (!buf || !opaqueDc)
+            return mrConsume;
+        FillRect(opaqueDc, &rcRest, backgroundBrush);
+        BufferedPaintSetAlpha(buf, NULL, 255);
+        EndBufferedPaint(buf, TRUE);
+    }
+
+    EndPaint(GetHWnd(), &ps);
+
     return mrConsume;
 }
 
