@@ -31,19 +31,26 @@
  */
 
 import java.awt.AWTException;
+import java.awt.Frame;
 import java.awt.Robot;
+import java.awt.TextArea;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.awt.Frame;
-import java.awt.TextArea;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class AllKeyCode extends Frame {
+
+    private static final int PAUSE =  2000;
 
     private static Frame frame;
     private static TextArea textArea;
     private static KeyListener keyListener;
     private static int allKeyArr[];
-    private static int keyPressedIndex;
+    private static volatile int keyPressed;
+    private static CountDownLatch keyPressedLatch;
+    private static volatile boolean allKeysWerePressed = true;
+    private static volatile boolean keyCodesAreCorrect = true;
 
     AllKeyCode() {
         AllKeyCode.allKeyArr = new int[] {
@@ -135,16 +142,19 @@ public class AllKeyCode extends Frame {
             KeyEvent.VK_F8,
             KeyEvent.VK_F9,
             KeyEvent.VK_F10,
-            KeyEvent.VK_F11,
+            // F11 is mapped to "Show Desktop" macOS system shortcut by default, so skip it
+            // KeyEvent.VK_F11,
             KeyEvent.VK_F12,
             KeyEvent.VK_DELETE,
-            KeyEvent.VK_HELP,
+            // MacOS handles the event corresponding to HELP and this affects the next key pressing
+            // KeyEvent.VK_HELP,
             KeyEvent.VK_META,
             KeyEvent.VK_BACK_QUOTE,
             KeyEvent.VK_QUOTE,
             KeyEvent.VK_F13,
-            KeyEvent.VK_F14,
-            KeyEvent.VK_F15,
+            // MacOS handles events corresponding to F14/15 and does not send them to runtime in case of non-Apple keyboard
+            // KeyEvent.VK_F14,
+            // KeyEvent.VK_F15,
             KeyEvent.VK_F16,
             KeyEvent.VK_F17,
             KeyEvent.VK_F18,
@@ -152,7 +162,7 @@ public class AllKeyCode extends Frame {
             KeyEvent.VK_F20,
         };
 
-        keyPressedIndex = -1;
+        keyPressed = -1;
     }
 
     private void createAndShowGUI() {
@@ -171,9 +181,17 @@ public class AllKeyCode extends Frame {
 
             @Override
             public void keyPressed(KeyEvent ke) {
-                if (allKeyArr[keyPressedIndex] != ke.getKeyCode()) {
-                    throw new RuntimeException("Wrong keycode received");
+                if (keyPressed != ke.getKeyCode()) {
+                    // MacOS doesn't distinguish between ALT and ALT_GRAPH keys,
+                    // and JetBrains runtime also does not, please see JBR-1108 for more info.
+                    // Here we have incompatibility between JetBrains and OpenJDK runtime,
+                    // as OpenJDK generates different key codes for these keys.
+                    if ((keyPressed != KeyEvent.VK_ALT_GRAPH) || (ke.getKeyCode() != KeyEvent.VK_ALT)) {
+                        System.err.println("Wrong keycode received: " + keyPressed + " != " + ke.getKeyCode());
+                        keyCodesAreCorrect = false;
+                    }
                 }
+                keyPressedLatch.countDown();
             }
 
             @Override
@@ -181,6 +199,7 @@ public class AllKeyCode extends Frame {
             }
         });
         frame.setVisible(true);
+        textArea.requestFocus();
     }
 
     private void removeListener() {
@@ -198,16 +217,21 @@ public class AllKeyCode extends Frame {
         }
     }
 
-    public void generateFunctionKeyPress() {
+    public void generateFunctionKeyPress() throws InterruptedException {
         try {
             Robot robot = new Robot();
             robot.waitForIdle();
 
             for (int i = 0; i < allKeyArr.length; i++) {
-                keyPressedIndex = i;
-                robot.keyPress(allKeyArr[i]);
-                robot.keyRelease(allKeyArr[i]);
+                keyPressedLatch = new CountDownLatch(1);
+                keyPressed = allKeyArr[i];
+                robot.keyPress(keyPressed);
+                robot.keyRelease(keyPressed);
                 robot.waitForIdle();
+                if(!keyPressedLatch.await(PAUSE, TimeUnit.MILLISECONDS)) {
+                    System.err.println("Key was not pressed: " + keyPressed);
+                    allKeysWerePressed = false;
+                };
             }
             removeListener();
 
@@ -216,12 +240,18 @@ public class AllKeyCode extends Frame {
         }
     }
 
-    public static void main(String args[]) {
+    public static void main(String args[]) throws InterruptedException {
         AllKeyCode allKeyObj = new AllKeyCode();
         allKeyObj.createAndShowGUI();
+        Thread.sleep(PAUSE);
         allKeyObj.generateFunctionKeyPress();
+        Thread.sleep(PAUSE);
         allKeyObj.dispose();
 
-        System.out.println("Test Passed");
+        if(keyCodesAreCorrect && allKeysWerePressed) {
+            System.out.println("Test Passed");
+        } else {
+            throw new RuntimeException("Test Failed");
+        }
     }
 }
