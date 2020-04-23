@@ -4199,9 +4199,6 @@ public class JTree extends JComponent implements Scrollable, Accessible
             implements AccessibleSelection, TreeSelectionListener,
                        TreeModelListener, TreeExpansionListener  {
 
-        TreePath   leadSelectionPath;
-        Accessible leadSelectionAccessible;
-
         /**
          * Constructs {@code AccessibleJTree}
          */
@@ -4213,12 +4210,6 @@ public class JTree extends JComponent implements Scrollable, Accessible
             }
             JTree.this.addTreeExpansionListener(this);
             JTree.this.addTreeSelectionListener(this);
-            leadSelectionPath = JTree.this.getLeadSelectionPath();
-            leadSelectionAccessible = (leadSelectionPath != null)
-                    ? new AccessibleJTreeNode(JTree.this,
-                                              leadSelectionPath,
-                                              JTree.this)
-                    : null;
         }
 
         /**
