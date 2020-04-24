@@ -33,6 +33,40 @@
 #include "MTLSurfaceDataBase.h"
 #include "GraphicsPrimitiveMgr.h"
 
+@implementation MTLRescaleOp {
+    jboolean _isNonPremult;
+    jfloat _normScaleFactors[4];
+    jfloat _normOffsets[4];
+}
+
+-(jfloat *) getScaleFactors {
+    return _normScaleFactors;
+}
+-(jfloat *) getOffsets {
+    return _normOffsets;
+}
+
+- (id)init:(jboolean)isNonPremult factors:(unsigned char *)factors offsets:(unsigned char *)offsets {
+    self = [super init];
+    if (self) {
+        _isNonPremult = isNonPremult;
+        _normScaleFactors[0] = NEXT_FLOAT(factors);
+        _normScaleFactors[1] = NEXT_FLOAT(factors);
+        _normScaleFactors[2] = NEXT_FLOAT(factors);
+        _normScaleFactors[3] = NEXT_FLOAT(factors);
+        _normOffsets[0] = NEXT_FLOAT(offsets);
+        _normOffsets[1] = NEXT_FLOAT(offsets);
+        _normOffsets[2] = NEXT_FLOAT(offsets);
+        _normOffsets[3] = NEXT_FLOAT(offsets);
+    }
+    return self;
+}
+
+- (NSString *)getDescription {
+    return [NSString stringWithFormat:@"rescale: nonPremult=%d", _isNonPremult];
+}
+@end
+
 /** Evaluates to true if the given bit is set on the local flags variable. */
 #define IS_SET(flagbit) \
     (((flags) & (flagbit)) != 0)
@@ -150,99 +184,6 @@ MTLBufImgOps_DisableConvolveOp(MTLContext *mtlc)
 {
     //TODO
     J2dTraceLn(J2D_TRACE_ERROR, "MTLBufImgOps_DisableConvolveOp -- :TODO");
-}
-
-/**************************** RescaleOp support *****************************/
-
-/**
- * The RescaleOp shader is one of the simplest possible.  Each fragment
- * from the source image is multiplied by the user's scale factor and added
- * to the user's offset value (these are component-wise operations).
- * Finally, the resulting value is multiplied by the current OpenGL color,
- * which contains the extra alpha value.
- *
- * The RescaleOp spec says that the operation is performed regardless of
- * whether the source data is premultiplied or non-premultiplied.  This is
- * a problem for the OpenGL pipeline in that a non-premultiplied
- * BufferedImage will have already been converted into premultiplied
- * when uploaded to an OpenGL texture.  Therefore, we have a special mode
- * called RESCALE_NON_PREMULT (used only for source images that were
- * originally non-premultiplied) that un-premultiplies the source color
- * prior to the rescale operation, then re-premultiplies the resulting
- * color before returning from the fragment shader.
- *
- * Note that this shader source code includes some "holes" marked by "%s".
- * This allows us to build different shader programs (e.g. one for
- * GL_TEXTURE_2D targets, one for GL_TEXTURE_RECTANGLE_ARB targets, and so on)
- * simply by filling in these "holes" with a call to sprintf().  See the
- * MTLBufImgOps_CreateRescaleProgram() method for more details.
- */
-static const char *rescaleShaderSource =
-    // image to be rescaled
-    "uniform sampler%s baseImage;"
-    // vector containing scale factors
-    "uniform vec4 scaleFactors;"
-    // vector containing offsets
-    "uniform vec4 offsets;"
-    ""
-    "void main(void)"
-    "{"
-    "    vec4 srcColor = texture%s(baseImage, gl_TexCoord[0].st);"
-         // (placeholder for un-premult code)
-    "    %s"
-         // rescale source value
-    "    vec4 result = (srcColor * scaleFactors) + offsets;"
-         // (placeholder for re-premult code)
-    "    %s"
-         // modulate with gl_Color in order to apply extra alpha
-    "    gl_FragColor = result * gl_Color;"
-    "}";
-
-/**
- * Flags that can be bitwise-or'ed together to control how the shader
- * source code is generated.
- */
-#define RESCALE_RECT        (1 << 0)
-#define RESCALE_NON_PREMULT (1 << 1)
-
-/**
- * The handles to the RescaleOp fragment program objects.  The index to
- * the array should be a bitwise-or'ing of the RESCALE_* flags defined
- * above.  Note that most applications will likely need to initialize one
- * or two of these elements, so the array is usually sparsely populated.
- */
-static GLhandleARB rescalePrograms[4];
-
-/**
- * Compiles and links the RescaleOp shader program.  If successful, this
- * function returns a handle to the newly created shader program; otherwise
- * returns 0.
- */
-static GLhandleARB
-MTLBufImgOps_CreateRescaleProgram(jint flags)
-{
-    //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_CreateRescaleProgram -- :TODO");
-
-    return NULL;
-}
-
-void
-MTLBufImgOps_EnableRescaleOp(MTLContext *mtlc, jlong pSrcOps,
-                             jboolean nonPremult,
-                             unsigned char *scaleFactors,
-                             unsigned char *offsets)
-{
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLBufImgOps_EnableRescaleOp -- :TODO");
-}
-
-void
-MTLBufImgOps_DisableRescaleOp(MTLContext *mtlc)
-{
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLBufImgOps_DisableRescaleOp -- :TODO");
-    RETURN_IF_NULL(mtlc);
 }
 
 /**************************** LookupOp support ******************************/
