@@ -167,6 +167,8 @@ static void setBlendingFactors(
         subIndex |= 1 << 5;
     }
 
+    // FIXME: the FLT_LT macro doesn't do what the name implies.
+    // When the macro is fixed this usage should be double-checked (although it might be OK)
     if ((composite != nil && FLT_LT([composite getExtraAlpha], 1.0f))) {
         subIndex |= 1 << 6;
     }
@@ -195,6 +197,9 @@ static void setBlendingFactors(
 
             } else if (useComposite ||
                        (composite != nil  &&
+                        // FIXME: the FLT_GE macro doesn't do what the name implies.
+                        // When the macro is fixed this usage should be double-checked, since
+                        // it looks backwards to me.
                         FLT_GE([composite getExtraAlpha], 1.0f)))
             {
                 setBlendingFactors(
@@ -265,6 +270,8 @@ static void setBlendingFactors(
         const SurfaceRasterFlags * srcFlags,
         const SurfaceRasterFlags * dstFlags
 ) {
+    // FIXME: the FLT_GE macro doesn't do what the name implies.
+    // When the macro is fixed this usage should be double-checked (although it might be OK)
     if (compositeRule == RULE_Src &&
         (composite == nil || FLT_GE([composite getExtraAlpha], 1.0f))) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_Src but blending is disabled because src is opaque");
@@ -290,6 +297,8 @@ static void setBlendingFactors(
         case RULE_SrcOver: {
             // Ar = As + Ad*(1-As)
             // Cr = Cs + Cd*(1-As)
+            // FIXME: the FLT_GE macro doesn't do what the name implies.
+            // When the macro is fixed this usage should be double-checked (although it might be OK)
             if (srcFlags->isOpaque &&
                 (composite == nil ||
                  FLT_GE([composite getExtraAlpha], 1.0f)))
@@ -309,6 +318,8 @@ static void setBlendingFactors(
             if (!srcFlags->isPremultiplied) {
                 cad.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
             }
+            // FIXME: the FLT_LT macro doesn't do what the name implies.
+            // When the macro is fixed this usage should be double-checked (although it might be OK)
             if (composite != nil && FLT_LT([composite getExtraAlpha], 1.0f)) {
                 cad.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
             }
