@@ -226,6 +226,7 @@ java/awt/Graphics2D/FillTexturePaint/FillTexturePaint.java                      
 java/awt/Graphics2D/FlipDrawImage/FlipDrawImage.java                                8169462 windows-all
 java/awt/Graphics2D/ScaledTransform/ScaledTransform.java                            8165951 windows-all,linux-all
 java/awt/GraphicsDevice/CheckDisplayModes.java                                      8213119 macosx-all
+java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java                              7099223 windows-all,macosx-all
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                              8197814 macosx-all,linux-all,windows-all
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java              8197814 macosx-all,linux-all,windows-all
 java/awt/GridLayout/LayoutExtraGaps/LayoutExtraGaps.java                            8000171 windows-all
@@ -1010,6 +1011,7 @@ javax/swing/UIDefaults/8133926/InternalFrameIcon.java                           
 javax/swing/UIDefaults/8149879/InternalResourceBundle.java                          8199054 windows-all
 javax/swing/UITest/UITest.java                                                      8198392 generic-all
 javax/swing/border/Test6981576.java                                                 8198339 generic-all
+javax/swing/border/TestTitledBorderLeak.java                                        8213531 linux-all
 javax/swing/dnd/7171812/bug7171812.java                                             8041447 macosx-all,windows-all,linux-all
 javax/swing/dnd/8139050/NativeErrorsInTableDnD.java                                 8202765 macosx-all,linux-all
 javax/swing/plaf/basic/BasicComboBoxEditor/Test8015336.java                         8198394 generic-all
@@ -1035,6 +1037,7 @@ javax/swing/text/DefaultEditorKit/4278839/bug4278839.java                       
 javax/swing/text/DevanagariEditor.java                                              8198397 generic-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java                              8050988 generic-all
 javax/swing/text/JTextComponent/5074573/bug5074573.java                             7153690,8196100,8196100,8072110 macosx-all,windows-all,linux-all
+javax/swing/text/JTextComponent/6361367/bug6361367.java                             8233569 macosx-all,windows-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java                            8214220,8172887 macosx-all,windows-all,linux-all
 javax/swing/text/StyledEditorKit/8016833/bug8016833.java                            8199055 generic-all
 javax/swing/text/TableView/TableViewLayoutTest.java                                 8194936 linux-all
