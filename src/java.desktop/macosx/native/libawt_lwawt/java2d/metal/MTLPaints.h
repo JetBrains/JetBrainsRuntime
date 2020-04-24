@@ -99,6 +99,8 @@
            isStencilUsed:(jboolean)isStencilUsed
                isTexture:(jboolean)isTexture
            interpolation:(int)interpolation
+                bufImgOp:(NSObject *)bufImgOp
+                    isAA:(jboolean)isAA
                 srcFlags:(const SurfaceRasterFlags *)srcFlags
                 dstFlags:(const SurfaceRasterFlags *)dstFlags
     pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage;
@@ -108,6 +110,7 @@
            isStencilUsed:(jboolean)isStencilUsed
                isTexture:(jboolean)isTexture
            interpolation:(int)interpolation
+                bufImgOp:(NSObject *)bufImgOp
                 srcFlags:(const SurfaceRasterFlags *)srcFlags
                 dstFlags:(const SurfaceRasterFlags *)dstFlags
     pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage;
