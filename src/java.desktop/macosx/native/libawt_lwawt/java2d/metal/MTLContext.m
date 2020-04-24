@@ -89,7 +89,8 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
     MTLComposite *     _composite;
     MTLPaint *         _paint;
     MTLTransform *     _transform;
-    MTLClip *           _clip;
+    MTLClip *          _clip;
+    NSObject*          _bufImgOp; // TODO: pass as parameter of IsoBlit
 
     EncoderManager * _encoderManager;
 }
@@ -128,6 +129,7 @@ extern void initSamplers(id<MTLDevice> device);
         _paint = [[MTLPaint alloc] init];
         _transform = [[MTLTransform alloc] init];
         _clip = [[MTLClip alloc] init];
+        _bufImgOp = nil;
 
         _commandBufferWrapper = nil;
 
@@ -412,6 +414,17 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (id<MTLCommandBuffer>)createBlitCommandBuffer {
     return [self.commandQueue commandBuffer];
+}
+
+-(void)setBufImgOp:(NSObject*)bufImgOp {
+    if (_bufImgOp != nil) {
+        [_bufImgOp release]; // context owns bufImgOp object
+    }
+    _bufImgOp = bufImgOp;
+}
+
+-(NSObject*)getBufImgOp {
+    return _bufImgOp;
 }
 
 @end
