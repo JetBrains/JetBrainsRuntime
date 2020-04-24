@@ -184,7 +184,10 @@ public class AllKeyCode extends Frame {
             public void keyPressed(KeyEvent ke) {
                 keyPressedLatch.countDown();
                 if (keyPressed != ke.getKeyCode()) {
-                    // MacOS doesn't distinguish between ALT and ALT_GRAPH keys
+                    // MacOS doesn't distinguish between ALT and ALT_GRAPH keys,
+                    // and JetBrains runtime also does not, please see JBR-1108 for more info.
+                    // Here we have incompatibility between JetBrains and OpenJDK runtime,
+                    // as OpenJDK generates different key codes for these keys.
                     if ((keyPressed != KeyEvent.VK_ALT_GRAPH) || (ke.getKeyCode() != KeyEvent.VK_ALT)) {
                         System.err.println("Wrong keycode received: " + keyPressed + " != " + ke.getKeyCode());
                         keyCodesAreCorrect = false;
