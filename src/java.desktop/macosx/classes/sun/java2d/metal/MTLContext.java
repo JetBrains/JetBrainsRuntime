@@ -134,7 +134,7 @@ final class MTLContext extends BufferedContext {
          * enabled and the hardware meets our minimum requirements.
          */
         @Native
-        static final int CAPS_EXT_BIOP_SHADER  = (FIRST_PRIVATE_CAP << 2);
+        public static final int CAPS_EXT_BIOP_SHADER  = (FIRST_PRIVATE_CAP << 2);
         /**
          * This cap will only be set if the gradshader system property has been
          * enabled and the hardware meets our minimum requirements.
