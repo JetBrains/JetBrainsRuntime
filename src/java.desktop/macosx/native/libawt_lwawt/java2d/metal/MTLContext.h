@@ -245,6 +245,14 @@
                yp1:(jdouble)yp1
                yp3:(jdouble)yp3;
 
+// Sets current image conversion operation (instance of MTLConvolveOp, MTLRescaleOp, MTLLookupOp).
+// Used only in MTLIsoBlit (to blit image with some conversion). Pattern of usage: enableOp -> IsoBlit -> disableOp.
+// TODO: Need to remove it from MTLContext and pass it as an argument for IsoBlit (because it's more
+// simple and clear)
+-(void)setBufImgOp:(NSObject*)bufImgOp;
+
+-(NSObject*)getBufImgOp;
+
 - (id<MTLCommandBuffer>)createBlitCommandBuffer;
 @end
 
