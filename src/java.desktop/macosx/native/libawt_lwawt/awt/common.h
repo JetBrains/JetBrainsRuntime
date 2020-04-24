@@ -81,6 +81,17 @@ struct TxtFrameUniforms {
     float extraAlpha;
 };
 
+struct TxtFrameOpRescaleUniforms {
+    vector_float4 color;
+    float extraAlpha;
+
+    int isSrcOpaque;
+    int isNonPremult;
+
+    vector_float4 normScaleFactors;
+    vector_float4 normOffsets;
+};
+
 struct AnchorData
 {
     vector_float3 xParams;

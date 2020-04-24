@@ -201,6 +201,31 @@ fragment half4 aa_frag_txt(
     return half4(pixelColor.r, pixelColor.g, pixelColor.b, pixelColor.a);
 }
 
+fragment half4 frag_txt_op_rescale(
+        TxtShaderInOut vert [[stage_in]],
+        texture2d<float, access::sample> srcTex [[texture(0)]],
+        constant TxtFrameOpRescaleUniforms& uniforms [[buffer(1)]],
+        sampler textureSampler [[sampler(0)]]
+) {
+    float4 srcColor = srcTex.sample(textureSampler, vert.texCoords);
+    const float srcA = uniforms.isSrcOpaque ? 1 : srcColor.a;
+
+    // TODO: check uniforms.isNonPremult and pre-multiply if necessary
+    return half4(srcColor.r*uniforms.normScaleFactors.r + uniforms.normOffsets.r,
+                 srcColor.g*uniforms.normScaleFactors.g + uniforms.normOffsets.g,
+                 srcColor.b*uniforms.normScaleFactors.b + uniforms.normOffsets.b, srcA*uniforms.extraAlpha);
+
+    // NOTE: GL-shader multiplies result with glColor (in order to apply extra alpha), probably it's better to do the
+    // same here.
+    //
+    // GL-shader impl:
+    //"    vec4 srcColor = texture%s(baseImage, gl_TexCoord[0].st);"
+    //"    %s"                                                      // (placeholder for un-premult code: srcColor.rgb /= srcColor.a;)
+    //"    vec4 result = (srcColor * scaleFactors) + offsets;"      // rescale source value
+    //"    %s"                                                      // (placeholder for re-premult code: result.rgb *= result.a;)
+    //"    gl_FragColor = result * gl_Color;"                       // modulate with gl_Color in order to apply extra alpha
+}
+
 fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
                          constant GradFrameUniforms& uniforms [[buffer(0)]]) {
     float3 v = float3(in.position.x, in.position.y, 1);

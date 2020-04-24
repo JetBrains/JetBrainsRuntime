@@ -24,6 +24,8 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                 paint:(MTLPaint *)paint
             composite:(MTLComposite *)composite
             isTexture:(jboolean)isTexture
+        interpolation:(int)interpolation
+             bufImgOp:(NSObject *)bufImgOp
                  isAA:(jboolean)isAA
              srcFlags:(const SurfaceRasterFlags * _Nullable)srcFlags
                  clip:(MTLClip *)clip
@@ -105,6 +107,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
             composite:(MTLComposite *)composite
             isTexture:(jboolean)isTexture
         interpolation:(int)interpolation
+             bufImgOp:(NSObject *)bufImgOp
                  isAA:(jboolean)isAA
              srcFlags:(const SurfaceRasterFlags * _Nullable)srcFlags
                  clip:(MTLClip *)clip
@@ -133,6 +136,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                 isStencilUsed:[clip isShape]
                     isTexture:isTexture
                 interpolation:interpolation
+                     bufImgOp:bufImgOp
                          isAA:isAA
                      srcFlags:srcFlags
                   forceUpdate:forceUpdate];
@@ -151,6 +155,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
               isStencilUsed:(jboolean)isStencilUsed
                   isTexture:(jboolean)isTexture
               interpolation:(int)interpolation
+                   bufImgOp:(NSObject *)bufImgOp
                        isAA:(jboolean)isAA
                    srcFlags:(const SurfaceRasterFlags * _Nullable)srcFlags
                 forceUpdate:(jboolean)forceUpdate
@@ -179,6 +184,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                   isStencilUsed:isStencilUsed
                       isTexture:_isTexture
                   interpolation:interpolation
+                       bufImgOp:bufImgOp
                        srcFlags:&_srcFlags
                        dstFlags:&_dstFlags
            pipelineStateStorage:_pipelineStateStorage];
@@ -188,6 +194,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                   isStencilUsed:isStencilUsed
                       isTexture:_isTexture
                   interpolation:interpolation
+                       bufImgOp:bufImgOp
                            isAA:isAA
                        srcFlags:&_srcFlags
                        dstFlags:&_dstFlags
@@ -438,6 +445,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                       composite:_mtlc.composite
                       isTexture:isTexture
                   interpolation:interpolation
+                       bufImgOp:[_mtlc getBufImgOp]
                            isAA:isAA
                        srcFlags:srcFlags
                            clip:_mtlc.clip

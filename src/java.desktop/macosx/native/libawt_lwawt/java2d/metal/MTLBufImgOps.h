@@ -28,16 +28,20 @@
 
 #include "MTLContext.h"
 
+@interface MTLRescaleOp : NSObject
+- (id)init:(jboolean)isNonPremult factors:(unsigned char *)factors offsets:(unsigned char *)offsets;
+- (jfloat *)getScaleFactors;
+- (jfloat *)getOffsets;
+- (NSString *)getDescription; // creates autorelease string
+
+@property (readonly) jboolean isNonPremult;
+@end
+
 void MTLBufImgOps_EnableConvolveOp(MTLContext *mtlc, jlong pSrcOps,
                                    jboolean edgeZeroFill,
                                    jint kernelWidth, jint KernelHeight,
                                    unsigned char *kernelVals);
 void MTLBufImgOps_DisableConvolveOp(MTLContext *mtlc);
-void MTLBufImgOps_EnableRescaleOp(MTLContext *mtlc, jlong pSrcOps,
-                                  jboolean nonPremult,
-                                  unsigned char *scaleFactors,
-                                  unsigned char *offsets);
-void MTLBufImgOps_DisableRescaleOp(MTLContext *mtlc);
 void MTLBufImgOps_EnableLookupOp(MTLContext *mtlc, jlong pSrcOps,
                                  jboolean nonPremult, jboolean shortData,
                                  jint numBands, jint bandLength, jint offset,

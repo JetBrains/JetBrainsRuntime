@@ -34,6 +34,7 @@
 #include "sun_java2d_SunGraphics2D.h"
 #include "sun_java2d_pipe_BufferedPaints.h"
 #import "MTLComposite.h"
+#import "MTLBufImgOps.h"
 
 #define RGBA_TO_V4(c)              \
 {                                  \
@@ -41,6 +42,14 @@
     (((c) >> 8) & 0xFF)/255.0f,    \
     ((c) & 0xFF)/255.0f,           \
     (((c) >> 24) & 0xFF)/255.0f    \
+}
+
+#define FLOAT_ARR_TO_V4(p) \
+{                      \
+    p[0], \
+    p[1], \
+    p[2], \
+    p[3]  \
 }
 
 static MTLRenderPipelineDescriptor * templateRenderPipelineDesc = nil;
@@ -321,13 +330,7 @@ void initSamplers(id<MTLDevice> device) {
     samplerLinearRepeat = [device newSamplerStateWithDescriptor:samplerDescriptor];
 }
 
-static void setTxtUniforms(
-        id<MTLRenderCommandEncoder> encoder, int color, int mode, int interpolation, bool repeat, jfloat extraAlpha,
-        const SurfaceRasterFlags * srcFlags, const SurfaceRasterFlags * dstFlags
-) {
-    struct TxtFrameUniforms uf = {RGBA_TO_V4(color), mode, srcFlags->isOpaque, dstFlags->isOpaque, extraAlpha};
-    [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-
+static void setSampler(id<MTLRenderCommandEncoder> encoder, int interpolation, bool repeat) {
     id<MTLSamplerState> sampler;
     if (repeat) {
         sampler = interpolation == INTERPOLATION_BILINEAR ? samplerLinearRepeat : samplerNearestRepeat;
@@ -337,7 +340,15 @@ static void setTxtUniforms(
     [encoder setFragmentSamplerState:sampler atIndex:0];
 }
 
-// TODO: need support hints for all shaders
+static void setTxtUniforms(
+        id<MTLRenderCommandEncoder> encoder, int color, int mode, int interpolation, bool repeat, jfloat extraAlpha,
+        const SurfaceRasterFlags * srcFlags, const SurfaceRasterFlags * dstFlags
+) {
+    struct TxtFrameUniforms uf = {RGBA_TO_V4(color), mode, srcFlags->isOpaque, dstFlags->isOpaque, extraAlpha};
+    [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+
+    setSampler(encoder, interpolation, repeat);
+}
 
 // For the current paint mode:
 // 1. Selects vertex+fragment shaders (and corresponding pipelineDesc) and set pipelineState
@@ -347,6 +358,7 @@ static void setTxtUniforms(
            isStencilUsed:(jboolean)isStencilUsed
                isTexture:(jboolean)isTexture
            interpolation:(int)interpolation
+                bufImgOp:(NSObject *)bufImgOp
                     isAA:(jboolean)isAA
                 srcFlags:(const SurfaceRasterFlags *)srcFlags
                 dstFlags:(const SurfaceRasterFlags *)dstFlags
@@ -358,8 +370,28 @@ static void setTxtUniforms(
 
     id<MTLRenderPipelineState> pipelineState = nil;
     if (isTexture) {
+      if (bufImgOp != nil) {
+          if ([bufImgOp isKindOfClass:[MTLRescaleOp class]]) {
+              MTLRescaleOp * rescaleOp = bufImgOp;
+              pipelineState =
+                      [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
+                                              vertexShaderId:@"vert_txt"
+                                            fragmentShaderId:@"frag_txt_op_rescale"
+                                               compositeRule:[composite getRule]
+                                                   composite:composite
+                                                        isAA:JNI_FALSE
+                                                    srcFlags:srcFlags
+                                                    dstFlags:dstFlags
+                                               stencilNeeded:stencil];
 
-      if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
+              struct TxtFrameOpRescaleUniforms uf = {
+                      RGBA_TO_V4(0), [composite getExtraAlpha], srcFlags->isOpaque, rescaleOp.isNonPremult,
+                      FLOAT_ARR_TO_V4([rescaleOp getScaleFactors]), FLOAT_ARR_TO_V4([rescaleOp getOffsets])
+              };
+              [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+              setSampler(encoder, interpolation, NO);
+          }
+    } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
         pipelineState = [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
                                                 vertexShaderId:@"vert_txt_tp"
                                               fragmentShaderId:@"frag_txt_tp"
@@ -469,6 +501,7 @@ static void setTxtUniforms(
            isStencilUsed:(jboolean)isStencilUsed
                isTexture:(jboolean)isTexture
            interpolation:(int)interpolation
+                bufImgOp:(NSObject *)bufImgOp
                 srcFlags:(const SurfaceRasterFlags *)srcFlags
                 dstFlags:(const SurfaceRasterFlags *)dstFlags
     pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage {

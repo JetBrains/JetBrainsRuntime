@@ -971,15 +971,15 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint numFactors     = 4;
                 unsigned char *scaleFactors = b;
                 unsigned char *offsets = (b + numFactors * sizeof(jfloat));
-                MTLBufImgOps_EnableRescaleOp(mtlc, pSrc, nonPremult,
-                                             scaleFactors, offsets);
+                MTLRescaleOp * rescaleOp = [[MTLRescaleOp alloc] init:nonPremult factors:scaleFactors offsets:offsets];
+                [mtlc setBufImgOp:rescaleOp];
                 SKIP_BYTES(b, numFactors * sizeof(jfloat) * 2);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DISABLE_RESCALE_OP:
             {
                 CHECK_PREVIOUS_OP(MTL_OP_OTHER);
-                MTLBufImgOps_DisableRescaleOp(mtlc);
+                [mtlc setBufImgOp:NULL];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_ENABLE_LOOKUP_OP:

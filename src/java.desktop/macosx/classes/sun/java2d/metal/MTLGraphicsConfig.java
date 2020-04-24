@@ -52,6 +52,8 @@ import static sun.java2d.opengl.OGLSurfaceData.TEXTURE;
 import static sun.java2d.pipe.hw.AccelSurface.RT_TEXTURE;
 import static sun.java2d.pipe.hw.ContextCapabilities.*;
 
+import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_BIOP_SHADER;
+
 public final class MTLGraphicsConfig extends CGraphicsConfig
         implements AccelGraphicsConfig, SurfaceManager.ProxiedGraphicsConfig
 {
@@ -157,7 +159,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         ContextCapabilities caps = new MTLContext.MTLContextCaps(
                 CAPS_PS30 | CAPS_PS20 | CAPS_RT_PLAIN_ALPHA |
                         CAPS_RT_TEXTURE_ALPHA | CAPS_RT_TEXTURE_OPAQUE |
-                        CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE,
+                        CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE | CAPS_EXT_BIOP_SHADER,
                 ids[0]);
         return new MTLGraphicsConfig(device, pixfmt, cfginfo, textureSize, caps);
     }
