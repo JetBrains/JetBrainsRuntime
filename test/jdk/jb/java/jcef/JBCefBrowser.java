@@ -37,7 +37,7 @@ public class JBCefBrowser {
             SwingUtilities.invokeLater(
                     myHtml == null ?
                             () -> browser.loadURL(myUrl) :
-                            () -> browser.loadString(myHtml, myUrl));
+                            () -> loadString(browser, myHtml, myUrl));
         }
     }
 
@@ -74,11 +74,16 @@ public class JBCefBrowser {
 
     public void loadHTML(String html, String url) {
         if (myIsCefBrowserCreated) {
-            myCefBrowser.loadString(html, url);
+            loadString(myCefBrowser, html, url);
         }
         else {
             myLoadDeferrer = LoadDeferrer.htmlDeferrer(html, url);
         }
+    }
+
+    private static void loadString(CefBrowser cefBrowser, String html, String url) {
+        System.out.println("jcef: loadString: " + html);
+        throw new UnsupportedOperationException("not yet supported in tests");
     }
 
     public void loadHTML(String html) {
