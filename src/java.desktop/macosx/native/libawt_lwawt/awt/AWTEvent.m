@@ -486,6 +486,7 @@ static NSDictionary* getDiacriticUnicharToVkCodeDictionary() {
                   [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_Y_WITH_ACUTE], @"ý",
                   [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_THORN], @"þ",
                   [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_Y_WITH_DIAERESIS], @"ÿ",
+                  [NSNumber numberWithInt:sun_awt_event_KeyEvent_VK_ESZETT], @"ß",
                   nil
              ];
              // This is ok to retain a singleton object
