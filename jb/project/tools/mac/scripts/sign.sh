@@ -27,8 +27,7 @@ log "Signing libraries and executables..."
 for f in \
    "Contents/Home/bin" \
    "Contents/Home/lib" \
-   "Contents/Frameworks" \
-   "Contents/Helpers"; do
+   "Contents/Frameworks"; do
   if [ -d "$APP_DIRECTORY/$f" ]; then
     find "$APP_DIRECTORY/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -perm +111 \) \
