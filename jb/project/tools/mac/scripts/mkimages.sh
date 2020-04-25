@@ -61,9 +61,7 @@ function create_jbr {
 
   if [[ "${bundle_type}" == *jcef* ]]; then
     rm -rf ${JRE_CONTENTS}/Frameworks || exit $?
-    rm -rf ${JRE_CONTENTS}/Helpers    || exit $?
     cp -a jcef_mac/Frameworks ${JRE_CONTENTS} || exit $?
-    cp -a jcef_mac/Helpers    ${JRE_CONTENTS} || exit $?
   fi
 
   echo Creating ${JBR}.tar.gz ...
@@ -110,7 +108,6 @@ cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
 if [[ "$bundle_type" == *jcef* ]]; then
   cp -a jcef_mac/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
-  cp -a jcef_mac/Helpers    $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 fi
 if [ "$bundle_type" == "jfx_jcef" ]; then
   echo Creating $JBSDK.tar.gz ...
