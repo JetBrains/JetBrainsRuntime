@@ -142,20 +142,14 @@
 
 - (jboolean)isBlendingDisabled:(jboolean)isSrcOpaque {
 
-    // FIXME: This function needs to be re-examined.
-    // Depending on the composite mode, I think it needs to either look
-    // at both or neither of the extra alpha value and isSrcOpaque.
-    // For example, I don't think SRC or CLEAR mode needs blending at all
-    // (but maybe that is handled elsewhere).
-
-    // FIXME: Use FLT_GE macro or similar once fixed
-    const jfloat epsilon = 0.001f;
-    BOOL extraAlphaIsOne = fabs(_extraAlpha - 1.0f) < epsilon;
-    if (_compositeRule == java_awt_AlphaComposite_SRC) {
-        return extraAlphaIsOne;
-    }
-    else if (_compositeRule == java_awt_AlphaComposite_SRC_OVER) {
-        return extraAlphaIsOne && isSrcOpaque;
+    // We need to check both extra alpha and isSrcOpaque for
+    // SRC mode for correct handling TRANSLUCENT images.
+    // See test/jdk/java/awt/image/DrawImage/IncorrectUnmanagedImageRotatedClip.java
+    // for example
+    if (_compositeRule == java_awt_AlphaComposite_SRC ||
+        _compositeRule == java_awt_AlphaComposite_SRC_OVER)
+    {
+        return FLT_GE(_extraAlpha, 1.0f) && isSrcOpaque;
     }
     return isSrcOpaque;
 }
