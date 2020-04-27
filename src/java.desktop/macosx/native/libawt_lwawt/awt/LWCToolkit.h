@@ -44,6 +44,8 @@ extern int lcdSubPixelPosSupported;
 extern int useFontSmoothing;
 
 @interface AWTToolkit : NSObject { }
++ (BOOL) inDoDragDropLoop;
++ (void) setInDoDragDropLoop:(BOOL)val;
 + (long) getEventCount;
 + (void) eventCountPlusPlus;
 + (jint) scrollStateWithEvent: (NSEvent*) event;
