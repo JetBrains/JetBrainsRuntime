@@ -3514,6 +3514,19 @@ _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_GetDefaultJavaVMInitArgs(void *args_) {
   return ret;
 }
 
+#ifdef LINUX
+static void unsetLdPreload() {
+    // Workaround for: JBR-2253 Preload libjsig.so to fix JNA crashes
+    // NOTE: Probably it still can affect child processes, see
+    // https://stackoverflow.com/questions/3275015/ld-preload-affects-new-child-even-after-unsetenvld-preload
+    char * envUnset = ::getenv("UNSET_LD_PRELOAD");
+    if (envUnset != NULL && strlen(envUnset) > 3 && strncmp("true", envUnset, 4) == 0) {
+        unsetenv("LD_PRELOAD");
+        fprintf(stdout, "LD_PRELOAD was unset\n");
+    }
+}
+#endif //LINUX
+
 DT_RETURN_MARK_DECL(CreateJavaVM, jint
                     , HOTSPOT_JNI_CREATEJAVAVM_RETURN(_ret_ref));
 
@@ -3620,6 +3633,10 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
     // Since this is not a JVM_ENTRY we have to set the thread state manually before leaving.
     ThreadStateTransition::transition_from_vm(thread, _thread_in_native);
     MACOS_AARCH64_ONLY(thread->enable_wx(WXExec));
+
+#ifdef LINUX
+    unsetLdPreload();
+#endif //LINUX
   } else {
     // If create_vm exits because of a pending exception, exit with that
     // exception.  In the future when we figure out how to reclaim memory,
