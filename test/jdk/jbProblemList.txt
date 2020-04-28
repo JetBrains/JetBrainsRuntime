@@ -511,6 +511,7 @@ java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.ja
 java/awt/dnd/DisposeFrameOnDragCrash/DisposeFrameOnDragTest.java 8202790 macosx-all,linux-all
 java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.java               8215538 windows-all,macosx-all,linux-all
 java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.html                   7124379,7188825 macosx-all,linux-all,windows-all
+java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.java                   7124379,7188825 macosx-all,linux-all,windows-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.java 8202882 linux-all
 java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java 8030121 macosx-all,linux-all
 java/awt/dnd/NoFormatsCrashTest/NoFormatsCrashTest.html                             8214221 windows-all,linux-all,macosx-all
@@ -536,6 +537,7 @@ java/awt/font/FontNames/LocaleFamilyNames.java 8213129 windows-all
 java/awt/Frame/DisposeParentGC/DisposeParentGC.java 8079786 macosx-all
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java 8169468 macosx-all
 java/awt/GraphicsDevice/CheckDisplayModes.java 8213119 macosx-all
+java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java                              7099223 windows-all
 java/awt/TextArea/AutoScrollOnSelectAndAppend/AutoScrollOnSelectAndAppend.java 8213120 macosx-all
 java/awt/Window/MainKeyWindowTest/TestMainKeyWindow.java 8213126 macosx-all
 
