@@ -3894,6 +3894,7 @@ _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_GetDefaultJavaVMInitArgs(void *args_) {
   return ret;
 }
 
+#ifdef LINUX
 static void unsetLdPreload() {
     // Workaround for: JBR-2253 Preload libjsig.so to fix JNA crashes
     // NOTE: Probably it still can affect child processes, see
@@ -3906,6 +3907,7 @@ static void unsetLdPreload() {
         fprintf(stdout, "LD_PRELOAD was unset\n");
     }
 }
+#endif //LINUX
 
 DT_RETURN_MARK_DECL(CreateJavaVM, jint
                     , HOTSPOT_JNI_CREATEJAVAVM_RETURN(_ret_ref));
