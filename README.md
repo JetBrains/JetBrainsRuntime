@@ -75,7 +75,7 @@ First command will set env vars, the second will run cygwin shell with proper en
 In cygwin shell 
 ```    
 cd JetBrainsRuntime
-bash configure --enable-option-checking=fatal --enable-option-checking=fatal --with-toolchain-version=2015 --with-boot-jdk="/cygdrive/c/Program Files/Java/jdk-11.0.5" --disable-warnings-as-errors
+bash configure --enable-option-checking=fatal --with-toolchain-version=2015 --with-boot-jdk="/cygdrive/c/Program Files/Java/jdk-11.0.5" --disable-warnings-as-errors
 make images
 ```
 
