@@ -114,6 +114,7 @@
 
 # jdk_awt
 
+java/awt/event/HierarchyEvent/AncestorResized/AncestorResized.java                  6618538 generic-all
 java/awt/event/MouseEvent/EventTimeInFuture/EventTimeInFuture.java                  8032254 linux-all
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java 8168389 windows-all,macosx-all
 java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055 macosx-all
@@ -237,6 +238,7 @@ java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java 8150540 windows-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupClickTest.java 8150540 windows-all,macosx-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java 8150540 windows-all
 java/awt/TrayIcon/PopupMenuLeakTest/PopupMenuLeakTest.java 8196440 linux-all
+java/awt/Window/GetScreenLocation/GetScreenLocationTest.java                        8225787 linux-all
 java/awt/Window/Grab/GrabTest.java 8196019 windows-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java 8208509 macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java 8197936 macosx-all
@@ -770,7 +772,7 @@ javax/swing/JColorChooser/Test6541987.java                                      
 javax/swing/JColorChooser/Test7194184.java 8194126 linux-all,macosx-all
 javax/swing/JTable/7124218/SelectEditTableCell.java                                 8148958,8233551 linux-all,macosx-all,windows-all
 javax/swing/JTable/4235420/bug4235420.java     8079127 generic-all
-javax/swing/JTableHeader/6889007/bug6889007.java                                    8197552 windows-all
+javax/swing/JTableHeader/6889007/bug6889007.java                                    8197552,7179842 windows-all,linux-all
 javax/swing/JSplitPane/4201995/bug4201995.java 8079127 generic-all
 javax/swing/JSplitPane/4885629/bug4885629.java 8019935,8194941 macosx-all,linux-all
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java                                    8159131 linux-all,windows-all
@@ -863,6 +865,7 @@ javax/swing/dnd/8139050/NativeErrorsInTableDnD.java 8202765  macosx-all,linux-al
 javax/swing/Popup/TaskbarPositionTest.java 8065097 macosx-all,linux-all
 javax/swing/JButton/4368790/bug4368790.java 8213123 macosx-all
 javax/swing/JButton/8151303/PressedIconTest.java                                    8167352 macosx-all
+javax/swing/JButton/PressedButtonRightClickTest.java                                8203906 windows-all
 javax/swing/JEditorPane/6917744/bug6917744.java 8213124 macosx-all
 javax/swing/JEditorPane/8195095/ImageViewTest.java 8167352 macosx-all
 javax/swing/JTable/6263446/bug6263446.java 8169959 macosx-all
