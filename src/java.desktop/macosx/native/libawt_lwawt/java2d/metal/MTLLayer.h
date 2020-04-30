@@ -41,7 +41,9 @@
     float bufferWidth;
     float bufferHeight;
     id<MTLTexture> buffer;
-    int nextDrawableCount;
+    id<CAMetalDrawable> mtlDrawable;
+    id<MTLCommandBuffer> blitCommandBuf;
+    id<MTLBlitCommandEncoder> blitEncoder;
     int topInset;
     int leftInset;
 }
@@ -51,7 +53,9 @@
 @property (readwrite, assign) float bufferWidth;
 @property (readwrite, assign) float bufferHeight;
 @property (readwrite, assign) id<MTLTexture> buffer;
-@property (readwrite, assign) int nextDrawableCount;
+@property (readwrite, assign) id<CAMetalDrawable> mtlDrawable;
+@property (readwrite, assign) id<MTLCommandBuffer> blitCommandBuf;
+@property (readwrite, assign) id<MTLBlitCommandEncoder> blitEncoder;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
 
@@ -66,6 +70,7 @@
                            DY2:(jfloat)dy2;
 - (void) blitCallback;
 - (void) display;
+- (void) initBlit;
 @end
 
 #endif /* CGLLayer_h_Included */
