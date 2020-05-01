@@ -48,7 +48,6 @@ cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
 echo Creating $JBSDK.tar.gz ...
 cp -a jcef_mac/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
-cp -a jcef_mac/Helpers    $BASE_DIR/$JBRSDK_BUNDLE/Contents
 
 COPYFILE_DISABLE=1 \
   tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
@@ -76,7 +75,6 @@ grep -v "^JAVA_VERSION" $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/release | grep -v
 cp -R $BASE_DIR/$JBRSDK_BUNDLE/Contents/MacOS $JRE_CONTENTS
 cp $BASE_DIR/$JBRSDK_BUNDLE/Contents/Info.plist $JRE_CONTENTS
 cp -a jcef_mac/Frameworks ${JRE_CONTENTS} || exit $?
-cp -a jcef_mac/Helpers    ${JRE_CONTENTS} || exit $?
 
 
 echo Creating $JBR.tar.gz ...
