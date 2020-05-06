@@ -55,6 +55,7 @@ $(eval $(call SetupJavaCompilation,BUILD_TOOLS_JDK, \
     ADD_JAVAC_FLAGS := \
         --add-exports java.desktop/sun.awt=ALL-UNNAMED \
         --add-exports java.base/sun.text=ALL-UNNAMED \
+        --add-exports java.base/sun.security.util=ALL-UNNAMED \
         , \
 ))
 
