@@ -744,10 +744,13 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 XlibWrapper.XFreeEventData(getDisplay(), ev.pData);
             } catch (ThreadDeath td) {
                 XBaseWindow.ungrabInput();
-                return;
+                processException(td);
+                throw td;
             } catch (Throwable thr) {
                 XBaseWindow.ungrabInput();
                 processException(thr);
+                // In case of ThreadDeath thread is still alive in finally block so we have to duplicate freeing
+                XlibWrapper.XFreeEventData(getDisplay(), ev.pData);
             } finally {
                 awtUnlock();
             }
