@@ -52,7 +52,8 @@ import java.util.stream.Collectors;
  *
  * Test based on the following assumptions:
  * TODO check if these assumptions are correct
- * - Pressing "modifier + key" always generates "modifier key code + low registry key code" for any key and modifier.
+ * - Pressing "modifier + key" always generates
+ *            "modifier key code + low registry key code" keyPressed events for any key and modifier.
  * - No keyTyped event is expected as the result of pressing dead key + key.
  * - Pressing "dead key + space" generates corresponding diacritic character,
  *   which may be obtained using inputMethodTextChanged event.
@@ -72,11 +73,14 @@ import java.util.stream.Collectors;
  * Test may be run by any JRE, but in case of non-JBR, one needs to manually switch the keyboard layout during testing.
  *
  * Compilation:
- * <javac-1.8.*> -bootclasspath <jbrsdk8>/Contents/Home/jre/lib/rt.jar:. NationalLayoutTest.java
- * <javac-11.*>  --add-exports java.desktop/sun.lwawt.macosx=ALL-UNNAMED NationalLayoutTest.java
- *
+ * <javac-1.8.*> -bootclasspath <jbrsdk8>/Contents/Home/jre/lib/rt.jar \
+ *               ./test/jdk/jb/sun/awt/macos/NationalLayoutTest/*.java
+ * <javac-11.*> --add-exports java.desktop/sun.awt.event=ALL-UNNAMED \
+ *              --add-exports java.desktop/sun.lwawt.macosx=ALL-UNNAMED \
+ *               test/jdk/jb/sun/awt/macos/NationalLayoutTest/*.java
  * Usage:
- * <java> NationalLayoutTest [manual] [layout1] [layout2] ... , where layoutN is one of the existing Layout enum values
+ * <java> -cp test/jdk/jb/sun/awt/macos/NationalLayoutTest NationalLayoutTest [manual] [layout1] [layout2] ... ,
+ * where layoutN is one of the existing Layout enum values
  *
  * Examples:
  * > java NationalLayoutTest
@@ -136,7 +140,9 @@ public class NationalLayoutTest {
                 try {
                     layoutList.add(Layout.valueOf(arg));
                 } catch (IllegalArgumentException e) {
-                    throw new RuntimeException("ERROR: Unexpected argument: " + arg);
+                    throw new RuntimeException("ERROR: Unexpected argument: " + arg + "\n"
+                            + "Possible test arguments are: " + MANUAL + ", "
+                            + Arrays.stream(Layout.values()).map(Enum::name).collect(Collectors.joining(", ")));
                 }
             }
         }
@@ -222,6 +228,8 @@ public class NationalLayoutTest {
 
         // Add listeners to track keyboard events
         typeArea.addFocusListener(typeAreaFocusListener);
+        // TODO Currently dead key presses do not gererate corresponding keyPressed events to TextComponents,
+        // but such events are generated normally for Frames or other non-text Components
         typeArea.addKeyListener(keyListener);
         typeArea.addInputMethodListener(inputMethodListener);
 
