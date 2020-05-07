@@ -42,6 +42,7 @@ applications/jcstress/acqrel/Test.java - generic-all
 
 # :hotspot_compiler
 
+compiler/aot/cli/jaotc/AtFileTest.java                                              JBR-2365 windows-all
 compiler/ciReplay/TestSAServer.java                                                 8029528 generic-all
 compiler/codecache/stress/OverloadCompileQueueTest.java                             8166554 generic-all
 compiler/codegen/Test6896617.java                                                   8193479 generic-all

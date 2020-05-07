@@ -21,7 +21,6 @@ java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.html              
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                                nobug linux-all,windows-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java   nobug macosx-all,linux-all,windows-all
 java/awt/Focus/ContainerFocusAutoTransferTest/ContainerFocusAutoTransferTest.java           nobug macosx-all
-java/awt/Focus/DisposedWindow/DisposeDialogNotActivateOwnerTest/DisposeDialogNotActivateOwnerTest.java nobug macosx-all
 java/awt/Focus/FocusEmbeddedFrameTest/FocusEmbeddedFrameTest.java                           nobug windows-all
 java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java                                 nobug macosx-all,windows-all
 java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java                                   nobug macosx-all
