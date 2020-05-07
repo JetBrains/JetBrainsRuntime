@@ -283,7 +283,8 @@ void MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount,
 
     // Destination texture to which render commands are encoded
     id<MTLTexture> dest = dstOps->pTexture;
-    bool isDestOpaque = dstOps->isOpaque;
+    id<MTLTexture> destAA = nil;
+    BOOL isDestOpaque = dstOps->isOpaque;
     if (mtlc.clip.stencilMaskGenerationInProgress == JNI_TRUE) {
         dest = dstOps->pStencilData;
         isDestOpaque = NO;
@@ -299,7 +300,7 @@ void MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount,
     struct Vertex vertexList[TOTAL_VERTICES_IN_BLOCK]; // a total of 170 triangles ==> 85 spans
 
     int counter = 0;
-
+    jint *aaspans = spans;
     for (int i = 0; i < spanCount; i++) {
         jfloat x1 = *(spans++);
         jfloat y1 = *(spans++);

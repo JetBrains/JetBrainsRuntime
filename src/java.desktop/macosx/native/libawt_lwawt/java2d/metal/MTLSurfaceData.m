@@ -77,6 +77,8 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
         stencilDataDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
         stencilDataDescriptor.storageMode = MTLStorageModePrivate;
         bmtlsdo->pStencilData = [ctx.device newTextureWithDescriptor:stencilDataDescriptor];
+        bmtlsdo->pAAStencilData = [ctx.device newTextureWithDescriptor:textureDescriptor];
+
 
         MTLTextureDescriptor *stencilTextureDescriptor =
             [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatStencil8 width:width height:height mipmapped:NO];

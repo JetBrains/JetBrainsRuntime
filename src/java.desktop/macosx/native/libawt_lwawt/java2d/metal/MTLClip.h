@@ -22,6 +22,7 @@ enum Clip {
  * */
 
 @interface MTLClip : NSObject
+@property (readonly) id<MTLTexture> stencilAADataRef;
 @property (readonly) id<MTLTexture> stencilTextureRef;
 @property (readonly) jboolean stencilMaskGenerationInProgress;
 
