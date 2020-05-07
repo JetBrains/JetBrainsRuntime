@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,7 +80,7 @@ final class RepositoryChunk {
             p = directory.toPath().resolve(extendedName);
         }
         p = directory.toPath().resolve(name + "_" + System.currentTimeMillis() + extension);
-        return SecuritySupport.toRealPath(new SafePath(p));
+        return new SafePath(p);
     }
 
     public SafePath getUnfishedFile() {

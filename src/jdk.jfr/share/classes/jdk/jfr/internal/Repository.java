@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,7 +84,7 @@ public final class Repository {
             }
             return new RepositoryChunk(repository, timestamp);
         } catch (Exception e) {
-            String errorMsg = String.format("Could not create chunk in repository %s, %s", repository, e.getMessage());
+            String errorMsg = String.format("Could not create chunk in repository %s, %s: %s", repository, e.getClass(), e.getMessage());
             Logger.log(LogTag.JFR, LogLevel.ERROR, errorMsg);
             jvm.abort(errorMsg);
             throw new InternalError("Could not abort after JFR disk creation error");
