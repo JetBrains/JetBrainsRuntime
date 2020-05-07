@@ -27,11 +27,11 @@
 #define MTLPaints_h_Included
 
 #import <Metal/Metal.h>
-
-#include "MTLSurfaceDataBase.h"
+#include "RenderOptions.h"
 
 #define sun_java2d_SunGraphics2D_PAINT_UNDEFINED -1
 
+@class MTLContext;
 @class MTLComposite;
 @class MTLClip;
 @class MTLPipelineStatesStorage;
@@ -94,26 +94,15 @@
 // For the current paint mode and passed composite (and flags):
 // 1. Selects vertex+fragment shader (and corresponding pipelineDesc) and set pipelineState
 // 2. Prepares corresponding buffers of vertex and fragment shaders
-- (void)setPipelineState:(id<MTLRenderCommandEncoder>)encoder
-               composite:(MTLComposite *)composite
-           isStencilUsed:(jboolean)isStencilUsed
-               isTexture:(jboolean)isTexture
-           interpolation:(int)interpolation
-                bufImgOp:(NSObject *)bufImgOp
-                    isAA:(jboolean)isAA
-                srcFlags:(const SurfaceRasterFlags *)srcFlags
-                dstFlags:(const SurfaceRasterFlags *)dstFlags
+- (void)setPipelineState:(id <MTLRenderCommandEncoder>)encoder
+                 context:(MTLContext *)mtlc
+           renderOptions:(const RenderOptions *)renderOptions
     pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage;
 
-- (void)setXorModePipelineState:(id<MTLRenderCommandEncoder>)encoder
-               composite:(MTLComposite *)composite
-           isStencilUsed:(jboolean)isStencilUsed
-               isTexture:(jboolean)isTexture
-           interpolation:(int)interpolation
-                bufImgOp:(NSObject *)bufImgOp
-                srcFlags:(const SurfaceRasterFlags *)srcFlags
-                dstFlags:(const SurfaceRasterFlags *)dstFlags
-    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage;
+- (void)setXorModePipelineState:(id <MTLRenderCommandEncoder>)encoder
+                        context:(MTLContext *)mtlc
+                  renderOptions:(const RenderOptions *)renderOptions
+           pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage;
 @end
 
 #endif /* MTLPaints_h_Included */
