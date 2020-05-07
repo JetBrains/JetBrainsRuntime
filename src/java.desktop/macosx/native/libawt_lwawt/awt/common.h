@@ -92,6 +92,20 @@ struct TxtFrameOpRescaleUniforms {
     vector_float4 normOffsets;
 };
 
+struct TxtFrameOpConvolveUniforms {
+    float extraAlpha;
+    vector_float4 imgEdge;
+    int kernelSize;
+    int isEdgeZeroFill;
+};
+
+struct TxtFrameOpLookupUniforms {
+    float extraAlpha;
+    vector_float4 offset;
+    int isUseSrcAlpha;
+    int isNonPremult;
+};
+
 struct AnchorData
 {
     vector_float3 xParams;
