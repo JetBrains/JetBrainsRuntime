@@ -354,141 +354,94 @@ static void setTxtUniforms(
 // 1. Selects vertex+fragment shaders (and corresponding pipelineDesc) and set pipelineState
 // 2. Set vertex and fragment buffers
 - (void)setPipelineState:(id<MTLRenderCommandEncoder>)encoder
-               composite:(MTLComposite *)composite
-           isStencilUsed:(jboolean)isStencilUsed
-               isTexture:(jboolean)isTexture
-           interpolation:(int)interpolation
-                bufImgOp:(NSObject *)bufImgOp
-                    isAA:(jboolean)isAA
-                srcFlags:(const SurfaceRasterFlags *)srcFlags
-                dstFlags:(const SurfaceRasterFlags *)dstFlags
+                 context:(MTLContext *)mtlc
+           renderOptions:(const RenderOptions *)renderOptions
     pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
 {
     initTemplatePipelineDescriptors();
 
-    const bool stencil = isStencilUsed == JNI_TRUE;
+    NSString * vertShader = @"vert_txt";
+    NSString * fragShader = @"frag_txt";
+    MTLRenderPipelineDescriptor * rpDesc = templateTexturePipelineDesc;
 
-    id<MTLRenderPipelineState> pipelineState = nil;
-    if (isTexture) {
-      if (bufImgOp != nil) {
-          if ([bufImgOp isKindOfClass:[MTLRescaleOp class]]) {
-              MTLRescaleOp * rescaleOp = bufImgOp;
-              pipelineState =
-                      [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
-                                              vertexShaderId:@"vert_txt"
-                                            fragmentShaderId:@"frag_txt_op_rescale"
-                                               compositeRule:[composite getRule]
-                                                   composite:composite
-                                                        isAA:JNI_FALSE
-                                                    srcFlags:srcFlags
-                                                    dstFlags:dstFlags
-                                               stencilNeeded:stencil];
+    if (renderOptions->isTexture) {
+        NSObject *bufImgOp = [mtlc getBufImgOp];
+        if (bufImgOp != nil) {
+            if ([bufImgOp isKindOfClass:[MTLRescaleOp class]]) {
+                MTLRescaleOp *rescaleOp = bufImgOp;
+                vertShader = @"vert_txt";
+                fragShader = @"frag_txt_op_rescale";
 
-              struct TxtFrameOpRescaleUniforms uf = {
-                      RGBA_TO_V4(0), [composite getExtraAlpha], srcFlags->isOpaque, rescaleOp.isNonPremult,
-                      FLOAT_ARR_TO_V4([rescaleOp getScaleFactors]), FLOAT_ARR_TO_V4([rescaleOp getOffsets])
-              };
-              [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-              setSampler(encoder, interpolation, NO);
-          }
-    } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-        pipelineState = [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
-                                                vertexShaderId:@"vert_txt_tp"
-                                              fragmentShaderId:@"frag_txt_tp"
-                                                 compositeRule:[composite getRule]
-                                                          isAA:JNI_FALSE
-                                                      srcFlags:srcFlags
-                                                      dstFlags:dstFlags
-                                                 stencilNeeded:stencil];
-        [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
-        [encoder setFragmentTexture:_paintTexture atIndex: 1];
+                struct TxtFrameOpRescaleUniforms uf = {
+                        RGBA_TO_V4(0), [mtlc.composite getExtraAlpha], renderOptions->srcFlags.isOpaque,
+                        rescaleOp.isNonPremult,
+                        FLOAT_ARR_TO_V4([rescaleOp getScaleFactors]), FLOAT_ARR_TO_V4([rescaleOp getOffsets])
+                };
+                [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+                setSampler(encoder, renderOptions->interpolation, NO);
+            }
+        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
+            vertShader = @"vert_txt_tp";
+            fragShader = @"frag_txt_tp";
+            [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
+            [encoder setFragmentTexture:_paintTexture atIndex:1];
 
-        setTxtUniforms(encoder, 0, 0, interpolation, YES, [composite getExtraAlpha], srcFlags, dstFlags);
-      } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-        pipelineState = [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
-                                                vertexShaderId:@"vert_txt_grad"
-                                              fragmentShaderId:@"frag_txt_grad"
-                                                 compositeRule:[composite getRule]
-                                                          isAA:JNI_FALSE
-                                                      srcFlags:srcFlags
-                                                      dstFlags:dstFlags
-                                                 stencilNeeded:stencil];
-        struct GradFrameUniforms uf = {
-            {_p0, _p1, _p3},
-            RGBA_TO_V4(_pixel1),
-            RGBA_TO_V4(_pixel2)};
-        [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
-
-      } else {
-        if (isAA) {
-          pipelineState = [pipelineStateStorage
-              getPipelineState:templateAATexturePipelineDesc
-                vertexShaderId:@"vert_txt"
-              fragmentShaderId:@"aa_frag_txt"
-                 compositeRule:[composite getRule]
-                          isAA:JNI_FALSE
-                      srcFlags:srcFlags
-                      dstFlags:dstFlags
-                 stencilNeeded:stencil];
+            setTxtUniforms(encoder, 0, 0, renderOptions->interpolation, YES, [mtlc.composite getExtraAlpha],
+                           &renderOptions->srcFlags, &renderOptions->dstFlags);
+        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
+            vertShader = @"vert_txt_grad";
+            fragShader = @"frag_txt_grad";
+            struct GradFrameUniforms uf = {
+                    {_p0, _p1, _p3},
+                    RGBA_TO_V4(_pixel1),
+                    RGBA_TO_V4(_pixel2)};
+            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
 
         } else {
-          pipelineState =
-              [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
-                                      vertexShaderId:@"vert_txt"
-                                    fragmentShaderId:@"frag_txt"
-                                       compositeRule:[composite getRule]
-                                           composite:composite
-                                                isAA:JNI_FALSE
-                                            srcFlags:srcFlags
-                                            dstFlags:dstFlags
-                                       stencilNeeded:stencil];
-        }
+            vertShader = @"vert_txt";
+            fragShader = @"frag_txt";
+            if (renderOptions->isAA) {
+                fragShader = @"aa_frag_txt";
+                rpDesc = templateAATexturePipelineDesc;
+            }
 
-        setTxtUniforms(encoder, _color, _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? 1 : 0, interpolation, NO, [composite getExtraAlpha], srcFlags, dstFlags);
-      }
+            setTxtUniforms(encoder, _color, _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? 1 : 0,
+                           renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha], &renderOptions->srcFlags,
+                           &renderOptions->dstFlags);
+        }
     } else {
+        rpDesc = templateRenderPipelineDesc;
+
         if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-            pipelineState = [pipelineStateStorage getPipelineState:templateRenderPipelineDesc
-                                                    vertexShaderId:@"vert_col"
-                                                  fragmentShaderId:@"frag_col"
-                                                     compositeRule:[composite getRule]
-                                                              isAA:isAA
-                                                          srcFlags:srcFlags
-                                                          dstFlags:dstFlags
-                                                     stencilNeeded:stencil];
+            vertShader = @"vert_col";
+            fragShader = @"frag_col";
 
             struct FrameUniforms uf = {RGBA_TO_V4(_color)};
             [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
         } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-            pipelineState = [pipelineStateStorage getPipelineState:templateRenderPipelineDesc
-                                                    vertexShaderId:@"vert_grad"
-                                                  fragmentShaderId:@"frag_grad"
-                                                     compositeRule:[composite getRule]
-                                                              isAA:isAA
-                                                          srcFlags:srcFlags
-                                                          dstFlags:dstFlags
-                                                     stencilNeeded:stencil];
+            vertShader = @"vert_grad";
+            fragShader = @"frag_grad";
 
             struct GradFrameUniforms uf = {
                     {_p0, _p1, _p3},
                     RGBA_TO_V4(_pixel1),
                     RGBA_TO_V4(_pixel2)};
-            [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
+            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
         } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-            pipelineState = [pipelineStateStorage getPipelineState:templateRenderPipelineDesc
-                                        vertexShaderId:@"vert_tp"
-                                      fragmentShaderId:@"frag_tp"
-                                         compositeRule:[composite getRule]
-                                                  isAA:isAA
-                                              srcFlags:srcFlags
-                                              dstFlags:dstFlags
-                                         stencilNeeded:stencil];
+            vertShader = @"vert_tp";
+            fragShader = @"frag_tp";
 
             [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
-            [encoder setFragmentTexture:_paintTexture atIndex: 0];
+            [encoder setFragmentTexture:_paintTexture atIndex:0];
         }
     }
 
+    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                        vertexShaderId:vertShader
+                                                                      fragmentShaderId:fragShader
+                                                                             composite:mtlc.composite
+                                                                         renderOptions:renderOptions
+                                                                         stencilNeeded:[mtlc.clip isShape]];
     [encoder setRenderPipelineState:pipelineState];
 }
 
@@ -497,39 +450,27 @@ static void setTxtUniforms(
 // 1. Selects vertex+fragment shaders (and corresponding pipelineDesc) and set pipelineState
 // 2. Set vertex and fragment buffers
 - (void)setXorModePipelineState:(id<MTLRenderCommandEncoder>)encoder
-               composite:(MTLComposite *)composite
-           isStencilUsed:(jboolean)isStencilUsed
-               isTexture:(jboolean)isTexture
-           interpolation:(int)interpolation
-                bufImgOp:(NSObject *)bufImgOp
-                srcFlags:(const SurfaceRasterFlags *)srcFlags
-                dstFlags:(const SurfaceRasterFlags *)dstFlags
-    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage {
+                        context:(MTLContext *)mtlc
+                  renderOptions:(const RenderOptions *)renderOptions
+           pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+{
     initTemplatePipelineDescriptors();
 
-    const bool stencil = isStencilUsed == JNI_TRUE;
-    jint xorColor = (jint) [composite getXorColor];
+    jint xorColor = (jint) [mtlc.composite getXorColor];
 
-    id<MTLRenderPipelineState> pipelineState = nil;
-    if (isTexture) {
-          pipelineState = [pipelineStateStorage getXorModePipelineState:templateTexturePipelineDesc
-                                          vertexShaderId:@"vert_txt"
-                                        fragmentShaderId:@"frag_txt"
-                                                srcFlags:srcFlags
-                                                dstFlags:dstFlags
-                                           stencilNeeded:stencil];
+    NSString * vertShader = @"vert_txt";
+    NSString * fragShader = @"frag_txt";
+    MTLRenderPipelineDescriptor * rpDesc = templateTexturePipelineDesc;
+
+    if (renderOptions->isTexture) {
         const int col = _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? _color ^ xorColor : 0 ^ xorColor;
-        setTxtUniforms(encoder, col, _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? 1 : 0, interpolation, NO, [composite getExtraAlpha], srcFlags, dstFlags);
+        setTxtUniforms(encoder, col, _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? 1 : 0, renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha], &renderOptions->srcFlags, &renderOptions->dstFlags);
         [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
     } else {
         if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-
-            pipelineState = [pipelineStateStorage getXorModePipelineState:templateRenderPipelineDesc
-                                        vertexShaderId:@"vert_col"
-                                      fragmentShaderId:@"frag_col"
-                                              srcFlags:srcFlags
-                                              dstFlags:dstFlags
-                                         stencilNeeded:stencil];
+            vertShader = @"vert_col";
+            fragShader = @"frag_col";
+            rpDesc = templateRenderPipelineDesc;
 
             // Calculate _color ^ xorColor for RGB components
             // This color gets XORed with destination framebuffer pixel color
@@ -537,13 +478,9 @@ static void setTxtUniforms(
             [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
 
         } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-
-            pipelineState = [pipelineStateStorage getXorModePipelineState:templateRenderPipelineDesc
-                                        vertexShaderId:@"vert_grad"
-                                      fragmentShaderId:@"frag_grad"
-                                              srcFlags:srcFlags
-                                              dstFlags:dstFlags
-                                         stencilNeeded:stencil];
+            vertShader = @"vert_grad";
+            fragShader = @"frag_grad";
+            rpDesc = templateRenderPipelineDesc;
 
                 struct GradFrameUniforms uf = {
                         {_p0, _p1, _p3},
@@ -551,19 +488,23 @@ static void setTxtUniforms(
                         RGBA_TO_V4(_pixel2 ^ xorColor)};
                 [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
             } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
+            vertShader = @"vert_tp";
+            fragShader = @"frag_tp_xorMode";
+            rpDesc = templateRenderPipelineDesc;
 
-                pipelineState = [pipelineStateStorage getXorModePipelineState:templateRenderPipelineDesc
-                                            vertexShaderId:@"vert_tp"
-                                          fragmentShaderId:@"frag_tp_xorMode"
-                                                  srcFlags:srcFlags
-                                                  dstFlags:dstFlags
-                                             stencilNeeded:stencil];
 
                 [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
                 [encoder setFragmentTexture:_paintTexture atIndex: 0];
                 [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
             }
         }
+
+    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                        vertexShaderId:vertShader
+                                                                      fragmentShaderId:fragShader
+                                                                             composite:mtlc.composite
+                                                                         renderOptions:renderOptions
+                                                                         stencilNeeded:[mtlc.clip isShape]];
     [encoder setRenderPipelineState:pipelineState];
 }
 
