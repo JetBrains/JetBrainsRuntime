@@ -227,6 +227,7 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 - (void)setClipRectX1:(jint)x1 Y1:(jint)y1 X2:(jint)x2 Y2:(jint)y2 {
+    J2dTraceLn4(J2D_TRACE_INFO, "MTLContext.setClipRect: %d,%d - %d,%d", x1, y1, x2, y2);
     [_clip setClipRectX1:x1 Y1:y1 X2:x2 Y2:y2];
 }
 

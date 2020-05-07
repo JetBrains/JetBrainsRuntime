@@ -41,8 +41,10 @@
 
 #import <Accelerate/Accelerate.h>
 
-//#define TRACE_ISOBLIT
-//#define TRACE_BLIT
+#ifdef DEBUG
+#define TRACE_ISOBLIT
+#define TRACE_BLIT
+#endif //DEBUG
 //#define DEBUG_ISOBLIT
 //#define DEBUG_BLIT
 
@@ -347,6 +349,8 @@ jboolean clipDestCoords(
     }
     if (*dx2 <= dcx1 || *dx1 >= dcx2 || *dy2 <= dcy1 || *dy1 >= dcy2) {
         J2dTraceLn(J2D_TRACE_INFO, "\tclipDestCoords: dest rect doesn't intersect clip area");
+        J2dTraceLn4(J2D_TRACE_INFO, "\tdx2=%1.4f <= dcx1=%1.4f || *dx1=%1.4f >= dcx2=%1.4f", *dx2, dcx1, *dx1, dcx2);
+        J2dTraceLn4(J2D_TRACE_INFO, "\t*dy2=%1.4f <= dcy1=%1.4f || *dy1=%1.4f >= dcy2=%1.4f", *dy2, dcy1, *dy1, dcy2);
         return JNI_FALSE;
     }
     if (*dx1 < dcx1) {
@@ -419,7 +423,7 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
     clipDestCoords(
             &dx1, &dy1, &dx2, &dy2,
             &sx1, &sy1, &sx2, &sy2,
-            dstTex.width, dstTex.height, [mtlc.clip getRect]
+            dstTex.width, dstTex.height, texture ? NULL : [mtlc.clip getRect]
     );
 
     SurfaceDataBounds bounds;
