@@ -379,6 +379,31 @@ static void setTxtUniforms(
                 };
                 [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
                 setSampler(encoder, renderOptions->interpolation, NO);
+            } else if ([bufImgOp isKindOfClass:[MTLConvolveOp class]]) {
+                MTLConvolveOp * convolveOp = bufImgOp;
+                vertShader = @"vert_txt";
+                fragShader = @"frag_txt_op_convolve";
+
+                struct TxtFrameOpConvolveUniforms uf = {
+                        [mtlc.composite getExtraAlpha], FLOAT_ARR_TO_V4([convolveOp getImgEdge]),
+                        convolveOp.kernelSize, convolveOp.isEdgeZeroFill,
+                };
+                [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+                setSampler(encoder, renderOptions->interpolation, NO);
+
+                [encoder setFragmentBuffer:[convolveOp getBuffer] offset:0 atIndex:2];
+            } else if ([bufImgOp isKindOfClass:[MTLLookupOp class]]) {
+                MTLLookupOp * lookupOp = bufImgOp;
+                vertShader = @"vert_txt";
+                fragShader = @"frag_txt_op_lookup";
+
+                struct TxtFrameOpLookupUniforms uf = {
+                        [mtlc.composite getExtraAlpha], FLOAT_ARR_TO_V4([lookupOp getOffset]),
+                        lookupOp.isUseSrcAlpha, lookupOp.isNonPremult,
+                };
+                [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+                setSampler(encoder, renderOptions->interpolation, NO);
+                [encoder setFragmentTexture:[lookupOp getLookupTexture] atIndex: 1];
             }
         } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
             vertShader = @"vert_txt_tp";
