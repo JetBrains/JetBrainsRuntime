@@ -226,6 +226,99 @@ fragment half4 frag_txt_op_rescale(
     //"    gl_FragColor = result * gl_Color;"                       // modulate with gl_Color in order to apply extra alpha
 }
 
+fragment half4 frag_txt_op_convolve(
+        TxtShaderInOut vert [[stage_in]],
+        texture2d<float, access::sample> srcTex [[texture(0)]],
+        constant TxtFrameOpConvolveUniforms& uniforms [[buffer(1)]],
+        const device float3 * kernelVals [[buffer(2)]],
+        sampler textureSampler [[sampler(0)]]
+) {
+    float4 sum = float4(0, 0, 0, 0);
+    if (vert.texCoords[0] < uniforms.imgEdge[0]
+        || vert.texCoords[1] < uniforms.imgEdge[1]
+        || vert.texCoords[0] > uniforms.imgEdge[2]
+        || vert.texCoords[1] > uniforms.imgEdge[3]
+    ) {
+        if (!uniforms.isEdgeZeroFill) {
+            sum = srcTex.sample(textureSampler, vert.texCoords);
+        }
+    }
+
+    for (int i = 0; i < uniforms.kernelSize; i++) {
+        float3 kern = kernelVals[i];
+        float2 pos = float2(vert.texCoords.x + kern.x, vert.texCoords.y + kern.y);
+        float4 pixCol = srcTex.sample(textureSampler, pos);
+        sum.r += kern.z * pixCol.r;
+        sum.g += kern.z * pixCol.g;
+        sum.b += kern.z * pixCol.b;
+        sum.a += kern.z * pixCol.a;
+    }
+
+    return half4(sum.r, sum.g, sum.b, sum.a*uniforms.extraAlpha);
+
+    // NOTE: GL-shader multiplies result with glColor (in order to apply extra alpha), probably it's better to do the
+    // same here.
+    //
+    // GL-shader impl:
+    //"    if (any(lessThan(gl_TexCoord[0].st, imgEdge.xy)) ||"
+    //"        any(greaterThan(gl_TexCoord[0].st, imgEdge.zw)))"
+    //"    {"
+    //"        %s"      // (placeholder for edge condition code)
+    //"    } else {"
+    //"        sum = vec4(0.0);"
+    //"        for (i = 0; i < MAX_KERNEL_SIZE; i++) {"
+    //"            sum +="
+    //"                kernelVals[i].z *"
+    //"                texture%s(baseImage,"
+    //"                          gl_TexCoord[0].st + kernelVals[i].xy);"
+    //"        }"
+    //"    }"
+    //""
+    //"    gl_FragColor = sum * gl_Color;" // modulate with gl_Color in order to apply extra alpha
+}
+
+fragment half4 frag_txt_op_lookup(
+        TxtShaderInOut vert [[stage_in]],
+        texture2d<float, access::sample> srcTex [[texture(0)]],
+        texture2d<float, access::sample> lookupTex [[texture(1)]],
+        constant TxtFrameOpLookupUniforms& uniforms [[buffer(1)]],
+        sampler textureSampler [[sampler(0)]]
+) {
+    float4 srcColor = srcTex.sample(textureSampler, vert.texCoords);
+    float4 srcIndex = srcColor - uniforms.offset;
+    const float2 posR = float2(srcIndex.r, 0.125);
+    const float2 posG = float2(srcIndex.g, 0.375);
+    const float2 posB = float2(srcIndex.b, 0.625);
+
+    float4 lookupR = lookupTex.sample(textureSampler, posR);
+    float4 lookupG = lookupTex.sample(textureSampler, posG);
+    float4 lookupB = lookupTex.sample(textureSampler, posB);
+
+    const float a = uniforms.isUseSrcAlpha ? srcColor.a : lookupTex.sample(textureSampler, float2(srcIndex.a, 0.875)).a;
+
+    // TODO: check uniforms.isNonPremult and pre-multiply if necessary
+    return half4(lookupR.a, lookupG.a, lookupB.a, a*uniforms.extraAlpha);
+
+    // NOTE: GL-shader multiplies result with glColor (in order to apply extra alpha), probably it's better to do the
+    // same here.
+    //
+    // GL-shader impl:
+    //"    vec4 srcColor = texture%s(baseImage, gl_TexCoord[0].st);"
+    //"    %s"                                  // (placeholder for un-premult code)
+    //"    vec4 srcIndex = srcColor - offset;"  // subtract offset from original index
+    //
+    //      // use source value as input to lookup table (note that
+    //      // "v" texcoords are hardcoded to hit texel centers of
+    //      // each row/band in texture)
+    //"    vec4 result;"
+    //"    result.r = texture2D(lookupTable, vec2(srcIndex.r, 0.125)).r;"
+    //"    result.g = texture2D(lookupTable, vec2(srcIndex.g, 0.375)).r;"
+    //"    result.b = texture2D(lookupTable, vec2(srcIndex.b, 0.625)).r;"
+    //"    %s"                                  // (placeholder for alpha store code)
+    //"    %s"                                  // (placeholder for re-premult code)
+    //"    gl_FragColor = result * gl_Color;"   // modulate with gl_Color in order to apply extra alpha
+}
+
 fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
                          constant GradFrameUniforms& uniforms [[buffer(0)]]) {
     float3 v = float3(in.position.x, in.position.y, 1);
