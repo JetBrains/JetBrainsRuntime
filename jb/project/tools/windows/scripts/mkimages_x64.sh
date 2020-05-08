@@ -21,6 +21,9 @@ JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
 bundle_type=$4
+JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
+
+source jb/project/tools/common.sh
 
 function create_jbr {
 
@@ -68,6 +71,8 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --disable-warnings-as-errors \
   --disable-debug-symbols \
   --with-target-bits=64 \
+  --with-vendor-name="${VENDOR_NAME}" \
+  --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
   --with-version-pre= \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
@@ -92,6 +97,8 @@ JBRSDK_BUNDLE=jbrsdk
 
 rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE} && rsync -a --exclude demo --exclude sample ${JSDK}/ ${JBRSDK_BUNDLE} || exit 1
 cp -R jcef_win_x64/* ${JBRSDK_BUNDLE}/bin
+sed 's/JBR/JBRSDK/g' ${JSDK}/release > release
+mv release ${JBRSDK_BUNDLE}/release
 
 JBR_BUNDLE=jbr_${bundle_type}
 create_jbr ${bundle_type}
