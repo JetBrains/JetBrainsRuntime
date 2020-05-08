@@ -168,6 +168,7 @@ java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java                 
 java/awt/Focus/CloseDialogActivateOwnerTest/CloseDialogActivateOwnerTest.java       7124555 macosx-all,linux-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252 macosx-all
 java/awt/Focus/DeiconifiedFrameLoosesFocus/DeiconifiedFrameLoosesFocus.html         8015886 macosx-all,linux-all
+java/awt/Focus/DisposedWindow/DisposeDialogNotActivateOwnerTest/DisposeDialogNotActivateOwnerTest.java 8234332 linux-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java                   8081489 generic-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.html                         JRE-898 macosx-all,windows-all
 java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java 8198619,8213522 macosx-all,linux-all,windows-all
@@ -219,12 +220,14 @@ java/awt/Graphics/CopyScaledArea/CopyScaledAreaTest.java                        
 java/awt/Graphics/LineClipTest.java                                                 JRE-898 macosx-all
 java/awt/Graphics2D/CopyAreaOOB.java                                                7001973 windows-all,macosx-all,linux-all
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java               8197796 generic-all
+java/awt/Graphics2D/DrawString/LCDTextSrcEa.java                                    8223543 generic-all
 java/awt/Graphics2D/DrawString/RotTransText.java                                    8197797 generic-all
 java/awt/Graphics2D/DrawString/TextRenderingTest.java                               8169464 windows-all
 java/awt/Graphics2D/FillTexturePaint/FillTexturePaint.java                          8169463 windows-all
 java/awt/Graphics2D/FlipDrawImage/FlipDrawImage.java                                8169462 windows-all
 java/awt/Graphics2D/ScaledTransform/ScaledTransform.java                            8165951 windows-all,linux-all
 java/awt/GraphicsDevice/CheckDisplayModes.java                                      8213119 macosx-all
+java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java                              7099223 windows-all,macosx-all,linux-all
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                              8197814 macosx-all,linux-all,windows-all
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java              8197814 macosx-all,linux-all,windows-all
 java/awt/GridLayout/LayoutExtraGaps/LayoutExtraGaps.java                            8000171 windows-all
@@ -550,7 +553,7 @@ java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java             
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java          7124407 macosx-all,windows-all,linux-all
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java     8157170 macosx-all,windows-all
 java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.html                         8148041 linux-all
-java/awt/MouseInfo/GetPointerInfoTest.java                                          8158798 windows-all
+java/awt/MouseInfo/GetPointerInfoTest.java                                          8130741 macosx-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java             7124230 generic-all
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java           8155744 windows-all,linux-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.html                     8168132 macosx-all,linux-all
@@ -635,9 +638,9 @@ java/awt/event/HierarchyEvent/AncestorResized/AncestorResized.java              
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java                          8168646 generic-all
 java/awt/event/KeyEvent/CorrectTime/CorrectTime.java                                6626492 generic-all
 java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java                   8194045 generic-all
-java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java                    8169476 windows-all,linux-all
+java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java                    8169476 windows-all,linux-all,macosx-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java            8129778 generic-all
-java/awt/event/KeyEvent/KeyChar/KeyCharTest.java                                    8169474 windows-all,linux-all
+java/awt/event/KeyEvent/KeyChar/KeyCharTest.java                                    8169474 macosx-all,windows-all,linux-all
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java                                8129778 generic-all
 java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java                  8194045 generic-all
 java/awt/event/MouseEvent/EventTimeInFuture/EventTimeInFuture.java                  8032254,6626492 linux-all

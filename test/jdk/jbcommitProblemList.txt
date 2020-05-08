@@ -21,7 +21,6 @@ java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.html              
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                                nobug linux-all,windows-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java   nobug macosx-all,linux-all,windows-all
 java/awt/Focus/ContainerFocusAutoTransferTest/ContainerFocusAutoTransferTest.java           nobug macosx-all
-java/awt/Focus/DisposedWindow/DisposeDialogNotActivateOwnerTest/DisposeDialogNotActivateOwnerTest.java nobug macosx-all
 java/awt/Focus/FocusEmbeddedFrameTest/FocusEmbeddedFrameTest.java                           nobug windows-all
 java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java                                 nobug macosx-all,windows-all
 java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java                                   nobug macosx-all
@@ -118,8 +117,6 @@ java/awt/dnd/RemoveDropTargetCrashTest/RemoveDropTargetCrashTest.java           
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java                  nobug macosx-all,windows-all,linux-all
 java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java                                 nobug macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java                                          nobug macosx-all
-java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java                            nobug macosx-all,windows-all
-java/awt/event/KeyEvent/KeyChar/KeyCharTest.java                                            nobug macosx-all,windows-all
 java/awt/event/KeyEvent/KeyTyped/CtrlASCII.html                                             nobug linux-all,windows-all
 java/awt/event/KeyEvent/RobotCrash/RobotCrash.java                                          nobug linux-all,windows-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java                      nobug macosx-all,windows-all,linux-all
