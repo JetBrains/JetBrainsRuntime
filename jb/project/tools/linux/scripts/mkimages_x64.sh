@@ -21,6 +21,9 @@ JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
 bundle_type=$4
+JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
+
+source jb/project/tools/common.sh
 
 function create_jbr {
 
@@ -79,6 +82,8 @@ esac
 sh configure \
   --disable-warnings-as-errors \
   --with-debug-level=release \
+  --with-vendor-name="${VENDOR_NAME}" \
+  --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
   --with-version-pre= \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
@@ -104,6 +109,9 @@ if [[ "$bundle_type" == *jcef* ]]; then
 fi
 if [ "$bundle_type" == "jfx_jcef" ]; then
   echo Creating $JBSDK.tar.gz ...
+  sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
+  mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
+
   tar -pcf $JBSDK.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
     -C $BASE_DIR $JBRSDK_BUNDLE || exit $?
   gzip $JBSDK.tar || exit $?
