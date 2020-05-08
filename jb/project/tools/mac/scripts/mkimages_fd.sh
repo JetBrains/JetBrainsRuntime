@@ -21,14 +21,20 @@ JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
 
+JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
+
+source jb/project/tools/common.sh
+
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 
 sh configure \
   --disable-warnings-as-errors \
   --with-debug-level=fastdebug \
-  --with-version-build=$JDK_BUILD_NUMBER \
+  --with-vendor-name="${VENDOR_NAME}" \
+  --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
   --with-version-pre= \
-  --with-version-opt=b$build_number \
+  --with-version-build=${JDK_BUILD_NUMBER} \
+  --with-version-opt=b${build_number} \
   --with-import-modules=./modular-sdk \
   --with-boot-jdk=`/usr/libexec/java_home -v 11` \
   --enable-cds=yes || exit $?
@@ -48,7 +54,9 @@ cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
 echo Creating $JBSDK.tar.gz ...
 cp -a jcef_mac/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
-cp -a jcef_mac/Helpers    $BASE_DIR/$JBRSDK_BUNDLE/Contents
+
+sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
+mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
 
 COPYFILE_DISABLE=1 \
   tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
@@ -76,7 +84,6 @@ grep -v "^JAVA_VERSION" $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/release | grep -v
 cp -R $BASE_DIR/$JBRSDK_BUNDLE/Contents/MacOS $JRE_CONTENTS
 cp $BASE_DIR/$JBRSDK_BUNDLE/Contents/Info.plist $JRE_CONTENTS
 cp -a jcef_mac/Frameworks ${JRE_CONTENTS} || exit $?
-cp -a jcef_mac/Helpers    ${JRE_CONTENTS} || exit $?
 
 
 echo Creating $JBR.tar.gz ...
