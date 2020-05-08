@@ -21,14 +21,21 @@ JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
 
+JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
+
+source jb/project/tools/common.sh
+
+
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 
 sh configure \
   --disable-warnings-as-errors \
   --with-debug-level=fastdebug \
-  --with-version-build=$JDK_BUILD_NUMBER \
+  --with-vendor-name="${VENDOR_NAME}" \
+  --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
   --with-version-pre= \
-  --with-version-opt=b$build_number \
+  --with-version-build=${JDK_BUILD_NUMBER} \
+  --with-version-opt=b${build_number} \
   --with-import-modules=./modular-sdk \
   --enable-cds=yes || exit $?
 make clean CONF=linux-x86_64-normal-server-fastdebug || exit $?
@@ -47,6 +54,9 @@ cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 cp -R jcef_linux_x64/* $BASE_DIR/$JBRSDK_BUNDLE/lib || exit $?
 
 echo Creating $JBSDK.tar.gz ...
+sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
+mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
+
 tar -pcf $JBSDK.tar \
   --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
   -C $BASE_DIR ${JBRSDK_BUNDLE} || exit $?
