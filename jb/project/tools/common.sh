@@ -1,0 +1,3 @@
+VENDOR_NAME="JetBrains s.r.o."
+VENDOR_VERSION_STRING="JBR-${JBSDK_VERSION_WITH_DOTS}.${JDK_BUILD_NUMBER}-${build_number}"
+[ -z ${bundle_type} ] || VENDOR_VERSION_STRING="${VENDOR_VERSION_STRING}-${bundle_type}"
