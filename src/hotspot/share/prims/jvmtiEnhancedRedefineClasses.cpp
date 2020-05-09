@@ -467,6 +467,7 @@ public:
 void VM_EnhancedRedefineClasses::doit() {
   Thread *thread = Thread::current();
 
+#if INCLUDE_CDS
   if (UseSharedSpaces) {
     // Sharing is enabled so we remap the shared readonly space to
     // shared readwrite, private just in case we need to redefine
@@ -478,6 +479,7 @@ void VM_EnhancedRedefineClasses::doit() {
       return;
     }
   }
+#endif
 
   // Mark methods seen on stack and everywhere else so old methods are not
   // cleaned up if they're on the stack.
