@@ -45,6 +45,11 @@
 #pragma comment (lib, "Dwmapi.lib")
 #pragma comment (lib, "Shcore.lib")
 
+#define DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 19
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+
 /* IMPORTANT! Read the README.JNI file for notes on JNI converted AWT code.
  */
 
@@ -1834,6 +1839,11 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
     if (!wParam || !HasCustomDecoration()) {
         return AwtWindow::WmNcCalcSize(wParam, lpncsp, retVal);
     }
+    BOOL isUseImmersiveDarkMode{ TRUE };
+    HRESULT result = DwmSetWindowAttribute(GetHWnd(), DWMWA_USE_IMMERSIVE_DARK_MODE, &isUseImmersiveDarkMode, sizeof(isUseImmersiveDarkMode));
+    if (FAILED(result))
+        DwmSetWindowAttribute(GetHWnd(), DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, &isUseImmersiveDarkMode, sizeof(isUseImmersiveDarkMode));
+
     RECT insets;
 
     GetSysInsets(&insets, this);
@@ -1932,9 +1942,10 @@ MsgRouting AwtFrame::WmPaint(HDC hDC)
 
         ::FillRect(dc, &rcTopBorder, GetStockBrush(BLACK_BRUSH));
     }
-    AwtWindow::WmPaint(dc);
 
     EndPaint(GetHWnd(), &ps);
+
+    AwtWindow::WmPaint(dc);
 
     return mrConsume;
 }
