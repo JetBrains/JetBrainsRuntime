@@ -1917,7 +1917,7 @@ void AwtFrame::UpdateFrameMargins()
     //  bug and it's what a lot of Win32 apps that customize the title bar do
     //  so it should work fine.
 
-    margins.cyTopHeight = -frame.top;
+    margins.cyTopHeight = frame.top;
 
     // Extend the frame into the client area. microsoft/terminal#2735 - Just log
     // the failure here, don't crash. If DWM crashes for any reason, calling
@@ -1945,9 +1945,7 @@ MsgRouting AwtFrame::WmPaint(HDC hDC)
 
     EndPaint(GetHWnd(), &ps);
 
-    AwtWindow::WmPaint(dc);
-
-    return mrConsume;
+    return AwtWindow::WmPaint(dc);
 }
 
 MsgRouting AwtFrame::WmNcHitTest(int x, int y, LRESULT& retVal)
