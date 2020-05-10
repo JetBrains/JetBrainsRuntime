@@ -48,7 +48,7 @@ function create_jbr {
     cp -R jcef_win_x64/* ${JBR_BUNDLE}/bin
   fi
   echo Modifying release info ...
-  grep -v \"^JAVA_VERSION\" ${JSDK}/release | grep -v \"^MODULES\" >> ${JBR_BUNDLE}/release
+  cat ${JSDK}/release | tr -d '\r' | grep -v 'JAVA_VERSION' | grep -v 'MODULES' >> ${JBR_BUNDLE}/release
 }
 
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
