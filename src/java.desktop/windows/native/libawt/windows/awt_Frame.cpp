@@ -1839,17 +1839,11 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
     if (!wParam || !HasCustomDecoration()) {
         return AwtWindow::WmNcCalcSize(wParam, lpncsp, retVal);
     }
-    BOOL isUseImmersiveDarkMode{ TRUE };
-    HRESULT result = DwmSetWindowAttribute(GetHWnd(), DWMWA_USE_IMMERSIVE_DARK_MODE, &isUseImmersiveDarkMode, sizeof(isUseImmersiveDarkMode));
-    if (FAILED(result))
-        DwmSetWindowAttribute(GetHWnd(), DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, &isUseImmersiveDarkMode, sizeof(isUseImmersiveDarkMode));
 
     RECT insets;
 
     GetSysInsets(&insets, this);
     RECT* rect = &lpncsp->rgrc[0];
-
-    UpdateFrameMargins();
 
     rect->left += insets.left;
     rect->right -= insets.right;
@@ -1929,23 +1923,31 @@ void AwtFrame::UpdateFrameMargins()
 
 MsgRouting AwtFrame::WmPaint(HDC hDC)
 {
+    BOOL isUseImmersiveDarkMode{ TRUE };
+    HRESULT result1 = DwmSetWindowAttribute(GetHWnd(), DWMWA_USE_IMMERSIVE_DARK_MODE, &isUseImmersiveDarkMode, sizeof(isUseImmersiveDarkMode));
+    if (FAILED(result1))
+        DwmSetWindowAttribute(GetHWnd(), DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, &isUseImmersiveDarkMode, sizeof(isUseImmersiveDarkMode));
+
+    UpdateFrameMargins();
+
+    HRGN rgn = ::CreateRectRgn(0,0,1,1);
+    int updated = ::GetUpdateRgn(GetHWnd(), rgn, FALSE);
+
     PAINTSTRUCT ps;
-
     auto dc = BeginPaint(GetHWnd(), &ps);
-
     const int topBorderHeight = 1;
-
     if (ps.rcPaint.top < topBorderHeight)
     {
         RECT rcTopBorder = ps.rcPaint;
         rcTopBorder.bottom = topBorderHeight;
-
         ::FillRect(dc, &rcTopBorder, GetStockBrush(BLACK_BRUSH));
     }
-
     EndPaint(GetHWnd(), &ps);
 
-    return AwtWindow::WmPaint(dc);
+    ::InvalidateRgn(GetHWnd(), rgn, FALSE);
+
+    auto result = AwtWindow::WmPaint(dc);
+    return result;
 }
 
 MsgRouting AwtFrame::WmNcHitTest(int x, int y, LRESULT& retVal)
