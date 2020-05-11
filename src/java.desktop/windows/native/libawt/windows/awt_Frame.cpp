@@ -1892,8 +1892,20 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
 void AwtFrame::UpdateFrameMargins()
 {
     MARGINS margins = {};
+    Devices::InstanceAccess devices;
+    HMONITOR hmon;
+    if (::IsZoomed(GetHWnd())) {
+        WINDOWPLACEMENT wp;
+        ::GetWindowPlacement(GetHWnd(), &wp);
+        hmon = ::MonitorFromRect(&wp.rcNormalPosition, MONITOR_DEFAULTTONEAREST);
+    } else {
+        // this method can return wrong monitor in a zoomed state in multi-dpi env
+        hmon = ::MonitorFromWindow(GetHWnd(), MONITOR_DEFAULTTONEAREST);
+    }
+    AwtWin32GraphicsDevice* device = devices->GetDevice(AwtWin32GraphicsDevice::GetScreenFromHMONITOR(hmon));
+    int dpi = device ? device->GetScaleX() * 96 : 96;
     RECT frame = {};
-    GetSysInsets(&frame, this);
+    AwtToolkit::AdjustWindowRectExForDpi(&frame, WS_OVERLAPPEDWINDOW & ~WS_CAPTION, FALSE, NULL, dpi);
 
     // We removed the whole top part of the frame (see handling of
     // WM_NCCALCSIZE) so the top border is missing now. We add it back here.
@@ -1911,7 +1923,7 @@ void AwtFrame::UpdateFrameMargins()
     //  bug and it's what a lot of Win32 apps that customize the title bar do
     //  so it should work fine.
 
-    margins.cyTopHeight = 10.0;
+    margins.cyTopHeight = -frame.top;
 
     // Extend the frame into the client area. microsoft/terminal#2735 - Just log
     // the failure here, don't crash. If DWM crashes for any reason, calling
