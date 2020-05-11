@@ -963,6 +963,7 @@ javax/swing/JTabbedPane/4361477/bug4361477.java                                 
 javax/swing/JTabbedPane/4624207/bug4624207.java                                     8197552,8064922 macosx-all,windows-all,linux-all
 javax/swing/JTabbedPane/7024235/Test7024235.java                                    8028281,JBR-1977 macosx-all,linux-aarch64
 javax/swing/JTabbedPane/8007563/Test8007563.java                                    8051591 generic-all
+javax/swing/JTabbedPane/TabProb.java                                                8236635 linux-all
 javax/swing/JTable/4235420/bug4235420.java                                          8079127 generic-all
 javax/swing/JTable/6263446/bug6263446.java                                          8169959 macosx-all,windows-all
 javax/swing/JTable/6735286/bug6735286.java                                          8198398 generic-all
