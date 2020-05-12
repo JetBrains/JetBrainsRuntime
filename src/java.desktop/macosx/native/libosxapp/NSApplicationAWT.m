@@ -452,6 +452,35 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
     seenDummyEventLock = nil;
 }
 
+//Provide info from unhandled ObjectiveC exceptions
+- (void)_crashOnException:(NSException *)exception {
+    NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
+    [info appendString:
+            [NSString stringWithFormat:
+                    @"Exception in NSApplicationAWT:\n %@\n",
+                    exception]];
+
+    NSArray<NSString *> *stack = [exception callStackSymbols];
+
+    for (int i = 0; i < stack.count; i++) {
+        [info appendString:stack[i]];
+        [info appendString:@"\n"];
+    }
+
+    NSLog(@"%@", info);
+
+    NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+    int processID = [processInfo processIdentifier];
+    NSString* fileName = [NSString stringWithFormat:@"jbr_err_pid%d.log", processID];
+
+    [info writeToFile:fileName
+           atomically:YES
+             encoding:NSUTF8StringEncoding
+                error:NULL];
+    // Use SIGILL to generate hs_err_ file as well
+    kill(processID, SIGILL);
+}
+
 @end
 
 
