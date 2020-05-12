@@ -11966,15 +11966,16 @@ instruct ShouldNotReachHere( )
   match(Halt);
   ins_cost(CALL_COST);
 
-  size(4);
   // Use the following format syntax
   format %{ "ShouldNotReachHere" %}
   ins_encode %{
+    if (is_reachable()) {
 #ifdef AARCH64
-    __ dpcs1(0xdead);
+      __ dpcs1(0xdead);
 #else
-    __ udf(0xdead);
+      __ udf(0xdead);
 #endif
+    }
   %}
   ins_pipe(tail_call);
 %}
