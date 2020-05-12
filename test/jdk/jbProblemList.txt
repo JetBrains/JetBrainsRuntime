@@ -1038,6 +1038,7 @@ javax/swing/text/DefaultEditorKit/4278839/bug4278839.java                       
 javax/swing/text/DevanagariEditor.java                                              8198397 generic-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java                              8050988 generic-all
 javax/swing/text/JTextComponent/5074573/bug5074573.java                             7153690,8196100,8196100,8072110 macosx-all,windows-all,linux-all
+javax/swing/text/JTextComponent/6361367/bug6361367.java                             8233569 macosx-all,windows-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java                            8214220,8172887 macosx-all,windows-all,linux-all
 javax/swing/text/StyledEditorKit/8016833/bug8016833.java                            8199055 generic-all
 javax/swing/text/TableView/TableViewLayoutTest.java                                 8194936 linux-all
