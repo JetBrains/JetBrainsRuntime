@@ -78,7 +78,15 @@ public:
     }
   }
 
-  void process_by_vmthread(JavaThread* target);
+  enum ProcessResult {
+    _no_operation = 0,
+    _not_safe,
+    _state_busy,
+    _success,
+    _number_states
+  };
+
+  HandshakeState::ProcessResult process_by_vmthread(JavaThread* target);
 };
 
 #endif // SHARE_VM_RUNTIME_HANDSHAKE_HPP
