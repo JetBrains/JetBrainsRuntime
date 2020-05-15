@@ -510,8 +510,41 @@ else
     LIBFREETYPE_LIBS := -lfreetype
   endif
 
+  LIBFREETYPE_USE_LIBPNG := false
+  ifeq ($(OPENJDK_TARGET_OS), linux)
+    LIBFREETYPE_USE_LIBPNG := true
+  endif
+
+  BUILD_LIBFREETYPE_LIBS :=
+  LIBFREETYPE_EXCLUDES :=
+  BUILD_LIBFREETYPE_EXTRA_SRC :=
+  ifeq ($(LIBFREETYPE_USE_LIBPNG), true)
+    BUILD_LIBFREETYPE_CFLAGS += -DPNG_NO_MMX_CODE -DPNG_ARM_NEON_OPT=0 -DPNG_ARM_NEON_IMPLEMENTATION=0 \
+                                -DFT_CONFIG_OPTION_USE_PNG $(PNG_CFLAGS) $(LIBZ_CFLAGS)
+
+    # For now, we just use libpng from libsplashscreen
+    # TODO move libpng out of libsplashscreen
+    ifeq ($(USE_EXTERNAL_LIBPNG), false)
+      BUILD_LIBFREETYPE_HEADER_DIRS += $(TOPDIR)/src/$(MODULE)/share/native/libsplashscreen/libpng
+    else
+      LIBFREETYPE_EXCLUDES += libpng
+    endif
+
+    BUILD_LIBFREETYPE_EXTRA_SRC += $(TOPDIR)/src/$(MODULE)/share/native/libsplashscreen/libpng
+    ifeq ($(USE_EXTERNAL_LIBZ), false)
+      BUILD_LIBFREETYPE_EXTRA_SRC += java.base:libzip/zlib
+    endif
+
+    ifeq ($(OPENJDK_TARGET_OS), linux)
+      BUILD_LIBFREETYPE_LIBS += $(LIBM)
+    endif
+    BUILD_LIBFREETYPE_LIBS += $(PNG_LIBS) $(LIBZ_LIBS)
+  endif
+
   $(eval $(call SetupJdkLibrary, BUILD_LIBFREETYPE, \
       NAME := freetype, \
+      EXTRA_SRC := $(BUILD_LIBFREETYPE_EXTRA_SRC), \
+      EXCLUDES := $(LIBFREETYPE_EXCLUDES), \
       OPTIMIZATION := HIGHEST, \
       CFLAGS := $(CFLAGS_JDKLIB) \
           $(BUILD_LIBFREETYPE_CFLAGS), \
@@ -523,6 +556,7 @@ else
       DISABLED_WARNINGS_gcc := implicit-fallthrough cast-function-type bad-function-cast, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \
           $(call SET_SHARED_LIBRARY_ORIGIN), \
+      LIBS := $(BUILD_LIBFREETYPE_LIBS), \
   ))
 
   TARGETS += $(BUILD_LIBFREETYPE)

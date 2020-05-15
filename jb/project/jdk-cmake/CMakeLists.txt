@@ -6,6 +6,7 @@ include(../java-common.cmake)
 include_directories(
         ../../../src/java.base/share/native/include
         ../../../src/java.base/share/native/libjava
+        ../../../src/java.base/share/native/libzip/zlib
         ../../../src/java.desktop/share/native/common
         ../../../src/java.desktop/share/native/common/awt/debug
         ../../../src/java.desktop/share/native/common/font
@@ -58,6 +59,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux"
             ../../../src/java.desktop/unix/native/common/font
             ../../../src/java.desktop/unix/native/common/java2d/opengl
             ../../../src/java.desktop/unix/native/common/java2d/opengl/J2D_GL
+            ../../../src/java.desktop/unix/native/common/java2d/x11
             ../../../src/java.desktop/unix/native/common
             ../../../src/java.desktop/unix/native/include
             ../../../src/java.desktop/unix/native/libawt/java2d
@@ -1026,7 +1028,10 @@ set(SOURCE_FILES
         ../../../src/jdk.jdwp.agent/share/native/include/jdwpTransport.h
         ../../../src/hotspot/share/include/jmm.h
         ../../../src/java.base/share/native/include/jni.h
-        ../../../src/java.base/share/native/include/jvmticmlr.h)
+        ../../../src/java.base/share/native/include/jvmticmlr.h
+        ../../../src/java.base/share/native/libzip/zlib/zutil.c
+        ../../../src/java.base/share/native/libzip/zlib/inflate.c)
+
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(SOURCE_FILES
@@ -1356,6 +1361,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux"
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/sun_awt_X11_GtkFileDialogPeer.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_GraphicsEnv.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_InputMethod.c
+            ../../../src/java.desktop/unix/native/libawt_xawt/java2d/x11/XRBackendNative.c
             ../../../src/java.desktop/unix/native/libfontmanager/X11FontScaler.c
             ../../../src/java.desktop/unix/native/libfontmanager/X11TextRenderer.c
             ../../../src/java.desktop/unix/native/libsplashscreen/splashscreen_config.h

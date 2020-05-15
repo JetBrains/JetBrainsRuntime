@@ -17,7 +17,7 @@
 /*
  * @test
  * @summary Emoji glyphs drawing on macOS
- * @requires os.family == "mac"
+ * @requires os.family == "mac" | os.family == "linux"
  */
 
 import java.awt.Color;
@@ -30,7 +30,8 @@ import javax.imageio.ImageIO;
 
 public class EmojiDrawingTest {
     private static final String EMOJI = new String(Character.toChars(0x1f600));
-    private static Font FONT = new Font("Menlo", Font.PLAIN, 12);
+    private static Font FONT = new Font(
+            System.getProperty("os.name").toLowerCase().contains("mac") ?"Menlo" : "Noto Color Emoji", Font.PLAIN, 12);
     private static final int IMAGE_WIDTH = 20;
     private static final int IMAGE_HEIGHT = 20;
     private static final int GLYPH_X = 2;
