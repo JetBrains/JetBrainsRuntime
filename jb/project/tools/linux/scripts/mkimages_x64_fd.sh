@@ -38,11 +38,11 @@ sh configure \
   --with-version-opt=b${build_number} \
   --with-import-modules=./modular-sdk \
   --enable-cds=yes || exit $?
-make clean CONF=linux-x86_64-normal-server-fastdebug || exit $?
-make images CONF=linux-x86_64-normal-server-fastdebug || exit $?
+make clean CONF=linux-x86_64-server-fastdebug || exit $?
+make images CONF=linux-x86_64-server-fastdebug || exit $?
 
 JBSDK=${JBRSDK_BASE_NAME}-linux-x64-fastdebug-b${build_number}
-BASE_DIR=build/linux-x86_64-normal-server-fastdebug/images
+BASE_DIR=build/linux-x86_64-server-fastdebug/images
 JSDK=${BASE_DIR}/jdk
 JBRSDK_BUNDLE=jbrsdk
 
