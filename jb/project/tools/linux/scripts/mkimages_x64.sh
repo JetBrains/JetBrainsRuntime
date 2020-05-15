@@ -89,17 +89,18 @@ sh configure \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
   --with-import-modules=./modular-sdk \
+  --with-boot-jdk=${BOOT_JDK} \
   --enable-cds=yes || exit $?
 
-make images CONF=linux-x86_64-normal-server-release || exit $?
+make images CONF=linux-x86_64-server-release || exit $?
 
-JSDK=build/linux-x86_64-normal-server-release/images/jdk
+JSDK=build/linux-x86_64-server-release/images/jdk
 JBSDK=$JBRSDK_BASE_NAME-linux-x64-b$build_number
 
 echo Fixing permissions
 chmod -R a+r $JSDK
 
-BASE_DIR=build/linux-x86_64-normal-server-release/images
+BASE_DIR=build/linux-x86_64-server-release/images
 JBRSDK_BUNDLE=jbrsdk
 
 rm -rf $BASE_DIR/$JBRSDK_BUNDLE
