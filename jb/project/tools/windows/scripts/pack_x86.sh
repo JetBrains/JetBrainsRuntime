@@ -24,7 +24,7 @@ build_number=$3
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 JBR_BASE_NAME=jbr-$JBSDK_VERSION
 
-IMAGES_DIR=build/windows-x86-normal-server-release/images
+IMAGES_DIR=build/windows-x86-server-release/images
 JSDK=$IMAGES_DIR/jdk
 JBSDK=$JBRSDK_BASE_NAME-windows-x86-b$build_number
 BASE_DIR=.
