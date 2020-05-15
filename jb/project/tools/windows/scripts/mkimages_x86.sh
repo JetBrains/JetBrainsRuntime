@@ -42,11 +42,11 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --with-boot-jdk=${BOOT_JDK} \
   --disable-ccache \
   --enable-cds=yes || exit 1
-make clean CONF=windows-x86-normal-server-release || exit 1
-make LOG=info images CONF=windows-x86-normal-server-release test-image || exit 1
+make clean CONF=windows-x86-server-release || exit 1
+make LOG=info images CONF=windows-x86-server-release test-image || exit 1
 
 JBSDK=${JBRSDK_BASE_NAME}-windows-x86-b${build_number}
-BASE_DIR=build/windows-x86-normal-server-release/images
+BASE_DIR=build/windows-x86-server-release/images
 JSDK=${BASE_DIR}/jdk
 JBRSDK_BUNDLE=jbrsdk
 
