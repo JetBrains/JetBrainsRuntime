@@ -84,16 +84,16 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --enable-cds=yes || exit 1
 
 if [ "$bundle_type" == "jfx_jcef" ]; then
-  make LOG=info images CONF=windows-x86_64-normal-server-release test-image || exit 1
+  make LOG=info images CONF=windows-x86_64-server-release test-image || exit 1
 else
-  make LOG=info images CONF=windows-x86_64-normal-server-release || exit 1
+  make LOG=info images CONF=windows-x86_64-server-release || exit 1
 fi
 
-JSDK=build/windows-x86_64-normal-server-release/images/jdk
+JSDK=build/windows-x86_64-server-release/images/jdk
 if [[ "$bundle_type" == *jcef* ]]; then
   JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
 fi
-BASE_DIR=build/windows-x86_64-normal-server-release/images
+BASE_DIR=build/windows-x86_64-server-release/images
 JBRSDK_BUNDLE=jbrsdk
 
 rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE} && rsync -a --exclude demo --exclude sample ${JSDK}/ ${JBRSDK_BUNDLE} || exit 1
