@@ -36,6 +36,7 @@ sh configure \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
   --with-import-modules=./modular-sdk \
+  --with-boot-jdk=${BOOT_JDK} \
   --enable-cds=yes || exit $?
 make clean CONF=linux-aarch64-normal-server-release || exit $?
 make images CONF=linux-aarch64-normal-server-release test-image || exit $?
