@@ -95,12 +95,12 @@ sh configure \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
   --with-import-modules=./modular-sdk \
-  --with-boot-jdk=`/usr/libexec/java_home -v 11` \
+  --with-boot-jdk=`/usr/libexec/java_home -v 14` \
   --enable-cds=yes || exit $?
 
-make images CONF=macosx-x86_64-normal-server-release || exit $?
+make images CONF=macosx-x86_64-server-release || exit $?
 
-JSDK=build/macosx-x86_64-normal-server-release/images/jdk-bundle
+JSDK=build/macosx-x86_64-server-release/images/jdk-bundle
 JBSDK=${JBRSDK_BASE_NAME}-osx-x64-b${build_number}
 
 BASE_DIR=jre
@@ -132,6 +132,6 @@ if [ "$bundle_type" == "jfx_jcef" ]; then
   JBRSDK_TEST=$JBRSDK_BASE_NAME-osx-test-x64-b$build_number
 
   echo Creating $JBRSDK_TEST.tar.gz ...
-  COPYFILE_DISABLE=1 tar -pczf $JBRSDK_TEST.tar.gz -C build/macosx-x86_64-normal-server-release/images \
+  COPYFILE_DISABLE=1 tar -pczf $JBRSDK_TEST.tar.gz -C build/macosx-x86_64-server-release/images \
     --exclude='test/jdk/demos' test || exit $?
 fi
