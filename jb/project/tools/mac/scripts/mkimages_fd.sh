@@ -36,12 +36,12 @@ sh configure \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
   --with-import-modules=./modular-sdk \
-  --with-boot-jdk=`/usr/libexec/java_home -v 11` \
+  --with-boot-jdk=`/usr/libexec/java_home -v 14` \
   --enable-cds=yes || exit $?
-make clean CONF=macosx-x86_64-normal-server-fastdebug || exit $?
-make images CONF=macosx-x86_64-normal-server-fastdebug || exit $?
+make clean CONF=macosx-x86_64-server-fastdebug || exit $?
+make images CONF=macosx-x86_64-server-fastdebug || exit $?
 
-JSDK=build/macosx-x86_64-normal-server-fastdebug/images/jdk-bundle
+JSDK=build/macosx-x86_64-server-fastdebug/images/jdk-bundle
 JBSDK=${JBRSDK_BASE_NAME}-osx-x64-fastdebug-b${build_number}
 
 BASE_DIR=jre
