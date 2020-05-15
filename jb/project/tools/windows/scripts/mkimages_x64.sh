@@ -70,7 +70,7 @@ esac
 PATH="/usr/local/bin:/usr/bin:${PATH}"
 ./configure \
   --disable-warnings-as-errors \
-  --disable-debug-symbols \
+  --with-native-debug-symbols=none \
   --with-target-bits=64 \
   --with-vendor-name="${VENDOR_NAME}" \
   --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
