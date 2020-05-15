@@ -37,11 +37,11 @@ linux32 bash configure \
   --with-version-opt=b${build_number} \
   --with-boot-jdk=/jbrsdk-11.0.5-b1 \
   --enable-cds=yes || exit $?
-make clean CONF=linux-x86-normal-server-release || exit $?
-make images CONF=linux-x86-normal-server-release test-image || exit $?
+make clean CONF=linux-x86-server-release || exit $?
+make images CONF=linux-x86-server-release test-image || exit $?
 
 JBSDK=${JBRSDK_BASE_NAME}-linux-x86-b${build_number}
-BASE_DIR=build/linux-x86-normal-server-release/images
+BASE_DIR=build/linux-x86-server-release/images
 JSDK=${BASE_DIR}/jdk
 JBRSDK_BUNDLE=jbrsdk
 
