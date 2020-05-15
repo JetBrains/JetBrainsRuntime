@@ -38,11 +38,11 @@ sh configure \
   --with-import-modules=./modular-sdk \
   --with-boot-jdk=${BOOT_JDK} \
   --enable-cds=yes || exit $?
-make clean CONF=linux-aarch64-normal-server-release || exit $?
-make images CONF=linux-aarch64-normal-server-release test-image || exit $?
+make clean CONF=linux-aarch64-server-release || exit $?
+make images CONF=linux-aarch64-server-release test-image || exit $?
 
 JBSDK=${JBRSDK_BASE_NAME}-linux-aarch64-b${build_number}
-BASE_DIR=build/linux-aarch64-normal-server-release/images
+BASE_DIR=build/linux-aarch64-server-release/images
 JSDK=${BASE_DIR}/jdk
 JBRSDK_BUNDLE=jbrsdk
 
