@@ -4,9 +4,6 @@
 #   JBSDK_VERSION    - specifies the current version of OpenJDK e.g. 11_0_6
 #   JDK_BUILD_NUMBER - specifies the number of OpenJDK build or the value of --with-version-build argument to configure
 #   build_number     - specifies the number of JetBrainsRuntime build
-#   bundle_type      - specifies bundle to bu built; possible values:
-#                        jcef - the bundles 1) jbr with jcef+javafx, 2) jbrsdk and 3) test will be created
-#                        jfx  - the bundle 1) jbr with javafx only will be created
 #
 # jbrsdk-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
 # jbr-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
@@ -39,6 +36,7 @@ sh configure \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
   --with-import-modules=./modular-sdk \
+  --with-boot-jdk=${BOOT_JDK} \
   --enable-cds=yes || exit $?
 make clean CONF=linux-x86_64-server-fastdebug || exit $?
 make images CONF=linux-x86_64-server-fastdebug || exit $?
