@@ -104,6 +104,9 @@ module java.desktop {
     exports javax.swing.text.rtf;
     exports javax.swing.tree;
     exports javax.swing.undo;
+    exports com.sun.beans;
+    exports com.sun.beans.introspect;
+    exports com.sun.beans.util;
 
     // qualified exports may be inserted at build time
     // see make/GensrcModuleInfo.gmk
