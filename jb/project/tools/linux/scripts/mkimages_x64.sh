@@ -5,8 +5,8 @@
 #   JDK_BUILD_NUMBER - specifies the number of OpenJDK build or the value of --with-version-build argument to configure
 #   build_number     - specifies the number of JetBrainsRuntime build
 #   bundle_type      - specifies bundle to bu built; possible values:
-#                        jcef - the bundles 1) jbr with jcef+javafx, 2) jbrsdk and 3) test will be created
-#                        jfx  - the bundle 1) jbr with javafx only will be created
+#                        jcef - the bundles with jcef
+#                        empty - the bundles without jcef
 #
 # jbrsdk-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
 # jbr-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
@@ -27,23 +27,14 @@ source jb/project/tools/common.sh
 
 function create_jbr {
 
-  case "$1" in
-  "${bundle_type}_lw")
-    JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
-    grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
-    ;;
-  "jfx" | "jcef")
-    JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
-    cat modules.list > modules_tmp.list
-    ;;
-  "jfx_jcef")
-    JBR_BASE_NAME=jbr-${JBSDK_VERSION}
-    cat modules.list > modules_tmp.list
-    ;;
-  *)
-    echo "***ERR*** bundle was not specified" && exit 1
-    ;;
-  esac
+  if [ -z "${bundle_type}" ]; then
+    JBR_BUNDLE=jbr
+  else
+    JBR_BUNDLE=jbr_${bundle_type}
+  fi
+  JBR_BASE_NAME=${JBR_BUNDLE}-${JBSDK_VERSION}
+  cat modules.list > modules_tmp.list
+  rm -rf ${BASE_DIR}/jbr
   rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 
   JBR=$JBR_BASE_NAME-linux-x64-b$build_number
@@ -53,15 +44,13 @@ function create_jbr {
     --module-path $JSDK/jmods --no-man-pages --compress=2 \
     --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output $BASE_DIR/$JBR_BUNDLE
 
-  if [[ "$bundle_type" == *jcef* ]]; then
-    cp -R $BASE_DIR/$JBR_BUNDLE $BASE_DIR/jbr
+  if [ ! -z "${bundle_type}" ]; then
+    cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
     cp -R jcef_linux_x64/* $BASE_DIR/$JBR_BUNDLE/lib || exit $?
   fi
   grep -v "^JAVA_VERSION" $JSDK/release | grep -v "^MODULES" >> $BASE_DIR/$JBR_BUNDLE/release
 
   echo Creating $JBR.tar.gz ...
-  rm -rf ${BASE_DIR}/jbr
-  cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
   tar -pcf $JBR.tar -C $BASE_DIR jbr || exit $?
   gzip $JBR.tar || exit $?
   rm -rf ${BASE_DIR}/${JBR_BUNDLE}
@@ -71,14 +60,7 @@ JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 
 git checkout -- modules.list
 git checkout -- src/java.desktop/share/classes/module-info.java
-case "$bundle_type" in
-  "jfx")
-    git apply -p0 < jb/project/tools/exclude_jcef_module.patch
-    ;;
-  "jcef")
-    git apply -p0 < jb/project/tools/exclude_jfx_module.patch
-    ;;
-esac
+[ -z "$bundle_type" ] && git apply -p0 < jb/project/tools/exclude_jcef_module.patch
 
 sh configure \
   --disable-warnings-as-errors \
@@ -109,25 +91,20 @@ cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 if [[ "$bundle_type" == *jcef* ]]; then
   cp -R jcef_linux_x64/* $BASE_DIR/$JBRSDK_BUNDLE/lib || exit $?
 fi
-if [ "$bundle_type" == "jfx_jcef" ]; then
-  echo Creating $JBSDK.tar.gz ...
-  sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
-  mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
+echo Creating $JBSDK.tar.gz ...
+sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
+mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
 
-  tar -pcf $JBSDK.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
-    -C $BASE_DIR $JBRSDK_BUNDLE || exit $?
-  gzip $JBSDK.tar || exit $?
-fi
+tar -pcf $JBSDK.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
+  -C $BASE_DIR $JBRSDK_BUNDLE || exit $?
+gzip $JBSDK.tar || exit $?
 
-JBR_BUNDLE=jbr_${bundle_type}
-create_jbr ${bundle_type}
+create_jbr || exit $?
 
-if [ "$bundle_type" == "jfx_jcef" ]; then
-  make test-image || exit $?
+make test-image || exit $?
 
-  JBRSDK_TEST=$JBRSDK_BASE_NAME-linux-test-x64-b$build_number
+JBRSDK_TEST=$JBRSDK_BASE_NAME-linux-test-x64-b$build_number
 
-  echo Creating $JBSDK_TEST.tar.gz ...
-  tar -pcf $JBRSDK_TEST.tar -C $BASE_DIR --exclude='test/jdk/demos' test || exit $?
-  gzip $JBRSDK_TEST.tar || exit $?
-fi
+echo Creating $JBSDK_TEST.tar.gz ...
+tar -pcf $JBRSDK_TEST.tar -C $BASE_DIR --exclude='test/jdk/demos' test || exit $?
+gzip $JBRSDK_TEST.tar || exit $?
