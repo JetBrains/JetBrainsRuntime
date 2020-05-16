@@ -4,9 +4,6 @@
 #   JBSDK_VERSION    - specifies the current version of OpenJDK e.g. 11_0_6
 #   JDK_BUILD_NUMBER - specifies the number of OpenJDK build or the value of --with-version-build argument to configure
 #   build_number     - specifies the number of JetBrainsRuntime build
-#   bundle_type      - specifies bundle to bu built; possible values:
-#                        jcef - the bundles 1) jbr with jcef+javafx, 2) jbrsdk and 3) test will be created
-#                        jfx  - the bundle 1) jbr with javafx only will be created
 #
 # jbrsdk-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
 # jbr-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
@@ -22,6 +19,7 @@ JDK_BUILD_NUMBER=$2
 build_number=$3
 
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
+MAJOR_JBSDK_VERSION=$(echo $JBSDK_VERSION_WITH_DOTS | awk -F "." '{print $1}')
 
 source jb/project/tools/common.sh
 
@@ -51,8 +49,7 @@ JBRSDK_BUNDLE=jbrsdk
 
 rm -rf $BASE_DIR
 mkdir $BASE_DIR || exit $?
-JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
-cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || exit $?
+cp -a $JSDK/jdk-$MAJOR_JBSDK_VERSION.jdk $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
 echo Creating $JBSDK.tar.gz ...
 cp -a jcef_mac/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
