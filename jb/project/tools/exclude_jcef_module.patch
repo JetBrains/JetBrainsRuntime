@@ -1,33 +1,34 @@
-Index: src/java.desktop/share/classes/module-info.java
-IDEA additional info:
-Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
-<+>UTF-8
-===================================================================
---- src/java.desktop/share/classes/module-info.java	(revision 5ae6630e3ebc71beb9f9df63b1b5bc19c9405d1f)
-+++ src/java.desktop/share/classes/module-info.java	(date 1588168285537)
-@@ -109,10 +109,7 @@
-     // see make/GensrcModuleInfo.gmk
-     exports sun.awt to
-         jdk.accessibility,
--        jdk.unsupported.desktop,
--        jcef;
--
--    exports java.awt.peer to jcef;
-+        jdk.unsupported.desktop;
-
-     exports java.awt.dnd.peer to jdk.unsupported.desktop;
-     exports sun.awt.dnd to jdk.unsupported.desktop;
 Index: modules.list
 IDEA additional info:
 Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
 <+>UTF-8
 ===================================================================
---- modules.list	(revision 5ae6630e3ebc71beb9f9df63b1b5bc19c9405d1f)
-+++ modules.list	(date 1588168285505)
-@@ -61,5 +61,4 @@
+--- modules.list	(revision a73d4ecbefe65fd6d79b78663d916ff71b5346f7)
++++ modules.list	(date 1589581743550)
+@@ -54,5 +54,4 @@
  jdk.unsupported,
  jdk.xml.dom,
  jdk.zipfs,
 -jdk.hotspot.agent,
 -jcef
 +jdk.hotspot.agent
+Index: src/java.desktop/share/classes/module-info.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/java.desktop/share/classes/module-info.java	(revision a73d4ecbefe65fd6d79b78663d916ff71b5346f7)
++++ src/java.desktop/share/classes/module-info.java	(date 1589581743547)
+@@ -109,11 +109,7 @@
+     // see make/GensrcModuleInfo.gmk
+     exports sun.awt to
+         jdk.accessibility,
+-        jdk.unsupported.desktop,
+-        jcef;
+-
+-    exports sun.lwawt.macosx to jcef;
+-    exports sun.lwawt to jcef;
++        jdk.unsupported.desktop;
+ 
+     exports java.awt.dnd.peer to jdk.unsupported.desktop;
+     exports sun.awt.dnd to jdk.unsupported.desktop;
