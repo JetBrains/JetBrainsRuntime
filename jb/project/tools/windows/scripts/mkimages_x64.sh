@@ -5,8 +5,8 @@
 #   JDK_BUILD_NUMBER - specifies the number of OpenJDK build or the value of --with-version-build argument to configure
 #   build_number     - specifies the number of JetBrainsRuntime build
 #   bundle_type      - specifies bundle to bu built; possible values:
-#                        jcef - the bundles 1) jbr with jcef+javafx, 2) jbrsdk and 3) test will be created
-#                        jfx  - the bundle 1) jbr with javafx only will be created
+#                        jcef - the bundles with jcef
+#                        empty - the bundles without jcef
 #
 # jbrsdk-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
 # jbr-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
@@ -27,26 +27,20 @@ source jb/project/tools/common.sh
 
 function create_jbr {
 
-  case "$1" in
-  "${bundle_type}_lw")
-    grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
-    ;;
-  "jfx" | "jcef" | "jfx_jcef")
-    cat modules.list > modules_tmp.list
-    ;;
-  *)
-    echo "***ERR*** bundle was not specified" && exit 1
-    ;;
-  esac
+  if [ -z "${bundle_type}" ]; then
+    JBR_BUNDLE=jbr
+  else
+    JBR_BUNDLE=jbr_${bundle_type}
+  fi
+  cat modules.list > modules_tmp.list
   rm -rf ${JBR_BUNDLE}
 
+  echo Running jlink....
   ${JSDK}/bin/jlink \
     --module-path ${JSDK}/jmods --no-man-pages --compress=2 \
     --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output ${JBR_BUNDLE} || exit $?
-  if [[ "${bundle_type}" == *jcef* ]]
-  then
-    cp -R jcef_win_x64/* ${JBR_BUNDLE}/bin
-  fi
+
+  [ ! -z "${bundle_type}" ] && (cp -R jcef_win_x64/* ${JBR_BUNDLE}/bin || exit $?)
   echo Modifying release info ...
   cat ${JSDK}/release | tr -d '\r' | grep -v 'JAVA_VERSION' | grep -v 'MODULES' >> ${JBR_BUNDLE}/release
 }
@@ -56,19 +50,10 @@ WORK_DIR=$(pwd)
 
 git checkout -- modules.list
 git checkout -- src/java.desktop/share/classes/module-info.java
-case "$bundle_type" in
-  "jfx")
-    echo "Excluding jcef modules"
-    git apply -p0 < jb/project/tools/exclude_jcef_module.patch
-    ;;
-  "jcef")
-    echo "Excluding jfx modules"
-    git apply -p0 < jb/project/tools/exclude_jfx_module.patch
-    ;;
-esac
+[ -z "$bundle_type" ] && git apply -p0 < jb/project/tools/exclude_jcef_module.patch
 
 PATH="/usr/local/bin:/usr/bin:${PATH}"
-./configure \
+sh ./configure \
   --disable-warnings-as-errors \
   --with-target-bits=64 \
   --with-vendor-name="${VENDOR_NAME}" \
@@ -82,16 +67,10 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --disable-ccache \
   --enable-cds=yes || exit 1
 
-if [ "$bundle_type" == "jfx_jcef" ]; then
-  make LOG=info images CONF=windows-x86_64-server-release test-image || exit 1
-else
-  make LOG=info images CONF=windows-x86_64-server-release || exit 1
-fi
+make LOG=info images CONF=windows-x86_64-server-release test-image || exit 1
 
 JSDK=build/windows-x86_64-server-release/images/jdk
-if [[ "$bundle_type" == *jcef* ]]; then
-  JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
-fi
+JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
 BASE_DIR=build/windows-x86_64-server-release/images
 JBRSDK_BUNDLE=jbrsdk
 
@@ -100,8 +79,4 @@ cp -R jcef_win_x64/* ${JBRSDK_BUNDLE}/bin
 sed 's/JBR/JBRSDK/g' ${JSDK}/release > release
 mv release ${JBRSDK_BUNDLE}/release
 
-JBR_BUNDLE=jbr_${bundle_type}
-create_jbr ${bundle_type}
-
-#JBR_BUNDLE=jbr_${bundle_type}_lw
-#create_jbr ${bundle_type}_lw
+create_jbr || exit $?
