@@ -19,7 +19,7 @@ JDK_BUILD_NUMBER=$2
 build_number=$3
 
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
-MAJOR_JBSDK_VERSION=$(echo $JBSDK_VERSION_WITH_DOTS awk -F "." '{print $1}')
+MAJOR_JBSDK_VERSION=$(echo $JBSDK_VERSION_WITH_DOTS | awk -F "." '{print $1}')
 
 source jb/project/tools/common.sh
 

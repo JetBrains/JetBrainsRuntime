@@ -32,6 +32,7 @@ function create_jbr {
   else
     JBR_BUNDLE=jbr_${bundle_type}
   fi
+  cat modules.list > modules_tmp.list
   rm -rf ${JBR_BUNDLE}
 
   echo Running jlink....
