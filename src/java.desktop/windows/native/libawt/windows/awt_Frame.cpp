@@ -1839,9 +1839,7 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
     if (!wParam || !HasCustomDecoration()) {
         return AwtWindow::WmNcCalcSize(wParam, lpncsp, retVal);
     }
-
     RECT insets;
-
     GetSysInsets(&insets, this);
     RECT* rect = &lpncsp->rgrc[0];
 
@@ -1924,12 +1922,6 @@ void AwtFrame::UpdateFrameMargins()
     //  so it should work fine.
 
     margins.cyTopHeight = -frame.top;
-
-    // Extend the frame into the client area. microsoft/terminal#2735 - Just log
-    // the failure here, don't crash. If DWM crashes for any reason, calling
-    // THROW_IF_FAILED() will cause us to take a trip upstate. Just log, and
-    // we'll fix ourselves when DWM comes back
-
     DwmExtendFrameIntoClientArea(GetHWnd(), &margins);
 }
 
