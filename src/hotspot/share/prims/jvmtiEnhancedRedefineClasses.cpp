@@ -506,7 +506,7 @@ void VM_EnhancedRedefineClasses::doit() {
   // JSR-292 support
   if (_any_class_has_resolved_methods) {
     bool trace_name_printed = false;
-    ResolvedMethodTable::adjust_method_entries(&trace_name_printed);
+    ResolvedMethodTable::adjust_method_entries_dcevm(&trace_name_printed);
   }
 
   ChangePointersOopClosure<StoreNoBarrier> oopClosureNoBarrier;
