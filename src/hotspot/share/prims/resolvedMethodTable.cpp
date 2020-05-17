@@ -200,8 +200,52 @@ void ResolvedMethodTable::print() {
 #endif // PRODUCT
 
 #if INCLUDE_JVMTI
-// It is called at safepoint only for RedefineClasses
+
 void ResolvedMethodTable::adjust_method_entries(bool * trace_name_printed) {
+  assert(SafepointSynchronize::is_at_safepoint(), "only called at safepoint");
+  // For each entry in RMT, change to new method
+  for (int i = 0; i < _the_table->table_size(); ++i) {
+    for (ResolvedMethodEntry* entry = _the_table->bucket(i);
+         entry != NULL;
+         entry = entry->next()) {
+
+      oop mem_name = entry->object_no_keepalive();
+      // except ones removed
+      if (mem_name == NULL) {
+        continue;
+      }
+      Method* old_method = (Method*)java_lang_invoke_ResolvedMethodName::vmtarget(mem_name);
+
+      if (old_method->is_old()) {
+
+        Method* new_method;
+        if (old_method->is_deleted()) {
+          new_method = Universe::throw_no_such_method_error();
+        } else {
+          InstanceKlass* holder = old_method->method_holder();
+          new_method = holder->method_with_idnum(old_method->orig_method_idnum());
+          assert(holder == new_method->method_holder(), "call after swapping redefined guts");
+          assert(new_method != NULL, "method_with_idnum() should not be NULL");
+          assert(old_method != new_method, "sanity check");
+        }
+
+        java_lang_invoke_ResolvedMethodName::set_vmtarget(mem_name, new_method);
+
+        ResourceMark rm;
+        if (!(*trace_name_printed)) {
+          log_info(redefine, class, update)("adjust: name=%s", old_method->method_holder()->external_name());
+           *trace_name_printed = true;
+        }
+        log_debug(redefine, class, update, constantpool)
+          ("ResolvedMethod method update: %s(%s)",
+           new_method->name()->as_C_string(), new_method->signature()->as_C_string());
+      }
+    }
+  }
+}
+
+// (DCEVM) It is called at safepoint only for RedefineClasses
+void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed) {
   assert(SafepointSynchronize::is_at_safepoint(), "only called at safepoint");
   // For each entry in RMT, change to new method
   GrowableArray<oop>* oops_to_add = new GrowableArray<oop>();

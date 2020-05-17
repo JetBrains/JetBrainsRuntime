@@ -93,6 +93,7 @@ public:
 #if INCLUDE_JVMTI
   // It is called at safepoint only for RedefineClasses
   static void adjust_method_entries(bool * trace_name_printed);
+  static void adjust_method_entries_dcevm(bool * trace_name_printed);
 #endif // INCLUDE_JVMTI
 
   // Cleanup cleared entries
