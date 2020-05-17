@@ -788,10 +788,10 @@ bool InstanceKlass::link_class_impl(bool throw_verifyerror, TRAPS) {
 
     if (!is_linked()) {
       if (!is_rewritten()) {
-        // In cases, if class A is being redefined and class B->A (B is extended from A) and B is host class of anonymous class C
+        // (DCEVM): If class A is being redefined and class B->A (B is extended from A) and B is host class of anonymous class C
         // then second redefinition fails with cannot cast klass exception. So we currently turn off bytecode verification
         // on redefinition.
-        if (!newest_version()->is_redefining()) {
+        if (!AllowEnhancedClassRedefinition || !newest_version()->is_redefining()) {
           bool verify_ok = verify_code(throw_verifyerror, THREAD);
           if (!verify_ok) {
             return false;
