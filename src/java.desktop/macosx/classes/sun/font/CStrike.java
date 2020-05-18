@@ -62,8 +62,7 @@ public final class CStrike extends PhysicalStrike {
 
     private static native void getNativeGlyphOutlineBounds(long nativeStrikePtr,
                                                            int glyphCode,
-                                                           Rectangle.Float result,
-                                                           double x, double y);
+                                                           float [] rectData);
 
     // returns the bounding rect for a glyph
     private static native void getNativeGlyphImageBounds(long nativeStrikePtr,
@@ -184,9 +183,9 @@ public final class CStrike extends PhysicalStrike {
 
     @Override
     Rectangle2D.Float getGlyphOutlineBounds(int glyphCode) {
-        Rectangle2D.Float r2df = new Rectangle2D.Float();
-        getNativeGlyphOutlineBounds(getNativeStrikePtr(), glyphCode, r2df, 0, 0);
-        return r2df;
+        final float [] rectData = new float[4];
+        getNativeGlyphOutlineBounds(getNativeStrikePtr(), glyphCode, rectData);
+        return new Rectangle2D.Float(rectData[0], rectData[1], rectData[2], rectData[3]);
     }
 
     // pt, result in device space
