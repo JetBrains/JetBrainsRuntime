@@ -313,7 +313,7 @@ JNF_COCOA_EXIT(env);
  */
 JNIEXPORT void JNICALL Java_sun_font_CStrike_getNativeGlyphOutlineBounds
         (JNIEnv *env, jclass clazz, jlong awtStrikePtr, jint glyphCode,
-         jobject result, jdouble xPos, jdouble yPos)
+         jfloatArray rectData)
 {
     JNF_COCOA_ENTER(env);
     AWTStrike *awtStrike = (AWTStrike *)jlong_to_ptr(awtStrikePtr);
@@ -327,34 +327,29 @@ JNIEXPORT void JNICALL Java_sun_font_CStrike_getNativeGlyphOutlineBounds
     const CTFontRef font = CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(
             awtfont, glyphCode, &glyph);
 
+    CGRect bbox = CTFontGetBoundingRectsForGlyphs(
+        font, kCTFontOrientationDefault, &glyph, NULL, 1);
+
     CGAffineTransform tx = CGAffineTransformConcat(awtStrike->fTx,
                                                    sInverseTX);
 
-    CGPathRef cgPath = CTFontCreatePathForGlyph((CTFontRef) font, glyph,
-                                                &tx);
-
-    CGRect bbox = CGPathGetPathBoundingBox(cgPath);
+    bbox =  CGRectApplyAffineTransform (bbox, tx);
     CFRelease(font);
-    CGPathRelease(cgPath);
+    jfloat *rawRectData =
+        (*env)->GetPrimitiveArrayCritical(env, rectData, NULL);
 
     if (CGRectIsNull(bbox)) {
-        bbox.origin.x = 0;
-        bbox.origin.y = 0;
-        bbox.size.width = 0;
-        bbox.size.height = 0;
+        rawRectData[0] = 0.0f;
+        rawRectData[1] = 0.0f;
+        rawRectData[2] = 0.0f;
+        rawRectData[3] = 0.0f;
     }
 
-    static JNF_CLASS_CACHE(sjc_Rectangle2D_Float,
-                           "java/awt/geom/Rectangle2D$Float");
-    static JNF_MEMBER_CACHE(sjr_Rectangle2DFloat_setRect,
-                            sjc_Rectangle2D_Float, "setRect", "(FFFF)V");
-
-    JNFCallVoidMethod(env, result, sjr_Rectangle2DFloat_setRect,
-                      (jfloat) (bbox.origin.x + xPos),
-                      (jfloat) (yPos - bbox.origin.y - bbox.size.height),
-                      (jfloat) bbox.size.width,
-                      (jfloat) bbox.size.height);
-
+    rawRectData[0] = (jfloat) bbox.origin.x;
+    rawRectData[1] = (jfloat) (-bbox.origin.y - bbox.size.height);
+    rawRectData[2] = (jfloat) bbox.size.width;
+    rawRectData[3] = (jfloat) bbox.size.height;
+    (*env)->ReleasePrimitiveArrayCritical(env, rectData, rawRectData, 0);
     // Cleanup
     cleanup:
         AWT_FONT_CLEANUP_FINISH;
