@@ -2,6 +2,8 @@
 
 #include <jni.h>
 #include <simd/simd.h>
+#import <ThreadUtilities.h>
+#import <PropertiesUtilities.h>
 #include "common.h"
 #include "Trace.h"
 
@@ -44,4 +46,14 @@ void traceRaster(char * p, int width, int height, int stride) {
 void tracePoints(jint nPoints, jint *xPoints, jint *yPoints) {
     for (int i = 0; i < nPoints; i++)
         J2dTraceImpl(J2D_TRACE_INFO, JNI_TRUE, "\t(%d, %d)", *(xPoints++), *(yPoints++));
+}
+
+
+jboolean isOptionEnabled(const char * option) {
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+
+    NSString * optionProp = [PropertiesUtilities
+            javaSystemPropertyForKey:[NSString stringWithUTF8String:option] withEnv:env];
+    NSString * lowerCaseProp = [optionProp localizedLowercaseString];
+    return [@"true" isEqual:lowerCaseProp];
 }
