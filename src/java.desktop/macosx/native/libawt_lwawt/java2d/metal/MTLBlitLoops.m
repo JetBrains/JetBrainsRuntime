@@ -175,6 +175,8 @@ id<MTLTexture> replaceTextureRegion(id<MTLTexture> dest, const SurfaceDataRasInf
     const int dh = dy2 - dy1;
 
     const void * raster = srcInfo->rasBase;
+    raster += srcInfo->bounds.y1*srcInfo->scanStride + srcInfo->bounds.x1*srcInfo->pixelStride;
+
     id<MTLTexture> result = nil;
     if (rfi->permuteMap != NULL) {
 #if defined(__MAC_10_15) && __MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_15
@@ -221,7 +223,7 @@ id<MTLTexture> replaceTextureRegion(id<MTLTexture> dest, const SurfaceDataRasInf
             srcBuf.height = dh;
             srcBuf.width = dw;
             srcBuf.rowBytes = srcInfo->scanStride;
-            srcBuf.data = srcInfo->rasBase;
+            srcBuf.data = raster;
 
             vImage_Buffer destBuf;
             destBuf.height = dh;
@@ -354,22 +356,22 @@ jboolean clipDestCoords(
         return JNI_FALSE;
     }
     if (*dx1 < dcx1) {
-        J2dTraceLn2(J2D_TRACE_VERBOSE, "\t\tdx1=%1.2f, will be clipped to %1.2f", *dx1, dcx1);
+        J2dTraceLn3(J2D_TRACE_VERBOSE, "\t\tdx1=%1.2f, will be clipped to %1.2f | sx1+=%d", *dx1, dcx1, (jint)((dcx1 - *dx1) * (sw/dw)));
         *sx1 += (jint)((dcx1 - *dx1) * (sw/dw));
         *dx1 = dcx1;
     }
     if (*dx2 > dcx2) {
-        J2dTraceLn2(J2D_TRACE_VERBOSE, "\t\tdx2=%1.2f, will be clipped to %1.2f", *dx2, dcx2);
+        J2dTraceLn3(J2D_TRACE_VERBOSE, "\t\tdx2=%1.2f, will be clipped to %1.2f | sx2-=%d", *dx2, dcx2, (jint)((*dx2 - dcx2) * (sw/dw)));
         *sx2 -= (jint)((*dx2 - dcx2) * (sw/dw));
         *dx2 = dcx2;
     }
     if (*dy1 < dcy1) {
-        J2dTraceLn2(J2D_TRACE_VERBOSE, "\t\tdy1=%1.2f, will be clipped to %1.2f", *dy1, dcy1);
+        J2dTraceLn3(J2D_TRACE_VERBOSE, "\t\tdy1=%1.2f, will be clipped to %1.2f | sy1+=%d", *dy1, dcy1, (jint)((dcy1 - *dy1) * (sh/dh)));
         *sy1 += (jint)((dcy1 - *dy1) * (sh/dh));
         *dy1 = dcy1;
     }
     if (*dy2 > dcy2) {
-        J2dTraceLn2(J2D_TRACE_VERBOSE, "\t\tdy2=%1.2f, will be clipped to %1.2f", *dy2, dcy2);
+        J2dTraceLn3(J2D_TRACE_VERBOSE, "\t\tdy2=%1.2f, will be clipped to %1.2f | sy2-=%d", *dy2, dcy2, (jint)((*dy2 - dcy2) * (sh/dh)));
         *sy2 -= (jint)((*dy2 - dcy2) * (sh/dh));
         *dy2 = dcy2;
     }
