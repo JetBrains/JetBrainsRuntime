@@ -4,7 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation) replace old_class by new class in dictionary.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -90,6 +90,7 @@ LoaderConstraintEntry** LoaderConstraintTable::find_loader_constraint(
   return pp;
 }
 
+// (DCEVM) update constraint entries to new classes, called from dcevm redefinition code only
 void LoaderConstraintTable::update_after_redefinition() {
   for (int index = 0; index < table_size(); index++) {
     LoaderConstraintEntry** p = bucket_addr(index);
