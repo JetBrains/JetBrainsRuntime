@@ -70,15 +70,14 @@ esac
 PATH="/usr/local/bin:/usr/bin:${PATH}"
 ./configure \
   --disable-warnings-as-errors \
-  --with-native-debug-symbols=none \
   --with-target-bits=64 \
   --with-vendor-name="${VENDOR_NAME}" \
   --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
   --with-version-pre= \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
+  --with-toolchain-version=${TOOLCHAIN_VERSION} \
   --with-import-modules=${WORK_DIR}/modular-sdk \
-  --with-toolchain-version=2015 \
   --with-boot-jdk=${BOOT_JDK} \
   --disable-ccache \
   --enable-cds=yes || exit 1
