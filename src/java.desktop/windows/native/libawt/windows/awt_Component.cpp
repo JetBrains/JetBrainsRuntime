@@ -3043,6 +3043,22 @@ static DynamicKeyMapEntry dynamicKeyMapTable[] = {
     {0, 0}
 };
 
+static DynamicKeyMapEntry latinNonAlphaNumKeyMapTable[] = {
+    {0x00BA,  java_awt_event_KeyEvent_VK_SEMICOLON}, // VK_OEM_1
+    {0x00BB,  java_awt_event_KeyEvent_VK_EQUALS}, // VK_OEM_PLUS
+    {0x00BC,  java_awt_event_KeyEvent_VK_COMMA}, // VK_OEM_COMMA
+    {0x00BD,  java_awt_event_KeyEvent_VK_MINUS}, // VK_OEM_MINUS
+    {0x00BE,  java_awt_event_KeyEvent_VK_PERIOD}, // VK_OEM_PERIOD
+    {0x00BF,  java_awt_event_KeyEvent_VK_SLASH}, // VK_OEM_2
+    {0x00C0,  java_awt_event_KeyEvent_VK_DEAD_GRAVE}, // VK_OEM_3
+    {0x00DB,  java_awt_event_KeyEvent_VK_OPEN_BRACKET}, // VK_OEM_4
+    {0x00DC,  java_awt_event_KeyEvent_VK_BACK_SLASH}, // VK_OEM_5
+    {0x00DD,  java_awt_event_KeyEvent_VK_CLOSE_BRACKET}, // VK_OEM_6
+    {0x00DE,  java_awt_event_KeyEvent_VK_QUOTE}, // VK_OEM_7
+    {0x00DF,  java_awt_event_KeyEvent_VK_UNDEFINED}, // VK_OEM_8
+    {0x00E2,  java_awt_event_KeyEvent_VK_UNDEFINED}, // VK_OEM_102
+    {0, 0}
+};
 
 
 // Auxiliary tables used to fill the above dynamic table.  We first
@@ -3329,6 +3345,16 @@ void AwtComponent::JavaKeyToWindowsKey(UINT javaKey,
     return;
 }
 
+static BOOL UseNationalLayoutForShortcurs()
+{
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    jclass cls = env->FindClass("sun/awt/event/KeyEventProcessing");
+    CHECK_NULL_RETURN(cls, TRUE);
+    jfieldID fieldID = env->GetStaticFieldID(cls, "useNationalLayouts", "Z");
+    CHECK_NULL_RETURN(fieldID, TRUE);
+    return static_cast<BOOL>(env->GetStaticBooleanField(cls, fieldID));
+}
+
 UINT AwtComponent::WindowsKeyToJavaKey(UINT windowsKey, UINT modifiers, UINT character, BOOL isDeadKey)
 
 {
@@ -3370,6 +3396,16 @@ UINT AwtComponent::WindowsKeyToJavaKey(UINT windowsKey, UINT modifiers, UINT cha
     for (int i = 0; keyMapTable[i].windowsKey != 0; i++) {
         if (keyMapTable[i].windowsKey == windowsKey) {
             return keyMapTable[i].javaKey;
+        }
+    }
+
+    static const BOOL USE_US_LAYOUT_FOR_SHORTCUTS = !UseNationalLayoutForShortcurs();
+    if (USE_US_LAYOUT_FOR_SHORTCUTS) {
+        for (int i = 0; latinNonAlphaNumKeyMapTable[i].windowsKey != 0; i++) {
+            if (latinNonAlphaNumKeyMapTable[i].windowsKey == windowsKey &&
+                latinNonAlphaNumKeyMapTable[i].javaKey != java_awt_event_KeyEvent_VK_UNDEFINED) {
+                return latinNonAlphaNumKeyMapTable[i].javaKey;
+            }
         }
     }
 
