@@ -176,7 +176,7 @@ void Universe::basic_type_classes_do(void f(Klass*)) {
   f(doubleArrayKlassObj());
 }
 
-// FIXME: This method should iterate all pointers that are not within heap objects.
+// FIXME: (DCEVM) This method should iterate all pointers that are not within heap objects.
 void Universe::root_oops_do(OopClosure *oopClosure) {
 
   class AlwaysTrueClosure: public BoolObjectClosure {
@@ -203,7 +203,7 @@ void Universe::root_oops_do(OopClosure *oopClosure) {
   CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
   CodeCache::blobs_do(&blobClosure);
   StringTable::oops_do(oopClosure);
-  
+
   // (DCEVM) TODO: Check if this is correct?
   //CodeCache::scavenge_root_nmethods_oops_do(oopClosure);
   //Management::oops_do(oopClosure);
