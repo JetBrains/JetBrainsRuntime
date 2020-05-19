@@ -27,16 +27,15 @@ function pack_jbr {
     JBR_BUNDLE=jbr
   else
     JBR_BUNDLE=jbr_${bundle_type}
+    rm -rf ${BASE_DIR}/jbr
+    cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
   fi
   JBR_BASE_NAME=${JBR_BUNDLE}-${JBSDK_VERSION}
 
   JBR=$JBR_BASE_NAME-windows-x64-b$build_number
   echo Creating $JBR.tar.gz ...
-  rm -rf ${BASE_DIR}/jbr
-  cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
 
   /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR jbr || exit 1
-  #rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 }
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
