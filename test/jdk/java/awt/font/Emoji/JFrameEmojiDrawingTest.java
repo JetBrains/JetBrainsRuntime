@@ -35,7 +35,8 @@ import static java.awt.RenderingHints.*;
 public class JFrameEmojiDrawingTest {
     private static final String EMOJI = "😃👍🐊🦃🤡🔥";
     private static final Font FONT_BIG = new Font(
-            System.getProperty("os.name").toLowerCase().contains("mac") ?"Menlo" : "Noto Color Emoji", Font.PLAIN, 50);
+            System.getProperty("os.name").toLowerCase().contains("mac") ?
+                    "Menlo" : "Noto Color Emoji", Font.PLAIN, 50);
     private static final Font FONT_SMALL = FONT_BIG.deriveFont(20F);
     private static final int IMAGE_WIDTH = 450;
     private static final int IMAGE_HEIGHT = 300;
@@ -46,7 +47,7 @@ public class JFrameEmojiDrawingTest {
     static {
         Map<Key, Object[]> hints = Map.of(
                 KEY_FRACTIONALMETRICS, new Object[] {VALUE_FRACTIONALMETRICS_OFF, VALUE_FRACTIONALMETRICS_ON},
-                KEY_TEXT_ANTIALIASING, new Object[] {VALUE_TEXT_ANTIALIAS_OFF, VALUE_TEXT_ANTIALIAS_ON, VALUE_TEXT_ANTIALIAS_LCD_HBGR}
+                KEY_TEXT_ANTIALIASING, new Object[] {VALUE_TEXT_ANTIALIAS_OFF, VALUE_TEXT_ANTIALIAS_ON, VALUE_TEXT_ANTIALIAS_LCD_HRGB}
         );
         int totalPresets = hints.values().stream().mapToInt(a -> a.length).reduce(1, (a, b) -> a * b);
         PRESETS = Stream.generate(HashMap<Key, Object>::new).limit(totalPresets).collect(Collectors.toList());

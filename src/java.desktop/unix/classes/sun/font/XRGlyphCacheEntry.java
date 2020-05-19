@@ -187,14 +187,16 @@ public class XRGlyphCacheEntry {
     public Type getType() {
         int rowBytes = getSourceRowBytes();
         int width = getWidth();
-        if(width == 0 || getHeight() == 0) return Type.LCD; // Just for backward compatibiity
-        if(width == rowBytes) return Type.GRAYSCALE;
-        if(width * 4 == rowBytes) return Type.BGRA;
+        // 0x0 is just for backward compatibiity
+        if (width == 0 || getHeight() == 0) return Type.LCD;
+        if (width == rowBytes) return Type.GRAYSCALE;
+        if (width * 4 == rowBytes) return Type.BGRA;
         return Type.LCD;
     }
 
     public int getPaddedWidth() {
-        return getType() == Type.GRAYSCALE ? (int) Math.ceil(getWidth() / 4.0) * 4 : getWidth();
+        return getType() == Type.GRAYSCALE ?
+                (int) Math.ceil(getWidth() / 4.0) * 4 : getWidth();
     }
 
     public int getDestinationRowBytes() {

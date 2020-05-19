@@ -94,7 +94,8 @@ public interface XRBackend {
 
     public void XRenderFreeGlyphs(int glyphSet, int[] gids);
 
-    public void addBGRAGlyphImages(int drawable, List<XRGlyphCacheEntry> cacheEntries);
+    public void addBGRAGlyphImages(int drawable,
+                                   List<XRGlyphCacheEntry> cacheEntries);
 
     public void freeBGRAGlyphImages(long[] glyphInfoPointers, int glyphCount);
 

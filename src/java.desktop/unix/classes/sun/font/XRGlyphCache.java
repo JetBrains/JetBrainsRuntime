@@ -38,7 +38,10 @@ import sun.java2d.xr.*;
  */
 
 public class XRGlyphCache implements GlyphDisposedListener {
-    /** BGRA glyphs are rendered as images and therefore don't belong to any glyph set */
+    /**
+     * BGRA glyphs are rendered as images
+     * and therefore don't belong to any glyph set
+     */
     public static final int BGRA_GLYPH_SET = -1;
 
     XRBackend con;
@@ -123,7 +126,8 @@ public class XRGlyphCache implements GlyphDisposedListener {
         for (int i = 0; i < glyphList.getNumGlyphs(); i++) {
             XRGlyphCacheEntry glyph;
 
-            if (imgPtrs[i] == 0L || imgPtrs[i] == StrikeCache.invisibleGlyphPtr) {
+            if (imgPtrs[i] == 0L ||
+                imgPtrs[i] == StrikeCache.invisibleGlyphPtr) {
                 continue;
             }
             // Find uncached glyphs and queue them for upload
@@ -149,7 +153,9 @@ public class XRGlyphCache implements GlyphDisposedListener {
         return entries;
     }
 
-    protected void uploadGlyphs(XRGlyphCacheEntry[] glyphs, ArrayList<XRGlyphCacheEntry> uncachedGlyphs, GlyphList gl, int parentXid) {
+    protected void uploadGlyphs(XRGlyphCacheEntry[] glyphs,
+                                ArrayList<XRGlyphCacheEntry> uncachedGlyphs,
+                                GlyphList gl, int parentXid) {
         for (XRGlyphCacheEntry glyph : uncachedGlyphs) {
             cachedPixels += glyph.getPixelCnt();
         }
@@ -158,28 +164,39 @@ public class XRGlyphCache implements GlyphDisposedListener {
             clearCache(glyphs);
         }
 
-        EnumMap<XRGlyphCacheEntry.Type, List<XRGlyphCacheEntry>> glyphListsByType = separateGlyphTypes(uncachedGlyphs);
+        EnumMap<XRGlyphCacheEntry.Type, List<XRGlyphCacheEntry>>
+                glyphListsByType = separateGlyphTypes(uncachedGlyphs);
 
-        uploadGlyphs(grayGlyphSet, gl, glyphListsByType.get(XRGlyphCacheEntry.Type.GRAYSCALE));
-        uploadGlyphs(lcdGlyphSet, gl, glyphListsByType.get(XRGlyphCacheEntry.Type.LCD));
-        List<XRGlyphCacheEntry> bgraGlyphs = glyphListsByType.getOrDefault(XRGlyphCacheEntry.Type.BGRA, List.of());
-        if(!bgraGlyphs.isEmpty()) con.addBGRAGlyphImages(parentXid, bgraGlyphs);
+        uploadGlyphs(grayGlyphSet, gl,
+                     glyphListsByType.get(XRGlyphCacheEntry.Type.GRAYSCALE));
+        uploadGlyphs(lcdGlyphSet, gl,
+                     glyphListsByType.get(XRGlyphCacheEntry.Type.LCD));
+        List<XRGlyphCacheEntry> bgraGlyphs = glyphListsByType.getOrDefault(
+                XRGlyphCacheEntry.Type.BGRA, List.of());
+        if (!bgraGlyphs.isEmpty()) {
+            con.addBGRAGlyphImages(parentXid, bgraGlyphs);
+        }
     }
 
-    private void uploadGlyphs(int glyphSet, GlyphList glyphList, List<XRGlyphCacheEntry> cacheEntries) {
-        if(cacheEntries == null || cacheEntries.isEmpty()) return;
+    private void uploadGlyphs(int glyphSet, GlyphList glyphList,
+                              List<XRGlyphCacheEntry> cacheEntries) {
+        if (cacheEntries == null || cacheEntries.isEmpty()) return;
         /*
          * Some XServers crash when uploading multiple glyphs at once. TODO:
          * Implement build-switch in local case for distributors who know their
          * XServer is fixed
          */
-        if(batchGlyphUpload) con.XRenderAddGlyphs(glyphSet, glyphList, cacheEntries, generateGlyphImageStream(cacheEntries));
+        if (batchGlyphUpload) {
+            con.XRenderAddGlyphs(glyphSet, glyphList, cacheEntries,
+                                 generateGlyphImageStream(cacheEntries));
+        }
         else {
             ArrayList<XRGlyphCacheEntry> tmpList = new ArrayList<>(1);
             tmpList.add(null);
             for (XRGlyphCacheEntry entry : cacheEntries) {
                 tmpList.set(0, entry);
-                con.XRenderAddGlyphs(glyphSet, glyphList, tmpList, generateGlyphImageStream(tmpList));
+                con.XRenderAddGlyphs(glyphSet, glyphList, tmpList,
+                                     generateGlyphImageStream(tmpList));
             }
         }
     }
@@ -188,12 +205,15 @@ public class XRGlyphCache implements GlyphDisposedListener {
      * Separates bgra, lcd and grayscale glyphs queued for upload, and sets the
      * appropriate glyph set for the cache entries.
      */
-    protected EnumMap<XRGlyphCacheEntry.Type, List<XRGlyphCacheEntry>> separateGlyphTypes(List<XRGlyphCacheEntry> glyphList) {
-        EnumMap<XRGlyphCacheEntry.Type, List<XRGlyphCacheEntry>> glyphLists = new EnumMap<>(XRGlyphCacheEntry.Type.class);
+    protected EnumMap<XRGlyphCacheEntry.Type, List<XRGlyphCacheEntry>>
+            separateGlyphTypes(List<XRGlyphCacheEntry> glyphList) {
+        EnumMap<XRGlyphCacheEntry.Type, List<XRGlyphCacheEntry>> glyphLists =
+                new EnumMap<>(XRGlyphCacheEntry.Type.class);
         for (XRGlyphCacheEntry cacheEntry : glyphList) {
             XRGlyphCacheEntry.Type cacheEntryType = cacheEntry.getType();
             cacheEntry.setGlyphSet(glyphSetsByType.get(cacheEntryType));
-            glyphLists.computeIfAbsent(cacheEntryType, ignore -> new ArrayList<>(glyphList.size())).add(cacheEntry);
+            glyphLists.computeIfAbsent(cacheEntryType, ignore ->
+                    new ArrayList<>(glyphList.size())).add(cacheEntry);
         }
         return glyphLists;
     }
@@ -268,13 +288,17 @@ public class XRGlyphCache implements GlyphDisposedListener {
             } else if (entry.getGlyphSet() == lcdGlyphSet) {
                 removedLCDGlyphs.addInt(glyphId);
             } else if (entry.getGlyphSet() == BGRA_GLYPH_SET) {
-                if(removedBGRAGlyphPtrs == null) removedBGRAGlyphPtrs = new long[10];
-                else if(removedBGRAGlyphPtrsCount >= removedBGRAGlyphPtrs.length) {
+                if (removedBGRAGlyphPtrs == null) {
+                    removedBGRAGlyphPtrs = new long[10];
+                }
+                else if (removedBGRAGlyphPtrsCount >= removedBGRAGlyphPtrs.length) {
                     long[] n = new long[removedBGRAGlyphPtrs.length * 2];
-                    System.arraycopy(removedBGRAGlyphPtrs, 0, n, 0, removedBGRAGlyphPtrs.length);
+                    System.arraycopy(removedBGRAGlyphPtrs, 0, n, 0,
+                                     removedBGRAGlyphPtrs.length);
                     removedBGRAGlyphPtrs = n;
                 }
-                removedBGRAGlyphPtrs[removedBGRAGlyphPtrsCount++] = entry.getBgraGlyphInfoPtr();
+                removedBGRAGlyphPtrs[removedBGRAGlyphPtrsCount++] =
+                        entry.getBgraGlyphInfoPtr();
             }
 
             entry.setGlyphID(0);
@@ -289,7 +313,8 @@ public class XRGlyphCache implements GlyphDisposedListener {
         }
 
         if (removedBGRAGlyphPtrsCount > 0) {
-            con.freeBGRAGlyphImages(removedBGRAGlyphPtrs, removedBGRAGlyphPtrsCount);
+            con.freeBGRAGlyphImages(removedBGRAGlyphPtrs,
+                                    removedBGRAGlyphPtrsCount);
         }
     }
 }
