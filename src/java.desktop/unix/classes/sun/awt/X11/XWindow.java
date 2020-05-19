@@ -1305,7 +1305,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         }
 
         int jkeyToReturn;
-        if (KeyEventProcessing.useNationalLayoutsNonNull) {
+        if (KeyEventProcessing.useNationalLayouts) {
             // if jkeyToReturn is VK_UNDEFINED then look for keycode in extended key code
             jkeyToReturn = jkc.getJavaKeycode();
         } else {
@@ -1396,7 +1396,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         int unicodeFromPrimaryKeysym = keysymToUnicode( xkeycodeToPrimaryKeysym(ev) ,0);
 
         int jkeyToReturn;
-        if (KeyEventProcessing.useNationalLayoutsNonNull) {
+        if (KeyEventProcessing.useNationalLayouts) {
             // if jkeyToReturn is VK_UNDEFINED then look for keycode in extended key code
             jkeyToReturn = jkc.getJavaKeycode();
         } else {
