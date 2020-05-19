@@ -436,8 +436,7 @@ void ConstantPoolCacheEntry::set_method_handle_common(const constantPoolHandle& 
   if (has_appendix) {
     const int appendix_index = f2_as_index() + _indy_resolved_references_appendix_offset;
     assert(appendix_index >= 0 && appendix_index < resolved_references->length(), "oob");
-    // FIXME (DCEVM) relaxing for now...
-    //assert(resolved_references->obj_at(appendix_index) == NULL, "init just once");
+    assert(AllowEnhancedClassRedefinition || resolved_references->obj_at(appendix_index) == NULL, "init just once");
     resolved_references->obj_at_put(appendix_index, appendix());
   }
 
@@ -445,8 +444,7 @@ void ConstantPoolCacheEntry::set_method_handle_common(const constantPoolHandle& 
   if (has_method_type) {
     const int method_type_index = f2_as_index() + _indy_resolved_references_method_type_offset;
     assert(method_type_index >= 0 && method_type_index < resolved_references->length(), "oob");
-    // FIXME (DCEVM) relaxing for now...
-    //assert(resolved_references->obj_at(method_type_index) == NULL, "init just once");
+    assert(AllowEnhancedClassRedefinition || resolved_references->obj_at(method_type_index) == NULL, "init just once");
     resolved_references->obj_at_put(method_type_index, method_type());
   }
 
