@@ -1384,6 +1384,7 @@ void LinkResolver::runtime_resolve_virtual_method(CallInfo& result,
       assert(resolved_method->can_be_statically_bound(), "cannot override this method");
       selected_method = resolved_method;
     } else {
+      // TODO: (DCEVM) explain
       assert(recv_klass->is_subtype_of(resolved_method->method_holder()), "receiver and resolved method holder are inconsistent");
       selected_method = methodHandle(THREAD, recv_klass->method_at_vtable(vtable_index));
     }
