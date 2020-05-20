@@ -41,7 +41,7 @@ import java.util.concurrent.TimeUnit;
 
 public class AllKeyCode extends Frame {
 
-    private static final int PAUSE =  1000;
+    private static final int PAUSE =  2000;
 
     private static Frame frame;
     private static TextArea textArea;
@@ -182,7 +182,6 @@ public class AllKeyCode extends Frame {
 
             @Override
             public void keyPressed(KeyEvent ke) {
-                keyPressedLatch.countDown();
                 if (keyPressed != ke.getKeyCode()) {
                     // MacOS doesn't distinguish between ALT and ALT_GRAPH keys,
                     // and JetBrains runtime also does not, please see JBR-1108 for more info.
@@ -193,6 +192,7 @@ public class AllKeyCode extends Frame {
                         keyCodesAreCorrect = false;
                     }
                 }
+                keyPressedLatch.countDown();
             }
 
             @Override
@@ -200,6 +200,7 @@ public class AllKeyCode extends Frame {
             }
         });
         frame.setVisible(true);
+        textArea.requestFocus();
     }
 
     private void removeListener() {
@@ -243,7 +244,9 @@ public class AllKeyCode extends Frame {
     public static void main(String args[]) throws InterruptedException {
         AllKeyCode allKeyObj = new AllKeyCode();
         allKeyObj.createAndShowGUI();
+        Thread.sleep(PAUSE);
         allKeyObj.generateFunctionKeyPress();
+        Thread.sleep(PAUSE);
         allKeyObj.dispose();
 
         if(keyCodesAreCorrect && allKeysWerePressed) {
