@@ -969,7 +969,8 @@ Java_sun_java2d_xr_XRBackendNative_addBGRAGlyphImagesNative
     XRenderPictFormat* format = (XRenderPictFormat*) jlong_to_ptr(format32);
     XRenderPictureAttributes pictureAttributes;
 
-    for (int i = 0; i < glyphCnt; i++) {
+    int i;
+    for (i = 0; i < glyphCnt; i++) {
         GlyphInfo* glyphInfo = (GlyphInfo*) jlong_to_ptr(glyphInfoPointers[i]);
 
         Pixmap pixmap = XCreatePixmap(awt_display, (Drawable) drawable,
@@ -1008,7 +1009,8 @@ Java_sun_java2d_xr_XRBackendNative_freeBGRAGlyphImages
     if ((glyphInfoPointers = (jlong *)(*env)->GetPrimitiveArrayCritical(env,
             javaGlyphInfoPointersArray, NULL)) == NULL) return;
 
-    for (int i = 0; i < glyphCnt; i++) {
+    int i;
+    for (i = 0; i < glyphCnt; i++) {
         BGRAGlyphInfo* bgraGlyphInfo =
                 (BGRAGlyphInfo*) jlong_to_ptr(glyphInfoPointers[i]);
         XRenderFreePicture(awt_display, bgraGlyphInfo->picture);
@@ -1115,7 +1117,8 @@ Java_sun_java2d_xr_XRBackendNative_XRenderCompositeTextNative
         if (glyphset == -1) { // BGRA glyph, render as image
             float x = (float) xOff;
             float y = (float) yOff;
-            for (int ch = 0; ch < nchars; ch++) {
+            int ch;
+            for (ch = 0; ch < nchars; ch++) {
                 BGRAGlyphInfo* bgraGlyphInfo = (BGRAGlyphInfo*)
                         (((jlong) xids[charCnt + ch * 2] << 32) |
                         (((jlong) xids[charCnt + ch * 2 + 1]) & 0xFFFFFFFF));

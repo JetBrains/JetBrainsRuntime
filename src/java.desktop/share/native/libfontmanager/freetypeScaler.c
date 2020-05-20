@@ -807,7 +807,8 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
             // Best size is smallest, but not smaller than requested
             int bestSizeIndex = 0;
             FT_Pos bestSize = scalerInfo->face->available_sizes[0].size;
-            for (int i = 1; i < scalerInfo->face->num_fixed_sizes; i++) {
+            int i;
+            for (i = 1; i < scalerInfo->face->num_fixed_sizes; i++) {
                 FT_Pos size = scalerInfo->face->available_sizes[i].size;
                 if ((size >= ptsz && bestSize >= ptsz && size < bestSize) ||
                     (size < ptsz && bestSize < ptsz && size > bestSize) ||
@@ -1358,7 +1359,8 @@ static FT_BBox getTransformedBitmapBoundingBox(FT_GlyphSlot ftglyph,
 
     FT_Vector_Transform(corners, transform);
     FT_BBox bb = {corners[0].x, corners[0].y, corners[0].x, corners[0].y};
-    for (int i = 1; i < 4; i++) {
+    int i;
+    for (i = 1; i < 4; i++) {
         FT_Vector_Transform(corners + i, transform);
         if (corners[i].x < bb.xMin) bb.xMin = corners[i].x;
         if (corners[i].x > bb.xMax) bb.xMax = corners[i].x;
@@ -1405,8 +1407,9 @@ static SampledBGRABitmap createSampledBGRABitmap(FT_GlyphSlot ftglyph,
         sampledBitmap.yDownscale = yDownscale;
         int xOffset = sampledBitmap.left * xDownscale - ftglyph->bitmap_left;
         int yOffset = ftglyph->bitmap_top - sampledBitmap.top * yDownscale;
-        for (int y = 0; y < sampledBitmap.height; y++) {
-            for (int x = 0; x < sampledBitmap.width; x++) {
+        int x, y;
+        for (y = 0; y < sampledBitmap.height; y++) {
+            for (x = 0; x < sampledBitmap.width; x++) {
                 // Average pixels
                 int b = 0, g = 0, r = 0, a = 0;
                 int xFrom = x * xDownscale + xOffset,
@@ -1417,8 +1420,9 @@ static SampledBGRABitmap createSampledBGRABitmap(FT_GlyphSlot ftglyph,
                 if (xTo > ftglyph->bitmap.width) xTo = ftglyph->bitmap.width;
                 if (yFrom < 0) yFrom = 0;
                 if (yTo > ftglyph->bitmap.rows) yTo = ftglyph->bitmap.rows;
-                for (int j = yFrom; j < yTo; j++) {
-                    for (int i = xFrom; i < xTo; i++) {
+                int i, j;
+                for (j = yFrom; j < yTo; j++) {
+                    for (i = xFrom; i < xTo; i++) {
                         int offset = j * ftglyph->bitmap.pitch + i * 4;
                         b += ftglyph->bitmap.buffer[offset + 0];
                         g += ftglyph->bitmap.buffer[offset + 1];
@@ -1479,8 +1483,9 @@ static void transformBGRABitmapGlyph(FT_GlyphSlot ftglyph, GlyphInfo* glyphInfo,
     if (invScaleY < 1) invScaleY = 1;
     SampledBGRABitmap sampledBitmap =
             createSampledBGRABitmap(ftglyph, invScaleX, invScaleY);
-    for (int y = 0; y < glyphInfo->height; y++) {
-        for (int x = 0; x < glyphInfo->width; x++) {
+    int x, y;
+    for (y = 0; y < glyphInfo->height; y++) {
+        for (x = 0; x < glyphInfo->width; x++) {
             FT_Vector position = {
                     IntToFT26Dot6(dstBoundingBox->xMin + x),
                     IntToFT26Dot6(dstBoundingBox->yMax - y)
