@@ -303,7 +303,6 @@ class Instruction: public CompilationResourceObj {
   XHandlers*   _exception_handlers;              // Flat list of exception handlers covering this instruction
 
   friend class UseCountComputer;
-  friend class BlockBegin;
 
   void update_exception_state(ValueStack* state);
 
@@ -349,7 +348,6 @@ class Instruction: public CompilationResourceObj {
   void* operator new(size_t size) throw() {
     Compilation* c = Compilation::current();
     void* res = c->arena()->Amalloc(size);
-    ((Instruction*)res)->_id = c->get_next_id();
     return res;
   }
 
@@ -410,7 +408,8 @@ class Instruction: public CompilationResourceObj {
 
   // creation
   Instruction(ValueType* type, ValueStack* state_before = NULL, bool type_is_constant = false)
-  : _use_count(0)
+  : _id(Compilation::current()->get_next_id())
+  , _use_count(0)
 #ifndef PRODUCT
   , _printable_bci(-99)
 #endif
@@ -1648,8 +1647,6 @@ LEAF(BlockBegin, StateSplit)
    void* operator new(size_t size) throw() {
     Compilation* c = Compilation::current();
     void* res = c->arena()->Amalloc(size);
-    ((BlockBegin*)res)->_id = c->get_next_id();
-    ((BlockBegin*)res)->_block_id = c->get_next_block_id();
     return res;
   }
 
@@ -1661,6 +1658,7 @@ LEAF(BlockBegin, StateSplit)
   // creation
   BlockBegin(int bci)
   : StateSplit(illegalType)
+  , _block_id(Compilation::current()->get_next_block_id())
   , _bci(bci)
   , _depth_first_number(-1)
   , _linear_scan_number(-1)
