@@ -25,7 +25,26 @@ add_custom_target(configure
         COMMAND bash configure --disable-warnings-as-errors
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../)
 
+add_custom_target(configure_debug
+        COMMAND bash configure --disable-warnings-as-errors --enable-debug
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../)
+
 add_custom_target(build_images
-        COMMAND make COMPILER_WARNINGS_FATAL=false images
+        COMMAND make images CONF=macosx-x86_64-normal-server-release
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../
+        DEPENDS ${SOURCE_FILES})
+
+add_custom_target(build_images_debug
+        COMMAND make images CONF=macosx-x86_64-normal-server-fastdebug
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../
+        DEPENDS ${SOURCE_FILES})
+
+add_custom_target(make_clean
+        COMMAND make clean CONF=macosx-x86_64-normal-server-release
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../
+        DEPENDS ${SOURCE_FILES})
+
+add_custom_target(make_clean_debug
+        COMMAND make clean CONF=macosx-x86_64-normal-server-fastdebug
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../
         DEPENDS ${SOURCE_FILES})
