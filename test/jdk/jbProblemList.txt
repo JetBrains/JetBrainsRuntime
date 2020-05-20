@@ -201,7 +201,7 @@ java/awt/Focus/6378278/InputVerifierTest.java 8198616 macosx-all
 java/awt/Focus/6382144/EndlessLoopTest.java 8198617 macosx-all
 java/awt/Focus/6981400/Test1.java 8029675 windows-all,macosx-all
 java/awt/Focus/8073453/AWTFocusTransitionTest.java 8136517 macosx-all
-java/awt/Focus/8073453/SwingFocusTransitionTest.java 8136517 macosx-all
+java/awt/Focus/8073453/SwingFocusTransitionTest.java                                8136517,8197561 macosx-all,windows-all
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all,macosx-all
 java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055 macosx-all,windows-all
@@ -669,6 +669,7 @@ com/sun/nio/sctp/SctpChannel/SocketOptionTests.java             8141694 linux-al
 
 sun/security/pkcs11/ec/TestKeyFactory.java                      8026976 generic-all
 sun/security/pkcs11/sslecc/ClientJSSEServerJSSE.java            8161536 generic-all
+sun/security/pkcs11/Secmod/AddTrustedCert.java                  8232153 linux-all
 
 sun/security/tools/keytool/ListKeychainStore.sh                 8156889 macosx-all
 sun/security/tools/keytool/KeyToolTest.java                     8224644 solaris-all
@@ -686,7 +687,8 @@ sun/security/provider/KeyStore/DKSTest.sh                       8180266 windows-
 
 sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                 8209398 generic-all
 
-security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java  8224768 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java 8224768 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/BuypassCA.java 8243543 generic-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
 sun/security/smartcardio/TestConnect.java                       8039280 generic-all
@@ -738,8 +740,10 @@ javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,win
 javax/swing/border/TestTitledBorderLeak.java 8213531 linux-all
 javax/swing/JComponent/7154030/bug7154030.java 7190978 generic-all
 javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java 8067986 generic-all
+javax/swing/JComboBox/6236162/bug6236162.java                                       8028707 windows-all,macosx-all
+javax/swing/JComboBox/8033069/bug8033069ScrollBar.java                              8163367 generic-all
+javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java                      8197552 windows-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
-javax/swing/JComboBox/6236162/bug6236162.java 8028707 windows-all,macosx-all
 javax/swing/text/html/parser/Test8017492.java 8022535 generic-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582 linux-all
@@ -747,7 +751,6 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 81
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627 macosx-all
 # The next test below is an intermittent failure
-javax/swing/JComboBox/8033069/bug8033069ScrollBar.java 8163367 generic-all
 javax/swing/JColorChooser/Test6541987.java 8143021 windows-all,linux-all,macosx-all
 javax/swing/JColorChooser/Test7194184.java 8194126 linux-all,macosx-all
 javax/swing/JTable/7124218/SelectEditTableCell.java 8148958 linux-all,macosx-all
@@ -769,11 +772,7 @@ javax/swing/JFileChooser/DeserializedJFileChooser/DeserializedJFileChooserTest.j
 javax/swing/JFileChooser/6396844/TwentyThousandTest.java 8198003 generic-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8193942 generic-all
 javax/swing/JList/6462008/bug6462008.java 7156347 generic-all
-javax/swing/JPopupMenu/6580930/bug6580930.java 7124313 macosx-all
-javax/swing/JPopupMenu/6800513/bug6800513.java 7184956 macosx-all
-javax/swing/JPopupMenu/6675802/bug6675802.java 8196097 windows-all
 javax/swing/JTabbedPane/8007563/Test8007563.java 8051591 generic-all
-javax/swing/JTabbedPane/4624207/bug4624207.java 8064922 macosx-all
 javax/swing/JTabbedPane/7024235/Test7024235.java 8028281 macosx-all
 javax/swing/SwingUtilities/TestBadBreak/TestBadBreak.java 8160720 generic-all
 javax/swing/plaf/basic/Test6984643.java 8198340 windows-all
@@ -787,7 +786,7 @@ javax/swing/JFileChooser/6738668/bug6738668.java 8194946 generic-all
 javax/swing/JFileChooser/8021253/bug8021253.java 8169954 windows-all,linux-all,macosx-all
 javax/swing/JFileChooser/8062561/bug8062561.java 8196466 linux-all,macosx-all
 javax/swing/JInternalFrame/Test6325652.java 8224977 macosx-all
-javax/swing/JLabel/6596966/bug6596966.java 8040914 macosx-all
+javax/swing/JLabel/6596966/bug6596966.java                                          8040914,8197552 macosx-all,windows-all
 javax/swing/JPopupMenu/4870644/bug4870644.java 8194130 macosx-all,linux-all
 javax/swing/JPopupMenu/4966112/bug4966112.java 8064915 macosx-all
 javax/swing/MultiUIDefaults/Test6860438.java 8198391 generic-all
@@ -830,42 +829,58 @@ javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java 202880 linux-all
 javax/swing/dnd/8139050/NativeErrorsInTableDnD.java 8202765  macosx-all,linux-all
 javax/swing/Popup/TaskbarPositionTest.java 8065097 macosx-all,linux-all
 javax/swing/JButton/4368790/bug4368790.java 8213123 macosx-all
+javax/swing/JButton/PressedButtonRightClickTest.java                                8203906 windows-all
 javax/swing/JEditorPane/6917744/bug6917744.java 8213124 macosx-all
 javax/swing/JTable/6263446/bug6263446.java 8169959 macosx-all
 javax/swing/JTree/6263446/bug6263446.java 8213125 macosx-all
 javax/swing/JTree/8003400/Test8003400.java 8197560 macosx-all,linux-all
 javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java 8221902 linux-all,macosx-all
-javax/swing/ToolTipManager/Test6256140.java 8233560 macosx-all
 javax/swing/text/View/8014863/bug8014863.java 8233561 macosx-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java 8233561 macosx-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java 8233569 macosx-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java 233570 macosx-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java 8208566 macosx-all
-javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java 8233635 macosx-all
-javax/swing/plaf/nimbus/TestNimbusOverride.java 8233559 macosx-all
-javax/swing/JTree/4927934/bug4927934.java 8233550 macosx-all
-javax/swing/JTree/4908142/bug4908142.java 8233550 macosx-all
-javax/swing/JTree/4330357/bug4330357.java 8233550 macosx-all
-javax/swing/JTable/7124218/SelectEditTableCell.java 8233551 macosx-all
-javax/swing/JTable/7068740/bug7068740.java 8233552 macosx-all
-javax/swing/JSpinner/4973721/bug4973721.java 8233553 macosx-all
-javax/swing/JRootPane/4670486/bug4670486.java 8042381 macosx-all
-javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java 8233555 macosx-all
-javax/swing/JRadioButton/8075609/bug8075609.java 8233555 macosx-all
-javax/swing/JRadioButton/8033699/bug8033699.java 8233555 macosx-all
-javax/swing/JPopupMenu/6827786/bug6827786.java 8233556 macosx-all
-javax/swing/JPopupMenu/6544309/bug6544309.java 8233556 macosx-all
-javax/swing/JPopupMenu/4634626/bug4634626.java 8233556 macosx-all
-javax/swing/JPopupMenu/4458079/bug4458079.java 8233556 macosx-all
-javax/swing/JMenuItem/ActionListenerCalledTwice/ActionListenerCalledTwiceTest.java 8233637 macosx-all
+javax/swing/JMenu/4213634/bug4213634.java                                           8197552 windows-all
+javax/swing/JMenu/4692443/bug4692443.java                                           8171998,8197552 macosx-all,windows-all
+javax/swing/JMenu/4515762/bug4515762.java                                           8233643,8197552 macosx-all,windows-all
+javax/swing/JMenu/6538132/6538132.java                                              8197552 windows-all
+javax/swing/JMenuBar/4750590/bug4750590.java                                        8233642,8197552 macosx-all,windows-all
+javax/swing/JMenuItem/4171437/bug4171437.java                                       8233641,8197552 macosx-all,windows-all
+javax/swing/JMenuItem/6249972/bug6249972.java                                       8233640,8197552 macosx-all,windows-all
 javax/swing/JMenuItem/8139169/ScreenMenuBarInputTwice.java 8233638 macosx-all
-javax/swing/JMenuItem/6249972/bug6249972.java 8233640 macosx-all
-javax/swing/JMenuItem/4171437/bug4171437.java 8233641 macosx-all
-javax/swing/JMenuBar/4750590/bug4750590.java 8233642 macosx-all
-javax/swing/JMenu/4692443/bug4692443.java 8171998 macosx-all
-javax/swing/JMenu/4515762/bug4515762.java 8233643 macosx-all
+javax/swing/JMenuItem/ActionListenerCalledTwice/ActionListenerCalledTwiceTest.java 8233637 macosx-all
+javax/swing/JPopupMenu/4458079/bug4458079.java 8233556 macosx-all
+javax/swing/JPopupMenu/4634626/bug4634626.java 8233556 macosx-all
+javax/swing/JPopupMenu/6415145/bug6415145.java                                      8197552 windows-all
+javax/swing/JPopupMenu/6515446/bug6515446.java                                      8197552 windows-all
+javax/swing/JPopupMenu/6544309/bug6544309.java 8233556 macosx-all
+javax/swing/JPopupMenu/6580930/bug6580930.java 7124313 macosx-all
+javax/swing/JPopupMenu/6675802/bug6675802.java 8196097 windows-all
+javax/swing/JPopupMenu/6800513/bug6800513.java 7184956 macosx-all
+javax/swing/JPopupMenu/6827786/bug6827786.java 8233556 macosx-all
+javax/swing/JRadioButton/8075609/bug8075609.java                                    8233555,8197552 macosx-all,windows-all
+javax/swing/JRadioButton/8033699/bug8033699.java                                    8233555,8197552 macosx-all,windows-all
+javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java                 8233555,8197552 macosx-all,windows-all
+javax/swing/JRootPane/4670486/bug4670486.java                                       8042381,8197552 macosx-all,windows-all
+javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java 8197552 windows-all
+javax/swing/JSlider/6348946/bug6348946.java                                         8197552 windows-all
+javax/swing/JSpinner/4973721/bug4973721.java                                        8233553,8197552 macosx-all,windows-all
+javax/swing/JTabbedPane/4624207/bug4624207.java                                     8064922,8197552 macosx-all,windows-all
+javax/swing/JTable/7068740/bug7068740.java                                          8233552,8197552 macosx-all,windows-all
+javax/swing/JTable/7124218/SelectEditTableCell.java                                 8233551 macosx-all
+javax/swing/JTableHeader/6889007/bug6889007.java                                    8197552 windows-all
+javax/swing/JTextField/8036819/bug8036819.java                                      8197552 windows-all
+javax/swing/JTree/4927934/bug4927934.java                                           8233550,8197552 macosx-all,windows-all
+javax/swing/JTree/4908142/bug4908142.java                                           8233550,8197552 macosx-all,windows-all
+javax/swing/JTree/4330357/bug4330357.java 8233550 macosx-all
+javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java                      8233635,8197552 macosx-all,windows-all
+javax/swing/SwingUtilities/4917669/bug4917669.java                                  8197552 windows-all
+javax/swing/SwingUtilities/7088744/bug7088744.java                                  8197552 windows-all
+javax/swing/ToolTipManager/Test6256140.java                                         8233560,8197552 macosx-all,windows-all
+javax/swing/plaf/nimbus/TestNimbusOverride.java 8233559 macosx-all
+
 javax/swing/JInternalFrame/8020708/bug8020708.java 8233644 macosx-all
-javax/swing/JColorChooser/Test8051548.java 8233647 macosx-all
+javax/swing/JColorChooser/Test8051548.java                                          8233647,8197552 macosx-all,windows-all
 
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8225012 windows-all,macosx-all
 sanity/client/SwingSet/src/ScrollPaneDemoTest.java 8225013 linux-all
@@ -945,3 +960,16 @@ jdk/jfr/jmx/security/TestEnoughPermission.java                  8235946    gener
 # jdk_internal
 
 ############################################################################
+
+# no printer found
+java/awt/print/PrinterJob/ExceptionTest.java                                        generic-all
+java/awt/print/PrinterJob/ImagePrinting/NullClipARGB.java                           generic-all
+java/awt/print/PrinterJob/PrtException.java                                         generic-all
+javax/print/CheckDupFlavor.java                                                     generic-all
+javax/print/PrintServiceLookup/CountPrintServices.java                              generic-all
+javax/print/attribute/AttributeTest.java                                            generic-all
+javax/print/attribute/GetCopiesSupported.java                                       generic-all
+javax/print/attribute/SidesPageRangesTest.java                                      generic-all
+javax/print/attribute/SupportedPrintableAreas.java                                  generic-all
+
+demo/jfc/J2Ddemo/J2DdemoTest.java.J2DdemoTest                                       8213118 generic-all
