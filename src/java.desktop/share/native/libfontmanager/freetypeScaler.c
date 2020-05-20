@@ -1356,8 +1356,9 @@ static FT_BBox getTransformedBitmapBoundingBox(FT_GlyphSlot ftglyph,
     corners[2].y = corners[3].y = IntToFT26Dot6(ftglyph->bitmap_top -
                                                 (FT_Int) ftglyph->bitmap.rows);
 
-    FT_BBox bb = {FT_LONG_MAX, FT_LONG_MAX, FT_LONG_MIN, FT_LONG_MIN};
-    for (int i = 0; i < 4; i++) {
+    FT_Vector_Transform(corners, transform);
+    FT_BBox bb = {corners[0].x, corners[0].y, corners[0].x, corners[0].y};
+    for (int i = 1; i < 4; i++) {
         FT_Vector_Transform(corners + i, transform);
         if (corners[i].x < bb.xMin) bb.xMin = corners[i].x;
         if (corners[i].x > bb.xMax) bb.xMax = corners[i].x;
