@@ -71,7 +71,34 @@
                        style:(int)style
 {
     // create font with family & size
-    NSFont *nsFont = [NSFont fontWithName:name size:1.0];
+    NSFont *nsFont = nil;
+    if (name.length > 0) {
+        if ([name characterAtIndex:0] == '.') {
+            if ([name hasPrefix:@".SFNS-"]) {
+                NSDictionary* fontWeight = @{
+                        @"Ultralight": @(NSFontWeightUltraLight),
+                        @"Thin": @(NSFontWeightThin),
+                        @"Light": @(NSFontWeightLight),
+                        @"Regular": @(NSFontWeightRegular),
+                        @"Medium": @(NSFontWeightMedium),
+                        @"Semibold": @(NSFontWeightSemibold),
+                        @"Bold": @(NSFontWeightBold),
+                        @"Heavy": @(NSFontWeightHeavy),
+                        @"Black": @(NSFontWeightBlack)
+                };
+
+                NSString* attr = [name substringFromIndex: 6];
+                NSNumber* weight =  [fontWeight valueForKey:attr];
+                if (weight != nil) {
+                    nsFont = [NSFont systemFontOfSize:1.0 weight:[weight intValue]];
+                }
+            }
+        }
+
+        if (nsFont == nil) {
+            nsFont = [NSFont fontWithName:name size:1.0];
+        }
+    }
 
     if (nsFont == nil) {
         // if can't get font of that name, substitute system default font
