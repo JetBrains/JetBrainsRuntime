@@ -203,7 +203,7 @@ void ResolvedMethodTable::print() {
 
 void ResolvedMethodTable::adjust_method_entries(bool * trace_name_printed) {
   assert(SafepointSynchronize::is_at_safepoint(), "only called at safepoint");
-  // For each entry in RMT, change to new method
+  // For each entry in RMT, change to new methodadjust_method_entries_dcevm
   for (int i = 0; i < _the_table->table_size(); ++i) {
     for (ResolvedMethodEntry* entry = _the_table->bucket(i);
          entry != NULL;
@@ -273,6 +273,8 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
 
         InstanceKlass* newer_klass = InstanceKlass::cast(old_method->method_holder()->new_version());
         Method* newer_method = newer_klass->method_with_idnum(old_method->orig_method_idnum());
+
+        log_info(redefine, class, load, exceptions)("Adjusting method: '%s' of new class %s", newer_method->name_and_sig_as_C_string(), newer_klass->name()->as_C_string());
 
         assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
         assert(newer_method != NULL, "method_with_idnum() should not be NULL");
