@@ -578,14 +578,14 @@ void VM_EnhancedRedefineClasses::doit() {
     }
   }
 
-//  if (objectClosure.needs_instance_update()) {
+  if (objectClosure.needs_instance_update()) {
     // Do a full garbage collection to update the instance sizes accordingly
     Universe::set_redefining_gc_run(true);
     notify_gc_begin(true);
     Universe::heap()->collect_as_vm_thread(GCCause::_heap_inspection);
     notify_gc_end();
     Universe::set_redefining_gc_run(false);
-//  }
+  }
 
   // Unmark Klass*s as "redefining"
   for (int i = 0; i < _new_classes->length(); i++) {
