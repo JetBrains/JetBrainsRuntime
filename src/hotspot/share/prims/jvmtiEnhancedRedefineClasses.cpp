@@ -503,6 +503,8 @@ void VM_EnhancedRedefineClasses::doit() {
     ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
 
 
+    // SystemDictionary::methods_do(fix_invoke_method);
+
   // JSR-292 support
   if (_any_class_has_resolved_methods) {
     bool trace_name_printed = false;
@@ -774,12 +776,34 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
     // load hook event.
     state->set_class_being_redefined(the_class, _class_load_kind);
 
-    InstanceKlass* k = SystemDictionary::resolve_from_stream(the_class_sym,
-                                                the_class_loader,
-                                                protection_domain,
-                                                &st,
-                                                the_class,
-                                                THREAD);
+    InstanceKlass* k;
+
+    if (InstanceKlass::cast(the_class)->is_anonymous()) {
+      const InstanceKlass* host_class = the_class->host_klass();
+
+      // Make sure it's the real host class, not another anonymous class.
+      while (host_class != NULL && host_class->is_anonymous()) {
+        host_class = host_class->host_klass();
+      }
+
+      k = SystemDictionary::parse_stream(the_class_sym,
+                                         the_class_loader,
+                                         protection_domain,
+                                         &st,
+                                         host_class,
+                                         the_class,
+                                         NULL,
+                                         THREAD);
+      k->class_loader_data()->exchange_holders(the_class->class_loader_data());
+      the_class->class_loader_data()->inc_keep_alive();
+    } else {
+      k = SystemDictionary::resolve_from_stream(the_class_sym,
+                                                  the_class_loader,
+                                                  protection_domain,
+                                                  &st,
+                                                  the_class,
+                                                  THREAD);
+    }
     // Clear class_being_redefined just to be sure.
     state->clear_class_being_redefined();
 
@@ -1469,6 +1493,30 @@ void VM_EnhancedRedefineClasses::MethodDataCleaner::do_klass(Klass* k) {
   }
 }
 
+void VM_EnhancedRedefineClasses::fix_invoke_method(Method* method) {
+
+  constantPoolHandle other_cp = constantPoolHandle(method->constants());
+
+  for (int i = 0; i < other_cp->length(); i++) {
+    if (other_cp->tag_at(i).is_klass()) {
+      Klass* klass = other_cp->resolved_klass_at(i);
+      if (klass->new_version() != NULL) {
+        // Constant pool entry points to redefined class -- update to the new version
+        other_cp->klass_at_put(i, klass->newest_version());
+      }
+      assert(other_cp->resolved_klass_at(i)->new_version() == NULL, "Must be new klass!");
+    }
+  }
+
+  ConstantPoolCache* cp_cache = other_cp->cache();
+  if (cp_cache != NULL) {
+    cp_cache->clear_entries();
+  }
+
+}
+
+
+
 void VM_EnhancedRedefineClasses::update_jmethod_ids() {
   for (int j = 0; j < _matching_methods_length; ++j) {
     Method* old_method = _matching_old_methods[j];
@@ -2018,7 +2066,10 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
   // Find classes not directly redefined, but affected by a redefinition (because one of its supertypes is redefined)
   AffectedKlassClosure closure(_affected_klasses);
   // Updated in j10, from original SystemDictionary::classes_do
-  ClassLoaderDataGraph::dictionary_classes_do(&closure);
+
+  ClassLoaderDataGraph::classes_do(&closure);
+  //ClassLoaderDataGraph::dictionary_classes_do(&closure);
+
   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
 
   // Sort the affected klasses such that a supertype is always on a smaller array index than its subtype.
