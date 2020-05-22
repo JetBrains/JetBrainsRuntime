@@ -3345,12 +3345,12 @@ void AwtComponent::JavaKeyToWindowsKey(UINT javaKey,
     return;
 }
 
-static BOOL UseNationalLayoutForShortcurs()
+static BOOL UseLatinNonAlphaNumKeycodes()
 {
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     jclass cls = env->FindClass("sun/awt/event/KeyEventProcessing");
     CHECK_NULL_RETURN(cls, TRUE);
-    jfieldID fieldID = env->GetStaticFieldID(cls, "useNationalLayouts", "Z");
+    jfieldID fieldID = env->GetStaticFieldID(cls, "useLatinNonAlphaNumKeycodes", "Z");
     CHECK_NULL_RETURN(fieldID, TRUE);
     return static_cast<BOOL>(env->GetStaticBooleanField(cls, fieldID));
 }
@@ -3399,8 +3399,8 @@ UINT AwtComponent::WindowsKeyToJavaKey(UINT windowsKey, UINT modifiers, UINT cha
         }
     }
 
-    static const BOOL USE_US_LAYOUT_FOR_SHORTCUTS = !UseNationalLayoutForShortcurs();
-    if (USE_US_LAYOUT_FOR_SHORTCUTS) {
+    static const BOOL USE_LATIN_NON_ALPHA_NUM_KEYCODES = UseLatinNonAlphaNumKeycodes();
+    if (USE_LATIN_NON_ALPHA_NUM_KEYCODES) {
         for (int i = 0; latinNonAlphaNumKeyMapTable[i].windowsKey != 0; i++) {
             if (latinNonAlphaNumKeyMapTable[i].windowsKey == windowsKey &&
                 latinNonAlphaNumKeyMapTable[i].javaKey != java_awt_event_KeyEvent_VK_UNDEFINED) {
