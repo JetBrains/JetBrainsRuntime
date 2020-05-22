@@ -663,6 +663,15 @@ Dictionary* ClassLoaderData::create_dictionary() {
   return new Dictionary(this, size, resizable);
 }
 
+void ClassLoaderData::exchange_holders(ClassLoaderData* cld) {
+  oop holder_oop = _holder.peek();
+  _holder.replace(cld->_holder.peek());
+  cld->_holder.replace(holder_oop);
+  WeakHandle<vm_class_loader_data> exchange = _holder;
+  _holder = cld->_holder;
+  cld->_holder = exchange;
+}
+
 // Tell the GC to keep this klass alive while iterating ClassLoaderDataGraph
 oop ClassLoaderData::holder_phantom() const {
   // A klass that was previously considered dead can be looked up in the

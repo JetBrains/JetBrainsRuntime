@@ -292,6 +292,7 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   void accumulate_modified_oops()        { if (has_modified_oops()) _accumulated_modified_oops = true; }
   void clear_accumulated_modified_oops() { _accumulated_modified_oops = false; }
   bool has_accumulated_modified_oops()   { return _accumulated_modified_oops; }
+  void exchange_holders(ClassLoaderData* cld);
  private:
 
   void unload();

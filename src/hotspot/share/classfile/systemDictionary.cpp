@@ -971,12 +971,16 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
                                               Handle protection_domain,
                                               ClassFileStream* st,
                                               const InstanceKlass* host_klass,
+                                              InstanceKlass* old_klass,
                                               GrowableArray<Handle>* cp_patches,
                                               TRAPS) {
 
   EventClassLoad class_load_start_event;
 
   ClassLoaderData* loader_data;
+
+  bool is_redefining = (old_klass != NULL);
+
   if (host_klass != NULL) {
     // Create a new CLD for anonymous class, that uses the same class loader
     // as the host_klass
@@ -1000,8 +1004,12 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
                                                       protection_domain,
                                                       host_klass,
                                                       cp_patches,
-                                                      false, // pick_newest
+                                                      is_redefining, // pick_newest
                                                       CHECK_NULL);
+  if (is_redefining && k != NULL) {
+    k->set_redefining(true);
+    k->set_old_version(old_klass);
+  }
 
   if (host_klass != NULL && k != NULL) {
     // Anonymous classes must update ClassLoaderData holder (was host_klass loader)
@@ -1845,7 +1853,7 @@ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
   k->remove_from_sibling_list();
 }
 
-// (DCEVM) 
+// (DCEVM)
 void SystemDictionary::update_constraints_after_redefinition() {
   constraints()->update_after_redefinition();
 }
