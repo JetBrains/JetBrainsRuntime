@@ -67,37 +67,31 @@
     [super finalize];
 }
 
+static NSString* uiName = nil;
+static NSString* uiBoldName = nil;
+
 + (AWTFont *) awtFontForName:(NSString *)name
                        style:(int)style
 {
     // create font with family & size
     NSFont *nsFont = nil;
-    if (name.length > 0) {
-        if ([name characterAtIndex:0] == '.') {
-            if ([name hasPrefix:@".SFNS-"]) {
-                NSDictionary* fontWeight = @{
-                        @"Ultralight": @(NSFontWeightUltraLight),
-                        @"Thin": @(NSFontWeightThin),
-                        @"Light": @(NSFontWeightLight),
-                        @"Regular": @(NSFontWeightRegular),
-                        @"Medium": @(NSFontWeightMedium),
-                        @"Semibold": @(NSFontWeightSemibold),
-                        @"Bold": @(NSFontWeightBold),
-                        @"Heavy": @(NSFontWeightHeavy),
-                        @"Black": @(NSFontWeightBlack)
-                };
 
-                NSString* attr = [name substringFromIndex: 6];
-                NSNumber* weight =  [fontWeight valueForKey:attr];
-                if (weight != nil) {
-                    nsFont = [NSFont systemFontOfSize:1.0 weight:[weight intValue]];
-                }
-            }
+    if ((uiName != nil && [name isEqualTo:uiName]) ||
+        (uiBoldName != nil && [name isEqualTo:uiBoldName])) {
+        if (style & java_awt_Font_BOLD) {
+            nsFont = [NSFont boldSystemFontOfSize:1.0];
+        } else {
+            nsFont = [NSFont systemFontOfSize:1.0];
         }
+#ifdef DEBUG
+        NSLog(@"nsFont-name is : %@", nsFont.familyName);
+        NSLog(@"nsFont-family is : %@", nsFont.fontName);
+        NSLog(@"nsFont-desc-name is : %@", nsFont.fontDescriptor.postscriptName);
+#endif
 
-        if (nsFont == nil) {
-            nsFont = [NSFont fontWithName:name size:1.0];
-        }
+
+    } else {
+           nsFont = [NSFont fontWithName:name size:1.0];
     }
 
     if (nsFont == nil) {
@@ -215,6 +209,12 @@ static void addFont(CTFontUIFontType uiType,
             CFRelease(desc);
             CFRelease(font);
             return;
+        }
+        if (uiType == kCTFontUIFontSystem) {
+            uiName = (NSString*)name;
+        }
+        if (uiType == kCTFontUIFontEmphasizedSystem) {
+            uiBoldName = (NSString*)name;
         }
         [allFonts addObject:name];
         [fontFamilyTable setObject:family forKey:name];
