@@ -343,12 +343,13 @@ JNIEXPORT void JNICALL Java_sun_font_CStrike_getNativeGlyphOutlineBounds
         rawRectData[1] = 0.0f;
         rawRectData[2] = 0.0f;
         rawRectData[3] = 0.0f;
+    } else {
+        rawRectData[0] = (jfloat) bbox.origin.x;
+        rawRectData[1] = (jfloat) (-bbox.origin.y - bbox.size.height);
+        rawRectData[2] = (jfloat) bbox.size.width;
+        rawRectData[3] = (jfloat) bbox.size.height;
     }
 
-    rawRectData[0] = (jfloat) bbox.origin.x;
-    rawRectData[1] = (jfloat) (-bbox.origin.y - bbox.size.height);
-    rawRectData[2] = (jfloat) bbox.size.width;
-    rawRectData[3] = (jfloat) bbox.size.height;
     (*env)->ReleasePrimitiveArrayCritical(env, rectData, rawRectData, 0);
     // Cleanup
     cleanup:
