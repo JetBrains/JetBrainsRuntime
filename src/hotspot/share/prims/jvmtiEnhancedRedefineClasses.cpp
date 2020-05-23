@@ -1389,14 +1389,16 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
 
     if (code == Bytecodes::_breakpoint) {
       int bci = method->bci_from(bcp);
-      code = method->orig_bytecode_at(bci);
-      java_code = Bytecodes::java_code(code);
-      if (code != java_code &&
-           (java_code == Bytecodes::_getfield ||
-            java_code == Bytecodes::_putfield ||
-            java_code == Bytecodes::_aload_0)) {
-        // Let breakpoint table handling unpatch bytecode
-        method->set_orig_bytecode_at(bci, java_code);
+      code = method->orig_bytecode_at(bci, true);
+      if (code != Bytecodes::_shouldnotreachhere) {
+        java_code = Bytecodes::java_code(code);
+        if (code != java_code &&
+             (java_code == Bytecodes::_getfield ||
+              java_code == Bytecodes::_putfield ||
+              java_code == Bytecodes::_aload_0)) {
+          // Let breakpoint table handling unpatch bytecode
+          method->set_orig_bytecode_at(bci, java_code);
+        }
       }
     } else {
       java_code = Bytecodes::java_code(code);
