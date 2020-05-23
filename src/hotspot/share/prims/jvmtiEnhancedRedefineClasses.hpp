@@ -35,17 +35,16 @@
 #include "gc/shared/vmGCOperations.hpp"
 #include "../../../java.base/unix/native/include/jni_md.h"
 
-/**
- * Enhanced class redefiner.
- *
- * This class implements VM_GC_Operation - the usual usage should be:
- *     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
- *     VMThread::execute(&op);
- * Which in turn runs:
- *   - doit_prologue() - calculate all affected classes (add subclasses etc) and load new class versions
- *   - doit() - main redefition, adjust existing objects on the heap, clear caches
- *   - doit_epilogue() - cleanup
-*/
+//
+// Enhanced class redefiner.
+//
+// This class implements VM_GC_Operation - the usual usage should be:
+//     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
+//     VMThread::execute(&op);
+// Which in turn runs:
+//   - doit_prologue() - calculate all affected classes (add subclasses etc) and load new class versions
+//   - doit() - main redefition, adjust existing objects on the heap, clear caches
+//   - doit_epilogue() - cleanup
 class VM_EnhancedRedefineClasses: public VM_GC_Operation {
  private:
   // These static fields are needed by ClassLoaderDataGraph::classes_do()
@@ -93,17 +92,15 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
 
   // These routines are roughly in call order unless otherwise noted.
 
-  /**
-    Load and link new classes (either redefined or affected by redefinition - subclass, ...)
-
-    - find sorted affected classes
-    - resolve new class
-    - calculate redefine flags (field change, method change, supertype change, ...)
-    - calculate modified fields and mapping to old fields
-    - link new classes
-
-    The result is sotred in _affected_klasses(old definitions) and _new_classes(new definitions) arrays.
-  */
+  // Load and link new classes (either redefined or affected by redefinition - subclass, ...)
+  //
+  // - find sorted affected classes
+  // - resolve new class
+  // - calculate redefine flags (field change, method change, supertype change, ...)
+  // - calculate modified fields and mapping to old fields
+  // - link new classes
+  //
+  // The result is sotred in _affected_klasses(old definitions) and _new_classes(new definitions) arrays.
   jvmtiError load_new_class_versions(TRAPS);
 
   // Searches for all affected classes and performs a sorting such tha
