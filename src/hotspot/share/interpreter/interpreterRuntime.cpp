@@ -787,7 +787,7 @@ JRT_END
 // Invokes
 
 JRT_ENTRY(Bytecodes::Code, InterpreterRuntime::get_original_bytecode_at(JavaThread* thread, Method* method, address bcp))
-  return method->orig_bytecode_at(method->bci_from(bcp));
+  return method->orig_bytecode_at(method->bci_from(bcp), false);
 JRT_END
 
 JRT_ENTRY(void, InterpreterRuntime::set_original_bytecode_at(JavaThread* thread, Method* method, address bcp, Bytecodes::Code new_code))
