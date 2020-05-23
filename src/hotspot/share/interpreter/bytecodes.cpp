@@ -84,7 +84,7 @@ Bytecodes::Code Bytecodes::code_at(Method* method, int bci) {
 Bytecodes::Code Bytecodes::non_breakpoint_code_at(const Method* method, address bcp) {
   assert(method != NULL, "must have the method for breakpoint conversion");
   assert(method->contains(bcp), "must be valid bcp in method");
-  return method->orig_bytecode_at(method->bci_from(bcp));
+  return method->orig_bytecode_at(method->bci_from(bcp), false);
 }
 
 int Bytecodes::special_length_at(Bytecodes::Code code, address bcp, address end) {
