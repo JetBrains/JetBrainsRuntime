@@ -230,7 +230,7 @@ class Method : public Metadata {
 
   // JVMTI breakpoints
 #if !INCLUDE_JVMTI
-  Bytecodes::Code orig_bytecode_at(int bci) const {
+  Bytecodes::Code orig_bytecode_at(int bci, bool no_fatal) const {
     ShouldNotReachHere();
     return Bytecodes::_shouldnotreachhere;
   }
@@ -239,7 +239,7 @@ class Method : public Metadata {
   };
   u2   number_of_breakpoints() const {return 0;}
 #else // !INCLUDE_JVMTI
-  Bytecodes::Code orig_bytecode_at(int bci) const;
+  Bytecodes::Code orig_bytecode_at(int bci, bool no_fatal) const;
   void set_orig_bytecode_at(int bci, Bytecodes::Code code);
   void set_breakpoint(int bci);
   void clear_breakpoint(int bci);
