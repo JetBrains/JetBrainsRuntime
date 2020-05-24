@@ -264,25 +264,25 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
 
       if (old_method->is_old()) {
 
+        InstanceKlass* newer_klass = InstanceKlass::cast(old_method->method_holder()->new_version());
+        Method* newer_method;
+
         // Method* new_method;
         if (old_method->is_deleted()) {
-          // FIXME:(DCEVM) - check if exception can be thrown
-          // new_method = Universe::throw_no_such_method_error();
-          continue;
-        }
+          newer_method = Universe::throw_no_such_method_error();
+        } else {
+          newer_method = newer_klass->method_with_idnum(old_method->orig_method_idnum());
 
-        InstanceKlass* newer_klass = InstanceKlass::cast(old_method->method_holder()->new_version());
-        Method* newer_method = newer_klass->method_with_idnum(old_method->orig_method_idnum());
+          log_info(redefine, class, load, exceptions)("Adjusting method: '%s' of new class %s", newer_method->name_and_sig_as_C_string(), newer_klass->name()->as_C_string());
 
-        log_info(redefine, class, load, exceptions)("Adjusting method: '%s' of new class %s", newer_method->name_and_sig_as_C_string(), newer_klass->name()->as_C_string());
+          assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
+          assert(newer_method != NULL, "method_with_idnum() should not be NULL");
+          assert(old_method != newer_method, "sanity check");
 
-        assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
-        assert(newer_method != NULL, "method_with_idnum() should not be NULL");
-        assert(old_method != newer_method, "sanity check");
-
-        if (_the_table->lookup(newer_method) != NULL) {
-          // old method was already adjusted if new method exists in _the_table
-            continue;
+          if (_the_table->lookup(newer_method) != NULL) {
+            // old method was already adjusted if new method exists in _the_table
+              continue;
+          }
         }
 
         java_lang_invoke_ResolvedMethodName::set_vmtarget(mem_name, newer_method);
