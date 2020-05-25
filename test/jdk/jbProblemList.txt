@@ -228,7 +228,7 @@ java/awt/Mouse/GetMousePositionTest/GetMousePositionWithOverlay.java            
 java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java 8196018 windows-all,linux-all
 java/awt/TrayIcon/ActionCommand/ActionCommand.java 8150540 windows-all
 java/awt/TrayIcon/ActionEventMask/ActionEventMask.java 8150540 windows-all
-java/awt/TrayIcon/ActionEventTest/ActionEventTest.java 8150540 windows-all
+java/awt/TrayIcon/ActionEventTest/ActionEventTest.java                              8150540,8242801 windows-all,macosx-all
 java/awt/TrayIcon/ModalityTest/ModalityTest.java 8150540 windows-all,macosx-all
 java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java 8150540 windows-all
 java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java 8150540 windows-all
@@ -247,7 +247,7 @@ java/awt/Window/ShapedAndTranslucentWindows/SetShape.java 8208509 macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java 8197936 macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeDynamicallyAndClick.java 8013450 macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java 8013450 macosx-all
-java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java 8221901 linux-all
+java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java                  8221901 linux-all,macosx-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java 8222323,8215132 windows-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java 8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/Shaped.java  8222328 windows-all,linux-all,macosx-all
@@ -885,7 +885,7 @@ javax/swing/text/GlyphPainter2/6427244/bug6427244.java                          
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java                      8233635,8197552 macosx-all,windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8233559 macosx-all
 javax/swing/JTree/4927934/bug4927934.java                                           8233550,8197552 macosx-all,windows-all
-javax/swing/JTree/4908142/bug4908142.java 8233550 macosx-all
+javax/swing/JTree/4908142/bug4908142.java                                           8233550,8197552 macosx-all,windows-all
 javax/swing/JTree/4330357/bug4330357.java 8233550 macosx-all
 javax/swing/JTable/7068740/bug7068740.java                                          8233552,8197552 macosx-all,windows-all
 javax/swing/JSlider/6348946/bug6348946.java                                         8197552 windows-all
@@ -992,3 +992,20 @@ jdk/jfr/jmx/security/TestEnoughPermission.java                  8235946    gener
 # jdk_internal
 
 ############################################################################
+
+demo/jfc/J2Ddemo/J2DdemoTest.java                                                   8213118 generic-all
+
+# no printer found
+java/awt/print/PrinterJob/ExceptionTest.java                                        generic-all
+java/awt/print/PrinterJob/ImagePrinting/NullClipARGB.java                           generic-all
+java/awt/print/PrinterJob/PrintCrashTest.java                                       generic-all
+java/awt/print/PrinterJob/PrtException.java                                         generic-all
+javax/print/attribute/ChromaticityValues.java                                       generic-all
+javax/print/CheckDupFlavor.java                                                     generic-all
+javax/print/PrintSE/PrintSE.sh                                                      generic-all
+javax/print/PrintSEUmlauts/PrintSEUmlauts.java                                      8135174 generic-all
+javax/print/PrintServiceLookup/CountPrintServices.java                              generic-all
+javax/print/attribute/AttributeTest.java                                            generic-all
+javax/print/attribute/GetCopiesSupported.java                                       generic-all
+javax/print/attribute/SidesPageRangesTest.java                                      generic-all
+javax/print/attribute/SupportedPrintableAreas.java                                  generic-all
