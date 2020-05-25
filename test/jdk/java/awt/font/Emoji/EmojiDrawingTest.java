@@ -20,25 +20,30 @@
  * @requires os.family == "mac" | os.family == "linux"
  */
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics2D;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
+import java.util.stream.Stream;
 import javax.imageio.ImageIO;
 
 public class EmojiDrawingTest {
     private static final String EMOJI = new String(Character.toChars(0x1f600));
-    private static Font FONT = new Font(
+    private static String FONT_NAME =
             System.getProperty("os.name").toLowerCase().contains("mac") ?
-                    "Menlo" : "Noto Color Emoji", Font.PLAIN, 12);
+            "Menlo" : "Noto Color Emoji";
+    private static Font FONT = new Font(FONT_NAME, Font.PLAIN, 12);
     private static final int IMAGE_WIDTH = 20;
     private static final int IMAGE_HEIGHT = 20;
     private static final int GLYPH_X = 2;
     private static final int GLYPH_Y = 15;
 
     public static void main(String[] args) throws Exception {
+        if(Stream.of(GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames())
+                .noneMatch(f -> f.equalsIgnoreCase(FONT_NAME))) {
+            System.err.println("Font not available: " + FONT_NAME);
+            return;
+        }
         BufferedImage actual = createImage();
         if (!matchesOneOfExpected(actual)) {
             File file = new File( "emoji.png");
