@@ -43,7 +43,6 @@
     id<MTLTexture> buffer;
     id<CAMetalDrawable> mtlDrawable;
     id<MTLCommandBuffer> blitCommandBuf;
-    id<MTLBlitCommandEncoder> blitEncoder;
     int topInset;
     int leftInset;
 }
@@ -55,7 +54,6 @@
 @property (readwrite, assign) id<MTLTexture> buffer;
 @property (readwrite, assign) id<CAMetalDrawable> mtlDrawable;
 @property (readwrite, assign) id<MTLCommandBuffer> blitCommandBuf;
-@property (readwrite, assign) id<MTLBlitCommandEncoder> blitEncoder;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
 

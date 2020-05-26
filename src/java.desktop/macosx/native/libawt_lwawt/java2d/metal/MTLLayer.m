@@ -29,8 +29,6 @@
 #import "LWCToolkit.h"
 #import "MTLSurfaceData.h"
 
-#import "MTLBlitLoops.h"
-
 @implementation MTLLayer
 
 
@@ -41,7 +39,6 @@
 @synthesize buffer;
 @synthesize mtlDrawable;
 @synthesize blitCommandBuf;
-@synthesize blitEncoder;
 @synthesize topInset;
 @synthesize leftInset;
 
@@ -77,12 +74,14 @@
 
 - (void) blitTexture {
     @autoreleasepool {
-        [self.blitEncoder
+        id <MTLBlitCommandEncoder> blitEncoder = [self.blitCommandBuf blitCommandEncoder];
+
+        [blitEncoder
                 copyFromTexture:self.buffer sourceSlice:0 sourceLevel:0
                 sourceOrigin:MTLOriginMake((jint)(self.leftInset*self.contentsScale), (jint)(self.topInset*self.contentsScale), 0)
                 sourceSize:MTLSizeMake(self.buffer.width, self.buffer.height, 1)
                 toTexture:self.mtlDrawable.texture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
-        [self.blitEncoder endEncoding];
+        [blitEncoder endEncoding];
 
         [self.blitCommandBuf presentDrawable:self.mtlDrawable];
 
@@ -123,12 +122,6 @@
     self.blitCommandBuf = [self.ctx createBlitCommandBuffer];
     if (self.blitCommandBuf == nil) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.initBlit: nothing to do (commandBuf is null)");
-        return;
-    }
-
-    self.blitEncoder = [self.blitCommandBuf blitCommandEncoder];
-    if (self.blitEncoder == nil) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.initBlit: blitEncoder is null)");
         return;
     }
 
