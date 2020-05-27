@@ -1331,7 +1331,7 @@ void SpyWinMessage(HWND hwnd, UINT message, LPCTSTR szComment) {
 
 static BOOL IsMouseEventFromTouch()
 {
-    return (::GetMessageExtraInfo() & MOUSEEVENTF_FROMTOUCH) == MOUSEEVENTF_FROMTOUCH;
+    return (::GetMessageExtraInfo() & MOUSEEVENTF_FROMTOUCH_MASK) == MOUSEEVENTF_FROMTOUCH;
 }
 /*
  * Dispatch messages for this window class--general component
@@ -2310,7 +2310,7 @@ MsgRouting AwtComponent::WmWindowPosChanged(LPARAM windowPos) {
 
 void AwtComponent::WmTouch(WPARAM wParam, LPARAM lParam) {
     AwtToolkit& tk = AwtToolkit::GetInstance();
-    if (!tk.IsWin8OrLater() || !tk.IsTouchKeyboardAutoShowEnabled()) {
+    if (!tk.IsWin8OrLater()) {
         return;
     }
 
