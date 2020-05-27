@@ -182,7 +182,7 @@ class CriticalSection {
     #define TOUCHEVENTF_PEN             0x0040
     #define TOUCHEVENTF_PALM            0x0080
 
-    #define MOUSEEVENTF_FROMTOUCH_MASK       0xFF515700
+    #define MOUSEEVENTF_FROMTOUCH_MASK  0xFFFFFF00
     #define MOUSEEVENTF_FROMTOUCH       0xFF515700
     
     /*
