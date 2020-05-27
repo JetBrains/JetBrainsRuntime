@@ -1061,6 +1061,7 @@ javax/swing/tree/DefaultTreeCellRenderer/7142955/bug7142955.java                
 
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java                            8198920 macosx-all,linux-all,windows-all
 sanity/client/SwingSet/src/GridBagLayoutDemoTest.java.GridBagLayoutDemoTest         8210302 linux-all
+sanity/client/SwingSet/src/ScrollPaneDemoTest.java                                  8225013 linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java                                     8225012 windows-all,macosx-all
 
 ############################################################################
