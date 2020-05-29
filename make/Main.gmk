@@ -1,4 +1,4 @@
-#
+
 # Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -233,7 +233,7 @@ $(eval $(call DeclareRecipesForPhase, STATIC_LIBS, \
     TARGET_SUFFIX := static-libs, \
     FILE_PREFIX := Lib, \
     MAKE_SUBDIR := lib, \
-    CHECK_MODULES := $(STATIC_LIBS_MODULES), \
+    CHECK_MODULES := $(ALL_MODULES), \
     USE_WRAPPER := true, \
     EXTRA_ARGS := STATIC_LIBS=true, \
 ))
@@ -721,9 +721,13 @@ else
 
   # If not already set, set the JVM variant target so that the JVM will be built.
   JVM_MAIN_LIB_TARGETS ?= hotspot-$(JVM_VARIANT_MAIN)-libs
+  JVM_MAIN_GENSRC_TARGETS ?= hotspot-$(JVM_VARIANT_MAIN)-gensrc
 
   # Building one JVM variant is enough to start building the other libs
   $(LIBS_TARGETS): $(JVM_MAIN_LIB_TARGETS)
+
+  # Static libs depend on hotspot gensrc
+  $(STATIC_LIBS_TARGETS): $(JVM_MAIN_GENSRC_TARGETS)
 
   $(LAUNCHER_TARGETS): java.base-libs
 
