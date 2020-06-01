@@ -37,10 +37,9 @@
 @synthesize bufferWidth;
 @synthesize bufferHeight;
 @synthesize buffer;
-@synthesize mtlDrawable;
-@synthesize blitCommandBuf;
 @synthesize topInset;
 @synthesize leftInset;
+@synthesize nextDrawableCount;
 
 - (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer
 {
@@ -69,23 +68,49 @@
     self.topInset = 0;
     self.leftInset = 0;
     self.framebufferOnly = NO;
+    self.nextDrawableCount = 0;
     return self;
 }
 
 - (void) blitTexture {
+    if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == nil || self.ctx.device == nil) {
+        J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p, devide=%p)", self.ctx, self.javaLayer, self.buffer, ctx.device);
+        return;
+    }
+
+    if (self.nextDrawableCount != 0)
+        return;
     @autoreleasepool {
-        id <MTLBlitCommandEncoder> blitEncoder = [self.blitCommandBuf blitCommandEncoder];
+        if ((self.buffer.width == 0) || (self.buffer.height == 0)) {
+            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
+            return;
+        }
+        id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
+        if (commandBuf == nil) {
+            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
+            return;
+        }
+        id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
+        if (mtlDrawable == nil) {
+            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
+            return;
+        }
+        self.nextDrawableCount++;
+        id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
         [blitEncoder
                 copyFromTexture:self.buffer sourceSlice:0 sourceLevel:0
                 sourceOrigin:MTLOriginMake((jint)(self.leftInset*self.contentsScale), (jint)(self.topInset*self.contentsScale), 0)
                 sourceSize:MTLSizeMake(self.buffer.width, self.buffer.height, 1)
-                toTexture:self.mtlDrawable.texture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
+                toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
         [blitEncoder endEncoding];
 
-        [self.blitCommandBuf presentDrawable:self.mtlDrawable];
+        [commandBuf presentDrawable:mtlDrawable];
+        [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+            self.nextDrawableCount--;
+        }];
 
-        [self.blitCommandBuf commit];
+        [commandBuf commit];
     }
 }
 
@@ -109,34 +134,9 @@
     (*env)->DeleteLocalRef(env, javaLayerLocalRef);
 }
 
-- (void) initBlit {
-    if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == nil || self.ctx.device == nil) {
-        J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLLayer.initBlit: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p, devide=%p)", self.ctx, self.javaLayer, self.buffer, ctx.device);
-        return;
-    }
-
-    if ((self.buffer.width == 0) || (self.buffer.height == 0)) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.initBlit: cannot create drawable of size 0");
-        return;
-    }
-    self.blitCommandBuf = [self.ctx createBlitCommandBuffer];
-    if (self.blitCommandBuf == nil) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.initBlit: nothing to do (commandBuf is null)");
-        return;
-    }
-
-    self.mtlDrawable = [self nextDrawable];
-    if (self.mtlDrawable == nil) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.initBlit: nextDrawable is null)");
-        return;
-    }
-    J2dTraceLn6(J2D_TRACE_VERBOSE, "MTLLayer.initBlit: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, self.mtlDrawable.texture, self.mtlDrawable.texture.width, self.mtlDrawable.texture.height);
-}
-
 - (void) display {
     AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_display() called");
-    [self initBlit];
     [self blitCallback];
     [super display];
 }
