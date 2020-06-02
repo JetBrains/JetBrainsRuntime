@@ -62,6 +62,7 @@ compiler/types/correctness/OffTest.java                                         
 
 compiler/c2/Test6852078.java                                                        8194310 generic-all
 compiler/c2/Test6857159.java                                                        8234290 generic-all
+compiler/c2/Test8004741.java                                                        8235801 generic-all
 
 applications/ctw/modules/java_desktop.java 8189604 windows-all
 applications/ctw/modules/java_desktop_2.java 8189604,8204842 generic-all
