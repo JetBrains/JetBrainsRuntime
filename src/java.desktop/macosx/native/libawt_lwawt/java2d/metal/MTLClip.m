@@ -49,18 +49,22 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
 @implementation MTLClip {
     jint _clipType;
     MTLScissorRect  _clipRect;
-
-    jboolean _stencilMaskGenerationInProgress;
-    id<MTLTexture> _stencilTextureRef;
-    id<MTLTexture> _stencilAADataRef;
+    MTLContext* _mtlc;
+    BMTLSDOps*  _dstOps;
+    BOOL _stencilMaskGenerationInProgress;
+    BOOL _clipReady;
+    BOOL _aaClipReady;
 }
 
 - (id)init {
     self = [super init];
     if (self) {
         _clipType = NO_CLIP;
-        _stencilMaskGenerationInProgress = JNI_FALSE;
-        _stencilTextureRef = nil;
+        _mtlc = nil;
+        _dstOps = NULL;
+        _stencilMaskGenerationInProgress = NO;
+        _clipReady = NO;
+        _aaClipReady = NO;
     }
     return self;
 }
@@ -98,8 +102,7 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
 - (void)copyFrom:(MTLClip *)other {
     _clipType = other->_clipType;
     _stencilMaskGenerationInProgress = other->_stencilMaskGenerationInProgress;
-    _stencilTextureRef = other->_stencilTextureRef;
-    _stencilAADataRef = other->_stencilAADataRef;
+    _dstOps = other->_dstOps;
     if (other->_clipType == RECT_CLIP) {
         _clipRect = other->_clipRect;
     }
@@ -107,15 +110,12 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
 
 - (void)reset {
     _clipType = NO_CLIP;
-    _stencilTextureRef = nil;
-    _stencilAADataRef = nil;
     _stencilMaskGenerationInProgress = JNI_FALSE;
 }
 
 - (void)setClipRectX1:(jint)x1 Y1:(jint)y1 X2:(jint)x2 Y2:(jint)y2 {
     if (_clipType == SHAPE_CLIP) {
-        _stencilTextureRef = nil;
-        _stencilAADataRef = nil;
+        _dstOps = NULL;
     }
 
     if (x1 >= x2 || y1 >= y2) {
@@ -136,7 +136,7 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
 }
 
 - (void)beginShapeClip:(BMTLSDOps *)dstOps context:(MTLContext *)mtlc {
-    _stencilMaskGenerationInProgress = JNI_TRUE;
+    _stencilMaskGenerationInProgress = YES;
 
     if ((dstOps == NULL) || (dstOps->pStencilData == NULL) || (dstOps->pStencilTexture == NULL)) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext_beginShapeClip: stencil render target or stencil texture is NULL");
@@ -168,29 +168,7 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
                    destinationSlice:0
                    destinationLevel:0
                   destinationOrigin:origin];
-
-        [blitEncoder copyFromBuffer:buff
-                       sourceOffset:0
-                  sourceBytesPerRow:width*4
-                sourceBytesPerImage:size*4
-                         sourceSize:sourceSize
-                          toTexture:dstOps->pAAStencilData
-                   destinationSlice:0
-                   destinationLevel:0
-                  destinationOrigin:origin];
-
-        [blitEncoder copyFromBuffer:buff
-                       sourceOffset:0
-                  sourceBytesPerRow:width
-                sourceBytesPerImage:size
-                         sourceSize:sourceSize
-                          toTexture:dstOps->pStencilTexture
-                   destinationSlice:0
-                   destinationLevel:0
-                  destinationOrigin:origin];
-
         [blitEncoder endEncoding];
-
         [commandBuf commit];
         [commandBuf waitUntilCompleted];
 
@@ -226,13 +204,6 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
             NSUInteger size = width*height;
             NSUInteger sizeX4 = size*4;
 
-            id<MTLBuffer> buff = 
-                [mtlc.device newBufferWithLength:size 
-                                         options:MTLResourceStorageModeShared];
-            id<MTLBuffer> aaBuff = 
-                [mtlc.device newBufferWithLength:sizeX4
-                                         options:MTLResourceStorageModeShared];
-
             id<MTLCommandBuffer> cb = [mtlc createBlitCommandBuffer];
             id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
             MTLSize sourceSize = MTLSizeMake(width, height, 1);
@@ -242,56 +213,22 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
                              sourceLevel:0
                             sourceOrigin:origin
                               sourceSize:sourceSize
-                                toBuffer:buff
+                                toBuffer:dstOps->pStencilDataBuf
                        destinationOffset:0
                   destinationBytesPerRow:width
                 destinationBytesPerImage:size];
-
-            [blitEncoder copyFromBuffer:buff
-                           sourceOffset:0
-                      sourceBytesPerRow:width
-                    sourceBytesPerImage:size
-                             sourceSize:sourceSize
-                              toTexture:dstOps->pStencilTexture
-                       destinationSlice:0
-                       destinationLevel:0
-                      destinationOrigin:origin];
-
             [blitEncoder endEncoding];
             [cb commit];
             [cb waitUntilCompleted];
-// TODO: Implement via compute shader
-            for (int i = 0; i < width*height; i++) {
-                unsigned char c =  ((unsigned char*)(buff.contents))[i];
-                ((jint*)(aaBuff.contents))[i] = c + (c << 8) + (c << 16) + (c << 24);
-            }
-
-            cb = [mtlc createBlitCommandBuffer];
-            blitEncoder = [cb blitCommandEncoder];
-
-            [blitEncoder copyFromBuffer:aaBuff
-                           sourceOffset:0
-                      sourceBytesPerRow:width*4
-                    sourceBytesPerImage:sizeX4
-                             sourceSize:sourceSize
-                              toTexture:dstOps->pAAStencilData
-                       destinationSlice:0
-                       destinationLevel:0
-                      destinationOrigin:origin];
-            [blitEncoder endEncoding];
-
-            [cb commit];
-            [cb waitUntilCompleted];
-
-            [buff release];
-            [aaBuff release];
         }
     }
 
     _stencilMaskGenerationInProgress = JNI_FALSE;
-    _stencilTextureRef = dstOps->pStencilTexture;
-    _stencilAADataRef = dstOps->pAAStencilData;
+    _mtlc = mtlc;
+    _dstOps = dstOps;
     _clipType = SHAPE_CLIP;
+    _clipReady = NO;
+    _aaClipReady = NO;
 }
 
 - (void)setMaskGenerationPipelineState:(id<MTLRenderCommandEncoder>)encoder
@@ -355,5 +292,79 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
     }
     return [NSString stringWithFormat:@"SHAPE_CLIP"];
 }
+
+- (id<MTLTexture>) stencilTextureRef {
+    if (_dstOps == NULL) return nil;
+
+    id <MTLTexture> _stencilTextureRef = _dstOps->pStencilTexture;
+
+    if (!_clipReady) {
+        @autoreleasepool {
+            id <MTLCommandBuffer> cb = [_mtlc createBlitCommandBuffer];
+            id <MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
+            id <MTLBuffer> _stencilDataBufRef = _dstOps->pStencilDataBuf;
+
+            NSUInteger width = _stencilTextureRef.width;
+            NSUInteger height = _stencilTextureRef.height;
+
+            [blitEncoder copyFromBuffer:_stencilDataBufRef
+                           sourceOffset:0
+                      sourceBytesPerRow:width
+                    sourceBytesPerImage:width * height
+                             sourceSize:MTLSizeMake(width, height, 1)
+                              toTexture:_stencilTextureRef
+                       destinationSlice:0
+                       destinationLevel:0
+                      destinationOrigin:MTLOriginMake(0, 0, 0)];
+            [blitEncoder endEncoding];
+            [cb commit];
+            [cb waitUntilCompleted];
+            _clipReady = YES;
+        }
+    }
+    return _stencilTextureRef;
+}
+
+- (id<MTLTexture>) stencilAADataRef {
+    if (_dstOps == NULL) return nil;
+
+    id <MTLTexture> _stencilAADataRef = _dstOps->pAAStencilData;
+
+    if (!_aaClipReady) {
+
+        @autoreleasepool {
+
+            id <MTLCommandBuffer> cb = [_mtlc createBlitCommandBuffer];
+            id <MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
+            id <MTLBuffer> _stencilDataBufRef = _dstOps->pStencilDataBuf;
+            id <MTLBuffer> _stencilAADataBufRef = _dstOps->pAAStencilDataBuf;
+            NSUInteger width = _stencilAADataRef.width;
+            NSUInteger height = _stencilAADataRef.height;
+            NSUInteger size = width * height;
+
+            for (int i = 0; i < size; i++) {
+                unsigned char c = ((unsigned char *) (((id <MTLBuffer>) (_stencilDataBufRef)).contents))[i];
+                ((jint *) (_stencilAADataBufRef.contents))[i] = c + (c << 8) + (c << 16) + (c << 24);
+            }
+
+            [blitEncoder copyFromBuffer:_stencilAADataBufRef
+                           sourceOffset:0
+                      sourceBytesPerRow:width * 4
+                    sourceBytesPerImage:size * 4
+                             sourceSize:MTLSizeMake(width, height, 1)
+                              toTexture:_stencilAADataRef
+                       destinationSlice:0
+                       destinationLevel:0
+                      destinationOrigin:MTLOriginMake(0, 0, 0)];
+            [blitEncoder endEncoding];
+
+            [cb commit];
+            [cb waitUntilCompleted];
+            _aaClipReady = YES;
+        }
+    }
+    return _stencilAADataRef;
+}
+
 
 @end
