@@ -30,8 +30,8 @@ import java.util.concurrent.TimeUnit;
 public class LoadPageWithoutUI {
     private static final String DUMMY = "file://" + System.getProperty("test.src") + "/dummy.html";
     private static final String BLANK = "about:blank";
-    private static final CountDownLatch LATCH = new CountDownLatch(1);
 
+    private CountDownLatch latch;
     private JBCefBrowser browser = new JBCefBrowser();
     private JFrame frame = new JFrame("JCEF");
 
@@ -55,6 +55,7 @@ public class LoadPageWithoutUI {
             public void onLoadEnd(CefBrowser browser, CefFrame frame, int httpStatusCode) {
                 System.out.println("onLoadEnd " + browser.getURL());
                 loadHandlerUsed = true;
+                latch.countDown();
             }
 
             @Override
@@ -77,12 +78,14 @@ public class LoadPageWithoutUI {
     public static void main(String[] args) throws InvocationTargetException, InterruptedException {
         LoadPageWithoutUI test = new LoadPageWithoutUI();
         try {
+            test.latch = new CountDownLatch(1);
             SwingUtilities.invokeLater(test::initUI);
-            LATCH.await(1, TimeUnit.SECONDS);
+            test.latch.await(5, TimeUnit.SECONDS);
 
             System.out.println("Loading URL " + BLANK + " before enabling browser UI...");
+            test.latch = new CountDownLatch(1);
             test.browser.loadURL(BLANK);
-            LATCH.await(1, TimeUnit.SECONDS);
+            test.latch.await(5, TimeUnit.SECONDS);
             if (!test.loadHandlerUsed) {
                 throw new RuntimeException(BLANK + " is not loaded without browser UI");
             }
@@ -91,20 +94,20 @@ public class LoadPageWithoutUI {
 
             System.out.println("Loading URL " + DUMMY + " after enabling browser UI...");
             SwingUtilities.invokeAndWait(() -> test.frame.setVisible(true));
-            LATCH.await(1, TimeUnit.SECONDS);
+            test.latch = new CountDownLatch(1);
             test.browser.loadURL(DUMMY);
-            LATCH.await(1, TimeUnit.SECONDS);
+            test.latch.await(5, TimeUnit.SECONDS);
             if (!test.loadHandlerUsed) {
-                throw new RuntimeException(DUMMY + " is not loaded without browser UI");
+                throw new RuntimeException(DUMMY + " is not loaded with browser UI");
             }
             test.loadHandlerUsed = false;
             System.out.println(DUMMY + " is loaded");
 
             System.out.println("Loading URL " + BLANK + " after disabling browser UI...");
             SwingUtilities.invokeAndWait(() -> test.frame.setVisible(false));
-            LATCH.await(1, TimeUnit.SECONDS);
+            test.latch = new CountDownLatch(1);
             test.browser.loadURL(BLANK);
-            LATCH.await(1, TimeUnit.SECONDS);
+            test.latch.await(5, TimeUnit.SECONDS);
             if (!test.loadHandlerUsed) {
                 throw new RuntimeException(DUMMY + " is not loaded after disabling browser UI");
             }
