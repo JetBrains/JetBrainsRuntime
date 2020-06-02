@@ -3,16 +3,14 @@
 #include "GraphicsPrimitiveMgr.h"
 #import "MTLComposite.h"
 
-// A special value for xor composite
-const int XOR_COMPOSITE_RULE = 20;
+#include "sun_java2d_SunGraphics2D.h"
 
 extern const SurfaceRasterFlags defaultRasterFlags;
 
 static void setBlendingFactors(
         MTLRenderPipelineColorAttachmentDescriptor * cad,
-        int compositeRule,
         MTLComposite* composite,
-        const SurfaceRasterFlags * srcFlags, const SurfaceRasterFlags * dstFlags);
+        const RenderOptions * renderOptions);
 
 @implementation MTLPipelineStatesStorage
 
@@ -60,66 +58,13 @@ static void setBlendingFactors(
                                  vertexShaderId:(NSString *)vertexShaderId
                                fragmentShaderId:(NSString *)fragmentShaderId
 {
+    RenderOptions defaultOptions = {JNI_FALSE, JNI_FALSE, 0/*unused*/, {JNI_FALSE, JNI_TRUE}, {JNI_FALSE, JNI_TRUE}};
     return [self getPipelineState:pipelineDescriptor
                    vertexShaderId:vertexShaderId
                  fragmentShaderId:fragmentShaderId
-                    compositeRule:RULE_Src
-                         srcFlags:NULL
-                         dstFlags:NULL
-                    stencilNeeded:NO];
-}
-
-- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
-                                 vertexShaderId:(NSString *)vertexShaderId
-                               fragmentShaderId:(NSString *)fragmentShaderId
-                                  compositeRule:(jint)compositeRule
-                                  stencilNeeded:(bool)stencilNeeded;
-{
-    return [self getPipelineState:pipelineDescriptor
-                   vertexShaderId:vertexShaderId
-                 fragmentShaderId:fragmentShaderId
-                    compositeRule:compositeRule
-                         srcFlags:&defaultRasterFlags
-                         dstFlags:&defaultRasterFlags
-                    stencilNeeded:stencilNeeded];
-}
-
-- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
-                                 vertexShaderId:(NSString *)vertexShaderId
-                               fragmentShaderId:(NSString *)fragmentShaderId
-                                  compositeRule:(jint)compositeRule
-                                       srcFlags:(const SurfaceRasterFlags *)srcFlags
-                                       dstFlags:(const SurfaceRasterFlags *)dstFlags
-                                  stencilNeeded:(bool)stencilNeeded;
-{
-    return [self getPipelineState:pipelineDescriptor
-                   vertexShaderId:vertexShaderId
-                 fragmentShaderId:fragmentShaderId
-                    compositeRule:compositeRule
-                             isAA:JNI_FALSE
-                         srcFlags:srcFlags
-                         dstFlags:dstFlags
-            stencilNeeded:stencilNeeded];
-}
-
-- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
-                                 vertexShaderId:(NSString *)vertexShaderId
-                               fragmentShaderId:(NSString *)fragmentShaderId
-                                  compositeRule:(jint)compositeRule
-                                           isAA:(jboolean)isAA
-                                       srcFlags:(const SurfaceRasterFlags *)srcFlags
-                                       dstFlags:(const SurfaceRasterFlags *)dstFlags
-                                  stencilNeeded:(bool)stencilNeeded;
-{
-    return [self getPipelineState:pipelineDescriptor
-                   vertexShaderId:vertexShaderId
-                 fragmentShaderId:fragmentShaderId
-                    compositeRule:compositeRule
                         composite:nil
-                             isAA:isAA
-                         srcFlags:srcFlags
-                         dstFlags:dstFlags
-                    stencilNeeded:stencilNeeded];
+                    renderOptions:&defaultOptions
+                    stencilNeeded:NO];
 }
 
 // Base method to obtain MTLRenderPipelineState.
@@ -127,17 +72,14 @@ static void setBlendingFactors(
 - (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
                                  vertexShaderId:(NSString *)vertexShaderId
                                fragmentShaderId:(NSString *)fragmentShaderId
-                                  compositeRule:(jint)compositeRule
                                       composite:(MTLComposite*) composite
-                                           isAA:(jboolean)isAA
-                                       srcFlags:(const SurfaceRasterFlags *)srcFlags
-                                       dstFlags:(const SurfaceRasterFlags *)dstFlags
+                                  renderOptions:(const RenderOptions *)renderOptions
                                   stencilNeeded:(bool)stencilNeeded;
 {
-    const jboolean useXorComposite = (compositeRule == XOR_COMPOSITE_RULE);
-    const jboolean useComposite = compositeRule >= 0
-        && compositeRule < java_awt_AlphaComposite_MAX_RULE
-        && srcFlags != NULL && dstFlags != NULL;
+    jint compositeRule = composite != nil ? [composite getRule] : RULE_Src;
+    const jboolean useXorComposite = composite != nil && [composite getCompositeState] == sun_java2d_SunGraphics2D_COMP_XOR;
+    const jboolean useComposite = composite != nil && compositeRule >= 0
+        && compositeRule < java_awt_AlphaComposite_MAX_RULE;
 
     // Calculate index by flags and compositeRule
     // TODO: reimplement, use map with convenient key (calculated by all arguments)
@@ -147,13 +89,13 @@ static void setBlendingFactors(
     }
     else {
         if (useComposite) {
-            if (!srcFlags->isPremultiplied)
+            if (!renderOptions->srcFlags.isPremultiplied)
                 subIndex |= 1;
-            if (srcFlags->isOpaque)
+            if (renderOptions->srcFlags.isOpaque)
                 subIndex |= 1 << 1;
-            if (!dstFlags->isPremultiplied)
+            if (!renderOptions->dstFlags.isPremultiplied)
                 subIndex |= 1 << 2;
-            if (dstFlags->isOpaque)
+            if (renderOptions->dstFlags.isOpaque)
                 subIndex |= 1 << 3;
         } else
             compositeRule = RULE_Src;
@@ -163,7 +105,7 @@ static void setBlendingFactors(
         subIndex |= 1 << 4;
     }
 
-    if (isAA) {
+    if (renderOptions->isAA) {
         subIndex |= 1 << 5;
     }
 
@@ -199,16 +141,15 @@ static void setBlendingFactors(
             {
                 setBlendingFactors(
                         pipelineDesc.colorAttachments[0],
-                        compositeRule,
                         composite,
-                        srcFlags, dstFlags
+                        renderOptions
                 );
             }
             if (stencilNeeded) {
                 pipelineDesc.stencilAttachmentPixelFormat = MTLPixelFormatStencil8;
             }
 
-            if (isAA) {
+            if (renderOptions->isAA) {
                 pipelineDesc.sampleCount = MTLAASampleCount;
                 pipelineDesc.colorAttachments[0].rgbBlendOperation =   MTLBlendOperationAdd;
                 pipelineDesc.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
@@ -241,30 +182,14 @@ static void setBlendingFactors(
     }
     return result;
 }
-
-- (id<MTLRenderPipelineState>) getXorModePipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
-                                 vertexShaderId:(NSString *)vertexShaderId
-                               fragmentShaderId:(NSString *)fragmentShaderId
-                                                  srcFlags:(const SurfaceRasterFlags * )srcFlags
-                                                  dstFlags:(const SurfaceRasterFlags * )dstFlags
-                                             stencilNeeded:(bool)stencilNeeded {
-            return [self getPipelineState:pipelineDescriptor
-                   vertexShaderId:vertexShaderId
-                 fragmentShaderId:fragmentShaderId
-                    compositeRule:XOR_COMPOSITE_RULE
-                         srcFlags:NULL
-                         dstFlags:NULL
-                    stencilNeeded:stencilNeeded];
-} 
 @end
 
 static void setBlendingFactors(
         MTLRenderPipelineColorAttachmentDescriptor * cad,
-        int compositeRule,
         MTLComposite* composite,
-        const SurfaceRasterFlags * srcFlags,
-        const SurfaceRasterFlags * dstFlags
+        const RenderOptions * renderOptions
 ) {
+    const jint compositeRule = composite != nil ? [composite getRule] : RULE_Src;
     if (compositeRule == RULE_Src &&
         (composite == nil || FLT_GE([composite getExtraAlpha], 1.0f))) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_Src but blending is disabled because src is opaque");
@@ -290,7 +215,7 @@ static void setBlendingFactors(
         case RULE_SrcOver: {
             // Ar = As + Ad*(1-As)
             // Cr = Cs + Cd*(1-As)
-            if (srcFlags->isOpaque &&
+            if (renderOptions->srcFlags.isOpaque &&
                 (composite == nil ||
                  FLT_GE([composite getExtraAlpha], 1.0f)))
             {
@@ -298,7 +223,7 @@ static void setBlendingFactors(
                 cad.blendingEnabled = NO;
                 return;
             }
-            if (dstFlags->isOpaque) {
+            if (renderOptions->dstFlags.isOpaque) {
                 // Ar = 1, can be ignored, so
                 // Cr = Cs + Cd*(1-As)
                 // TODO: select any multiplier with best performance
@@ -306,7 +231,7 @@ static void setBlendingFactors(
             } else {
                 cad.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
             }
-            if (!srcFlags->isPremultiplied) {
+            if (!renderOptions->srcFlags.isPremultiplied) {
                 cad.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
             }
             if (composite != nil && FLT_LT([composite getExtraAlpha], 1.0f)) {
@@ -320,13 +245,13 @@ static void setBlendingFactors(
         case RULE_DstOver: {
             // Ar = As*(1-Ad) + Ad
             // Cr = Cs*(1-Ad) + Cd
-            if (srcFlags->isOpaque) {
+            if (renderOptions->srcFlags.isOpaque) {
                 J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstOver with opaque src isn't implemented (src alpha won't be ignored)");
             }
-            if (dstFlags->isOpaque) {
+            if (renderOptions->dstFlags.isOpaque) {
                 J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstOver with opaque dest hasn't any sense");
             }
-            if (!srcFlags->isPremultiplied) {
+            if (!renderOptions->srcFlags.isPremultiplied) {
                 J2dTrace(J2D_TRACE_ERROR, "Composite rule RULE_DstOver with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
             }
             cad.sourceAlphaBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;
@@ -339,15 +264,15 @@ static void setBlendingFactors(
         case RULE_SrcIn: {
             // Ar = As*Ad
             // Cr = Cs*Ad
-            if (srcFlags->isOpaque) {
+            if (renderOptions->srcFlags.isOpaque) {
                 J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_SrcIn with opaque src isn't implemented (src alpha won't be ignored)");
             }
-            if (dstFlags->isOpaque) {
+            if (renderOptions->dstFlags.isOpaque) {
                 J2dTraceLn(J2D_TRACE_VERBOSE, "rule=RULE_SrcIn, but blending is disabled because dest is opaque");
                 cad.blendingEnabled = NO;
                 return;
             }
-            if (!srcFlags->isPremultiplied) {
+            if (!renderOptions->srcFlags.isPremultiplied) {
                 J2dTrace(J2D_TRACE_ERROR, "Composite rule RULE_SrcIn with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
             }
             cad.sourceAlphaBlendFactor = MTLBlendFactorDestinationAlpha;
@@ -360,10 +285,10 @@ static void setBlendingFactors(
         case RULE_DstIn: {
             // Ar = Ad*As
             // Cr = Cd*As
-            if (srcFlags->isOpaque) {
+            if (renderOptions->srcFlags.isOpaque) {
                 J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstIn with opaque src isn't implemented (src alpha won't be ignored)");
             }
-            if (dstFlags->isOpaque) {
+            if (renderOptions->dstFlags.isOpaque) {
                 J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstIn with opaque dest isn't implemented (dest alpha won't be ignored)");
             }
             cad.sourceAlphaBlendFactor = MTLBlendFactorZero;
@@ -376,7 +301,7 @@ static void setBlendingFactors(
         case RULE_SrcOut: {
             // Ar = As*(1-Ad)
             // Cr = Cs*(1-Ad)
-            if (!srcFlags->isPremultiplied) {
+            if (!renderOptions->srcFlags.isPremultiplied) {
                 J2dTrace(J2D_TRACE_ERROR, "Composite rule SrcOut with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
             }
             cad.sourceAlphaBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;
@@ -399,7 +324,7 @@ static void setBlendingFactors(
         case RULE_Xor: {
             // Ar = As*(1-Ad) + Ad*(1-As)
             // Cr = Cs*(1-Ad) + Cd*(1-As)
-            if (!srcFlags->isPremultiplied) {
+            if (!renderOptions->srcFlags.isPremultiplied) {
                 J2dTrace(J2D_TRACE_ERROR, "Composite rule Xor with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
             }
             cad.sourceAlphaBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;

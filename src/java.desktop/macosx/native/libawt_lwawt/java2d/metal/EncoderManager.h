@@ -3,8 +3,7 @@
 
 #import <Metal/Metal.h>
 
-#include <jni.h>
-#include "MTLSurfaceDataBase.h"
+#include "RenderOptions.h"
 
 @class MTLContex;
 
@@ -56,13 +55,9 @@
                                                      isAA:(jboolean)isAA;
 
 // Base method to obtain any MTLRenderCommandEncoder
-- (id<MTLRenderCommandEncoder> _Nonnull)
-    getEncoder:(id<MTLTexture> _Nonnull)dest
-      isOpaque:(jboolean)isOpaque
-     isTexture:(jboolean)isTexture
- interpolation:(int)interpolation
-          isAA:(jboolean)isAA
-      srcFlags:(const SurfaceRasterFlags *_Nullable)srcFlags;
+- (id<MTLRenderCommandEncoder> _Nonnull) getEncoder:(id<MTLTexture> _Nonnull)dest
+                                       isDestOpaque:(jboolean)isDestOpaque
+                                      renderOptions:(const RenderOptions * _Nonnull)renderOptions;
 
 - (id<MTLBlitCommandEncoder> _Nonnull)createBlitEncoder;
 

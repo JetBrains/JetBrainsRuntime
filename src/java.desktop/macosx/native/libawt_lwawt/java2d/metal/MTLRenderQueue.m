@@ -952,15 +952,24 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jboolean edgeZero = NEXT_BOOLEAN(b);
                 jint kernelWidth  = NEXT_INT(b);
                 jint kernelHeight = NEXT_INT(b);
-                MTLBufImgOps_EnableConvolveOp(mtlc, pSrc, edgeZero,
-                                              kernelWidth, kernelHeight, b);
+
+                BMTLSDOps * bmtlsdOps = (BMTLSDOps *)pSrc;
+                MTLConvolveOp * convolveOp = [[MTLConvolveOp alloc] init:edgeZero
+                        kernelWidth:kernelWidth
+                       kernelHeight:kernelHeight
+                           srcWidth:bmtlsdOps->width
+                          srcHeight:bmtlsdOps->height
+                             kernel:b
+                             device:mtlc.device
+                                              ];
+                [mtlc setBufImgOp:convolveOp];
                 SKIP_BYTES(b, kernelWidth * kernelHeight * sizeof(jfloat));
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DISABLE_CONVOLVE_OP:
             {
                 CHECK_PREVIOUS_OP(MTL_OP_OTHER);
-                MTLBufImgOps_DisableConvolveOp(mtlc);
+                [mtlc setBufImgOp:NULL];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_ENABLE_RESCALE_OP:
@@ -971,15 +980,15 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint numFactors     = 4;
                 unsigned char *scaleFactors = b;
                 unsigned char *offsets = (b + numFactors * sizeof(jfloat));
-                MTLBufImgOps_EnableRescaleOp(mtlc, pSrc, nonPremult,
-                                             scaleFactors, offsets);
+                MTLRescaleOp * rescaleOp = [[MTLRescaleOp alloc] init:nonPremult factors:scaleFactors offsets:offsets];
+                [mtlc setBufImgOp:rescaleOp];
                 SKIP_BYTES(b, numFactors * sizeof(jfloat) * 2);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DISABLE_RESCALE_OP:
             {
                 CHECK_PREVIOUS_OP(MTL_OP_OTHER);
-                MTLBufImgOps_DisableRescaleOp(mtlc);
+                [mtlc setBufImgOp:NULL];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_ENABLE_LOOKUP_OP:
@@ -993,16 +1002,22 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint offset         = NEXT_INT(b);
                 jint bytesPerElem = shortData ? sizeof(jshort):sizeof(jbyte);
                 void *tableValues = b;
-                MTLBufImgOps_EnableLookupOp(mtlc, pSrc, nonPremult, shortData,
-                                            numBands, bandLength, offset,
-                                            tableValues);
+
+                MTLLookupOp * lookupOp = [[MTLLookupOp alloc] init:nonPremult
+                                                         shortData:shortData
+                                                          numBands:numBands
+                                                        bandLength:bandLength
+                                                            offset:offset
+                                                       tableValues:tableValues
+                                                            device:mtlc.device];
+                [mtlc setBufImgOp:lookupOp];
                 SKIP_BYTES(b, numBands * bandLength * bytesPerElem);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DISABLE_LOOKUP_OP:
             {
                 CHECK_PREVIOUS_OP(MTL_OP_OTHER);
-                MTLBufImgOps_DisableLookupOp(mtlc);
+                [mtlc setBufImgOp:NULL];
             }
             break;
 
