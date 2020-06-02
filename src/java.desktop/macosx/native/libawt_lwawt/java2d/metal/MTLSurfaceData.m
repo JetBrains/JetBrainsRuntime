@@ -78,6 +78,8 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
         stencilDataDescriptor.storageMode = MTLStorageModePrivate;
         bmtlsdo->pStencilData = [ctx.device newTextureWithDescriptor:stencilDataDescriptor];
         bmtlsdo->pAAStencilData = [ctx.device newTextureWithDescriptor:textureDescriptor];
+        bmtlsdo->pStencilDataBuf = [ctx.device newBufferWithLength:width*height options:MTLResourceStorageModeShared];
+        bmtlsdo->pAAStencilDataBuf = [ctx.device newBufferWithLength:width*height*4 options:MTLResourceStorageModeShared];
 
 
         MTLTextureDescriptor *stencilTextureDescriptor =
@@ -202,6 +204,11 @@ MTLSD_Delete(JNIEnv *env, BMTLSDOps *bmtlsdo)
             || bmtlsdo->drawableType == MTLSD_FLIP_BACKBUFFER
     ) {
         [(NSObject *)bmtlsdo->pTexture release];
+        [(NSObject *)bmtlsdo->pStencilTexture release];
+        [(NSObject *)bmtlsdo->pStencilData release];
+        [(NSObject *)bmtlsdo->pStencilDataBuf release];
+        [(NSObject *)bmtlsdo->pAAStencilData release];
+        [(NSObject *)bmtlsdo->pAAStencilDataBuf release];
         bmtlsdo->pTexture = NULL;
         bmtlsdo->drawableType = MTLSD_UNDEFINED;
     }

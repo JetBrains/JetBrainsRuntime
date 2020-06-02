@@ -24,7 +24,7 @@ enum Clip {
 @interface MTLClip : NSObject
 @property (readonly) id<MTLTexture> stencilAADataRef;
 @property (readonly) id<MTLTexture> stencilTextureRef;
-@property (readonly) jboolean stencilMaskGenerationInProgress;
+@property (readonly) BOOL stencilMaskGenerationInProgress;
 
 - (id)init;
 - (BOOL)isEqual:(MTLClip *)other; // used to compare requested with cached
