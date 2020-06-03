@@ -17,6 +17,7 @@
 id<MTLDevice>       device;
 id<MTLLibrary>      library;
 NSMutableDictionary<NSString*, id<MTLFunction>> * shaders;
+NSMutableDictionary<NSString*, id<MTLComputePipelineState>> * computeStates;
 }
 
 @property (readwrite, assign) id<MTLDevice> device;
@@ -36,6 +37,8 @@ NSMutableDictionary<NSString*, id<MTLFunction>> * shaders;
                                       composite:(MTLComposite*)composite
                                   renderOptions:(const RenderOptions *)renderOptions
                                   stencilNeeded:(bool)stencilNeeded;
+
+- (id<MTLComputePipelineState>) getComputePipelineState:(NSString *)computeShaderId;
 
 - (id<MTLFunction>) getShader:(NSString *)name;
 @end
