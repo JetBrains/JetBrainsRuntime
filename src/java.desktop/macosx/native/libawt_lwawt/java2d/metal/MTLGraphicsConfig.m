@@ -76,7 +76,7 @@ Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
 {
     J2dRlsTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfig_initMTL");
 
-    FILE *f = popen("system_profiler SPDisplaysDataType", "r");
+    FILE *f = popen("/usr/sbin/system_profiler SPDisplaysDataType", "r");
     bool metalSupport = FALSE;
     while (getc(f) != EOF)
     {
