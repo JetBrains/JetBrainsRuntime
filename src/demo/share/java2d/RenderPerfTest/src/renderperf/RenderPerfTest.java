@@ -32,6 +32,7 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.QuadCurve2D;
 import java.awt.image.BufferedImage;
@@ -194,6 +195,22 @@ public class RenderPerfTest {
 
     }
 
+    static class ClipFlatParticleRenderer extends FlatParticleRenderer {
+
+        ClipFlatParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            if ((id % 5) == 0) {
+                g2d.setColor(colors[id % colors.length]);
+                g2d.setClip(new Ellipse2D.Double((int) (x[id] - r), (int) (y[id] - r), (int) (2 * r), (int) (2 * r)));
+                g2d.fillRect((int) (x[id] - 2 * r), (int) (y[id] - 2 * r), (int) (4 * r), (int) (4 * r));
+            }
+        }
+
+    }
     static class WhiteTextParticleRenderer implements ParticleRenderer {
         float r;
 
@@ -320,6 +337,22 @@ public class RenderPerfTest {
 
         }
 
+    }
+
+    static class ClipFlatBoxParticleRenderer extends FlatParticleRenderer {
+
+
+        ClipFlatBoxParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            if ((id % 5) == 0) {
+                g2d.setColor(colors[id % colors.length]);
+                g2d.setClip((int) (x[id] - r), (int) (y[id] - r), (int) (2 * r), (int) (2 * r));
+                g2d.fillRect((int) (x[id] - 2 * r), (int) (y[id] - 2 * r), (int) (4 * r), (int) (4 * r));
+            }
+        }
     }
 
     static class ImgParticleRenderer extends FlatParticleRenderer {
@@ -577,8 +610,10 @@ public class RenderPerfTest {
 
     private static final Particles balls = new Particles(N, R, BW, BH, WIDTH, HEIGHT);
     private static final ParticleRenderer flatRenderer = new FlatParticleRenderer(N, R);
+    private static final ParticleRenderer clipFlatRenderer = new ClipFlatParticleRenderer(N, R);
     private static final ParticleRenderer flatOvalRotRenderer = new FlatOvalRotParticleRenderer(N, R);
     private static final ParticleRenderer flatBoxRenderer = new FlatBoxParticleRenderer(N, R);
+    private static final ParticleRenderer clipFlatBoxParticleRenderer = new ClipFlatBoxParticleRenderer(N, R);
     private static final ParticleRenderer flatBoxRotRenderer = new FlatBoxRotParticleRenderer(N, R);
     private static final ParticleRenderer linGradOvalRotRenderer = new LinGradOvalRotParticleRenderer(N, R);
     private static final ParticleRenderer wiredRenderer = new WiredParticleRenderer(N, R);
@@ -611,12 +646,28 @@ public class RenderPerfTest {
         (new PerfMeter("FlatOvalAA")).exec(createPR(flatRenderer).configure(AA)).report();
     }
 
+    public void testClipFlatBubbles() throws Exception {
+        (new PerfMeter("ClipFlatOval")).exec(createPR(clipFlatRenderer)).report();
+    }
+
+    public void testClipFlatBubblesAA() throws Exception {
+        (new PerfMeter("ClipFlatOvalAA")).exec(createPR(clipFlatRenderer).configure(AA)).report();
+    }
+
     public void testFlatBoxBubbles() throws Exception {
         (new PerfMeter("FlatBox")).exec(createPR(flatBoxRenderer)).report();
     }
 
     public void testFlatBoxBubblesAA() throws Exception {
         (new PerfMeter("FlatBoxAA")).exec(createPR(flatBoxRenderer).configure(AA)).report();
+    }
+
+    public void testClipFlatBoxBubbles() throws Exception {
+        (new PerfMeter("ClipFlatBox")).exec(createPR(clipFlatBoxParticleRenderer)).report();
+    }
+
+    public void testClipFlatBoxBubblesAA() throws Exception {
+        (new PerfMeter("ClipFlatBoxAA")).exec(createPR(clipFlatBoxParticleRenderer).configure(AA)).report();
     }
 
     public void testImgBubbles() throws Exception {
