@@ -285,7 +285,7 @@ void NMethodSweeper::sweeper_loop() {
 void NMethodSweeper::notify(int code_blob_type) {
   // Makes sure that we do not invoke the sweeper too often during startup.
   double start_threshold = 100.0 / (double)StartAggressiveSweepingAt;
-  double aggressive_sweep_threshold = MIN2(start_threshold, 1.1);
+  double aggressive_sweep_threshold = MAX2(start_threshold, 1.1);
   if (CodeCache::reverse_free_ratio(code_blob_type) >= aggressive_sweep_threshold) {
     assert_locked_or_safepoint(CodeCache_lock);
     CodeCache_lock->notify();
