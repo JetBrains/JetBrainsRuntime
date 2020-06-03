@@ -335,17 +335,31 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
         @autoreleasepool {
 
             id <MTLCommandBuffer> cb = [_mtlc createBlitCommandBuffer];
-            id <MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
+            id <MTLComputeCommandEncoder> computeEncoder = [cb computeCommandEncoder];
+            id<MTLComputePipelineState> computePipelineState = [_mtlc.pipelineStateStorage getComputePipelineState:@"stencil2tex"];
             id <MTLBuffer> _stencilDataBufRef = _dstOps->pStencilDataBuf;
             id <MTLBuffer> _stencilAADataBufRef = _dstOps->pAAStencilDataBuf;
             NSUInteger width = _stencilAADataRef.width;
             NSUInteger height = _stencilAADataRef.height;
             NSUInteger size = width * height;
 
-            for (int i = 0; i < size; i++) {
-                unsigned char c = ((unsigned char *) (((id <MTLBuffer>) (_stencilDataBufRef)).contents))[i];
-                ((jint *) (_stencilAADataBufRef.contents))[i] = c + (c << 8) + (c << 16) + (c << 24);
+            [computeEncoder setComputePipelineState:computePipelineState];
+
+            [computeEncoder setBuffer:_stencilDataBufRef offset:0 atIndex:0];
+            [computeEncoder setBuffer:_stencilAADataBufRef offset:0 atIndex:1];
+            NSUInteger threadGroupSize = computePipelineState.maxTotalThreadsPerThreadgroup;
+            if (threadGroupSize > _stencilDataBufRef.length)
+            {
+                threadGroupSize = _stencilDataBufRef.length;
             }
+            [computeEncoder dispatchThreadgroups:MTLSizeMake(_stencilDataBufRef.length, 1, 1)
+                           threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+            [computeEncoder endEncoding];
+            [cb commit];
+            [cb waitUntilCompleted];
+
+            cb = [_mtlc createBlitCommandBuffer];
+            id <MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
 
             [blitEncoder copyFromBuffer:_stencilAADataBufRef
                            sourceOffset:0
