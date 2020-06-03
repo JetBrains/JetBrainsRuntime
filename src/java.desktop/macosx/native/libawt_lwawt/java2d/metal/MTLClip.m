@@ -352,13 +352,14 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
             {
                 threadGroupSize = _stencilDataBufRef.length;
             }
-            [computeEncoder dispatchThreadgroups:MTLSizeMake(_stencilDataBufRef.length, 1, 1)
-                           threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
-            [computeEncoder endEncoding];
-            [cb commit];
-            [cb waitUntilCompleted];
 
-            cb = [_mtlc createBlitCommandBuffer];
+            MTLSize threadgroupCounts = MTLSizeMake(threadGroupSize, 1, 1);
+            MTLSize threadgroups = MTLSizeMake(_stencilDataBufRef.length / threadGroupSize,
+                                               1, 1);
+            [computeEncoder dispatchThreadgroups:threadgroups
+                           threadsPerThreadgroup:threadgroupCounts];
+            [computeEncoder endEncoding];
+
             id <MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
 
             [blitEncoder copyFromBuffer:_stencilAADataBufRef
