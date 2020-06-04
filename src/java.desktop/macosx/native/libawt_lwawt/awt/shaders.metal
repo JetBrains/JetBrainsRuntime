@@ -432,3 +432,12 @@ fragment float4 lcd_color(
     return float4(pow(result.rgb, invgamma), 1.0);
 
 }
+// Compute shader to transfer clipping data to the texture used for manual clipping in
+// aa_frag_txt shader
+kernel void stencil2tex(const device uchar *imageBuffer [[buffer(0)]],
+    device uchar4 *outputBuffer [[buffer(1)]],
+    uint gid [[thread_position_in_grid]])
+{
+    uchar p = imageBuffer[gid];
+    outputBuffer[gid] = uchar4(p, p, p, p);
+}

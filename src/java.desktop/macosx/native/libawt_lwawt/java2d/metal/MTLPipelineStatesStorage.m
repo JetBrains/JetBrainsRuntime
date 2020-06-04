@@ -33,6 +33,7 @@ static void setBlendingFactors(
     }
     self.shaders = [NSMutableDictionary dictionaryWithCapacity:10];
     self.states = [NSMutableDictionary dictionaryWithCapacity:10];
+    computeStates = [[NSMutableDictionary dictionaryWithCapacity:10] retain] ;
     return self;
 }
 
@@ -174,6 +175,23 @@ static void setBlendingFactors(
     return result;
 }
 
+- (id<MTLComputePipelineState>) getComputePipelineState:(NSString *)computeShaderId {
+    id<MTLComputePipelineState> result = computeStates[computeShaderId];
+    if (result == nil) {
+        id <MTLFunction> computeShader = [self getShader:computeShaderId];
+        @autoreleasepool {
+            NSError *error = nil;
+            result = (id <MTLComputePipelineState>) [[self.device newComputePipelineStateWithFunction:computeShader error:&error] autorelease];
+            if (result == nil) {
+                NSLog(@"Failed to create pipeline state, error %@", error);
+                exit(0);
+            }
+            computeStates[computeShaderId] = result;
+        }
+    }
+    return result;
+}
+
 - (id<MTLFunction>) getShader:(NSString *)name {
     id<MTLFunction> result = [self.shaders valueForKey:name];
     if (result == nil) {
@@ -181,6 +199,11 @@ static void setBlendingFactors(
         [self.shaders setValue:result forKey:name];
     }
     return result;
+}
+
+- (void) dealloc {
+    [super dealloc];
+    [computeStates release];
 }
 @end
 

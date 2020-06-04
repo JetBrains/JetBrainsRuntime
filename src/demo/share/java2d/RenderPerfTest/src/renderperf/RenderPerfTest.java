@@ -203,7 +203,7 @@ public class RenderPerfTest {
 
         @Override
         public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
-            if ((id % 5) == 0) {
+            if ((id % 10) == 0) {
                 g2d.setColor(colors[id % colors.length]);
                 g2d.setClip(new Ellipse2D.Double((int) (x[id] - r), (int) (y[id] - r), (int) (2 * r), (int) (2 * r)));
                 g2d.fillRect((int) (x[id] - 2 * r), (int) (y[id] - 2 * r), (int) (4 * r), (int) (4 * r));
@@ -347,7 +347,7 @@ public class RenderPerfTest {
         }
         @Override
         public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
-            if ((id % 5) == 0) {
+            if ((id % 10) == 0) {
                 g2d.setColor(colors[id % colors.length]);
                 g2d.setClip((int) (x[id] - r), (int) (y[id] - r), (int) (2 * r), (int) (2 * r));
                 g2d.fillRect((int) (x[id] - 2 * r), (int) (y[id] - 2 * r), (int) (4 * r), (int) (4 * r));
