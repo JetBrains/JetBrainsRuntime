@@ -58,6 +58,10 @@
 + (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible role:(NSString *)role index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
 + (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view;
 
+@property(readonly) jobject accessible;
+@property(readonly) jobject component;
+@property(readonly) jint index;
+
 - (jobject)axContextWithEnv:(JNIEnv *)env;
 - (NSView*)view;
 - (NSWindow*)window;
