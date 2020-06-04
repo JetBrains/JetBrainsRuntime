@@ -4,6 +4,8 @@
 #import "JavaAccessibilityUtilities.h"
 #import "ThreadUtilities.h"
 
+static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;");
+
 static void RaiseMustOverrideException(NSString *method)
 {
     @throw [NSException exceptionWithName:NSInternalInconsistencyException
@@ -32,8 +34,12 @@ static void RaiseMustOverrideException(NSString *method)
 
 - (NSString *)accessibilityLabel
 {
-    RaiseMustOverrideException(@"accessibilityLabel");
-    return NULL;
+    //   RaiseMustOverrideException(@"accessibilityLabel");
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, [javaBase accessible], [javaBase component]);
+    NSString* str = JNFJavaToNSString(env, axName);
+    (*env)->DeleteLocalRef(env, axName);
+    return str;
 }
 
 - (NSArray *)accessibilityChildren
@@ -42,7 +48,7 @@ static void RaiseMustOverrideException(NSString *method)
     NSArray *children = [JavaBaseAccessibility childrenOfParent:self.javaBase
                                                         withEnv:env
                                                withChildrenCode:JAVA_AX_ALL_CHILDREN
-                                                   allowIgnored:NO];
+                                                   allowIgnored:[[self accessibilityRole] isEqualToString:NSAccessibilityListRole]];
     if ([children count] > 0) {
         return children;
     }
@@ -55,7 +61,7 @@ static void RaiseMustOverrideException(NSString *method)
     NSArray *selectedChildren = [JavaBaseAccessibility childrenOfParent:self.javaBase
                                                                 withEnv:env
                                                        withChildrenCode:JAVA_AX_SELECTED_CHILDREN
-                                                           allowIgnored:NO];
+                                                           allowIgnored:[[self accessibilityRole] isEqualToString:NSAccessibilityListRole]];
     if ([selectedChildren count] > 0) {
         return selectedChildren;
     }
@@ -76,13 +82,13 @@ static void RaiseMustOverrideException(NSString *method)
 - (BOOL)accessibilityIsIgnored
 {
     RaiseMustOverrideException(@"accessibilityIsIgnored");
-    return YES;
+    return NO;
 }
 
 - (BOOL)isAccessibilityEnabled
 {
     RaiseMustOverrideException(@"isAccessibilityEnabled");
-    return NO;
+    return YES;
 }
 
 - (id)accessibilityApplicationFocusedUIElement
