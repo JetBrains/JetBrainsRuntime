@@ -23,11 +23,10 @@
  * questions.
  */
 
-#include "awt.h"
+#include "awt_ole.h"
 #include "awt_FileDialog.h"
 #include "awt_Dialog.h"
 #include "awt_Toolkit.h"
-#include "awt_ole.h"
 #include "ComCtl32Util.h"
 #include <commdlg.h>
 #include <cderr.h>
