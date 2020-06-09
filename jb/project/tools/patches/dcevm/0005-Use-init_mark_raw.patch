@@ -1,0 +1,26 @@
+From 90746a0267b2de4063667f5423093115f814bf08 Mon Sep 17 00:00:00 2001
+From: skybber <lada.dvorak7@gmail.com>
+Date: Mon, 10 Dec 2018 20:12:07 +0100
+Subject: [PATCH 05/48] Use init_mark_raw()
+
+method changed since j8 - it used init_mark()
+---
+ src/hotspot/share/gc/shared/space.inline.hpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hotspot/share/gc/shared/space.inline.hpp b/src/hotspot/share/gc/shared/space.inline.hpp
+index 4394eff00c5..75d7e685edf 100644
+--- a/src/hotspot/share/gc/shared/space.inline.hpp
++++ b/src/hotspot/share/gc/shared/space.inline.hpp
+@@ -371,7 +371,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
+         } else {
+           MarkSweep::update_fields(oop(cur_obj), oop(compaction_top));
+         }
+-        oop(compaction_top)->init_mark();
++        oop(compaction_top)->init_mark_raw();
+         assert(oop(compaction_top)->klass() != NULL, "should have a class");
+ 
+         debug_only(prev_obj = cur_obj);
+-- 
+2.24.3 (Apple Git-128)
+
