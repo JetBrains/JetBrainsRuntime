@@ -1,0 +1,26 @@
+From 095315ce3f66bcf14ae1d06d84bbeb24bb068ae8 Mon Sep 17 00:00:00 2001
+From: skybber <lada.dvorak7@gmail.com>
+Date: Wed, 14 Nov 2018 21:18:22 +0100
+Subject: [PATCH 02/48] We need to set classRedefinitionCount on new class, not
+ old class.
+
+---
+ src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 83c0952de37..83cf0be090b 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -1904,7 +1904,7 @@ void VM_EnhancedRedefineClasses::increment_class_counter(InstanceKlass *ik, TRAP
+   oop class_mirror = ik->java_mirror();
+   Klass* class_oop = java_lang_Class::as_Klass(class_mirror);
+   int new_count = java_lang_Class::classRedefinedCount(class_mirror) + 1;
+-  java_lang_Class::set_classRedefinedCount(class_mirror, new_count);
++  java_lang_Class::set_classRedefinedCount(ik->new_version()->java_mirror(), new_count);
+ 
+   if (class_oop != _the_class_oop) {
+     // _the_class_oop count is printed at end of redefine_single_class()
+-- 
+2.24.3 (Apple Git-128)
+
