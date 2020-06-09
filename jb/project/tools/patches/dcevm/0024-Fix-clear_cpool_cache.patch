@@ -1,0 +1,38 @@
+From 1af8b1f3f891388a37cc71076c324d3905ab2a46 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@mailprofiler.com>
+Date: Fri, 6 Mar 2020 15:46:51 +0100
+Subject: [PATCH 24/48] Fix clear_cpool_cache
+
+---
+ src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index a404fd3f016..1f5a67f8866 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -491,11 +491,6 @@ void VM_EnhancedRedefineClasses::doit() {
+     flush_dependent_code(NULL, thread);
+   // }
+ 
+-    // Adjust constantpool caches for all classes that reference methods of the evolved class.
+-    ClearCpoolCacheAndUnpatch clear_cpool_cache(thread);
+-    ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
+-
+-
+   // JSR-292 support
+   if (_any_class_has_resolved_methods) {
+     bool trace_name_printed = false;
+@@ -1896,6 +1891,9 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
+   }
+   */
+ 
++  // Adjust constantpool caches for all classes that reference methods of the evolved class.
++  ClearCpoolCacheAndUnpatch clear_cpool_cache(THREAD);
++  ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
+ 
+   {
+     ResourceMark rm(THREAD);
+-- 
+2.24.3 (Apple Git-128)
+

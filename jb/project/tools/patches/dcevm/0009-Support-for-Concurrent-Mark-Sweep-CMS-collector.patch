@@ -1,0 +1,488 @@
+From 333c0c639e12296d05a547b015c948516c8c504e Mon Sep 17 00:00:00 2001
+From: skybber <lada.dvorak7@gmail.com>
+Date: Wed, 12 Dec 2018 19:38:28 +0100
+Subject: [PATCH 09/48] Support for Concurrent Mark Sweep (CMS) collector
+
+---
+ .../share/gc/cms/compactibleFreeListSpace.cpp | 139 ++++++++++++------
+ .../share/gc/cms/compactibleFreeListSpace.hpp |   5 +-
+ .../gc/cms/concurrentMarkSweepThread.cpp      |  10 +-
+ src/hotspot/share/gc/serial/markSweep.cpp     |   2 +-
+ src/hotspot/share/gc/shared/gcConfig.cpp      |   2 +-
+ src/hotspot/share/gc/shared/space.cpp         |  16 +-
+ src/hotspot/share/gc/shared/space.hpp         |   6 +-
+ src/hotspot/share/gc/shared/space.inline.hpp  |  16 +-
+ .../prims/jvmtiEnhancedRedefineClasses.cpp    |  12 +-
+ src/hotspot/share/runtime/arguments.cpp       |   6 +-
+ 10 files changed, 135 insertions(+), 79 deletions(-)
+
+diff --git a/src/hotspot/share/gc/cms/compactibleFreeListSpace.cpp b/src/hotspot/share/gc/cms/compactibleFreeListSpace.cpp
+index a93f764f1b9..efaa09473a9 100644
+--- a/src/hotspot/share/gc/cms/compactibleFreeListSpace.cpp
++++ b/src/hotspot/share/gc/cms/compactibleFreeListSpace.cpp
+@@ -376,55 +376,58 @@ CompactibleFreeListSpace::CompactibleFreeListSpace(BlockOffsetSharedArray* bs, M
+   _used_stable = 0;
+ }
+ 
++#define forward_compact_top_DEFN()                                                    \
++  assert(this == cp->space, "'this' should be current compaction space.");            \
++  size_t compaction_max_size = pointer_delta(end(), compact_top);                     \
++  assert(adjustObjectSize(size) == cp->space->adjust_object_size_v(size),             \
++    "virtual adjustObjectSize_v() method is not correct");                            \
++  size_t adjusted_size = adjustObjectSize(size);                                      \
++  assert(compaction_max_size >= MinChunkSize || compaction_max_size == 0,             \
++         "no small fragments allowed");                                               \
++  assert(minimum_free_block_size() == MinChunkSize,                                   \
++         "for de-virtualized reference below");                                       \
++  /* Can't leave a nonzero size, residual fragment smaller than MinChunkSize */       \
++  if (adjusted_size + MinChunkSize > compaction_max_size &&                           \
++      adjusted_size != compaction_max_size) {                                         \
++    do {                                                                              \
++      /* switch to next compaction space*/                                            \
++      cp->space->set_compaction_top(compact_top);                                     \
++      cp->space = cp->space->next_compaction_space();                                 \
++      if (cp->space == NULL) {                                                        \
++        cp->gen = CMSHeap::heap()->young_gen();                                       \
++        assert(cp->gen != NULL, "compaction must succeed");                           \
++        cp->space = cp->gen->first_compaction_space();                                \
++        assert(cp->space != NULL, "generation must have a first compaction space");   \
++      }                                                                               \
++      compact_top = cp->space->bottom();                                              \
++      cp->space->set_compaction_top(compact_top);                                     \
++      /* The correct adjusted_size may not be the same as that for this method */     \
++      /* (i.e., cp->space may no longer be "this" so adjust the size again. */        \
++      /* Use the virtual method which is not used above to save the virtual */        \
++      /* dispatch. */                                                                 \
++      adjusted_size = cp->space->adjust_object_size_v(size);                          \
++      compaction_max_size = pointer_delta(cp->space->end(), compact_top);             \
++      assert(cp->space->minimum_free_block_size() == 0, "just checking");             \
++    } while (adjusted_size > compaction_max_size);                                    \
++  }
++
++
+ HeapWord* CompactibleFreeListSpace::forward_compact_top(size_t size,
+                                     CompactPoint* cp, HeapWord* compact_top) {
+-  ShouldNotReachHere();
+-  return NULL;
++  forward_compact_top_DEFN()
++  return compact_top;
+ }
+ 
+ // Like CompactibleSpace forward() but always calls cross_threshold() to
+ // update the block offset table.  Removed initialize_threshold call because
+ // CFLS does not use a block offset array for contiguous spaces.
+ HeapWord* CompactibleFreeListSpace::forward(oop q, size_t size,
+-                                    CompactPoint* cp, HeapWord* compact_top) {
+-  // q is alive
+-  // First check if we should switch compaction space
+-  assert(this == cp->space, "'this' should be current compaction space.");
+-  size_t compaction_max_size = pointer_delta(end(), compact_top);
+-  assert(adjustObjectSize(size) == cp->space->adjust_object_size_v(size),
+-    "virtual adjustObjectSize_v() method is not correct");
+-  size_t adjusted_size = adjustObjectSize(size);
+-  assert(compaction_max_size >= MinChunkSize || compaction_max_size == 0,
+-         "no small fragments allowed");
+-  assert(minimum_free_block_size() == MinChunkSize,
+-         "for de-virtualized reference below");
+-  // Can't leave a nonzero size, residual fragment smaller than MinChunkSize
+-  if (adjusted_size + MinChunkSize > compaction_max_size &&
+-      adjusted_size != compaction_max_size) {
+-    do {
+-      // switch to next compaction space
+-      cp->space->set_compaction_top(compact_top);
+-      cp->space = cp->space->next_compaction_space();
+-      if (cp->space == NULL) {
+-        cp->gen = CMSHeap::heap()->young_gen();
+-        assert(cp->gen != NULL, "compaction must succeed");
+-        cp->space = cp->gen->first_compaction_space();
+-        assert(cp->space != NULL, "generation must have a first compaction space");
+-      }
+-      compact_top = cp->space->bottom();
+-      cp->space->set_compaction_top(compact_top);
+-      // The correct adjusted_size may not be the same as that for this method
+-      // (i.e., cp->space may no longer be "this" so adjust the size again.
+-      // Use the virtual method which is not used above to save the virtual
+-      // dispatch.
+-      adjusted_size = cp->space->adjust_object_size_v(size);
+-      compaction_max_size = pointer_delta(cp->space->end(), compact_top);
+-      assert(cp->space->minimum_free_block_size() == 0, "just checking");
+-    } while (adjusted_size > compaction_max_size);
+-  }
++                                    CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
++  forward_compact_top_DEFN()
+ 
+   // store the forwarding pointer into the mark word
+-  if ((HeapWord*)q != compact_top) {
++  // the size of object changed for: new_version() != NULL
++  if (force_forward || (HeapWord*)q != compact_top || q->klass()->new_version() != NULL) {
+     q->forward_to(oop(compact_top));
+     assert(q->is_gc_marked(), "encoding the pointer should preserve the mark");
+   } else {
+@@ -2196,13 +2199,60 @@ CompactibleFreeListSpace::refillLinearAllocBlock(LinearAllocBlock* blk) {
+ 
+ // Support for compaction
+ void CompactibleFreeListSpace::prepare_for_compaction(CompactPoint* cp) {
+-  scan_and_forward(this, cp, false);
+-   // of the free lists doesn't work after.
++  if (!Universe::is_redefining_gc_run()) {
++    scan_and_forward(this, cp, false);
++  } else {
++    // Redefinition run
++    scan_and_forward(this, cp, true);
++  }
+   // Prepare_for_compaction() uses the space between live objects
+   // so that later phase can skip dead space quickly.  So verification
+   // of the free lists doesn't work after.
+ }
+ 
++bool CompactibleFreeListSpace::must_rescue(oop old_obj, oop new_obj) {
++  // Only redefined objects can have the need to be rescued.
++  if (oop(old_obj)->klass()->new_version() == NULL) return false;
++
++  int new_size = adjustObjectSize(old_obj->size_given_klass(oop(old_obj)->klass()->new_version()));
++  int original_size = adjustObjectSize(old_obj->size());
++
++  Generation* tenured_gen = CMSHeap::heap()->old_gen();
++  bool old_in_tenured = tenured_gen->is_in_reserved(old_obj);
++  bool new_in_tenured = tenured_gen->is_in_reserved(new_obj);
++  if (old_in_tenured == new_in_tenured) {
++    // Rescue if object may overlap with a higher memory address.
++    bool overlap = ((HeapWord*)old_obj + original_size < (HeapWord*)new_obj + new_size);
++    if (old_in_tenured) {
++      // Old and new address are in same space, so just compare the address.
++      // Must rescue if object moves towards the top of the space.
++      assert(space_index(old_obj) == space_index(new_obj), "old_obj and new_obj must be in same space");
++    } else {
++      // In the new generation, eden is located before the from space, so a
++      // simple pointer comparison is sufficient.
++      assert(CMSHeap::heap()->young_gen()->is_in_reserved(old_obj), "old_obj must be in DefNewGeneration");
++      assert(CMSHeap::heap()->young_gen()->is_in_reserved(new_obj), "new_obj must be in DefNewGeneration");
++      assert(overlap == (space_index(old_obj) < space_index(new_obj)), "slow and fast computation must yield same result");
++    }
++    return overlap;
++
++  } else {
++    assert(space_index(old_obj) != space_index(new_obj), "old_obj and new_obj must be in different spaces");
++    if (new_in_tenured) {
++      // Must never rescue when moving from the new into the old generation.
++      assert(CMSHeap::heap()->young_gen()->is_in_reserved(old_obj), "old_obj must be in DefNewGeneration");
++      assert(space_index(old_obj) > space_index(new_obj), "must be");
++      return false;
++
++    } else /* if (tenured_gen->is_in_reserved(old_obj)) */ {
++      // Must always rescue when moving from the old into the new generation.
++      assert(CMSHeap::heap()->young_gen()->is_in_reserved(new_obj), "new_obj must be in DefNewGeneration");
++      assert(space_index(old_obj) < space_index(new_obj), "must be");
++      return true;
++    }
++  }
++}
++
+ void CompactibleFreeListSpace::adjust_pointers() {
+   // In other versions of adjust_pointers(), a bail out
+   // based on the amount of live data in the generation
+@@ -2215,7 +2265,12 @@ void CompactibleFreeListSpace::adjust_pointers() {
+ }
+ 
+ void CompactibleFreeListSpace::compact() {
+-  scan_and_compact(this, false);
++  if(!Universe::is_redefining_gc_run()) {
++    scan_and_compact(this, false);
++  } else {
++    // Redefinition run
++    scan_and_compact(this, true);
++  }
+ }
+ 
+ // Fragmentation metric = 1 - [sum of (fbs**2) / (sum of fbs)**2]
+diff --git a/src/hotspot/share/gc/cms/compactibleFreeListSpace.hpp b/src/hotspot/share/gc/cms/compactibleFreeListSpace.hpp
+index 9fd2ea58320..d29b81f6fca 100644
+--- a/src/hotspot/share/gc/cms/compactibleFreeListSpace.hpp
++++ b/src/hotspot/share/gc/cms/compactibleFreeListSpace.hpp
+@@ -201,7 +201,7 @@ class CompactibleFreeListSpace: public CompactibleSpace {
+   // Support for compacting cms
+   HeapWord* cross_threshold(HeapWord* start, HeapWord* end);
+   HeapWord* forward_compact_top(size_t size, CompactPoint* cp, HeapWord* compact_top);
+-  HeapWord* forward(oop q, size_t size, CompactPoint* cp, HeapWord* compact_top);
++  HeapWord* forward(oop q, size_t size, CompactPoint* cp, HeapWord* compact_top, bool force_forward);
+ 
+   // Initialization helpers.
+   void initializeIndexedFreeListArray();
+@@ -576,6 +576,9 @@ class CompactibleFreeListSpace: public CompactibleSpace {
+ 
+   // Support for compaction.
+   void prepare_for_compaction(CompactPoint* cp);
++
++  bool must_rescue(oop old_obj, oop new_obj);
++
+   void adjust_pointers();
+   void compact();
+   // Reset the space to reflect the fact that a compaction of the
+diff --git a/src/hotspot/share/gc/cms/concurrentMarkSweepThread.cpp b/src/hotspot/share/gc/cms/concurrentMarkSweepThread.cpp
+index 3ada5755875..b6e930922d7 100644
+--- a/src/hotspot/share/gc/cms/concurrentMarkSweepThread.cpp
++++ b/src/hotspot/share/gc/cms/concurrentMarkSweepThread.cpp
+@@ -78,10 +78,12 @@ void ConcurrentMarkSweepThread::run_service() {
+   while (!should_terminate()) {
+     sleepBeforeNextCycle();
+     if (should_terminate()) break;
+-    GCIdMark gc_id_mark;
+-    GCCause::Cause cause = _collector->_full_gc_requested ?
+-      _collector->_full_gc_cause : GCCause::_cms_concurrent_mark;
+-    _collector->collect_in_background(cause);
++    if (!Universe::is_redefining_gc_run()) {
++        GCIdMark gc_id_mark;
++        GCCause::Cause cause = _collector->_full_gc_requested ?
++          _collector->_full_gc_cause : GCCause::_cms_concurrent_mark;
++        _collector->collect_in_background(cause);
++    }
+   }
+ 
+   // Check that the state of any protocol for synchronization
+diff --git a/src/hotspot/share/gc/serial/markSweep.cpp b/src/hotspot/share/gc/serial/markSweep.cpp
+index d0ff86c8215..b4ed59f020c 100644
+--- a/src/hotspot/share/gc/serial/markSweep.cpp
++++ b/src/hotspot/share/gc/serial/markSweep.cpp
+@@ -247,7 +247,7 @@ void MarkSweep::copy_rescued_objects_back() {
+ 
+       FREE_RESOURCE_ARRAY(HeapWord, rescued_ptr, size);
+ 
+-      new_obj->init_mark();
++      new_obj->init_mark_raw();
+       assert(oopDesc::is_oop(new_obj), "must be a valid oop");
+     }
+     _rescued_oops->clear();
+diff --git a/src/hotspot/share/gc/shared/gcConfig.cpp b/src/hotspot/share/gc/shared/gcConfig.cpp
+index 8aac2b39e1e..39364a64cb2 100644
+--- a/src/hotspot/share/gc/shared/gcConfig.cpp
++++ b/src/hotspot/share/gc/shared/gcConfig.cpp
+@@ -101,7 +101,7 @@ void GCConfig::fail_if_unsupported_gc_is_selected() {
+ }
+ 
+ void GCConfig::select_gc_ergonomically() {
+-  if (AllowEnhancedClassRedefinition) {
++  if (AllowEnhancedClassRedefinition && !UseConcMarkSweepGC) {
+     // Enhanced class redefinition only supports serial GC at the moment
+     FLAG_SET_ERGO(bool, UseSerialGC, true);
+   } else if (os::is_server_class_machine()) {
+diff --git a/src/hotspot/share/gc/shared/space.cpp b/src/hotspot/share/gc/shared/space.cpp
+index 763abc91a39..947dff8ae0c 100644
+--- a/src/hotspot/share/gc/shared/space.cpp
++++ b/src/hotspot/share/gc/shared/space.cpp
+@@ -388,11 +388,11 @@ HeapWord* CompactibleSpace::forward_compact_top(size_t size, CompactPoint* cp, H
+ }
+ 
+ HeapWord* CompactibleSpace::forward(oop q, size_t size,
+-                                    CompactPoint* cp, HeapWord* compact_top) {
++                                    CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
+   compact_top = forward_compact_top(size, cp, compact_top);
+ 
+   // store the forwarding pointer into the mark word
+-  if ((HeapWord*)q != compact_top || (size_t)q->size() != size) {
++  if (force_forward || (HeapWord*)q != compact_top || (size_t)q->size() != size) {
+     q->forward_to(oop(compact_top));
+     assert(q->is_gc_marked(), "encoding the pointer should preserve the mark");
+   } else {
+@@ -514,7 +514,7 @@ bool CompactibleSpace::must_rescue(oop old_obj, oop new_obj) {
+ 
+   } else {
+     assert(space_index(old_obj) != space_index(new_obj), "old_obj and new_obj must be in different spaces");
+-    if (tenured_gen->is_in_reserved(new_obj)) {
++    if (new_in_tenured) {
+       // Must never rescue when moving from the new into the old generation.
+       assert(GenCollectedHeap::heap()->young_gen()->is_in_reserved(old_obj), "old_obj must be in DefNewGeneration");
+       assert(space_index(old_obj) > space_index(new_obj), "must be");
+@@ -858,14 +858,14 @@ void OffsetTableContigSpace::verify() const {
+ // Compute the forward sizes and leave out objects whose position could
+ // possibly overlap other objects.
+ HeapWord* CompactibleSpace::forward_with_rescue(HeapWord* q, size_t size,
+-                                                CompactPoint* cp, HeapWord* compact_top) {
++                                                CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
+   size_t forward_size = size;
+ 
+   // (DCEVM) There is a new version of the class of q => different size
+   if (oop(q)->klass()->new_version() != NULL && oop(q)->klass()->new_version()->update_information() != NULL) {
+ 
+     size_t new_size = oop(q)->size_given_klass(oop(q)->klass()->new_version());
+-    assert(size != new_size, "instances without changed size have to be updated prior to GC run");
++    // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
+     forward_size = new_size;
+   }
+ 
+@@ -879,7 +879,7 @@ HeapWord* CompactibleSpace::forward_with_rescue(HeapWord* q, size_t size,
+     return compact_top;
+   }
+ 
+-  return forward(oop(q), forward_size, cp, compact_top);
++  return forward(oop(q), forward_size, cp, compact_top, force_forward);
+ }
+ 
+ // Compute the forwarding addresses for the objects that need to be rescued.
+@@ -895,11 +895,11 @@ HeapWord* CompactibleSpace::forward_rescued(CompactPoint* cp, HeapWord* compact_
+       // (DCEVM) There is a new version of the class of q => different size
+       if (oop(q)->klass()->new_version() != NULL) {
+         size_t new_size = oop(q)->size_given_klass(oop(q)->klass()->new_version());
+-        assert(size != new_size, "instances without changed size have to be updated prior to GC run");
++        // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
+         size = new_size;
+       }
+ 
+-      compact_top = cp->space->forward(oop(q), size, cp, compact_top);
++      compact_top = cp->space->forward(oop(q), size, cp, compact_top, true);
+       assert(compact_top <= end(), "must not write over end of space!");
+     }
+     MarkSweep::_rescued_oops->clear();
+diff --git a/src/hotspot/share/gc/shared/space.hpp b/src/hotspot/share/gc/shared/space.hpp
+index 8eb5669fb79..901c89d8a30 100644
+--- a/src/hotspot/share/gc/shared/space.hpp
++++ b/src/hotspot/share/gc/shared/space.hpp
+@@ -421,7 +421,7 @@ public:
+   virtual void prepare_for_compaction(CompactPoint* cp) = 0;
+   // MarkSweep support phase3
+   DEBUG_ONLY(int space_index(oop obj));
+-  bool must_rescue(oop old_obj, oop new_obj);
++  virtual bool must_rescue(oop old_obj, oop new_obj);
+   HeapWord* rescue(HeapWord* old_obj);
+   virtual void adjust_pointers();
+   // MarkSweep support phase4
+@@ -452,11 +452,11 @@ public:
+   // function of the then-current compaction space, and updates "cp->threshold
+   // accordingly".
+   virtual HeapWord* forward(oop q, size_t size, CompactPoint* cp,
+-                    HeapWord* compact_top);
++                    HeapWord* compact_top, bool force_forward);
+   // (DCEVM) same as forwad, but can rescue objects. Invoked only during
+   // redefinition runs
+   HeapWord* forward_with_rescue(HeapWord* q, size_t size, CompactPoint* cp,
+-                                HeapWord* compact_top);
++                                HeapWord* compact_top, bool force_forward);
+ 
+   HeapWord* forward_rescued(CompactPoint* cp, HeapWord* compact_top);
+ 
+diff --git a/src/hotspot/share/gc/shared/space.inline.hpp b/src/hotspot/share/gc/shared/space.inline.hpp
+index 75d7e685edf..26e56ae6f7e 100644
+--- a/src/hotspot/share/gc/shared/space.inline.hpp
++++ b/src/hotspot/share/gc/shared/space.inline.hpp
+@@ -163,6 +163,8 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
+   HeapWord* cur_obj = space->bottom();
+   HeapWord* scan_limit = space->scan_limit();
+ 
++  bool force_forward = false;
++
+   while (cur_obj < scan_limit) {
+     assert(!space->scanned_block_is_obj(cur_obj) ||
+            oop(cur_obj)->mark_raw()->is_marked() || oop(cur_obj)->mark_raw()->is_unlocked() ||
+@@ -174,14 +176,15 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
+       size_t size = space->scanned_block_size(cur_obj);
+ 
+       if (redefinition_run) {
+-        compact_top = cp->space->forward_with_rescue(cur_obj, size, cp, compact_top);
++        compact_top = cp->space->forward_with_rescue(cur_obj, size, cp, compact_top, force_forward);
+         if (first_dead == NULL && oop(cur_obj)->is_gc_marked()) {
+           /* Was moved (otherwise, forward would reset mark),
+              set first_dead to here */
+           first_dead = cur_obj;
++          force_forward = true;
+         }
+       } else {
+-        compact_top = cp->space->forward(oop(cur_obj), size, cp, compact_top);
++        compact_top = cp->space->forward(oop(cur_obj), size, cp, compact_top, false);
+       }
+ 
+       cur_obj += size;
+@@ -197,9 +200,9 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
+ 
+       // see if we might want to pretend this object is alive so that
+       // we don't have to compact quite as often.
+-      if (cur_obj == compact_top && dead_spacer.insert_deadspace(cur_obj, end)) {
++      if (!redefinition_run && cur_obj == compact_top && dead_spacer.insert_deadspace(cur_obj, end)) {
+         oop obj = oop(cur_obj);
+-        compact_top = cp->space->forward(obj, obj->size(), cp, compact_top);
++        compact_top = cp->space->forward(obj, obj->size(), cp, compact_top, force_forward);
+         end_of_live = end;
+       } else {
+         // otherwise, it really is a free region.
+@@ -351,7 +354,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
+       HeapWord* compaction_top = (HeapWord*)oop(cur_obj)->forwardee();
+ 
+       if (redefinition_run &&  space->must_rescue(oop(cur_obj), oop(cur_obj)->forwardee())) {
+-         space->rescue(cur_obj);
++        space->rescue(cur_obj);
+         debug_only(Copy::fill_to_words(cur_obj, size, 0));
+         cur_obj += size;
+         continue;
+@@ -361,8 +364,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
+       Prefetch::write(compaction_top, copy_interval);
+ 
+       // copy object and reinit its mark
+-      assert(cur_obj != compaction_top || oop(cur_obj)->klass()->new_version() != NULL,
+-             "everything in this pass should be moving");
++      assert(redefinition_run || cur_obj != compaction_top, "everything in this pass should be moving");
+       if (redefinition_run && oop(cur_obj)->klass()->new_version() != NULL) {
+         Klass* new_version = oop(cur_obj)->klass()->new_version();
+         if (new_version->update_information() == NULL) {
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index c64d6bb1bb5..9b8678a53fb 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -52,6 +52,7 @@
+ #include "prims/jvmtiThreadState.inline.hpp"
+ #include "utilities/events.hpp"
+ #include "oops/constantPool.inline.hpp"
++#include "gc/cms/cmsHeap.hpp"
+ 
+ Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
+ Array<Method*>* VM_EnhancedRedefineClasses::_new_methods = NULL;
+@@ -420,13 +421,11 @@ public:
+       Klass* new_klass = obj->klass()->new_version();
+ 
+       if (new_klass->update_information() != NULL) {
+-        int size_diff = obj->size() - obj->size_given_klass(new_klass);
+-
+-        // Either new size is bigger or gap is to small to be filled
+-        if (size_diff < 0 || (size_diff > 0 && (size_t) size_diff < CollectedHeap::min_fill_size())) {
++        if (obj->size() - obj->size_given_klass(new_klass) != 0) {
+           // We need an instance update => set back to old klass
+           _needs_instance_update = true;
+         } else {
++          // Either new size is bigger or gap is to small to be filled
+           oop src = obj;
+           if (new_klass->is_copying_backwards()) {
+             copy_to_tmp(obj);
+@@ -436,11 +435,6 @@ public:
+           //  FIXME: instance updates...
+           //guarantee(false, "instance updates!");
+           MarkSweep::update_fields(obj, src, new_klass->update_information());
+-
+-          if (size_diff > 0) {
+-            HeapWord* dead_space = ((HeapWord *)obj) + obj->size();
+-            CollectedHeap::fill_with_object(dead_space, size_diff);
+-          }
+         }
+       } else {
+         obj->set_klass(obj->klass()->new_version());
+diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
+index ca57b524593..2ca6dde069d 100644
+--- a/src/hotspot/share/runtime/arguments.cpp
++++ b/src/hotspot/share/runtime/arguments.cpp
+@@ -2047,14 +2047,14 @@ bool Arguments::check_gc_consistency() {
+   if (AllowEnhancedClassRedefinition) {
+     // Must use serial GC. This limitation applies because the instance size changing GC modifications
+     // are only built into the mark and compact algorithm.
+-    if (!UseSerialGC && i >= 1) {
++    if ((!UseSerialGC && !UseConcMarkSweepGC) && i >= 1) {
+       jio_fprintf(defaultStream::error_stream(),
+-                  "Must use the serial GC with enhanced class redefinition\n");
++                  "Must use the serial or concurrent mark sweep GC with enhanced class redefinition.\n");
+       return false;
+     }
+   }
+ 
+-  if (i > 1) {
++  if (i > 2) {
+     jio_fprintf(defaultStream::error_stream(),
+                 "Conflicting collector combinations in option list; "
+                 "please refer to the release notes for the combinations "
+-- 
+2.24.3 (Apple Git-128)
+
