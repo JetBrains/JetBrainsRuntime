@@ -1,0 +1,24 @@
+From 88b6f7a27e35d9ed3b82418b82c1cb1fe14f61e6 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Tue, 26 Nov 2019 22:13:07 +0100
+Subject: [PATCH 20/48] Disable HA in keytool
+
+---
+ make/launcher/Launcher-java.base.gmk | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/make/launcher/Launcher-java.base.gmk b/make/launcher/Launcher-java.base.gmk
+index 5ee4530004b..88c1a14b2aa 100644
+--- a/make/launcher/Launcher-java.base.gmk
++++ b/make/launcher/Launcher-java.base.gmk
+@@ -63,6 +63,7 @@ endif
+ 
+ $(eval $(call SetupBuildLauncher, keytool, \
+     MAIN_CLASS := sun.security.tools.keytool.Main, \
++    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+ ))
+ 
+ ################################################################################
+-- 
+2.24.3 (Apple Git-128)
+
