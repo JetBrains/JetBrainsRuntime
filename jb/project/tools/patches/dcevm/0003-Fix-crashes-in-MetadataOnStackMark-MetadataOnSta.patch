@@ -1,0 +1,30 @@
+From 9ddbbcdc73e653af7807ead68705c1c9267c9192 Mon Sep 17 00:00:00 2001
+From: skybber <lada.dvorak7@gmail.com>
+Date: Wed, 14 Nov 2018 21:22:01 +0100
+Subject: [PATCH 03/48] Fix crashes in MetadataOnStackMark::~MetadataOnSta
+
+MetadataOnStackMark shoukld not remove dcevm stuff. It was added
+accidentaly in dcevm9,
+and never was part of doit() in previous versions.
+---
+ src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 83cf0be090b..61af07d0f86 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -470,7 +470,9 @@ void VM_EnhancedRedefineClasses::doit() {
+ 
+   // Mark methods seen on stack and everywhere else so old methods are not
+   // cleaned up if they're on the stack.
+-  MetadataOnStackMark md_on_stack(true);
++
++  // FIXME: fails in enhanced redefinition
++  // MetadataOnStackMark md_on_stack(true);
+   HandleMark hm(thread);   // make sure any handles created are deleted
+                            // before the stack walk again.
+ 
+-- 
+2.24.3 (Apple Git-128)
+
