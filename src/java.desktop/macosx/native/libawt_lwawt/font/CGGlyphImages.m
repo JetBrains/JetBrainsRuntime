@@ -785,15 +785,15 @@ CGGI_FillImagesForGlyphsWithSizedCanvas(CGGI_GlyphCanvas *canvas,
 
     CGGI_GlyphInfoDescriptor* mainFontDescriptor = CGGI_GetGlyphInfoDescriptor(mode, strike->fAWTFont->fNativeCGFont);
 
-    const bool isCatalinaOrAbove = IS_OSX_GT10_14;
+    const bool isMojaveOrAbove = IS_OSX_GT10_13;
     CFIndex i;
     for (i = 0; i < len; i++) {
         GlyphInfo *info = (GlyphInfo *)jlong_to_ptr(glyphInfos[i]);
         if (info != NULL) {
             CGGI_CreateImageForGlyph(strike->fAWTFont->fNativeCGFont,
-                                     canvas, glyphs[i], info, mainFontDescriptor, strike, isCatalinaOrAbove);
+                                     canvas, glyphs[i], info, mainFontDescriptor, strike, isMojaveOrAbove);
         } else {
-            info = CGGI_CreateImageForUnicode(canvas, strike, mode, uniChars[i], isCatalinaOrAbove);
+            info = CGGI_CreateImageForUnicode(canvas, strike, mode, uniChars[i], isMojaveOrAbove);
             glyphInfos[i] = ptr_to_jlong(info);
         }
 #ifdef CGGI_DEBUG
