@@ -1,0 +1,25 @@
+From 603b446449aa715aa3f409fb49ed00169b89fd91 Mon Sep 17 00:00:00 2001
+From: skybber <lada.dvorak7@gmail.com>
+Date: Sun, 16 Dec 2018 09:55:31 +0100
+Subject: [PATCH 16/48] Add dcevm distro name
+
+---
+ make/autoconf/version-numbers | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/make/autoconf/version-numbers b/make/autoconf/version-numbers
+index b5a23138213..5c0a3242c80 100644
+--- a/make/autoconf/version-numbers
++++ b/make/autoconf/version-numbers
+@@ -43,7 +43,7 @@ PRODUCT_NAME=OpenJDK
+ PRODUCT_SUFFIX="Runtime Environment"
+ JDK_RC_PLATFORM_NAME=Platform
+ COMPANY_NAME=N/A
+-HOTSPOT_VM_DISTRO="OpenJDK"
++HOTSPOT_VM_DISTRO="Dynamic Code Evolution"
+ 
+ # Might need better names for these
+ MACOSX_BUNDLE_NAME_BASE="OpenJDK"
+-- 
+2.24.3 (Apple Git-128)
+
