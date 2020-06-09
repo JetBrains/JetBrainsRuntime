@@ -1,0 +1,38 @@
+From 62c65c226bbc4fadbc598db1a2ac7d05d17ae731 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Thu, 21 Nov 2019 19:30:07 +0100
+Subject: [PATCH 19/48] Allow 11715ha class initializer calls
+
+---
+ src/hotspot/share/classfile/vmSymbols.hpp      | 1 +
+ src/hotspot/share/interpreter/linkResolver.cpp | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/hotspot/share/classfile/vmSymbols.hpp b/src/hotspot/share/classfile/vmSymbols.hpp
+index e2bac31b27f..6eeda3b8f68 100644
+--- a/src/hotspot/share/classfile/vmSymbols.hpp
++++ b/src/hotspot/share/classfile/vmSymbols.hpp
+@@ -340,6 +340,7 @@
+   /* common method and field names */                                                             \
+   template(object_initializer_name,                   "<init>")                                   \
+   template(class_initializer_name,                    "<clinit>")                                 \
++  template(ha_class_initializer_name,                 "$$ha$clinit")                              \
+   template(println_name,                              "println")                                  \
+   template(printStackTrace_name,                      "printStackTrace")                          \
+   template(main_name,                                 "main")                                     \
+diff --git a/src/hotspot/share/interpreter/linkResolver.cpp b/src/hotspot/share/interpreter/linkResolver.cpp
+index b9ccdee8cca..cb76d2ef50c 100644
+--- a/src/hotspot/share/interpreter/linkResolver.cpp
++++ b/src/hotspot/share/interpreter/linkResolver.cpp
+@@ -1009,7 +1009,7 @@ void LinkResolver::resolve_field(fieldDescriptor& fd,
+         assert(!m.is_null(), "information about the current method must be available for 'put' bytecodes");
+         bool is_initialized_static_final_update = (byte == Bytecodes::_putstatic &&
+                                                    fd.is_static() &&
+-                                                   !m()->is_static_initializer());
++                                                   !(m()->is_static_initializer() || m()->name() == vmSymbols::ha_class_initializer_name()));
+         bool is_initialized_instance_final_update = ((byte == Bytecodes::_putfield || byte == Bytecodes::_nofast_putfield) &&
+                                                      !fd.is_static() &&
+                                                      !m->is_object_initializer());
+-- 
+2.24.3 (Apple Git-128)
+
