@@ -1,0 +1,240 @@
+From 39df5f163d4a0f1fd6b92313a5570808f19d5e20 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Sun, 4 Oct 2020 21:12:12 +0200
+Subject: [PATCH 05/34] Support for Lambda class redefinition
+
+---
+ .../share/classfile/classLoaderData.cpp       |  9 +++
+ .../share/classfile/classLoaderData.hpp       |  2 +-
+ .../share/classfile/systemDictionary.cpp      | 12 +++-
+ .../share/classfile/systemDictionary.hpp      |  1 +
+ .../prims/jvmtiEnhancedRedefineClasses.cpp    | 65 +++++++++++++++++--
+ .../prims/jvmtiEnhancedRedefineClasses.hpp    |  1 +
+ .../share/prims/resolvedMethodTable.cpp       |  2 +
+ src/hotspot/share/prims/unsafe.cpp            |  1 +
+ 8 files changed, 83 insertions(+), 10 deletions(-)
+
+diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
+index 0cd90bb8c27..4d64c6b454a 100644
+--- a/src/hotspot/share/classfile/classLoaderData.cpp
++++ b/src/hotspot/share/classfile/classLoaderData.cpp
+@@ -593,6 +593,15 @@ Dictionary* ClassLoaderData::create_dictionary() {
+   return new Dictionary(this, size, resizable);
+ }
+ 
++void ClassLoaderData::exchange_holders(ClassLoaderData* cld) {
++  oop holder_oop = _holder.peek();
++  _holder.replace(cld->_holder.peek());
++  cld->_holder.replace(holder_oop);
++  WeakHandle<vm_class_loader_data> exchange = _holder;
++  _holder = cld->_holder;
++  cld->_holder = exchange;
++}
++
+ // Tell the GC to keep this klass alive while iterating ClassLoaderDataGraph
+ oop ClassLoaderData::holder_phantom() const {
+   // A klass that was previously considered dead can be looked up in the
+diff --git a/src/hotspot/share/classfile/classLoaderData.hpp b/src/hotspot/share/classfile/classLoaderData.hpp
+index ba2393f8dd0..e2ae0a77351 100644
+--- a/src/hotspot/share/classfile/classLoaderData.hpp
++++ b/src/hotspot/share/classfile/classLoaderData.hpp
+@@ -181,7 +181,7 @@ class ClassLoaderData : public CHeapObj<mtClass> {
+   bool has_accumulated_modified_oops()   { return _accumulated_modified_oops; }
+   oop holder_no_keepalive() const;
+   oop holder_phantom() const;
+-
++  void exchange_holders(ClassLoaderData* cld);
+  private:
+   void unload();
+   bool keep_alive() const       { return _keep_alive > 0; }
+diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
+index bd0cae7cb9b..8f2b46add4d 100644
+--- a/src/hotspot/share/classfile/systemDictionary.cpp
++++ b/src/hotspot/share/classfile/systemDictionary.cpp
+@@ -1062,10 +1062,14 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
+                                               Handle class_loader,
+                                               ClassFileStream* st,
+                                               const ClassLoadInfo& cl_info,
++                                              InstanceKlass* old_klass,
+                                               TRAPS) {
+ 
+   EventClassLoad class_load_start_event;
+   ClassLoaderData* loader_data;
++  
++  bool is_redefining = (old_klass != NULL);
++  
+   bool is_unsafe_anon_class = cl_info.unsafe_anonymous_host() != NULL;
+ 
+   // - for unsafe anonymous class: create a new CLD whith a class holder that uses
+@@ -1094,8 +1098,12 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
+                                                       class_name,
+                                                       loader_data,
+                                                       cl_info,
+-                                                      false, // pick_newest
++                                                      is_redefining, // pick_newest
+                                                       CHECK_NULL);
++  if (is_redefining && k != NULL) {
++    k->set_redefining(true);
++    k->set_old_version(old_klass);
++  }
+ 
+   if ((cl_info.is_hidden() || is_unsafe_anon_class) && k != NULL) {
+     // Hidden classes that are not strong and unsafe anonymous classes must update
+@@ -1998,7 +2006,7 @@ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
+   k->remove_from_sibling_list();
+ }
+ 
+-// (DCEVM) 
++// (DCEVM)
+ void SystemDictionary::update_constraints_after_redefinition() {
+   constraints()->update_after_redefinition();
+ }
+diff --git a/src/hotspot/share/classfile/systemDictionary.hpp b/src/hotspot/share/classfile/systemDictionary.hpp
+index 4547449dbec..931e655d631 100644
+--- a/src/hotspot/share/classfile/systemDictionary.hpp
++++ b/src/hotspot/share/classfile/systemDictionary.hpp
+@@ -329,6 +329,7 @@ public:
+                                      Handle class_loader,
+                                      ClassFileStream* st,
+                                      const ClassLoadInfo& cl_info,
++                                     InstanceKlass* old_klass,
+                                      TRAPS);
+ 
+   // Resolve from stream (called by jni_DefineClass and JVM_DefineClass)
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 92ce6c27b8a..8b765623dcd 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -494,6 +494,8 @@ void VM_EnhancedRedefineClasses::doit() {
+     ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
+ 
+ 
++    // SystemDictionary::methods_do(fix_invoke_method);
++
+   // JSR-292 support
+   if (_any_class_has_resolved_methods) {
+     bool trace_name_printed = false;
+@@ -756,12 +758,34 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
+     // load hook event.
+     state->set_class_being_redefined(the_class, _class_load_kind);
+ 
+-    InstanceKlass* k = SystemDictionary::resolve_from_stream(the_class_sym,
+-                                                the_class_loader,
+-                                                protection_domain,
+-                                                &st,
+-                                                the_class,
+-                                                THREAD);
++    InstanceKlass* k;
++
++    if (InstanceKlass::cast(the_class)->is_anonymous()) {
++      const InstanceKlass* host_class = the_class->host_klass();
++
++      // Make sure it's the real host class, not another anonymous class.
++      while (host_class != NULL && host_class->is_anonymous()) {
++        host_class = host_class->host_klass();
++      }
++
++      k = SystemDictionary::parse_stream(the_class_sym,
++                                         the_class_loader,
++                                         protection_domain,
++                                         &st,
++                                         host_class,
++                                         the_class,
++                                         NULL,
++                                         THREAD);
++      k->class_loader_data()->exchange_holders(the_class->class_loader_data());
++      the_class->class_loader_data()->inc_keep_alive();
++    } else {
++      k = SystemDictionary::resolve_from_stream(the_class_sym,
++                                                  the_class_loader,
++                                                  protection_domain,
++                                                  &st,
++                                                  the_class,
++                                                  THREAD);
++    }
+     // Clear class_being_redefined just to be sure.
+     state->clear_class_being_redefined();
+ 
+@@ -1442,6 +1466,30 @@ void VM_EnhancedRedefineClasses::MethodDataCleaner::do_klass(Klass* k) {
+   }
+ }
+ 
++void VM_EnhancedRedefineClasses::fix_invoke_method(Method* method) {
++
++  constantPoolHandle other_cp = constantPoolHandle(method->constants());
++
++  for (int i = 0; i < other_cp->length(); i++) {
++    if (other_cp->tag_at(i).is_klass()) {
++      Klass* klass = other_cp->resolved_klass_at(i);
++      if (klass->new_version() != NULL) {
++        // Constant pool entry points to redefined class -- update to the new version
++        other_cp->klass_at_put(i, klass->newest_version());
++      }
++      assert(other_cp->resolved_klass_at(i)->new_version() == NULL, "Must be new klass!");
++    }
++  }
++
++  ConstantPoolCache* cp_cache = other_cp->cache();
++  if (cp_cache != NULL) {
++    cp_cache->clear_entries();
++  }
++
++}
++
++
++
+ void VM_EnhancedRedefineClasses::update_jmethod_ids() {
+   for (int j = 0; j < _matching_methods_length; ++j) {
+     Method* old_method = _matching_old_methods[j];
+@@ -1979,7 +2027,10 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
+   // Find classes not directly redefined, but affected by a redefinition (because one of its supertypes is redefined)
+   AffectedKlassClosure closure(_affected_klasses);
+   // Updated in j10, from original SystemDictionary::classes_do
+-  ClassLoaderDataGraph::dictionary_classes_do(&closure);
++
++  ClassLoaderDataGraph::classes_do(&closure);
++  //ClassLoaderDataGraph::dictionary_classes_do(&closure);
++
+   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
+ 
+   // Sort the affected klasses such that a supertype is always on a smaller array index than its subtype.
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+index 60b62c3170a..d8a11b51fe9 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+@@ -116,6 +116,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
+   void rollback();
+   static void mark_as_scavengable(nmethod* nm);
+   static void unpatch_bytecode(Method* method);
++  static void fix_invoke_method(Method* method);
+ 
+   // Figure out which new methods match old methods in name and signature,
+   // which methods have been added, and which are no longer present
+diff --git a/src/hotspot/share/prims/resolvedMethodTable.cpp b/src/hotspot/share/prims/resolvedMethodTable.cpp
+index 122bb8c186b..81b3aa96564 100644
+--- a/src/hotspot/share/prims/resolvedMethodTable.cpp
++++ b/src/hotspot/share/prims/resolvedMethodTable.cpp
+@@ -414,6 +414,8 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
+         InstanceKlass* newer_klass = InstanceKlass::cast(old_method->method_holder()->new_version());
+         Method* newer_method = newer_klass->method_with_idnum(old_method->orig_method_idnum());
+ 
++        log_info(redefine, class, load, exceptions)("Adjusting method: '%s' of new class %s", newer_method->name_and_sig_as_C_string(), newer_klass->name()->as_C_string());
++
+         assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
+         assert(newer_method != NULL, "method_with_idnum() should not be NULL");
+         assert(old_method != newer_method, "sanity check");
+diff --git a/src/hotspot/share/prims/unsafe.cpp b/src/hotspot/share/prims/unsafe.cpp
+index 72d81ec9d6c..027afa3fabd 100644
+--- a/src/hotspot/share/prims/unsafe.cpp
++++ b/src/hotspot/share/prims/unsafe.cpp
+@@ -865,6 +865,7 @@ Unsafe_DefineAnonymousClass_impl(JNIEnv *env,
+                                                 host_loader,
+                                                 &st,
+                                                 cl_info,
++                                                NULL,
+                                                 CHECK_NULL);
+   if (anonk == NULL) {
+     return NULL;
+-- 
+2.23.0
+
