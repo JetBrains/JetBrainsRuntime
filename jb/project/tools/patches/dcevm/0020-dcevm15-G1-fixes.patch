@@ -1,0 +1,25 @@
+From 336cab4f72c6e642e3077ea8d1a4860de33f5a4d Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Tue, 17 Nov 2020 17:40:24 +0100
+Subject: [PATCH 20/34] dcevm15 - G1 fixes
+
+---
+ src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp b/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp
+index 2f06b9617e4..476728a5d26 100644
+--- a/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp
++++ b/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp
+@@ -240,7 +240,7 @@ void G1FullGCPrepareTask::prepare_serial_compaction_dcevm() {
+ 
+     // collect remaining, not forwarded rescued oops using serial compact point
+     while (cp->last_rescued_oop() < cp->rescued_oops()->length()) {
+-      HeapRegion* hr = G1CollectedHeap::heap()->new_region(HeapRegion::GrainBytes / HeapWordSize, false, true);
++      HeapRegion* hr = G1CollectedHeap::heap()->new_region(HeapRegion::GrainBytes / HeapWordSize, HeapRegionType::Eden, true, G1NUMA::AnyNodeIndex);
+       if (hr == NULL) {
+         vm_exit_out_of_memory(0, OOM_MMAP_ERROR, "G1 - not enough of free regions after redefinition.");
+       }
+-- 
+2.23.0
+
