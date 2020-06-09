@@ -652,10 +652,14 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XlibWrapper_XWindowEvent
 
 static int filteredEventsCount = 0;
 static int filteredEventsThreshold = -1;
+static const int DEFAULT_THRESHOLD = 5;
 #define KeyPressEventType   2
 #define KeyReleaseEventType 3
 
 static void checkBrokenInputMethod(XEvent * event, jboolean isEventFiltered) {
+    // Fix for JBR-2444
+    // By default filteredEventsThreshold == 5, you can turn it of with
+    // recreate.x11.input.method=false
     if (filteredEventsThreshold < 0) {
         filteredEventsThreshold = 0;
 
@@ -674,10 +678,12 @@ static void checkBrokenInputMethod(XEvent * event, jboolean isEventFiltered) {
                 const int parsedVal = atoi(utf8string);
                 if (parsedVal > 0)
                     filteredEventsThreshold = parsedVal;
-                else if (strncmp(utf8string, "true", 4) == 0)
-                    filteredEventsThreshold = 5;
+                else if (strncmp(utf8string, "false", 5) == 0)
+                    filteredEventsThreshold = 0;
             }
             (*env)->ReleaseStringUTFChars(env, jvalue, utf8string);
+        } else {
+            filteredEventsThreshold = DEFAULT_THRESHOLD;
         }
         (*env)->DeleteLocalRef(env, name);
     }
