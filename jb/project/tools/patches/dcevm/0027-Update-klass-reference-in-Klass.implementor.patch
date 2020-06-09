@@ -1,0 +1,60 @@
+From 9a7abdf08bf207f5265a552500446c3178bf5794 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Fri, 10 Apr 2020 23:28:07 +0200
+Subject: [PATCH 27/48] Update klass reference in Klass.implementor()
+
+If interface X is removed from class Y then old reference to Y could be
+stored in X.implementor()
+---
+ .../share/prims/jvmtiEnhancedRedefineClasses.cpp     | 12 ++++++++++++
+ .../share/prims/jvmtiEnhancedRedefineClasses.hpp     | 11 -----------
+ 2 files changed, 12 insertions(+), 11 deletions(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 24fb76b6de4..f6d2d3a40fe 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -1411,6 +1411,18 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
+     ik->set_host_klass(InstanceKlass::cast(ik->host_klass()->newest_version()));
+   }
+ 
++  // Update implementor if there is only one, in this case implementor() can reference old class
++  if (ik->is_interface()) {
++    Klass* implKlass = ik->implementor();
++    if (implKlass != NULL && implKlass != ik && implKlass->new_version() != NULL) {
++      InstanceKlass* newest_impl = InstanceKlass::cast(implKlass->newest_version());
++      ik->init_implementor();
++      if (newest_impl->implements_interface(ik)) {
++        ik->add_implementor(newest_impl);
++      }
++    }
++  }
++
+   for (int i = 0; i < other_cp->length(); i++) {
+     if (other_cp->tag_at(i).is_klass()) {
+       Klass* klass = other_cp->resolved_klass_at(i);
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+index 5b3ebc13661..2d114635ee5 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+@@ -69,17 +69,6 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
+   // RetransformClasses.  Indicate which.
+   JvmtiClassLoadKind          _class_load_kind;
+ 
+-  // _index_map_count is just an optimization for knowing if
+-  // _index_map_p contains any entries.
+-  int                         _index_map_count;
+-  intArray *                  _index_map_p;
+-
+-  // _operands_index_map_count is just an optimization for knowing if
+-  // _operands_index_map_p contains any entries.
+-  int                         _operands_cur_length;
+-  int                         _operands_index_map_count;
+-  intArray *                  _operands_index_map_p;
+-
+   GrowableArray<InstanceKlass*>*      _new_classes;
+   jvmtiError                  _res;
+ 
+-- 
+2.24.3 (Apple Git-128)
+

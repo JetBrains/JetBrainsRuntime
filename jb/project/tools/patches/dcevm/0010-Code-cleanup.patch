@@ -1,0 +1,257 @@
+From b9ceda6f7c230750a87e8a686d833ce853d84712 Mon Sep 17 00:00:00 2001
+From: skybber <lada.dvorak7@gmail.com>
+Date: Sat, 29 Dec 2018 13:22:29 +0100
+Subject: [PATCH 10/48] Code cleanup
+
+---
+ .../prims/jvmtiEnhancedRedefineClasses.cpp    | 125 ++++++------------
+ .../prims/jvmtiEnhancedRedefineClasses.hpp    |   3 -
+ 2 files changed, 40 insertions(+), 88 deletions(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 9b8678a53fb..0aa1ac4ff80 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -35,7 +35,7 @@
+ #include "memory/metaspaceShared.hpp"
+ #include "memory/resourceArea.hpp"
+ #include "memory/iterator.inline.hpp"
+-#include "gc/serial/markSweep.hpp" // FIXME: other GC?
++#include "gc/serial/markSweep.hpp"
+ #include "oops/fieldStreams.hpp"
+ #include "oops/klassVtable.hpp"
+ #include "oops/oop.inline.hpp"
+@@ -485,7 +485,9 @@ void VM_EnhancedRedefineClasses::doit() {
+   }
+ 
+   // Deoptimize all compiled code that depends on this class (do only once, because it clears whole cache)
+-  flush_dependent_code(NULL, thread);
++  //if (_max_redefinition_flags > Klass::ModifyClass) {
++    flush_dependent_code(NULL, thread);
++  //}
+ 
+   // JSR-292 support
+   if (_any_class_has_resolved_methods) {
+@@ -593,17 +595,28 @@ void VM_EnhancedRedefineClasses::doit() {
+   // See jvmtiExport.hpp for detailed explanation.
+   JvmtiExport::set_has_redefined_a_class();
+ 
+-  // check_class() is optionally called for product bits, but is
+-  // always called for non-product bits.
+ #ifdef PRODUCT
+   if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
+ #endif
+-    log_trace(redefine, class, obsolete, metadata)("calling check_class");
+-    CheckClass check_class(thread);
+-    ClassLoaderDataGraph::classes_do(&check_class);
++  for (int i=0; i<_affected_klasses->length(); i++) {
++    Klass* the_class = _affected_klasses->at(i);
++    assert(the_class->new_version() != NULL, "Must have been redefined");
++    Klass* new_version = the_class->new_version();
++    assert(new_version->new_version() == NULL, "Must be newest version");
++
++    if (!(new_version->super() == NULL || new_version->super()->new_version() == NULL)) {
++      new_version->print();
++      new_version->super()->print();
++    }
++    assert(new_version->super() == NULL || new_version->super()->new_version() == NULL, "Super class must be newest version");
++  }
++  log_trace(redefine, class, obsolete, metadata)("calling check_class");
++  CheckClass check_class(thread);
++  ClassLoaderDataGraph::classes_do(&check_class);
+ #ifdef PRODUCT
+   }
+ #endif
++
+ }
+ 
+ /**
+@@ -1279,24 +1292,23 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
+   GrowableArray<int> result = cl.finish();
+   ik->store_update_information(result);
+   ik->set_copying_backwards(cl.does_copy_backwards());
+-/* TODO logging
+-  if (RC_TRACE_ENABLED(0x00000001)) {
+-    RC_TRACE(0x00000001, ("Instance update information for %s:", new_version->name()->as_C_string()));
++  if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
++    log_trace(redefine, class, obsolete, metadata)("Instance update information for %s:", new_version->name()->as_C_string());
+     if (cl.does_copy_backwards()) {
+-      RC_TRACE(0x00000001, ("\tDoes copy backwards!"));
++      log_trace(redefine, class, obsolete, metadata)("\tDoes copy backwards!");
+     }
+     for (int i=0; i<result.length(); i++) {
+       int curNum = result.at(i);
+       if (curNum < 0) {
+-        RC_TRACE(0x00000001, ("\t%d CLEAN", curNum));
++        log_trace(redefine, class, obsolete, metadata)("\t%d CLEAN", curNum);
+       } else if (curNum > 0) {
+-        RC_TRACE(0x00000001, ("\t%d COPY from %d", curNum, result.at(i + 1)));
++        log_trace(redefine, class, obsolete, metadata)("\t%d COPY from %d", curNum, result.at(i + 1));
+         i++;
+       } else {
+-        RC_TRACE(0x00000001, ("\tEND"));
++        log_trace(redefine, class, obsolete, metadata)("\tEND");
+       }
+     }
+-  }*/
++  }
+ }
+ 
+ /**
+@@ -1813,6 +1825,7 @@ void VM_EnhancedRedefineClasses::compute_added_deleted_matching_methods() {
+ /**
+   FIXME - swap_annotations is never called, check that annotations work
+ */
++// TODO : delete it
+ void VM_EnhancedRedefineClasses::swap_annotations(InstanceKlass* the_class,
+                                           InstanceKlass* new_class) {
+   // FIXME - probably original implementation only 
+@@ -1822,7 +1835,6 @@ void VM_EnhancedRedefineClasses::swap_annotations(InstanceKlass* the_class,
+   new_class->set_annotations(old_annotations);
+ }
+ 
+-
+ // Install the redefinition of a class:
+ //    - house keeping (flushing breakpoints and caches, deoptimizing
+ //      dependent compiled code)
+@@ -1853,7 +1865,9 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
+ 
+   // DCEVM Deoptimization is always for whole java world, call only once after all classes are redefined
+   // Deoptimize all compiled code that depends on this class
+-  //  flush_dependent_code(the_class, THREAD);
++  //if (_max_redefinition_flags <= Klass::ModifyClass) {
++    //flush_dependent_code(the_class, THREAD);
++  //}
+ 
+   _old_methods = the_class->methods();
+   _new_methods = new_class->methods();
+@@ -1928,64 +1942,15 @@ void VM_EnhancedRedefineClasses::increment_class_counter(InstanceKlass *ik, TRAP
+   }
+ }
+ 
+-// FIXME - class check is currently disabled
+ void VM_EnhancedRedefineClasses::CheckClass::do_klass(Klass* k) {
+-  return;
+-  bool no_old_methods = true;  // be optimistic
+-
+-  // Both array and instance classes have vtables.
+-  // a vtable should never contain old or obsolete methods
+-  ResourceMark rm(_thread);
+-  if (k->vtable_length() > 0 &&
+-      !k->vtable().check_no_old_or_obsolete_entries()) {
+-    if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
+-      log_trace(redefine, class, obsolete, metadata)
+-        ("klassVtable::check_no_old_or_obsolete_entries failure -- OLD or OBSOLETE method found -- class: %s",
+-         k->signature_name());
+-      k->vtable().dump_vtable();
+-    }
+-    no_old_methods = false;
+-  }
+-
+-  if (k->is_instance_klass()) {
+-    HandleMark hm(_thread);
+-    InstanceKlass *ik = InstanceKlass::cast(k);
++  HandleMark hm(_thread);
++  InstanceKlass *ik = (InstanceKlass *) k;
++  assert(ik->new_version() == NULL, "must be latest version in system dictionary");
+ 
+-    // an itable should never contain old or obsolete methods
+-    if (ik->itable_length() > 0 &&
+-        !ik->itable().check_no_old_or_obsolete_entries()) {
+-      if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
+-        log_trace(redefine, class, obsolete, metadata)
+-          ("klassItable::check_no_old_or_obsolete_entries failure -- OLD or OBSOLETE method found -- class: %s",
+-           ik->signature_name());
+-        ik->itable().dump_itable();
+-      }
+-      no_old_methods = false;
+-    }
+-
+-    // the constant pool cache should never contain non-deleted old or obsolete methods
+-    if (ik->constants() != NULL &&
+-        ik->constants()->cache() != NULL &&
+-        !ik->constants()->cache()->check_no_old_or_obsolete_entries()) {
+-      if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
+-        log_trace(redefine, class, obsolete, metadata)
+-          ("cp-cache::check_no_old_or_obsolete_entries failure -- OLD or OBSOLETE method found -- class: %s",
+-           ik->signature_name());
+-        ik->constants()->cache()->dump_cache();
+-      }
+-      no_old_methods = false;
+-    }
+-  }
+-
+-  // print and fail guarantee if old methods are found.
+-  if (!no_old_methods) {
+-    if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
+-      dump_methods();
+-    } else {
+-      log_trace(redefine, class)("Use the '-Xlog:redefine+class*:' option "
+-        "to see more info about the following guarantee() failure.");
+-    }
+-    guarantee(false, "OLD and/or OBSOLETE method(s) found");
++  if (ik->vtable_length() > 0) {
++    ResourceMark rm(_thread);
++    assert(ik->vtable().check_no_old_or_obsolete_entries(), "old method found");
++    ik->vtable().verify(tty, true);
+   }
+ }
+ 
+@@ -2051,15 +2016,6 @@ void VM_EnhancedRedefineClasses::dump_methods() {
+   }
+ }
+ 
+-// TODO - is it called anywhere?
+-void VM_EnhancedRedefineClasses::print_on_error(outputStream* st) const {
+-  VM_Operation::print_on_error(st);
+-  if (_the_class_oop != NULL) {
+-    ResourceMark rm;
+-    st->print_cr(", redefining class %s", _the_class_oop->external_name());
+-  }
+-}
+-
+ /**
+  Helper class to traverse all loaded classes and figure out if the class is affected by redefinition.
+ */
+@@ -2093,7 +2049,7 @@ class AffectedKlassClosure : public KlassClosure {
+         log_trace(redefine, class, load)("found affected class: %s", klass->name()->as_C_string());
+         klass->set_redefinition_flag(Klass::MarkedAsAffected);
+         _affected_klasses->append(klass);
+-         return;
++        return;
+       }
+     }
+ 
+@@ -2125,7 +2081,7 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
+ 
+   // Find classes not directly redefined, but affected by a redefinition (because one of its supertypes is redefined)
+   AffectedKlassClosure closure(_affected_klasses);
+-  // TODO: j10 - review chancge from SystemDictionary::classes_do(&closure);
++  // Updated in j10, from original SystemDictionary::classes_do
+   ClassLoaderDataGraph::dictionary_classes_do(&closure);
+   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
+ 
+@@ -2160,7 +2116,6 @@ static bool match_second(void* value, KlassPair elem) {
+  For each class to be redefined parse the bytecode and figure out the superclass and all interfaces.
+  First newly introduced classes (_class_defs) are scanned and then affected classed (_affected_klasses).
+  Affected flag is cleared (clear_redefinition_flag(Klass::MarkedAsAffected))
+-
+  For each dependency create a KlassPair instance. Finnaly, affected classes (_affected_klasses) are sorted according to pairs.
+  
+  TODO - the class file is potentionally parsed multiple times - introduce a cache?
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+index b712d69a193..37e63a1810f 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+@@ -195,8 +195,5 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
+   // Modifiable test must be shared between IsModifiableClass query
+   // and redefine implementation
+   static bool is_modifiable_class(oop klass_mirror);
+-
+-  // Error printing
+-  void print_on_error(outputStream* st) const;
+ };
+ #endif // SHARE_VM_PRIMS_JVMTIREDEFINECLASSES2_HPP
+-- 
+2.24.3 (Apple Git-128)
+
