@@ -1,0 +1,47 @@
+From 2ad306a4cce06cfccf95a1193daf5b968ec1fa87 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Sun, 24 May 2020 12:07:09 +0200
+Subject: [PATCH 47/48] Review threads, cleanup
+
+---
+ src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 8d00203fd9a..1fbba406087 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -253,7 +253,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
+           // Note: we might set NULL at this point, which should force AbstractMethodError at runtime
+           Thread *thread = Thread::current();
+           CallInfo info(new_method, newest, thread);
+-          Handle objHandle(thread, obj);  // TODO : review thread
++          Handle objHandle(thread, obj);
+           MethodHandles::init_method_MemberName(objHandle, info);
+         } else {
+           java_lang_invoke_MemberName::set_method(obj, NULL);
+@@ -280,7 +280,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
+           InstanceKlass* ik_new = InstanceKlass::cast(k->newest_version());
+           fieldDescriptor fd_new;
+           if (ik_new->find_local_field(fd.name(), fd.signature(), &fd_new)) {
+-            Handle objHandle(Thread::current(), obj);  // TODO : review thread
++            Handle objHandle(Thread::current(), obj);
+             MethodHandles::init_field_MemberName(objHandle, fd_new, MethodHandles::ref_kind_is_setter(ref_kind));
+           } else {
+             // Matching field is not found in new version, not much we can do here.
+@@ -441,10 +441,9 @@ public:
+ 
+ 
+ // Main transformation method - runs in VM thread.
+-//  - UseSharedSpaces - TODO what does it mean?
+-//  - for each sratch class call redefine_single_class
++//  - for each scratch class call redefine_single_class
+ //  - clear code cache (flush_dependent_code)
+-//  - iterate the heap and update object defintions, check it old/new class fields
++//  - iterate the heap and update object definitions, check it old/new class fields
+ //       are compatible. If new class size is smaller then old, it can be solved directly here.
+ //  - iterate the heap and update method handles to new version
+ //  - Swap marks to have same hashcodes
+-- 
+2.24.3 (Apple Git-128)
+

@@ -1,0 +1,113 @@
+From bbcbaa9d5814017565b8f7f0d86844e9f64905c1 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Tue, 19 Nov 2019 21:07:59 +0100
+Subject: [PATCH 18/48] increment_class_counter() using orig dcevm code
+
+Probably it is cause of SISEGV on:
+_
+VM_EnhancedRedefineClasses::redefine_single_class->java_mirror()
+---
+ .../prims/jvmtiEnhancedRedefineClasses.cpp    | 39 ++++++-------------
+ 1 file changed, 12 insertions(+), 27 deletions(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 4ca638548dc..efb9e806508 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -1146,9 +1146,9 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
+ }
+ 
+ 
+-/** 
++/**
+   Searches for the class bytecode of the given class and returns it as a byte array.
+-  
++
+   @param the_class definition of a class, either existing class or new_class
+   @param class_bytes - if the class is redefined, it contains new class definition, otherwise just original class bytecode.
+   @param class_byte_count - size of class_bytes
+@@ -1460,7 +1460,7 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
+ //
+ //      ik->itable()->adjust_method_entries(the_class, &trace_name_printed);
+ //    }
+-   
++
+    constantPoolHandle other_cp = constantPoolHandle(ik->constants());
+ 
+   // Update host klass of anonymous classes (for example, produced by lambdas) to newest version.
+@@ -1764,7 +1764,7 @@ void VM_EnhancedRedefineClasses::flush_dependent_code(InstanceKlass* k_h, TRAPS)
+ /**
+   Compare _old_methods and _new_methods arrays and store the result into
+ 	_matching_old_methods, _matching_new_methods, _added_methods, _deleted_methods
+-  
++
+   Setup _old_methods and _new_methods before the call - it should be called for one class only!
+ */
+ void VM_EnhancedRedefineClasses::compute_added_deleted_matching_methods() {
+@@ -1898,13 +1898,13 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
+     ResourceMark rm(THREAD);
+     // increment the classRedefinedCount field in the_class and in any
+     // direct and indirect subclasses of the_class
+-    increment_class_counter(the_class, THREAD);
++    increment_class_counter(new_class, THREAD);
+     log_info(redefine, class, load)
+       ("redefined name=%s, count=%d (avail_mem=" UINT64_FORMAT "K)",
+-       the_class->external_name(), java_lang_Class::classRedefinedCount(the_class->java_mirror()), os::available_memory() >> 10);
++       new_class->external_name(), java_lang_Class::classRedefinedCount(new_class->java_mirror()), os::available_memory() >> 10);
+     Events::log_redefinition(THREAD, "redefined class name=%s, count=%d",
+-                             the_class->external_name(),
+-                             java_lang_Class::classRedefinedCount(the_class->java_mirror()));
++                             new_class->external_name(),
++                             java_lang_Class::classRedefinedCount(new_class->java_mirror()));
+ 
+   }
+   _timer_rsc_phase2.stop();
+@@ -1914,25 +1914,10 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
+ // Increment the classRedefinedCount field in the specific InstanceKlass
+ // and in all direct and indirect subclasses.
+ void VM_EnhancedRedefineClasses::increment_class_counter(InstanceKlass *ik, TRAPS) {
+-  oop class_mirror = ik->java_mirror();
++  oop class_mirror = ik->old_version()->java_mirror();
+   Klass* class_oop = java_lang_Class::as_Klass(class_mirror);
+   int new_count = java_lang_Class::classRedefinedCount(class_mirror) + 1;
+-  java_lang_Class::set_classRedefinedCount(ik->new_version()->java_mirror(), new_count);
+-
+-  if (class_oop != _the_class_oop) {
+-    // _the_class_oop count is printed at end of redefine_single_class()
+-    log_debug(redefine, class, subclass)("updated count in subclass=%s to %d", ik->external_name(), new_count);
+-  }
+-
+-  for (Klass *subk = ik->subklass(); subk != NULL;
+-       subk = subk->next_sibling()) {
+-    if (subk->is_instance_klass()) {
+-      // Only update instanceKlasses
+-      InstanceKlass *subik = InstanceKlass::cast(subk);
+-      // recursively do subclasses of the current subclass
+-      increment_class_counter(subik, THREAD);
+-    }
+-  }
++  java_lang_Class::set_classRedefinedCount(ik->java_mirror(), new_count);
+ }
+ 
+ void VM_EnhancedRedefineClasses::check_class(InstanceKlass* ik, TRAPS) {
+@@ -2063,7 +2048,7 @@ class AffectedKlassClosure : public KlassClosure {
+ 
+ /**
+   Find all affected classes by current redefinition (either because of redefine, class hierarchy or interface change).
+-  Affected classes are stored in _affected_klasses and parent classes always precedes child class.  
++  Affected classes are stored in _affected_klasses and parent classes always precedes child class.
+ */
+ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
+   for (int i = 0; i < _class_count; i++) {
+@@ -2112,7 +2097,7 @@ static bool match_second(void* value, KlassPair elem) {
+  First newly introduced classes (_class_defs) are scanned and then affected classed (_affected_klasses).
+  Affected flag is cleared (clear_redefinition_flag(Klass::MarkedAsAffected))
+  For each dependency create a KlassPair instance. Finnaly, affected classes (_affected_klasses) are sorted according to pairs.
+- 
++
+  TODO - the class file is potentionally parsed multiple times - introduce a cache?
+ */
+ jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(TRAPS) {
+-- 
+2.24.3 (Apple Git-128)
+

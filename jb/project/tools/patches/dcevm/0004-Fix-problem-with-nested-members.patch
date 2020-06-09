@@ -1,0 +1,25 @@
+From bb3eb4931818c3ef43c48d0781d73b8e2eb6dea9 Mon Sep 17 00:00:00 2001
+From: skybber <lada.dvorak7@gmail.com>
+Date: Mon, 3 Dec 2018 19:34:53 +0100
+Subject: [PATCH 04/48] Fix problem with nested members
+
+Reported at : https://stackoverflow.com/questions/53370380/hotswapagent-incompatibleclasschangeerror-type-headerpanel1-is-not-a-nest-mem
+---
+ src/hotspot/share/oops/instanceKlass.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
+index 8a262bc3735..9b6ba7e9304 100644
+--- a/src/hotspot/share/oops/instanceKlass.cpp
++++ b/src/hotspot/share/oops/instanceKlass.cpp
+@@ -178,6 +178,7 @@ bool InstanceKlass::has_nest_member(InstanceKlass* k, TRAPS) const {
+       }
+ 
+       Klass* k2 = _constants->klass_at(cp_index, CHECK_false);
++      k2 = k2->newest_version();
+       if (k2 == k) {
+         log_trace(class, nestmates)("- class is listed as a nest member");
+         return true;
+-- 
+2.24.3 (Apple Git-128)
+
