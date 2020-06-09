@@ -1,0 +1,43 @@
+From 507d97966c7145d0ae2533459cc504c7b0d6d5b6 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Sun, 22 Nov 2020 18:49:05 +0100
+Subject: [PATCH 25/34] Fix cpCache in not AllowEnhancedClassRedefinition mode
+
+---
+ src/hotspot/share/oops/cpCache.hpp | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/src/hotspot/share/oops/cpCache.hpp b/src/hotspot/share/oops/cpCache.hpp
+index 121a13b1dda..64dcf6223f5 100644
+--- a/src/hotspot/share/oops/cpCache.hpp
++++ b/src/hotspot/share/oops/cpCache.hpp
+@@ -148,13 +148,13 @@ class ConstantPoolCacheEntry {
+   void set_bytecode_2(Bytecodes::Code code);
+   void set_f1(Metadata* f1) {
+     Metadata* existing_f1 = _f1; // read once
+-    //assert(existing_f1 == NULL || existing_f1 == f1, "illegal field change");
++    assert(AllowEnhancedClassRedefinition || existing_f1 == NULL || existing_f1 == f1, "illegal field change");
+     _f1 = f1;
+   }
+   void release_set_f1(Metadata* f1);
+   void set_f2(intx f2) {
+     intx existing_f2 = _f2; // read once
+-    //assert(existing_f2 == 0 || existing_f2 == f2, "illegal field change");
++    assert(AllowEnhancedClassRedefinition || existing_f2 == 0 || existing_f2 == f2, "illegal field change");
+     _f2 = f2;
+   }
+   void set_f2_as_vfinal_method(Method* f2) {
+@@ -215,7 +215,9 @@ class ConstantPoolCacheEntry {
+   void initialize_resolved_reference_index(int ref_index) {
+     assert(_f2 == 0, "set once");  // note: ref_index might be zero also
+     _f2 = ref_index;
+-    _flags = 1 << is_resolved_ref_shift;
++    if (AllowEnhancedClassRedefinition) {
++      _flags = 1 << is_resolved_ref_shift;
++    }
+   }
+ 
+   void set_field(                                // sets entry to resolved field state
+-- 
+2.23.0
+
