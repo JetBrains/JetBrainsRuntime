@@ -156,7 +156,19 @@ JNI_COCOA_ENTER(env);
     // to indicate we should use CoreText to substitute the character
     CGGlyph glyph;
     const CTFontRef fallback = CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(awtFont, glyphCode, &glyph);
-    CGGlyphImages_GetGlyphMetrics(fallback, &awtStrike->fAltTx, awtStrike->fStyle, &glyph, 1, NULL, &advance, IS_OSX_GT10_14);
+    const CGFontRef cgFallback = CTFontCopyGraphicsFont(fallback, NULL);
+    if (IS_OSX_GT10_13 || IsEmojiFont(cgFallback)) {
+        CGAffineTransform matrix = awtStrike->fAltTx;
+        CGFloat fontSize = sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c));
+        CTFontRef font = CTFontCreateWithGraphicsFont(cgFallback, fontSize, NULL, NULL);
+        CTFontGetAdvancesForGlyphs(font, kCTFontDefaultOrientation, &glyph, &advance, 1);
+        CFRelease(font);
+        advance.width /= fontSize;
+        advance.height /= fontSize;
+    } else {
+        CTFontGetAdvancesForGlyphs(fallback, kCTFontDefaultOrientation, &glyph, &advance, 1);
+    }
+    CFRelease(cgFallback);
     CFRelease(fallback);
     advance = CGSizeApplyAffineTransform(advance, awtStrike->fFontTx);
     if (!JRSFontStyleUsesFractionalMetrics(awtStrike->fStyle)) {
