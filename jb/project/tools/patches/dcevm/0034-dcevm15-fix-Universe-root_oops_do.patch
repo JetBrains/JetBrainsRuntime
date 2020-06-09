@@ -1,0 +1,49 @@
+From 1f13b20ab5553182680045b7d7324ff92da7e7f0 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Sun, 29 Nov 2020 21:28:06 +0100
+Subject: [PATCH 34/34] dcevm15 - fix Universe::root_oops_do
+
+Removed ClassLoaderDataGraph::cld_do was cause of crashes due multiple
+oop patching. ClassLoaderDataGraph::cld_do replaced in dcevm15
+previously used and removed SystemDictionary:oops_do
+---
+ src/hotspot/share/memory/universe.cpp | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/src/hotspot/share/memory/universe.cpp b/src/hotspot/share/memory/universe.cpp
+index 8dad437bd51..0199962a684 100644
+--- a/src/hotspot/share/memory/universe.cpp
++++ b/src/hotspot/share/memory/universe.cpp
+@@ -190,21 +190,26 @@ void Universe::root_oops_do(OopClosure *oopClosure) {
+   // (DCEVM) TODO: Check if this is correct?
+   Management::oops_do(oopClosure);
+   OopStorageSet::vm_global()->oops_do(oopClosure);
+-  CLDToOopClosure cld_closure(oopClosure, ClassLoaderData::_claim_none);
+-  ClassLoaderDataGraph::cld_do(&cld_closure);
++  // CLDToOopClosure cld_closure(oopClosure, ClassLoaderData::_claim_none);
++  // ClassLoaderDataGraph::cld_do(&cld_closure);
+ 
+   // Now adjust pointers in remaining weak roots.  (All of which should
+   // have been cleared if they pointed to non-surviving objects.)
+   // Global (weak) JNI handles
+   WeakProcessor::oops_do(oopClosure);
+ 
++  JvmtiExport::oops_do(oopClosure);
++
+   CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
+   CodeCache::blobs_do(&blobClosure);
++  
+   AOT_ONLY(AOTLoader::oops_do(oopClosure);)
++  
+   // StringTable::oops_do was removed in j15
+   // StringTable::oops_do(oopClosure);
+ 
+-  // PSScavenge::reference_processor()->weak_oops_do(oopClosure);
++  // OopStorageSet::vm_global()->oops_do(oopClosure);
++
+ }
+ 
+ void Universe::oops_do(OopClosure* f) {
+-- 
+2.23.0
+
