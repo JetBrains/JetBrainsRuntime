@@ -1,0 +1,32 @@
+From 15690197a276a86054e1ec9724c877d6d871ca01 Mon Sep 17 00:00:00 2001
+From: Artem Khvastunov <artem.khvastunov@jetbrains.com>
+Date: Tue, 14 Apr 2020 19:11:35 +0200
+Subject: [PATCH 32/48] add jvmtiEnhancedRedefineClasses.* to CMakeLists.txt
+
+---
+ jb/project/hotspot-cmake/CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/jb/project/hotspot-cmake/CMakeLists.txt b/jb/project/hotspot-cmake/CMakeLists.txt
+index 8b552c27206..6516e39058f 100644
+--- a/jb/project/hotspot-cmake/CMakeLists.txt
++++ b/jb/project/hotspot-cmake/CMakeLists.txt
+@@ -1663,6 +1663,7 @@ set(SOURCE_FILES
+ ../../../src/hotspot/share/prims/jvmtiGetLoadedClasses.hpp
+ ../../../src/hotspot/share/prims/jvmtiAgentThread.hpp
+ ../../../src/hotspot/share/prims/jvmtiCodeBlobEvents.cpp
++../../../src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+ ../../../src/hotspot/share/prims/stackwalk.cpp
+ ../../../src/hotspot/share/prims/privilegedStack.hpp
+ ../../../src/hotspot/share/prims/jvmtiUtil.hpp
+@@ -1684,6 +1685,7 @@ set(SOURCE_FILES
+ ../../../src/hotspot/share/prims/stackwalk.hpp
+ ../../../src/hotspot/share/prims/privilegedStack.cpp
+ ../../../src/hotspot/share/prims/jvmtiCodeBlobEvents.hpp
++../../../src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+ ../../../src/hotspot/share/prims/jvmtiUtil.cpp
+ ../../../src/hotspot/share/prims/jvmtiEnvBase.cpp
+ ../../../src/hotspot/share/prims/methodHandles.cpp
+-- 
+2.24.3 (Apple Git-128)
+
