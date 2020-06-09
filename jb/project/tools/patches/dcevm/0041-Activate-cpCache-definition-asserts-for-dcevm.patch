@@ -1,0 +1,36 @@
+From ab8888737eaed76776b41b28af93a0c47826b8d6 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Tue, 19 May 2020 10:31:15 +0200
+Subject: [PATCH 41/48] Activate cpCache definition asserts for !dcevm
+
+---
+ src/hotspot/share/oops/cpCache.cpp | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/src/hotspot/share/oops/cpCache.cpp b/src/hotspot/share/oops/cpCache.cpp
+index 47040d51f0c..4318df227d1 100644
+--- a/src/hotspot/share/oops/cpCache.cpp
++++ b/src/hotspot/share/oops/cpCache.cpp
+@@ -436,8 +436,7 @@ void ConstantPoolCacheEntry::set_method_handle_common(const constantPoolHandle&
+   if (has_appendix) {
+     const int appendix_index = f2_as_index() + _indy_resolved_references_appendix_offset;
+     assert(appendix_index >= 0 && appendix_index < resolved_references->length(), "oob");
+-    // FIXME (DCEVM) relaxing for now...
+-    //assert(resolved_references->obj_at(appendix_index) == NULL, "init just once");
++    assert(AllowEnhancedClassRedefinition || resolved_references->obj_at(appendix_index) == NULL, "init just once");
+     resolved_references->obj_at_put(appendix_index, appendix());
+   }
+ 
+@@ -445,8 +444,7 @@ void ConstantPoolCacheEntry::set_method_handle_common(const constantPoolHandle&
+   if (has_method_type) {
+     const int method_type_index = f2_as_index() + _indy_resolved_references_method_type_offset;
+     assert(method_type_index >= 0 && method_type_index < resolved_references->length(), "oob");
+-    // FIXME (DCEVM) relaxing for now...
+-    //assert(resolved_references->obj_at(method_type_index) == NULL, "init just once");
++    assert(AllowEnhancedClassRedefinition || resolved_references->obj_at(method_type_index) == NULL, "init just once");
+     resolved_references->obj_at_put(method_type_index, method_type());
+   }
+ 
+-- 
+2.24.3 (Apple Git-128)
+
