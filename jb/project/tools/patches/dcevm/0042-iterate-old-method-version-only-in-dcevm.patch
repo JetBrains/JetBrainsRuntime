@@ -1,0 +1,29 @@
+From 8596cf8b677eadcd18b527dd61c891475758bbaa Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Tue, 19 May 2020 10:54:38 +0200
+Subject: [PATCH 42/48] iterate old method version only in dcevm
+
+---
+ src/hotspot/share/prims/jvmtiImpl.cpp | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiImpl.cpp b/src/hotspot/share/prims/jvmtiImpl.cpp
+index 2a92ece916e..d2044541d38 100644
+--- a/src/hotspot/share/prims/jvmtiImpl.cpp
++++ b/src/hotspot/share/prims/jvmtiImpl.cpp
+@@ -294,8 +294,10 @@ void JvmtiBreakpoint::each_method_version_do(method_action meth_act) {
+   Symbol* m_signature = _method->signature();
+ 
+   // (DCEVM) Go through old versions of method
+-  for (Method* m = _method->old_version(); m != NULL; m = m->old_version()) {
+-    (m->*meth_act)(_bci);
++  if (AllowEnhancedClassRedefinition) {
++    for (Method* m = _method->old_version(); m != NULL; m = m->old_version()) {
++      (m->*meth_act)(_bci);
++    }
+   }
+ 
+   // search previous versions if they exist
+-- 
+2.24.3 (Apple Git-128)
+
