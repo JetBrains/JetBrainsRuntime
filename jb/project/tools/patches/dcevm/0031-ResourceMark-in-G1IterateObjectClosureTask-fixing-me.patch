@@ -1,0 +1,28 @@
+From 9b405cb642d5935c39c8dbd522ea2fdecfc29ef3 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Sun, 29 Nov 2020 19:59:50 +0100
+Subject: [PATCH 31/34] ResourceMark in G1IterateObjectClosureTask fixing
+ memory leaks
+
+G1IterateObjectClosureTask is used only in redefinition full GC run
+---
+ src/hotspot/share/gc/g1/g1CollectedHeap.cpp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
+index a29d2dddc2d..2af6df6c1e4 100644
+--- a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
++++ b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
+@@ -2362,6 +2362,9 @@ class G1IterateObjectClosureTask : public AbstractGangTask {
+     _cl(cl), _g1h(g1h),  _hrclaimer(g1h->workers()->active_workers()) { }
+ 
+   virtual void work(uint worker_id) {
++    Thread *thread = Thread::current();
++    HandleMark hm(thread);   // make sure any handles created are deleted
++    ResourceMark rm(thread);
+     IterateObjectClosureRegionClosure blk(_cl);
+     _g1h->heap_region_par_iterate_from_worker_offset(&blk, &_hrclaimer, worker_id);
+   }
+-- 
+2.23.0
+
