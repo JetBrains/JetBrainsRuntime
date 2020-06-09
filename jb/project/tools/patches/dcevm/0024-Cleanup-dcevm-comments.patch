@@ -1,0 +1,67 @@
+From c6ea68e66d37d70739f7b0ee74131322b4526a68 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Sun, 22 Nov 2020 12:03:32 +0100
+Subject: [PATCH 24/34] Cleanup dcevm comments
+
+---
+ src/hotspot/share/classfile/classLoaderDataGraph.hpp     | 2 +-
+ src/hotspot/share/classfile/systemDictionary.hpp         | 2 +-
+ src/hotspot/share/gc/shared/gcConfig.cpp                 | 2 +-
+ src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/hotspot/share/classfile/classLoaderDataGraph.hpp b/src/hotspot/share/classfile/classLoaderDataGraph.hpp
+index f380aa3fa34..8ce94cccb47 100644
+--- a/src/hotspot/share/classfile/classLoaderDataGraph.hpp
++++ b/src/hotspot/share/classfile/classLoaderDataGraph.hpp
+@@ -104,7 +104,7 @@ class ClassLoaderDataGraph : public AllStatic {
+ 
+   static void dictionary_classes_do(KlassClosure* klass_closure);
+ 
+-  // Enhanced class redefinition
++  // (DCEVM) Enhanced class redefinition
+   static void rollback_redefinition();
+ 
+   // VM_CounterDecay iteration support
+diff --git a/src/hotspot/share/classfile/systemDictionary.hpp b/src/hotspot/share/classfile/systemDictionary.hpp
+index 931e655d631..1019dbd0d04 100644
+--- a/src/hotspot/share/classfile/systemDictionary.hpp
++++ b/src/hotspot/share/classfile/systemDictionary.hpp
+@@ -455,7 +455,7 @@ public:
+   static bool is_well_known_klass(Symbol* class_name);
+ #endif
+ 
+-  // Enhanced class redefinition
++  // (DCEVM) Enhanced class redefinition
+   static void remove_from_hierarchy(InstanceKlass* k);
+   static void update_constraints_after_redefinition();
+ 
+diff --git a/src/hotspot/share/gc/shared/gcConfig.cpp b/src/hotspot/share/gc/shared/gcConfig.cpp
+index 5c1a09390f1..23fbf715378 100644
+--- a/src/hotspot/share/gc/shared/gcConfig.cpp
++++ b/src/hotspot/share/gc/shared/gcConfig.cpp
+@@ -99,7 +99,7 @@ void GCConfig::fail_if_non_included_gc_is_selected() {
+ 
+ void GCConfig::select_gc_ergonomically() {
+   if (AllowEnhancedClassRedefinition && !UseG1GC) {
+-    // Enhanced class redefinition only supports serial GC at the moment
++    // (DCEVM) Enhanced class redefinition only supports serial GC at the moment
+     FLAG_SET_ERGO(UseSerialGC, true);
+   } else if (os::is_server_class_machine()) {
+ #if INCLUDE_G1GC
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+index bd5e7d153be..5de375fb888 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+@@ -78,7 +78,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
+   // have any entries.
+   bool _any_class_has_resolved_methods;
+ 
+-  // Enhanced class redefinition, affected klasses contain all classes which should be redefined
++  // (DCEVM) Enhanced class redefinition, affected klasses contain all classes which should be redefined
+   // either because of redefine, class hierarchy or interface change
+   GrowableArray<Klass*>*      _affected_klasses;
+ 
+-- 
+2.23.0
+
