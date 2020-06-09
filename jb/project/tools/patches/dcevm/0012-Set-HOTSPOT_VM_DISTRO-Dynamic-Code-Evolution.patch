@@ -1,0 +1,25 @@
+From d56e73885111b386771f564ec6beb305338993df Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Mon, 19 Oct 2020 20:00:04 +0200
+Subject: [PATCH 12/34] Set HOTSPOT_VM_DISTRO=Dynamic Code Evolution
+
+---
+ make/autoconf/version-numbers | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/make/autoconf/version-numbers b/make/autoconf/version-numbers
+index aabdc5bed20..df8025a2e84 100644
+--- a/make/autoconf/version-numbers
++++ b/make/autoconf/version-numbers
+@@ -45,7 +45,7 @@ PRODUCT_NAME=OpenJDK
+ PRODUCT_SUFFIX="Runtime Environment"
+ JDK_RC_PLATFORM_NAME=Platform
+ COMPANY_NAME=N/A
+-HOTSPOT_VM_DISTRO="OpenJDK"
++HOTSPOT_VM_DISTRO="Dynamic Code Evolution"
+ VENDOR_URL=https://openjdk.java.net/
+ VENDOR_URL_BUG=https://bugreport.java.com/bugreport/
+ VENDOR_URL_VM_BUG=https://bugreport.java.com/bugreport/crash.jsp
+-- 
+2.23.0
+
