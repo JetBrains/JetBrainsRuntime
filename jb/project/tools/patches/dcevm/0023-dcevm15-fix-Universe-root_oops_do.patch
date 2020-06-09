@@ -1,0 +1,88 @@
+From 5379e56465d3d3930ec7ea91b1c64db2cdf70170 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Sun, 22 Nov 2020 12:05:50 +0100
+Subject: [PATCH 23/34] dcevm15 - fix Universe::root_oops_do
+
+---
+ src/hotspot/share/memory/universe.cpp | 38 +++++++++------------------
+ 1 file changed, 12 insertions(+), 26 deletions(-)
+
+diff --git a/src/hotspot/share/memory/universe.cpp b/src/hotspot/share/memory/universe.cpp
+index f6e4253b5a5..8dad437bd51 100644
+--- a/src/hotspot/share/memory/universe.cpp
++++ b/src/hotspot/share/memory/universe.cpp
+@@ -39,6 +39,7 @@
+ #include "gc/shared/gcConfig.hpp"
+ #include "gc/shared/gcLogPrecious.hpp"
+ #include "gc/shared/gcTraceTime.inline.hpp"
++#include "gc/shared/weakProcessor.hpp"
+ #include "interpreter/interpreter.hpp"
+ #include "logging/log.hpp"
+ #include "logging/logStream.hpp"
+@@ -75,6 +76,7 @@
+ #include "runtime/thread.inline.hpp"
+ #include "runtime/timerTrace.hpp"
+ #include "runtime/vmOperations.hpp"
++#include "services/management.hpp"
+ #include "services/memoryService.hpp"
+ #include "utilities/align.hpp"
+ #include "utilities/copy.hpp"
+@@ -180,45 +182,29 @@ void Universe::basic_type_classes_do(KlassClosure *closure) {
+ 
+ // FIXME: (DCEVM) This method should iterate all pointers that are not within heap objects.
+ void Universe::root_oops_do(OopClosure *oopClosure) {
+-
+-  class AlwaysTrueClosure: public BoolObjectClosure {
+-  public:
+-    void do_object(oop p) { ShouldNotReachHere(); }
+-    bool do_object_b(oop p) { return true; }
+-  };
+-  AlwaysTrueClosure always_true;
+-
+   Universe::oops_do(oopClosure);
+ //  ReferenceProcessor::oops_do(oopClosure); (tw) check why no longer there
+   JNIHandles::oops_do(oopClosure);   // Global (strong) JNI handles
+   Threads::oops_do(oopClosure, NULL);
+   ObjectSynchronizer::oops_do(oopClosure);
+-  // TODO: review, flat profiler was removed in j10
+-  // FlatProfiler::oops_do(oopClosure);
+-  JvmtiExport::oops_do(oopClosure);
++  // (DCEVM) TODO: Check if this is correct?
++  Management::oops_do(oopClosure);
++  OopStorageSet::vm_global()->oops_do(oopClosure);
++  CLDToOopClosure cld_closure(oopClosure, ClassLoaderData::_claim_none);
++  ClassLoaderDataGraph::cld_do(&cld_closure);
+ 
+   // Now adjust pointers in remaining weak roots.  (All of which should
+   // have been cleared if they pointed to non-surviving objects.)
+   // Global (weak) JNI handles
+-  JNIHandles::weak_oops_do(&always_true, oopClosure);
++  WeakProcessor::oops_do(oopClosure);
+ 
+   CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
+   CodeCache::blobs_do(&blobClosure);
+-  StringTable::oops_do(oopClosure);
++  AOT_ONLY(AOTLoader::oops_do(oopClosure);)
++  // StringTable::oops_do was removed in j15
++  // StringTable::oops_do(oopClosure);
+ 
+-  // (DCEVM) TODO: Check if this is correct?
+-  //CodeCache::scavenge_root_nmethods_oops_do(oopClosure);
+-  //Management::oops_do(oopClosure);
+-  //ref_processor()->weak_oops_do(&oopClosure);
+-  //PSScavenge::reference_processor()->weak_oops_do(&oopClosure);
+-
+-#if INCLUDE_AOT
+-  if (UseAOT) {
+-    AOTLoader::oops_do(oopClosure);
+-  }
+-#endif
+-  // SO_AllClasses
+-  SystemDictionary::oops_do(oopClosure);
++  // PSScavenge::reference_processor()->weak_oops_do(oopClosure);
+ }
+ 
+ void Universe::oops_do(OopClosure* f) {
+-- 
+2.23.0
+
