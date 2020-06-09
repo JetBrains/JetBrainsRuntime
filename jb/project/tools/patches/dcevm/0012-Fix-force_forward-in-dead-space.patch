@@ -1,0 +1,24 @@
+From 84777c09ddbbbbd6a90de5b1f17a4101c8f076b8 Mon Sep 17 00:00:00 2001
+From: skybber <lada.dvorak7@gmail.com>
+Date: Sat, 29 Dec 2018 17:58:39 +0100
+Subject: [PATCH 12/48] Fix force_forward in dead space
+
+---
+ src/hotspot/share/gc/shared/space.inline.hpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/hotspot/share/gc/shared/space.inline.hpp b/src/hotspot/share/gc/shared/space.inline.hpp
+index 26e56ae6f7e..8c255d6d428 100644
+--- a/src/hotspot/share/gc/shared/space.inline.hpp
++++ b/src/hotspot/share/gc/shared/space.inline.hpp
+@@ -213,6 +213,7 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
+         // see if this is the first dead region.
+         if (first_dead == NULL) {
+           first_dead = cur_obj;
++          force_forward = true;
+         }
+       }
+ 
+-- 
+2.24.3 (Apple Git-128)
+
