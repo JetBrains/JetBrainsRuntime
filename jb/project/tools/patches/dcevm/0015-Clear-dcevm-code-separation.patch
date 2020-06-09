@@ -1,0 +1,193 @@
+From 6ffac6e5064ec6633fdbeb8520333dca00bc6a62 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Fri, 23 Oct 2020 10:20:26 +0200
+Subject: [PATCH 15/34] Clear dcevm code separation
+
+---
+ src/hotspot/share/classfile/systemDictionary.cpp |  4 ++--
+ src/hotspot/share/gc/serial/genMarkSweep.cpp     |  8 +++++---
+ src/hotspot/share/interpreter/linkResolver.cpp   | 16 +++++++++++-----
+ .../instrumentation/jfrEventClassTransformer.cpp |  2 +-
+ src/hotspot/share/oops/instanceKlass.cpp         | 10 ++++++----
+ src/hotspot/share/oops/method.cpp                |  2 +-
+ .../share/prims/jvmtiGetLoadedClasses.cpp        |  2 +-
+ src/hotspot/share/runtime/reflection.cpp         |  2 +-
+ 8 files changed, 28 insertions(+), 18 deletions(-)
+
+diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
+index 8f2b46add4d..9ac6ec96cb5 100644
+--- a/src/hotspot/share/classfile/systemDictionary.cpp
++++ b/src/hotspot/share/classfile/systemDictionary.cpp
+@@ -1241,7 +1241,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
+     MutexLocker mu(THREAD, SystemDictionary_lock);
+ 
+     Klass* check = find_class(h_name, k->class_loader_data());
+-    assert((check == k && !k->is_redefining()) || (k->is_redefining() && check == k->old_version()), "should be present in the dictionary");
++    assert(check == k && !k->is_redefining() || k->is_redefining() && check == k->old_version(), "should be present in the dictionary");
+   } );
+ 
+   return k;
+@@ -2290,7 +2290,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
+       // also hold array classes.
+ 
+       assert(check->is_instance_klass(), "noninstance in systemdictionary");
+-      if ((defining == true) || ((k != check) && k->old_version() != check)) {
++      if ((defining == true) || (k != check && (!AllowEnhancedClassRedefinition || k->old_version() != check))) {
+         throwException = true;
+         ss.print("loader %s", loader_data->loader_name_and_id());
+         ss.print(" attempted duplicate %s definition for %s. (%s)",
+diff --git a/src/hotspot/share/gc/serial/genMarkSweep.cpp b/src/hotspot/share/gc/serial/genMarkSweep.cpp
+index 1d13c647452..548df01e557 100644
+--- a/src/hotspot/share/gc/serial/genMarkSweep.cpp
++++ b/src/hotspot/share/gc/serial/genMarkSweep.cpp
+@@ -334,7 +334,9 @@ void GenMarkSweep::mark_sweep_phase4() {
+ 
+   GenCompactClosure blk;
+   gch->generation_iterate(&blk, true);
+-  DcevmSharedGC::copy_rescued_objects_back(MarkSweep::_rescued_oops, true);
+-  DcevmSharedGC::clear_rescued_objects_resource(MarkSweep::_rescued_oops);
+-  MarkSweep::_rescued_oops = NULL;
++  if (AllowEnhancedClassRedefinition) {
++    DcevmSharedGC::copy_rescued_objects_back(MarkSweep::_rescued_oops, true);
++    DcevmSharedGC::clear_rescued_objects_resource(MarkSweep::_rescued_oops);
++    MarkSweep::_rescued_oops = NULL;
++  }
+ }
+diff --git a/src/hotspot/share/interpreter/linkResolver.cpp b/src/hotspot/share/interpreter/linkResolver.cpp
+index b6e9e0a308d..b2f24ddbeda 100644
+--- a/src/hotspot/share/interpreter/linkResolver.cpp
++++ b/src/hotspot/share/interpreter/linkResolver.cpp
+@@ -282,9 +282,14 @@ void LinkResolver::check_klass_accessibility(Klass* ref_klass, Klass* sel_klass,
+   if (!base_klass->is_instance_klass()) {
+     return;  // no relevant check to do
+   }
+-
+-  Reflection::VerifyClassAccessResults vca_result =
+-    Reflection::verify_class_access(ref_klass->newest_version(), InstanceKlass::cast(base_klass->newest_version()), true);
++  Klass* refKlassNewest = ref_klass;
++  Klass* baseKlassNewest = base_klass;
++  if (AllowEnhancedClassRedefinition) {
++    refKlassNewest = ref_klass->newest_version();
++    baseKlassNewest = base_klass->newest_version();
++  }
++  Reflection::VerifyClassAccessResults vca_result = 
++    Reflection::verify_class_access(refKlassNewest, InstanceKlass::cast(baseKlassNewest), true);
+   if (vca_result != Reflection::ACCESS_OK) {
+     ResourceMark rm(THREAD);
+     char* msg = Reflection::verify_class_access_msg(ref_klass,
+@@ -566,7 +571,8 @@ void LinkResolver::check_method_accessability(Klass* ref_klass,
+   // We'll check for the method name first, as that's most likely
+   // to be false (so we'll short-circuit out of these tests).
+   if (sel_method->name() == vmSymbols::clone_name() &&
+-      sel_klass->newest_version() == SystemDictionary::Object_klass()->newest_version() &&
++      ( !AllowEnhancedClassRedefinition && sel_klass == SystemDictionary::Object_klass() ||
++      AllowEnhancedClassRedefinition && sel_klass->newest_version() == SystemDictionary::Object_klass()->newest_version()) &&
+       resolved_klass->is_array_klass()) {
+     // We need to change "protected" to "public".
+     assert(flags.is_protected(), "clone not protected?");
+@@ -1011,7 +1017,7 @@ void LinkResolver::resolve_field(fieldDescriptor& fd,
+     //     or by the <init> method (in case of an instance field).
+     if (is_put && fd.access_flags().is_final()) {
+ 
+-      if (sel_klass != current_klass && sel_klass != current_klass->active_version()) {
++      if (sel_klass != current_klass && (!AllowEnhancedClassRedefinition || sel_klass != current_klass->active_version())) {
+         ResourceMark rm(THREAD);
+         stringStream ss;
+         ss.print("Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
+diff --git a/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp b/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
+index 96fc139bea3..f7284197c5a 100644
+--- a/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
++++ b/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
+@@ -1471,7 +1471,7 @@ static InstanceKlass* create_new_instance_klass(InstanceKlass* ik, ClassFileStre
+                              cld,
+                              &cl_info,
+                              ClassFileParser::INTERNAL, // internal visibility
+-							 false,
++                             false,
+                              THREAD);
+   if (HAS_PENDING_EXCEPTION) {
+     log_pending_exception(PENDING_EXCEPTION);
+diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
+index 3be3a09ef8f..f8e60941046 100644
+--- a/src/hotspot/share/oops/instanceKlass.cpp
++++ b/src/hotspot/share/oops/instanceKlass.cpp
+@@ -199,7 +199,9 @@ bool InstanceKlass::has_nest_member(InstanceKlass* k, TRAPS) const {
+         // able to perform that loading but we can't exclude the compiler threads from
+         // executing this logic. But it should actually be impossible to trigger loading here.
+         Klass* k2 = _constants->klass_at(cp_index, THREAD);
+-        k2 = k2->newest_version();
++        if (AllowEnhancedClassRedefinition) {
++          k2 = k2->newest_version();
++        }
+         assert(!HAS_PENDING_EXCEPTION || PENDING_EXCEPTION->is_a(SystemDictionary::VirtualMachineError_klass()),
+                "Exceptions should not be possible here");
+         if (k2 == k) {
+@@ -1003,7 +1005,7 @@ bool InstanceKlass::link_class_impl(TRAPS) {
+ #endif
+       set_init_state(linked);
+       // (DCEVM) Must check for old version in order to prevent infinite loops.
+-      if (JvmtiExport::should_post_class_prepare() && old_version() == NULL /* JVMTI deadlock otherwise */) {
++      if (JvmtiExport::should_post_class_prepare() && (!AllowEnhancedClassRedefinition || old_version() == NULL) /* JVMTI deadlock otherwise */) {
+         Thread *thread = THREAD;
+         assert(thread->is_Java_thread(), "thread->is_Java_thread()");
+         JvmtiExport::post_class_prepare((JavaThread *) thread, this);
+@@ -1084,7 +1086,7 @@ void InstanceKlass::initialize_impl(TRAPS) {
+     // we might end up throwing IE from link/symbol resolution sites
+     // that aren't expected to throw.  This would wreak havoc.  See 6320309.
+     while ((is_being_initialized() && !is_reentrant_initialization(jt)) 
+-            || (old_version() != NULL && InstanceKlass::cast(old_version())->is_being_initialized())) {
++            || (AllowEnhancedClassRedefinition && old_version() != NULL && InstanceKlass::cast(old_version())->is_being_initialized())) {
+       wait = true;
+       jt->set_class_to_be_initialized(this);
+       ol.wait_uninterruptibly(jt);
+@@ -3782,7 +3784,7 @@ void InstanceKlass::verify_on(outputStream* st) {
+ 
+     guarantee(sib->is_klass(), "should be klass");
+     // TODO: (DCEVM) explain
+-    guarantee(sib->super() == super || super->newest_version() == SystemDictionary::Object_klass(), "siblings should have same superklass");
++    guarantee(sib->super() == super || AllowEnhancedClassRedefinition && super->newest_version() == SystemDictionary::Object_klass(), "siblings should have same superklass");
+   }
+ 
+   // Verify local interfaces
+diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
+index ce940cf10a9..2d8e5b0256b 100644
+--- a/src/hotspot/share/oops/method.cpp
++++ b/src/hotspot/share/oops/method.cpp
+@@ -2208,7 +2208,7 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
+ // Add a method id to the jmethod_ids
+ jmethodID Method::make_jmethod_id(ClassLoaderData* loader_data, Method* m) {
+   // FIXME: (DCEVM) ???
+-  if (m != m->newest_version()) {
++  if (AllowEnhancedClassRedefinition && m != m->newest_version()) {
+     m = m->newest_version();
+   }
+   ClassLoaderData* cld = loader_data;
+diff --git a/src/hotspot/share/prims/jvmtiGetLoadedClasses.cpp b/src/hotspot/share/prims/jvmtiGetLoadedClasses.cpp
+index 1c7677f270f..6c12ee64a6e 100644
+--- a/src/hotspot/share/prims/jvmtiGetLoadedClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiGetLoadedClasses.cpp
+@@ -75,7 +75,7 @@ public:
+     //         the new version (SystemDictionary stores only new versions). But the LoadedClassesClosure's functionality was
+     //         changed in java8  where jvmtiLoadedClasses collects all classes from all classloaders, therefore we
+     //         must use new versions only.
+-    if (k->new_version()==NULL) {
++    if (AllowEnhancedClassRedefinition && k->new_version()==NULL) {
+       _classStack.push((jclass) _env->jni_reference(Handle(_cur_thread, k->java_mirror())));
+       if (_dictionary_walk) {
+         // Collect array classes this way when walking the dictionary (because array classes are
+diff --git a/src/hotspot/share/runtime/reflection.cpp b/src/hotspot/share/runtime/reflection.cpp
+index 0e7722dba7d..d67457f02ac 100644
+--- a/src/hotspot/share/runtime/reflection.cpp
++++ b/src/hotspot/share/runtime/reflection.cpp
+@@ -628,7 +628,7 @@ bool Reflection::verify_member_access(const Klass* current_class,
+                                       TRAPS) {
+ 
+   // (DCEVM) Decide accessibility based on active version
+-  if (current_class != NULL) {
++  if (AllowEnhancedClassRedefinition && current_class != NULL) {
+     current_class = current_class->active_version();
+   }
+ 
+-- 
+2.23.0
+
