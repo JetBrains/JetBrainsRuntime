@@ -1,0 +1,278 @@
+From de04154ee21d33c1ac1b74b2740f2fda117c0430 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Tue, 19 May 2020 09:29:39 +0200
+Subject: [PATCH 40/48] Code cleanup
+
+---
+ src/hotspot/share/classfile/classFileParser.cpp   |  4 +++-
+ src/hotspot/share/classfile/classFileParser.hpp   |  2 +-
+ src/hotspot/share/classfile/classLoaderData.cpp   |  2 ++
+ src/hotspot/share/classfile/dictionary.cpp        |  4 ++++
+ src/hotspot/share/classfile/dictionary.hpp        |  1 +
+ src/hotspot/share/classfile/loaderConstraints.cpp |  3 ++-
+ src/hotspot/share/classfile/systemDictionary.cpp  |  8 +++++---
+ src/hotspot/share/interpreter/linkResolver.cpp    |  1 +
+ src/hotspot/share/memory/universe.cpp             |  4 ++--
+ src/hotspot/share/oops/instanceKlass.cpp          | 13 ++++++++-----
+ 10 files changed, 29 insertions(+), 13 deletions(-)
+
+diff --git a/src/hotspot/share/classfile/classFileParser.cpp b/src/hotspot/share/classfile/classFileParser.cpp
+index ea150df9104..c2cd35da4e6 100644
+--- a/src/hotspot/share/classfile/classFileParser.cpp
++++ b/src/hotspot/share/classfile/classFileParser.cpp
+@@ -954,6 +954,7 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
+                                                   CHECK);
+       }
+ 
++      // (DCEVM) pick newest
+       interf = (Klass *) maybe_newest(interf);
+ 
+       if (!interf->is_interface()) {
+@@ -3749,6 +3750,7 @@ const InstanceKlass* ClassFileParser::parse_super_class(ConstantPool* const cp,
+     // However, make sure it is not an array type.
+     bool is_array = false;
+     if (cp->tag_at(super_class_index).is_klass()) {
++      // (DCEVM) pick newest
+       super_klass = InstanceKlass::cast(maybe_newest(cp->resolved_klass_at(super_class_index)));
+       if (need_verify)
+         is_array = super_klass->is_array_klass();
+@@ -4417,7 +4419,7 @@ void ClassFileParser::set_precomputed_flags(InstanceKlass* ik) {
+   if (!_has_empty_finalizer) {
+     if (_has_finalizer ||
+         (super != NULL && super->has_finalizer())) {
+-        // FIXME - condition from previous DCEVM version, however after reload new finelize() method is not active
++        // FIXME - (DCEVM) this is condition from previous DCEVM version, however after reload a new finalize() method is not active
+         if (ik->old_version() == NULL || ik->old_version()->has_finalizer()) {
+           ik->set_has_finalizer();
+         }
+diff --git a/src/hotspot/share/classfile/classFileParser.hpp b/src/hotspot/share/classfile/classFileParser.hpp
+index 3db14b678f3..93ed54d8f70 100644
+--- a/src/hotspot/share/classfile/classFileParser.hpp
++++ b/src/hotspot/share/classfile/classFileParser.hpp
+@@ -499,7 +499,7 @@ class ClassFileParser {
+                      FieldLayoutInfo* info,
+                      TRAPS);
+ 
+-  // Enhanced class redefinition
++  // (DCEVM) Enhanced class redefinition
+   inline const Klass* maybe_newest(const Klass* klass) const { return klass != NULL && _pick_newest ? klass->newest_version() : klass; }
+ 
+  public:
+diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
+index f5b877b432b..ab2615da0ed 100644
+--- a/src/hotspot/share/classfile/classLoaderData.cpp
++++ b/src/hotspot/share/classfile/classLoaderData.cpp
+@@ -1242,6 +1242,7 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*)) {
+   }
+ }
+ 
++// (DCEVM) - iterate over dict classes
+ void ClassLoaderDataGraph::dictionary_classes_do(KlassClosure* klass_closure) {
+   FOR_ALL_DICTIONARY(cld) {
+     cld->dictionary()->classes_do(klass_closure);
+@@ -1257,6 +1258,7 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*, TRAPS),
+   }
+ }
+ 
++// (DCEVM) rollback redefined classes
+ void ClassLoaderDataGraph::rollback_redefinition() {
+   FOR_ALL_DICTIONARY(cld) {
+     cld->dictionary()->rollback_redefinition();
+diff --git a/src/hotspot/share/classfile/dictionary.cpp b/src/hotspot/share/classfile/dictionary.cpp
+index 118730f1b83..dda5188c370 100644
+--- a/src/hotspot/share/classfile/dictionary.cpp
++++ b/src/hotspot/share/classfile/dictionary.cpp
+@@ -245,6 +245,8 @@ void Dictionary::classes_do(void f(InstanceKlass*)) {
+   }
+ }
+ 
++
++// (DCEVM) iterate over dict entry
+ void Dictionary::classes_do(KlassClosure* closure) {
+   for (int index = 0; index < table_size(); index++) {
+     for (DictionaryEntry* probe = bucket(index);
+@@ -342,6 +344,7 @@ DictionaryEntry* Dictionary::get_entry(int index, unsigned int hash,
+   return NULL;
+ }
+ 
++// (DCEVM) replace old_class by new class in dictionary
+ bool Dictionary::update_klass(unsigned int hash, Symbol* name, ClassLoaderData* loader_data, InstanceKlass* k, InstanceKlass* old_klass) {
+   // There are several entries for the same class in the dictionary: One extra entry for each parent classloader of the classloader of the class.
+   bool found = false;
+@@ -356,6 +359,7 @@ bool Dictionary::update_klass(unsigned int hash, Symbol* name, ClassLoaderData*
+   return found;
+ }
+ 
++// (DCEVM) rollback redefinition
+ void Dictionary::rollback_redefinition() {
+   for (int index = 0; index < table_size(); index++) {
+     for (DictionaryEntry* entry = bucket(index);
+diff --git a/src/hotspot/share/classfile/dictionary.hpp b/src/hotspot/share/classfile/dictionary.hpp
+index fd4b134d7a7..5eaa741d500 100644
+--- a/src/hotspot/share/classfile/dictionary.hpp
++++ b/src/hotspot/share/classfile/dictionary.hpp
+@@ -119,6 +119,7 @@ public:
+ 
+   void rollback_redefinition();
+ 
++  // (DCEVM) return old class if redefining in AllowEnhancedClassRedefinition, otherwise return "k"
+   static InstanceKlass* old_if_redefined(InstanceKlass* k) {
+     return (k != NULL && k->is_redefining()) ? ((InstanceKlass* )k->old_version()) : k;
+   }
+diff --git a/src/hotspot/share/classfile/loaderConstraints.cpp b/src/hotspot/share/classfile/loaderConstraints.cpp
+index e4a23e8a27c..bca73b5e0dc 100644
+--- a/src/hotspot/share/classfile/loaderConstraints.cpp
++++ b/src/hotspot/share/classfile/loaderConstraints.cpp
+@@ -4,7 +4,7 @@
+  *
+  * This code is free software; you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License version 2 only, as
+- * published by the Free Software Foundation.
++ * published by the Free Software Foundation) replace old_class by new class in dictionary.
+  *
+  * This code is distributed in the hope that it will be useful, but WITHOUT
+  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+@@ -87,6 +87,7 @@ LoaderConstraintEntry** LoaderConstraintTable::find_loader_constraint(
+   return pp;
+ }
+ 
++// (DCEVM) update constraint entries to new classes, called from dcevm redefinition code only
+ void LoaderConstraintTable::update_after_redefinition() {
+   for (int index = 0; index < table_size(); index++) {
+     LoaderConstraintEntry** p = bucket_addr(index);
+diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
+index 9dbd6cc9c12..e70865109dd 100644
+--- a/src/hotspot/share/classfile/systemDictionary.cpp
++++ b/src/hotspot/share/classfile/systemDictionary.cpp
+@@ -876,7 +876,8 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
+     ClassLoaderData* loader_data = k->class_loader_data();
+     MutexLocker mu(SystemDictionary_lock, THREAD);
+     Klass* kk = find_class(name, loader_data);
+-    // FIXME: (kk == k() && !k->is_redefining()) || (k->is_redefining() && kk == k->old_version())
++    // FIXME: (DCEVM)
++    // assert(kk == k() && !k->is_redefining()) || (k->is_redefining() && kk == k->old_version())
+     assert(kk == k, "should be present in dictionary");
+   }
+ #endif
+@@ -1083,7 +1084,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
+  InstanceKlass* k = NULL;
+ 
+ #if INCLUDE_CDS
+-  // FIXME: what to do during redefinition?
++  // FIXME: (DCEVM) what to do during redefinition?
+   if (!DumpSharedSpaces) {
+     k = SystemDictionaryShared::lookup_from_stream(class_name,
+                                                    class_loader,
+@@ -1836,7 +1837,7 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
+   CodeCache::flush_dependents_on(k);
+ }
+ 
+-// Enhanced class redefinition
++// (DCEVM) - remove from klass hierarchy
+ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
+     assert(k != NULL, "just checking");
+ 
+@@ -1844,6 +1845,7 @@ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
+   k->remove_from_sibling_list();
+ }
+ 
++// (DCEVM) 
+ void SystemDictionary::update_constraints_after_redefinition() {
+   constraints()->update_after_redefinition();
+ }
+diff --git a/src/hotspot/share/interpreter/linkResolver.cpp b/src/hotspot/share/interpreter/linkResolver.cpp
+index cb76d2ef50c..9dc184d02f5 100644
+--- a/src/hotspot/share/interpreter/linkResolver.cpp
++++ b/src/hotspot/share/interpreter/linkResolver.cpp
+@@ -1384,6 +1384,7 @@ void LinkResolver::runtime_resolve_virtual_method(CallInfo& result,
+       assert(resolved_method->can_be_statically_bound(), "cannot override this method");
+       selected_method = resolved_method;
+     } else {
++      // TODO: (DCEVM) explain
+       assert(recv_klass->is_subtype_of(resolved_method->method_holder()), "receiver and resolved method holder are inconsistent");
+       selected_method = methodHandle(THREAD, recv_klass->method_at_vtable(vtable_index));
+     }
+diff --git a/src/hotspot/share/memory/universe.cpp b/src/hotspot/share/memory/universe.cpp
+index 7ecb950b231..d0a6d665aa0 100644
+--- a/src/hotspot/share/memory/universe.cpp
++++ b/src/hotspot/share/memory/universe.cpp
+@@ -176,7 +176,7 @@ void Universe::basic_type_classes_do(void f(Klass*)) {
+   f(doubleArrayKlassObj());
+ }
+ 
+-// FIXME: This method should iterate all pointers that are not within heap objects.
++// FIXME: (DCEVM) This method should iterate all pointers that are not within heap objects.
+ void Universe::root_oops_do(OopClosure *oopClosure) {
+ 
+   class AlwaysTrueClosure: public BoolObjectClosure {
+@@ -203,7 +203,7 @@ void Universe::root_oops_do(OopClosure *oopClosure) {
+   CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
+   CodeCache::blobs_do(&blobClosure);
+   StringTable::oops_do(oopClosure);
+-  
++
+   // (DCEVM) TODO: Check if this is correct?
+   //CodeCache::scavenge_root_nmethods_oops_do(oopClosure);
+   //Management::oops_do(oopClosure);
+diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
+index e14aaee21c4..c860371d2fc 100644
+--- a/src/hotspot/share/oops/instanceKlass.cpp
++++ b/src/hotspot/share/oops/instanceKlass.cpp
+@@ -1139,6 +1139,7 @@ void InstanceKlass::init_implementor() {
+   }
+ }
+ 
++// (DCEVM) - init_implementor() for dcevm
+ void InstanceKlass::init_implementor_from_redefine() {
+   assert(is_interface(), "not interface");
+   Klass** addr = adr_implementor();
+@@ -1209,6 +1210,8 @@ bool InstanceKlass::implements_interface(Klass* k) const {
+   return false;
+ }
+ 
++
++// (DCEVM)
+ bool InstanceKlass::implements_interface_any_version(Klass* k) const {
+   k = k->newest_version();
+   if (this->newest_version() == k) return true;
+@@ -1491,10 +1494,8 @@ void InstanceKlass::methods_do(void f(Method* method)) {
+   }
+ }
+ 
+-/**
+-  Update information contains mapping of fields from old class to the new class.
+-  Info is stored on HEAP, you need to call clear_update_information to free the space.
+-*/
++//  (DCEVM) Update information contains mapping of fields from old class to the new class.
++//  Info is stored on HEAP, you need to call clear_update_information to free the space.
+ void InstanceKlass::store_update_information(GrowableArray<int> &values) {
+   int *arr = NEW_C_HEAP_ARRAY(int, values.length(), mtClass);
+   for (int i = 0; i < values.length(); i++) {
+@@ -2162,6 +2163,7 @@ void InstanceKlass::add_dependent_nmethod(nmethod* nm) {
+   dependencies().add_dependent_nmethod(nm);
+ }
+ 
++// DCEVM - update jmethod ids
+ bool InstanceKlass::update_jmethod_id(Method* method, jmethodID newMethodID) {
+   size_t idnum = (size_t)method->method_idnum();
+   jmethodID* jmeths = methods_jmethod_ids_acquire();
+@@ -2177,7 +2179,7 @@ bool InstanceKlass::update_jmethod_id(Method* method, jmethodID newMethodID) {
+ 
+ void InstanceKlass::remove_dependent_nmethod(nmethod* nm, bool delete_immediately) {
+   dependencies().remove_dependent_nmethod(nm, delete_immediately);
+-  // (DCEVM) Hack as dependencies get wrong version of Klass*
++  // FIXME: (DCEVM) Hack as dependencies get wrong version of Klass*
+ //  if (this->old_version() != NULL) {
+ //    InstanceKlass::cast(this->old_version())->remove_dependent_nmethod(nm, true);
+ //    return;
+@@ -3594,6 +3596,7 @@ void InstanceKlass::verify_on(outputStream* st) {
+     }
+ 
+     guarantee(sib->is_klass(), "should be klass");
++    // TODO: (DCEVM) explain
+     guarantee(sib->super() == super || super->newest_version() == SystemDictionary::Object_klass(), "siblings should have same superklass");
+   }
+ 
+-- 
+2.24.3 (Apple Git-128)
+

@@ -1,0 +1,25 @@
+From d3d53f242337bd3bc79917f922ff569c0a112f3b Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Sun, 8 Dec 2019 17:55:01 +0100
+Subject: [PATCH 22/48] Open java.base/java.io module
+
+---
+ src/hotspot/share/runtime/arguments.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
+index 0081f688120..0cdd8c88315 100644
+--- a/src/hotspot/share/runtime/arguments.cpp
++++ b/src/hotspot/share/runtime/arguments.cpp
+@@ -4325,6 +4325,8 @@ void Arguments::setup_hotswap_agent() {
+   create_numbered_property("jdk.module.addopens", "java.base/java.lang=ALL-UNNAMED", addopens_count++);
+   // Class of  field java.lang.reflect.Proxy/proxyCache
+   create_numbered_property("jdk.module.addopens", "java.base/jdk.internal.loader=ALL-UNNAMED", addopens_count++);
++  // Use to access java.io.Reader, java.io.InputStream, java.io.FileInputStream
++  create_numbered_property("jdk.module.addopens", "java.base/java.io=ALL-UNNAMED", addopens_count++);
+   // java.beans.Introspector access
+   create_numbered_property("jdk.module.addopens", "java.desktop/java.beans=ALL-UNNAMED", addopens_count++);
+   // java.beans.Introspector access
+-- 
+2.24.3 (Apple Git-128)
+
