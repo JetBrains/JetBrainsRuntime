@@ -1,0 +1,26 @@
+From 5c7e5f245f79d7e8575461dab0c356ed74c8e9a3 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Thu, 22 Oct 2020 20:15:20 +0200
+Subject: [PATCH 14/34] Initialize method's _new_version/_old_version to NULL
+
+---
+ src/hotspot/share/oops/method.cpp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
+index 1c88511a5fc..ce940cf10a9 100644
+--- a/src/hotspot/share/oops/method.cpp
++++ b/src/hotspot/share/oops/method.cpp
+@@ -91,7 +91,8 @@ Method* Method::allocate(ClassLoaderData* loader_data,
+   return new (loader_data, size, MetaspaceObj::MethodType, THREAD) Method(cm, access_flags);
+ }
+ 
+-Method::Method(ConstMethod* xconst, AccessFlags access_flags) {
++Method::Method(ConstMethod* xconst, AccessFlags access_flags) :  _new_version(NULL),
++                                                                 _old_version(NULL) {
+   NoSafepointVerifier no_safepoint;
+   set_constMethod(xconst);
+   set_access_flags(access_flags);
+-- 
+2.23.0
+
