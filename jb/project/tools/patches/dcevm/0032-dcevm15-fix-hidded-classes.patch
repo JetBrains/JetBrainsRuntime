@@ -1,0 +1,91 @@
+From 40fe40884d4efc50864bb3f2dd88f0a2e7122d5a Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Sun, 29 Nov 2020 20:05:03 +0100
+Subject: [PATCH 32/34] dcevm15 - fix hidded classes
+
+---
+ .../prims/jvmtiEnhancedRedefineClasses.cpp    | 41 ++++++++++++++-----
+ 1 file changed, 30 insertions(+), 11 deletions(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index db5fb1c472b..590f7fdfafe 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -722,7 +722,8 @@ bool VM_EnhancedRedefineClasses::is_modifiable_class(oop klass_mirror) {
+   }
+ 
+   // Cannot redefine or retransform an anonymous class.
+-  if (InstanceKlass::cast(k)->is_unsafe_anonymous()) {
++  // TODO: check if is correct in j15
++  if (InstanceKlass::cast(k)->is_unsafe_anonymous() || InstanceKlass::cast(k)->is_hidden()) {
+     return false;
+   }
+   return true;
+@@ -808,21 +809,27 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
+ 
+     InstanceKlass* k;
+ 
+-    if (InstanceKlass::cast(the_class)->is_unsafe_anonymous()) {
+-      const InstanceKlass* host_class = the_class->unsafe_anonymous_host();
++    if (the_class->is_unsafe_anonymous() || the_class->is_hidden()) {
++      InstanceKlass* dynamic_host_class = NULL;
++      InstanceKlass* unsafe_anonymous_host = NULL;
+ 
+-      // Make sure it's the real host class, not another anonymous class.
+-      while (host_class != NULL && host_class->is_unsafe_anonymous()) {
+-        host_class = host_class->unsafe_anonymous_host();
++      if (the_class->is_hidden()) {
++        log_debug(redefine, class, load)("loading hidden class %s", the_class->name()->as_C_string());
++        dynamic_host_class = the_class->nest_host(THREAD);
++      }
++
++      if (the_class->is_unsafe_anonymous()) {
++        log_debug(redefine, class, load)("loading usafe anonymous %s", the_class->name()->as_C_string());
++        unsafe_anonymous_host = the_class->unsafe_anonymous_host();
+       }
+ 
+       ClassLoadInfo cl_info(protection_domain,
+-                            host_class,
+-                            NULL,     // dynamic_nest_host
++                            unsafe_anonymous_host,
+                             NULL,     // cp_patches
++                            dynamic_host_class,     // dynamic_nest_host
+                             Handle(), // classData
+-                            false,    // is_hidden
+-                            false,    // is_strong_hidden
++                            the_class->is_hidden(),    // is_hidden
++                            !the_class->is_non_strong_hidden(),    // is_strong_hidden
+                             true);    // FIXME: check if correct. can_access_vm_annotations
+ 
+       k = SystemDictionary::parse_stream(the_class_sym,
+@@ -833,7 +840,17 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
+                                          THREAD);
+ 
+       k->class_loader_data()->exchange_holders(the_class->class_loader_data());
+-      the_class->class_loader_data()->inc_keep_alive();
++
++      if (the_class->is_hidden()) {
++      // from jvm_lookup_define_class() (jvm.cpp):
++      // The hidden class loader data has been artificially been kept alive to
++      // this point. The mirror and any instances of this class have to keep
++      // it alive afterwards.
++        the_class->class_loader_data()->dec_keep_alive();
++      } else {
++        the_class->class_loader_data()->inc_keep_alive();
++      }
++
+     } else {
+       k = SystemDictionary::resolve_from_stream(the_class_sym,
+                                                   the_class_loader,
+@@ -1475,6 +1492,8 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
+     ik->set_unsafe_anonymous_host(InstanceKlass::cast(ik->unsafe_anonymous_host()->newest_version()));
+   }
+ 
++  // FIXME: check new nest_host for hidden
++
+   // Update implementor if there is only one, in this case implementor() can reference old class
+   if (ik->is_interface()) {
+     Klass* implKlass = ik->implementor();
+-- 
+2.23.0
+
