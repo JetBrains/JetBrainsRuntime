@@ -1,0 +1,135 @@
+From 5af1daedc86b5fec0f222cbdda3afbdf518985ea Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Sat, 23 May 2020 10:02:15 +0200
+Subject: [PATCH 06/34] Fix "no original bytecode found" error if method with
+ bkp is missing
+
+Sometimes IDE can deploy class with erroneous method, such method has
+n bytecode, but breakpoint position can still exist.
+---
+ src/hotspot/share/interpreter/bytecodes.cpp    |  2 +-
+ .../share/interpreter/interpreterRuntime.cpp   |  2 +-
+ src/hotspot/share/oops/method.cpp              |  8 ++++----
+ src/hotspot/share/oops/method.hpp              |  4 ++--
+ .../prims/jvmtiEnhancedRedefineClasses.cpp     | 18 ++++++++++--------
+ 5 files changed, 18 insertions(+), 16 deletions(-)
+
+diff --git a/src/hotspot/share/interpreter/bytecodes.cpp b/src/hotspot/share/interpreter/bytecodes.cpp
+index e377e36b88c..262ecc021b2 100644
+--- a/src/hotspot/share/interpreter/bytecodes.cpp
++++ b/src/hotspot/share/interpreter/bytecodes.cpp
+@@ -84,7 +84,7 @@ Bytecodes::Code Bytecodes::code_at(Method* method, int bci) {
+ Bytecodes::Code Bytecodes::non_breakpoint_code_at(const Method* method, address bcp) {
+   assert(method != NULL, "must have the method for breakpoint conversion");
+   assert(method->contains(bcp), "must be valid bcp in method");
+-  return method->orig_bytecode_at(method->bci_from(bcp));
++  return method->orig_bytecode_at(method->bci_from(bcp), false);
+ }
+ 
+ int Bytecodes::special_length_at(Bytecodes::Code code, address bcp, address end) {
+diff --git a/src/hotspot/share/interpreter/interpreterRuntime.cpp b/src/hotspot/share/interpreter/interpreterRuntime.cpp
+index ed3cc3eb6a2..504e59caf51 100644
+--- a/src/hotspot/share/interpreter/interpreterRuntime.cpp
++++ b/src/hotspot/share/interpreter/interpreterRuntime.cpp
+@@ -814,7 +814,7 @@ JRT_END
+ // Invokes
+ 
+ JRT_ENTRY(Bytecodes::Code, InterpreterRuntime::get_original_bytecode_at(JavaThread* thread, Method* method, address bcp))
+-  return method->orig_bytecode_at(method->bci_from(bcp));
++  return method->orig_bytecode_at(method->bci_from(bcp), false);
+ JRT_END
+ 
+ JRT_ENTRY(void, InterpreterRuntime::set_original_bytecode_at(JavaThread* thread, Method* method, address bcp, Bytecodes::Code new_code))
+diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
+index 516f2bb8f2f..1c88511a5fc 100644
+--- a/src/hotspot/share/oops/method.cpp
++++ b/src/hotspot/share/oops/method.cpp
+@@ -1853,14 +1853,14 @@ bool CompressedLineNumberReadStream::read_pair() {
+ 
+ #if INCLUDE_JVMTI
+ 
+-Bytecodes::Code Method::orig_bytecode_at(int bci) const {
++Bytecodes::Code Method::orig_bytecode_at(int bci, bool no_fatal) const {
+   BreakpointInfo* bp = method_holder()->breakpoints();
+   for (; bp != NULL; bp = bp->next()) {
+     if (bp->match(this, bci)) {
+       return bp->orig_bytecode();
+     }
+   }
+-  {
++  if (!no_fatal) {
+     ResourceMark rm;
+     fatal("no original bytecode found in %s at bci %d", name_and_sig_as_C_string(), bci);
+   }
+@@ -2006,7 +2006,7 @@ BreakpointInfo::BreakpointInfo(Method* m, int bci) {
+   _signature_index = m->signature_index();
+   _orig_bytecode = (Bytecodes::Code) *m->bcp_from(_bci);
+   if (_orig_bytecode == Bytecodes::_breakpoint)
+-    _orig_bytecode = m->orig_bytecode_at(_bci);
++    _orig_bytecode = m->orig_bytecode_at(_bci, false);
+   _next = NULL;
+ }
+ 
+@@ -2015,7 +2015,7 @@ void BreakpointInfo::set(Method* method) {
+   {
+     Bytecodes::Code code = (Bytecodes::Code) *method->bcp_from(_bci);
+     if (code == Bytecodes::_breakpoint)
+-      code = method->orig_bytecode_at(_bci);
++      code = method->orig_bytecode_at(_bci, false);
+     assert(orig_bytecode() == code, "original bytecode must be the same");
+   }
+ #endif
+diff --git a/src/hotspot/share/oops/method.hpp b/src/hotspot/share/oops/method.hpp
+index 83ed2d9c3c1..4d4cc6dc012 100644
+--- a/src/hotspot/share/oops/method.hpp
++++ b/src/hotspot/share/oops/method.hpp
+@@ -230,7 +230,7 @@ class Method : public Metadata {
+ 
+   // JVMTI breakpoints
+ #if !INCLUDE_JVMTI
+-  Bytecodes::Code orig_bytecode_at(int bci) const {
++  Bytecodes::Code orig_bytecode_at(int bci, bool no_fatal) const {
+     ShouldNotReachHere();
+     return Bytecodes::_shouldnotreachhere;
+   }
+@@ -239,7 +239,7 @@ class Method : public Metadata {
+   };
+   u2   number_of_breakpoints() const {return 0;}
+ #else // !INCLUDE_JVMTI
+-  Bytecodes::Code orig_bytecode_at(int bci) const;
++  Bytecodes::Code orig_bytecode_at(int bci, bool no_fatal) const;
+   void set_orig_bytecode_at(int bci, Bytecodes::Code code);
+   void set_breakpoint(int bci);
+   void clear_breakpoint(int bci);
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 8b765623dcd..a859b8e1162 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -1362,14 +1362,16 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
+ 
+     if (code == Bytecodes::_breakpoint) {
+       int bci = method->bci_from(bcp);
+-      code = method->orig_bytecode_at(bci);
+-      java_code = Bytecodes::java_code(code);
+-      if (code != java_code &&
+-           (java_code == Bytecodes::_getfield ||
+-            java_code == Bytecodes::_putfield ||
+-            java_code == Bytecodes::_aload_0)) {
+-        // Let breakpoint table handling unpatch bytecode
+-        method->set_orig_bytecode_at(bci, java_code);
++      code = method->orig_bytecode_at(bci, true);
++      if (code != Bytecodes::_shouldnotreachhere) {
++        java_code = Bytecodes::java_code(code);
++        if (code != java_code &&
++             (java_code == Bytecodes::_getfield ||
++              java_code == Bytecodes::_putfield ||
++              java_code == Bytecodes::_aload_0)) {
++          // Let breakpoint table handling unpatch bytecode
++          method->set_orig_bytecode_at(bci, java_code);
++        }
+       }
+     } else {
+       java_code = Bytecodes::java_code(code);
+-- 
+2.23.0
+
