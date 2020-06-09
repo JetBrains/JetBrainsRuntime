@@ -1,0 +1,24 @@
+From 7fb12fc40a76a37ce67b051276a7ef582de1b04a Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Thu, 28 Nov 2019 18:53:11 +0100
+Subject: [PATCH 21/48] Open jdk module to access ClassInfo.CACHE
+
+---
+ src/hotspot/share/runtime/arguments.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
+index ba6e78d6daa..0081f688120 100644
+--- a/src/hotspot/share/runtime/arguments.cpp
++++ b/src/hotspot/share/runtime/arguments.cpp
+@@ -4329,5 +4329,7 @@ void Arguments::setup_hotswap_agent() {
+   create_numbered_property("jdk.module.addopens", "java.desktop/java.beans=ALL-UNNAMED", addopens_count++);
+   // java.beans.Introspector access
+   create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans=ALL-UNNAMED", addopens_count++);
++  // com.sun.beans.introspect.ClassInfo access
++  create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans.introspect=ALL-UNNAMED", addopens_count++);
+ 
+ }
+-- 
+2.24.3 (Apple Git-128)
+
