@@ -58,9 +58,9 @@ function create_jbr {
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 
-git checkout -- modules.list
-git checkout -- src/java.desktop/share/classes/module-info.java
-[ -z "$bundle_type" ] && git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+#git checkout -- modules.list
+#git checkout -- src/java.desktop/share/classes/module-info.java
+[ -z "$bundle_type" ] && (git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch || exit $?)
 
 sh configure \
   --disable-warnings-as-errors \
@@ -88,23 +88,27 @@ JBRSDK_BUNDLE=jbrsdk
 rm -rf $BASE_DIR/$JBRSDK_BUNDLE
 cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
-if [[ "$bundle_type" == *jcef* ]]; then
+if [ ! -z "$bundle_type" ]; then
   cp -R jcef_linux_x64/* $BASE_DIR/$JBRSDK_BUNDLE/lib || exit $?
 fi
-echo Creating $JBSDK.tar.gz ...
-sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
-mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
+if [ "$bundle_type" == "jcef" ]; then
+  echo Creating $JBSDK.tar.gz ...
+  sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
+  mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
 
-tar -pcf $JBSDK.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
-  -C $BASE_DIR $JBRSDK_BUNDLE || exit $?
-gzip $JBSDK.tar || exit $?
+  tar -pcf $JBSDK.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
+    -C $BASE_DIR $JBRSDK_BUNDLE || exit $?
+  gzip $JBSDK.tar || exit $?
+fi
 
 create_jbr || exit $?
 
-make test-image || exit $?
+if [ "$bundle_type" == "jcef" ]; then
+  make test-image || exit $?
 
-JBRSDK_TEST=$JBRSDK_BASE_NAME-linux-test-x64-b$build_number
+  JBRSDK_TEST=$JBRSDK_BASE_NAME-linux-test-x64-b$build_number
 
-echo Creating $JBSDK_TEST.tar.gz ...
-tar -pcf $JBRSDK_TEST.tar -C $BASE_DIR --exclude='test/jdk/demos' test || exit $?
-gzip $JBRSDK_TEST.tar || exit $?
+  echo Creating $JBSDK_TEST.tar.gz ...
+  tar -pcf $JBRSDK_TEST.tar -C $BASE_DIR --exclude='test/jdk/demos' test || exit $?
+  gzip $JBRSDK_TEST.tar || exit $?
+fi
