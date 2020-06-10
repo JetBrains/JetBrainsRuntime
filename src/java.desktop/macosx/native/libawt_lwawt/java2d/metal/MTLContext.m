@@ -97,7 +97,7 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
 
 @synthesize textureFunction,
             vertexCacheEnabled, aaEnabled, device, library, pipelineStateStorage,
-            commandQueue, vertexBuffer,
+            commandQueue, blitCommandQueue, vertexBuffer,
             texturePool;
 
 extern void initSamplers(id<MTLDevice> device);
@@ -135,6 +135,7 @@ extern void initSamplers(id<MTLDevice> device);
 
         // Create command queue
         commandQueue = [device newCommandQueue];
+        blitCommandQueue = [device newCommandQueue];
 
         initSamplers(device);
     }
@@ -148,6 +149,7 @@ extern void initSamplers(id<MTLDevice> device);
     self.library = nil;
     self.vertexBuffer = nil;
     self.commandQueue = nil;
+    self.blitCommandQueue = nil;
     self.pipelineStateStorage = nil;
     [_encoderManager release];
     [_composite release];
@@ -412,8 +414,16 @@ extern void initSamplers(id<MTLDevice> device);
                    yp3:yp3];
 }
 
-- (id<MTLCommandBuffer>)createBlitCommandBuffer {
+- (id<MTLCommandBuffer>)createCommandBuffer {
     return [self.commandQueue commandBuffer];
+}
+
+/*
+ * This should be exclusively used only for final blit
+ * and present of CAMetalDrawable in MTLLayer
+ */
+- (id<MTLCommandBuffer>)createBlitCommandBuffer {
+    return [self.blitCommandQueue commandBuffer];
 }
 
 -(void)setBufImgOp:(NSObject*)bufImgOp {

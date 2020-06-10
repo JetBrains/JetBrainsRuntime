@@ -153,7 +153,7 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
         NSUInteger height = (NSUInteger)dstOps->height;
         NSUInteger size = width*height;
         id <MTLBuffer> buff = [mtlc.device newBufferWithLength:size*4 options:MTLResourceStorageModePrivate];
-        id<MTLCommandBuffer> commandBuf = [mtlc createBlitCommandBuffer];
+        id<MTLCommandBuffer> commandBuf = [mtlc createCommandBuffer];
         id<MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
         [blitEncoder fillBuffer:buff range:NSMakeRange(0, size*4) value:0];
 
@@ -204,7 +204,7 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
             NSUInteger size = width*height;
             NSUInteger sizeX4 = size*4;
 
-            id<MTLCommandBuffer> cb = [mtlc createBlitCommandBuffer];
+            id<MTLCommandBuffer> cb = [mtlc createCommandBuffer];
             id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
             MTLSize sourceSize = MTLSizeMake(width, height, 1);
             MTLOrigin origin = MTLOriginMake(0, 0, 0);
@@ -300,7 +300,7 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
 
     if (!_clipReady) {
         @autoreleasepool {
-            id <MTLCommandBuffer> cb = [_mtlc createBlitCommandBuffer];
+            id <MTLCommandBuffer> cb = [_mtlc createCommandBuffer];
             id <MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
             id <MTLBuffer> _stencilDataBufRef = _dstOps->pStencilDataBuf;
 
@@ -334,7 +334,7 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
 
         @autoreleasepool {
 
-            id <MTLCommandBuffer> cb = [_mtlc createBlitCommandBuffer];
+            id <MTLCommandBuffer> cb = [_mtlc createCommandBuffer];
             id <MTLComputeCommandEncoder> computeEncoder = [cb computeCommandEncoder];
             id<MTLComputePipelineState> computePipelineState = [_mtlc.pipelineStateStorage getComputePipelineState:@"stencil2tex"];
             id <MTLBuffer> _stencilDataBufRef = _dstOps->pStencilDataBuf;

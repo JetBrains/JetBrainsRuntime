@@ -756,7 +756,7 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
             // Consider to use [mtlc.encoderManager createBlitEncoder] and [mtlc commitCommandBuffer:JNI_TRUE];
             J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLBlitLoops_SurfaceToSwBlit: source texture %p", srcOps->pTexture);
 
-            id<MTLCommandBuffer> cb = [mtlc createBlitCommandBuffer];
+            id<MTLCommandBuffer> cb = [mtlc createCommandBuffer];
             id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
             [blitEncoder synchronizeTexture:srcOps->pTexture slice:0 level:0];
             [blitEncoder copyFromTexture:srcOps->pTexture
@@ -819,7 +819,7 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
 #endif //DEBUG
 
     @autoreleasepool {
-    id<MTLCommandBuffer> cb = [mtlc createBlitCommandBuffer];
+    id<MTLCommandBuffer> cb = [mtlc createCommandBuffer];
     id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
 
     // Create an intrermediate buffer
