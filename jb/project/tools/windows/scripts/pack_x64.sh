@@ -46,12 +46,16 @@ JSDK=$IMAGES_DIR/jdk
 JBSDK=$JBRSDK_BASE_NAME-windows-x64-b$build_number
 BASE_DIR=.
 
-JBRSDK_BUNDLE=jbrsdk
-echo Creating $JBSDK.tar.gz ...
-/usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || exit 1
+if [ "$bundle_type" == "jcef" ]; then
+  JBRSDK_BUNDLE=jbrsdk
+  echo Creating $JBSDK.tar.gz ...
+  /usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || exit 1
+fi
 
 pack_jbr $bundle_type
 
-JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number
-echo Creating $JBRSDK_TEST.tar.gz ...
-/usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || exit 1
+if [ "$bundle_type" == "jcef" ]; then
+  JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number
+  echo Creating $JBRSDK_TEST.tar.gz ...
+  /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || exit 1
+fi
