@@ -48,9 +48,9 @@ function create_jbr {
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 WORK_DIR=$(pwd)
 
-git checkout -- modules.list
-git checkout -- src/java.desktop/share/classes/module-info.java
-[ -z "$bundle_type" ] && git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+#git checkout -- modules.list
+#git checkout -- src/java.desktop/share/classes/module-info.java
+[ -z "$bundle_type" ] && (git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch || exit $?)
 
 PATH="/usr/local/bin:/usr/bin:${PATH}"
 sh ./configure \
@@ -67,10 +67,16 @@ sh ./configure \
   --disable-ccache \
   --enable-cds=yes || exit 1
 
-make LOG=info images CONF=windows-x86_64-server-release test-image || exit 1
+if [ "$bundle_type" == "jcef" ]; then
+  make LOG=info images CONF=windows-x86_64-server-release test-image || exit 1else
+fi
+
+
 
 JSDK=build/windows-x86_64-server-release/images/jdk
-JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
+if [[ "$bundle_type" == "jcef" ]]; then
+  JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
+fi
 BASE_DIR=build/windows-x86_64-server-release/images
 JBRSDK_BUNDLE=jbrsdk
 
