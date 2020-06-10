@@ -3,9 +3,9 @@ IDEA additional info:
 Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
 <+>UTF-8
 ===================================================================
---- modules.list	(revision a73d4ecbefe65fd6d79b78663d916ff71b5346f7)
-+++ modules.list	(date 1589581743550)
-@@ -54,5 +54,4 @@
+--- modules.list	(revision 834c441b0f9d1a705a77f67768fa5e0411067b12)
++++ modules.list	(date 1596011136827)
+@@ -53,5 +53,4 @@
  jdk.unsupported,
  jdk.xml.dom,
  jdk.zipfs,
@@ -17,17 +17,16 @@ IDEA additional info:
 Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
 <+>UTF-8
 ===================================================================
---- src/java.desktop/share/classes/module-info.java	(revision a73d4ecbefe65fd6d79b78663d916ff71b5346f7)
-+++ src/java.desktop/share/classes/module-info.java	(date 1589581743547)
-@@ -109,11 +109,7 @@
+--- src/java.desktop/share/classes/module-info.java	(revision 834c441b0f9d1a705a77f67768fa5e0411067b12)
++++ src/java.desktop/share/classes/module-info.java	(date 1596011136835)
+@@ -109,10 +109,7 @@
      // see make/GensrcModuleInfo.gmk
      exports sun.awt to
          jdk.accessibility,
 -        jdk.unsupported.desktop,
 -        jcef;
 -
--    exports sun.lwawt.macosx to jcef;
--    exports sun.lwawt to jcef;
+-    exports java.awt.peer to jcef;
 +        jdk.unsupported.desktop;
  
      exports java.awt.dnd.peer to jdk.unsupported.desktop;
