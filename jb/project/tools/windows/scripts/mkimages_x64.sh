@@ -31,7 +31,7 @@ function create_jbr {
   "${bundle_type}_lw")
     grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
     ;;
-  "jfx" | "jcef" | "jfx_jcef")
+  "jfx" | "jcef" | "jfx_jcef" | "dcevm")
     cat modules.list > modules_tmp.list
     ;;
   *)
@@ -43,7 +43,7 @@ function create_jbr {
   ${JSDK}/bin/jlink \
     --module-path ${JSDK}/jmods --no-man-pages --compress=2 \
     --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output ${JBR_BUNDLE} || exit $?
-  if [[ "${bundle_type}" == *jcef* ]]
+  if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]]
   then
     cp -R jcef_win_x64/* ${JBR_BUNDLE}/bin
   fi
@@ -58,11 +58,15 @@ git checkout -- modules.list src/java.desktop/share/classes/module-info.java
 case "$bundle_type" in
   "jfx")
     echo "Excluding jcef modules"
-    git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+    git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch
     ;;
   "jcef")
     echo "Excluding jfx modules"
-    git apply -p0 < jb/project/tools/exclude_jfx_module.patch
+    git apply -p0 < jb/project/tools/patches/exclude_jfx_module.patch
+    ;;
+  "dcevm")
+    echo "Adding dcevm patches"
+    git am jb/project/tools/patches/dcevm/*.patch
     ;;
 esac
 
@@ -83,9 +87,9 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --enable-cds=yes || exit 1
 
 if [ "$bundle_type" == "jfx_jcef" ]; then
-  make LOG=info images CONF=windows-x86_64-normal-server-release test-image || exit 1
+  make LOG=info clean images CONF=windows-x86_64-normal-server-release test-image || exit 1
 else
-  make LOG=info images CONF=windows-x86_64-normal-server-release || exit 1
+  make LOG=info clean images CONF=windows-x86_64-normal-server-release || exit 1
 fi
 
 JSDK=build/windows-x86_64-normal-server-release/images/jdk
@@ -102,6 +106,3 @@ mv release ${JBRSDK_BUNDLE}/release
 
 JBR_BUNDLE=jbr_${bundle_type}
 create_jbr ${bundle_type}
-
-#JBR_BUNDLE=jbr_${bundle_type}_lw
-#create_jbr ${bundle_type}_lw
