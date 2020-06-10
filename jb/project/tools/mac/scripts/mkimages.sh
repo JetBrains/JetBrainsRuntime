@@ -66,9 +66,9 @@ function create_jbr {
 
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 
-git checkout -- modules.list
-git checkout -- src/java.desktop/share/classes/module-info.java
-[ -z "$bundle_type" ] && git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+#git checkout -- modules.list
+#git checkout -- src/java.desktop/share/classes/module-info.java
+[ -z "$bundle_type" ] && (git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch || exit $?)
 
 sh configure \
   --disable-warnings-as-errors \
@@ -94,23 +94,27 @@ rm -rf $BASE_DIR
 mkdir $BASE_DIR || exit $?
 cp -a $JSDK/jdk-$MAJOR_JBSDK_VERSION.jdk $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
-if [[ "$bundle_type" == *jcef* ]]; then
+if [[ ! -z "$bundle_type" ]]; then
   cp -a jcef_mac/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 fi
-echo Creating $JBSDK.tar.gz ...
-sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
-mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
-COPYFILE_DISABLE=1 tar -pczf $JBSDK.tar.gz -C $BASE_DIR \
-  --exclude='._*' --exclude='.DS_Store' --exclude='*~' \
-  --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
-  $JBRSDK_BUNDLE || exit $?
+if [ "$bundle_type" == "jcef" ]; then
+  echo Creating $JBSDK.tar.gz ...
+  sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
+  mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
+  COPYFILE_DISABLE=1 tar -pczf $JBSDK.tar.gz -C $BASE_DIR \
+    --exclude='._*' --exclude='.DS_Store' --exclude='*~' \
+    --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
+    $JBRSDK_BUNDLE || exit $?
+fi
 
 create_jbr || exit $?
 
-make test-image || exit $?
+if [ "$bundle_type" == "jcef" ]; then
+  make test-image || exit $?
 
-JBRSDK_TEST=$JBRSDK_BASE_NAME-osx-test-x64-b$build_number
+  JBRSDK_TEST=$JBRSDK_BASE_NAME-osx-test-x64-b$build_number
 
-echo Creating $JBRSDK_TEST.tar.gz ...
-COPYFILE_DISABLE=1 tar -pczf $JBRSDK_TEST.tar.gz -C build/macosx-x86_64-server-release/images \
-  --exclude='test/jdk/demos' test || exit $?
+  echo Creating $JBRSDK_TEST.tar.gz ...
+  COPYFILE_DISABLE=1 tar -pczf $JBRSDK_TEST.tar.gz -C build/macosx-x86_64-server-release/images \
+    --exclude='test/jdk/demos' test || exit $?
+fi
