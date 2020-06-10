@@ -158,13 +158,13 @@ java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java 8198623 macos
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java 8198626 macosx-all
 java/awt/Mixing/AWT_Mixing/HierarchyBoundsListenerMixingTest.java                   8049405,8238720 macosx-all,windows-all
 java/awt/Mixing/AWT_Mixing/OpaqueOverlappingChoice.java 8048171 generic-all
-java/awt/Mixing/AWT_Mixing/JMenuBarOverlapping.java 8159451 linux-all,windows-all,macosx-all
+java/awt/Mixing/AWT_Mixing/JMenuBarOverlapping.java                                 8049405,8159451 linux-all,windows-all,macosx-all
 java/awt/Mixing/AWT_Mixing/JSplitPaneOverlapping.java 8194765 generic-all
 java/awt/Mixing/AWT_Mixing/JInternalFrameMoveOverlapping.java 6986109 windows-all
-java/awt/Mixing/AWT_Mixing/MixingFrameResizing.java                                 8238720 windows-all
+java/awt/Mixing/AWT_Mixing/MixingFrameResizing.java                                 8049405,8238720 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/MixingPanelsResizing.java 8049405 generic-all
-java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405 macosx-all
-java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java 8049405 macosx-all
+java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java                                8049405 macosx-all,linux-all,windows-all
+java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java                               8049405 macosx-all,linux-all,windows-all
 java/awt/Mixing/AWT_Mixing/JButtonInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JButtonOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JColorChooserOverlapping.java 8158801 windows-all
@@ -176,8 +176,8 @@ java/awt/Mixing/AWT_Mixing/JListInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JListOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JPanelInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JPanelOverlapping.java 8158801 windows-all
-java/awt/Mixing/AWT_Mixing/JProgressBarInGlassPaneOverlapping.java 8158801 windows-all
-java/awt/Mixing/AWT_Mixing/JProgressBarOverlapping.java 8158801 windows-all
+java/awt/Mixing/AWT_Mixing/JProgressBarInGlassPaneOverlapping.java                  8158801 windows-all,macosx-all macosx-all: nobug-commit
+java/awt/Mixing/AWT_Mixing/JProgressBarOverlapping.java                             8158801 windows-all,macosx-all macosx-all: nobug-commit
 java/awt/Mixing/AWT_Mixing/JScrollBarInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JScrollBarOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JSliderInGlassPaneOverlapping.java 8158801 windows-all
@@ -202,6 +202,7 @@ java/awt/Toolkit/RealSync/Test.java 6849383 macosx-all,linux-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252 windows-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java 8203047 macosx-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java 8073636 macosx-all
+java/awt/FullScreen/BufferStrategyExceptionTest/BufferStrategyExceptionTest.java    8246558 windows-all
 java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java                          7019055 windows-all,linux-all
 java/awt/Focus/8013611/JDK8013611.java 8175366 windows-all,macosx-all
 java/awt/Focus/6378278/InputVerifierTest.java 8198616 macosx-all
@@ -627,6 +628,7 @@ java/net/MulticastSocket/SetLoopbackMode.java                   7122846 macosx-a
 java/net/MulticastSocket/Test.java                              7145658 macosx-all
 
 java/net/MulticastSocket/SetGetNetworkInterfaceTest.java        8219083 windows-all
+java/net/NetworkInterface/UniqueMacAddressesTest.java                               8246741 macosx-all
 
 java/net/DatagramSocket/SendDatagramToBadAddress.java           7143960 macosx-all
 
@@ -809,6 +811,7 @@ javax/swing/JInternalFrame/Test6325652.java 8224977 macosx-all
 javax/swing/JLabel/6596966/bug6596966.java                                          8040914,8197552 macosx-all,windows-all
 javax/swing/JPopupMenu/4870644/bug4870644.java 8194130 macosx-all,linux-all
 javax/swing/JPopupMenu/4966112/bug4966112.java 8064915 macosx-all
+javax/swing/JPopupMenu/7156657/bug7156657.java                                      8171381 macosx-all
 javax/swing/MultiUIDefaults/Test6860438.java 8198391 generic-all
 javax/swing/MultiUIDefaults/4300666/bug4300666.java 7105119 macosx-all
 javax/swing/UITest/UITest.java 8198392 generic-all
@@ -859,8 +862,8 @@ javax/swing/JTree/6263446/bug6263446.java 8213125 macosx-all
 javax/swing/JTree/8003400/Test8003400.java                                          8197560 macosx-all,linux-all,windows-all
 javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java 8221902 linux-all,macosx-all
 javax/swing/text/View/8014863/bug8014863.java 8233561 macosx-all
-javax/swing/text/StyledEditorKit/4506788/bug4506788.java 8233561 macosx-all
-javax/swing/text/JTextComponent/6361367/bug6361367.java 8233569 macosx-all
+javax/swing/text/StyledEditorKit/4506788/bug4506788.java                            8233561,8233562 macosx-all,windows-all
+javax/swing/text/JTextComponent/6361367/bug6361367.java                             8233569 macosx-all,windows-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java 233570 macosx-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java 8208566 macosx-all
 javax/swing/JMenu/4213634/bug4213634.java                                           8197552 windows-all

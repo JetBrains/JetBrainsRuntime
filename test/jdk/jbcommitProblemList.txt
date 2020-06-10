@@ -1,0 +1,45 @@
+java/awt/MenuBar/MenuBarSetFont/MenuBarSetFont.java
+java/awt/Modal/FileDialog/FileDialogDocModal7Test.java
+java/awt/Modal/FileDialog/FileDialogModal1Test.java
+java/awt/Modal/FileDialog/FileDialogModal2Test.java
+java/awt/Modal/FileDialog/FileDialogModal3Test.java
+java/awt/Modal/FileDialog/FileDialogModal4Test.java
+java/awt/Modal/FileDialog/FileDialogModal5Test.java
+java/awt/Modal/FileDialog/FileDialogModal6Test.java
+java/awt/Modal/FileDialog/FileDialogNonModal1Test.java
+java/awt/Modal/FileDialog/FileDialogNonModal2Test.java
+java/awt/Modal/FileDialog/FileDialogNonModal3Test.java
+java/awt/Modal/FileDialog/FileDialogNonModal4Test.java
+java/awt/Modal/FileDialog/FileDialogNonModal5Test.java
+java/awt/Modal/FileDialog/FileDialogNonModal6Test.java
+java/awt/Modal/FileDialog/FileDialogNonModal7Test.java
+java/awt/Modal/FileDialog/FileDialogTKModal7Test.java
+java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java          nobug windows-all
+java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java
+java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java
+java/awt/Robot/CheckCommonColors/CheckCommonColors.java
+java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java
+java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java
+java/awt/SplashScreen/FullscreenAfterSplash/FullScreenAfterSplash.java              nobug macosx-all
+java/awt/TextArea/Mixing/TextAreaMixing.java
+java/awt/TextArea/ScrollbarIntersectionTest/ScrollbarIntersectionTest.java
+java/awt/TextArea/TextAreaEditing/TextAreaEditing.java
+java/awt/TextArea/UsingWithMouse/SelectionAutoscrollTest.java
+java/awt/TextField/OverScrollTest/OverScrollTest.java
+java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java
+java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java
+java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java                             nobug macosx-all
+java/awt/Window/8159168/SetShapeTest.java
+java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java
+java/awt/Window/FindOwner/FindOwnerTest.html
+java/awt/Window/GrabSequence/GrabSequence.java
+java/awt/Window/MultiWindowApp/MultiWindowAppTest.java
+java/awt/Window/ShapedAndTranslucentWindows/SetShape.java
+java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java
+java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java
+
+javax/swing/JComboBox/4523758/bug4523758.java                                       nobug windows-all timeout
+javax/swing/JMenuItem/4654927/bug4654927.java                                       nobug macosx-all
+javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java nobug macosx-all
+javax/swing/plaf/nimbus/TestNimbusOverride.java                                     nobug windows-all
+
