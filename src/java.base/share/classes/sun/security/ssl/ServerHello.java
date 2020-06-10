@@ -275,6 +275,7 @@ final class ServerHello {
                 if (shc.localSupportedSignAlgs == null) {
                     shc.localSupportedSignAlgs =
                         SignatureScheme.getSupportedAlgorithms(
+                                shc.sslConfig,
                                 shc.algorithmConstraints, shc.activeProtocols);
                 }
 
@@ -503,6 +504,7 @@ final class ServerHello {
                 if (shc.localSupportedSignAlgs == null) {
                     shc.localSupportedSignAlgs =
                         SignatureScheme.getSupportedAlgorithms(
+                                shc.sslConfig,
                                 shc.algorithmConstraints, shc.activeProtocols);
                 }
 
