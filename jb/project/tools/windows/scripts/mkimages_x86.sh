@@ -28,7 +28,7 @@ source jb/project/tools/common.sh
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 WORK_DIR=$(pwd)
 
-[ -z "$bundle_type" ] && git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+[ -z "$bundle_type" ] && (git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch || exit $?)
 
 PATH="/usr/local/bin:/usr/bin:${PATH}"
 ./configure \
