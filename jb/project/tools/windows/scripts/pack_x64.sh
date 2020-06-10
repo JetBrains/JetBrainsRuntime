@@ -28,7 +28,7 @@ function pack_jbr {
   "${bundle_type}_lw")
     JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
     ;;
-  "jfx" | "jcef")
+  "jfx" | "jcef" | "dcevm")
     JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
     ;;
   "jfx_jcef")

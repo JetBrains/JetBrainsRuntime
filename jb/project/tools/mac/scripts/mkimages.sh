@@ -32,7 +32,7 @@ function create_jbr {
     JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
     grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
     ;;
-  "jfx" | "jcef")
+  "jfx" | "jcef" | "dcevm")
     JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
     cat modules.list > modules_tmp.list
     ;;
@@ -62,7 +62,7 @@ function create_jbr {
   cp -R ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/MacOS ${JRE_CONTENTS}
   cp ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Info.plist ${JRE_CONTENTS}
 
-  if [[ "${bundle_type}" == *jcef* ]]; then
+  if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]]; then
     rm -rf ${JRE_CONTENTS}/Frameworks || exit $?
     cp -a jcef_mac/Frameworks ${JRE_CONTENTS} || exit $?
   fi
@@ -79,10 +79,13 @@ JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 git checkout -- modules.list src/java.desktop/share/classes/module-info.java
 case "$bundle_type" in
   "jfx")
-    git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+    git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch
     ;;
   "jcef")
-    git apply -p0 < jb/project/tools/exclude_jfx_module.patch
+    git apply -p0 < jb/project/tools/patches/exclude_jfx_module.patch
+    ;;
+  "dcevm")
+    git am jb/project/tools/patches/dcevm/*.patch
     ;;
 esac
 
@@ -98,7 +101,7 @@ sh configure \
   --with-boot-jdk=`/usr/libexec/java_home -v 11` \
   --enable-cds=yes || exit $?
 
-make images CONF=macosx-x86_64-normal-server-release || exit $?
+make clean images CONF=macosx-x86_64-normal-server-release || exit $?
 
 JSDK=build/macosx-x86_64-normal-server-release/images/jdk-bundle
 JBSDK=${JBRSDK_BASE_NAME}-osx-x64-b${build_number}
@@ -110,7 +113,7 @@ rm -rf $BASE_DIR
 mkdir $BASE_DIR || exit $?
 cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
-if [[ "$bundle_type" == *jcef* ]]; then
+if [[ "$bundle_type" == *jcef* ]] || [[ "$bundle_type" == *dcevm* ]]; then
   cp -a jcef_mac/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 fi
 if [ "$bundle_type" == "jfx_jcef" ]; then
