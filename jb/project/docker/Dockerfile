@@ -8,3 +8,6 @@ RUN wget https://bintray.com/jetbrains/intellij-jbr/download_file?file_path=jbrs
 -O - | tar xz -C /
 ENV JAVA_HOME /jbrsdk
 ENV PATH $JAVA_HOME/bin:/opt/rh/devtoolset-8/root/usr/bin:$PATH
+RUN mkdir .git
+RUN git config user.email "builduser@jetbrains.com"
+RUN git config user.name "builduser"
