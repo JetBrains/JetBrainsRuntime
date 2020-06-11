@@ -1479,6 +1479,24 @@ public final class Module implements AnnotatedElement {
                     throw new ClassNotFoundException(cn);
                 }
             }
+            @Override
+            protected Class<?> loadClass(String cn, boolean resolve)
+                throws ClassNotFoundException
+            {
+                synchronized (getClassLoadingLock(cn)) {
+                    Class<?> c = findLoadedClass(cn);
+                    if (c == null) {
+                        if (cn.equals(MODULE_INFO)) {
+                            c = findClass(cn);
+                        } else {
+                            c = super.loadClass(cn, resolve);
+                        }
+                    }
+                    if (resolve)
+                        resolveClass(c);
+                    return c;
+                }
+            }
         };
 
         try {
