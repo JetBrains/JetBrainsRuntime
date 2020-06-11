@@ -283,7 +283,13 @@ CGGI_CopyImageFromCanvasToRGBInfo(CGGI_GlyphCanvas *canvas, GlyphInfo *info)
 static inline UInt8
 CGGI_ConvertBWPixelToByteGray(UInt32 p)
 {
-    return 0xFF - (((p >> 24 & 0xFF) + (p >> 16 & 0xFF) + (p >> 8 & 0xFF)) / 3);
+    UInt8* lut = getReverseGammaLut();
+
+    UInt8 r = lut[0xFF - (p >> 24 & 0xFF)];
+    UInt8 g = lut[0xFF - (p >> 16 & 0xFF)];
+    UInt8 b = lut[0xFF - (p >>  8 & 0xFF)];
+
+    return ((r + g + b) / 3);
 }
 
 static void
