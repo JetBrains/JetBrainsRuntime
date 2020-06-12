@@ -40,6 +40,7 @@
 #include "utilities/ticks.hpp"
 
 bool G1FullGCPrepareTask::G1CalculatePointersClosure::do_heap_region(HeapRegion* hr) {
+  hr->set_processing_order(_region_processing_order++);
   if (hr->is_pinned()) {
     // There is no need to iterate and forward objects in pinned regions ie.
     // prepare them for compaction. The adjust pointers phase will skip
@@ -59,7 +60,7 @@ bool G1FullGCPrepareTask::G1CalculatePointersClosure::do_heap_region(HeapRegion*
       // at this time.
       assert(hr->is_closed_archive(), "Only closed archive regions can also be pinned.");
     }
-  } else {
+  } else {  // TODO: (DCEVM) review pinned
     assert(!hr->is_humongous(), "moving humongous objects not supported.");
     prepare_for_compaction(hr);
   }
@@ -94,6 +95,10 @@ void G1FullGCPrepareTask::work(uint worker_id) {
   G1CalculatePointersClosure closure(collector(), compaction_point);
   G1CollectedHeap::heap()->heap_region_par_iterate_from_start(&closure, &_hrclaimer);
 
+  if (Universe::is_redefining_gc_run()) {
+    compaction_point->forward_rescued();
+  }
+
   compaction_point->update();
 
   // Check if any regions was freed by this worker and store in task.
@@ -109,7 +114,8 @@ G1FullGCPrepareTask::G1CalculatePointersClosure::G1CalculatePointersClosure(G1Fu
     _collector(collector),
     _bitmap(collector->mark_bitmap()),
     _cp(cp),
-    _regions_freed(false) { }
+    _regions_freed(false),
+    _region_processing_order(0) { }
 
 void G1FullGCPrepareTask::G1CalculatePointersClosure::free_humongous_region(HeapRegion* hr) {
   assert(hr->is_humongous(), "must be but region %u is %s", hr->hrm_index(), hr->get_short_type_str());
@@ -176,9 +182,15 @@ size_t G1FullGCPrepareTask::G1RePrepareClosure::apply(oop obj) {
 
 void G1FullGCPrepareTask::G1CalculatePointersClosure::prepare_for_compaction_work(G1FullGCCompactionPoint* cp,
                                                                                   HeapRegion* hr) {
-  G1PrepareCompactLiveClosure prepare_compact(cp);
-  hr->set_compaction_top(hr->bottom());
-  hr->apply_to_marked_objects(_bitmap, &prepare_compact);
+  if (!Universe::is_redefining_gc_run()) {
+    G1PrepareCompactLiveClosure prepare_compact(cp);
+    hr->set_compaction_top(hr->bottom());
+    hr->apply_to_marked_objects(_bitmap, &prepare_compact);
+  } else {
+    G1PrepareCompactLiveClosureDcevm prepare_compact(cp, hr->processing_order());
+    hr->set_compaction_top(hr->bottom());
+    hr->apply_to_marked_objects(_bitmap, &prepare_compact);
+  }
 }
 
 void G1FullGCPrepareTask::G1CalculatePointersClosure::prepare_for_compaction(HeapRegion* hr) {
@@ -241,4 +253,72 @@ bool G1FullGCPrepareTask::G1CalculatePointersClosure::freed_regions() {
 
   // No free regions in the queue.
   return false;
+}
+
+void G1FullGCPrepareTask::prepare_serial_compaction_dcevm() {
+  GCTraceTime(Debug, gc, phases) debug("Phase 2: Prepare Serial Compaction", collector()->scope()->timer());
+
+  for (uint i = 0; i < collector()->workers(); i++) {
+    G1FullGCCompactionPoint* cp = collector()->compaction_point(i);
+
+    // collect remaining, not forwarded rescued oops using serial compact point
+    while (cp->last_rescued_oop() < cp->rescued_oops()->length()) {
+      HeapRegion* hr = G1CollectedHeap::heap()->new_region(HeapRegion::GrainBytes / HeapWordSize, false, true);
+      if (hr == NULL) {
+        vm_exit_out_of_memory(0, OOM_MMAP_ERROR, "G1 - not enough of free regions after redefinition.");
+      }
+      hr->set_compaction_top(hr->bottom());
+      cp->add(hr);
+      cp->forward_rescued();
+      cp->update();
+    }
+  }
+}
+
+G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::G1PrepareCompactLiveClosureDcevm(G1FullGCCompactionPoint* cp,
+                                                                                        uint region_processing_order) :
+    _cp(cp),
+    _region_processing_order(region_processing_order) { }
+
+size_t G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::apply(oop object) {
+  size_t size = object->size();
+  size_t forward_size = size;
+
+  // (DCEVM) There is a new version of the class of q => different size
+  if (object->klass()->new_version() != NULL) {
+    forward_size = object->size_given_klass(object->klass()->new_version());
+  }
+
+  HeapWord* compact_top = _cp->forward_compact_top(forward_size);
+
+  if (compact_top == NULL || must_rescue(object, oop(compact_top))) {
+    _cp->rescued_oops()->append((HeapWord*)object);
+  } else {
+    _cp->forward_dcevm(object, forward_size, (size != forward_size));
+  }
+
+  return size;
+}
+
+bool G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::must_rescue(oop old_obj, oop new_obj) {
+  // Only redefined objects can have the need to be rescued.
+  if (oop(old_obj)->klass()->new_version() == NULL) {
+    return false;
+  }
+
+  if (_region_processing_order > _cp->current_region()->processing_order()) {
+    return false;
+  }
+
+  if (_region_processing_order < _cp->current_region()->processing_order()) {
+    return true;
+  }
+
+  // old obj and new obj are within same region
+  int new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
+  int original_size = old_obj->size();
+
+  bool overlap = ((HeapWord*)old_obj + original_size < (HeapWord*)new_obj + new_size);
+
+  return overlap;
 }

@@ -86,9 +86,10 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // Performance measurement support. These timers do not cover all
   // the work done for JVM/TI RedefineClasses() but they do cover
   // the heavy lifting.
-  elapsedTimer  _timer_rsc_phase1;
-  elapsedTimer  _timer_rsc_phase2;
+  elapsedTimer  _timer_vm_op_doit;
   elapsedTimer  _timer_vm_op_prologue;
+  elapsedTimer  _timer_heap_iterate;
+  elapsedTimer  _timer_heap_full_gc;
 
   // These routines are roughly in call order unless otherwise noted.
 
@@ -115,6 +116,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
 
   void rollback();
   static void mark_as_scavengable(nmethod* nm);
+  static void mark_as_scavengable_g1(nmethod* nm);
   static void unpatch_bytecode(Method* method);
   static void fix_invoke_method(Method* method);
 

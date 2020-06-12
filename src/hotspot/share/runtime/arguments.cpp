@@ -1987,9 +1987,9 @@ bool Arguments::check_gc_consistency() {
   if (AllowEnhancedClassRedefinition) {
     // Must use serial GC. This limitation applies because the instance size changing GC modifications
     // are only built into the mark and compact algorithm.
-    if (!UseSerialGC && i >= 1) {
+    if ((!UseSerialGC && !UseG1GC) && i >= 1) {
       jio_fprintf(defaultStream::error_stream(),
-                  "Must use the serial GC with enhanced class redefinition\n");
+                  "Must use the Serial or G1 GC with enhanced class redefinition.\n");
       return false;
     }
   }
