@@ -38,6 +38,7 @@
 #if INCLUDE_SERIALGC
 #include "gc/serial/markSweep.inline.hpp"
 #endif
+#include "gc/shared/dcevmSharedGC.hpp"
 
 inline HeapWord* Space::block_start(const void* p) {
   return block_start_const(p);
@@ -372,7 +373,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
           Copy::aligned_conjoint_words(cur_obj, compaction_top, size);
           oop(compaction_top)->set_klass(new_version);
         } else {
-          MarkSweep::update_fields(oop(cur_obj), oop(compaction_top));
+          DcevmSharedGC::update_fields(oop(cur_obj), oop(compaction_top));
         }
         oop(compaction_top)->init_mark_raw();
         assert(oop(compaction_top)->klass() != NULL, "should have a class");
