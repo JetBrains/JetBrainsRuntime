@@ -343,5 +343,7 @@ void GenMarkSweep::mark_sweep_phase4() {
 
   GenCompactClosure blk;
   gch->generation_iterate(&blk, true);
-  MarkSweep::copy_rescued_objects_back();
+  DcevmSharedGC::copy_rescued_objects_back(MarkSweep::_rescued_oops, true);
+  DcevmSharedGC::clear_rescued_objects_resource(MarkSweep::_rescued_oops);
+  MarkSweep::_rescued_oops = NULL;
 }

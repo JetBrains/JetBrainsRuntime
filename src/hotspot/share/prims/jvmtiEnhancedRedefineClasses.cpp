@@ -36,7 +36,6 @@
 #include "memory/metaspaceShared.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/iterator.inline.hpp"
-#include "gc/serial/markSweep.hpp"
 #include "oops/fieldStreams.hpp"
 #include "oops/klassVtable.hpp"
 #include "oops/oop.inline.hpp"
@@ -55,6 +54,7 @@
 #include "utilities/events.hpp"
 #include "oops/constantPool.inline.hpp"
 #include "gc/cms/cmsHeap.hpp"
+#include "gc/shared/dcevmSharedGC.hpp"
 
 Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
 Array<Method*>* VM_EnhancedRedefineClasses::_new_methods = NULL;
@@ -78,7 +78,7 @@ Klass*      VM_EnhancedRedefineClasses::_the_class_oop = NULL;
 //  - class_defs class definition - either new class or redefined class
 //               note that this is not the final array of classes to be redefined
 //               we need to scan for all affected classes (e.g. subclasses) and
-//               caculcate redefinition for them as well.
+//               calculate redefinition for them as well.
 // @param class_load_kind always jvmti_class_load_kind_redefine
 VM_EnhancedRedefineClasses::VM_EnhancedRedefineClasses(jint class_count, const jvmtiClassDefinition *class_defs, JvmtiClassLoadKind class_load_kind) :
         VM_GC_Operation(Universe::heap()->total_collections(), GCCause::_heap_inspection, Universe::heap()->total_full_collections(), true) {
@@ -213,6 +213,13 @@ class FieldCopier : public FieldClosure {
 void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
   if (!nm->on_scavenge_root_list()) {
     CodeCache::add_scavenge_root_nmethod(nm);
+  }
+}
+
+void VM_EnhancedRedefineClasses::mark_as_scavengable_g1(nmethod* nm) {
+  // It should work not only for G1 but also for another GCs, but this way is safer now
+  if (!nm->is_zombie() && !nm->is_unloaded()) {
+    Universe::heap()->register_nmethod(nm);
   }
 }
 
@@ -430,7 +437,7 @@ public:
           src->set_klass(obj->klass()->new_version());
           //  FIXME: instance updates...
           //guarantee(false, "instance updates!");
-          MarkSweep::update_fields(obj, src, new_klass->update_information());
+          DcevmSharedGC::update_fields(obj, src, new_klass->update_information());
         }
       } else {
         obj->set_klass(obj->klass()->new_version());
@@ -507,7 +514,12 @@ void VM_EnhancedRedefineClasses::doit() {
     // mark such nmethod's as "scavengable".
     // For now, mark all nmethod's as scavengable that are not scavengable already
     if (ScavengeRootsInCode) {
-      CodeCache::nmethods_do(mark_as_scavengable);
+      if (UseG1GC) {
+        // this should work also for other GCs
+        CodeCache::nmethods_do(mark_as_scavengable_g1);
+      } else {
+        CodeCache::nmethods_do(mark_as_scavengable);
+      }
     }
 
     Universe::heap()->ensure_parsability(false);
@@ -567,6 +579,7 @@ void VM_EnhancedRedefineClasses::doit() {
     // Do a full garbage collection to update the instance sizes accordingly
     Universe::set_redefining_gc_run(true);
     notify_gc_begin(true);
+    // TODO: check _metadata_GC_clear_soft_refs with ScavengeRootsInCode
     Universe::heap()->collect_as_vm_thread(GCCause::_heap_inspection);
     notify_gc_end();
     Universe::set_redefining_gc_run(false);
@@ -877,7 +890,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
  // Calculated the difference between new and old class  (field change, method change, supertype change, ...).
 int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_class) {
   int result = Klass::NoRedefinition;
-  log_info(redefine, class, load)("Comparing different class versions of class %s",new_class->name()->as_C_string());
+  log_debug(redefine, class, load)("Comparing different class versions of class %s",new_class->name()->as_C_string());
 
   assert(new_class->old_version() != NULL, "must have old version");
   InstanceKlass* the_class = InstanceKlass::cast(new_class->old_version());
@@ -1584,7 +1597,7 @@ class TransferNativeFunctionRegistration {
 
   // Recursively search the binary tree of possibly prefixed method names.
   // Iteration could be used if all agents were well behaved. Full tree walk is
-  // more resilent to agents not cleaning up intermediate methods.
+  // more resilient to agents not cleaning up intermediate methods.
   // Branch at each depth in the binary tree is:
   //    (1) without the prefix.
   //    (2) with the prefix.
@@ -1689,7 +1702,7 @@ void VM_EnhancedRedefineClasses::transfer_old_native_function_registrations(Inst
   transfer.transfer_registrations(_matching_old_methods, _matching_methods_length);
 }
 
-// DCEVM - it always deoptimases everything! (because it is very difficult to find only correct dependencies)
+// DCEVM - it always deoptimizes everything! (because it is very difficult to find only correct dependencies)
 // Deoptimize all compiled code that depends on this class.
 //
 // If the can_redefine_classes capability is obtained in the onload
@@ -2057,8 +2070,8 @@ static bool match_second(void* value, KlassPair elem) {
 // For each class to be redefined parse the bytecode and figure out the superclass and all interfaces.
 // First newly introduced classes (_class_defs) are scanned and then affected classed (_affected_klasses).
 // Affected flag is cleared (clear_redefinition_flag(Klass::MarkedAsAffected))
-// For each dependency create a KlassPair instance. Finnaly, affected classes (_affected_klasses) are sorted according to pairs.
-// TODO - the class file is potentionally parsed multiple times - introduce a cache?
+// For each dependency create a KlassPair instance. Finally, affected classes (_affected_klasses) are sorted according to pairs.
+// TODO - the class file is potentially parsed multiple times - introduce a cache?
 jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(TRAPS) {
   ResourceMark mark(THREAD);
 
