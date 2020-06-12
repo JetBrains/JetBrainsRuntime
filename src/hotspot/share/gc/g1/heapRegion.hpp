@@ -198,6 +198,8 @@ private:
   // The remembered set for this region.
   HeapRegionRemSet* _rem_set;
 
+  uint _processing_order;
+
   // Cached index of this region in the heap region sequence.
   const uint _hrm_index;
 
@@ -449,6 +451,14 @@ public:
   // If the region has a remembered set, return a pointer to it.
   HeapRegionRemSet* rem_set() const {
     return _rem_set;
+  }
+
+  uint processing_order() {
+    return _processing_order;
+  }
+
+  void set_processing_order(uint processing_order) {
+    _processing_order = processing_order;
   }
 
   inline bool in_collection_set() const;
