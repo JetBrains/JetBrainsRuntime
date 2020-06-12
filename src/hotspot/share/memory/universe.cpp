@@ -210,6 +210,11 @@ void Universe::root_oops_do(OopClosure *oopClosure) {
   //ref_processor()->weak_oops_do(&oopClosure);
   //PSScavenge::reference_processor()->weak_oops_do(&oopClosure);
 
+#if INCLUDE_AOT
+  if (UseAOT) {
+    AOTLoader::oops_do(oopClosure);
+  }
+#endif
   // SO_AllClasses
   SystemDictionary::oops_do(oopClosure);
 }
