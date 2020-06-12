@@ -239,8 +239,12 @@ void G1FullCollector::phase2_prepare_compaction() {
   run_task(&task);
 
   // To avoid OOM when there is memory left.
-  if (!task.has_freed_regions()) {
-    task.prepare_serial_compaction();
+  if (!Universe::is_redefining_gc_run()) {
+    if (!task.has_freed_regions()) {
+      task.prepare_serial_compaction();
+    }
+  } else {
+    task.prepare_serial_compaction_dcevm();
   }
 }
 
@@ -259,8 +263,12 @@ void G1FullCollector::phase4_do_compaction() {
   run_task(&task);
 
   // Serial compact to avoid OOM when very few free regions.
-  if (serial_compaction_point()->has_regions()) {
-    task.serial_compaction();
+  if (!Universe::is_redefining_gc_run()) {
+    if (serial_compaction_point()->has_regions()) {
+      task.serial_compaction();
+    }
+  } else {
+    task.serial_compaction_dcevm();
   }
 }
 

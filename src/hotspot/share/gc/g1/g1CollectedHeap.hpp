@@ -144,6 +144,7 @@ class G1CollectedHeap : public CollectedHeap {
   friend class G1ParTask;
   friend class G1PLABAllocator;
   friend class G1PrepareCompactClosure;
+  friend class G1FullGCPrepareTask;
 
   // Other related classes.
   friend class HeapRegionClaimer;
@@ -1117,6 +1118,7 @@ public:
   // Iteration functions.
 
   void object_iterate_parallel(ObjectClosure* cl, uint worker_id, HeapRegionClaimer* claimer);
+  void object_par_iterate(ObjectClosure* cl);
 
   // Iterate over all objects, calling "cl.do_object" on each.
   virtual void object_iterate(ObjectClosure* cl);
