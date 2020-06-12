@@ -2047,7 +2047,7 @@ bool Arguments::check_gc_consistency() {
   if (AllowEnhancedClassRedefinition) {
     // Must use serial GC. This limitation applies because the instance size changing GC modifications
     // are only built into the mark and compact algorithm.
-    if ((!UseSerialGC && !UseConcMarkSweepGC) && i >= 1) {
+    if ((!UseSerialGC && !UseConcMarkSweepGC && !UseG1GC) && i >= 1) {
       jio_fprintf(defaultStream::error_stream(),
                   "Must use the serial or concurrent mark sweep GC with enhanced class redefinition.\n");
       return false;
@@ -4313,27 +4313,29 @@ void Arguments::setup_hotswap_agent() {
       jio_snprintf(options, length, "%s", ext_path_str);
       add_init_agent("instrument", ext_path_str, false);
       jio_fprintf(defaultStream::output_stream(), "Starting HotswapAgent '%s'\n", ext_path_str);
+
+      // Open modules only for integrated HA
+      // TODO: open it only for org.hotswap.agent module
+      // Use to access java.lang.reflect.Proxy/proxyCache
+      create_numbered_property("jdk.module.addopens", "java.base/java.lang=ALL-UNNAMED", addopens_count++);
+      // Class of  field java.lang.reflect.Proxy/proxyCache
+      create_numbered_property("jdk.module.addopens", "java.base/jdk.internal.loader=ALL-UNNAMED", addopens_count++);
+      // Use to access java.io.Reader, java.io.InputStream, java.io.FileInputStream
+      create_numbered_property("jdk.module.addopens", "java.base/java.io=ALL-UNNAMED", addopens_count++);
+      // java.beans.Introspector access
+      create_numbered_property("jdk.module.addopens", "java.desktop/java.beans=ALL-UNNAMED", addopens_count++);
+      // java.beans.Introspector access
+      create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans=ALL-UNNAMED", addopens_count++);
+      // com.sun.beans.introspect.ClassInfo access
+      create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans.introspect=ALL-UNNAMED", addopens_count++);
+      // com.sun.beans.introspect.util.Cache access
+      create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans.util=ALL-UNNAMED", addopens_count++);
+
     }
 //    else
 //    {
 //      jio_fprintf(defaultStream::error_stream(), "HotswapAgent not found on path:'%s'\n", ext_path_str);
 //    }
   }
-
-  // TODO: open it only for org.hotswap.agent module
-  // Use to access java.lang.reflect.Proxy/proxyCache
-  create_numbered_property("jdk.module.addopens", "java.base/java.lang=ALL-UNNAMED", addopens_count++);
-  // Class of  field java.lang.reflect.Proxy/proxyCache
-  create_numbered_property("jdk.module.addopens", "java.base/jdk.internal.loader=ALL-UNNAMED", addopens_count++);
-  // Use to access java.io.Reader, java.io.InputStream, java.io.FileInputStream
-  create_numbered_property("jdk.module.addopens", "java.base/java.io=ALL-UNNAMED", addopens_count++);
-  // java.beans.Introspector access
-  create_numbered_property("jdk.module.addopens", "java.desktop/java.beans=ALL-UNNAMED", addopens_count++);
-  // java.beans.Introspector access
-  create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans=ALL-UNNAMED", addopens_count++);
-  // com.sun.beans.introspect.ClassInfo access
-  create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans.introspect=ALL-UNNAMED", addopens_count++);
-  // com.sun.beans.introspect.util.Cache access
-  create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans.util=ALL-UNNAMED", addopens_count++);
 
 }
