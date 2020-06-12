@@ -144,6 +144,7 @@ class G1CollectedHeap : public CollectedHeap {
   friend class G1ParTask;
   friend class G1PLABAllocator;
   friend class G1PrepareCompactClosure;
+  friend class G1FullGCPrepareTask;
 
   // Other related classes.
   friend class HeapRegionClaimer;
