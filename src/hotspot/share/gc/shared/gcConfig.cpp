@@ -96,7 +96,7 @@ void GCConfig::fail_if_non_included_gc_is_selected() {
 }
 
 void GCConfig::select_gc_ergonomically() {
-  if (AllowEnhancedClassRedefinition) {
+  if (AllowEnhancedClassRedefinition && !UseG1GC) {
     // Enhanced class redefinition only supports serial GC at the moment
     FLAG_SET_ERGO(bool, UseSerialGC, true);
   } else if (os::is_server_class_machine()) {
