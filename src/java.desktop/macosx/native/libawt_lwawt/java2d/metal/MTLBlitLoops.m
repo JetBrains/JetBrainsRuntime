@@ -824,7 +824,7 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
 
     // Create an intrermediate buffer
     int totalBuffsize = width * height * 4;
-    id <MTLBuffer> buff = [mtlc.device newBufferWithLength:totalBuffsize options:MTLResourceStorageModePrivate];
+    id <MTLBuffer> buff = [[mtlc.device newBufferWithLength:totalBuffsize options:MTLResourceStorageModePrivate] autorelease];
 
     [blitEncoder copyFromTexture:dstOps->pTexture
             sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(x, y, 0) sourceSize:MTLSizeMake(width, height, 1)
