@@ -523,6 +523,10 @@ template<class E> class GrowableArrayIterator : public StackObj {
     assert(_array == rhs._array, "iterator belongs to different array");
     return _position != rhs._position;
   }
+
+  bool at_end() { return _position >= _array->length(); }
+
+  bool has_next() { return _position < _array->length() - 1; }
 };
 
 // Custom STL-style iterator to iterate over elements of a GrowableArray that satisfy a given predicate

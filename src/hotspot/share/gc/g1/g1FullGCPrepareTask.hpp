@@ -46,6 +46,7 @@ public:
   G1FullGCPrepareTask(G1FullCollector* collector);
   void work(uint worker_id);
   void prepare_serial_compaction();
+  void prepare_serial_compaction_dcevm();
   bool has_freed_regions();
 
 protected:
@@ -55,6 +56,7 @@ protected:
     G1CMBitMap* _bitmap;
     G1FullGCCompactionPoint* _cp;
     uint _humongous_regions_removed;
+    uint _region_processing_order;
 
     virtual void prepare_for_compaction(HeapRegion* hr);
     void prepare_for_compaction_work(G1FullGCCompactionPoint* cp, HeapRegion* hr);
@@ -78,6 +80,16 @@ protected:
     size_t apply(oop object);
   };
 
+  class G1PrepareCompactLiveClosureDcevm : public StackObj {
+    G1FullGCCompactionPoint* _cp;
+    uint _region_processing_order;
+
+    bool must_rescue(oop old_obj, oop new_obj);
+  public:
+    G1PrepareCompactLiveClosureDcevm(G1FullGCCompactionPoint* cp, uint region_processing_order);
+    size_t apply(oop object);
+  };
+
   class G1RePrepareClosure : public StackObj {
     G1FullGCCompactionPoint* _cp;
     HeapRegion* _current;
@@ -90,6 +102,7 @@ protected:
 
     size_t apply(oop object);
   };
+
 };
 
 #endif // SHARE_GC_G1_G1FULLGCPREPARETASK_HPP

@@ -115,6 +115,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
 
   void rollback();
   static void mark_as_scavengable(nmethod* nm);
+  static void mark_as_scavengable_g1(nmethod* nm);
   static void unpatch_bytecode(Method* method);
   static void fix_invoke_method(Method* method);
 

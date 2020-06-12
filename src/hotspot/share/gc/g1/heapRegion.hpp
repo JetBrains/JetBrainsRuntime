@@ -200,6 +200,8 @@ class HeapRegion: public G1ContiguousSpace {
   // issues.)
   HeapRegionRemSet* _rem_set;
 
+  uint _processing_order;
+
   // Auxiliary functions for scan_and_forward support.
   // See comments for CompactibleSpace for more information.
   inline HeapWord* scan_limit() const {
@@ -461,6 +463,14 @@ class HeapRegion: public G1ContiguousSpace {
   // If the region has a remembered set, return a pointer to it.
   HeapRegionRemSet* rem_set() const {
     return _rem_set;
+  }
+
+  uint processing_order() {
+    return _processing_order;
+  }
+
+  void set_processing_order(uint processing_order) {
+    _processing_order = processing_order;
   }
 
   inline bool in_collection_set() const;
