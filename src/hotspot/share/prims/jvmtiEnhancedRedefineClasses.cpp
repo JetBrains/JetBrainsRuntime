@@ -915,7 +915,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
  // Calculated the difference between new and old class  (field change, method change, supertype change, ...).
 int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_class) {
   int result = Klass::NoRedefinition;
-  log_info(redefine, class, load)("Comparing different class versions of class %s",new_class->name()->as_C_string());
+  log_debug(redefine, class, load)("Comparing different class versions of class %s",new_class->name()->as_C_string());
 
   assert(new_class->old_version() != NULL, "must have old version");
   InstanceKlass* the_class = InstanceKlass::cast(new_class->old_version());
