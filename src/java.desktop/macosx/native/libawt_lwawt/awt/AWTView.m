@@ -1250,6 +1250,9 @@ DECLARE_CLASS_ONLY(jc_CInputMethod);
     jobject theString = (*env)->CallObjectMethod(env, fInputMethodLOCKABLE, jm_substringFromRange, theRange.location, theRange.length);
     CHECK_EXCEPTION_NULL_RETURN(theString, nil);
 
+    if (!theString) {
+        return NULL;
+    }
     id result = [[[NSAttributedString alloc] initWithString:JavaStringToNSString(env, theString)] autorelease];
 #ifdef IM_DEBUG
     NSLog(@"attributedSubstringFromRange returning \"%@\"", result);
