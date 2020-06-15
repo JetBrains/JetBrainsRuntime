@@ -779,7 +779,7 @@ public class CInputMethod extends InputMethodAdapter {
         final int[] insertPositionOffset = new int[1];
 
         try {
-            if (fIMContext != null) {
+            if (fIMContext != null && fAwtFocussedComponent != null) {
                 FxInvoker.invoke(() -> {
                     synchronized (offsetInfo) {
                         offsetInfo[0] = fIMContext.getLocationOffset(screenX, screenY);
