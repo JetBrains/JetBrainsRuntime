@@ -1472,15 +1472,17 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
     }
   }
 
-  // DCEVM - clear whole cache (instead special methods for class/method update in standard redefinition)
-  ConstantPoolCache* cp_cache = other_cp->cache();
-  if (cp_cache != NULL) {
-    cp_cache->clear_entries();
-  }
+  if (!k->is_deoptimization_excl()) {
+    // DCEVM - clear whole cache (instead special methods for class/method update in standard redefinition)
+    ConstantPoolCache* cp_cache = other_cp->cache();
+    if (cp_cache != NULL) {
+      cp_cache->clear_entries();
+    }
 
-  // If bytecode rewriting is enabled, we also need to unpatch bytecode to force resolution of zeroed entries
-  if (RewriteBytecodes) {
-    ik->methods_do(unpatch_bytecode);
+    // If bytecode rewriting is enabled, we also need to unpatch bytecode to force resolution of zeroed entries
+    if (RewriteBytecodes) {
+      ik->methods_do(unpatch_bytecode);
+    }
   }
 }
 

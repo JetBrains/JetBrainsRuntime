@@ -41,12 +41,18 @@ CompiledMethod::CompiledMethod(Method* method, const char* name, CompilerType ty
   : CodeBlob(name, type, layout, frame_complete_offset, frame_size, oop_maps, caller_must_gc_arguments),
   _method(method), _mark_for_deoptimization_status(not_marked) {
   init_defaults();
+  if (method != NULL) {
+    _deoptimization_excl = method->method_holder()->is_deoptimization_excl();
+  }
 }
 
 CompiledMethod::CompiledMethod(Method* method, const char* name, CompilerType type, int size, int header_size, CodeBuffer* cb, int frame_complete_offset, int frame_size, OopMapSet* oop_maps, bool caller_must_gc_arguments)
   : CodeBlob(name, type, CodeBlobLayout((address) this, size, header_size, cb), cb, frame_complete_offset, frame_size, oop_maps, caller_must_gc_arguments),
   _method(method), _mark_for_deoptimization_status(not_marked) {
   init_defaults();
+  if (method != NULL) {
+    _deoptimization_excl = method->method_holder()->is_deoptimization_excl();
+  }
 }
 
 void CompiledMethod::init_defaults() {
@@ -55,6 +61,7 @@ void CompiledMethod::init_defaults() {
   _lazy_critical_native       = 0;
   _has_wide_vectors           = 0;
   _unloading_clock            = 0;
+  _deoptimization_excl        = false;
 }
 
 bool CompiledMethod::is_method_handle_return(address return_pc) {

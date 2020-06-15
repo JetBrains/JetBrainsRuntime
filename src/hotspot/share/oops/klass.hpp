@@ -176,6 +176,7 @@ class Klass : public Metadata {
   bool        _is_redefining;
   int*        _update_information;
   bool        _is_copying_backwards;   // Does the class need to copy fields backwards? => possibly overwrite itself?
+  bool        _deoptimization_excl;    // True if class methods are excluded from deoptimization
 
 private:
   // This is an index into FileMapHeader::_shared_path_table[], to
@@ -366,6 +367,8 @@ protected:
   void set_update_information(int *info) { _update_information = info; }
   bool is_copying_backwards() const      { return _is_copying_backwards; }
   void set_copying_backwards(bool b)     { _is_copying_backwards = b; }
+  bool  is_deoptimization_excl() const                 { return _deoptimization_excl; }
+  void  set_deoptimization_excl(bool z)                { _deoptimization_excl = z; }
 
  protected:                                // internal accessors
   void     set_subklass(Klass* s);

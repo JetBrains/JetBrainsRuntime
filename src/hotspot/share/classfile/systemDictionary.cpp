@@ -30,6 +30,7 @@
 #include "classfile/classLoader.hpp"
 #include "classfile/classLoaderData.inline.hpp"
 #include "classfile/classLoaderExt.hpp"
+#include "classfile/dcevmDeoptExclude.hpp"
 #include "classfile/dictionary.hpp"
 #include "classfile/javaClasses.inline.hpp"
 #include "classfile/klassFactory.hpp"
@@ -1393,6 +1394,10 @@ InstanceKlass* SystemDictionary::load_shared_class(InstanceKlass* ik,
 
     // notify a class loaded from shared object
     ClassLoadingService::notify_class_loaded(ik, true /* shared class */);
+
+    if (UseHotswapDeoptExclusion && HotswapExcludeDeoptClassPath != NULL && ik->external_name() != NULL) {
+      DcevmDeoptExclude::setup_deoptimization_excl(ik);
+    }
 
     ik->set_has_passed_fingerprint_check(false);
     if (UseAOT && ik->supers_have_passed_fingerprint_checks()) {

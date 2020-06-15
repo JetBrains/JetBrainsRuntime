@@ -165,6 +165,8 @@ protected:
   PcDescContainer _pc_desc_container;
   ExceptionCache * volatile _exception_cache;
 
+  bool _deoptimization_excl;
+
   virtual void flush() = 0;
 protected:
   CompiledMethod(Method* method, const char* name, CompilerType type, const CodeBlobLayout& layout, int frame_complete_offset, int frame_size, ImmutableOopMapSet* oop_maps, bool caller_must_gc_arguments);
@@ -231,6 +233,10 @@ public:
   void  mark_for_deoptimization(bool inc_recompile_counts = true) {
     _mark_for_deoptimization_status = (inc_recompile_counts ? deoptimize : deoptimize_noupdate);
   }
+
+  bool  is_deoptimization_excl() const            { return _deoptimization_excl; }
+  void  set_deoptimization_excl(bool z)           { _deoptimization_excl = z; }
+
   bool update_recompile_counts() const {
     // Update recompile counts when either the update is explicitly requested (deoptimize)
     // or the nmethod is not marked for deoptimization at all (not_marked).

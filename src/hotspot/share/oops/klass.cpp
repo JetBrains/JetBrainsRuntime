@@ -203,7 +203,8 @@ Klass::Klass(KlassID id) : _id(id),
                            _is_redefining(false),
                            _is_copying_backwards(false),
                            _redefinition_flags(Klass::NoRedefinition),
-                           _update_information(NULL) {
+                           _update_information(NULL),
+                           _deoptimization_excl(false) {
   CDS_ONLY(_shared_class_flags = 0;)
   CDS_JAVA_HEAP_ONLY(_archived_mirror = 0;)
   _primary_supers[0] = this;

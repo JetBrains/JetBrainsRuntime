@@ -28,6 +28,7 @@
 #include "classfile/classFileStream.hpp"
 #include "classfile/classLoader.hpp"
 #include "classfile/classLoaderData.inline.hpp"
+#include "classfile/dcevmDeoptExclude.hpp"
 #include "classfile/defaultMethods.hpp"
 #include "classfile/dictionary.hpp"
 #include "classfile/javaClasses.inline.hpp"
@@ -5686,6 +5687,10 @@ void ClassFileParser::fill_instance_klass(InstanceKlass* ik, bool changed_by_loa
   }
 
   ClassLoadingService::notify_class_loaded(ik, false /* not shared class */);
+
+  if (UseHotswapDeoptExclusion && HotswapExcludeDeoptClassPath != NULL && ik->external_name() != NULL) {
+    DcevmDeoptExclude::setup_deoptimization_excl(ik);
+  }
 
   if (!is_internal()) {
     if (log_is_enabled(Info, class, load)) {

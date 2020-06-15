@@ -1217,7 +1217,7 @@ void CodeCache::mark_all_nmethods_for_deoptimization() {
   CompiledMethodIterator iter;
   while(iter.next_alive()) {
     CompiledMethod* nm = iter.method();
-    if (!nm->method()->is_method_handle_intrinsic()) {
+    if (!nm->is_deoptimization_excl() && !nm->method()->is_method_handle_intrinsic()) {
       nm->mark_for_deoptimization();
     }
   }
