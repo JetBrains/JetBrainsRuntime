@@ -440,6 +440,8 @@ public class CInputMethod extends InputMethodAdapter {
      * text view. This effectively wipes out any text in progress.
      */
     private synchronized void insertText(String aString) {
+        if (fAwtFocussedComponent == null) return;
+
         AttributedString attribString = new AttributedString(aString);
 
         // Set locale information on the new string.
@@ -511,7 +513,7 @@ public class CInputMethod extends InputMethodAdapter {
 
    /* Called from JNI to select the previously typed glyph during press and hold */
     private void selectPreviousGlyph() {
-        if (fIMContext == null) return; // ???
+        if (fIMContext == null || fAwtFocussedComponent == null) return; // ???
         try {
             LWCToolkit.invokeLater(new Runnable() {
                 public void run() {
@@ -553,8 +555,7 @@ public class CInputMethod extends InputMethodAdapter {
 
     private void dispatchText(int selectStart, int selectLength, boolean pressAndHold) {
         // Nothing to do if we have no text.
-        if (fCurrentText == null)
-            return;
+        if (fCurrentText == null || fAwtFocussedComponent == null) return;
 
         TextHitInfo theCaret = (selectLength == 0 ? TextHitInfo.beforeOffset(selectStart) : null);
         TextHitInfo visiblePosition = TextHitInfo.beforeOffset(0);
@@ -574,8 +575,7 @@ public class CInputMethod extends InputMethodAdapter {
      * Frequent callbacks from NSTextInput.  I think we're supposed to commit it here?
      */
     private synchronized void unmarkText() {
-        if (fCurrentText == null)
-            return;
+        if (fCurrentText == null || fAwtFocussedComponent == null) return;
 
         TextHitInfo theCaret = TextHitInfo.afterOffset(fCurrentTextLength);
         TextHitInfo visiblePosition = theCaret;
@@ -603,47 +603,47 @@ public class CInputMethod extends InputMethodAdapter {
     private synchronized String attributedSubstringFromRange(final int locationIn, final int lengthIn) {
         final String[] retString = new String[1];
 
-        try {
-            if (fIMContext != null)
-            LWCToolkit.invokeAndWait(new Runnable() {
-                public void run() { synchronized(retString) {
-                    int location = locationIn;
-                    int length = lengthIn;
+        if (fIMContext != null && fAwtFocussedComponent != null) {
+            invokeAndWaitNoThrow(new Runnable() {
+                public void run() {
+                    synchronized (retString) {
+                        int location = locationIn;
+                        int length = lengthIn;
 
-                    if ((location + length) > (fIMContext.getCommittedTextLength() + fCurrentTextLength)) {
-                        length = fIMContext.getCommittedTextLength() - location;
-                    }
-
-                    AttributedCharacterIterator theIterator = null;
-
-                    if (fCurrentText == null) {
-                        theIterator = fIMContext.getCommittedText(location, location + length, null);
-                    } else {
-                        int insertSpot = fIMContext.getInsertPositionOffset();
-
-                        if (location < insertSpot) {
-                            theIterator = fIMContext.getCommittedText(location, location + length, null);
-                        } else if (location >= insertSpot && location < insertSpot + fCurrentTextLength) {
-                            theIterator = fCurrentText.getIterator(null, location - insertSpot, location - insertSpot +length);
-                        } else  {
-                            theIterator = fIMContext.getCommittedText(location - fCurrentTextLength, location - fCurrentTextLength + length, null);
+                        if ((location + length) > (fIMContext.getCommittedTextLength() + fCurrentTextLength)) {
+                            length = fIMContext.getCommittedTextLength() - location;
                         }
-                    }
 
-                    // Get the characters from the iterator
-                    char[] selectedText = new char[theIterator.getEndIndex() - theIterator.getBeginIndex()];
-                    char current = theIterator.first();
-                    int index = 0;
-                    while (current != CharacterIterator.DONE) {
-                        selectedText[index++] = current;
-                        current = theIterator.next();
-                    }
+                        AttributedCharacterIterator theIterator = null;
 
-                    retString[0] = new String(selectedText);
-                }}
+                        if (fCurrentText == null) {
+                            theIterator = fIMContext.getCommittedText(location, location + length, null);
+                        } else {
+                            int insertSpot = fIMContext.getInsertPositionOffset();
+
+                            if (location < insertSpot) {
+                                theIterator = fIMContext.getCommittedText(location, location + length, null);
+                            } else if (location >= insertSpot && location < insertSpot + fCurrentTextLength) {
+                                theIterator = fCurrentText.getIterator(null, location - insertSpot, location - insertSpot + length);
+                            } else {
+                                theIterator = fIMContext.getCommittedText(location - fCurrentTextLength, location - fCurrentTextLength + length, null);
+                            }
+                        }
+
+                        // Get the characters from the iterator
+                        char[] selectedText = new char[theIterator.getEndIndex() - theIterator.getBeginIndex()];
+                        char current = theIterator.first();
+                        int index = 0;
+                        while (current != CharacterIterator.DONE) {
+                            selectedText[index++] = current;
+                            current = theIterator.next();
+                        }
+
+                        retString[0] = new String(selectedText);
+                    }
+                }
             }, fAwtFocussedComponent);
-        } catch (InvocationTargetException ite) { ite.printStackTrace(); }
-
+        }
         synchronized(retString) { return retString[0]; }
     }
 
@@ -656,9 +656,8 @@ public class CInputMethod extends InputMethodAdapter {
     private synchronized int[] selectedRange() {
         final int[] returnValue = new int[2];
 
-        try {
-            if (fIMContext != null)
-            LWCToolkit.invokeAndWait(new Runnable() {
+        if (fIMContext != null && fAwtFocussedComponent != null) {
+            invokeAndWaitNoThrow(new Runnable() {
                 public void run() { synchronized(returnValue) {
                     AttributedCharacterIterator theIterator = fIMContext.getSelectedText(null);
                     if (theIterator == null) {
@@ -691,7 +690,7 @@ public class CInputMethod extends InputMethodAdapter {
 
                 }}
             }, fAwtFocussedComponent);
-        } catch (InvocationTargetException ite) { ite.printStackTrace(); }
+        }
 
         synchronized(returnValue) { return returnValue; }
     }
@@ -703,20 +702,17 @@ public class CInputMethod extends InputMethodAdapter {
      * return null.
      */
     private synchronized int[] markedRange() {
-        if (fCurrentText == null)
-            return null;
+        if (fCurrentText == null || fAwtFocussedComponent == null) return null;
 
         final int[] returnValue = new int[2];
 
-        try {
-            LWCToolkit.invokeAndWait(new Runnable() {
-                public void run() { synchronized(returnValue) {
-                    // The insert position is always after the composed text, so the range start is the
-                    // insert spot less the length of the composed text.
-                    returnValue[0] = fIMContext.getInsertPositionOffset();
-                }}
-            }, fAwtFocussedComponent);
-        } catch (InvocationTargetException ite) { ite.printStackTrace(); }
+        invokeAndWaitNoThrow(new Runnable() {
+            public void run() { synchronized(returnValue) {
+                // The insert position is always after the composed text, so the range start is the
+                // insert spot less the length of the composed text.
+                returnValue[0] = fIMContext.getInsertPositionOffset();
+            }}
+        }, fAwtFocussedComponent);
 
         returnValue[1] = fCurrentTextLength;
         synchronized(returnValue) { return returnValue; }
@@ -733,7 +729,7 @@ public class CInputMethod extends InputMethodAdapter {
         final int[] rect = new int[4];
 
         try {
-            if (fIMContext != null) {
+            if (fIMContext != null && fAwtFocussedComponent != null) {
                 FxInvoker.invoke(() -> {
                     synchronized (rect) {
                         int insertOffset = fIMContext.getInsertPositionOffset();
@@ -779,7 +775,7 @@ public class CInputMethod extends InputMethodAdapter {
         final int[] insertPositionOffset = new int[1];
 
         try {
-            if (fIMContext != null) {
+            if (fIMContext != null && fAwtFocussedComponent != null) {
                 FxInvoker.invoke(() -> {
                     synchronized (offsetInfo) {
                         offsetInfo[0] = fIMContext.getLocationOffset(screenX, screenY);
@@ -883,7 +879,7 @@ public class CInputMethod extends InputMethodAdapter {
 
             // 1) Do not run secondary msg loop in this case.
             // 2) Delegate runnable back to FX when applicable.
-            LWCToolkit.invokeAndWait(() -> {
+            invokeAndWaitNoThrow(() -> {
                 runOnAppKit.set(instanceofJFXPanel(getClientComponent(inputContext)));
                 if (!runOnAppKit.get()) {
                     runnable.run();
@@ -893,6 +889,14 @@ public class CInputMethod extends InputMethodAdapter {
             if (runOnAppKit.get()) {
                 runnable.run();
             }
+        }
+    }
+
+    static void invokeAndWaitNoThrow(Runnable runnable, Component component) {
+        try {
+            LWCToolkit.invokeAndWait(runnable, component);
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
     }
 }
