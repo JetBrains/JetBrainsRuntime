@@ -198,8 +198,7 @@ MTLTR_InitGlyphCache(MTLContext *mtlc, jboolean lcdCache)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_InitGlyphCache");
     // TODO : Need to fix RGB order in case of LCD
-    MTLPixelFormat pixelFormat =
-        lcdCache ? MTLPixelFormatBGRA8Unorm : MTLPixelFormatA8Unorm;
+    MTLPixelFormat pixelFormat = MTLPixelFormatBGRA8Unorm;
 
     MTLGlyphCacheInfo *gcinfo;
     // init glyph cache data structure
@@ -290,10 +289,30 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
                 {w, h, 1}
         };
         if (!isLCD) {
-            NSUInteger bytesPerRow = 1 * w;
+            // Opengl uses GL_INTENSITY as internal pixel format to set number of
+            // color components in the texture for grayscale texture.
+            // It is mentioned that for GL_INTENSITY format,
+            // the GL assembles it into an RGBA element by replicating the
+            // intensity value three times for red, green, blue, and alpha.
+            // To let metal behave the same for grayscale text,
+            // we need to make sure we create BGRA component by replicating
+            // graycale pixel value as in R=G=B=A=grayscale pixel value
+
+            unsigned int imageBytes = w * h * 4;
+            unsigned char imageData[imageBytes];
+            memset(&imageData, 0, sizeof(imageData));
+
+            unsigned int dstindex = 0;
+            for (int i = 0; i < (w * h); i++) {
+                imageData[dstindex++] = glyph->image[i];
+                imageData[dstindex++] = glyph->image[i];
+                imageData[dstindex++] = glyph->image[i];
+                imageData[dstindex++] = glyph->image[i];
+            }
+            NSUInteger bytesPerRow = 4 * w;
             [gcinfo->texture replaceRegion:region
                              mipmapLevel:0
-                             withBytes:glyph->image
+                             withBytes:imageData
                              bytesPerRow:bytesPerRow];
         } else {
             unsigned int imageBytes = w * h * 4;
