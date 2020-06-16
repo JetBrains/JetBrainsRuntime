@@ -1084,20 +1084,31 @@ abstract class XDecoratedPeer extends XWindowPeer {
             focusLog.fine("WM_TAKE_FOCUS on {0}", this);
         }
 
+        long requestTimeStamp = cl.get_data(1);
+        if (requestTimeStamp == 0) {
+            // KDE window manager always sends 0 ('CurrentTime') as timestamp,
+            // even though it seems to violate ICCCM specification
+            // (https://bugs.kde.org/show_bug.cgi?id=347153)
+            requestTimeStamp = XToolkit.getCurrentServerTime();
+        }
+        // we should treat WM_TAKE_FOCUS message as user interaction, as it can originate e.g. from user clicking
+        // on window title bar (there will be no ButtonPress/ButtonRelease events in this case)
+        setUserTime(requestTimeStamp);
+
         if (XWM.getWMID() == XWM.UNITY_COMPIZ_WM) {
             // JDK-8159460
             Window focusedWindow = XKeyboardFocusManagerPeer.getInstance()
                     .getCurrentFocusedWindow();
             Window activeWindow = XWindowPeer.getDecoratedOwner(focusedWindow);
             if (activeWindow != target) {
-                requestWindowFocus(cl.get_data(1), true);
+                requestWindowFocus(requestTimeStamp, true);
             } else {
                 WindowEvent we = new WindowEvent(focusedWindow,
                         WindowEvent.WINDOW_GAINED_FOCUS);
                 sendEvent(we);
             }
         } else {
-            requestWindowFocus(cl.get_data(1), true);
+            requestWindowFocus(requestTimeStamp, true);
         }
     }
 
