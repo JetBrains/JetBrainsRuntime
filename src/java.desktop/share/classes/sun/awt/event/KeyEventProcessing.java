@@ -1,6 +1,6 @@
 package sun.awt.event;
 
-import sun.awt.util.SystemInfo;
+import sun.font.FontUtilities;
 
 import java.lang.annotation.Native;
 import java.security.PrivilegedAction;
@@ -12,7 +12,7 @@ public class KeyEventProcessing {
     public final static String useNationalLayoutsOption = "com.sun.awt.use.national.layouts";
     @Native
     public final static boolean useNationalLayouts = "true".equals(
-            getProperty(useNationalLayoutsOption, SystemInfo.isMac ? "true" : "false"));
+            getProperty(useNationalLayoutsOption, FontUtilities.isMacOSX ? "true" : "false"));
 
     // Used on windows to emulate latin OEM keys on cyrillic keyboards
     public final static String useLatinNonAlphaNumKeycodesOption = "com.sun.awt.useLatinNonAlphaNumKeycodes";
