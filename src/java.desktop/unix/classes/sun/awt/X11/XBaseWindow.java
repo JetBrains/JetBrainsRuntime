@@ -77,6 +77,9 @@ public class XBaseWindow {
 
     private static XAtom wm_client_leader;
 
+    private long userTime;
+    private static long globalUserTime;
+
     static enum InitialiseState {
         INITIALISING,
         INITIALISED,
@@ -625,9 +628,10 @@ public class XBaseWindow {
         XToolkit.awtLock();
         try {
             if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
-                focusLog.finer("XSetInputFocus on " + Long.toHexString(getWindow()));
+                focusLog.finer("XSetInputFocus on " + Long.toHexString(getWindow())
+                        + " with global time " + globalUserTime);
             }
-             XlibWrapper.XSetInputFocus(XToolkit.getDisplay(), getWindow());
+             XlibWrapper.XSetInputFocus2(XToolkit.getDisplay(), getWindow(), globalUserTime);
         } finally {
             XToolkit.awtUnlock();
         }
@@ -650,6 +654,7 @@ public class XBaseWindow {
         try {
             this.visible = visible;
             if (visible) {
+                setUserTimeFromGlobal();
                 XlibWrapper.XMapWindow(XToolkit.getDisplay(), getWindow());
             }
             else {
@@ -1009,6 +1014,7 @@ public class XBaseWindow {
     public void handleVisibilityEvent(XEvent xev) {
     }
     public void handleKeyPress(XEvent xev) {
+        setUserTime(xev.get_xkey().get_time());
     }
     public void handleKeyRelease(XEvent xev) {
     }
@@ -1041,6 +1047,7 @@ public class XBaseWindow {
         if (!isWheel) {
             switch (xev.get_type()) {
                 case XConstants.ButtonPress:
+                    setUserTime(xbe.get_time());
                     if (buttonState == 0) {
                         XWindowPeer parent = getToplevelXWindow();
                         // See 6385277, 6981400.
@@ -1258,4 +1265,43 @@ public class XBaseWindow {
         return x >= getAbsoluteX() && y >= getAbsoluteY() && x < (getAbsoluteX()+getWidth()) && y < (getAbsoluteY()+getHeight());
     }
 
+    void setUserTimeFromGlobal() {
+        setUserTime(globalUserTime);
+    }
+
+    protected void setUserTime(long time) {
+        if (time == userTime) return;
+
+        userTime = time;
+        if ((int)time - (int)globalUserTime > 0 /* accounting for wrap-around */) {
+            globalUserTime = time;
+        }
+        XNETProtocol netProtocol = XWM.getWM().getNETProtocol();
+        if (netProtocol != null && netProtocol.active()) {
+            netProtocol.XA_NET_WM_USER_TIME.setCard32Property(this, time);
+        }
+    }
+
+    static {
+        String desktopStartupId = XToolkit.getDesktopStartupId();
+        if (desktopStartupId != null) {
+            int timePos = desktopStartupId.indexOf("_TIME");
+            if (timePos < 0) {
+                log.fine("Couldn't find startup time in DESKTOP_STARTUP_ID: " + desktopStartupId);
+            } else {
+                try {
+                    globalUserTime = Long.parseLong(desktopStartupId.substring(timePos + 5));
+                    if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                        log.fine("Extracted startup time from DESKTOP_STARTUP_ID: " + globalUserTime);
+                    }
+                }
+                catch (NumberFormatException e) {
+                    log.fine("Couldn't parse startup time in DESKTOP_STARTUP_ID: " + desktopStartupId);
+                }
+            }
+        }
+        else {
+            log.fine("No DESKTOP_STARTUP_ID");
+        }
+    }
 }
