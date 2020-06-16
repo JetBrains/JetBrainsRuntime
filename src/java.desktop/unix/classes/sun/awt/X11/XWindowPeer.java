@@ -1239,7 +1239,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             return;
         }
 
-        final String desktopStartupId = XToolkit.getEnv("DESKTOP_STARTUP_ID");
+        final String desktopStartupId = XToolkit.getDesktopStartupId();
         if (desktopStartupId == null) {
             return;
         }
@@ -1914,6 +1914,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             this.visible = visible;
             if (visible) {
                 applyWindowType();
+                setUserTimeFromGlobal();
                 XlibWrapper.XMapRaised(XToolkit.getDisplay(), getWindow());
             } else {
                 XlibWrapper.XUnmapWindow(XToolkit.getDisplay(), getWindow());
