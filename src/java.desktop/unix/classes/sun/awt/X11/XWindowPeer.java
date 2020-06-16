@@ -1338,12 +1338,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             return;
         }
 
-        @SuppressWarnings("removal")
-        final String desktopStartupId = AccessController.doPrivileged(new PrivilegedAction<String>() {
-            public String run() {
-                return XToolkit.getEnv("DESKTOP_STARTUP_ID");
-            }
-        });
+        final String desktopStartupId = XToolkit.getDesktopStartupId();
         if (desktopStartupId == null) {
             return;
         }
@@ -2020,6 +2015,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             this.visible = visible;
             if (visible) {
                 applyWindowType();
+                setUserTimeFromGlobal();
                 XlibWrapper.XMapRaised(XToolkit.getDisplay(), getWindow());
             } else {
                 XlibWrapper.XUnmapWindow(XToolkit.getDisplay(), getWindow());
