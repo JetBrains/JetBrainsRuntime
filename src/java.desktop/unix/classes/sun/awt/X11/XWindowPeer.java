@@ -2057,6 +2057,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             this.visible = visible;
             if (visible) {
                 applyWindowType();
+                setUserTimeFromGlobal();
                 XlibWrapper.XMapRaised(XToolkit.getDisplay(), getWindow());
             } else {
                 XlibWrapper.XUnmapWindow(XToolkit.getDisplay(), getWindow());
