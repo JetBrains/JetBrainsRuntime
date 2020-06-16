@@ -216,6 +216,13 @@ void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
   }
 }
 
+void VM_EnhancedRedefineClasses::mark_as_scavengable_g1(nmethod* nm) {
+  // It should work not only for G1 but also for another GCs, but this way is safer now
+  if (!nm->is_zombie() && !nm->is_unloaded()) {
+    Universe::heap()->register_nmethod(nm);
+  }
+}
+
 // TODO comment
 struct StoreBarrier {
   // TODO: j10 review change ::oop_store -> HeapAccess<>::oop_store
@@ -506,9 +513,13 @@ void VM_EnhancedRedefineClasses::doit() {
     // make sure such references are properly recognized by GC. For that, If ScavengeRootsInCode is true, we need to
     // mark such nmethod's as "scavengable".
     // For now, mark all nmethod's as scavengable that are not scavengable already
-    // For UseG1GC nmethods are already registered in G1Heap
-    if (ScavengeRootsInCode && !UseG1GC) {
-      CodeCache::nmethods_do(mark_as_scavengable);
+    if (ScavengeRootsInCode) {
+      if (UseG1GC) {
+        // this should work also for other GCs
+        CodeCache::nmethods_do(mark_as_scavengable_g1);
+      } else {
+        CodeCache::nmethods_do(mark_as_scavengable);
+      }
     }
 
     Universe::heap()->ensure_parsability(false);
