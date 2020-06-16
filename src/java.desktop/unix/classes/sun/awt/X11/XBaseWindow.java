@@ -643,9 +643,10 @@ public class XBaseWindow {
         XToolkit.awtLock();
         try {
             if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
-                focusLog.finer("XSetInputFocus on " + Long.toHexString(getWindow()));
+                focusLog.finer("XSetInputFocus on " + Long.toHexString(getWindow())
+                        + " with global time " + globalUserTime);
             }
-             XlibWrapper.XSetInputFocus(XToolkit.getDisplay(), getWindow());
+             XlibWrapper.XSetInputFocus2(XToolkit.getDisplay(), getWindow(), globalUserTime);
         } finally {
             XToolkit.awtUnlock();
         }
