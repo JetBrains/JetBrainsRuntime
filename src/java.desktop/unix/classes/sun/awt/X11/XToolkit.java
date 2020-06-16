@@ -204,6 +204,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     static int awt_multiclick_time;
     static boolean securityWarningEnabled;
 
+    private static String desktopStartupId;
+
     /**
      * Dimensions of default virtual screen in pixels. These values are used to
      * limit the maximum size of the window.
@@ -401,6 +403,9 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
     static native String getEnv(String key);
 
+    static String getDesktopStartupId() {
+        return desktopStartupId;
+    }
 
     static String getAWTAppClassName() {
         return awtAppClassName;
@@ -425,6 +430,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 mainClassName = "AWT";
             }
             awtAppClassName = getCorrectXIDString(mainClassName);
+
+            // this should be done before 'load_gtk', as the latter clears the environment variable
+            desktopStartupId = AccessController.doPrivileged((PrivilegedAction<String>) () ->
+                    getEnv("DESKTOP_STARTUP_ID"));
 
             init();
             XWM.init();
