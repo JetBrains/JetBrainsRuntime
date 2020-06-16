@@ -515,23 +515,4 @@ public class XMenuBarPeer extends XBaseMenuWindow implements MenuBarPeer {
         selectItem(getFirstSelectableItem(), true);
     }
 
-    /*
-     * In previous version keys were handled in handleKeyPress.
-     * Now we override this function do disable F10 explicit
-     * processing. All processing is done using KeyEvent.
-     */
-    public void handleKeyPress(XEvent xev) {
-        XKeyEvent xkey = xev.get_xkey();
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine(xkey.toString());
-        }
-        if (isEventDisabled(xev)) {
-            return;
-        }
-        final Component currentSource = getEventSource();
-        //This is the only difference from XWindow.handleKeyPress
-        //Ancestor's function can invoke handleF10KeyPress here
-        handleKeyPress(xkey);
-    }
-
 } //class XMenuBarPeer
