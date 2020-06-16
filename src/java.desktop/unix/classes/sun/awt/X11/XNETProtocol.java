@@ -295,6 +295,8 @@ final class XNETProtocol extends XProtocol implements XStateProtocol, XLayerProt
 
     XAtom XA_NET_WM_WINDOW_OPACITY = XAtom.get("_NET_WM_WINDOW_OPACITY");
 
+    XAtom XA_NET_WM_USER_TIME = XAtom.get("_NET_WM_USER_TIME");
+
 /* For _NET_WM_STATE ClientMessage requests */
     static final int _NET_WM_STATE_REMOVE      =0; /* remove/unset property */
     static final int _NET_WM_STATE_ADD         =1; /* add/set property      */
