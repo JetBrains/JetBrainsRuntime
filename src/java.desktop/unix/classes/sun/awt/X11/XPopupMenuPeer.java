@@ -311,28 +311,4 @@ public class XPopupMenuPeer extends XMenuWindow implements PopupMenuPeer {
         hide();
     }
 
-    /************************************************
-     *
-     * Overridden XWindow keyboard processing
-     *
-     ************************************************/
-
-    /*
-     * In previous version keys were handled in handleKeyPress.
-     * Now we override this function do disable F10 explicit
-     * processing. All processing is done using KeyEvent.
-     */
-    @Override
-    public void handleKeyPress(XEvent xev) {
-        XKeyEvent xkey = xev.get_xkey();
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine(xkey.toString());
-        }
-        if (isEventDisabled(xev)) {
-            return;
-        }
-        final Component currentSource = getEventSource();
-        handleKeyPress(xkey);
-    }
-
 }
