@@ -218,11 +218,5 @@ Java_sun_java2d_metal_MTLGraphicsConfig_nativeGetMaxTextureSize
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfig_nativeGetMaxTextureSize");
 
-    // From "Metal Feature Set Tables"
-    // There are 2 GPU families for mac - MTLGPUFamilyMac1 and MTLGPUFamilyMac2
-    // Both of them support "Maximum 2D texture width and height" of 16384 pixels
-    // Note : there is no API to get this value, hence hardcoding by reading from the table
-    __block int max = 16384;
-
-    return (jint)max;
+    return (jint)MaxTextureSize;
 }

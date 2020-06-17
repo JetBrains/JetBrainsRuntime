@@ -68,6 +68,9 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
 
         MTLContext* ctx = mtlsdo->configInfo->context;
 
+        if (width > MaxTextureSize) {
+            width = MaxTextureSize;
+        }
         MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatBGRA8Unorm width: width height: height mipmapped: NO];
         textureDescriptor.usage = MTLTextureUsageUnknown;
         bmtlsdo->pTexture = [ctx.device newTextureWithDescriptor: textureDescriptor];
