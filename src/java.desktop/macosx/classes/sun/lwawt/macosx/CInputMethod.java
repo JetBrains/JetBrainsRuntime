@@ -440,6 +440,8 @@ public class CInputMethod extends InputMethodAdapter {
      * text view. This effectively wipes out any text in progress.
      */
     private synchronized void insertText(String aString) {
+        if (fAwtFocussedComponent == null) return;
+
         AttributedString attribString = new AttributedString(aString);
 
         // Set locale information on the new string.
@@ -511,7 +513,7 @@ public class CInputMethod extends InputMethodAdapter {
 
    /* Called from JNI to select the previously typed glyph during press and hold */
     private void selectPreviousGlyph() {
-        if (fIMContext == null) return; // ???
+        if (fIMContext == null || fAwtFocussedComponent == null) return; // ???
         try {
             LWCToolkit.invokeLater(new Runnable() {
                 public void run() {
@@ -553,8 +555,7 @@ public class CInputMethod extends InputMethodAdapter {
 
     private void dispatchText(int selectStart, int selectLength, boolean pressAndHold) {
         // Nothing to do if we have no text.
-        if (fCurrentText == null)
-            return;
+        if (fCurrentText == null || fAwtFocussedComponent == null) return;
 
         TextHitInfo theCaret = (selectLength == 0 ? TextHitInfo.beforeOffset(selectStart) : null);
         TextHitInfo visiblePosition = TextHitInfo.beforeOffset(0);
@@ -574,8 +575,7 @@ public class CInputMethod extends InputMethodAdapter {
      * Frequent callbacks from NSTextInput.  I think we're supposed to commit it here?
      */
     private synchronized void unmarkText() {
-        if (fCurrentText == null)
-            return;
+        if (fCurrentText == null || fAwtFocussedComponent == null) return;
 
         TextHitInfo theCaret = TextHitInfo.afterOffset(fCurrentTextLength);
         TextHitInfo visiblePosition = theCaret;
@@ -604,7 +604,7 @@ public class CInputMethod extends InputMethodAdapter {
         final String[] retString = new String[1];
 
         try {
-            if (fIMContext != null)
+            if (fIMContext != null && fAwtFocussedComponent != null)
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(retString) {
                     int location = locationIn;
@@ -657,7 +657,7 @@ public class CInputMethod extends InputMethodAdapter {
         final int[] returnValue = new int[2];
 
         try {
-            if (fIMContext != null)
+            if (fIMContext != null && fAwtFocussedComponent != null)
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(returnValue) {
                     AttributedCharacterIterator theIterator = fIMContext.getSelectedText(null);
@@ -703,8 +703,7 @@ public class CInputMethod extends InputMethodAdapter {
      * return null.
      */
     private synchronized int[] markedRange() {
-        if (fCurrentText == null)
-            return null;
+        if (fCurrentText == null || fAwtFocussedComponent == null) return null;
 
         final int[] returnValue = new int[2];
 
@@ -733,7 +732,7 @@ public class CInputMethod extends InputMethodAdapter {
         final int[] rect = new int[4];
 
         try {
-            if (fIMContext != null) {
+            if (fIMContext != null && fAwtFocussedComponent != null) {
                 FxInvoker.invoke(() -> {
                     synchronized (rect) {
                         int insertOffset = fIMContext.getInsertPositionOffset();
