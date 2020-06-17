@@ -1315,4 +1315,27 @@ public class XBaseWindow {
             netProtocol.XA_NET_WM_USER_TIME.setCard32Property(this, time);
         }
     }
+
+    static {
+        String desktopStartupId = XToolkit.getDesktopStartupId();
+        if (desktopStartupId != null) {
+            int timePos = desktopStartupId.indexOf("_TIME");
+            if (timePos < 0) {
+                log.fine("Couldn't find startup time in DESKTOP_STARTUP_ID: " + desktopStartupId);
+            } else {
+                try {
+                    globalUserTime = Long.parseLong(desktopStartupId.substring(timePos + 5));
+                    if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                        log.fine("Extracted startup time from DESKTOP_STARTUP_ID: " + globalUserTime);
+                    }
+                }
+                catch (NumberFormatException e) {
+                    log.fine("Couldn't parse startup time in DESKTOP_STARTUP_ID: " + desktopStartupId);
+                }
+            }
+        }
+        else {
+            log.fine("No DESKTOP_STARTUP_ID");
+        }
+    }
 }
