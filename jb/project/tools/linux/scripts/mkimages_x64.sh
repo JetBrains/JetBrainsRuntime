@@ -32,7 +32,7 @@ function create_jbr {
     JBR_BASE_NAME=jbr_${bundle_type}_lw-${JBSDK_VERSION}
     grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
     ;;
-  "jfx" | "jcef" | "dcevm")
+  "jfx" | "jcef" | "dcevm" | "nomod")
     JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
     cat modules.list > modules_tmp.list
     ;;
@@ -69,6 +69,7 @@ function create_jbr {
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 
+WITH_IMPORT_MODULES="--with-import-modules=./modular-sdk"
 git checkout -- modules.list src/java.desktop/share/classes/module-info.java
 case "$bundle_type" in
   "jfx")
@@ -80,6 +81,11 @@ case "$bundle_type" in
   "dcevm")
     git am jb/project/tools/patches/dcevm/*.patch
     ;;
+  "nomod")
+    git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch
+    git apply -p0 < jb/project/tools/patches/exclude_jfx_module.patch
+    WITH_IMPORT_MODULES=""
+    ;;
 esac
 
 sh configure \
@@ -90,7 +96,7 @@ sh configure \
   --with-version-pre= \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
-  --with-import-modules=./modular-sdk \
+  $WITH_IMPORT_MODULES \
   --enable-cds=yes || exit $?
 
 make images CONF=linux-x86_64-normal-server-release || exit $?

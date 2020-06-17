@@ -31,7 +31,7 @@ function create_jbr {
   "${bundle_type}_lw")
     grep -v "jdk.compiler\|jdk.hotspot.agent" modules.list > modules_tmp.list
     ;;
-  "jfx" | "jcef" | "jfx_jcef" | "dcevm")
+  "jfx" | "jcef" | "jfx_jcef" | "dcevm" | "nomod")
     cat modules.list > modules_tmp.list
     ;;
   *)
@@ -54,6 +54,7 @@ function create_jbr {
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 WORK_DIR=$(pwd)
 
+WITH_IMPORT_MODULES="--with-import-modules=${WORK_DIR}/modular-sdk"
 git checkout -- modules.list src/java.desktop/share/classes/module-info.java
 case "$bundle_type" in
   "jfx")
@@ -68,6 +69,11 @@ case "$bundle_type" in
     echo "Adding dcevm patches"
     git am jb/project/tools/patches/dcevm/*.patch
     ;;
+  "nomod")
+    git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch
+    git apply -p0 < jb/project/tools/patches/exclude_jfx_module.patch
+    WITH_IMPORT_MODULES=""
+    ;;
 esac
 
 PATH="/usr/local/bin:/usr/bin:${PATH}"
@@ -80,7 +86,7 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --with-version-pre= \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
-  --with-import-modules=${WORK_DIR}/modular-sdk \
+  $WITH_IMPORT_MODULES \
   --with-toolchain-version=2015 \
   --with-boot-jdk=${BOOT_JDK} \
   --disable-ccache \
