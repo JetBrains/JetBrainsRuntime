@@ -1154,11 +1154,12 @@ void ShenandoahBarrierC2Support::pin_and_expand(PhaseIdealLoop* phase) {
     Node* barrier = state->enqueue_barrier(i);
     Node* ctrl = phase->get_ctrl(barrier);
     IdealLoopTree* loop = phase->get_loop(ctrl);
-    if (loop->_head->is_OuterStripMinedLoop()) {
+    Node* head = loop->head();
+    if (head->is_OuterStripMinedLoop()) {
       // Expanding a barrier here will break loop strip mining
       // verification. Transform the loop so the loop nest doesn't
       // appear as strip mined.
-      OuterStripMinedLoopNode* outer = loop->_head->as_OuterStripMinedLoop();
+      OuterStripMinedLoopNode* outer = head->as_OuterStripMinedLoop();
       hide_strip_mined_loop(outer, outer->unique_ctrl_out()->as_CountedLoop(), phase);
     }
   }
@@ -1431,11 +1432,12 @@ void ShenandoahBarrierC2Support::pin_and_expand(PhaseIdealLoop* phase) {
     }
     Node* ctrl = phase->get_ctrl(lrb);
     IdealLoopTree* loop = phase->get_loop(ctrl);
-    if (loop->_head->is_OuterStripMinedLoop()) {
+    Node* head = loop->head();
+    if (head->is_OuterStripMinedLoop()) {
       // Expanding a barrier here will break loop strip mining
       // verification. Transform the loop so the loop nest doesn't
       // appear as strip mined.
-      OuterStripMinedLoopNode* outer = loop->_head->as_OuterStripMinedLoop();
+      OuterStripMinedLoopNode* outer = head->as_OuterStripMinedLoop();
       hide_strip_mined_loop(outer, outer->unique_ctrl_out()->as_CountedLoop(), phase);
     }
   }
