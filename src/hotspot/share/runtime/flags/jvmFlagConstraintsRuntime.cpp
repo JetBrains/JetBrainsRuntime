@@ -158,6 +158,15 @@ JVMFlag::Error NUMAInterleaveGranularityConstraintFunc(size_t value, bool verbos
                         " ... " UINTX_FORMAT " ]\n", value, min, max);
     return JVMFlag::VIOLATES_CONSTRAINT;
   }
+  return JVMFlag::SUCCESS;
+}
 
+JVMFlag::Error HotswapAgentConstraintFunc(ccstr value, bool verbose) {
+  if (value != NULL) {
+    if (strcmp("disabled", value) != 0 && strcmp("fatjar", value) != 0 && strcmp("core", value) != 0 && strcmp("external", value) != 0) {
+      JVMFlag::printError(verbose, "HotswapAgent(%s) must be one of disabled,fatjar,core or external.\n", value);
+      return JVMFlag::VIOLATES_CONSTRAINT;
+    }
+  }
   return JVMFlag::SUCCESS;
 }
