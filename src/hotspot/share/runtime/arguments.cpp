@@ -2049,7 +2049,7 @@ bool Arguments::check_gc_consistency() {
     // are only built into the mark and compact algorithm.
     if ((!UseSerialGC && !UseConcMarkSweepGC && !UseG1GC) && i >= 1) {
       jio_fprintf(defaultStream::error_stream(),
-                  "Must use the serial or concurrent mark sweep GC with enhanced class redefinition.\n");
+                  "Must use the Serial, Concurrent Mark Sweep or G1 GC with enhanced class redefinition.\n");
       return false;
     }
   }
