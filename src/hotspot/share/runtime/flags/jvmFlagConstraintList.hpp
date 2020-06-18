@@ -47,6 +47,7 @@ typedef JVMFlag::Error (*JVMFlagConstraintFunc_uintx)(uintx value, bool verbose)
 typedef JVMFlag::Error (*JVMFlagConstraintFunc_uint64_t)(uint64_t value, bool verbose);
 typedef JVMFlag::Error (*JVMFlagConstraintFunc_size_t)(size_t value, bool verbose);
 typedef JVMFlag::Error (*JVMFlagConstraintFunc_double)(double value, bool verbose);
+typedef JVMFlag::Error (*JVMFlagConstraintFunc_ccstr)(ccstr value, bool verbose);
 
 class JVMFlagConstraint : public CHeapObj<mtArguments> {
 public:

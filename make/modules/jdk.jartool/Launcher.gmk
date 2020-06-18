@@ -27,10 +27,8 @@ include LauncherCommon.gmk
 
 $(eval $(call SetupBuildLauncher, jar, \
     MAIN_CLASS := sun.tools.jar.Main, \
-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
 ))
 
 $(eval $(call SetupBuildLauncher, jarsigner, \
     MAIN_CLASS := sun.security.tools.jarsigner.Main, \
-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
 ))
