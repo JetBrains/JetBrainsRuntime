@@ -693,7 +693,18 @@ AwtFileDialog::Show(void *p)
             ofn.lStructSize = sizeof(ofn);
             ofn.lpstrFilter = s_fileFilterString;
             ofn.nFilterIndex = 1;
-            ofn.hwndOwner = hwndOwner;
+            /*
+              Fix for 6488834.
+              To disable Win32 native parent modality we have to set
+              hwndOwner field to either NULL or some hidden window. For
+              parentless dialogs we use NULL to show them in the taskbar,
+              and for all other dialogs AwtToolkit's HWND is used.
+            */
+            if (awtParent != NULL) {
+                ofn.hwndOwner = AwtToolkit::GetInstance().GetHWnd();
+            } else {
+                ofn.hwndOwner = NULL;
+            }
             ofn.lpstrFile = fileBuffer;
             ofn.nMaxFile = bufferLimit;
             ofn.lpstrTitle = titleBuffer;
