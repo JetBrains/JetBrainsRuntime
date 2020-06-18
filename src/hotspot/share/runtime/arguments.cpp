@@ -4310,11 +4310,17 @@ void Arguments::setup_hotswap_agent() {
   if (DumpSharedSpaces)
     return;
 
-  if (!AllowEnhancedClassRedefinition)
+  if (HotswapAgent == NULL || strcmp(HotswapAgent, "disabled") == 0)
     return;
 
+  // Force AllowEnhancedClassRedefinition if HA is enabled
+  AllowEnhancedClassRedefinition = true;
+
+  bool ha_fatjar = strcmp(HotswapAgent, "fatjar") == 0;
+  bool ha_core = strcmp(HotswapAgent, "core") == 0;
+
   // Set HotswapAgent
-  if (!DisableHotswapAgent) {
+  if (ha_fatjar || ha_core) {
 
     char ext_path_str[JVM_MAXPATHLEN];
 
@@ -4333,23 +4339,27 @@ void Arguments::setup_hotswap_agent() {
       }
     }
     if (ext_path_length < JVM_MAXPATHLEN - 10) {
-      jio_snprintf(ext_path_str + ext_path_length, sizeof(ext_path_str) - ext_path_length,
-                   "%shotswap%shotswap-agent.jar", os::file_separator(), os::file_separator());
+      if (ha_fatjar) {
+        jio_snprintf(ext_path_str + ext_path_length, sizeof(ext_path_str) - ext_path_length,
+                     "%shotswap%shotswap-agent.jar", os::file_separator(), os::file_separator());
+      } else {
+        jio_snprintf(ext_path_str + ext_path_length, sizeof(ext_path_str) - ext_path_length,
+                     "%shotswap%shotswap-agent-core.jar", os::file_separator(), os::file_separator());
+      }
+      int fd = ::open(ext_path_str, O_RDONLY);
+      if (fd >= 0) {
+        os::close(fd);
+        size_t length = strlen(ext_path_str) + 1;
+        char *options = NEW_C_HEAP_ARRAY(char,  length, mtArguments);
+        jio_snprintf(options, length, "%s", ext_path_str);
+        add_init_agent("instrument", ext_path_str, false);
+        jio_fprintf(defaultStream::output_stream(), "Starting HotswapAgent '%s'\n", ext_path_str);
+      }
+      else
+      {
+        jio_fprintf(defaultStream::error_stream(), "HotswapAgent not found on path:'%s'!\n", ext_path_str);
+      }
     }
-
-    int fd = ::open(ext_path_str, O_RDONLY);
-    if (fd >= 0) {
-      os::close(fd);
-      size_t length = strlen(ext_path_str) + 1;
-      char *options = NEW_C_HEAP_ARRAY(char,  length, mtArguments);
-      jio_snprintf(options, length, "%s", ext_path_str);
-      add_init_agent("instrument", ext_path_str, false);
-      jio_fprintf(defaultStream::output_stream(), "Starting HotswapAgent '%s'\n", ext_path_str);
-    }
-//    else
-//    {
-//      jio_fprintf(defaultStream::error_stream(), "HotswapAgent not found on path:'%s'\n", ext_path_str);
-//    }
   }
 
   // TODO: open it only for org.hotswap.agent module

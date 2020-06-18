@@ -199,6 +199,26 @@ public:
   }
 };
 
+class JVMFlagConstraint_ccstr : public JVMFlagConstraint {
+  JVMFlagConstraintFunc_ccstr _constraint;
+  const ccstr* _ptr;
+
+public:
+  // the "name" argument must be a string literal
+  JVMFlagConstraint_ccstr(const char* name, const ccstr* ptr,
+                                   JVMFlagConstraintFunc_ccstr func,
+                                 ConstraintType type) : JVMFlagConstraint(name, type), _constraint(func), _ptr(ptr) {}
+
+  JVMFlag::Error apply(bool verbose) {
+    ccstr value = *_ptr;
+    return _constraint(value, verbose);
+  }
+
+  JVMFlag::Error apply_ccstr(ccstr value, bool verbose) {
+    return _constraint(value, verbose);
+  }
+};
+
 // No constraint emitting
 void emit_constraint_no(...)                                                      { /* NOP */ }
 
@@ -238,6 +258,9 @@ void emit_constraint_size_t(const char* name, const size_t* ptr, JVMFlagConstrai
 }
 void emit_constraint_double(const char* name, const double* ptr, JVMFlagConstraintFunc_double func, JVMFlagConstraint::ConstraintType type) {
   JVMFlagConstraintList::add(new JVMFlagConstraint_double(name, ptr, func, type));
+}
+void emit_constraint_ccstr(const char* name, ccstr* ptr, JVMFlagConstraintFunc_ccstr func, JVMFlagConstraint::ConstraintType type) {
+  JVMFlagConstraintList::add(new JVMFlagConstraint_ccstr(name, ptr, func, type));
 }
 
 // Generate code to call emit_constraint_xxx function

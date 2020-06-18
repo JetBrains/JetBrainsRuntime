@@ -28,16 +28,13 @@ include LauncherCommon.gmk
 ifeq ($(OPENJDK_TARGET_OS), windows)
   $(eval $(call SetupBuildLauncher, kinit, \
       MAIN_CLASS := sun.security.krb5.internal.tools.Kinit, \
-      JAVA_ARGS := -XX:+DisableHotswapAgent, \
   ))
 
   $(eval $(call SetupBuildLauncher, klist, \
       MAIN_CLASS := sun.security.krb5.internal.tools.Klist, \
-      JAVA_ARGS := -XX:+DisableHotswapAgent, \
   ))
 
   $(eval $(call SetupBuildLauncher, ktab, \
       MAIN_CLASS := sun.security.krb5.internal.tools.Ktab, \
-      JAVA_ARGS := -XX:+DisableHotswapAgent, \
   ))
 endif
