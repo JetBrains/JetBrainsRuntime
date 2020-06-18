@@ -109,7 +109,10 @@ module java.desktop {
     // see make/GensrcModuleInfo.gmk
     exports sun.awt to
         jdk.accessibility,
-        jdk.unsupported.desktop;
+        jdk.unsupported.desktop,
+        jcef;
+
+    exports java.awt.peer to jcef;
 
     exports java.awt.dnd.peer to jdk.unsupported.desktop;
     exports sun.awt.dnd to jdk.unsupported.desktop;
