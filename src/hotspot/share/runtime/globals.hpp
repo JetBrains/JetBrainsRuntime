@@ -2089,7 +2089,16 @@ const intx ObjectAlignmentInBytes = 8;
                                                                             \
   product(bool, AllowEnhancedClassRedefinition, false,                      \
              "Allow enhanced class redefinition beyond swapping method "    \
-             "bodies")
+             "bodies")                                                      \
+                                                                            \
+  product(ccstr, HotswapAgent, "disabled",                                  \
+          "Specify HotswapAgent image to be used."                          \
+          "disabled: hotswap agent is disabled (default)"                   \
+          "fatjar: full HA. Use integrated hotswap-agent.jar"               \
+          "core: core HA. Use integrated hotswap-agent-core.jar"            \
+          "external: external HA. use external HA, open required JDK "      \
+          "modules.")                                                       \
+          constraint(HotswapAgentConstraintFunc, AfterErgo)
 
 
 // end of RUNTIME_FLAGS
