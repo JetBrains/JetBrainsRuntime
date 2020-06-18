@@ -140,3 +140,13 @@ JVMFlag::Error ThreadLocalHandshakesConstraintFunc(bool value, bool verbose) {
   }
   return JVMFlag::SUCCESS;
 }
+
+JVMFlag::Error HotswapAgentConstraintFunc(char const* value, bool verbose) {
+  if (value != NULL) {
+    if (strcmp("disabled", value) != 0 && strcmp("fatjar", value) != 0 && strcmp("core", value) != 0 && strcmp("external", value) != 0) {
+      JVMFlag::printError(verbose, "HotswapAgent(%s) must be one of disabled,fatjar,core or external.\n", value);
+      return JVMFlag::VIOLATES_CONSTRAINT;
+    }
+  }
+  return JVMFlag::SUCCESS;
+}
