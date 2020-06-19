@@ -155,9 +155,10 @@ define SetupTextFileProcessingBody
     # Convert the REPLACEMENTS syntax ( A => B ; C => D ; ...) to a sed command
     # line (-e "s/A/B/g" -e "s/C/D/g" ...), basically by replacing '=>' with '/'
     # and ';' with '/g" -e "s/', and adjusting for edge cases.
+    # '&' has special meaning in sed so needs to be escaped.
     $1_REPLACEMENTS_COMMAND_LINE := $(SED) -e 's$$($1_SEP)$$(subst $$(SPACE);$$(SPACE),$$($1_SEP)g' \
         -e 's$$($1_SEP),$$(subst $$(SPACE)=>$$(SPACE),$$($1_SEP),$$(subst $$(SPACE)=>$$(SPACE);$$(SPACE),$$($1_SEP)$$($1_SEP)g' \
-        -e 's$$($1_SEP),$$(strip $$($1_REPLACEMENTS)))))$$($1_SEP)g'
+        -e 's$$($1_SEP),$$(subst &,\&,$$(strip $$($1_REPLACEMENTS))))))$$($1_SEP)g'
   else
     # We don't have any replacements, just pipe the file through cat.
     $1_REPLACEMENTS_COMMAND_LINE := $(CAT)
