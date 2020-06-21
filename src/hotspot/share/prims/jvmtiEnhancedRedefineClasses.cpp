@@ -54,6 +54,7 @@
 #include "utilities/events.hpp"
 #include "oops/constantPool.inline.hpp"
 #include "gc/cms/cmsHeap.hpp"
+#include "gc/g1/g1CollectedHeap.hpp"
 #include "gc/shared/dcevmSharedGC.hpp"
 
 Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
@@ -459,6 +460,10 @@ public:
 void VM_EnhancedRedefineClasses::doit() {
   Thread *thread = Thread::current();
 
+  if (log_is_enabled(Info, redefine, class, timer)) {
+    _timer_vm_op_doit.start();
+  }
+
 #if INCLUDE_CDS
   if (UseSharedSpaces) {
     // Sharing is enabled so we remap the shared readonly space to
@@ -523,8 +528,22 @@ void VM_EnhancedRedefineClasses::doit() {
     }
 
     Universe::heap()->ensure_parsability(false);
-    Universe::heap()->object_iterate(&objectClosure);
+    if (UseG1GC) {
+      if (log_is_enabled(Info, redefine, class, timer)) {
+        _timer_heap_iterate.start();
+      }
+      G1CollectedHeap::heap()->object_par_iterate(&objectClosure);
+      _timer_heap_iterate.stop();
+    } else {
+      if (log_is_enabled(Info, redefine, class, timer)) {
+        _timer_heap_iterate.start();
+      }
+      Universe::heap()->object_iterate(&objectClosure);
+      _timer_heap_iterate.stop();
+    }
+
     Universe::root_oops_do(&oopClosureNoBarrier);
+
   }
   log_trace(redefine, class, obsolete, metadata)("After updating instances");
 
@@ -577,12 +596,19 @@ void VM_EnhancedRedefineClasses::doit() {
 
   if (objectClosure.needs_instance_update()) {
     // Do a full garbage collection to update the instance sizes accordingly
+
+    if (log_is_enabled(Info, redefine, class, timer)) {
+      _timer_heap_full_gc.start();
+    }
+
     Universe::set_redefining_gc_run(true);
     notify_gc_begin(true);
     // TODO: check _metadata_GC_clear_soft_refs with ScavengeRootsInCode
     Universe::heap()->collect_as_vm_thread(GCCause::_heap_inspection);
     notify_gc_end();
     Universe::set_redefining_gc_run(false);
+
+    _timer_heap_full_gc.stop();
   }
 
   // Unmark Klass*s as "redefining"
@@ -630,6 +656,7 @@ void VM_EnhancedRedefineClasses::doit() {
   }
 #endif
 
+  _timer_vm_op_doit.stop();
 }
 
 // Cleanup - runs in JVM thread
@@ -653,16 +680,14 @@ void VM_EnhancedRedefineClasses::doit_epilogue() {
   if (log_is_enabled(Info, redefine, class, timer)) {
     // Used to have separate timers for "doit" and "all", but the timer
     // overhead skewed the measurements.
-    jlong doit_time = _timer_rsc_phase1.milliseconds() +
-                      _timer_rsc_phase2.milliseconds();
-    jlong all_time = _timer_vm_op_prologue.milliseconds() + doit_time;
+    jlong all_time = _timer_vm_op_prologue.milliseconds() + _timer_vm_op_doit.milliseconds();
 
     log_info(redefine, class, timer)
       ("vm_op: all=" JLONG_FORMAT "  prologue=" JLONG_FORMAT "  doit=" JLONG_FORMAT,
-       all_time, _timer_vm_op_prologue.milliseconds(), doit_time);
+       all_time, _timer_vm_op_prologue.milliseconds(), _timer_vm_op_doit.milliseconds());
     log_info(redefine, class, timer)
-      ("redefine_single_class: phase1=" JLONG_FORMAT "  phase2=" JLONG_FORMAT,
-       _timer_rsc_phase1.milliseconds(), _timer_rsc_phase2.milliseconds());
+      ("doit: heap iterate=" JLONG_FORMAT "  fullgc=" JLONG_FORMAT,
+       _timer_heap_iterate.milliseconds(), _timer_heap_full_gc.milliseconds());
   }
 }
 
@@ -1411,7 +1436,7 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
 // arrayKlassOops. See Open Issues in jvmtiRedefineClasses.hpp.
 void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
   if (!k->is_instance_klass()) {
-	return;
+    return;
   }
 
   HandleMark hm(_thread);
@@ -1829,10 +1854,6 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
 
   HandleMark hm(THREAD);   // make sure handles from this call are freed
 
-  if (log_is_enabled(Info, redefine, class, timer)) {
-    _timer_rsc_phase1.start();
-  }
-
   InstanceKlass* new_class = new_class_oop;
   InstanceKlass* the_class = InstanceKlass::cast(new_class_oop->old_version());
   assert(the_class != NULL, "must have old version");
@@ -1887,7 +1908,6 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
                              new_class->external_name(),
                              java_lang_Class::classRedefinedCount(new_class->java_mirror()));
   }
-  _timer_rsc_phase2.stop();
 } // end redefine_single_class()
 
 
