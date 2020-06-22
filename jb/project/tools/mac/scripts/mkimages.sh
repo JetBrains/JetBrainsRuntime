@@ -81,10 +81,10 @@ JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 git checkout -- modules.list src/java.desktop/share/classes/module-info.java
 case "$bundle_type" in
   "jfx")
-    git apply -p0 < jb/project/tools/exclude_jcef_module.patch
+    git apply -p0 < jb/project/tools/exclude_jcef_module.patch || exit $?
     ;;
   "jcef")
-    git apply -p0 < jb/project/tools/exclude_jfx_module.patch
+    git apply -p0 < jb/project/tools/exclude_jfx_module.patch || exit $?
     ;;
 esac
 
