@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -115,7 +116,7 @@ public class ReplToolTesting {
     private Map<String, ClassInfo> classes;
     private Map<String, ImportInfo> imports;
     private boolean isDefaultStartUp = true;
-    private Map<String, String> prefsMap;
+    protected Map<String, String> prefsMap;
     private Map<String, String> envvars;
 
     public interface ReplTest {
@@ -124,6 +125,14 @@ public class ReplToolTesting {
 
     public void setCommandInput(String s) {
         cmdin.setInput(s);
+    }
+
+    public void closeCommandInput() {
+        try {
+            cmdin.close();
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     public final static Pattern idPattern = Pattern.compile("^\\s+(\\d+)");
@@ -260,6 +269,7 @@ public class ReplToolTesting {
     public void setUp() {
         prefsMap = new HashMap<>();
         envvars = new HashMap<>();
+        System.setProperty("jshell.test.allow.incomplete.inputs", "true");
     }
 
     protected void setEnvVar(String name, String value) {
@@ -491,7 +501,11 @@ public class ReplToolTesting {
             if (userinput != null) {
                 setUserInput(userinput);
             }
-            setCommandInput(cmd + "\n");
+            if (cmd.endsWith("\u0003")) {
+                setCommandInput(cmd);
+            } else {
+                setCommandInput(cmd + "\n");
+            }
         } else {
             assertOutput(getCommandOutput().trim(), out==null? out : out.trim(), "command output: " + cmd);
             assertOutput(getCommandErrorOutput(), err, "command error: " + cmd);
@@ -501,7 +515,12 @@ public class ReplToolTesting {
     }
 
     public Consumer<String> assertStartsWith(String prefix) {
-        return (output) -> assertTrue(output.trim().startsWith(prefix), "Output: \'" + output + "' does not start with: " + prefix);
+        return (output) -> {
+                            if (!output.trim().startsWith(prefix)) {
+                                int i = 0;
+        }
+            assertTrue(output.trim().startsWith(prefix), "Output: \'" + output + "' does not start with: " + prefix);
+        };
     }
 
     public void assertOutput(String got, String expected, String display) {
@@ -511,8 +530,9 @@ public class ReplToolTesting {
     }
 
     private String normalizeLineEndings(String text) {
-        return text.replace(System.getProperty("line.separator"), "\n");
+        return ANSI_CODE_PATTERN.matcher(text.replace(System.getProperty("line.separator"), "\n")).replaceAll("");
     }
+        private static final Pattern ANSI_CODE_PATTERN = Pattern.compile("\033\\[[\060-\077]*[\040-\057]*[\100-\176]");
 
     public static abstract class MemberInfo {
         public final String source;
@@ -744,6 +764,8 @@ public class ReplToolTesting {
 
     class WaitingTestingInputStream extends TestingInputStream {
 
+        private boolean closed;
+
         @Override
         synchronized void setInput(String s) {
             super.setInput(s);
@@ -753,7 +775,7 @@ public class ReplToolTesting {
         synchronized void waitForInput() {
             boolean interrupted = false;
             try {
-                while (available() == 0) {
+                while (available() == 0 && !closed) {
                     try {
                         wait();
                     } catch (InterruptedException e) {
@@ -778,6 +800,12 @@ public class ReplToolTesting {
         public int read(byte b[], int off, int len) {
             waitForInput();
             return super.read(b, off, len);
+        }
+
+        @Override
+        public synchronized void close() throws IOException {
+            closed = true;
+            notify();
         }
     }
 

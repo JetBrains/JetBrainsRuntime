@@ -23,7 +23,7 @@
 
 /**
  * @test
- * @bug 8211437 8218662
+ * @bug 8211437 8216974 8218662
  * @run main/othervm -Djdk.httpclient.HttpClient.log=headers,requests Response204
  * @summary
  */
@@ -36,6 +36,7 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.*;
 import java.io.*;
 import java.net.*;
@@ -45,6 +46,9 @@ import static java.net.http.HttpClient.Builder.NO_PROXY;
  * Verify that a 204 response code with no content-length is handled correctly
  */
 public class Response204 {
+
+    // check for 8216974
+    static final AtomicReference<Exception> serverError = new AtomicReference<>();
 
     public static void main (String[] args) throws Exception {
         Logger logger = Logger.getLogger ("com.sun.net.httpserver");
@@ -84,6 +88,10 @@ public class Response204 {
                 System.out.println("OK 2");
             }
 
+            // check for 8216974
+            Exception error = serverError.get();
+            if (error != null) throw error;
+
             // Test 3
             testZeroContentLength(uri.resolve("/zero/xxyy"));
             System.out.println ("OK 3");
@@ -112,17 +120,33 @@ public class Response204 {
 
     static class Handler implements HttpHandler {
         volatile int counter = 0;
+        volatile InetSocketAddress remote;
 
         public void handle(HttpExchange t)
                 throws IOException {
             InputStream is = t.getRequestBody();
             Headers map = t.getRequestHeaders();
             Headers rmap = t.getResponseHeaders();
+            if (counter % 2 == 0) {
+                // store the client's address
+                remote = t.getRemoteAddress();
+                System.out.println("Server received request from: " + remote);
+            }
             while (is.read() != -1) ;
             is.close();
-            if (counter++ == 1) {
+            if ((++counter) % 2 == 0) {
                 // pretend there is a body
                 rmap.set("Content-length", "10");
+                // 8216974: the client should have returned the connection
+                // to the pool and should therefore have the same
+                // remote address.
+                if (!t.getRemoteAddress().equals(remote)) {
+                    String msg = "Unexpected remote address: "
+                            + t.getRemoteAddress()
+                            + " - should have been " + remote;
+                    System.out.println(msg);
+                    serverError.set(new Exception(msg));
+                }
             }
             t.sendResponseHeaders(204, -1);
             t.close();

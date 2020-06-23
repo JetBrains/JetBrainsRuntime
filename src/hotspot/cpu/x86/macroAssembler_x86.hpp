@@ -941,12 +941,17 @@ class MacroAssembler: public Assembler {
         int iter);
 
   void addm(int disp, Register r1, Register r2);
-
+  void gfmul(XMMRegister tmp0, XMMRegister t);
+  void schoolbookAAD(int i, Register subkeyH, XMMRegister data, XMMRegister tmp0,
+                     XMMRegister tmp1, XMMRegister tmp2, XMMRegister tmp3);
+  void generateHtbl_one_block(Register htbl);
+  void generateHtbl_eight_blocks(Register htbl);
  public:
   void sha256_AVX2(XMMRegister msg, XMMRegister state0, XMMRegister state1, XMMRegister msgtmp0,
                    XMMRegister msgtmp1, XMMRegister msgtmp2, XMMRegister msgtmp3, XMMRegister msgtmp4,
                    Register buf, Register state, Register ofs, Register limit, Register rsp,
                    bool multi_block, XMMRegister shuf_mask);
+  void avx_ghash(Register state, Register htbl, Register data, Register blocks);
 #endif
 
 #ifdef _LP64
@@ -964,6 +969,19 @@ class MacroAssembler: public Assembler {
                    XMMRegister msgtmp1, XMMRegister msgtmp2, XMMRegister msgtmp3, XMMRegister msgtmp4,
                    Register buf, Register state, Register ofs, Register limit, Register rsp, bool multi_block,
                    XMMRegister shuf_mask);
+private:
+  void roundEnc(XMMRegister key, int rnum);
+  void lastroundEnc(XMMRegister key, int rnum);
+  void roundDec(XMMRegister key, int rnum);
+  void lastroundDec(XMMRegister key, int rnum);
+  void ev_load_key(XMMRegister xmmdst, Register key, int offset, XMMRegister xmm_shuf_mask);
+
+public:
+  void aesecb_encrypt(Register source_addr, Register dest_addr, Register key, Register len);
+  void aesecb_decrypt(Register source_addr, Register dest_addr, Register key, Register len);
+  void aesctr_encrypt(Register src_addr, Register dest_addr, Register key, Register counter,
+                      Register len_reg, Register used, Register used_addr, Register saved_encCounter_start);
+
 #endif
 
   void fast_sha1(XMMRegister abcd, XMMRegister e0, XMMRegister e1, XMMRegister msg0,
@@ -1203,6 +1221,10 @@ public:
 
   void vpaddw(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len);
   void vpaddw(XMMRegister dst, XMMRegister nds, Address src, int vector_len);
+
+  void vpaddd(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len) { Assembler::vpaddd(dst, nds, src, vector_len); }
+  void vpaddd(XMMRegister dst, XMMRegister nds, Address src, int vector_len) { Assembler::vpaddd(dst, nds, src, vector_len); }
+  void vpaddd(XMMRegister dst, XMMRegister nds, AddressLiteral src, int vector_len, Register rscratch);
 
   void vpand(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len) { Assembler::vpand(dst, nds, src, vector_len); }
   void vpand(XMMRegister dst, XMMRegister nds, Address src, int vector_len) { Assembler::vpand(dst, nds, src, vector_len); }
@@ -1496,6 +1518,15 @@ public:
     // 0x11 - multiply upper 64 bits [64:127]
     Assembler::vpclmulqdq(dst, nds, src, 0x11);
   }
+  void vpclmullqhqdq(XMMRegister dst, XMMRegister nds, XMMRegister src) {
+    // 0x10 - multiply nds[0:63] and src[64:127]
+    Assembler::vpclmulqdq(dst, nds, src, 0x10);
+  }
+  void vpclmulhqlqdq(XMMRegister dst, XMMRegister nds, XMMRegister src) {
+    //0x01 - multiply nds[64:127] and src[0:63]
+    Assembler::vpclmulqdq(dst, nds, src, 0x01);
+  }
+
   void evpclmulldq(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len) {
     // 0x00 - multiply lower 64 bits [0:63]
     Assembler::evpclmulqdq(dst, nds, src, 0x00, vector_len);
