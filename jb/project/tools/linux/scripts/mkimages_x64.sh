@@ -68,8 +68,9 @@ function create_jbr {
 }
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
-
+WITH_DEBUG_LEVEL="--with-debug-level=release"
 WITH_IMPORT_MODULES="--with-import-modules=./modular-sdk"
+RELEASE_NAME=linux-x86_64-normal-server-release
 git checkout -- modules.list src/java.desktop/share/classes/module-info.java
 case "$bundle_type" in
   "jfx")
@@ -80,6 +81,8 @@ case "$bundle_type" in
     ;;
   "dcevm")
     git am jb/project/tools/patches/dcevm/*.patch
+    WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
+    RELEASE_NAME=linux-x86_64-normal-server-fastdebug
     ;;
   "nomod")
     git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch
@@ -90,7 +93,7 @@ esac
 
 sh configure \
   --disable-warnings-as-errors \
-  --with-debug-level=release \
+  $WITH_DEBUG_LEVEL \
   --with-vendor-name="${VENDOR_NAME}" \
   --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
   --with-version-pre= \
@@ -99,15 +102,15 @@ sh configure \
   $WITH_IMPORT_MODULES \
   --enable-cds=yes || exit $?
 
-make images CONF=linux-x86_64-normal-server-release || exit $?
+make images CONF=$RELEASE_NAME || exit $?
 
-JSDK=build/linux-x86_64-normal-server-release/images/jdk
+JSDK=build/$RELEASE_NAME/images/jdk
 JBSDK=$JBRSDK_BASE_NAME-linux-x64-b$build_number
 
 echo Fixing permissions
 chmod -R a+r $JSDK
 
-BASE_DIR=build/linux-x86_64-normal-server-release/images
+BASE_DIR=build/$RELEASE_NAME/images
 JBRSDK_BUNDLE=jbrsdk
 
 rm -rf $BASE_DIR/$JBRSDK_BUNDLE

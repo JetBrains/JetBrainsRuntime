@@ -54,7 +54,9 @@ function create_jbr {
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 WORK_DIR=$(pwd)
 
+WITH_DEBUG_LEVEL="--with-debug-level=release"
 WITH_IMPORT_MODULES="--with-import-modules=${WORK_DIR}/modular-sdk"
+RELEASE_NAME=windows-x86_64-normal-server-release
 git checkout -- modules.list src/java.desktop/share/classes/module-info.java
 case "$bundle_type" in
   "jfx")
@@ -68,6 +70,8 @@ case "$bundle_type" in
   "dcevm")
     echo "Adding dcevm patches"
     git am jb/project/tools/patches/dcevm/*.patch
+    WITH_DEBUG_LEVEL="--with-debug-level=fastdebug --with-external-symbols-in-bundles:public"
+    RELEASE_NAME=windows-x86_64-normal-server-fastdebug
     ;;
   "nomod")
     git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch
@@ -79,7 +83,7 @@ esac
 PATH="/usr/local/bin:/usr/bin:${PATH}"
 ./configure \
   --disable-warnings-as-errors \
-  --disable-debug-symbols \
+  $WITH_DEBUG_LEVEL \
   --with-target-bits=64 \
   --with-vendor-name="${VENDOR_NAME}" \
   --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
@@ -93,16 +97,16 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --enable-cds=yes || exit 1
 
 if [ "$bundle_type" == "jfx_jcef" ]; then
-  make LOG=info clean images CONF=windows-x86_64-normal-server-release test-image || exit 1
+  make LOG=info clean images CONF=$RELEASE_NAME test-image || exit 1
 else
-  make LOG=info clean images CONF=windows-x86_64-normal-server-release || exit 1
+  make LOG=info clean images CONF=$RELEASE_NAME || exit 1
 fi
 
-JSDK=build/windows-x86_64-normal-server-release/images/jdk
+JSDK=build/$RELEASE_NAME/images/jdk
 if [[ "$bundle_type" == *jcef* ]]; then
   JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
 fi
-BASE_DIR=build/windows-x86_64-normal-server-release/images
+BASE_DIR=build/$RELEASE_NAME/images
 JBRSDK_BUNDLE=jbrsdk
 
 rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE} && rsync -a --exclude demo --exclude sample ${JSDK}/ ${JBRSDK_BUNDLE} || exit 1
