@@ -70,7 +70,7 @@ case "$bundle_type" in
   "dcevm")
     echo "Adding dcevm patches"
     git am jb/project/tools/patches/dcevm/*.patch
-    WITH_DEBUG_LEVEL="--with-debug-level=fastdebug --with-external-symbols-in-bundles:public"
+    WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=windows-x86_64-normal-server-fastdebug
     ;;
   "nomod")
