@@ -48,10 +48,17 @@ function pack_jbr {
   #rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 }
 
+RELEASE_NAME=windows-x86_64-normal-server-release
+case "$bundle_type" in
+  "dcevm")
+    RELEASE_NAME=windows-x86_64-normal-server-fastdebug
+    ;;
+esac
+
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 JBR_BASE_NAME=jbr-$JBSDK_VERSION
 
-IMAGES_DIR=build/windows-x86_64-normal-server-release/images
+IMAGES_DIR=build/$RELEASE_NAME/images
 JSDK=$IMAGES_DIR/jdk
 JBSDK=$JBRSDK_BASE_NAME-windows-x64-b$build_number
 BASE_DIR=.
