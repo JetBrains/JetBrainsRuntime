@@ -1373,6 +1373,9 @@ class Compile : public Phase {
   void          set_clone_map(Dict* d);
 
   bool is_compiling_clinit_for(ciKlass* k);
+#ifdef ASSERT
+  bool _type_verify_symmetry;
+#endif
 };
 
 #endif // SHARE_VM_OPTO_COMPILE_HPP
