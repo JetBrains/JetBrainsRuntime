@@ -1,7 +1,7 @@
-From 7efd979183409db33e965cf80adf60c9a970c762 Mon Sep 17 00:00:00 2001
+From b1e61de8898df347f8816db7e7eb52f8cdef24ba Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:09:39 +0100
-Subject: [PATCH 01/48] Apply basic dcevm11 patch
+Subject: [PATCH 01/49] Apply basic dcevm11 patch
 
 ---
  src/hotspot/share/ci/ciObjectFactory.cpp      |   25 +
@@ -2232,7 +2232,7 @@ index 797b022d5e5..eb4b7622820 100644
    if (log_is_enabled(Debug, class, resolve) && k != NULL) {
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 new file mode 100644
-index 00000000000..83c0952de37
+index 00000000000..80c31135487
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -0,0 +1,2255 @@
@@ -4493,7 +4493,7 @@ index 00000000000..83c0952de37
 +}
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 new file mode 100644
-index 00000000000..b712d69a193
+index 00000000000..3f95cf42645
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -0,0 +1,202 @@

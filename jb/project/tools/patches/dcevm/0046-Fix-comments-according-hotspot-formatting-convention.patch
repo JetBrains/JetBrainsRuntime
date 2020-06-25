@@ -1,7 +1,7 @@
-From d3371d7d52bd4dc66efd4f6a946d5045b8bc8b2b Mon Sep 17 00:00:00 2001
+From 4501b4b72be188eb0f054d6635a8db64d8e8001f Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 23 May 2020 10:17:56 +0200
-Subject: [PATCH 46/48] Fix comments according hotspot formatting conventions
+Subject: [PATCH 46/49] Fix comments according hotspot formatting conventions
 
 ---
  .../prims/jvmtiEnhancedRedefineClasses.cpp    | 191 +++++++-----------
@@ -9,7 +9,7 @@ Subject: [PATCH 46/48] Fix comments according hotspot formatting conventions
  2 files changed, 90 insertions(+), 142 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 2321483dcbd..8d00203fd9a 100644
+index 80dc11217c5..012ead1df91 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -67,21 +67,19 @@ int         VM_EnhancedRedefineClasses::_deleted_methods_length  = 0;
@@ -358,7 +358,7 @@ index 2321483dcbd..8d00203fd9a 100644
    ResourceMark mark(THREAD);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 7e2afd49650..d8a11b51fe9 100644
+index 36814d3f097..3551b06ecde 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -35,17 +35,16 @@

@@ -1,7 +1,7 @@
-From 88b6f7a27e35d9ed3b82418b82c1cb1fe14f61e6 Mon Sep 17 00:00:00 2001
+From 7377d8471ed2c6a09b1c695c95ba694217ed5dba Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Tue, 26 Nov 2019 22:13:07 +0100
-Subject: [PATCH 20/48] Disable HA in keytool
+Subject: [PATCH 20/49] Disable HA in keytool
 
 ---
  make/launcher/Launcher-java.base.gmk | 1 +

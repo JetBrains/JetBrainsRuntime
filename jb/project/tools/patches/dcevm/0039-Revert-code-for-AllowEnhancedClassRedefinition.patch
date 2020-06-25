@@ -1,7 +1,7 @@
-From 6ac099d1b07fcc0d3c17ebd5d3335bcb6ceaedc9 Mon Sep 17 00:00:00 2001
+From 67bf217a3cab6476108723a0ab627ea1e982d618 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Tue, 19 May 2020 09:41:36 +0200
-Subject: [PATCH 39/48] Revert code for !AllowEnhancedClassRedefinition
+Subject: [PATCH 39/49] Revert code for !AllowEnhancedClassRedefinition
 
 ---
  .../share/classfile/classLoaderData.cpp       | 23 ++++++++++---------

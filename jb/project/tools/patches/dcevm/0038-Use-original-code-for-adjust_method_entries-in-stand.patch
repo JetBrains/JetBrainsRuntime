@@ -1,7 +1,7 @@
-From 46dc38a58ac8afafab4e04ee47a1ed2b9e65c1e1 Mon Sep 17 00:00:00 2001
+From abd6fa7d68b86083b37287336a37c9ad4dab2dea Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 17 May 2020 18:18:52 +0200
-Subject: [PATCH 38/48] Use original code for adjust_method_entries in standard
+Subject: [PATCH 38/49] Use original code for adjust_method_entries in standard
  redefinition
 
 ---
@@ -11,7 +11,7 @@ Subject: [PATCH 38/48] Use original code for adjust_method_entries in standard
  3 files changed, 47 insertions(+), 2 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 660bf3a2e97..0ca675e8ee6 100644
+index 101fa6b0bc7..c7ea34c2290 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -506,7 +506,7 @@ void VM_EnhancedRedefineClasses::doit() {

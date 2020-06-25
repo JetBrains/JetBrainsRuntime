@@ -1,14 +1,14 @@
-From b99ebb71bce6119cd800d69848f84281f2fd2b16 Mon Sep 17 00:00:00 2001
+From 2f88aab3be68982ab693c2fde3c80c5a04a05dfd Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Sat, 15 Dec 2018 18:23:30 +0100
-Subject: [PATCH 07/48] Fix field method
+Subject: [PATCH 07/49] Fix field method
 
 ---
  .../prims/jvmtiEnhancedRedefineClasses.cpp    | 19 ++++++++++++-------
  1 file changed, 12 insertions(+), 7 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 1c7595787a1..a3b65b273e5 100644
+index 321ff64f858..ca7a0bf67cd 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -264,21 +264,26 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {

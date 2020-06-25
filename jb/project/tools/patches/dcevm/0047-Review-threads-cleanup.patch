@@ -1,14 +1,14 @@
-From 2ad306a4cce06cfccf95a1193daf5b968ec1fa87 Mon Sep 17 00:00:00 2001
+From 70cc7f12332fa8719f8d28eb588e17a8716fd618 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 24 May 2020 12:07:09 +0200
-Subject: [PATCH 47/48] Review threads, cleanup
+Subject: [PATCH 47/49] Review threads, cleanup
 
 ---
  src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 9 ++++-----
  1 file changed, 4 insertions(+), 5 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 8d00203fd9a..1fbba406087 100644
+index 012ead1df91..aba99bb60fa 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -253,7 +253,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {

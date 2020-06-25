@@ -1,7 +1,7 @@
-From 9ddbbcdc73e653af7807ead68705c1c9267c9192 Mon Sep 17 00:00:00 2001
+From dd8ec44c52bd433a38aa7046ec54fe4199fb3b69 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:22:01 +0100
-Subject: [PATCH 03/48] Fix crashes in MetadataOnStackMark::~MetadataOnSta
+Subject: [PATCH 03/49] Fix crashes in MetadataOnStackMark::~MetadataOnSta
 
 MetadataOnStackMark shoukld not remove dcevm stuff. It was added
 accidentaly in dcevm9,
@@ -11,7 +11,7 @@ and never was part of doit() in previous versions.
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 83cf0be090b..61af07d0f86 100644
+index 81c334ddd13..df1dc1cc182 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -470,7 +470,9 @@ void VM_EnhancedRedefineClasses::doit() {

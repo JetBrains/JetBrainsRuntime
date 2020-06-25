@@ -1,7 +1,7 @@
-From 5f31460556d86fa0233e7998112a65483034fd45 Mon Sep 17 00:00:00 2001
+From 586458a8ddbb5b9f7acf554391557a09a44a8600 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Sat, 29 Dec 2018 17:38:27 +0100
-Subject: [PATCH 14/48] Add codecache flush optimization, but just flush all
+Subject: [PATCH 14/49] Add codecache flush optimization, but just flush all
  cache.
 
 Redefined class can define a new method that overrides
@@ -12,7 +12,7 @@ optimized non-virtual calls, etc...
  1 file changed, 12 insertions(+), 6 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index c08b3e82b2e..4ca638548dc 100644
+index c3b8b8c6b7a..39161acd057 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -486,9 +486,9 @@ void VM_EnhancedRedefineClasses::doit() {

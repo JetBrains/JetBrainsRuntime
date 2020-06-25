@@ -1,7 +1,7 @@
-From 603b446449aa715aa3f409fb49ed00169b89fd91 Mon Sep 17 00:00:00 2001
+From cd68781a45d3dec54ec59fd32ad8d87b550e7d27 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Sun, 16 Dec 2018 09:55:31 +0100
-Subject: [PATCH 16/48] Add dcevm distro name
+Subject: [PATCH 16/49] Add dcevm distro name
 
 ---
  make/autoconf/version-numbers | 2 +-

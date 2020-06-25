@@ -1,14 +1,14 @@
-From 833ef503677e066b3639e7418a22587992df1829 Mon Sep 17 00:00:00 2001
+From d1ccaf7873c6a28190e800e14e65c1087e4f6b42 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@mailprofiler.com>
 Date: Fri, 6 Mar 2020 09:28:24 +0100
-Subject: [PATCH 23/48] Fix fieldDescriptor.inline.hpp
+Subject: [PATCH 23/49] Fix fieldDescriptor.inline.hpp
 
 ---
  .../share/prims/jvmtiEnhancedRedefineClasses.cpp       | 10 ++++++----
  1 file changed, 6 insertions(+), 4 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index efb9e806508..a404fd3f016 100644
+index 22c6342f05b..dc302e65c6f 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -49,6 +49,7 @@

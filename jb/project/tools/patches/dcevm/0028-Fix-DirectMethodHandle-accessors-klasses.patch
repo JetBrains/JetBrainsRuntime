@@ -1,7 +1,7 @@
-From 8f13d3b4ba9aecd847b7da306055ba53ee2e29d0 Mon Sep 17 00:00:00 2001
+From 57e902de73d184690ee808f0e14e41d8a8d0dd3e Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 10 Apr 2020 23:30:21 +0200
-Subject: [PATCH 28/48] Fix DirectMethodHandle accessors klasses
+Subject: [PATCH 28/49] Fix DirectMethodHandle accessors klasses
 
 ---
  src/hotspot/share/classfile/javaClasses.cpp | 28 +++++++++++++++------

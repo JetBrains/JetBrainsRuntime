@@ -1,7 +1,7 @@
-From b8a3d4249eb97613f796edc709e414900c9a0828 Mon Sep 17 00:00:00 2001
+From 5e934cf0f70d2a0a57961104bccf5d22436f2383 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 22 May 2020 21:43:22 +0200
-Subject: [PATCH 44/48] Skip GC runs for redefinitions without instance size
+Subject: [PATCH 44/49] Skip GC runs for redefinitions without instance size
  change
 
 ---
@@ -9,7 +9,7 @@ Subject: [PATCH 44/48] Skip GC runs for redefinitions without instance size
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 08fe42d5c28..a785a43d352 100644
+index 212a71a5860..df0d282bf49 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -578,14 +578,14 @@ void VM_EnhancedRedefineClasses::doit() {

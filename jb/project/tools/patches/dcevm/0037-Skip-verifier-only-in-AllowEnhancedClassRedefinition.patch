@@ -1,7 +1,7 @@
-From baf26456579eb0e560471d3bcb150005492f69f4 Mon Sep 17 00:00:00 2001
+From 1309075a08390d5b93ce3d480b2547535b490cdb Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 17 May 2020 12:19:18 +0200
-Subject: [PATCH 37/48] Skip verifier only in AllowEnhancedClassRedefinition
+Subject: [PATCH 37/49] Skip verifier only in AllowEnhancedClassRedefinition
 
 ---
  src/hotspot/share/oops/instanceKlass.cpp | 4 ++--

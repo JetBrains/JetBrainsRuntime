@@ -1,7 +1,7 @@
-From 84777c09ddbbbbd6a90de5b1f17a4101c8f076b8 Mon Sep 17 00:00:00 2001
+From 24f8133857f1537b4d99f3d9483797f1f25e2e8c Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Sat, 29 Dec 2018 17:58:39 +0100
-Subject: [PATCH 12/48] Fix force_forward in dead space
+Subject: [PATCH 12/49] Fix force_forward in dead space
 
 ---
  src/hotspot/share/gc/shared/space.inline.hpp | 1 +

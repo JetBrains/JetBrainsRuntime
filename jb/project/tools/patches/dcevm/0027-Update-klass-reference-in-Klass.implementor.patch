@@ -1,7 +1,7 @@
-From 9a7abdf08bf207f5265a552500446c3178bf5794 Mon Sep 17 00:00:00 2001
+From 7eb341682b32e530e5d3a6eaaf90aeda04edbb43 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 10 Apr 2020 23:28:07 +0200
-Subject: [PATCH 27/48] Update klass reference in Klass.implementor()
+Subject: [PATCH 27/49] Update klass reference in Klass.implementor()
 
 If interface X is removed from class Y then old reference to Y could be
 stored in X.implementor()
@@ -11,7 +11,7 @@ stored in X.implementor()
  2 files changed, 12 insertions(+), 11 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 24fb76b6de4..f6d2d3a40fe 100644
+index 6d75d41857c..f0b6e568656 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1411,6 +1411,18 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
@@ -34,7 +34,7 @@ index 24fb76b6de4..f6d2d3a40fe 100644
      if (other_cp->tag_at(i).is_klass()) {
        Klass* klass = other_cp->resolved_klass_at(i);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 5b3ebc13661..2d114635ee5 100644
+index 35fbbb647a1..a21e9e517cb 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -69,17 +69,6 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

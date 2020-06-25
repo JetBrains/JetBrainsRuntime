@@ -1,7 +1,7 @@
-From 7fb12fc40a76a37ce67b051276a7ef582de1b04a Mon Sep 17 00:00:00 2001
+From a66314d6a220f1620e6cc40f2253f91d3e283821 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Thu, 28 Nov 2019 18:53:11 +0100
-Subject: [PATCH 21/48] Open jdk module to access ClassInfo.CACHE
+Subject: [PATCH 21/49] Open jdk module to access ClassInfo.CACHE
 
 ---
  src/hotspot/share/runtime/arguments.cpp | 2 ++

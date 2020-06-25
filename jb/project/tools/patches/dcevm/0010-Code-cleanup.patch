@@ -1,7 +1,7 @@
-From b9ceda6f7c230750a87e8a686d833ce853d84712 Mon Sep 17 00:00:00 2001
+From 496dae49be8983e5c131ca356fc4f2c0677aed58 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Sat, 29 Dec 2018 13:22:29 +0100
-Subject: [PATCH 10/48] Code cleanup
+Subject: [PATCH 10/49] Code cleanup
 
 ---
  .../prims/jvmtiEnhancedRedefineClasses.cpp    | 125 ++++++------------
@@ -9,7 +9,7 @@ Subject: [PATCH 10/48] Code cleanup
  2 files changed, 40 insertions(+), 88 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 9b8678a53fb..0aa1ac4ff80 100644
+index 3065b1114e4..d17eef46384 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -35,7 +35,7 @@
@@ -240,7 +240,7 @@ index 9b8678a53fb..0aa1ac4ff80 100644
   
   TODO - the class file is potentionally parsed multiple times - introduce a cache?
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index b712d69a193..37e63a1810f 100644
+index 3f95cf42645..98812949a25 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -195,8 +195,5 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

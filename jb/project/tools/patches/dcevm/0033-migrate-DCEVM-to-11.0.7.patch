@@ -1,14 +1,14 @@
-From dab6a53de4c25aae95667c78b8e1f1097ab47130 Mon Sep 17 00:00:00 2001
+From 3dbd8899cb5addd1305127da16432600b5097fb7 Mon Sep 17 00:00:00 2001
 From: Artem Khvastunov <artem.khvastunov@jetbrains.com>
 Date: Sun, 19 Apr 2020 11:36:12 +0200
-Subject: [PATCH 33/48] migrate DCEVM to 11.0.7
+Subject: [PATCH 33/49] migrate DCEVM to 11.0.7
 
 ---
  src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 2d114635ee5..6cabdca9c27 100644
+index a21e9e517cb..ad1da6049f7 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -30,7 +30,7 @@

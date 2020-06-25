@@ -1,7 +1,7 @@
-From def550828411b677ed2d7807e51cc5ffe70331fc Mon Sep 17 00:00:00 2001
+From 4da9677a78c90a6915103398a3da8a818ba3f482 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@mailprofiler.com>
 Date: Mon, 9 Mar 2020 09:54:04 +0100
-Subject: [PATCH 25/48] Refactor ClearCpoolCacheAndUnpatch
+Subject: [PATCH 25/49] Refactor ClearCpoolCacheAndUnpatch
 
 Call it after redefinition of all classes
 ---
@@ -25,7 +25,7 @@ index a040effe83a..c33a7d52ddb 100644
      )
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 1f5a67f8866..24fb76b6de4 100644
+index 9493ba4820a..6d75d41857c 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -491,6 +491,11 @@ void VM_EnhancedRedefineClasses::doit() {

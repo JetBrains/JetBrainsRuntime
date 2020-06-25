@@ -1,7 +1,7 @@
-From 8596cf8b677eadcd18b527dd61c891475758bbaa Mon Sep 17 00:00:00 2001
+From 37f370c2d4beb8d44a55999828ea8abad6421fdb Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Tue, 19 May 2020 10:54:38 +0200
-Subject: [PATCH 42/48] iterate old method version only in dcevm
+Subject: [PATCH 42/49] iterate old method version only in dcevm
 
 ---
  src/hotspot/share/prims/jvmtiImpl.cpp | 6 ++++--

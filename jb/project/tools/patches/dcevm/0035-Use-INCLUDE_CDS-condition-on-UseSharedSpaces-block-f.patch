@@ -1,7 +1,7 @@
-From 805b588bc4bd45e61b81c90e23b71337072e9549 Mon Sep 17 00:00:00 2001
+From 3f2f5c6ed1388d21f1818d2b0ac7381d4aa5f859 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 9 May 2020 10:08:17 +0200
-Subject: [PATCH 35/48] Use INCLUDE_CDS condition on "UseSharedSpaces" block
+Subject: [PATCH 35/49] Use INCLUDE_CDS condition on "UseSharedSpaces" block
  from master
 
 ---
@@ -9,7 +9,7 @@ Subject: [PATCH 35/48] Use INCLUDE_CDS condition on "UseSharedSpaces" block
  1 file changed, 2 insertions(+)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 8d861ef43c9..660bf3a2e97 100644
+index 348757b5210..101fa6b0bc7 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -467,6 +467,7 @@ public:

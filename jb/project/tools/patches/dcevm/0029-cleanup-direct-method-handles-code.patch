@@ -1,7 +1,7 @@
-From cbad9c34bf8920d772c646d041d4fc04fea203cc Mon Sep 17 00:00:00 2001
+From 5b2d60f83017d09b99a6648a7b0a66e7a0b1a371 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 11 Apr 2020 12:07:43 +0200
-Subject: [PATCH 29/48] cleanup direct method handles code
+Subject: [PATCH 29/49] cleanup direct method handles code
 
 ---
  src/hotspot/share/classfile/javaClasses.hpp        | 10 ++++------

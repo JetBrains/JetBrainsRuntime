@@ -1,14 +1,14 @@
-From 70d53ce28f9df75d9e50819d2b6654855da0d533 Mon Sep 17 00:00:00 2001
+From 3a94657bf1a8580d92b575f9ef3c10f498633db5 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 8 May 2020 21:07:50 +0200
-Subject: [PATCH 34/48] Fix 11.0.7 compilation issues
+Subject: [PATCH 34/49] Fix 11.0.7 compilation issues
 
 ---
  src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 6cabdca9c27..ed44f0e27ce 100644
+index ad1da6049f7..cd07100ffae 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -16,6 +16,8 @@
