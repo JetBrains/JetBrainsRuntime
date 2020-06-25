@@ -170,7 +170,7 @@ void drawTex2Tex(MTLContext *mtlc,
 }
 
 static
-id<MTLTexture> replaceTextureRegion(id<MTLTexture> dest, const SurfaceDataRasInfo * srcInfo, const MTLRasterFormatInfo * rfi, int dx1, int dy1, int dx2, int dy2) {
+id<MTLTexture> replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRasInfo * srcInfo, const MTLRasterFormatInfo * rfi, int dx1, int dy1, int dx2, int dy2) {
     const int dw = dx2 - dx1;
     const int dh = dy2 - dy1;
 
@@ -242,7 +242,20 @@ id<MTLTexture> replaceTextureRegion(id<MTLTexture> dest, const SurfaceDataRasInf
     MTLRegion region = MTLRegionMake2D(dx1, dy1, dw, dh);
     if (result != nil)
         dest = result;
-    [dest replaceRegion:region mipmapLevel:0 withBytes:raster bytesPerRow:srcInfo->scanStride];
+
+    @autoreleasepool {
+        id <MTLBlitCommandEncoder> blitEncoder = [mtlc.encoderManager createBlitEncoder];
+
+        J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
+                    dw, dh, dx1, dy1);
+
+        id <MTLBuffer> buff = [[mtlc.device newBufferWithBytes:raster length:srcInfo->scanStride * dh options:MTLResourceStorageModeManaged] autorelease];
+        [blitEncoder copyFromBuffer:buff
+                sourceOffset:0 sourceBytesPerRow:srcInfo->scanStride sourceBytesPerImage:srcInfo->scanStride * dh sourceSize:MTLSizeMake(dw, dh, 1)
+                toTexture:dest destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
+        [blitEncoder endEncoding];
+    }
+
     return result;
 }
 
@@ -271,7 +284,7 @@ MTLBlitSwToTextureViaPooledTexture(
     [texHandle release];
 
     id<MTLTexture> texBuff = texHandle.texture;
-    id<MTLTexture> swizzledTexture = replaceTextureRegion(texBuff, srcInfo, rfi, 0, 0, sw, sh);
+    id<MTLTexture> swizzledTexture = replaceTextureRegion(mtlc, texBuff, srcInfo, rfi, 0, 0, sw, sh);
     if (useBlitEncoder) {
         id <MTLBlitCommandEncoder> blitEncoder = [mtlc.encoderManager createBlitEncoder];
         [blitEncoder copyFromTexture:swizzledTexture != nil ? swizzledTexture : texBuff
@@ -618,7 +631,7 @@ MTLBlitLoops_Blit(JNIEnv *env,
 #ifdef TRACE_BLIT
                     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [replaceTextureRegion]");
 #endif //TRACE_BLIT
-                    replaceTextureRegion(dest, &srcInfo, &rfi, (int) dx1, (int) dy1, (int) dx2, (int) dy2);
+                    replaceTextureRegion(mtlc, dest, &srcInfo, &rfi, (int) dx1, (int) dy1, (int) dx2, (int) dy2);
                 } else {
 #ifdef TRACE_BLIT
                     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via pooled + blit]");
