@@ -1296,10 +1296,16 @@ JNF_CLASS_CACHE(jc_CInputMethod, "sun/lwawt/macosx/CInputMethod");
     fprintf(stderr, "AWTView InputMethod Selector Called : [attributedSubstringFromRange] location=%lu, length=%lu\n", (unsigned long)theRange.location, (unsigned long)theRange.length);
 #endif // IM_DEBUG
 
+    if (!fInputMethodLOCKABLE) {
+        return NULL;
+    }
     static JNF_MEMBER_CACHE(jm_substringFromRange, jc_CInputMethod, "attributedSubstringFromRange", "(II)Ljava/lang/String;");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject theString = JNFCallObjectMethod(env, fInputMethodLOCKABLE, jm_substringFromRange, theRange.location, theRange.length); // AWT_THREADING Safe (AWTRunLoopMode)
 
+    if (!theString) {
+        return NULL;
+    }
     id result = [[[NSAttributedString alloc] initWithString:JNFJavaToNSString(env, theString)] autorelease];
 #ifdef IM_DEBUG
     NSLog(@"attributedSubstringFromRange returning \"%@\"", result);

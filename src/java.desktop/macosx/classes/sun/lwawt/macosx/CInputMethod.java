@@ -603,47 +603,47 @@ public class CInputMethod extends InputMethodAdapter {
     private synchronized String attributedSubstringFromRange(final int locationIn, final int lengthIn) {
         final String[] retString = new String[1];
 
-        try {
-            if (fIMContext != null && fAwtFocussedComponent != null)
-            LWCToolkit.invokeAndWait(new Runnable() {
-                public void run() { synchronized(retString) {
-                    int location = locationIn;
-                    int length = lengthIn;
+        if (fIMContext != null && fAwtFocussedComponent != null) {
+            invokeAndWaitNoThrow(new Runnable() {
+                public void run() {
+                    synchronized (retString) {
+                        int location = locationIn;
+                        int length = lengthIn;
 
-                    if ((location + length) > (fIMContext.getCommittedTextLength() + fCurrentTextLength)) {
-                        length = fIMContext.getCommittedTextLength() - location;
-                    }
-
-                    AttributedCharacterIterator theIterator = null;
-
-                    if (fCurrentText == null) {
-                        theIterator = fIMContext.getCommittedText(location, location + length, null);
-                    } else {
-                        int insertSpot = fIMContext.getInsertPositionOffset();
-
-                        if (location < insertSpot) {
-                            theIterator = fIMContext.getCommittedText(location, location + length, null);
-                        } else if (location >= insertSpot && location < insertSpot + fCurrentTextLength) {
-                            theIterator = fCurrentText.getIterator(null, location - insertSpot, location - insertSpot +length);
-                        } else  {
-                            theIterator = fIMContext.getCommittedText(location - fCurrentTextLength, location - fCurrentTextLength + length, null);
+                        if ((location + length) > (fIMContext.getCommittedTextLength() + fCurrentTextLength)) {
+                            length = fIMContext.getCommittedTextLength() - location;
                         }
-                    }
 
-                    // Get the characters from the iterator
-                    char selectedText[] = new char[theIterator.getEndIndex() - theIterator.getBeginIndex()];
-                    char current = theIterator.first();
-                    int index = 0;
-                    while (current != CharacterIterator.DONE) {
-                        selectedText[index++] = current;
-                        current = theIterator.next();
-                    }
+                        AttributedCharacterIterator theIterator = null;
 
-                    retString[0] = new String(selectedText);
-                }}
+                        if (fCurrentText == null) {
+                            theIterator = fIMContext.getCommittedText(location, location + length, null);
+                        } else {
+                            int insertSpot = fIMContext.getInsertPositionOffset();
+
+                            if (location < insertSpot) {
+                                theIterator = fIMContext.getCommittedText(location, location + length, null);
+                            } else if (location >= insertSpot && location < insertSpot + fCurrentTextLength) {
+                                theIterator = fCurrentText.getIterator(null, location - insertSpot, location - insertSpot + length);
+                            } else {
+                                theIterator = fIMContext.getCommittedText(location - fCurrentTextLength, location - fCurrentTextLength + length, null);
+                            }
+                        }
+
+                        // Get the characters from the iterator
+                        char selectedText[] = new char[theIterator.getEndIndex() - theIterator.getBeginIndex()];
+                        char current = theIterator.first();
+                        int index = 0;
+                        while (current != CharacterIterator.DONE) {
+                            selectedText[index++] = current;
+                            current = theIterator.next();
+                        }
+
+                        retString[0] = new String(selectedText);
+                    }
+                }
             }, fAwtFocussedComponent);
-        } catch (InvocationTargetException ite) { ite.printStackTrace(); }
-
+        }
         synchronized(retString) { return retString[0]; }
     }
 
@@ -656,9 +656,8 @@ public class CInputMethod extends InputMethodAdapter {
     private synchronized int[] selectedRange() {
         final int[] returnValue = new int[2];
 
-        try {
-            if (fIMContext != null && fAwtFocussedComponent != null)
-            LWCToolkit.invokeAndWait(new Runnable() {
+        if (fIMContext != null && fAwtFocussedComponent != null) {
+            invokeAndWaitNoThrow(new Runnable() {
                 public void run() { synchronized(returnValue) {
                     AttributedCharacterIterator theIterator = fIMContext.getSelectedText(null);
                     if (theIterator == null) {
@@ -691,7 +690,7 @@ public class CInputMethod extends InputMethodAdapter {
 
                 }}
             }, fAwtFocussedComponent);
-        } catch (InvocationTargetException ite) { ite.printStackTrace(); }
+        }
 
         synchronized(returnValue) { return returnValue; }
     }
@@ -707,15 +706,13 @@ public class CInputMethod extends InputMethodAdapter {
 
         final int[] returnValue = new int[2];
 
-        try {
-            LWCToolkit.invokeAndWait(new Runnable() {
-                public void run() { synchronized(returnValue) {
-                    // The insert position is always after the composed text, so the range start is the
-                    // insert spot less the length of the composed text.
-                    returnValue[0] = fIMContext.getInsertPositionOffset();
-                }}
-            }, fAwtFocussedComponent);
-        } catch (InvocationTargetException ite) { ite.printStackTrace(); }
+        invokeAndWaitNoThrow(new Runnable() {
+            public void run() { synchronized(returnValue) {
+                // The insert position is always after the composed text, so the range start is the
+                // insert spot less the length of the composed text.
+                returnValue[0] = fIMContext.getInsertPositionOffset();
+            }}
+        }, fAwtFocussedComponent);
 
         returnValue[1] = fCurrentTextLength;
         synchronized(returnValue) { return returnValue; }
@@ -882,7 +879,7 @@ public class CInputMethod extends InputMethodAdapter {
 
             // 1) Do not run secondary msg loop in this case.
             // 2) Delegate runnable back to FX when applicable.
-            LWCToolkit.invokeAndWait(() -> {
+            invokeAndWaitNoThrow(() -> {
                 runOnAppKit.set(instanceofJFXPanel(getClientComponent(inputContext)));
                 if (!runOnAppKit.get()) {
                     runnable.run();
@@ -892,6 +889,14 @@ public class CInputMethod extends InputMethodAdapter {
             if (runOnAppKit.get()) {
                 runnable.run();
             }
+        }
+    }
+
+    static void invokeAndWaitNoThrow(Runnable runnable, Component component) {
+        try {
+            LWCToolkit.invokeAndWait(runnable, component, false);
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
     }
 }
