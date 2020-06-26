@@ -73,7 +73,21 @@ import sun.lwawt.LWWindowPeer.PeerType;
 import sun.lwawt.PlatformWindow;
 import sun.util.logging.PlatformLogger;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+
+import sun.security.action.GetPropertyAction;
+
 public class CPlatformWindow extends CFRetainedResource implements PlatformWindow {
+
+    static final boolean synergyWorkaroundEnabled;
+    static {
+        synergyWorkaroundEnabled = Boolean.parseBoolean(
+                AccessController.doPrivileged(
+                        new GetPropertyAction("com.jetbrains.synergyWorkaroundEnabled", "false")
+                ));
+    }
+
     private native long nativeCreateNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h);
     private static native void nativeSetNSWindowStyleBits(long nsWindowPtr, int mask, int data);
     private static native void nativeSetNSWindowMenuBar(long nsWindowPtr, long menuBarPtr);
@@ -889,8 +903,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     @Override
     public boolean rejectFocusRequest(FocusEvent.Cause cause) {
         // Cross-app activation requests are not allowed.
-        if (cause != FocusEvent.Cause.MOUSE_EVENT &&
-                !((LWCToolkit)Toolkit.getDefaultToolkit()).isApplicationActive())
+        if (!synergyWorkaroundEnabled &&
+                (cause != FocusEvent.Cause.MOUSE_EVENT &&
+                        !((LWCToolkit)Toolkit.getDefaultToolkit()).isApplicationActive()))
         {
             focusLogger.fine("the app is inactive, so the request is rejected");
             return true;
