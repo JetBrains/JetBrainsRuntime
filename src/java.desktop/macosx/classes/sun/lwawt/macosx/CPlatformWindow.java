@@ -407,7 +407,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         // defaults style bits
         int styleBits = DECORATED | HAS_SHADOW | CLOSEABLE | MINIMIZABLE | ZOOMABLE | RESIZABLE;
 
-        styleBits |= getFocusableStyleBits();
+        if (isNativelyFocusableWindow()) {
+            styleBits = SET(styleBits, SHOULD_BECOME_KEY, true);
+            styleBits = SET(styleBits, SHOULD_BECOME_MAIN, true);
+        }
 
         final boolean isFrame = (target instanceof Frame);
         final boolean isDialog = (target instanceof Dialog);
@@ -442,6 +445,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         // If the target is a dialog, popup or tooltip we want it to ignore the brushed metal look.
         if (isPopup) {
             styleBits = SET(styleBits, TEXTURED, false);
+            // Popups in applets don't activate applet's process
+            styleBits = SET(styleBits, NONACTIVATING, true);
             styleBits = SET(styleBits, IS_POPUP, true);
         }
 
@@ -544,13 +549,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return styleBits;
     }
 
-    private void setStyleBits(final int mask, final boolean value) {
-        setStyleBits(mask, value ? mask : 0);
-    }
-
     // this is the counter-point to -[CWindow _nativeSetStyleBit:]
-    private void setStyleBits(final int mask, final int value) {
-        execute(ptr -> nativeSetNSWindowStyleBits(ptr, mask, value));
+    private void setStyleBits(final int mask, final boolean value) {
+        execute(ptr -> nativeSetNSWindowStyleBits(ptr, mask, value ? mask : 0));
     }
 
     private native void _toggleFullScreenMode(final long model);
@@ -935,7 +936,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     @Override
     public void updateFocusableWindowState() {
-        setStyleBits(SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN, getFocusableStyleBits()); // set both bits at once
+        final boolean isFocusable = isNativelyFocusableWindow();
+        setStyleBits(SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN, isFocusable); // set both bits at once
     }
 
     @Override
@@ -1207,23 +1209,16 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         }
     }
 
-    // returns a combination of SHOULD_BECOME_KEY/SHOULD_BECOME_MAIN relevant for the current window
-    private int getFocusableStyleBits() {
-        if (target == null || !target.getFocusableWindowState()) {
-            return 0;
+    /*
+     * Our focus model is synthetic and only non-simple window
+     * may become natively focusable window.
+     */
+    private boolean isNativelyFocusableWindow() {
+        if (peer == null) {
+            return false;
         }
 
-        boolean isDecoratedWindow = true;
-        Window window = target;
-        do {
-            if (window instanceof Frame || window instanceof Dialog) {
-                return isDecoratedWindow ? SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN : SHOULD_BECOME_KEY;
-            }
-            window = window.getOwner();
-            isDecoratedWindow = false;
-        } while (window != null);
-
-        return 0;
+        return !peer.isSimpleWindow() && target.getFocusableWindowState();
     }
 
     private boolean isBlocked() {
@@ -1237,11 +1232,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
      * circumstances.
      */
     private void updateFocusabilityForAutoRequestFocus(boolean isFocusable) {
-        if (target.isAutoRequestFocus()) return;
-        int focusableStyleBits = getFocusableStyleBits();
-        if (focusableStyleBits == 0) return;
-        setStyleBits(SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN,
-                isFocusable ? focusableStyleBits : 0); // set both bits at once
+        if (target.isAutoRequestFocus() || !isNativelyFocusableWindow()) return;
+        setStyleBits(SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN, isFocusable); // set both bits at once
     }
 
     private boolean checkBlockingAndOrder() {

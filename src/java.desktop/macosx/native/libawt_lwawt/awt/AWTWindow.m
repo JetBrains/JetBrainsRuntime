@@ -734,17 +734,6 @@ AWT_ASSERT_APPKIT_THREAD;
         JNFCallVoidMethod(env, platformWindow, jm_windowDidBecomeMain);
         (*env)->DeleteLocalRef(env, platformWindow);
     }
-
-    [self orderChildWindows:YES];
-}
-
-- (void) windowDidResignMain: (NSNotification *) notification {
-AWT_ASSERT_APPKIT_THREAD;
-#ifdef DEBUG
-    NSLog(@"resigned main: %d %@ %@", [self.nsWindow isKeyWindow], [self.nsWindow title], [self menuBarForWindow]);
-#endif
-
-    [self orderChildWindows:NO];
 }
 
 - (void) windowDidBecomeKey: (NSNotification *) notification {
@@ -756,26 +745,13 @@ AWT_ASSERT_APPKIT_THREAD;
     AWTWindow *opposite = [AWTWindow lastKeyWindow];
 
     if (![self.nsWindow isMainWindow]) {
-        [self makeRelevantAncestorMain];
+        [self activateWindowMenuBar];
     }
 
     [AWTWindow setLastKeyWindow:nil];
 
     [self _deliverWindowFocusEvent:YES oppositeWindow: opposite];
-}
-
-- (void) makeRelevantAncestorMain {
-    NSWindow *nativeWindow;
-    AWTWindow *awtWindow = self;
-
-    do {
-        nativeWindow = awtWindow.nsWindow;
-        if ([nativeWindow canBecomeMainWindow]) {
-            [nativeWindow makeMainWindow];
-            break;
-        }
-        awtWindow = awtWindow.ownerWindow;
-    } while (awtWindow);
+    [self orderChildWindows:YES];
 }
 
 - (void) activateWindowMenuBar {
@@ -819,7 +795,14 @@ AWT_ASSERT_APPKIT_THREAD;
 #ifdef DEBUG
     NSLog(@"resigned key: %d %@ %@", [self.nsWindow isMainWindow], [self.nsWindow title], [self menuBarForWindow]);
 #endif
+        [self deactivateWindow];
+}
 
+- (void) deactivateWindow {
+AWT_ASSERT_APPKIT_THREAD;
+#ifdef DEBUG
+    NSLog(@"deactivating window: %@", [self.nsWindow title]);
+#endif
     [self.javaMenuBar deactivate];
 
     // the new key window
@@ -829,6 +812,7 @@ AWT_ASSERT_APPKIT_THREAD;
     [AWTWindow setLastKeyWindow: self];
 
     [self _deliverWindowFocusEvent:NO oppositeWindow: opposite];
+    [self orderChildWindows:NO];
 }
 
 - (BOOL)windowShouldClose:(id)sender {
