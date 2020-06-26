@@ -49,11 +49,6 @@ function pack_jbr {
 }
 
 RELEASE_NAME=windows-x86_64-normal-server-release
-case "$bundle_type" in
-  "dcevm")
-    RELEASE_NAME=windows-x86_64-normal-server-fastdebug
-    ;;
-esac
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 JBR_BASE_NAME=jbr-$JBSDK_VERSION

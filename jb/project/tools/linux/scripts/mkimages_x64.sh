@@ -81,8 +81,6 @@ case "$bundle_type" in
     ;;
   "dcevm")
     git am jb/project/tools/patches/dcevm/*.patch
-    WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
-    RELEASE_NAME=linux-x86_64-normal-server-fastdebug
     ;;
   "nomod")
     git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch
