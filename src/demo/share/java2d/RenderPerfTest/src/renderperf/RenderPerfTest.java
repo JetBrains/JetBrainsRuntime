@@ -47,15 +47,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class RenderPerfTest {
     private static HashSet<String> ignoredTests = new HashSet<>();
 
-    static {
-            ignoredTests.add("testWhiteTextBubblesNoAA");
-            ignoredTests.add("testWhiteTextBubblesLCD");
-            ignoredTests.add("testWhiteTextBubblesGray");
-            ignoredTests.add("testLinGradOvalRotBubblesAA");
-            ignoredTests.add("testWiredBoxBubblesAA");
-            ignoredTests.add("testLinesAA");
-    }
-
     private final static int N = 1000;
     private final static float WIDTH = 800;
     private final static float HEIGHT = 800;
