@@ -233,7 +233,6 @@ AWT_NS_WINDOW_IMPLEMENTATION
     if (IS(styleBits, UTILITY))       type |= NSUtilityWindowMask;
     if (IS(styleBits, HUD))           type |= NSHUDWindowMask;
     if (IS(styleBits, SHEET))         type |= NSDocModalWindowMask;
-    if (IS(styleBits, NONACTIVATING)) type |= NSNonactivatingPanelMask;
 
     return type;
 }
@@ -312,7 +311,6 @@ AWT_ASSERT_APPKIT_THREAD;
     if (self == nil) return nil; // no hope
 
     if (IS(bits, UTILITY) ||
-        IS(bits, NONACTIVATING) ||
         IS(bits, HUD) ||
         IS(bits, HIDES_ON_DEACTIVATE))
     {

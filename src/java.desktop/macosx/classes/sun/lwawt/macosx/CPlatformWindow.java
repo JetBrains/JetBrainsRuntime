@@ -168,7 +168,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     static final int DARK = 1 << 28;
     static final int LIGHT = 1 << 29;
     static final int TRANSPARENT_TITLEBAR = 1 << 30;
-    static final int NONACTIVATING = 1 << 24;
     static final int IS_DIALOG = 1 << 25;
     static final int IS_MODAL = 1 << 26;
     static final int IS_POPUP = 1 << 27;
@@ -186,6 +185,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     static final int FULLSCREENABLE = 1 << 23;
 
     static final int _METHOD_PROP_BITMASK = RESIZABLE | HAS_SHADOW | ZOOMABLE | ALWAYS_ON_TOP | HIDES_ON_DEACTIVATE | DRAGGABLE_BACKGROUND | DOCUMENT_MODIFIED | FULLSCREENABLE;
+
+    static final int POPUP = 1 << 14;
 
     // corresponds to callback-based properties
     static final int SHOULD_BECOME_KEY = 1 << 12;
@@ -407,6 +408,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         // defaults style bits
         int styleBits = DECORATED | HAS_SHADOW | CLOSEABLE | MINIMIZABLE | ZOOMABLE | RESIZABLE;
 
+        if (target.getName() == "###overrideRedirect###") {
+            styleBits = SET(styleBits, POPUP, true);
+        }
+
         if (isNativelyFocusableWindow()) {
             styleBits = SET(styleBits, SHOULD_BECOME_KEY, true);
             styleBits = SET(styleBits, SHOULD_BECOME_MAIN, true);
@@ -414,7 +419,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
         final boolean isFrame = (target instanceof Frame);
         final boolean isDialog = (target instanceof Dialog);
-        final boolean isPopup = (target.getType() == Window.Type.POPUP);
         if (isDialog) {
             styleBits = SET(styleBits, MINIMIZABLE, false);
         }
@@ -443,11 +447,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         }
 
         // If the target is a dialog, popup or tooltip we want it to ignore the brushed metal look.
-        if (isPopup) {
-            styleBits = SET(styleBits, TEXTURED, false);
-            // Popups in applets don't activate applet's process
-            styleBits = SET(styleBits, NONACTIVATING, true);
-            styleBits = SET(styleBits, IS_POPUP, true);
+        if (!isDialog && IS(styleBits, POPUP)) {
+            styleBits = SET(styleBits, TEXTURED, true);
         }
 
         if (Window.Type.UTILITY.equals(target.getType())) {
@@ -695,23 +696,14 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         if (blocker == null || !visible) {
             // If it ain't blocked, or is being hidden, go regular way
             if (visible) {
-                contentView.execute(viewPtr -> {
-                    execute(ptr -> CWrapper.NSWindow.makeFirstResponder(ptr,
-                            viewPtr));
-                });
-
                 boolean isPopup = (target.getType() == Window.Type.POPUP);
                 execute(ptr -> {
-                    if (isPopup) {
-                        // Popups in applets don't activate applet's process
-                        CWrapper.NSWindow.orderFrontRegardless(ptr);
-                    } else {
-                        CWrapper.NSWindow.orderFront(ptr);
-                    }
 
                     boolean isKeyWindow = CWrapper.NSWindow.isKeyWindow(ptr);
                     if (!isKeyWindow) {
-                        CWrapper.NSWindow.makeKeyWindow(ptr);
+                        CWrapper.NSWindow.makeKeyAndOrderFront(ptr);
+                    } else {
+                        CWrapper.NSWindow.orderFront(ptr);
                     }
 
                     if (owner != null
@@ -1139,13 +1131,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     /*************************************************************
      * Callbacks from the AWTWindow and AWTView objc classes.
      *************************************************************/
-    private void deliverWindowFocusEvent(boolean gained, CPlatformWindow opposite){
-        // Fix for 7150349: ingore "gained" notifications when the app is inactive.
-        if (gained && !((LWCToolkit)Toolkit.getDefaultToolkit()).isApplicationActive()) {
-            focusLogger.fine("the app is inactive, so the notification is ignored");
-            return;
-        }
 
+    private void deliverWindowFocusEvent(boolean gained, CPlatformWindow opposite){
         LWWindowPeer oppositePeer = (opposite == null)? null : opposite.getPeer();
         responder.handleWindowFocusEvent(gained, oppositePeer);
     }
