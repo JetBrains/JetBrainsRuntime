@@ -131,27 +131,31 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      */
     @SuppressWarnings("unused")
     void _displayReconfiguration(final int displayId, final boolean removed) {
-        synchronized (this) {
-            // We don't need to switch to AppKit, we're already there
-            mainDisplayID = getMainDisplayID();
-            if (removed && devices.containsKey(displayId)) {
-                final CGraphicsDevice gd = devices.remove(displayId);
-                oldDevices.add(new WeakReference<>(gd));
+        try {
+            synchronized (this) {
+                // We don't need to switch to AppKit, we're already there
+                mainDisplayID = getMainDisplayID();
+                if (removed && devices.containsKey(displayId)) {
+                    final CGraphicsDevice gd = devices.remove(displayId);
+                    oldDevices.add(new WeakReference<>(gd));
+                }
             }
-        }
-        initDevices(mainDisplayID);
+            initDevices(mainDisplayID);
 
-        // Need to notify old devices, in case the user hold the reference to it
-        for (ListIterator<WeakReference<CGraphicsDevice>> it =
-             oldDevices.listIterator(); it.hasNext(); ) {
-            CGraphicsDevice gd = it.next().get();
-            if (gd != null) {
-                gd.invalidate(mainDisplayID);
-                gd.displayChanged();
-            } else {
-                // no more references to this device, remove it
-                it.remove();
+            // Need to notify old devices, in case the user hold the reference to it
+            for (ListIterator<WeakReference<CGraphicsDevice>> it =
+                 oldDevices.listIterator(); it.hasNext(); ) {
+                CGraphicsDevice gd = it.next().get();
+                if (gd != null) {
+                    gd.invalidate(mainDisplayID);
+                    gd.displayChanged();
+                } else {
+                    // no more references to this device, remove it
+                    it.remove();
+                }
             }
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
     }
 
