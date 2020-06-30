@@ -1027,7 +1027,13 @@ public class Window extends Container implements Accessible {
             } else {
                 // fix for 6532736: after this window is shown, its blocker
                 // should be raised to front
-                modalBlocker.toFront_NoClientCode();
+                boolean storedValue = modalBlocker.isAutoRequestFocus();
+                modalBlocker.setAutoRequestFocus(false);
+                try {
+                    modalBlocker.toFront_NoClientCode();
+                } finally {
+                    modalBlocker.setAutoRequestFocus(storedValue);
+                }
             }
             if (this instanceof Frame || this instanceof Dialog) {
                 updateChildFocusableWindowState(this);
