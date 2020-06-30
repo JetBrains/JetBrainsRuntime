@@ -1151,16 +1151,21 @@ public class LWWindowPeer
 
     @Override
     public final void displayChanged() {
-        if (updateGraphicsDevice()) {
-            updateMinimumSize();
-            if (!isMaximizedBoundsSet()) {
-                setPlatformMaximizedBounds(getDefaultMaximizedBounds());
+        try {
+            if (updateGraphicsDevice()) {
+                updateMinimumSize();
+                if (!isMaximizedBoundsSet()) {
+                    setPlatformMaximizedBounds(getDefaultMaximizedBounds());
+                }
             }
+            // Replace surface unconditionally, because internal state of the
+            // GraphicsDevice could be changed.
+            replaceSurfaceData();
+            repaintPeer();
+        } catch (Throwable t) {
+            System.err.println(t + " on "  + this);
+            t.printStackTrace();
         }
-        // Replace surface unconditionally, because internal state of the
-        // GraphicsDevice could be changed.
-        replaceSurfaceData();
-        repaintPeer();
     }
 
     @Override
