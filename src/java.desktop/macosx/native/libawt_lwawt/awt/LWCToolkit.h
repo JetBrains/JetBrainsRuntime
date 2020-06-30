@@ -39,6 +39,8 @@ extern int gNumberOfButtons;
 // InputEvent mask array
 extern jint* gButtonDownMasks;
 
+extern int useFontSmoothing;
+
 @interface AWTToolkit : NSObject { }
 + (BOOL) inDoDragDropLoop;
 + (void) setInDoDragDropLoop:(BOOL)val;
