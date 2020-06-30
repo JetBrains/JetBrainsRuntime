@@ -36,7 +36,7 @@ function create_image_bundle {
   __modules_path=$3
   __modules=$4
 
-  [ "$bundle_type" == "fd" ] && fastdebug_infix="fastdebug-"
+  [ "$bundle_type" == "fd" ] && [ "$__bundle_name" == "$JBRSDK_BUNDLE" ] && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-linux-x64-${fastdebug_infix}b${build_number}
 
   echo Running jlink....
