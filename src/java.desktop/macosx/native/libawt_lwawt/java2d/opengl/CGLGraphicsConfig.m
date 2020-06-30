@@ -338,6 +338,7 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_getCGLConfigInfo
             CFSTR("CGFontRenderingFontSmoothingDisabled"),
             kCFPreferencesCurrentApplication, &status);
     lcdSubPixelPosSupported = YES;
+    useFontSmoothing = NO;
     if (status) {
         if (fontSmoothingDisabled) {
             J2dRlsTraceLn(J2D_TRACE_INFO,
@@ -356,6 +357,7 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_getCGLConfigInfo
             smoothFonts = YES;
         }
         lcdSubPixelPosSupported = !smoothFonts;
+        useFontSmoothing = smoothFonts;
         if (!smoothFonts) {
             J2dRlsTraceLn(J2D_TRACE_INFO,
                     "LCD_SHADER: disabled on macOS 10.14+ by default");

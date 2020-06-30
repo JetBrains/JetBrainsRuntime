@@ -53,6 +53,7 @@
 int gNumberOfButtons;
 jint* gButtonDownMasks;
 int lcdSubPixelPosSupported;
+int useFontSmoothing;
 
 // Indicates that the app has been started with -XstartOnFirstThread
 // (directly or via WebStart settings), and AWT should not run its
