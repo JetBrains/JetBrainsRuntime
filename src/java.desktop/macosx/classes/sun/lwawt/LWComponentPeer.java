@@ -955,18 +955,13 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
                 // however that is the shared code and this particular problem's reproducibility has
                 // platform specifics. So, it was decided to narrow down the fix to lwawt (OSX) in
                 // current release. TODO: consider fixing it in the shared code.
-                if (!focusedWindowChangeAllowed) {
-                    LWWindowPeer decoratedPeer = parentPeer.isSimpleWindow() ?
-                        LWWindowPeer.getOwnerFrameDialog(parentPeer) : parentPeer;
-
-                    if (decoratedPeer == null || !decoratedPeer.getPlatformWindow().isActive()) {
-                        if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
-                            focusLog.fine("request rejected, focusedWindowChangeAllowed==false, " +
-                                          "decoratedPeer is inactive: " + decoratedPeer);
-                        }
-                        LWKeyboardFocusManagerPeer.removeLastFocusRequest(getTarget());
-                        return false;
+                if (!focusedWindowChangeAllowed && !parentPeer.getPlatformWindow().isActive()) {
+                    if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
+                        focusLog.fine("request rejected, focusedWindowChangeAllowed==false, " +
+                                "parentPeer is inactive: " + parentPeer);
                     }
+                    LWKeyboardFocusManagerPeer.removeLastFocusRequest(getTarget());
+                    return false;
                 }
 
                 boolean res = parentPeer.requestWindowFocus(cause);
