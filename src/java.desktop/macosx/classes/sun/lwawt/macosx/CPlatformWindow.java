@@ -99,6 +99,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private static native void nativeEnterFullScreenMode(long nsWindowPtr);
     private static native void nativeExitFullScreenMode(long nsWindowPtr);
     static native CPlatformWindow nativeGetTopmostPlatformWindowUnderMouse();
+    private static native void nativeRaiseLevel(long nsWindowPtr, boolean popup, boolean onlyIfParentIsActive);
 
     // Logger to report issues happened during execution but that do not affect functionality
     private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.CPlatformWindow");
@@ -418,10 +419,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         // defaults style bits
         int styleBits = DECORATED | HAS_SHADOW | CLOSEABLE | ZOOMABLE | RESIZABLE | TITLE_VISIBLE;
 
-        if (isNativelyFocusableWindow()) {
-            styleBits = SET(styleBits, SHOULD_BECOME_KEY, true);
-            styleBits = SET(styleBits, SHOULD_BECOME_MAIN, true);
-        }
+        styleBits |= getFocusableStyleBits();
 
         final boolean isFrame = (target instanceof Frame);
         final boolean isDialog = (target instanceof Dialog);
@@ -554,9 +552,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return styleBits;
     }
 
-    // this is the counter-point to -[CWindow _nativeSetStyleBit:]
     private void setStyleBits(final int mask, final boolean value) {
-        execute(ptr -> nativeSetNSWindowStyleBits(ptr, mask, value ? mask : 0));
+        setStyleBits(mask, value ? mask : 0);
+    }
+
+    // this is the counter-point to -[CWindow _nativeSetStyleBit:]
+    private void setStyleBits(final int mask, final int value) {
+        execute(ptr -> nativeSetNSWindowStyleBits(ptr, mask, value));
     }
 
     private native void _toggleFullScreenMode(final long model);
@@ -931,8 +933,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     @Override
     public void updateFocusableWindowState() {
-        final boolean isFocusable = isNativelyFocusableWindow();
-        setStyleBits(SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN, isFocusable); // set both bits at once
+        setStyleBits(SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN, getFocusableStyleBits()); // set both bits at once
     }
 
     @Override
@@ -1079,7 +1080,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         if (!blocked && (target == currFocus)) {
             requestWindowFocus();
         }
-        checkBlockingAndOrder();
     }
 
     public final void invalidateShadow() {
@@ -1228,16 +1228,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         }
     }
 
-    /*
-     * Our focus model is synthetic and only non-simple window
-     * may become natively focusable window.
-     */
-    private boolean isNativelyFocusableWindow() {
-        if (peer == null) {
-            return false;
-        }
-
-        return !peer.isSimpleWindow() && target.getFocusableWindowState();
+    // returns a combination of SHOULD_BECOME_KEY/SHOULD_BECOME_MAIN relevant for the current window
+    private int getFocusableStyleBits() {
+        return (peer == null || target == null || !target.isFocusableWindow())
+                ? 0
+                : peer.isSimpleWindow()
+                    ? SHOULD_BECOME_KEY
+                    : SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN;
     }
 
     /*
@@ -1246,8 +1243,11 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
      * circumstances.
      */
     private void updateFocusabilityForAutoRequestFocus(boolean isFocusable) {
-        if (target.isAutoRequestFocus() || !isNativelyFocusableWindow()) return;
-        setStyleBits(SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN, isFocusable); // set both bits at once
+        if (target.isAutoRequestFocus()) return;
+        int focusableStyleBits = getFocusableStyleBits();
+        if (focusableStyleBits == 0) return;
+        setStyleBits(SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN,
+                isFocusable ? focusableStyleBits : 0); // set both bits at once
     }
 
     private boolean checkBlockingAndOrder() {
@@ -1367,10 +1367,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     }
 
     protected void applyWindowLevel(Window target) {
-        if (target.isAlwaysOnTop() && target.getType() != Window.Type.POPUP) {
-            execute(ptr->CWrapper.NSWindow.setLevel(ptr, CWrapper.NSWindow.NSFloatingWindowLevel));
-        } else if (target.getType() == Window.Type.POPUP) {
-            execute(ptr->CWrapper.NSWindow.setLevel(ptr, CWrapper.NSWindow.NSPopUpMenuWindowLevel));
+        boolean popup = target.getType() == Window.Type.POPUP;
+        boolean alwaysOnTop = target.isAlwaysOnTop();
+        if (popup || alwaysOnTop || owner != null) {
+            execute(ptr -> nativeRaiseLevel(ptr, popup, !popup && !alwaysOnTop));
         }
     }
 
