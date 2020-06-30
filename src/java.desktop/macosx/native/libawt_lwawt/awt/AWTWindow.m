@@ -280,7 +280,6 @@ AWT_NS_WINDOW_IMPLEMENTATION
     if (IS(styleBits, UTILITY))       type |= NSUtilityWindowMask;
     if (IS(styleBits, HUD))           type |= NSHUDWindowMask;
     if (IS(styleBits, SHEET))         type |= NSWindowStyleMaskDocModalWindow;
-    if (IS(styleBits, NONACTIVATING)) type |= NSNonactivatingPanelMask;
 
     return type;
 }
@@ -366,7 +365,6 @@ AWT_ASSERT_APPKIT_THREAD;
     if (self == nil) return nil; // no hope
 
     if (IS(bits, UTILITY) ||
-        IS(bits, NONACTIVATING) ||
         IS(bits, HUD) ||
         IS(bits, HIDES_ON_DEACTIVATE) ||
         IS(bits, SHEET))
@@ -773,9 +771,7 @@ AWT_ASSERT_APPKIT_THREAD;
     NSLog(@"became main: %d %@ %@", [self.nsWindow isKeyWindow], [self.nsWindow title], [self menuBarForWindow]);
 #endif
 
-    if (![self.nsWindow isKeyWindow]) {
-        [self activateWindowMenuBar];
-    }
+    [self activateWindowMenuBar];
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
@@ -786,6 +782,8 @@ AWT_ASSERT_APPKIT_THREAD;
         CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, platformWindow);
     }
+
+    [self orderChildWindows:YES];
 }
 
 - (void) windowDidBecomeKey: (NSNotification *) notification {
@@ -797,13 +795,26 @@ AWT_ASSERT_APPKIT_THREAD;
     AWTWindow *opposite = [AWTWindow lastKeyWindow];
 
     if (![self.nsWindow isMainWindow]) {
-        [self activateWindowMenuBar];
+        [self makeRelevantAncestorMain];
     }
 
     [AWTWindow setLastKeyWindow:nil];
 
     [self _deliverWindowFocusEvent:YES oppositeWindow: opposite];
-    [self orderChildWindows:YES];
+}
+
+- (void) makeRelevantAncestorMain {
+    NSWindow *nativeWindow;
+    AWTWindow *awtWindow = self;
+
+    do {
+        nativeWindow = awtWindow.nsWindow;
+        if ([nativeWindow canBecomeMainWindow]) {
+            [nativeWindow makeMainWindow];
+            break;
+        }
+        awtWindow = awtWindow.ownerWindow;
+    } while (awtWindow);
 }
 
 - (void) activateWindowMenuBar {
@@ -861,6 +872,9 @@ AWT_ASSERT_APPKIT_THREAD;
     if (![self.nsWindow isKeyWindow]) {
         [self deactivateWindow];
     }
+
+    [self.javaMenuBar deactivate];
+    [self orderChildWindows:NO];
 }
 
 - (void) deactivateWindow {
@@ -868,7 +882,6 @@ AWT_ASSERT_APPKIT_THREAD;
 #ifdef DEBUG
     NSLog(@"deactivating window: %@", [self.nsWindow title]);
 #endif
-    [self.javaMenuBar deactivate];
 
     // the new key window
     NSWindow *keyWindow = [NSApp keyWindow];
@@ -881,7 +894,6 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 
     [self _deliverWindowFocusEvent:NO oppositeWindow: opposite];
-    [self orderChildWindows:NO];
 }
 
 - (BOOL)windowShouldClose:(id)sender {
@@ -1230,7 +1242,7 @@ JNI_COCOA_ENTER(env);
 
         AWTWindow *window = (AWTWindow*)[nsWindow delegate];
 
-        if ([nsWindow isKeyWindow] || [nsWindow isMainWindow]) {
+        if ([nsWindow isMainWindow]) {
             [window.javaMenuBar deactivate];
         }
 
@@ -1241,7 +1253,7 @@ JNI_COCOA_ENTER(env);
             actualMenuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
         }
 
-        if ([nsWindow isKeyWindow] || [nsWindow isMainWindow]) {
+        if ([nsWindow isMainWindow]) {
             [CMenuBar activate:actualMenuBar modallyDisabled:NO];
         }
     }];
@@ -1740,3 +1752,25 @@ JNI_COCOA_ENTER(env);
 JNI_COCOA_EXIT(env);
 }
 
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeRaiseLevel
+(JNIEnv *env, jclass clazz, jlong windowPtr, jboolean popup, jboolean onlyIfParentIsActive)
+{
+JNI_COCOA_ENTER(env);
+
+    NSWindow *nsWindow = OBJC(windowPtr);
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        AWTWindow *window = (AWTWindow*)[nsWindow delegate];
+        if (onlyIfParentIsActive) {
+            AWTWindow *parent = window;
+            do {
+                parent = parent.ownerWindow;
+            } while (parent != nil && !parent.nsWindow.isMainWindow);
+            if (parent == nil) {
+                return;
+            }
+        }
+        [nsWindow setLevel: popup ? NSPopUpMenuWindowLevel : NSFloatingWindowLevel];
+    }];
+
+JNI_COCOA_EXIT(env);
+}
