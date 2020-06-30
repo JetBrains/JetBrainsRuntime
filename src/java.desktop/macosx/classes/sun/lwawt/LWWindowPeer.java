@@ -1261,53 +1261,6 @@ public class LWWindowPeer
             return false;
         }
 
-        AppContext targetAppContext = AWTAccessor.getComponentAccessor().getAppContext(getTarget());
-        KeyboardFocusManager kfm = AWTAccessor.getKeyboardFocusManagerAccessor()
-                .getCurrentKeyboardFocusManager(targetAppContext);
-        Window currentActive = kfm.getActiveWindow();
-
-
-        Window opposite = LWKeyboardFocusManagerPeer.getInstance().
-            getCurrentFocusedWindow();
-
-        // Make the owner active window.
-        if (isSimpleWindow()) {
-            LWWindowPeer owner = getOwnerFrameDialog(this);
-
-            // If owner is not natively active, request native
-            // activation on it w/o sending events up to java.
-            if (owner != null && !owner.platformWindow.isActive()) {
-                if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
-                    focusLog.fine("requesting native focus to the owner " + owner);
-                }
-                LWWindowPeer currentActivePeer = currentActive == null ? null :
-                (LWWindowPeer) AWTAccessor.getComponentAccessor().getPeer(
-                        currentActive);
-
-                // Ensure the opposite is natively active and suppress sending events.
-                if (currentActivePeer != null && currentActivePeer.platformWindow.isActive()) {
-                    if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
-                        focusLog.fine("the opposite is " + currentActivePeer);
-                    }
-                    currentActivePeer.skipNextFocusChange = true;
-                }
-                owner.skipNextFocusChange = true;
-
-                owner.platformWindow.requestWindowFocus();
-            }
-
-            // DKFM will synthesize all the focus/activation events correctly.
-            changeFocusedWindow(true, opposite);
-            return true;
-
-        // In case the toplevel is active but not focused, change focus directly,
-        // as requesting native focus on it will not have effect.
-        } else if (getTarget() == currentActive && !getTarget().hasFocus()) {
-
-            changeFocusedWindow(true, opposite);
-            return true;
-        }
-
         return platformWindow.requestWindowFocus();
     }
 
@@ -1383,7 +1336,8 @@ public class LWWindowPeer
         // - when the opposite (gaining focus) window is an owned/owner window.
         // - for a simple window in any case.
         if (!becomesFocused &&
-            (isGrabbing() || this.isOneOfOwnersOf(grabbingWindow)))
+            (isGrabbing() || this.isOneOfOwnersOf(grabbingWindow)) &&
+            (opposite == null || getOwnerFrameDialog(AWTAccessor.getComponentAccessor().getPeer(opposite)) != this))
         {
             if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
                 focusLog.fine("ungrabbing on " + grabbingWindow);
