@@ -721,9 +721,7 @@ AWT_ASSERT_APPKIT_THREAD;
     NSLog(@"became main: %d %@ %@", [self.nsWindow isKeyWindow], [self.nsWindow title], [self menuBarForWindow]);
 #endif
 
-    if (![self.nsWindow isKeyWindow]) {
-        [self activateWindowMenuBar];
-    }
+    [self activateWindowMenuBar];
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
@@ -742,6 +740,7 @@ AWT_ASSERT_APPKIT_THREAD;
     NSLog(@"resigned main: %d %@ %@", [self.nsWindow isKeyWindow], [self.nsWindow title], [self menuBarForWindow]);
 #endif
 
+    [self.javaMenuBar deactivate];
     [self orderChildWindows:NO];
 }
 
@@ -817,8 +816,6 @@ AWT_ASSERT_APPKIT_THREAD;
 #ifdef DEBUG
     NSLog(@"resigned key: %d %@ %@", [self.nsWindow isMainWindow], [self.nsWindow title], [self menuBarForWindow]);
 #endif
-
-    [self.javaMenuBar deactivate];
 
     // the new key window
     NSWindow *keyWindow = [NSApp keyWindow];
@@ -1104,7 +1101,7 @@ JNF_COCOA_ENTER(env);
 
         AWTWindow *window = (AWTWindow*)[nsWindow delegate];
 
-        if ([nsWindow isKeyWindow] || [nsWindow isMainWindow]) {
+        if ([nsWindow isMainWindow]) {
             [window.javaMenuBar deactivate];
         }
 
@@ -1115,7 +1112,7 @@ JNF_COCOA_ENTER(env);
             actualMenuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
         }
 
-        if ([nsWindow isKeyWindow] || [nsWindow isMainWindow]) {
+        if ([nsWindow isMainWindow]) {
             [CMenuBar activate:actualMenuBar modallyDisabled:NO];
         }
     }];
