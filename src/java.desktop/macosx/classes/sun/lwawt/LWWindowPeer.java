@@ -1372,7 +1372,7 @@ public class LWWindowPeer
         // - for a simple window in any case.
         if (!becomesFocused &&
             (isGrabbing() || this.isOneOfOwnersOf(grabbingWindow)) &&
-            getOwnerFrameDialog(AWTAccessor.getComponentAccessor().getPeer(opposite)) != this)
+            (opposite == null || getOwnerFrameDialog(AWTAccessor.getComponentAccessor().getPeer(opposite)) != this))
         {
             if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
                 focusLog.fine("ungrabbing on " + grabbingWindow);
