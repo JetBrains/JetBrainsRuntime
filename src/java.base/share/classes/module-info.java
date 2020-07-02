@@ -180,6 +180,7 @@ module java.base {
         java.security.jgss,
         java.sql,
         java.xml,
+        jdk.jartool,
         jdk.attach,
         jdk.charsets,
         jdk.compiler,
