@@ -42,7 +42,7 @@ public class PopupIncomingFocusTest {
         robot.setAutoWaitForIdle(true);
         try {
             launchProcessWithWindow();
-            SwingUtilities.invokeLater(PopupIncomingFocusTest::init);
+            SwingUtilities.invokeAndWait(PopupIncomingFocusTest::init);
             initFinished.get(15, TimeUnit.SECONDS);
 
             clickAt(400, 100); // other process' window
@@ -52,7 +52,7 @@ public class PopupIncomingFocusTest {
             result.get(15, TimeUnit.SECONDS);
         }
         finally {
-            SwingUtilities.invokeLater(PopupIncomingFocusTest::shutdown);
+            SwingUtilities.invokeAndWait(PopupIncomingFocusTest::shutdown);
         }
     }
 
@@ -87,7 +87,6 @@ public class PopupIncomingFocusTest {
 
     private static void shutdown() {
         if (frame != null) frame.dispose();
-        if (popup != null) popup.dispose();
         if (otherProcess != null) otherProcess.destroyForcibly();
     }
 
@@ -135,4 +134,3 @@ public class PopupIncomingFocusTest {
         }
     }
 }
-
