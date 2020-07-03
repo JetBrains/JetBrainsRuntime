@@ -1,12 +1,11 @@
 package sun.awt.event;
 
 import java.lang.annotation.Native;
-import java.util.HashMap;
 
 public class KeyEvent {
     /** */
     @Native
-    public static final int START_OF_LATIN_DIACRITIC_LETTERS = 0x0300;
+    public static final int START_OF_LATIN_DIACRITIC_LETTERS = 0x01000000;
 
     /** */
     public static final int VK_ESZETT = START_OF_LATIN_DIACRITIC_LETTERS + 0xDF;
@@ -74,42 +73,4 @@ public class KeyEvent {
     public static final int VK_THORN = START_OF_LATIN_DIACRITIC_LETTERS + 0xFE;
     /** */
     public static final int VK_Y_WITH_DIAERESIS = START_OF_LATIN_DIACRITIC_LETTERS + 0xFF;
-
-    public static final HashMap<Integer, String> asciiCodeToString = new HashMap<Integer, String>() {
-        {
-            put(VK_ESZETT, "\u00DF");
-            put(VK_A_WITH_GRAVE, "\u00e0");
-            put(VK_A_WITH_ACUTE, "\u00e1");
-            put(VK_A_WITH_CIRCUMFLEX, "\u00e2");
-            put(VK_A_WITH_TILDE, "\u00e3");
-            put(VK_A_WITH_DIAERESIS, "\u00e4");
-            put(VK_A_WITH_RING_ABOVE, "\u00e5");
-            put(VK_AE, "\u00e6");
-            put(VK_C_WITH_CEDILLA, "\u00e7");
-            put(VK_E_WITH_GRAVE, "\u00e8");
-            put(VK_E_WITH_ACUTE, "\u00e9");
-            put(VK_E_WITH_CIRCUMFLEX, "\u00ea");
-            put(VK_E_WITH_DIAERESIS, "\u00eb");
-            put(VK_I_WITH_GRAVE, "\u00ec");
-            put(VK_I_WITH_ACUTE, "\u00ed");
-            put(VK_I_WITH_CIRCUMFLEX, "\u00ee");
-            put(VK_I_WITH_DIAERESIS, "\u00ef");
-            put(VK_ETH, "\u00f0");
-            put(VK_N_WITH_TILDE, "\u00f1");
-            put(VK_O_WITH_GRAVE, "\u00f2");
-            put(VK_O_WITH_ACUTE, "\u00f3");
-            put(VK_O_WITH_CIRCUMFLEX, "\u00f4");
-            put(VK_O_WITH_TILDE, "\u00f5");
-            put(VK_O_WITH_DIAERESIS, "\u00f6");
-            put(VK_DIVISION_SIGN, "\u00f7");
-            put(VK_O_WITH_SLASH, "\u00f8");
-            put(VK_U_WITH_GRAVE, "\u00f9");
-            put(VK_U_WITH_ACUTE, "\u00fa");
-            put(VK_U_WITH_CIRCUMFLEX, "\u00fb");
-            put(VK_U_WITH_DIAERESIS, "\u00fc");
-            put(VK_Y_WITH_ACUTE, "\u00fd");
-            put(VK_THORN, "\u00fe");
-            put(VK_Y_WITH_DIAERESIS, "\u00ff");
-        }
-    };
 }
