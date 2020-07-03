@@ -29,11 +29,13 @@ import java.util.concurrent.TimeUnit;
  */
 
 public class PopupIncomingFocusTest {
-    private static final CompletableFuture<Boolean> initFinished = new CompletableFuture<>();
+    private static final CompletableFuture<Boolean> windowOpened = new CompletableFuture<>();
+    private static final CompletableFuture<Boolean> popupOpened = new CompletableFuture<>();
     private static final CompletableFuture<Boolean> result = new CompletableFuture<>();
     private static Robot robot;
     private static Process otherProcess;
     private static JFrame frame;
+    private static JButton button;
     private static JWindow popup;
     private static JTextField field;
 
@@ -43,13 +45,13 @@ public class PopupIncomingFocusTest {
         try {
             launchProcessWithWindow();
             SwingUtilities.invokeAndWait(PopupIncomingFocusTest::init);
-            initFinished.get(15, TimeUnit.SECONDS);
-
+            windowOpened.get(10, TimeUnit.SECONDS);
+            clickAt(button);
+            popupOpened.get(10, TimeUnit.SECONDS);
             clickAt(400, 100); // other process' window
             clickAt(field);
             pressEnter();
-
-            result.get(15, TimeUnit.SECONDS);
+            result.get(10, TimeUnit.SECONDS);
         }
         finally {
             SwingUtilities.invokeAndWait(PopupIncomingFocusTest::shutdown);
@@ -57,12 +59,18 @@ public class PopupIncomingFocusTest {
     }
 
     private static void init() {
+        button = new JButton("Open popup");
+        button.addActionListener(e -> {
+            popup.setVisible(true);
+        });
+
         frame = new JFrame();
+        frame.add(button);
         frame.setBounds(50, 50, 200, 100);
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent e) {
-                popup.setVisible(true);
+                windowOpened.complete(Boolean.TRUE);
             }
         });
 
@@ -78,7 +86,7 @@ public class PopupIncomingFocusTest {
         popup.addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent e) {
-                initFinished.complete(Boolean.TRUE);
+                popupOpened.complete(Boolean.TRUE);
             }
         });
 
