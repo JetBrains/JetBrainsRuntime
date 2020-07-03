@@ -30,7 +30,7 @@ import com.sun.org.apache.bcel.internal.util.ByteSequence;
  * Abstract super class for all Java byte codes.
  *
  * @version $Id$
- * @LastModified: Jun 2019
+ * @LastModified: July 2020
  */
 public abstract class Instruction implements Cloneable {
 
@@ -512,7 +512,7 @@ public abstract class Instruction implements Cloneable {
     /**
      * Needed in readInstruction and subclasses in this package
      */
-    final void setOpcode( final short opcode ) {
+    void setOpcode( final short opcode ) {
         this.opcode = opcode;
     }
 
