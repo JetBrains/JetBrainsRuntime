@@ -1368,10 +1368,6 @@ public class KeyEvent extends InputEvent {
             return String.valueOf((char)keyCode);
         }
 
-        if (keyCode > 0x0300 && keyCode < 0x0400) {
-            return sun.awt.event.KeyEvent.asciiCodeToString.get(keyCode);
-        }
-
         switch(keyCode) {
           case VK_ENTER: return Toolkit.getProperty("AWT.enter", "Enter");
           case VK_BACK_SPACE: return Toolkit.getProperty("AWT.backSpace", "Backspace");
