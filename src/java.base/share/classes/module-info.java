@@ -202,6 +202,8 @@ module java.base {
         java.management,
         jdk.management.agent,
         jdk.internal.jvmstat;
+    exports jdk.internal.platform to
+        jdk.management;
     exports jdk.internal.ref to
         java.desktop,
         jdk.unsupported;
