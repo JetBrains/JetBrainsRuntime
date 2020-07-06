@@ -167,6 +167,7 @@ static SurfaceDataBounds previousGlyphBounds;
 
 static struct TxtVertex txtVertices[6];
 static jint vertexCacheIndex = 0;
+static id<MTLRenderCommandEncoder> lcdCacheEncoder = nil;
 
 #define LCD_ADD_VERTEX(TX, TY, DX, DY, DZ) \
     do { \
@@ -411,6 +412,74 @@ MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
     return JNI_TRUE;
 }
 
+static jboolean
+MTLTR_SetLCDCachePipelineState(MTLContext *mtlc)
+{
+    if (templateLCDPipelineDesc == nil) {
+
+        MTLVertexDescriptor *vertDesc = [[MTLVertexDescriptor new] autorelease];
+        vertDesc.attributes[VertexAttributePosition].format = MTLVertexFormatFloat2;
+        vertDesc.attributes[VertexAttributePosition].offset = 0;
+        vertDesc.attributes[VertexAttributePosition].bufferIndex = MeshVertexBuffer;
+        vertDesc.layouts[MeshVertexBuffer].stride = sizeof(struct Vertex);
+        vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
+        vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
+
+        templateLCDPipelineDesc = [[MTLRenderPipelineDescriptor new] autorelease];
+        templateLCDPipelineDesc.sampleCount = 1;
+        templateLCDPipelineDesc.vertexDescriptor = vertDesc;
+        templateLCDPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+        templateLCDPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
+        templateLCDPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].offset = 2*sizeof(float);
+        templateLCDPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
+        templateLCDPipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stride = sizeof(struct TxtVertex);
+        templateLCDPipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepRate = 1;
+        templateLCDPipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
+        templateLCDPipelineDesc.label = @"template_lcd";
+    }
+
+    id<MTLRenderPipelineState> pipelineState =
+                [mtlc.pipelineStateStorage
+                    getPipelineState:templateLCDPipelineDesc
+                    vertexShaderId:@"vert_txt"
+                    fragmentShaderId:@"lcd_color"
+                   ];
+
+    [lcdCacheEncoder setRenderPipelineState:pipelineState];
+    return JNI_TRUE;
+}
+
+static jboolean
+MTLTR_SetLCDContrast(MTLContext *mtlc,
+                     jint contrast)
+{
+    // update the current color settings
+    double gamma = ((double)contrast) / 100.0;
+    double invgamma = 1.0/gamma;
+    jfloat radj, gadj, badj;
+    jfloat clr[4];
+    jint col = [mtlc.paint getColor];
+
+    J2dTraceLn2(J2D_TRACE_INFO, "primary color %x, contrast %d", col, contrast);
+    J2dTraceLn2(J2D_TRACE_INFO, "gamma %f, invgamma %f", gamma, invgamma);
+
+    clr[0] = ((col >> 16) & 0xFF)/255.0f;
+    clr[1] = ((col >> 8) & 0xFF)/255.0f;
+    clr[2] = ((col) & 0xFF)/255.0f;
+
+    // gamma adjust the primary color
+    radj = (float)pow(clr[0], gamma);
+    gadj = (float)pow(clr[1], gamma);
+    badj = (float)pow(clr[2], gamma);
+
+    struct LCDFrameUniforms uf = {
+            {radj, gadj, badj},
+            {gamma, gamma, gamma},
+            {invgamma, invgamma, invgamma}};
+    [lcdCacheEncoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+    return JNI_TRUE;
+}
+
 void
 MTLTR_EnableGlyphVertexCache(MTLContext *mtlc, BMTLSDOps *dstOps)
 {
@@ -474,6 +543,9 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
     if (glyphMode != MODE_USE_CACHE_GRAY) {
         if (glyphMode == MODE_NO_CACHE_GRAY) {
             MTLVertexCache_DisableMaskCache(mtlc);
+        } else if (glyphMode == MODE_USE_CACHE_LCD) {
+            [mtlc.encoderManager endEncoder];
+            lcdCacheEncoder = nil;
         }
         MTLTR_EnableGlyphVertexCache(mtlc, dstOps);
         glyphMode = MODE_USE_CACHE_GRAY;
@@ -548,8 +620,6 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     jint w = ginfo->width;
     jint h = ginfo->height;
 
-    id<MTLRenderCommandEncoder> encoder = nil;
-
     if (glyphMode != MODE_USE_CACHE_LCD) {
         if (glyphMode == MODE_NO_CACHE_GRAY) {
             MTLVertexCache_DisableMaskCache(mtlc);
@@ -562,7 +632,10 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                 return JNI_FALSE;
             }
         }
-
+        if (lcdCacheEncoder == nil) {
+            lcdCacheEncoder = [mtlc.encoderManager getTextureEncoder:dstOps->pTexture isSrcOpaque:YES isDstOpaque:YES];
+            MTLTR_SetLCDCachePipelineState(mtlc);
+        }
         if (rgbOrder != lastRGBOrder) {
             // need to invalidate the cache in this case; see comments
             // for lastRGBOrder above
@@ -585,12 +658,8 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     }
     cell = (CacheCellInfo *) (ginfo->cellInfo);
     cell->timesRendered++;
-    encoder = [mtlc.encoderManager getTextureEncoder:dstOps->pTexture isSrcOpaque:YES isDstOpaque:YES];
-    if (!MTLTR_EnableLCDGlyphModeState(encoder, mtlc, dstOps,contrast))
-    {
-        return JNI_FALSE;
-    }
 
+    MTLTR_SetLCDContrast(mtlc, contrast);
     tx1 = cell->tx1;
     ty1 = cell->ty1;
     tx2 = cell->tx2;
@@ -601,14 +670,13 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
     LCD_ADD_TRIANGLES(tx1, ty1, tx2, ty2, x, y, x+w, y+h);
 
-    [encoder setVertexBytes:txtVertices length:sizeof(txtVertices) atIndex:MeshVertexBuffer];
-    [encoder setFragmentTexture:glyphCacheLCD->texture atIndex:0];
-    [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
+    [lcdCacheEncoder setVertexBytes:txtVertices length:sizeof(txtVertices) atIndex:MeshVertexBuffer];
+    [lcdCacheEncoder setFragmentTexture:glyphCacheLCD->texture atIndex:0];
+    [lcdCacheEncoder setFragmentTexture:dstOps->pTexture atIndex:1];
 
-    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    [lcdCacheEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
 
     vertexCacheIndex = 0;
-    [mtlc.encoderManager endEncoder];
 
     return JNI_TRUE;
 }
@@ -627,6 +695,9 @@ MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
     if (glyphMode != MODE_NO_CACHE_GRAY) {
         if (glyphMode == MODE_USE_CACHE_GRAY) {
             MTLTR_DisableGlyphVertexCache(mtlc);
+        } else if (glyphMode == MODE_USE_CACHE_LCD) {
+            [mtlc.encoderManager endEncoder];
+            lcdCacheEncoder = nil;
         }
         MTLVertexCache_EnableMaskCache(mtlc, dstOps);
         glyphMode = MODE_NO_CACHE_GRAY;
@@ -692,6 +763,9 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
             MTLVertexCache_DisableMaskCache(mtlc);
         } else if (glyphMode == MODE_USE_CACHE_GRAY) {
             MTLTR_DisableGlyphVertexCache(mtlc);
+        } else if (glyphMode == MODE_USE_CACHE_LCD) {
+            [mtlc.encoderManager endEncoder];
+            lcdCacheEncoder = nil;
         }
 
         if (blitTexture == nil) {
@@ -905,6 +979,9 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         MTLVertexCache_DisableMaskCache(mtlc);
     } else if (glyphMode == MODE_USE_CACHE_GRAY) {
         MTLTR_DisableGlyphVertexCache(mtlc);
+    } else if (glyphMode == MODE_USE_CACHE_LCD) {
+        [mtlc.encoderManager endEncoder];
+        lcdCacheEncoder = nil;
     }
 }
 
