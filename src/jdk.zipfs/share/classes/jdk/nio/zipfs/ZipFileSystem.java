@@ -1086,7 +1086,8 @@ class ZipFileSystem extends FileSystem {
             int nlen   = CENNAM(cen, pos);
             int elen   = CENEXT(cen, pos);
             int clen   = CENCOM(cen, pos);
-            if ((CENFLG(cen, pos) & 1) != 0) {
+            int flag   = CENFLG(cen, pos);
+            if ((flag & 1) != 0) {
                 zerror("invalid CEN header (encrypted entry)");
             }
             if (method != METHOD_STORED && method != METHOD_DEFLATED) {
@@ -1097,6 +1098,11 @@ class ZipFileSystem extends FileSystem {
             }
             IndexNode inode = new IndexNode(cen, pos, nlen);
             inodes.put(inode, inode);
+            if (zc.isUTF8() || (flag & FLAG_USE_UTF8) != 0) {
+                checkUTF8(inode.name);
+            } else {
+                checkEncoding(inode.name);
+            }
             // skip ext and comment
             pos += (CENHDR + nlen + elen + clen);
         }
@@ -1106,6 +1112,34 @@ class ZipFileSystem extends FileSystem {
         buildNodeTree();
         return cen;
     }
+
+    private  final void checkUTF8(byte[] a) throws ZipException {
+        try {
+            int end = a.length;
+            int pos = 0;
+            while (pos < end) {
+                // ASCII fast-path: When checking that a range of bytes is
+                // valid UTF-8, we can avoid some allocation by skipping
+                // past bytes in the 0-127 range
+                if (a[pos] < 0) {
+                    zc.toString(Arrays.copyOfRange(a, pos, a.length));
+                    break;
+                }
+                pos++;
+            }
+        } catch(Exception e) {
+            throw new ZipException("invalid CEN header (bad entry name)");
+        }
+    }
+
+    private final void checkEncoding( byte[] a) throws ZipException {
+        try {
+            zc.toString(a);
+        } catch(Exception e) {
+            throw new ZipException("invalid CEN header (bad entry name)");
+        }
+    }
+
 
     private void ensureOpen() throws IOException {
         if (!isOpen)
