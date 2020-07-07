@@ -1789,8 +1789,8 @@ void Compile::ScheduleAndBundle() {
   if (!do_scheduling())
     return;
 
-  // Scheduling code works only with pairs (16 bytes) maximum.
-  if (max_vector_size() > 16)
+  // Scheduling code works only with pairs (8 bytes) maximum.
+  if (max_vector_size() > 8)
     return;
 
   TracePhase tp("isched", &timers[_t_instrSched]);
