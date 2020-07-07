@@ -218,6 +218,18 @@ Java_sun_management_VMManagementImpl_isThreadAllocatedMemoryEnabled
 {
     return jmm_interface->GetBoolAttribute(env, JMM_THREAD_ALLOCATED_MEMORY);
 }
+JNIEXPORT jboolean JNICALL
+Java_sun_management_VMManagementImpl_isCompilationEnabled
+  (JNIEnv *env, jobject dummy)
+{
+    return jmm_interface->GetBoolAttribute(env, JMM_COMPILATION_ENABLED);
+}
+JNIEXPORT jboolean JNICALL
+Java_sun_management_VMManagementImpl_isCompilationStoppedForever
+  (JNIEnv *env, jobject dummy)
+{
+    return jmm_interface->GetBoolAttribute(env, JMM_COMPILATION_STOPPED_FOREVER);
+}
 
 JNIEXPORT jint JNICALL
 Java_sun_management_VMManagementImpl_getProcessId

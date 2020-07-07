@@ -40,6 +40,8 @@ public interface VMManagement {
     public boolean isCurrentThreadCpuTimeSupported();
     public boolean isOtherThreadCpuTimeSupported();
     public boolean isThreadCpuTimeEnabled();
+    public boolean isCompilationEnabled();
+    public boolean isCompilationStoppedForever();
     public boolean isBootClassPathSupported();
     public boolean isObjectMonitorUsageSupported();
     public boolean isSynchronizerUsageSupported();
