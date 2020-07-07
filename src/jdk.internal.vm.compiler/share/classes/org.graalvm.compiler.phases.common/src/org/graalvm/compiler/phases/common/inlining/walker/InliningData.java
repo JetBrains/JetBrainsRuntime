@@ -45,6 +45,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -189,11 +190,12 @@ public class InliningData {
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
 
-        if (callTarget.invokeKind() == CallTargetNode.InvokeKind.Special || targetMethod.canBeStaticallyBound()) {
+        InvokeKind invokeKind = callTarget.invokeKind();
+        if (invokeKind == CallTargetNode.InvokeKind.Special || invokeKind == CallTargetNode.InvokeKind.Static || targetMethod.canBeStaticallyBound()) {
             return getExactInlineInfo(invoke, targetMethod);
         }
 
-        assert callTarget.invokeKind().isIndirect();
+        assert invokeKind.isIndirect();
 
         ResolvedJavaType holder = targetMethod.getDeclaringClass();
         if (!(callTarget.receiver().stamp(NodeView.DEFAULT) instanceof ObjectStamp)) {
@@ -229,21 +231,23 @@ public class InliningData {
             }
         }
 
-        AssumptionResult<ResolvedJavaType> leafConcreteSubtype = holder.findLeafConcreteSubtype();
-        if (leafConcreteSubtype != null) {
-            ResolvedJavaMethod resolvedMethod = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
-            if (resolvedMethod != null) {
-                if (leafConcreteSubtype.canRecordTo(callTarget.graph().getAssumptions())) {
-                    return getAssumptionInlineInfo(invoke, resolvedMethod, leafConcreteSubtype);
-                } else {
-                    return getTypeCheckedAssumptionInfo(invoke, resolvedMethod, leafConcreteSubtype.getResult());
+        if (invokeKind != InvokeKind.Interface) {
+            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = holder.findLeafConcreteSubtype();
+            if (leafConcreteSubtype != null) {
+                ResolvedJavaMethod resolvedMethod = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
+                if (resolvedMethod != null) {
+                    if (leafConcreteSubtype.canRecordTo(callTarget.graph().getAssumptions())) {
+                        return getAssumptionInlineInfo(invoke, resolvedMethod, leafConcreteSubtype);
+                    } else {
+                        return getTypeCheckedAssumptionInfo(invoke, resolvedMethod, leafConcreteSubtype.getResult());
+                    }
                 }
             }
-        }
 
-        AssumptionResult<ResolvedJavaMethod> concrete = holder.findUniqueConcreteMethod(targetMethod);
-        if (concrete != null && concrete.canRecordTo(callTarget.graph().getAssumptions())) {
-            return getAssumptionInlineInfo(invoke, concrete.getResult(), concrete);
+            AssumptionResult<ResolvedJavaMethod> concrete = holder.findUniqueConcreteMethod(targetMethod);
+            if (concrete != null && concrete.canRecordTo(callTarget.graph().getAssumptions())) {
+                return getAssumptionInlineInfo(invoke, concrete.getResult(), concrete);
+            }
         }
 
         // type check based inlining
