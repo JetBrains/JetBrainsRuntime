@@ -111,7 +111,9 @@ typedef enum {
   JMM_VERBOSE_CLASS                  = 22,
   JMM_THREAD_CONTENTION_MONITORING   = 23,
   JMM_THREAD_CPU_TIME                = 24,
-  JMM_THREAD_ALLOCATED_MEMORY        = 25
+  JMM_THREAD_ALLOCATED_MEMORY        = 25,
+  JMM_COMPILATION_ENABLED            = 26,
+  JMM_COMPILATION_STOPPED_FOREVER    = 27,
 } jmmBoolAttribute;
 
 

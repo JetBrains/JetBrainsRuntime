@@ -775,6 +775,10 @@ JVM_LEAF(jboolean, jmm_GetBoolAttribute(JNIEnv *env, jmmBoolAttribute att))
     return ThreadService::is_thread_cpu_time_enabled();
   case JMM_THREAD_ALLOCATED_MEMORY:
     return ThreadService::is_thread_allocated_memory_enabled();
+  case JMM_COMPILATION_ENABLED:
+    return CompileBroker::get_compilation_activity_mode() == CompileBroker::run_compilation;
+  case JMM_COMPILATION_STOPPED_FOREVER:
+    return CompileBroker::get_compilation_activity_mode() == CompileBroker::shutdown_compilation;
   default:
     assert(0, "Unrecognized attribute");
     return false;
