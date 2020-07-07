@@ -867,7 +867,7 @@ public abstract class Provider extends Properties {
     // For backward compatibility, the registration ordering of
     // SecureRandom (RNG) algorithms needs to be preserved for
     // "new SecureRandom()" calls when this provider is used
-    private transient Set<Service> prngServices;
+    private transient Set<String> prngAlgos;
 
     // Map<ServiceKey,Service>
     // used for services added via legacy methods, init on demand
@@ -1087,7 +1087,7 @@ public abstract class Provider extends Properties {
         legacyChanged = false;
         servicesChanged = false;
         serviceSet = null;
-        prngServices = null;
+        prngAlgos = null;
         super.clear();
         putId();
     }
@@ -1219,7 +1219,7 @@ public abstract class Provider extends Properties {
                 s.className = className;
 
                 if (type.equals("SecureRandom")) {
-                    updateSecureRandomEntries(true, s);
+                    updateSecureRandomEntries(true, s.algorithm);
                 }
             } else { // attribute
                 // e.g. put("MessageDigest.SHA-1 ImplementedIn", "Software");
@@ -1381,25 +1381,25 @@ public abstract class Provider extends Properties {
         synchronized (this) {
             putPropertyStrings(s);
             if (type.equals("SecureRandom")) {
-                updateSecureRandomEntries(true, s);
+                updateSecureRandomEntries(true, s.algorithm);
             }
         }
     }
 
-    private void updateSecureRandomEntries(boolean doAdd, Service s) {
+    // keep tracks of the registered secure random algos and store them in order
+    private void updateSecureRandomEntries(boolean doAdd, String s) {
         Objects.requireNonNull(s);
         if (doAdd) {
-            if (prngServices == null) {
-                prngServices = new LinkedHashSet<Service>();
+            if (prngAlgos == null) {
+                prngAlgos = new LinkedHashSet<String>();
             }
-            prngServices.add(s);
+            prngAlgos.add(s);
         } else {
-            prngServices.remove(s);
+            prngAlgos.remove(s);
         }
 
         if (debug != null) {
-            debug.println((doAdd? "Add":"Remove") + " SecureRandom algo " +
-                s.getAlgorithm());
+            debug.println((doAdd? "Add":"Remove") + " SecureRandom algo " + s);
         }
     }
 
@@ -1409,12 +1409,15 @@ public abstract class Provider extends Properties {
         checkInitialized();
 
         if (legacyChanged) {
-            prngServices = null;
+            prngAlgos = null;
             ensureLegacyParsed();
         }
 
-        if (prngServices != null && !prngServices.isEmpty()) {
-            return prngServices.iterator().next();
+        if (prngAlgos != null && !prngAlgos.isEmpty()) {
+            // IMPORTANT: use the Service obj returned by getService(...) call
+            // as providers may override putService(...)/getService(...) and
+            // return their own Service objects
+            return getService("SecureRandom", prngAlgos.iterator().next());
         }
 
         return null;
@@ -1514,7 +1517,7 @@ public abstract class Provider extends Properties {
         synchronized (this) {
             removePropertyStrings(s);
             if (type.equals("SecureRandom")) {
-                updateSecureRandomEntries(false, s);
+                updateSecureRandomEntries(false, s.algorithm);
             }
         }
     }
