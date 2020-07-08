@@ -60,14 +60,6 @@ class CompilationImpl implements CompilationMXBean {
         return jvm.isCompilationTimeMonitoringSupported();
     }
 
-    public boolean isCompilationEnabled() {
-        return jvm.isCompilationEnabled();
-    }
-
-    public boolean isCompilationStoppedForever() {
-        return jvm.isCompilationStoppedForever();
-    }
-
     public long getTotalCompilationTime() {
         if (!isCompilationTimeMonitoringSupported()) {
             throw new UnsupportedOperationException(
