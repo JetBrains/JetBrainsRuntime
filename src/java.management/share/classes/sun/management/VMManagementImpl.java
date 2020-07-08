@@ -118,8 +118,6 @@ class VMManagementImpl implements VMManagement {
     public native boolean isThreadContentionMonitoringEnabled();
     public native boolean isThreadCpuTimeEnabled();
     public native boolean isThreadAllocatedMemoryEnabled();
-    public native boolean isCompilationEnabled();
-    public native boolean isCompilationStoppedForever();
 
     // Class Loading Subsystem
     public int    getLoadedClassCount() {
