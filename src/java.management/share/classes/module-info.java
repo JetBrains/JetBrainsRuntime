@@ -37,6 +37,8 @@
  */
 module java.management {
 
+    exports com.jetbrains.management;
+
     exports java.lang.management;
     exports javax.management;
     exports javax.management.loading;
