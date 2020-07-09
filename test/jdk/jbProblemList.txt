@@ -201,6 +201,7 @@ java/awt/Frame/DisposeParentGC/DisposeParentGC.java                             
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/FramesGC/FramesGC.java                                               8079069 macosx-all
 java/awt/Frame/FrameLocation/FrameLocation.java                                     8019803 macosx-all
+java/awt/Frame/HugeFrame/HugeFrame.java                                             JBR-2563 linux-all
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java                                   8169111 macosx-all,windows-all
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java                       8169472 windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java                       8022302 generic-all
