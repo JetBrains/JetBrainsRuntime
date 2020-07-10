@@ -1,14 +1,14 @@
-From 4fa591b92b7056e3eb3bcd3fa969b02c02f96fce Mon Sep 17 00:00:00 2001
+From 15194627b2573f109aef2cacc6ebfb600d0a20f0 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Thu, 13 Dec 2018 20:51:09 +0100
-Subject: [PATCH 06/49] Fix methodHandles
+Subject: [PATCH 06/50] Fix methodHandles
 
 ---
  src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index df1dc1cc182..321ff64f858 100644
+index 61af07d0f86..1c7595787a1 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -248,7 +248,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {

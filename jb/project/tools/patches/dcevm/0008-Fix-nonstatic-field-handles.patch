@@ -1,14 +1,14 @@
-From 41df7c7ae0c939605dadd3fb901c2319405f11ca Mon Sep 17 00:00:00 2001
+From 1fe56253f7e63d69f9a12963316889c5e87111eb Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Sat, 15 Dec 2018 20:16:37 +0100
-Subject: [PATCH 08/49] Fix nonstatic field handles
+Subject: [PATCH 08/50] Fix nonstatic field handles
 
 ---
  src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 7 ++++++-
  1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index ca7a0bf67cd..6f42a196d6a 100644
+index a3b65b273e5..c64d6bb1bb5 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -337,6 +337,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {

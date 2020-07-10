@@ -1,14 +1,14 @@
-From 7791300ec782a8422b0af691de20160c16e0d667 Mon Sep 17 00:00:00 2001
+From 5a56f2278c0a79f4a26f369a55f4c1c4dab2621e Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@mailprofiler.com>
 Date: Fri, 6 Mar 2020 15:46:51 +0100
-Subject: [PATCH 24/49] Fix clear_cpool_cache
+Subject: [PATCH 24/50] Fix clear_cpool_cache
 
 ---
  src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 8 +++-----
  1 file changed, 3 insertions(+), 5 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index dc302e65c6f..9493ba4820a 100644
+index a404fd3f016..1f5a67f8866 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -491,11 +491,6 @@ void VM_EnhancedRedefineClasses::doit() {

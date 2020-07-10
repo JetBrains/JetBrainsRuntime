@@ -1,7 +1,7 @@
-From 8708845a526d3a199b4058fcb950b62c5948c374 Mon Sep 17 00:00:00 2001
+From 5b36c4798869c5cd4d65f7765a8447b9cf09d76b Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Tue, 19 May 2020 09:29:39 +0200
-Subject: [PATCH 40/49] Code cleanup
+Subject: [PATCH 40/50] Code cleanup
 
 ---
  src/hotspot/share/classfile/classFileParser.cpp   |  4 +++-

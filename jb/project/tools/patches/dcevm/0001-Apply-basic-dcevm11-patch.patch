@@ -1,7 +1,7 @@
-From b1e61de8898df347f8816db7e7eb52f8cdef24ba Mon Sep 17 00:00:00 2001
+From 4f9a0ded48f51bdfb3ed7cc18df812c456d48a8c Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:09:39 +0100
-Subject: [PATCH 01/49] Apply basic dcevm11 patch
+Subject: [PATCH 01/50] Apply basic dcevm11 patch
 
 ---
  src/hotspot/share/ci/ciObjectFactory.cpp      |   25 +
@@ -2207,7 +2207,7 @@ index 18c706187df..4533476ff8f 100644
    Symbol* signature() const                      { return constants()->symbol_at(signature_index()); }
    int signature_index() const                    { return constMethod()->signature_index();         }
 diff --git a/src/hotspot/share/prims/jni.cpp b/src/hotspot/share/prims/jni.cpp
-index aed6075b52a..8b0ae584cf4 100644
+index f9a69ef0c8b..231ada3f0ab 100644
 --- a/src/hotspot/share/prims/jni.cpp
 +++ b/src/hotspot/share/prims/jni.cpp
 @@ -353,6 +353,7 @@ JNI_ENTRY(jclass, jni_DefineClass(JNIEnv *env, const char *name, jobject loaderR
@@ -2232,7 +2232,7 @@ index 797b022d5e5..eb4b7622820 100644
    if (log_is_enabled(Debug, class, resolve) && k != NULL) {
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 new file mode 100644
-index 00000000000..80c31135487
+index 00000000000..83c0952de37
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -0,0 +1,2255 @@
@@ -4493,7 +4493,7 @@ index 00000000000..80c31135487
 +}
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 new file mode 100644
-index 00000000000..3f95cf42645
+index 00000000000..b712d69a193
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -0,0 +1,202 @@

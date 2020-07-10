@@ -1,7 +1,7 @@
-From 6361a460f4a008cf8dbe864a7b32c4a74536f6be Mon Sep 17 00:00:00 2001
+From 990ffe4111fe73c3a183f8d35402cbf9e81bd587 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 11 Apr 2020 17:52:13 +0200
-Subject: [PATCH 30/49] Add init_implementor_from_redefine, that skips compiler
+Subject: [PATCH 30/50] Add init_implementor_from_redefine, that skips compiler
  lock assert
 
 ---
@@ -51,7 +51,7 @@ index 2cc98b636f1..e8107a39813 100644
    // link this class into the implementors list of every interface it implements
    void process_interfaces(Thread *thread);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index f0b6e568656..a22e72a851c 100644
+index f6d2d3a40fe..aac9ba0911f 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1416,7 +1416,7 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {

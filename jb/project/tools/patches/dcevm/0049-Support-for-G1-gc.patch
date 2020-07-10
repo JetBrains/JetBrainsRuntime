@@ -1,7 +1,7 @@
-From 5a794dd9e345200435538028251d5e38988c1aaa Mon Sep 17 00:00:00 2001
+From caf7fe94c42bea9606f96023cebe466058a1eef5 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
-Date: Fri, 12 Jun 2020 22:43:52 +0700
-Subject: [PATCH 49/49] Support for G1 gc
+Date: Fri, 12 Jun 2020 17:43:52 +0200
+Subject: [PATCH 49/50] Support for G1 gc
 
 ---
  src/hotspot/share/gc/g1/g1CollectedHeap.hpp   |   1 +
@@ -992,7 +992,7 @@ index d0a6d665aa0..3dc4cc1323c 100644
    SystemDictionary::oops_do(oopClosure);
  }
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index aba99bb60fa..8a03564d55b 100644
+index 1fbba406087..32929b3d7a0 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -36,7 +36,6 @@
@@ -1104,7 +1104,7 @@ index aba99bb60fa..8a03564d55b 100644
    ResourceMark mark(THREAD);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 3551b06ecde..10711462f61 100644
+index d8a11b51fe9..030852b160a 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -115,6 +115,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

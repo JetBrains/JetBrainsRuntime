@@ -1,7 +1,7 @@
-From 2ed248be98455e485861d15f179c065d391b6bf4 Mon Sep 17 00:00:00 2001
+From 987645d54a6682f28a733731965d6b377e892974 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Tue, 19 Nov 2019 19:58:27 +0100
-Subject: [PATCH 17/49] java.desktop/com.sun.beans=ALL-UNNAMED
+Subject: [PATCH 17/50] java.desktop/com.sun.beans=ALL-UNNAMED
 
 ---
  src/hotspot/share/runtime/arguments.cpp | 2 ++

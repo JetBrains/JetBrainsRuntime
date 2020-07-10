@@ -1,7 +1,7 @@
-From 7d7435cfb75480b207b128adb333aee5a409672d Mon Sep 17 00:00:00 2001
+From 9f4b84339b55187b742682bd84fdb0e6e121917c Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 16 May 2020 15:11:40 +0200
-Subject: [PATCH 36/49] Access com.sun.beans.util - HotswapAgent patch
+Subject: [PATCH 36/50] Access com.sun.beans.util - HotswapAgent patch
 
 ---
  src/hotspot/share/runtime/arguments.cpp       |  2 ++

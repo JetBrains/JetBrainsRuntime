@@ -1,7 +1,7 @@
-From db8b797f6b95dbfbd4505d4261ae0b32ac32ed96 Mon Sep 17 00:00:00 2001
+From 60569257636a2d0b31b04ab2638d81f840d75e58 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Tue, 19 Nov 2019 21:07:59 +0100
-Subject: [PATCH 18/49] increment_class_counter() using orig dcevm code
+Subject: [PATCH 18/50] increment_class_counter() using orig dcevm code
 
 Probably it is cause of SISEGV on:
 _
@@ -11,7 +11,7 @@ VM_EnhancedRedefineClasses::redefine_single_class->java_mirror()
  1 file changed, 12 insertions(+), 27 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 39161acd057..22c6342f05b 100644
+index 4ca638548dc..efb9e806508 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1146,9 +1146,9 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_

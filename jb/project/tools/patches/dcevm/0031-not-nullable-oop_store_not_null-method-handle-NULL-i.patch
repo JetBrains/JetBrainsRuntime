@@ -1,7 +1,7 @@
-From f040455728ad5fe7eff48d62c8ea1d6eda0f1dfe Mon Sep 17 00:00:00 2001
+From 9dcddc7c2573c34579161e3ad1240b029dda1e96 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Mon, 13 Apr 2020 20:59:35 +0200
-Subject: [PATCH 31/49] not nullable oop_store_not_null() method+handle NULL in
+Subject: [PATCH 31/50] not nullable oop_store_not_null() method+handle NULL in
  mem_name in dmh
 
 ---
@@ -9,7 +9,7 @@ Subject: [PATCH 31/49] not nullable oop_store_not_null() method+handle NULL in
  1 file changed, 10 insertions(+), 6 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index a22e72a851c..348757b5210 100644
+index aac9ba0911f..8d861ef43c9 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -225,13 +225,15 @@ void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {

@@ -1,7 +1,7 @@
-From c27d94918b0b59dae41abb064e94d39e8699af74 Mon Sep 17 00:00:00 2001
+From 2ab70b495c43c4699ad402a714710566400de99d Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 22 May 2020 21:23:01 +0200
-Subject: [PATCH 43/49] Support for Lambda class redefinition
+Subject: [PATCH 43/50] Support for Lambda class redefinition
 
 ---
  .../share/classfile/classLoaderData.cpp       |  9 +++
@@ -111,7 +111,7 @@ index 717f34ce9a0..dc111846c12 100644
                                       TRAPS);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index c7ea34c2290..212a71a5860 100644
+index 0ca675e8ee6..08fe42d5c28 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -503,6 +503,8 @@ void VM_EnhancedRedefineClasses::doit() {
@@ -208,7 +208,7 @@ index c7ea34c2290..212a71a5860 100644
  
    // Sort the affected klasses such that a supertype is always on a smaller array index than its subtype.
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index cd07100ffae..36814d3f097 100644
+index ed44f0e27ce..7e2afd49650 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -119,6 +119,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

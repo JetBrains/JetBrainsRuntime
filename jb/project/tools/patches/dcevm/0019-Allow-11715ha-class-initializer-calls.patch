@@ -1,7 +1,7 @@
-From 7bae7d9000a387cba02123797d26b9a6b9f8b1be Mon Sep 17 00:00:00 2001
+From 41d2963b54490601e22cf5309ed73f78566d35ae Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Thu, 21 Nov 2019 19:30:07 +0100
-Subject: [PATCH 19/49] Allow 11715ha class initializer calls
+Subject: [PATCH 19/50] Allow 11715ha class initializer calls
 
 ---
  src/hotspot/share/classfile/vmSymbols.hpp      | 1 +

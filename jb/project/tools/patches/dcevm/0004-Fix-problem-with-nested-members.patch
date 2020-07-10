@@ -1,7 +1,7 @@
-From 944b5158c0ff224260b5c14d5159fb62c4d16582 Mon Sep 17 00:00:00 2001
+From 360fbbd15357fb3cb19abc6ffb40320efadce616 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Mon, 3 Dec 2018 19:34:53 +0100
-Subject: [PATCH 04/49] Fix problem with nested members
+Subject: [PATCH 04/50] Fix problem with nested members
 
 Reported at : https://stackoverflow.com/questions/53370380/hotswapagent-incompatibleclasschangeerror-type-headerpanel1-is-not-a-nest-mem
 ---

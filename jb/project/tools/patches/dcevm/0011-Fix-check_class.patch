@@ -1,7 +1,7 @@
-From fe33ea7be09a777d862aa839f17f302e6f2625fe Mon Sep 17 00:00:00 2001
+From 1765f4c1b2e8958b458fa17d329be98ad025069c Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Sat, 29 Dec 2018 16:05:25 +0100
-Subject: [PATCH 11/49] Fix check_class
+Subject: [PATCH 11/50] Fix check_class
 
 ---
  .../prims/jvmtiEnhancedRedefineClasses.cpp    | 39 +++++++------------
@@ -9,7 +9,7 @@ Subject: [PATCH 11/49] Fix check_class
  2 files changed, 16 insertions(+), 28 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index d17eef46384..c3b8b8c6b7a 100644
+index 0aa1ac4ff80..c08b3e82b2e 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1,4 +1,4 @@
@@ -92,7 +92,7 @@ index d17eef46384..c3b8b8c6b7a 100644
  class AffectedKlassClosure : public KlassClosure {
   private:
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 98812949a25..35fbbb647a1 100644
+index 37e63a1810f..5b3ebc13661 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -144,15 +144,14 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

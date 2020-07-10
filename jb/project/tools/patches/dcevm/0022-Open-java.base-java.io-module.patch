@@ -1,7 +1,7 @@
-From a25866cceaf6bb8f344bf316980a68811986736e Mon Sep 17 00:00:00 2001
+From 8b7323c57ee07c03a02ba951ce6d453ec4cc1a54 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 8 Dec 2019 17:55:01 +0100
-Subject: [PATCH 22/49] Open java.base/java.io module
+Subject: [PATCH 22/50] Open java.base/java.io module
 
 ---
  src/hotspot/share/runtime/arguments.cpp | 2 ++

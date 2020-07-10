@@ -1,7 +1,7 @@
-From 799f143bd7fccf3a4fd2313b9b06d2464dc4b9ab Mon Sep 17 00:00:00 2001
+From 800b44f545c7b99026d203690def30ec4b9ed08e Mon Sep 17 00:00:00 2001
 From: Artem Khvastunov <artem.khvastunov@jetbrains.com>
 Date: Tue, 14 Apr 2020 19:11:35 +0200
-Subject: [PATCH 32/49] add jvmtiEnhancedRedefineClasses.* to CMakeLists.txt
+Subject: [PATCH 32/50] add jvmtiEnhancedRedefineClasses.* to CMakeLists.txt
 
 ---
  jb/project/hotspot-cmake/CMakeLists.txt | 2 ++
