@@ -249,20 +249,18 @@ MTLTR_GetGlyphCacheTexture()
  */
 static void
 MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
-                      MTLPixelFormat pixelFormat)
+                      jboolean lcdCache)
 {
     MTLCacheCellInfo *ccinfo;
     MTLGlyphCacheInfo *gcinfo;
-    jboolean isLCD = JNI_FALSE;
     jint w = glyph->width;
     jint h = glyph->height;
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_AddToGlyphCache");
-    if (pixelFormat == MTLPixelFormatA8Unorm) {
+    if (!lcdCache) {
         gcinfo = glyphCacheAA;
     } else {
         gcinfo = glyphCacheLCD;
-        isLCD = JNI_TRUE;
     }
 
     if ((gcinfo == NULL) || (glyph->image == NULL)) {
@@ -272,7 +270,7 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
     bool isCacheFull = MTLGlyphCache_IsCacheFull(gcinfo, glyph);
     if (isCacheFull) {
         MTLGlyphCache_Free(gcinfo);
-        if (!isLCD) {
+        if (!lcdCache) {
             MTLTR_InitGlyphCache(mtlc, JNI_FALSE);
             gcinfo = glyphCacheAA;
         } else {
@@ -289,7 +287,7 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
                 {ccinfo->x,  ccinfo->y,   0},
                 {w, h, 1}
         };
-        if (!isLCD) {
+        if (!lcdCache) {
             // Opengl uses GL_INTENSITY as internal pixel format to set number of
             // color components in the texture for grayscale texture.
             // It is mentioned that for GL_INTENSITY format,
@@ -553,7 +551,7 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
 
     if (ginfo->cellInfo == NULL) {
         // attempt to add glyph to accelerated glyph cache
-        MTLTR_AddToGlyphCache(ginfo, mtlc, MTLPixelFormatA8Unorm);
+        MTLTR_AddToGlyphCache(ginfo, mtlc, JNI_FALSE);
 
         if (ginfo->cellInfo == NULL) {
             // we'll just no-op in the rare case that the cell is NULL
@@ -649,7 +647,7 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     if (ginfo->cellInfo == NULL) {
         // attempt to add glyph to accelerated glyph cache
         // TODO : Handle RGB order
-        MTLTR_AddToGlyphCache(ginfo, mtlc, MTLPixelFormatRGBA8Unorm);
+        MTLTR_AddToGlyphCache(ginfo, mtlc, JNI_TRUE);
 
         if (ginfo->cellInfo == NULL) {
             // we'll just no-op in the rare case that the cell is NULL
