@@ -834,6 +834,7 @@ sun/security/pkcs11/tls/TestKeyMaterial.java                                    
 sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                                     8209398 generic-all
 
 security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java    8224768 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/GlobalSignR6CA.java 8249176 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/LuxTrustCA.java   8237888 generic-all
 
 ############################################################################
