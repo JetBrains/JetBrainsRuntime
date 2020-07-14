@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,11 +112,11 @@ class ZipCoder {
         return utf8.getBytes(s);
     }
 
-    String toStringUTF8(byte[] ba, int len) {
+    static String toStringUTF8(byte[] ba, int len) {
         return utf8.toString(ba, 0, len);
     }
 
-    String toStringUTF8(byte[] ba, int off, int len) {
+    static String toStringUTF8(byte[] ba, int off, int len) {
         return utf8.toString(ba, off, len);
     }
 

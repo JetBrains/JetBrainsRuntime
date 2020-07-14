@@ -47,6 +47,7 @@ import static java.io.ObjectStreamClass.processQueue;
 import jdk.internal.misc.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import sun.reflect.misc.ReflectUtil;
+import sun.security.action.GetBooleanAction;
 
 /**
  * An ObjectInputStream deserializes primitive data and objects previously
@@ -259,6 +260,23 @@ public class ObjectInputStream
         /** queue for WeakReferences to audited subclasses */
         static final ReferenceQueue<Class<?>> subclassAuditsQueue =
             new ReferenceQueue<>();
+
+        /**
+         * Property to permit setting a filter after objects
+         * have been read.
+         * See {@link #setObjectInputFilter(ObjectInputFilter)}
+         */
+        static final boolean SET_FILTER_AFTER_READ =
+                privilegedGetProperty("jdk.serialSetFilterAfterRead");
+
+        private static boolean privilegedGetProperty(String theProp) {
+            if (System.getSecurityManager() == null) {
+                return Boolean.getBoolean(theProp);
+            } else {
+                return AccessController.doPrivileged(
+                        new GetBooleanAction(theProp));
+            }
+        }
     }
 
     /*
@@ -1279,6 +1297,10 @@ public class ObjectInputStream
         if (serialFilter != null &&
                 serialFilter != ObjectInputFilter.Config.getSerialFilter()) {
             throw new IllegalStateException("filter can not be set more than once");
+        }
+        if (totalObjectRefs > 0 && !Caches.SET_FILTER_AFTER_READ) {
+            throw new IllegalStateException(
+                    "filter can not be set after an object has been read");
         }
         this.serialFilter = filter;
     }
