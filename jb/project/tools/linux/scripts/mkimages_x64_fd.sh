@@ -34,6 +34,7 @@ source jb/project/tools/common.sh
 
 
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
+WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
 
 sh configure \
   --disable-warnings-as-errors \
