@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1178,6 +1178,10 @@ size_t CompactibleFreeListSpace::block_size(const HeapWord* p) const {
         return res;
       }
     } else {
+      // The barrier is required to prevent reordering of the free chunk check
+      // and the klass read.
+      OrderAccess::loadload();
+
       // Ensure klass read before size.
       Klass* k = oop(p)->klass_or_null_acquire();
       if (k != NULL) {
@@ -1228,6 +1232,10 @@ const {
         return res;
       }
     } else {
+      // The barrier is required to prevent reordering of the free chunk check
+      // and the klass read.
+      OrderAccess::loadload();
+
       // Ensure klass read before size.
       Klass* k = oop(p)->klass_or_null_acquire();
       if (k != NULL) {
@@ -1271,6 +1279,11 @@ bool CompactibleFreeListSpace::block_is_obj(const HeapWord* p) const {
   FreeChunk* fc = (FreeChunk*)p;
   assert(is_in_reserved(p), "Should be in space");
   if (FreeChunk::indicatesFreeChunk(p)) return false;
+
+  // The barrier is required to prevent reordering of the free chunk check
+  // and the klass read.
+  OrderAccess::loadload();
+
   Klass* k = oop(p)->klass_or_null_acquire();
   if (k != NULL) {
     // Ignore mark word because it may have been used to
