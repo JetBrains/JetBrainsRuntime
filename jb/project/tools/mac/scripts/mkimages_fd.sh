@@ -16,6 +16,11 @@
 # OpenJDK Runtime Environment (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number})
 # OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
 #
+# Environment variables:
+#   MODULAR_SDK_PATH - specifies the path to the directory where imported modules are located.
+#               By default imported modules should be located in ./modular-sdk
+#   JCEF_PATH - specifies the path to the directory where JCEF binaries are located.
+#               By default imported modules should be located in ./jcef_mac
 
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
@@ -23,19 +28,23 @@ build_number=$3
 
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 
+WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=./modular-sdk}"
+JCEF_PATH=${JCEF_PATH:=./jcef_mac}
+
 source jb/project/tools/common.sh
 
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
+WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
 
 sh configure \
   --disable-warnings-as-errors \
-  --with-debug-level=fastdebug \
+  $WITH_DEBUG_LEVEL \
   --with-vendor-name="${VENDOR_NAME}" \
   --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
   --with-version-pre= \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
-  --with-import-modules=./modular-sdk \
+  $WITH_IMPORT_MODULES \
   --with-boot-jdk=`/usr/libexec/java_home -v 11` \
   --enable-cds=yes || exit $?
 make clean CONF=macosx-x86_64-normal-server-fastdebug || exit $?
@@ -53,7 +62,7 @@ JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
 echo Creating $JBSDK.tar.gz ...
-cp -a jcef_mac/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
+cp -a ${JCEF_PATH}/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 
 sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
 mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
@@ -83,7 +92,7 @@ $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/bin/jlink \
 grep -v "^JAVA_VERSION" $BASE_DIR/$JBRSDK_BUNDLE/Contents/Home/release | grep -v "^MODULES" >> $JRE_HOME/release
 cp -R $BASE_DIR/$JBRSDK_BUNDLE/Contents/MacOS $JRE_CONTENTS
 cp $BASE_DIR/$JBRSDK_BUNDLE/Contents/Info.plist $JRE_CONTENTS
-cp -a jcef_mac/Frameworks ${JRE_CONTENTS} || exit $?
+cp -a ${JCEF_PATH}/Frameworks ${JRE_CONTENTS} || exit $?
 
 
 echo Creating $JBR.tar.gz ...

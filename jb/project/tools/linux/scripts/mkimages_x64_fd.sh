@@ -16,12 +16,19 @@
 # OpenJDK Runtime Environment (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number})
 # OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
 #
+# Environment variables:
+#   MODULAR_SDK_PATH - specifies the path to the directory where imported modules are located.
+#               By default imported modules should be located in ./modular-sdk
+#   JCEF_PATH - specifies the path to the directory where JCEF binaries are located.
+#               By default imported modules should be located in ./jcef_linux_x64
 
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
 
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
+WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=./modular-sdk}"
+JCEF_PATH=${JCEF_PATH:=./jcef_linux_x64}
 
 source jb/project/tools/common.sh
 
@@ -30,7 +37,7 @@ JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 
 sh configure \
   --disable-warnings-as-errors \
-  --with-debug-level=fastdebug \
+  $WITH_DEBUG_LEVEL \
   --with-vendor-name="${VENDOR_NAME}" \
   --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
   --with-version-pre= \

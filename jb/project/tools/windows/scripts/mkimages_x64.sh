@@ -16,12 +16,19 @@
 # OpenJDK Runtime Environment (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number})
 # OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
 #
+# Environment variables:
+#   MODULAR_SDK_PATH - specifies the path to the directory where imported modules are located.
+#               By default imported modules should be located in ./modular-sdk
+#   JCEF_PATH - specifies the path to the directory where JCEF binaries are located.
+#               By default imported modules should be located in ./jcef_win_x64
 
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
 bundle_type=$4
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
+WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=${WORK_DIR}/modular-sdk}"
+JCEF_PATH=${JCEF_PATH:=./jcef_win_x64}
 
 source jb/project/tools/common.sh
 
@@ -45,7 +52,7 @@ function create_jbr {
     --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output ${JBR_BUNDLE} || exit $?
   if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]]
   then
-    cp -R jcef_win_x64/* ${JBR_BUNDLE}/bin
+    cp -R ${JCEF_PATH}/* ${JBR_BUNDLE}/bin
   fi
   echo Modifying release info ...
   cat ${JSDK}/release | tr -d '\r' | grep -v 'JAVA_VERSION' | grep -v 'MODULES' >> ${JBR_BUNDLE}/release
@@ -55,7 +62,6 @@ JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 WORK_DIR=$(pwd)
 
 WITH_DEBUG_LEVEL="--with-debug-level=release"
-WITH_IMPORT_MODULES="--with-import-modules=${WORK_DIR}/modular-sdk"
 RELEASE_NAME=windows-x86_64-normal-server-release
 git checkout -- modules.list src/java.desktop/share/classes/module-info.java
 case "$bundle_type" in
@@ -108,7 +114,7 @@ BASE_DIR=build/$RELEASE_NAME/images
 JBRSDK_BUNDLE=jbrsdk
 
 rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE} && rsync -a --exclude demo --exclude sample ${JSDK}/ ${JBRSDK_BUNDLE} || exit 1
-cp -R jcef_win_x64/* ${JBRSDK_BUNDLE}/bin
+cp -R ${JCEF_PATH}/* ${JBRSDK_BUNDLE}/bin
 sed 's/JBR/JBRSDK/g' ${JSDK}/release > release
 mv release ${JBRSDK_BUNDLE}/release
 

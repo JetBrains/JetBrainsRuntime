@@ -16,12 +16,19 @@
 # OpenJDK Runtime Environment (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number})
 # OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
 #
+# Environment variables:
+#   MODULAR_SDK_PATH - specifies the path to the directory where imported modules are located.
+#               By default imported modules should be located in ./modular-sdk
+#   JCEF_PATH - specifies the path to the directory where JCEF binaries are located.
+#               By default imported modules should be located in ./jcef_linux_x64
 
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
 bundle_type=$4
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
+WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=./modular-sdk}"
+JCEF_PATH=${JCEF_PATH:=./jcef_linux_x64}
 
 source jb/project/tools/common.sh
 
@@ -55,7 +62,7 @@ function create_jbr {
 
   if [[ "$bundle_type" == *jcef* ]] || [[ "$bundle_type" == *dcevm* ]]; then
     cp -R $BASE_DIR/$JBR_BUNDLE $BASE_DIR/jbr
-    cp -R jcef_linux_x64/* $BASE_DIR/$JBR_BUNDLE/lib || exit $?
+    cp -R ${JCEF_PATH}/* $BASE_DIR/$JBR_BUNDLE/lib || exit $?
   fi
   grep -v "^JAVA_VERSION" $JSDK/release | grep -v "^MODULES" >> $BASE_DIR/$JBR_BUNDLE/release
 
@@ -69,7 +76,6 @@ function create_jbr {
 
 JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
 WITH_DEBUG_LEVEL="--with-debug-level=release"
-WITH_IMPORT_MODULES="--with-import-modules=./modular-sdk"
 RELEASE_NAME=linux-x86_64-normal-server-release
 git checkout -- modules.list src/java.desktop/share/classes/module-info.java
 case "$bundle_type" in
@@ -115,7 +121,7 @@ rm -rf $BASE_DIR/$JBRSDK_BUNDLE
 cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
 if [[ "$bundle_type" == *jcef* ]] || [[ "$bundle_type" == *dcevm* ]]; then
-  cp -R jcef_linux_x64/* $BASE_DIR/$JBRSDK_BUNDLE/lib || exit $?
+  cp -R ${JCEF_PATH}/* $BASE_DIR/$JBRSDK_BUNDLE/lib || exit $?
 fi
 if [ "$bundle_type" == "jfx_jcef" ]; then
   echo Creating $JBSDK.tar.gz ...
