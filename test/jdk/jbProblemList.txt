@@ -1262,4 +1262,5 @@ javax/swing/LookAndFeel/8146276/NimbusGlueTest.java                             
 sanity/client/SwingSet/src/GridBagLayoutDemoTest.java                               JBR-1977 linux-aarch64
 
 jb/java/jcef/JCEFStartupTest.java                                                   JBR-1996 linux-i386,windows-x86
-jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java                       JBR-2585 linux-all,windows-6.1 not supported on Windows 7
+jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java                       nobug windows-6.1 not supported on Windows 7
+jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-2585 linux-all
