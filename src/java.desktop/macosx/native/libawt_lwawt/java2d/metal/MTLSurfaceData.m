@@ -68,9 +68,19 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
 
         MTLContext* ctx = mtlsdo->configInfo->context;
 
-        if (width > MaxTextureSize) {
-            width = MaxTextureSize;
+        width = (width <= MaxTextureSize) ? width : 0;
+        height = (height <= MaxTextureSize) ? height : 0;
+
+        J2dTraceLn3(J2D_TRACE_VERBOSE, "  desired texture dimensions: w=%d h=%d max=%d",
+                width, height, MaxTextureSize);
+
+        // if either dimension is 0, we cannot allocate a texture with the
+        // requested dimensions
+        if ((width == 0 || height == 0)) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: texture dimensions too large");
+            return JNI_FALSE;
         }
+
         MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatBGRA8Unorm width: width height: height mipmapped: NO];
         textureDescriptor.usage = MTLTextureUsageUnknown;
         textureDescriptor.storageMode = MTLStorageModePrivate;
