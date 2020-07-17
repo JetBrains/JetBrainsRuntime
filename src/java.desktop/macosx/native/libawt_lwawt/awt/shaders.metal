@@ -230,7 +230,7 @@ fragment half4 frag_txt_op_convolve(
         TxtShaderInOut vert [[stage_in]],
         texture2d<float, access::sample> srcTex [[texture(0)]],
         constant TxtFrameOpConvolveUniforms& uniforms [[buffer(1)]],
-        const device float3 * kernelVals [[buffer(2)]],
+        const device float * kernelVals [[buffer(2)]],
         sampler textureSampler [[sampler(0)]]
 ) {
     float4 sum = float4(0, 0, 0, 0);
@@ -245,7 +245,7 @@ fragment half4 frag_txt_op_convolve(
     }
 
     for (int i = 0; i < uniforms.kernelSize; i++) {
-        float3 kern = kernelVals[i];
+        float3 kern = float3(kernelVals[i*3], kernelVals[i*3 + 1], kernelVals[i*3 + 2]);
         float2 pos = float2(vert.texCoords.x + kern.x, vert.texCoords.y + kern.y);
         float4 pixCol = srcTex.sample(textureSampler, pos);
         sum.r += kern.z * pixCol.r;
