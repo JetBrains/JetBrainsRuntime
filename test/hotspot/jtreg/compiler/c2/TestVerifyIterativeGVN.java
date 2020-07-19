@@ -27,7 +27,7 @@
  * @requires vm.debug == true & vm.flavor == "server"
  * @summary Run with -Xcomp to test -XX:+VerifyIterativeGVN in debug builds.
  *
- * @run main/othervm/timeout=300 -Xbatch -Xcomp -XX:+VerifyIterativeGVN compiler.c2.TestVerifyIterativeGVN
+ * @run main/othervm/timeout=1200 -Xbatch -Xcomp -XX:+VerifyIterativeGVN compiler.c2.TestVerifyIterativeGVN
  */
 package compiler.c2;
 
