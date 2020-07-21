@@ -674,6 +674,7 @@ OGLTR_DisableGlyphModeState()
         j2d_glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
         /* FALLTHROUGH */
     case MODE_USE_CACHE_GRAY:
+        OGLVertexCache_FlushVertexCache();
         j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
         j2d_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
         j2d_glUseProgramObjectARB(0);
