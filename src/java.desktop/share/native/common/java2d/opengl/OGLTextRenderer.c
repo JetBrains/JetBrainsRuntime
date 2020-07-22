@@ -594,8 +594,8 @@ OGLTR_EnableGrayGlyphModeState(GLuint glyphTextureID, jint contrast)
     j2d_glBindTexture(GL_TEXTURE_2D, glyphTextureID);
     j2d_glEnable(GL_TEXTURE_2D);
     j2d_glEnable(GL_BLEND);
-    glGetIntegerv(GL_BLEND_SRC_ALPHA, &currentBlendSrc);
-    glGetIntegerv(GL_BLEND_DST_ALPHA, &currentBlendDst);
+    j2d_glGetIntegerv(GL_BLEND_SRC_ALPHA, &currentBlendSrc);
+    j2d_glGetIntegerv(GL_BLEND_DST_ALPHA, &currentBlendDst);
 
     j2d_glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -689,7 +689,7 @@ OGLTR_DisableGlyphModeState()
         j2d_glUseProgramObjectARB(0);
         j2d_glActiveTextureARB(GL_TEXTURE0_ARB);
         j2d_glDisable(GL_TEXTURE_2D);
-        glBlendFunc(currentBlendSrc, currentBlendDst);
+        j2d_glBlendFunc(currentBlendSrc, currentBlendDst);
         break;
 
     case MODE_NO_CACHE_GRAY:
