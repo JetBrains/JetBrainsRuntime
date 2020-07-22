@@ -85,6 +85,28 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
     [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
 }
 
+void MTLRenderer_DrawPixel(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y) {
+    if (mtlc == NULL || dstOps == NULL || dstOps->pTexture == NULL) {
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderer_DrawPixel: dest is null");
+        return;
+    }
+
+    id<MTLTexture> dest = dstOps->pTexture;
+    J2dTraceLn3(J2D_TRACE_INFO, "MTLRenderer_DrawPixel (x=%d y=%d), dst tex=%p", x, y, dest);
+
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
+    if (mtlEncoder == nil)
+        return;
+
+    // Translate each vertex by a fraction so
+    // that we hit pixel centers.
+    float fx = (float)x + 0.2f;
+    float fy = (float)y + 0.5f;
+    struct Vertex vert[1] = {{{fx, fy}}};
+    [mtlEncoder setVertexBytes:vert length:sizeof(vert) atIndex:MeshVertexBuffer];
+    [mtlEncoder drawPrimitives:MTLPrimitiveTypePoint vertexStart:0 vertexCount:1];
+}
+
 void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, jint w, jint h) {
     if (mtlc == NULL || dstOps == NULL || dstOps->pTexture == NULL) {
         J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderer_DrawRect: dest is null");
