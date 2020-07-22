@@ -29,32 +29,42 @@ add_custom_target(configure_debug
         COMMAND bash configure --disable-warnings-as-errors --enable-debug
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  set(JDK_RELEASE_TARGET "linux-x86_64-normal-server-release")
+  set(JDK_DEBUG_TARGET "linux-x86_64-normal-server-fastdebug")
+endif ()
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(JDK_RELEASE_TARGET "macosx-x86_64-normal-server-release")
+    set(JDK_DEBUG_TARGET "macosx-x86_64-normal-server-fastdebug")
+endif ()
+
 add_custom_target(build
-        COMMAND make CONF=macosx-x86_64-normal-server-release
+        COMMAND make CONF=${JDK_RELEASE_TARGET}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../
         DEPENDS ${SOURCE_FILES})
 
 add_custom_target(build_images
-        COMMAND make images CONF=macosx-x86_64-normal-server-release
+        COMMAND make images CONF=${JDK_RELEASE_TARGET}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../
         DEPENDS ${SOURCE_FILES})
 
 add_custom_target(build_debug
-        COMMAND make CONF=macosx-x86_64-normal-server-fastdebug
+        COMMAND make CONF=${JDK_DEBUG_TARGET}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../
         DEPENDS ${SOURCE_FILES})
 
 add_custom_target(build_images_debug
-        COMMAND make images CONF=macosx-x86_64-normal-server-fastdebug
+        COMMAND make images CONF=${JDK_DEBUG_TARGET}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../
         DEPENDS ${SOURCE_FILES})
 
 add_custom_target(make_clean
-        COMMAND make clean CONF=macosx-x86_64-normal-server-release
+        COMMAND make clean CONF=${JDK_RELEASE_TARGET}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../
         DEPENDS ${SOURCE_FILES})
 
 add_custom_target(make_clean_debug
-        COMMAND make clean CONF=macosx-x86_64-normal-server-fastdebug
+        COMMAND make clean CONF=${JDK_DEBUG_TARGET}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../../
         DEPENDS ${SOURCE_FILES})
