@@ -986,7 +986,8 @@ hb_plan_subset_cff_fdselect (const hb_vector_t<hb_codepoint_t> &glyphs,
 
 HB_INTERNAL bool
 hb_serialize_cff_fdselect (hb_serialize_context_t *c,
-                          unsigned int num_glyphs,
+                           // Solaris does not link because the implementation in .cc specifies num_glyphs as const.
+                          const unsigned int num_glyphs,
                           const CFF::FDSelect &src,
                           unsigned int fd_count,
                           unsigned int fdselect_format,
