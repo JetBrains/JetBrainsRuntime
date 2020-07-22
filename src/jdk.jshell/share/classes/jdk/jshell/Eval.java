@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,6 @@ import com.sun.source.tree.ModifiersTree;
 import com.sun.source.tree.NewClassTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
-import com.sun.source.util.TreeScanner;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.Pretty;
 import java.io.IOException;
@@ -98,6 +97,7 @@ import static jdk.jshell.Snippet.SubKind.STATIC_IMPORT_ON_DEMAND_SUBKIND;
 class Eval {
 
     private static final Pattern IMPORT_PATTERN = Pattern.compile("import\\p{javaWhitespace}+(?<static>static\\p{javaWhitespace}+)?(?<fullname>[\\p{L}\\p{N}_\\$\\.]+\\.(?<name>[\\p{L}\\p{N}_\\$]+|\\*))");
+    private static final Pattern DEFAULT_PREFIX = Pattern.compile("\\p{javaWhitespace}*(default)\\p{javaWhitespace}+");
 
     // for uses that should not change state -- non-evaluations
     private boolean preserveState = false;
@@ -201,7 +201,13 @@ class Eval {
             }
             Tree unitTree = units.get(0);
             if (pt.getDiagnostics().hasOtherThanNotStatementErrors()) {
-                return compileFailResult(pt, userSource, kindOfTree(unitTree));
+                Matcher matcher = DEFAULT_PREFIX.matcher(compileSource);
+                DiagList dlist = matcher.lookingAt()
+                        ? new DiagList(new ModifierDiagnostic(true,
+                            state.messageFormat("jshell.diag.modifier.single.fatal", "'default'"),
+                            matcher.start(1), matcher.end(1)))
+                        : pt.getDiagnostics();
+                return compileFailResult(dlist, userSource, kindOfTree(unitTree));
             }
 
             // Erase illegal/ignored modifiers
@@ -588,7 +594,6 @@ class Eval {
                         name = "$" + ++varNumber;
                     }
                 }
-                TreeDissector dis = TreeDissector.createByFirstClass(pt);
                 ExpressionInfo varEI =
                         ExpressionToTypeInfo.localVariableTypeForInitializer(compileSource, state, true);
                 String declareTypeName;
@@ -600,6 +605,7 @@ class Eval {
                     fullTypeName = varEI.fullTypeName;
                     displayTypeName = varEI.displayTypeName;
 
+                    TreeDissector dis = TreeDissector.createByFirstClass(pt);
                     Pair<Wrap, Wrap> anonymous2Member =
                             anonymous2Member(varEI, compileSource, new Range(0, compileSource.length()), dis, expr.getExpression());
                     guts = Wrap.tempVarWrap(anonymous2Member.second.wrapped(), declareTypeName, name, anonymous2Member.first);
@@ -646,8 +652,8 @@ class Eval {
         String name = klassTree.getSimpleName().toString();
         DiagList modDiag = modifierDiagnostics(klassTree.getModifiers(), dis, false);
         TypeDeclKey key = state.keyMap.keyForClass(name);
-        // Corralling mutates.  Must be last use of pt, unitTree, klassTree
-        Wrap corralled = new Corraller(key.index(), pt.getContext()).corralType(klassTree);
+        // Corralling
+        Wrap corralled = new Corraller(dis, key.index(), compileSource).corralType(klassTree);
 
         Wrap guts = Wrap.classMemberWrap(compileSource);
         Snippet snip = new TypeDeclSnippet(key, userSource, guts,
@@ -718,8 +724,8 @@ class Eval {
         Tree returnType = mt.getReturnType();
         DiagList modDiag = modifierDiagnostics(mt.getModifiers(), dis, true);
         MethodKey key = state.keyMap.keyForMethod(name, parameterTypes);
-        // Corralling mutates.  Must be last use of pt, unitTree, mt
-        Wrap corralled = new Corraller(key.index(), pt.getContext()).corralMethod(mt);
+        // Corralling
+        Wrap corralled = new Corraller(dis, key.index(), compileSource).corralMethod(mt);
 
         if (modDiag.hasErrors()) {
             return compileFailResult(modDiag, userSource, Kind.METHOD);
@@ -1149,34 +1155,21 @@ class Eval {
         };
     }
 
-    private DiagList modifierDiagnostics(ModifiersTree modtree,
-            final TreeDissector dis, boolean isAbstractProhibited) {
-
-        class ModifierDiagnostic extends Diag {
+    private class ModifierDiagnostic extends Diag {
 
             final boolean fatal;
             final String message;
-            long start;
-            long end;
+            final long start;
+            final long end;
 
-            ModifierDiagnostic(List<Modifier> list, boolean fatal) {
+            ModifierDiagnostic(boolean fatal,
+                    final String message,
+                    long start,
+                    long end) {
                 this.fatal = fatal;
-                StringBuilder sb = new StringBuilder();
-                for (Modifier mod : list) {
-                    sb.append("'");
-                    sb.append(mod.toString());
-                    sb.append("' ");
-                }
-                String key = (list.size() > 1)
-                        ? fatal
-                            ? "jshell.diag.modifier.plural.fatal"
-                            : "jshell.diag.modifier.plural.ignore"
-                        : fatal
-                            ? "jshell.diag.modifier.single.fatal"
-                            : "jshell.diag.modifier.single.ignore";
-                this.message = state.messageFormat(key, sb.toString());
-                start = dis.getStartPosition(modtree);
-                end = dis.getEndPosition(modtree);
+                this.message = message;
+                this.start = start;
+                this.end = end;
             }
 
             @Override
@@ -1210,7 +1203,10 @@ class Eval {
             public String getMessage(Locale locale) {
                 return message;
             }
-        }
+    }
+
+    private DiagList modifierDiagnostics(ModifiersTree modtree,
+                                         final TreeDissector dis, boolean isAbstractProhibited) {
 
         List<Modifier> list = new ArrayList<>();
         boolean fatal = false;
@@ -1238,9 +1234,26 @@ class Eval {
                     break;
             }
         }
-        return list.isEmpty()
-                ? new DiagList()
-                : new DiagList(new ModifierDiagnostic(list, fatal));
+        if (list.isEmpty()) {
+            return new DiagList();
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (Modifier mod : list) {
+                sb.append("'");
+                sb.append(mod.toString());
+                sb.append("' ");
+            }
+            String key = (list.size() > 1)
+                    ? fatal
+                    ? "jshell.diag.modifier.plural.fatal"
+                    : "jshell.diag.modifier.plural.ignore"
+                    : fatal
+                    ? "jshell.diag.modifier.single.fatal"
+                    : "jshell.diag.modifier.single.ignore";
+            String message = state.messageFormat(key, sb.toString().trim());
+            return new DiagList(new ModifierDiagnostic(fatal, message,
+                    dis.getStartPosition(modtree), dis.getEndPosition(modtree)));
+        }
     }
 
     String computeDeclareName(TypeSymbol ts) {

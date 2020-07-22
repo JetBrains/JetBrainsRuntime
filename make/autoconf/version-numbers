@@ -23,16 +23,17 @@
 # questions.
 #
 
-# Default version numbers to use unless overridden by configure
+# Default version, product, and vendor information to use,
+# unless overridden by configure
 
 DEFAULT_VERSION_FEATURE=11
 DEFAULT_VERSION_INTERIM=0
-DEFAULT_VERSION_UPDATE=7
+DEFAULT_VERSION_UPDATE=8
 DEFAULT_VERSION_PATCH=0
 DEFAULT_VERSION_EXTRA1=0
 DEFAULT_VERSION_EXTRA2=0
 DEFAULT_VERSION_EXTRA3=0
-DEFAULT_VERSION_DATE=2020-04-14
+DEFAULT_VERSION_DATE=2020-07-14
 DEFAULT_VERSION_CLASSFILE_MAJOR=55  # "`$EXPR $DEFAULT_VERSION_FEATURE + 44`"
 DEFAULT_VERSION_CLASSFILE_MINOR=0
 DEFAULT_ACCEPTABLE_BOOT_VERSIONS="10 11"
@@ -44,6 +45,9 @@ PRODUCT_SUFFIX="Runtime Environment"
 JDK_RC_PLATFORM_NAME=Platform
 COMPANY_NAME=N/A
 HOTSPOT_VM_DISTRO="OpenJDK"
+VENDOR_URL=https://openjdk.java.net/
+VENDOR_URL_BUG=https://bugreport.java.com/bugreport/
+VENDOR_URL_VM_BUG=https://bugreport.java.com/bugreport/crash.jsp
 
 # Might need better names for these
 MACOSX_BUNDLE_NAME_BASE="OpenJDK"

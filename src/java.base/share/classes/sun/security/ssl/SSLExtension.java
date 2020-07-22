@@ -142,7 +142,7 @@ enum SSLExtension implements SSLStringizer {
                                 SupportedGroupsExtension.chOnLoadConsumer,
                                 null,
                                 null,
-                                null,
+                                SupportedGroupsExtension.chOnTradAbsence,
                                 SupportedGroupsExtension.sgsStringizer),
     EE_SUPPORTED_GROUPS     (0x000A, "supported_groups",
                                 SSLHandshake.ENCRYPTED_EXTENSIONS,
@@ -396,7 +396,9 @@ enum SSLExtension implements SSLStringizer {
                                 ProtocolVersion.PROTOCOLS_OF_13,
                                 KeyShareExtension.chNetworkProducer,
                                 KeyShareExtension.chOnLoadConsumer,
-                                null, null, null,
+                                null,
+                                null,
+                                KeyShareExtension.chOnTradAbsence,
                                 KeyShareExtension.chStringizer),
     SH_KEY_SHARE            (0x0033, "key_share",
                                 SSLHandshake.SERVER_HELLO,
@@ -449,7 +451,7 @@ enum SSLExtension implements SSLStringizer {
                                 PreSharedKeyExtension.chOnLoadConsumer,
                                 PreSharedKeyExtension.chOnLoadAbsence,
                                 PreSharedKeyExtension.chOnTradeConsumer,
-                                null,
+                                PreSharedKeyExtension.chOnTradAbsence,
                                 PreSharedKeyExtension.chStringizer),
     SH_PRE_SHARED_KEY       (0x0029, "pre_shared_key",
                                 SSLHandshake.SERVER_HELLO,
@@ -667,8 +669,18 @@ enum SSLExtension implements SSLStringizer {
             }
 
             // To switch off the max_fragment_length extension.
+            //
+            // Note that "jsse.enableMFLNExtension" is the CSR approved
+            // property name.  However, "jsse.enableMFLExtension" was used
+            // in the original implementation.  Temporarily, if either of
+            // the two properties set to true, the extension is switch on.
+            // We may remove the "jsse.enableMFLExtension" property in the
+            // future.  Please don't continue to use the misspelling property.
             enableExtension =
-                Utilities.getBooleanProperty("jsse.enableMFLExtension", false);
+                Utilities.getBooleanProperty(
+                        "jsse.enableMFLNExtension", false) ||
+                Utilities.getBooleanProperty(
+                        "jsse.enableMFLExtension", false);
             if (!enableExtension) {
                 extensions.remove(CH_MAX_FRAGMENT_LENGTH);
             }

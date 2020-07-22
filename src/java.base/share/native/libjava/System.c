@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1994, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,8 @@ Java_java_lang_System_identityHashCode(JNIEnv *env, jobject this, jobject x)
 {
     return JVM_IHashCode(env, x);
 }
+
+/* VENDOR, VENDOR_URL, VENDOR_URL_BUG are set in VersionProps.java.template. */
 
 #define PUTPROP(props, key, val)                                     \
     if (1) {                                                         \
@@ -210,11 +212,6 @@ Java_java_lang_System_initProperties(JNIEnv *env, jclass cla, jobject props)
             "Java Platform API Specification");
     PUTPROP(props, "java.specification.vendor",
             JAVA_SPECIFICATION_VENDOR);
-
-    PUTPROP(props, "java.version", VERSION_SHORT);
-    PUTPROP(props, "java.vendor", VENDOR);
-    PUTPROP(props, "java.vendor.url", VENDOR_URL);
-    PUTPROP(props, "java.vendor.url.bug", VENDOR_URL_BUG);
 
     jio_snprintf(buf, sizeof(buf), "%d.%d", JVM_CLASSFILE_MAJOR_VERSION,
                                             JVM_CLASSFILE_MINOR_VERSION);

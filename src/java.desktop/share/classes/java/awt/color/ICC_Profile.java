@@ -764,11 +764,6 @@ public class ICC_Profile implements Serializable {
      */
     @Deprecated(since="9")
     protected void finalize () {
-        if (cmmProfile != null) {
-            CMSManager.getModule().freeProfile(cmmProfile);
-        } else if (profileActivator != null) {
-            ProfileDeferralMgr.unregisterDeferral(profileActivator);
-        }
     }
 
 

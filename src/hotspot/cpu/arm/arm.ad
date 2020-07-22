@@ -6901,14 +6901,6 @@ instruct castII( iRegI dst ) %{
   ins_pipe(empty);
 %}
 
-instruct castLL( iRegL dst ) %{
-  match(Set dst (CastLL dst));
-  format %{ "! castLL of $dst" %}
-  ins_encode( /*empty encoding*/ );
-  ins_cost(0);
-  ins_pipe(empty);
-%}
-
 //----------Arithmetic Instructions--------------------------------------------
 // Addition Instructions
 // Register Addition
@@ -11974,15 +11966,16 @@ instruct ShouldNotReachHere( )
   match(Halt);
   ins_cost(CALL_COST);
 
-  size(4);
   // Use the following format syntax
   format %{ "ShouldNotReachHere" %}
   ins_encode %{
+    if (is_reachable()) {
 #ifdef AARCH64
-    __ dpcs1(0xdead);
+      __ dpcs1(0xdead);
 #else
-    __ udf(0xdead);
+      __ udf(0xdead);
 #endif
+    }
   %}
   ins_pipe(tail_call);
 %}

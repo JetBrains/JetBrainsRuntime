@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -357,7 +357,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @see java.awt.image.BufferStrategy
      * @see #getBufferStrategy()
      */
-    transient BufferStrategy bufferStrategy = null;
+    private transient BufferStrategy bufferStrategy = null;
 
     /**
      * True when the object should ignore all repaint events.
@@ -4055,12 +4055,12 @@ public abstract class Component implements ImageObserver, MenuContainer,
          /**
           * The width of the back buffers
           */
-        int width;
+        private int width;
 
         /**
          * The height of the back buffers
          */
-        int height;
+        private int height;
 
         /**
          * Creates a new flipping buffer strategy for this component.
@@ -4133,9 +4133,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
 
             if (drawBuffer != null) {
                 // dispose the existing backbuffers
-                drawBuffer = null;
-                drawVBuffer = null;
-                destroyBuffers();
+                invalidate();
                 // ... then recreate the backbuffers
             }
 
@@ -4223,6 +4221,15 @@ public abstract class Component implements ImageObserver, MenuContainer,
         }
 
         /**
+         * Destroys the buffers and invalidates the state of FlipBufferStrategy.
+         */
+        private void invalidate() {
+            drawBuffer = null;
+            drawVBuffer = null;
+            destroyBuffers();
+        }
+
+        /**
          * Destroys the buffers created through this object
          */
         protected void destroyBuffers() {
@@ -4261,14 +4268,11 @@ public abstract class Component implements ImageObserver, MenuContainer,
          * Restore the drawing buffer if it has been lost
          */
         protected void revalidate() {
-            revalidate(true);
-        }
-
-        void revalidate(boolean checkSize) {
             validatedContents = false;
-
-            if (checkSize && (getWidth() != width || getHeight() != height)) {
-                // component has been resized; recreate the backbuffers
+            if (getWidth() != width || getHeight() != height
+                    || drawBuffer == null) {
+                // component has been resized or the peer was recreated;
+                // recreate the backbuffers
                 try {
                     createBuffers(numBuffers, caps);
                 } catch (AWTException e) {
@@ -4346,7 +4350,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
             if (Component.this.bufferStrategy == this) {
                 Component.this.bufferStrategy = null;
                 if (peer != null) {
-                    destroyBuffers();
+                    invalidate();
                 }
             }
         }
@@ -7174,7 +7178,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 boolean isLightweight = isLightweight();
 
                 if (bufferStrategy instanceof FlipBufferStrategy) {
-                    ((FlipBufferStrategy)bufferStrategy).destroyBuffers();
+                    ((FlipBufferStrategy)bufferStrategy).invalidate();
                 }
 
                 if (dropTarget != null) dropTarget.removeNotify();

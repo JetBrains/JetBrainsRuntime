@@ -857,9 +857,17 @@ public abstract class Provider extends Properties {
     // serviceMap changed since last call to getServices()
     private volatile transient boolean servicesChanged;
 
+    // Map<String,String> used to keep track of legacy registration
+    private transient Map<String,String> legacyStrings;
+
     // Map<ServiceKey,Service>
     // used for services added via putService(), initialized on demand
     private transient Map<ServiceKey,Service> serviceMap;
+
+    // For backward compatibility, the registration ordering of
+    // SecureRandom (RNG) algorithms needs to be preserved for
+    // "new SecureRandom()" calls when this provider is used
+    private transient Set<String> prngAlgos;
 
     // Map<ServiceKey,Service>
     // used for services added via legacy methods, init on demand
@@ -911,12 +919,18 @@ public abstract class Provider extends Properties {
         putAll(copy);
     }
 
-    private static boolean isProviderInfo(Object key) {
+    // check whether to update 'legacyString' with the specified key
+    private boolean checkLegacy(Object key) {
         String keyString = (String)key;
         if (keyString.startsWith("Provider.")) {
-            return true;
+            return false;
         }
-        return false;
+
+        legacyChanged = true;
+        if (legacyStrings == null) {
+            legacyStrings = new LinkedHashMap<>();
+        }
+        return true;
     }
 
     /**
@@ -932,20 +946,20 @@ public abstract class Provider extends Properties {
 
     private Object implRemove(Object key) {
         if (key instanceof String) {
-            if (isProviderInfo(key)) {
+            if (!checkLegacy(key)) {
                 return null;
             }
-            legacyChanged = true;
+            legacyStrings.remove((String)key);
         }
         return super.remove(key);
     }
 
     private boolean implRemove(Object key, Object value) {
         if (key instanceof String && value instanceof String) {
-            if (isProviderInfo(key)) {
+            if (!checkLegacy(key)) {
                 return false;
             }
-            legacyChanged = true;
+            legacyStrings.remove((String)key, (String)value);
         }
         return super.remove(key, value);
     }
@@ -953,20 +967,21 @@ public abstract class Provider extends Properties {
     private boolean implReplace(Object key, Object oldValue, Object newValue) {
         if ((key instanceof String) && (oldValue instanceof String) &&
                 (newValue instanceof String)) {
-            if (isProviderInfo(key)) {
+            if (!checkLegacy(key)) {
                 return false;
             }
-            legacyChanged = true;
+            legacyStrings.replace((String)key, (String)oldValue,
+                    (String)newValue);
         }
         return super.replace(key, oldValue, newValue);
     }
 
     private Object implReplace(Object key, Object value) {
         if ((key instanceof String) && (value instanceof String)) {
-            if (isProviderInfo(key)) {
+            if (!checkLegacy(key)) {
                 return null;
             }
-            legacyChanged = true;
+            legacyStrings.replace((String)key, (String)value);
         }
         return super.replace(key, value);
     }
@@ -975,17 +990,26 @@ public abstract class Provider extends Properties {
     private void implReplaceAll(BiFunction<? super Object, ? super Object,
             ? extends Object> function) {
         legacyChanged = true;
+        if (legacyStrings == null) {
+            legacyStrings = new LinkedHashMap<>();
+        } else {
+            legacyStrings.replaceAll((BiFunction<? super String, ? super String,
+                    ? extends String>) function);
+        }
         super.replaceAll(function);
     }
 
     @SuppressWarnings("unchecked") // Function must actually operate over strings
-    private Object implMerge(Object key, Object value, BiFunction<? super Object,
-            ? super Object, ? extends Object> remappingFunction) {
+    private Object implMerge(Object key, Object value,
+            BiFunction<? super Object, ? super Object, ? extends Object>
+            remappingFunction) {
         if ((key instanceof String) && (value instanceof String)) {
-            if (isProviderInfo(key)) {
+            if (!checkLegacy(key)) {
                 return null;
             }
-            legacyChanged = true;
+            legacyStrings.merge((String)key, (String)value,
+                    (BiFunction<? super String, ? super String,
+                    ? extends String>) remappingFunction);
         }
         return super.merge(key, value, remappingFunction);
     }
@@ -994,10 +1018,12 @@ public abstract class Provider extends Properties {
     private Object implCompute(Object key, BiFunction<? super Object,
             ? super Object, ? extends Object> remappingFunction) {
         if (key instanceof String) {
-            if (isProviderInfo(key)) {
+            if (!checkLegacy(key)) {
                 return null;
             }
-            legacyChanged = true;
+            legacyStrings.compute((String) key,
+                    (BiFunction<? super String,? super String,
+                    ? extends String>) remappingFunction);
         }
         return super.compute(key, remappingFunction);
     }
@@ -1006,10 +1032,12 @@ public abstract class Provider extends Properties {
     private Object implComputeIfAbsent(Object key, Function<? super Object,
             ? extends Object> mappingFunction) {
         if (key instanceof String) {
-            if (isProviderInfo(key)) {
+            if (!checkLegacy(key)) {
                 return null;
             }
-            legacyChanged = true;
+            legacyStrings.computeIfAbsent((String) key,
+                    (Function<? super String, ? extends String>)
+                    mappingFunction);
         }
         return super.computeIfAbsent(key, mappingFunction);
     }
@@ -1018,35 +1046,40 @@ public abstract class Provider extends Properties {
     private Object implComputeIfPresent(Object key, BiFunction<? super Object,
             ? super Object, ? extends Object> remappingFunction) {
         if (key instanceof String) {
-            if (isProviderInfo(key)) {
+            if (!checkLegacy(key)) {
                 return null;
             }
-            legacyChanged = true;
+            legacyStrings.computeIfPresent((String) key,
+                    (BiFunction<? super String, ? super String,
+                    ? extends String>) remappingFunction);
         }
         return super.computeIfPresent(key, remappingFunction);
     }
 
     private Object implPut(Object key, Object value) {
         if ((key instanceof String) && (value instanceof String)) {
-            if (isProviderInfo(key)) {
+            if (!checkLegacy(key)) {
                 return null;
             }
-            legacyChanged = true;
+            legacyStrings.put((String)key, (String)value);
         }
         return super.put(key, value);
     }
 
     private Object implPutIfAbsent(Object key, Object value) {
         if ((key instanceof String) && (value instanceof String)) {
-            if (isProviderInfo(key)) {
+            if (!checkLegacy(key)) {
                 return null;
             }
-            legacyChanged = true;
+            legacyStrings.putIfAbsent((String)key, (String)value);
         }
         return super.putIfAbsent(key, value);
     }
 
     private void implClear() {
+        if (legacyStrings != null) {
+            legacyStrings.clear();
+        }
         if (legacyMap != null) {
             legacyMap.clear();
         }
@@ -1054,6 +1087,7 @@ public abstract class Provider extends Properties {
         legacyChanged = false;
         servicesChanged = false;
         serviceSet = null;
+        prngAlgos = null;
         super.clear();
         putId();
     }
@@ -1093,7 +1127,7 @@ public abstract class Provider extends Properties {
      * service objects.
      */
     private void ensureLegacyParsed() {
-        if (legacyChanged == false) {
+        if (legacyChanged == false || (legacyStrings == null)) {
             return;
         }
         serviceSet = null;
@@ -1102,7 +1136,7 @@ public abstract class Provider extends Properties {
         } else {
             legacyMap.clear();
         }
-        for (Map.Entry<?,?> entry : super.entrySet()) {
+        for (Map.Entry<String,String> entry : legacyStrings.entrySet()) {
             parseLegacyPut(entry.getKey(), entry.getValue());
         }
         removeInvalidServices(legacyMap);
@@ -1123,12 +1157,12 @@ public abstract class Provider extends Properties {
         }
     }
 
-    private String[] getTypeAndAlgorithm(String key) {
+    private static String[] getTypeAndAlgorithm(String key) {
         int i = key.indexOf('.');
         if (i < 1) {
             if (debug != null) {
-                debug.println("Ignoring invalid entry in provider "
-                        + name + ":" + key);
+                debug.println("Ignoring invalid entry in provider: "
+                        + key);
             }
             return null;
         }
@@ -1141,15 +1175,7 @@ public abstract class Provider extends Properties {
     private static final String ALIAS_PREFIX_LOWER = "alg.alias.";
     private static final int ALIAS_LENGTH = ALIAS_PREFIX.length();
 
-    private void parseLegacyPut(Object k, Object v) {
-        if (!(k instanceof String) || !(v instanceof String)) {
-            return;
-        }
-        String name = (String) k;
-        String value = (String) v;
-        if (isProviderInfo(name)) {
-            return;
-        }
+    private void parseLegacyPut(String name, String value) {
         if (name.toLowerCase(ENGLISH).startsWith(ALIAS_PREFIX_LOWER)) {
             // e.g. put("Alg.Alias.MessageDigest.SHA", "SHA-1");
             // aliasKey ~ MessageDigest.SHA
@@ -1191,6 +1217,10 @@ public abstract class Provider extends Properties {
                     legacyMap.put(key, s);
                 }
                 s.className = className;
+
+                if (type.equals("SecureRandom")) {
+                    updateSecureRandomEntries(true, s.algorithm);
+                }
             } else { // attribute
                 // e.g. put("MessageDigest.SHA-1 ImplementedIn", "Software");
                 String attributeValue = value;
@@ -1350,7 +1380,47 @@ public abstract class Provider extends Properties {
         servicesChanged = true;
         synchronized (this) {
             putPropertyStrings(s);
+            if (type.equals("SecureRandom")) {
+                updateSecureRandomEntries(true, s.algorithm);
+            }
         }
+    }
+
+    // keep tracks of the registered secure random algos and store them in order
+    private void updateSecureRandomEntries(boolean doAdd, String s) {
+        Objects.requireNonNull(s);
+        if (doAdd) {
+            if (prngAlgos == null) {
+                prngAlgos = new LinkedHashSet<String>();
+            }
+            prngAlgos.add(s);
+        } else {
+            prngAlgos.remove(s);
+        }
+
+        if (debug != null) {
+            debug.println((doAdd? "Add":"Remove") + " SecureRandom algo " + s);
+        }
+    }
+
+    // used by new SecureRandom() to find out the default SecureRandom
+    // service for this provider
+    synchronized Service getDefaultSecureRandomService() {
+        checkInitialized();
+
+        if (legacyChanged) {
+            prngAlgos = null;
+            ensureLegacyParsed();
+        }
+
+        if (prngAlgos != null && !prngAlgos.isEmpty()) {
+            // IMPORTANT: use the Service obj returned by getService(...) call
+            // as providers may override putService(...)/getService(...) and
+            // return their own Service objects
+            return getService("SecureRandom", prngAlgos.iterator().next());
+        }
+
+        return null;
     }
 
     /**
@@ -1446,6 +1516,9 @@ public abstract class Provider extends Properties {
         }
         synchronized (this) {
             removePropertyStrings(s);
+            if (type.equals("SecureRandom")) {
+                updateSecureRandomEntries(false, s.algorithm);
+            }
         }
     }
 

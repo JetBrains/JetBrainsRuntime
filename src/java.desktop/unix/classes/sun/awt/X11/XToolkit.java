@@ -214,7 +214,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     private static volatile int maxWindowWidthInPixels = -1;
     private static volatile int maxWindowHeightInPixels = -1;
 
-    static long awt_defaultFg; // Pixel
     private static XMouseInfoPeer xPeer;
 
     /**
@@ -343,9 +342,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             }
             tryXKB();
             checkXInput();
-
-            AwtScreenData defaultScreen = new AwtScreenData(XToolkit.getDefaultScreenData());
-            awt_defaultFg = defaultScreen.get_blackpixel();
 
             arrowCursor = XlibWrapper.XCreateFontCursor(XToolkit.getDisplay(),
                 XCursorFontConstants.XC_arrow);
@@ -869,11 +865,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
      * _NET_WORKAREA may start at point x1,y1 and end at point x2,y2.
      */
     @Override
-    public Insets getScreenInsets(GraphicsConfiguration gc)
-    {
-        XNETProtocol netProto = XWM.getWM().getNETProtocol();
-        if ((netProto == null) || !netProto.active())
-        {
+    public Insets getScreenInsets(final GraphicsConfiguration gc) {
+        GraphicsDevice gd = gc.getDevice();
+        XNETProtocol np = XWM.getWM().getNETProtocol();
+        if (np == null || !(gd instanceof X11GraphicsDevice) || !np.active()) {
             return super.getScreenInsets(gc);
         }
 
@@ -1504,7 +1499,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     }
 
     static native long getDefaultXColormap();
-    static native long getDefaultScreenData();
 
     /**
      * Returns a new input method adapter descriptor for native input methods.
@@ -2184,10 +2178,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             }
             time = timeoutTasks.firstKey();
         }
-    }
-
-    static long getAwtDefaultFg() {
-        return awt_defaultFg;
     }
 
     static boolean isLeftMouseButton(MouseEvent me) {

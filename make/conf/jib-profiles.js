@@ -240,7 +240,7 @@ var getJibProfilesCommon = function (input, data) {
     // These are the base setttings for all the main build profiles.
     common.main_profile_base = {
         dependencies: ["boot_jdk", "gnumake", "jtreg", "jib", "autoconf"],
-        default_make_targets: ["product-bundles", "test-bundles"],
+        default_make_targets: ["product-bundles", "test-bundles", "static-libs-bundles"],
         configure_args: concat(["--enable-jtreg-failure-handler"],
             "--with-exclude-translations=de,es,fr,it,ko,pt_BR,sv,ca,tr,cs,sk,ja_JP_A,ja_JP_HA,ja_JP_HI,ja_JP_I,zh_TW,zh_HK",
             "--disable-manpages",
@@ -312,6 +312,14 @@ var getJibProfilesCommon = function (input, data) {
                     subdir: jdk_subdir,
                     exploded: "images/jdk"
                 },
+                static_libs: {
+                    local: "bundles/\\(jdk.*bin-static-libs.tar.gz\\)",
+                    remote: [
+                        "bundles/" + pf + "/jdk-" + data.version + "_" + pf + "_bin-static-libs.tar.gz",
+                        "bundles/" + pf + "/\\1"
+                    ],
+                    subdir: jdk_subdir,
+                },
             }
         };
     };
@@ -352,6 +360,14 @@ var getJibProfilesCommon = function (input, data) {
                     ],
                     subdir: jdk_subdir,
                     exploded: "images/jdk"
+                },
+                static_libs: {
+                    local: "bundles/\\(jdk.*bin-static-libs-debug.tar.gz\\)",
+                    remote: [
+                        "bundles/" + pf + "/jdk-" + data.version + "_" + pf + "_bin-static-libs-debug.tar.gz",
+                        "bundles/" + pf + "/\\1"
+                    ],
+                    subdir: jdk_subdir,
                 },
             }
         };
@@ -841,7 +857,7 @@ var getJibProfilesDependencies = function (input, common) {
         macosx_x64: "Xcode9.4-MacOSX10.13+1.0",
         solaris_x64: "SS12u4-Solaris11u1+1.0",
         solaris_sparcv9: "SS12u4-Solaris11u1+1.1",
-        windows_x64: "VS2017-15.5.5+1.0",
+        windows_x64: "VS2017-15.9.16+1.0",
         linux_aarch64: (input.profile != null && input.profile.indexOf("arm64") >= 0
                     ? "gcc-linaro-aarch64-linux-gnu-4.8-2013.11_linux+1.0"
                     : "gcc7.3.0-Fedora27+1.1"),

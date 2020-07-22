@@ -90,7 +90,7 @@ class TransportContext implements ConnectionContext {
     // Called by SSLEngineImpl
     TransportContext(SSLContextImpl sslContext, SSLTransport transport,
             InputRecord inputRecord, OutputRecord outputRecord) {
-        this(sslContext, transport, new SSLConfiguration(sslContext, true),
+        this(sslContext, transport, new SSLConfiguration(sslContext, false),
                 inputRecord, outputRecord, true);
     }
 
@@ -428,7 +428,7 @@ class TransportContext implements ConnectionContext {
                         sslContext.getDefaultCipherSuites(!useClientMode);
             }
 
-            sslConfig.isClientMode = useClientMode;
+            sslConfig.toggleClientMode();
         }
 
         isUnsureMode = false;
@@ -583,13 +583,7 @@ class TransportContext implements ConnectionContext {
             } else if (!isOutboundClosed()) {
                 // Special case that the inbound was closed, but outbound open.
                 return HandshakeStatus.NEED_WRAP;
-            }
-        } else if (isOutboundClosed() && !isInboundClosed()) {
-            // Special case that the outbound was closed, but inbound open.
-            return HandshakeStatus.NEED_UNWRAP;
-        } else if (!isOutboundClosed() && isInboundClosed()) {
-            // Special case that the inbound was closed, but outbound open.
-            return HandshakeStatus.NEED_WRAP;
+            }   // Otherwise, both inbound and outbound are closed.
         }
 
         return HandshakeStatus.NOT_HANDSHAKING;

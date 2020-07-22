@@ -27,7 +27,9 @@ package sun.security.ssl;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
+import javax.crypto.AEADBadTagException;
 import javax.crypto.BadPaddingException;
 import javax.net.ssl.SSLHandshakeException;
 
@@ -116,6 +118,8 @@ interface SSLTransport {
             }
 
             throw context.fatal(Alert.UNEXPECTED_MESSAGE, unsoe);
+        } catch (AEADBadTagException bte) {
+            throw context.fatal(Alert.BAD_RECORD_MAC, bte);
         } catch (BadPaddingException bpe) {
             /*
              * The basic SSLv3 record protection involves (optional)
@@ -123,9 +127,9 @@ interface SSLTransport {
              * data origin authentication.  We do them both here, and
              * throw a fatal alert if the integrity check fails.
              */
-            Alert alert = (context.handshakeContext != null) ?
-                    Alert.HANDSHAKE_FAILURE :
-                    Alert.BAD_RECORD_MAC;
+             Alert alert = (context.handshakeContext != null) ?
+                     Alert.HANDSHAKE_FAILURE :
+                     Alert.BAD_RECORD_MAC;
             throw context.fatal(alert, bpe);
         } catch (SSLHandshakeException she) {
             // may be record sequence number overflow
@@ -133,6 +137,9 @@ interface SSLTransport {
         } catch (EOFException eofe) {
             // rethrow EOFException, the call will handle it if neede.
             throw eofe;
+        } catch (InterruptedIOException iioe) {
+            // don't close the Socket in case of timeouts or interrupts.
+            throw iioe;
         } catch (IOException ioe) {
             throw context.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
         }

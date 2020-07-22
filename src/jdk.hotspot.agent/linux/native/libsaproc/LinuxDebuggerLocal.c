@@ -241,18 +241,22 @@ JNIEXPORT void JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal_at
  */
 JNIEXPORT void JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal_attach0__Ljava_lang_String_2Ljava_lang_String_2
   (JNIEnv *env, jobject this_obj, jstring execName, jstring coreName) {
-  const char *execName_cstr;
-  const char *coreName_cstr;
+  const char *execName_cstr = NULL;
+  const char *coreName_cstr = NULL;
   jboolean isCopy;
   struct ps_prochandle* ph;
 
   execName_cstr = (*env)->GetStringUTFChars(env, execName, &isCopy);
   CHECK_EXCEPTION;
   coreName_cstr = (*env)->GetStringUTFChars(env, coreName, &isCopy);
-  CHECK_EXCEPTION;
+  if ((*env)->ExceptionOccurred(env)) {
+    goto cleanup;
+  }
 
   verifyBitness(env, execName_cstr);
-  CHECK_EXCEPTION;
+  if ((*env)->ExceptionOccurred(env)) {
+    goto cleanup;
+  }
 
   if ( (ph = Pgrab_core(execName_cstr, coreName_cstr)) == NULL) {
     (*env)->ReleaseStringUTFChars(env, execName, execName_cstr);
@@ -260,9 +264,11 @@ JNIEXPORT void JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal_at
     THROW_NEW_DEBUGGER_EXCEPTION("Can't attach to the core file");
   }
   (*env)->SetLongField(env, this_obj, p_ps_prochandle_ID, (jlong)(intptr_t)ph);
-  (*env)->ReleaseStringUTFChars(env, execName, execName_cstr);
-  (*env)->ReleaseStringUTFChars(env, coreName, coreName_cstr);
   fillThreadsAndLoadObjects(env, this_obj, ph);
+
+cleanup:
+  if (execName_cstr != NULL) { (*env)->ReleaseStringUTFChars(env, execName, execName_cstr); }
+  if (coreName_cstr != NULL) { (*env)->ReleaseStringUTFChars(env, coreName, coreName_cstr); }
 }
 
 /*
@@ -296,7 +302,12 @@ JNIEXPORT jlong JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal_l
     CHECK_EXCEPTION_(0);
   }
   symbolName_cstr = (*env)->GetStringUTFChars(env, symbolName, &isCopy);
-  CHECK_EXCEPTION_(0);
+  if ((*env)->ExceptionOccurred(env)) {
+    if (objectName_cstr != NULL) {
+      (*env)->ReleaseStringUTFChars(env, objectName, objectName_cstr);
+    }
+    return 0;
+  }
 
   addr = (jlong) lookup_symbol(ph, objectName_cstr, symbolName_cstr);
 

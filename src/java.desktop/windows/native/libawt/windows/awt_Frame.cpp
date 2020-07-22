@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -916,6 +916,21 @@ MsgRouting AwtFrame::WmGetMinMaxInfo(LPMINMAXINFO lpmmi)
     return mrConsume;
 }
 
+MsgRouting AwtFrame::WmWindowPosChanging(LPARAM windowPos) {
+    if (::IsZoomed(GetHWnd()) && m_maxBoundsSet) {
+        // Limits the size of the maximized window, effectively cuts the
+        // adjustments added by the window manager
+        WINDOWPOS *wp = (WINDOWPOS *) windowPos;
+        if (m_maxSize.x < java_lang_Integer_MAX_VALUE && wp->cx > m_maxSize.x) {
+            wp->cx = m_maxSize.x;
+        }
+        if (m_maxSize.y < java_lang_Integer_MAX_VALUE && wp->cy > m_maxSize.y) {
+            wp->cy = m_maxSize.y;
+        }
+    }
+    return AwtWindow::WmWindowPosChanging(windowPos);
+}
+
 MsgRouting AwtFrame::WmSize(UINT type, int w, int h)
 {
     currentWmSizeState = type;
@@ -1543,10 +1558,6 @@ void AwtFrame::_SetMaximizedBounds(void *param)
     if (::IsWindow(f->GetHWnd()))
     {
         DASSERT(!::IsBadReadPtr(f, sizeof(AwtFrame)));
-        x = f->ScaleUpX(x, ABSOLUTE_COORD);
-        y = f->ScaleUpY(y, ABSOLUTE_COORD);
-        width = f->ScaleUpX(width);
-        height = f->ScaleUpY(height);
         f->SetMaximizedBounds(x, y, width, height);
     }
 ret:

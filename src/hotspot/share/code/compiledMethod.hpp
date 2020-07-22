@@ -347,7 +347,7 @@ public:
   }
 
   virtual void clear_inline_caches();
-  void clear_ic_stubs();
+  void clear_ic_callsites();
 
   // Verify and count cached icholder relocations.
   int  verify_icholder_relocations();

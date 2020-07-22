@@ -46,6 +46,32 @@
 // This file holds all globally used constants & types, class (forward)
 // declarations and a few frequently used utility functions.
 
+// Declare the named class to be noncopyable.  This macro must be used in
+// a private part of the class's definition, followed by a semi-colon.
+// Doing so provides private declarations for the class's copy constructor
+// and assignment operator.  Because these operations are private, most
+// potential callers will fail to compile because they are inaccessible.
+// The operations intentionally lack a definition, to provoke link-time
+// failures for calls from contexts where they are accessible, e.g. from
+// within the class or from a friend of the class.
+// Note: The lack of definitions is still not completely bullet-proof, as
+// an apparent call might be optimized away by copy elision.
+// For C++11 the declarations should be changed to deleted definitions.
+#define NONCOPYABLE(C) C(C const&); C& operator=(C const&) /* next token must be ; */
+
+// Declare the named class to be noncopyable.  This macro must be used in
+// a private part of the class's definition, followed by a semi-colon.
+// Doing so provides private declarations for the class's copy constructor
+// and assignment operator.  Because these operations are private, most
+// potential callers will fail to compile because they are inaccessible.
+// The operations intentionally lack a definition, to provoke link-time
+// failures for calls from contexts where they are accessible, e.g. from
+// within the class or from a friend of the class.
+// Note: The lack of definitions is still not completely bullet-proof, as
+// an apparent call might be optimized away by copy elision.
+// For C++11 the declarations should be changed to deleted definitions.
+#define NONCOPYABLE(C) C(C const&); C& operator=(C const&) /* next token must be ; */
+
 //----------------------------------------------------------------------------------------------------
 // Printf-style formatters for fixed- and variable-width types as pointers and
 // integers.  These are derived from the definitions in inttypes.h.  If the platform
@@ -1140,6 +1166,33 @@ static inline unsigned int uabs(int n) { return uabs((unsigned int)n); }
 inline intx byte_size(void* from, void* to) {
   return (address)to - (address)from;
 }
+
+// Provide integer shift operations with Java semantics.  No overflow
+// issues - left shifts simply discard shifted out bits.  No undefined
+// behavior for large or negative shift quantities; instead the actual
+// shift distance is the argument modulo the lhs value's size in bits.
+// No undefined or implementation defined behavior for shifting negative
+// values; left shift discards bits, right shift sign extends.  We use
+// the same safe conversion technique as above for java_add and friends.
+#define JAVA_INTEGER_SHIFT_OP(OP, NAME, TYPE, XTYPE)    \
+inline TYPE NAME (TYPE lhs, jint rhs) {                 \
+  const uint rhs_mask = (sizeof(TYPE) * 8) - 1;         \
+  STATIC_ASSERT(rhs_mask == 31 || rhs_mask == 63);      \
+  XTYPE xres = static_cast<XTYPE>(lhs);                 \
+  xres OP ## = (rhs & rhs_mask);                        \
+  return reinterpret_cast<TYPE&>(xres);                 \
+}
+
+JAVA_INTEGER_SHIFT_OP(<<, java_shift_left, jint, juint)
+JAVA_INTEGER_SHIFT_OP(<<, java_shift_left, jlong, julong)
+// For signed shift right, assume C++ implementation >> sign extends.
+JAVA_INTEGER_SHIFT_OP(>>, java_shift_right, jint, jint)
+JAVA_INTEGER_SHIFT_OP(>>, java_shift_right, jlong, jlong)
+// For >>> use C++ unsigned >>.
+JAVA_INTEGER_SHIFT_OP(>>, java_shift_right_unsigned, jint, juint)
+JAVA_INTEGER_SHIFT_OP(>>, java_shift_right_unsigned, jlong, julong)
+
+#undef JAVA_INTEGER_SHIFT_OP
 
 //----------------------------------------------------------------------------------------------------
 // Avoid non-portable casts with these routines (DEPRECATED)

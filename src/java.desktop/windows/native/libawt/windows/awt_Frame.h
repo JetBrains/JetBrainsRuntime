@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,6 +119,7 @@ public:
     MsgRouting WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds);
     MsgRouting WmNcCalcSize(BOOL fCalcValidRects, LPNCCALCSIZE_PARAMS lpncsp, LRESULT& retVal);
     MsgRouting WmNcHitTest(int x, int y, LRESULT& retVal);
+    MsgRouting WmWindowPosChanging(LPARAM windowPos);
 
     virtual MsgRouting WmSysCommand(UINT uCmdType, int xPos, int yPos);
 

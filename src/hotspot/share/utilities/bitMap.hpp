@@ -27,6 +27,7 @@
 
 #include "memory/allocation.hpp"
 #include "utilities/align.hpp"
+#include "utilities/globalDefinitions.hpp"
 
 // Forward decl;
 class BitMapClosure;
@@ -318,8 +319,8 @@ class ResourceBitMap : public BitMap {
 
  public:
   ResourceBitMap() : BitMap(NULL, 0) {}
-  // Clears the bitmap memory.
-  ResourceBitMap(idx_t size_in_bits);
+  // Conditionally clears the bitmap memory.
+  ResourceBitMap(idx_t size_in_bits, bool clear = true);
 
   // Resize the backing bitmap memory.
   //
@@ -346,9 +347,7 @@ class ArenaBitMap : public BitMap {
   ArenaBitMap(Arena* arena, idx_t size_in_bits);
 
  private:
-  // Don't allow copy or assignment.
-  ArenaBitMap(const ArenaBitMap&);
-  ArenaBitMap& operator=(const ArenaBitMap&);
+  NONCOPYABLE(ArenaBitMap);
 };
 
 // A BitMap with storage in the CHeap.
@@ -357,8 +356,7 @@ class CHeapBitMap : public BitMap {
  private:
   // Don't allow copy or assignment, to prevent the
   // allocated memory from leaking out to other instances.
-  CHeapBitMap(const CHeapBitMap&);
-  CHeapBitMap& operator=(const CHeapBitMap&);
+  NONCOPYABLE(CHeapBitMap);
 
   // NMT memory type
   MEMFLAGS _flags;

@@ -48,9 +48,7 @@ class OopStorage::ActiveArray {
   ActiveArray(size_t size);
   ~ActiveArray();
 
-  // Noncopyable
-  ActiveArray(const ActiveArray&);
-  ActiveArray& operator=(const ActiveArray&);
+  NONCOPYABLE(ActiveArray);
 
   static size_t blocks_offset();
   Block* const* base_ptr() const;
@@ -107,10 +105,10 @@ inline OopStorage::Block* OopStorage::ActiveArray::at(size_t index) const {
   return *block_ptr(index);
 }
 
-// A Block has an embedded AllocateEntry to provide the links between
-// Blocks in a AllocateList.
-class OopStorage::AllocateEntry {
-  friend class OopStorage::AllocateList;
+// A Block has an embedded AllocationListEntry to provide the links between
+// Blocks in an AllocationList.
+class OopStorage::AllocationListEntry {
+  friend class OopStorage::AllocationList;
 
   // Members are mutable, and we deal exclusively with pointers to
   // const, to make const blocks easier to use; a block being const
@@ -119,18 +117,18 @@ class OopStorage::AllocateEntry {
   mutable const Block* _next;
 
   // Noncopyable.
-  AllocateEntry(const AllocateEntry&);
-  AllocateEntry& operator=(const AllocateEntry&);
+  AllocationListEntry(const AllocationListEntry&);
+  AllocationListEntry& operator=(const AllocationListEntry&);
 
 public:
-  AllocateEntry();
-  ~AllocateEntry();
+  AllocationListEntry();
+  ~AllocationListEntry();
 };
 
 // Fixed-sized array of oops, plus bookkeeping data.
 // All blocks are in the storage's _active_array, at the block's _active_index.
-// Non-full blocks are in the storage's _allocate_list, linked through the
-// block's _allocate_entry.  Empty blocks are at the end of that list.
+// Non-full blocks are in the storage's _allocation_list, linked through the
+// block's _allocation_list_entry.  Empty blocks are at the end of that list.
 class OopStorage::Block /* No base class, to avoid messing up alignment. */ {
   // _data must be the first non-static data member, for alignment.
   oop _data[BitsPerWord];
@@ -140,7 +138,7 @@ class OopStorage::Block /* No base class, to avoid messing up alignment. */ {
   const OopStorage* _owner;
   void* _memory;              // Unaligned storage containing block.
   size_t _active_index;
-  AllocateEntry _allocate_entry;
+  AllocationListEntry _allocation_list_entry;
   Block* volatile _deferred_updates_next;
   volatile uintx _release_refcount;
 
@@ -153,12 +151,10 @@ class OopStorage::Block /* No base class, to avoid messing up alignment. */ {
   template<typename F, typename BlockPtr>
   static bool iterate_impl(F f, BlockPtr b);
 
-  // Noncopyable.
-  Block(const Block&);
-  Block& operator=(const Block&);
+  NONCOPYABLE(Block);
 
 public:
-  const AllocateEntry& allocate_entry() const;
+  const AllocationListEntry& allocation_list_entry() const;
 
   static size_t allocation_size();
   static size_t allocation_alignment_shift();
@@ -197,36 +193,36 @@ public:
   template<typename F> bool iterate(F f) const;
 }; // class Block
 
-inline OopStorage::Block* OopStorage::AllocateList::head() {
+inline OopStorage::Block* OopStorage::AllocationList::head() {
   return const_cast<Block*>(_head);
 }
 
-inline OopStorage::Block* OopStorage::AllocateList::tail() {
+inline OopStorage::Block* OopStorage::AllocationList::tail() {
   return const_cast<Block*>(_tail);
 }
 
-inline const OopStorage::Block* OopStorage::AllocateList::chead() const {
+inline const OopStorage::Block* OopStorage::AllocationList::chead() const {
   return _head;
 }
 
-inline const OopStorage::Block* OopStorage::AllocateList::ctail() const {
+inline const OopStorage::Block* OopStorage::AllocationList::ctail() const {
   return _tail;
 }
 
-inline OopStorage::Block* OopStorage::AllocateList::prev(Block& block) {
-  return const_cast<Block*>(block.allocate_entry()._prev);
+inline OopStorage::Block* OopStorage::AllocationList::prev(Block& block) {
+  return const_cast<Block*>(block.allocation_list_entry()._prev);
 }
 
-inline OopStorage::Block* OopStorage::AllocateList::next(Block& block) {
-  return const_cast<Block*>(block.allocate_entry()._next);
+inline OopStorage::Block* OopStorage::AllocationList::next(Block& block) {
+  return const_cast<Block*>(block.allocation_list_entry()._next);
 }
 
-inline const OopStorage::Block* OopStorage::AllocateList::prev(const Block& block) const {
-  return block.allocate_entry()._prev;
+inline const OopStorage::Block* OopStorage::AllocationList::prev(const Block& block) const {
+  return block.allocation_list_entry()._prev;
 }
 
-inline const OopStorage::Block* OopStorage::AllocateList::next(const Block& block) const {
-  return block.allocate_entry()._next;
+inline const OopStorage::Block* OopStorage::AllocationList::next(const Block& block) const {
+  return block.allocation_list_entry()._next;
 }
 
 template<typename Closure>
@@ -298,8 +294,8 @@ inline OopStorage::SkipNullFn<F> OopStorage::skip_null_fn(F f) {
 
 // Inline Block accesses for use in iteration loops.
 
-inline const OopStorage::AllocateEntry& OopStorage::Block::allocate_entry() const {
-  return _allocate_entry;
+inline const OopStorage::AllocationListEntry& OopStorage::Block::allocation_list_entry() const {
+  return _allocation_list_entry;
 }
 
 inline void OopStorage::Block::check_index(unsigned index) const {

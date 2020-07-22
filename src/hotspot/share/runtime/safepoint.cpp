@@ -604,6 +604,8 @@ bool SafepointSynchronize::is_cleanup_needed() {
   if (ObjectSynchronizer::is_cleanup_needed()) return true;
   // Need a safepoint if some inline cache buffers is non-empty
   if (!InlineCacheBuffer::is_empty()) return true;
+  if (StringTable::needs_rehashing()) return true;
+  if (SymbolTable::needs_rehashing()) return true;
   return false;
 }
 
@@ -638,7 +640,7 @@ public:
     AbstractGangTask("Parallel Safepoint Cleanup"),
     _cleanup_threads_cl(ParallelSPCleanupThreadClosure(counters)),
     _num_workers(num_workers),
-    _subtasks(SubTasksDone(SafepointSynchronize::SAFEPOINT_CLEANUP_NUM_TASKS)),
+    _subtasks(SafepointSynchronize::SAFEPOINT_CLEANUP_NUM_TASKS),
     _counters(counters) {}
 
   void work(uint worker_id) {

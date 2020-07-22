@@ -516,7 +516,7 @@ static void setInterpreterVersion(FT_Library library) {
     const char* property = "interpreter-version";
 
     /* If some one is setting this, don't override it */
-    if (props != NULL && strstr(property, props)) {
+    if (props != NULL && strstr(props, property)) {
         return;
     }
     /*
@@ -1602,6 +1602,17 @@ static jlong
         if (logFFS) fprintf(stderr, "FFS_LOG: Cannot setup FT context\n");
         invalidateJavaScaler(env, scaler, scalerInfo);
         return ptr_to_jlong(getNullGlyphImage());
+    }
+
+    /*
+     * When using Fractional metrics (linearly scaling advances) and
+     * greyscale antialiasing, disable hinting so that the glyph shapes
+     * are constant as size increases. This is good for animation as well
+     * as being compatible with what happened in earlier JDK versions
+     * which did not use freetype.
+     */
+    if (context->aaType == TEXT_AA_ON && context->fmType == TEXT_FM_ON) {
+        context->loadFlags |= FT_LOAD_NO_HINTING;
     }
 
     /* Don't disable bitmaps when working with fixed-size glyph,

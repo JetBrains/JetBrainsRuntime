@@ -46,11 +46,6 @@ public final class CCompositeFont extends CompositeFont {
     }
 
     @Override
-    synchronized void removeFromCache(FontStrikeDesc desc) {
-        super.removeFromCache(desc);
-    }
-
-    @Override
     protected synchronized int getValidatedGlyphCode(int glyphCode) {
         return super.getValidatedGlyphCode(glyphCode);
     }

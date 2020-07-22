@@ -91,7 +91,6 @@ class NMethodSweeper : public AllStatic {
   static Monitor*  _stat_lock;
 
   static MethodStateChange process_compiled_method(CompiledMethod *nm);
-  static void              release_compiled_method(CompiledMethod* nm);
 
   static void init_sweeper_log() NOT_DEBUG_RETURN;
   static bool wait_for_stack_scanning();
