@@ -69,6 +69,13 @@ typedef enum {
 static GlyphMode glyphMode = MODE_NOT_INITED;
 
 /**
+ * Current blending modes saved in OGLTR_EnableGrayGlyphModeState and restored in
+ * OGLTR_DisableGlyphModeState
+ */
+static GLint currentBlendSrc;
+static GLint currentBlendDst;
+
+/**
  * There are two separate glyph caches: for AA and for LCD.
  * Once one of them is initialized as either GRAY or LCD, it
  * stays in that mode for the duration of the application.  It should
@@ -575,8 +582,7 @@ OGLTR_EnableLCDGlyphModeState(GLuint glyphTextureID,
     return JNI_TRUE;
 }
 /**
- * Enables the GrayScale text shader and updates any related state, such as the
- * gamma lookup table textures.
+ * Enables the GrayScale text shader and updates any related states
  */
 static jboolean
 OGLTR_EnableGrayGlyphModeState(GLuint glyphTextureID, jint contrast)
@@ -586,6 +592,9 @@ OGLTR_EnableGrayGlyphModeState(GLuint glyphTextureID, jint contrast)
     j2d_glBindTexture(GL_TEXTURE_2D, glyphTextureID);
     j2d_glEnable(GL_TEXTURE_2D);
     j2d_glEnable(GL_BLEND);
+    j2d_glGetIntegerv(GL_BLEND_SRC_ALPHA, &currentBlendSrc);
+    j2d_glGetIntegerv(GL_BLEND_DST_ALPHA, &currentBlendDst);
+
     j2d_glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // create the Gray text shader, if necessary
@@ -668,11 +677,6 @@ OGLTR_DisableGlyphModeState()
         j2d_glDisable(GL_TEXTURE_2D);
         break;
 
-    case MODE_NO_CACHE_COLOR:
-    case MODE_NO_CACHE_GRAY:
-        j2d_glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-        j2d_glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-        /* FALLTHROUGH */
     case MODE_USE_CACHE_GRAY:
         OGLVertexCache_FlushVertexCache();
         j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
@@ -680,7 +684,11 @@ OGLTR_DisableGlyphModeState()
         j2d_glUseProgramObjectARB(0);
         j2d_glActiveTextureARB(GL_TEXTURE0_ARB);
         j2d_glDisable(GL_TEXTURE_2D);
+        j2d_glBlendFunc(currentBlendSrc, currentBlendDst);
         break;
+    case MODE_NO_CACHE_COLOR:
+    case MODE_NO_CACHE_GRAY:
+        /* FALLTHROUGH */
     case MODE_NOT_INITED:
     default:
         break;
