@@ -99,13 +99,19 @@ void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, 
     if (mtlEncoder == nil)
         return;
 
+    // Translate each vertex by a fraction so
+    // that we hit pixel centers.
     const int verticesCount = 5;
+    float fx = (float)x + 0.2f;
+    float fy = (float)y + 0.5f;
+    float fw = (float)w;
+    float fh = (float)h;
     struct Vertex vertices[5] = {
-            {{x, y}},
-            {{x + w, y}},
-            {{x + w, y + h}},
-            {{x, y + h}},
-            {{x, y}},
+            {{fx, fy}},
+            {{fx + fw, fy}},
+            {{fx + fw, fy + fh}},
+            {{fx, fy + fh}},
+            {{fx, fy}},
     };
     [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:verticesCount];
