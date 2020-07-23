@@ -483,7 +483,7 @@ public class RenderPerfTest {
                             renderable.setup(g2d);
                             renderable.render(g2d);
                             g2d.setColor(expColor);
-                            g.fillRect(0, 0, BW, BH);
+                            g2d.fillRect(0, 0, BW, BH);
                         }
                     };
 
@@ -502,7 +502,7 @@ public class RenderPerfTest {
                 if (waiting.compareAndSet(false, true)) {
                     Color c = robot.getPixelColor(
                             panel.getTopLevelAncestor().getX() + panel.getTopLevelAncestor().getInsets().left + BW / 2,
-                            panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BW / 2);
+                            panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BH / 2);
                     if (isAlmostEqual(c, Color.BLUE)) {
                         expColor = Color.RED;
                     } else {
@@ -559,8 +559,8 @@ public class RenderPerfTest {
         }
 
         private boolean isAlmostEqual(Color c1, Color c2) {
-            return Math.abs(c1.getRed() - c2.getRed()) < COLOR_TOLERANCE ||
-                    Math.abs(c1.getGreen() - c2.getGreen()) < COLOR_TOLERANCE ||
+            return Math.abs(c1.getRed() - c2.getRed()) < COLOR_TOLERANCE &&
+                    Math.abs(c1.getGreen() - c2.getGreen()) < COLOR_TOLERANCE &&
                     Math.abs(c1.getBlue() - c2.getBlue()) < COLOR_TOLERANCE;
 
         }
