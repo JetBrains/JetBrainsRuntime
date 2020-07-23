@@ -160,7 +160,7 @@ public class TestPauseNotifications {
 
         {
             String msg = "Pauses expected = [" + minExpected + "; " + maxExpected + "], actual = " + pausesActual;
-            if (minExpected < pausesActual && pausesActual < maxExpected) {
+            if (minExpected <= pausesActual && pausesActual <= maxExpected) {
                 System.out.println(msg);
             } else {
                 throw new IllegalStateException(msg);
@@ -169,7 +169,7 @@ public class TestPauseNotifications {
 
         {
             String msg = "Cycles expected = [" + minExpected + "; " + maxExpected + "], actual = " + cyclesActual;
-            if (minExpected < cyclesActual && cyclesActual < maxExpected) {
+            if (minExpected <= cyclesActual && cyclesActual <= maxExpected) {
                 System.out.println(msg);
             } else {
                 throw new IllegalStateException(msg);
@@ -178,7 +178,7 @@ public class TestPauseNotifications {
 
         {
             String msg = "Cycle duration (" + cyclesActual + "), pause duration (" + pausesActual + ")";
-            if (pausesActual < cyclesActual) {
+            if (pausesActual <= cyclesActual) {
                 System.out.println(msg);
             } else {
                 throw new IllegalStateException(msg);
