@@ -63,7 +63,7 @@ public class LoadPageWithoutUI {
                 loadHandlerUsed = true;
             }
         });
-        frame.getContentPane().add(browser.getCefBrowser().getUIComponent());
+        frame.getContentPane().add(browser.getComponent());
         frame.setSize(640, 480);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.addWindowListener(new WindowAdapter() {
@@ -79,6 +79,8 @@ public class LoadPageWithoutUI {
         try {
             SwingUtilities.invokeLater(test::initUI);
             LATCH.await(1, TimeUnit.SECONDS);
+
+            test.browser.getCefBrowser().createImmediately();
 
             System.out.println("Loading URL " + BLANK + " before enabling browser UI...");
             test.browser.loadURL(BLANK);
