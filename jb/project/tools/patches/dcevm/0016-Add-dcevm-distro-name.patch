@@ -17,9 +17,9 @@ index b5a23138213..5c0a3242c80 100644
  COMPANY_NAME=N/A
 -HOTSPOT_VM_DISTRO="OpenJDK"
 +HOTSPOT_VM_DISTRO="Dynamic Code Evolution"
- 
- # Might need better names for these
- MACOSX_BUNDLE_NAME_BASE="OpenJDK"
+ VENDOR_URL=https://openjdk.java.net/
+ VENDOR_URL_BUG=https://bugreport.java.com/bugreport/
+ VENDOR_URL_VM_BUG=https://bugreport.java.com/bugreport/crash.jsp
 -- 
 2.24.3 (Apple Git-128)
 
