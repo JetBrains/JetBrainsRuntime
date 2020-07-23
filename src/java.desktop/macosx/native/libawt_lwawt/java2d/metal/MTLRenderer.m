@@ -64,6 +64,10 @@
  * hardware to ensure consistent rendering everywhere.
  */
 
+// Macros to translate vertex by a fraction to hit pixel center
+#define MOVE_X_TO_PIXEL_CENTER(x) ((float)(x)+0.2f)
+#define MOVE_Y_TO_PIXEL_CENTER(y) ((float)(y)+0.5f)
+
 void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1, jint x2, jint y2) {
     if (mtlc == NULL || dstOps == NULL || dstOps->pTexture == NULL) {
         J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderer_DrawLine: dest is null");
@@ -151,10 +155,8 @@ void MTLRenderer_DrawPixel(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y)
     if (mtlEncoder == nil)
         return;
 
-    // Translate each vertex by a fraction so
-    // that we hit pixel centers.
-    float fx = (float)x + 0.2f;
-    float fy = (float)y + 0.5f;
+    float fx = MOVE_X_TO_PIXEL_CENTER(x);
+    float fy = MOVE_Y_TO_PIXEL_CENTER(y);
     struct Vertex vert[1] = {{{fx, fy}}};
     [mtlEncoder setVertexBytes:vert length:sizeof(vert) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypePoint vertexStart:0 vertexCount:1];
@@ -174,11 +176,9 @@ void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, 
     if (mtlEncoder == nil)
         return;
 
-    // Translate each vertex by a fraction so
-    // that we hit pixel centers.
     const int verticesCount = 5;
-    float fx = (float)x + 0.2f;
-    float fy = (float)y + 0.5f;
+    float fx = MOVE_X_TO_PIXEL_CENTER(x);
+    float fy = MOVE_Y_TO_PIXEL_CENTER(y);
     float fw = (float)w;
     float fh = (float)h;
     struct Vertex vertices[5] = {
