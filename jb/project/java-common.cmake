@@ -37,6 +37,7 @@ endif ()
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(JDK_RELEASE_TARGET "macosx-x86_64-normal-server-release")
     set(JDK_DEBUG_TARGET "macosx-x86_64-normal-server-fastdebug")
+    add_compile_definitions(MACOSX)
 endif ()
 
 add_custom_target(build
