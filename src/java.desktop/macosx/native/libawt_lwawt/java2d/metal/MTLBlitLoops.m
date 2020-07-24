@@ -716,9 +716,9 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
             pDst = PtrAddBytes(pDst, dstx * dstInfo.pixelStride);
             pDst = PtrPixelsRow(pDst, dsty, dstInfo.scanStride);
 
-            // this accounts for lower-left origin of the source region
+            // Metal texture is (0,0) at left-top
             srcx = srcOps->xOffset + srcx;
-            srcy = srcOps->yOffset + srcOps->height - srcy - height;
+            srcy = srcOps->yOffset + srcy;
             const int srcLength = width * height * 4; // NOTE: assume that src format is MTLPixelFormatBGRA8Unorm
 
 #ifdef DEBUG
