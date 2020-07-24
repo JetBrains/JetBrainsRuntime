@@ -98,6 +98,7 @@ java/awt/Window/FindOwner/FindOwnerTest.html                                    
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java                                nobug macosx-all,linux-all,windows-all
 java/awt/Window/MainKeyWindowTest/TestMainKeyWindow.java                                    nobug macosx-all
 java/awt/Window/MaximizeOffscreen/MaximizeOffscreenTest.java                                nobug macosx-all,linux-all
+java/awt/Window/MinimumSizeDPIVariation/MinimumSizeDPIVariation.java                        nobug macosx-all
 java/awt/Window/OwnedWindowsLeak/OwnedWindowsLeak.java                                      nobug linux-all
 java/awt/Window/ScreenLocation/ScreenLocationTest.java                                      nobug linux-all
 java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.java        nobug linux-all

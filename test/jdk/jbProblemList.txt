@@ -957,6 +957,7 @@ javax/swing/JScrollBar/4708809/bug4708809.java                                  
 javax/swing/JScrollBar/6924059/bug6924059.java                                      8199078 generic-all
 javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java 8197552,8169960 macosx-all,windows-all,linux-all
 javax/swing/JSlider/6348946/bug6348946.java                                         8197552,8172539 macosx-all,windows-all,linux-all
+javax/swing/JSpinner/4788637/bug4788637.java                                        7124307 macosx-all,windows-all
 javax/swing/JSpinner/4973721/bug4973721.java                                        8197552,8172408,8072110 macosx-all,windows-all,linux-all
 javax/swing/JSpinner/5012888/bug5012888.java                                        8169958 windows-all
 javax/swing/JSplitPane/4201995/bug4201995.java                                      8079127 generic-all
