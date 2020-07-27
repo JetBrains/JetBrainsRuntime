@@ -6142,6 +6142,9 @@
                 <df name="AddModuleUsesAndProvides">
                   <in>libAddModuleUsesAndProvidesTest.c</in>
                 </df>
+                <df name="GetClassMethods">
+                  <in>libOverpassMethods.c</in>
+                </df>
                 <df name="GetModulesInfo">
                   <in>libJvmtiGetAllModulesTest.c</in>
                 </df>
@@ -40139,6 +40142,11 @@
             flavor2="0">
       </item>
       <item path="../../test/hotspot/jtreg/serviceability/jvmti/AddModuleUsesAndProvides/libAddModuleUsesAndProvidesTest.c"
+            ex="false"
+            tool="0"
+            flavor2="0">
+      </item>
+      <item path="../../test/hotspot/jtreg/serviceability/jvmti/GetClassMethods/libOverpassMethods.c"
             ex="false"
             tool="0"
             flavor2="0">
