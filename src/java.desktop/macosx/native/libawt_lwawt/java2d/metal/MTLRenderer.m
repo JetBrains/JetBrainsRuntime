@@ -65,8 +65,7 @@
  */
 
 // Macros to translate vertex by a fraction to hit pixel center
-#define MOVE_X_TO_PIXEL_CENTER(x) ((float)(x)+0.2f)
-#define MOVE_Y_TO_PIXEL_CENTER(y) ((float)(y)+0.5f)
+#define MOVE_TO_PIXEL_CENTER(x) ((float)(x)+0.2f)
 
 void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1, jint x2, jint y2) {
     if (mtlc == NULL || dstOps == NULL || dstOps->pTexture == NULL) {
@@ -86,7 +85,7 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
         // horizontal
         float fx1 = (float)x1;
         float fx2 = (float)x2;
-        float fy  = ((float)y1) + 0.2f;
+        float fy  = MOVE_TO_PIXEL_CENTER(y1);
 
         if (x1 > x2) {
             float t = fx1; fx1 = fx2; fx2 = t;
@@ -98,7 +97,7 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
         verts[1] = v2;
     } else if (x1 == x2) {
         // vertical
-        float fx  = ((float)x1) + 0.2f;
+        float fx  = MOVE_TO_PIXEL_CENTER(x1);
         float fy1 = (float)y1;
         float fy2 = (float)y2;
 
@@ -155,8 +154,8 @@ void MTLRenderer_DrawPixel(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y)
     if (mtlEncoder == nil)
         return;
 
-    float fx = MOVE_X_TO_PIXEL_CENTER(x);
-    float fy = MOVE_Y_TO_PIXEL_CENTER(y);
+    float fx = MOVE_TO_PIXEL_CENTER(x);
+    float fy = MOVE_TO_PIXEL_CENTER(y);
     struct Vertex vert[1] = {{{fx, fy}}};
     [mtlEncoder setVertexBytes:vert length:sizeof(vert) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypePoint vertexStart:0 vertexCount:1];
@@ -177,8 +176,8 @@ void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, 
         return;
 
     const int verticesCount = 5;
-    float fx = MOVE_X_TO_PIXEL_CENTER(x);
-    float fy = MOVE_Y_TO_PIXEL_CENTER(y);
+    float fx = MOVE_TO_PIXEL_CENTER(x);
+    float fy = MOVE_TO_PIXEL_CENTER(y);
     float fw = (float)w;
     float fh = (float)h;
     struct Vertex vertices[5] = {
