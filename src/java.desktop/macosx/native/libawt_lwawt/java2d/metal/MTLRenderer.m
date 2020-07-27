@@ -66,6 +66,7 @@
 
 // Macros to translate vertex by a fraction to hit pixel center
 #define MOVE_TO_PIXEL_CENTER(x) ((float)(x)+0.2f)
+#define MOVE_TO_NEXT_PIXEL_CENTER(x) ((float)(x)+1.2f)
 
 void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1, jint x2, jint y2) {
     if (mtlc == NULL || dstOps == NULL || dstOps->pTexture == NULL) {
@@ -91,8 +92,8 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
             float t = fx1; fx1 = fx2; fx2 = t;
         }
 
-        struct Vertex v1 = {{fx1 + 0.2f, fy}};
-        struct Vertex v2 = {{fx2 + 1.2f, fy}};
+        struct Vertex v1 = {{MOVE_TO_PIXEL_CENTER(fx1), fy}};
+        struct Vertex v2 = {{MOVE_TO_NEXT_PIXEL_CENTER(fx2), fy}};
         verts[0] = v1;
         verts[1] = v2;
     } else if (x1 == x2) {
@@ -105,8 +106,8 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
             float t = fy1; fy1 = fy2; fy2 = t;
         }
 
-        struct Vertex v1 = {{fx, fy1 + 0.2f}};
-        struct Vertex v2 = {{fx, fy2 + 1.2f}};
+        struct Vertex v1 = {{fx, MOVE_TO_PIXEL_CENTER(fy1)}};
+        struct Vertex v2 = {{fx, MOVE_TO_NEXT_PIXEL_CENTER(fy2)}};
         verts[0] = v1;
         verts[1] = v2;
     } else {
