@@ -332,48 +332,49 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     _useStencil = [_mtlc.clip isShape];
     forceUpdate = JNI_TRUE;
 
-    MTLCommandBufferWrapper *cbw = [_mtlc getCommandBufferWrapper];
-    MTLRenderPassDescriptor *rpd =
-        [MTLRenderPassDescriptor renderPassDescriptor];
-    MTLRenderPassColorAttachmentDescriptor *ca = rpd.colorAttachments[0];
-    if (renderOptions->isAA && !renderOptions->isTexture) {
-      MTLTexturePoolItem *tiBuf = [_mtlc.texturePool getTexture:dest.width
-                                                      height:dest.height
-                                                      format:MTLPixelFormatBGRA8Unorm];
-      [cbw registerPooledTexture:tiBuf];
-      [tiBuf release];
-      _aaDestination = tiBuf.texture;
+    @autoreleasepool {
+        MTLCommandBufferWrapper *cbw = [_mtlc getCommandBufferWrapper];
+        MTLRenderPassDescriptor *rpd =
+                [MTLRenderPassDescriptor renderPassDescriptor];
+        MTLRenderPassColorAttachmentDescriptor *ca = rpd.colorAttachments[0];
+        if (renderOptions->isAA && !renderOptions->isTexture) {
+            MTLTexturePoolItem *tiBuf = [_mtlc.texturePool getTexture:dest.width
+                                                               height:dest.height
+                                                               format:MTLPixelFormatBGRA8Unorm];
+            [cbw registerPooledTexture:tiBuf];
+            [tiBuf release];
+            _aaDestination = tiBuf.texture;
 
-      MTLTexturePoolItem *ti = [_mtlc.texturePool getTexture:dest.width
-                                                      height:dest.height
-                                                      format:_aaDestination.pixelFormat
-                                               isMultiSample:YES];
-      [cbw registerPooledTexture:ti];
-      [ti release];
-      ca.texture = ti.texture;
-      ca.resolveTexture = _aaDestination;
-      ca.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 0.0f);
-      ca.loadAction = MTLLoadActionClear;
-      ca.storeAction = MTLStoreActionMultisampleResolve;
-    } else {
-      ca.texture = dest;
-      ca.loadAction = MTLLoadActionLoad;
-      ca.storeAction = MTLStoreActionStore;
+            MTLTexturePoolItem *ti = [_mtlc.texturePool getTexture:dest.width
+                                                            height:dest.height
+                                                            format:_aaDestination.pixelFormat
+                                                     isMultiSample:YES];
+            [cbw registerPooledTexture:ti];
+            [ti release];
+            ca.texture = ti.texture;
+            ca.resolveTexture = _aaDestination;
+            ca.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 0.0f);
+            ca.loadAction = MTLLoadActionClear;
+            ca.storeAction = MTLStoreActionMultisampleResolve;
+        } else {
+            ca.texture = dest;
+            ca.loadAction = MTLLoadActionLoad;
+            ca.storeAction = MTLStoreActionStore;
+        }
+
+        if (_useStencil && !renderOptions->isAA) {
+            // If you enable stencil testing or stencil writing, the
+            // MTLRenderPassDescriptor must include a stencil attachment.
+            rpd.stencilAttachment.loadAction = MTLLoadActionLoad;
+            rpd.stencilAttachment.storeAction = MTLStoreActionStore;
+            rpd.stencilAttachment.texture = _mtlc.clip.stencilTextureRef;
+        }
+
+        // J2dTraceLn1(J2D_TRACE_VERBOSE, "created render encoder to draw on
+        // tex=%p", dest);
+        _encoder = [[cbw getCommandBuffer] renderCommandEncoderWithDescriptor:rpd];
+        [_encoder retain];
     }
-
-    if (_useStencil && !renderOptions->isAA) {
-        // If you enable stencil testing or stencil writing, the
-        // MTLRenderPassDescriptor must include a stencil attachment.
-        rpd.stencilAttachment.loadAction = MTLLoadActionLoad;
-        rpd.stencilAttachment.storeAction = MTLStoreActionStore;
-        rpd.stencilAttachment.texture = _mtlc.clip.stencilTextureRef;
-    }
-
-    // J2dTraceLn1(J2D_TRACE_VERBOSE, "created render encoder to draw on
-    // tex=%p", dest);
-    _encoder = [[cbw getCommandBuffer] renderCommandEncoderWithDescriptor:rpd];
-    [rpd release];
-
     [_encoderStates reset:dest
                isDstOpaque:renderOptions->dstFlags.isOpaque
         isDstPremultiplied:YES
