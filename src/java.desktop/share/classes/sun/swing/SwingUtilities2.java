@@ -71,6 +71,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
@@ -1241,7 +1242,7 @@ public class SwingUtilities2 {
                 AppContext.getAppContext().get(APP_CONTEXT_FRC_CACHE_KEY);
 
         if (cache == null) {
-            cache = new HashMap<>();
+            cache = new ConcurrentHashMap<>();
             AppContext.getAppContext().put(APP_CONTEXT_FRC_CACHE_KEY, cache);
         }
 
