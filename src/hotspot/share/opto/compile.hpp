@@ -96,6 +96,10 @@ enum LoopOptsMode {
   LoopOptsSkipSplitIf,
   LoopOptsVerify,
   LoopOptsLastRound
+#if INCLUDE_SHENANDOAHGC
+  ,LoopOptsShenandoahExpand,
+   LoopOptsShenandoahPostExpand
+#endif
 };
 
 typedef unsigned int node_idx_t;

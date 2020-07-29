@@ -63,6 +63,9 @@
 #if INCLUDE_G1GC
 #include "gc/g1/g1HeapRegionEventSender.hpp"
 #endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoahJfrSupport.hpp"
+#endif
 
 /**
  *  JfrPeriodic class
@@ -574,3 +577,12 @@ TRACE_REQUEST_FUNC(CodeSweeperConfiguration) {
   event.set_flushingEnabled(UseCodeCacheFlushing);
   event.commit();
 }
+
+#if INCLUDE_SHENANDOAHGC
+TRACE_REQUEST_FUNC(ShenandoahHeapRegionInformation) {
+  if (UseShenandoahGC) {
+    VM_ShenandoahSendHeapRegionInfoEvents op;
+    VMThread::execute(&op);
+  }
+}
+#endif

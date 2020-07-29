@@ -38,6 +38,12 @@
 
 #define VM_OP_ENUM(type)   VMOp_##type,
 
+#if INCLUDE_SHENANDOAHGC
+#define shtemplate(template, x) template(x)
+#else
+#define shtemplate(template, x)
+#endif
+
 // Note: When new VM_XXX comes up, add 'XXX' to the template table.
 #define VM_OPS_DO(template)                       \
   template(Dummy)                                 \
@@ -99,6 +105,12 @@
   template(HeapIterateOperation)                  \
   template(ReportJavaOutOfMemory)                 \
   template(JFRCheckpoint)                         \
+  shtemplate(template, ShenandoahFullGC)          \
+  shtemplate(template, ShenandoahInitMark)        \
+  shtemplate(template, ShenandoahFinalMarkStartEvac) \
+  shtemplate(template, ShenandoahInitUpdateRefs)  \
+  shtemplate(template, ShenandoahFinalUpdateRefs) \
+  shtemplate(template, ShenandoahDegeneratedGC)   \
   template(Exit)                                  \
   template(LinuxDllLoad)                          \
   template(RotateGCLog)                           \

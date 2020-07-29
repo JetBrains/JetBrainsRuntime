@@ -36,6 +36,7 @@
 #include "gc/shared/c1/barrierSetC1.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
+#include "utilities/macros.hpp"
 #include "vmreg_x86.inline.hpp"
 
 #ifdef ASSERT
@@ -674,6 +675,11 @@ LIR_Opr LIRGenerator::atomic_cmpxchg(BasicType type, LIR_Opr addr, LIRItem& cmp_
   if (type == T_OBJECT || type == T_ARRAY) {
     cmp_value.load_item_force(FrameMap::rax_oop_opr);
     new_value.load_item();
+#if INCLUDE_SHENANDOAHGC
+    if (UseShenandoahGC) {
+      __ cas_obj(addr->as_address_ptr()->base(), cmp_value.result(), new_value.result(), new_register(T_OBJECT), new_register(T_OBJECT));
+    } else
+#endif
     __ cas_obj(addr->as_address_ptr()->base(), cmp_value.result(), new_value.result(), ill, ill);
   } else if (type == T_INT) {
     cmp_value.load_item_force(FrameMap::rax_opr);
@@ -699,6 +705,12 @@ LIR_Opr LIRGenerator::atomic_xchg(BasicType type, LIR_Opr addr, LIRItem& value) 
   // Because we want a 2-arg form of xchg and xadd
   __ move(value.result(), result);
   assert(type == T_INT || is_oop LP64_ONLY( || type == T_LONG ), "unexpected type");
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC) {
+    LIR_Opr tmp = is_oop ? new_register(type) : LIR_OprFact::illegalOpr;
+    __ xchg(addr, result, result, tmp);
+  } else
+#endif
   __ xchg(addr, result, result, LIR_OprFact::illegalOpr);
   return result;
 }

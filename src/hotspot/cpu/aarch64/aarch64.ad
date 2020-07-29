@@ -1280,6 +1280,10 @@ source %{
     case Op_GetAndSetN:
     case Op_GetAndAddI:
     case Op_GetAndAddL:
+#if INCLUDE_SHENANDOAHGC
+    case Op_ShenandoahCompareAndSwapP:
+    case Op_ShenandoahCompareAndSwapN:
+#endif
       return true;
     case Op_CompareAndExchangeI:
     case Op_CompareAndExchangeN:

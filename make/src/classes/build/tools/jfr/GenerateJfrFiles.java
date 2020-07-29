@@ -28,18 +28,20 @@ import org.xml.sax.helpers.DefaultHandler;
 public class GenerateJfrFiles {
 
     public static void main(String... args) throws Exception {
-        if (args.length != 3) {
+        if (args.length < 3) {
             System.err.println("Incorrect number of command line arguments.");
             System.err.println("Usage:");
-            System.err.println("java GenerateJfrFiles[.java] <path-to-metadata.xml> <path-to-metadata.xsd> <output-directory>");
+            System.err.println("java GenerateJfrFiles[.java] <path-to-metadata.xsd> <output-directory> <path-to-metadata.xml> [<path-to-metadata.xml> ...]");
             System.exit(1);
         }
         try {
-            File metadataXml = new File(args[0]);
-            File metadataSchema = new File(args[1]);
-            File outputDirectory = new File(args[2]);
-
-            Metadata metadata = new Metadata(metadataXml, metadataSchema);
+            File metadataSchema = new File(args[0]);
+            File outputDirectory = new File(args[1]);
+            File[] metadataXml = new File[args.length - 2];
+            for (int i = 2; i < args.length; i++) {
+              metadataXml[i - 2] = new File(args[i]);
+            }
+            Metadata metadata = new Metadata(metadataSchema, metadataXml);
             metadata.verify();
             metadata.wireUpTypes();
 
@@ -75,12 +77,14 @@ public class GenerateJfrFiles {
     static class Metadata {
         final Map<String, TypeElement> types = new LinkedHashMap<>();
         final Map<String, XmlType> xmlTypes = new HashMap<>();
-        Metadata(File metadataXml, File metadataSchema) throws ParserConfigurationException, SAXException, FileNotFoundException, IOException {
+        Metadata(File metadataSchema, File[] metadataXml) throws ParserConfigurationException, SAXException, FileNotFoundException, IOException {
             SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
             SAXParserFactory factory = SAXParserFactory.newInstance();
             factory.setSchema(schemaFactory.newSchema(metadataSchema));
             SAXParser sp = factory.newSAXParser();
-            sp.parse(metadataXml, new MetadataHandler(this));
+            for (File file : metadataXml) {
+              sp.parse(file, new MetadataHandler(this));
+            }
         }
 
         List<EventElement> getEvents() {

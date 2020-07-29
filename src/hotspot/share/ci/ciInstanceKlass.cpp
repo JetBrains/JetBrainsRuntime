@@ -554,6 +554,14 @@ void ciInstanceKlass::compute_injected_fields() {
   _has_injected_fields = has_injected_fields;
 }
 
+#if INCLUDE_SHENANDOAHGC
+bool ciInstanceKlass::has_object_fields() const {
+  GUARDED_VM_ENTRY(
+      return get_instanceKlass()->nonstatic_oop_map_size() > 0;
+    );
+}
+#endif
+
 // ------------------------------------------------------------------
 // ciInstanceKlass::find_method
 //

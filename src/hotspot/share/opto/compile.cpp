@@ -82,6 +82,9 @@
 #if INCLUDE_ZGC
 #include "gc/z/c2/zBarrierSetC2.hpp"
 #endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif
 
 
 // -------------------- Compile::mach_constant_base_node -----------------------
@@ -2422,6 +2425,16 @@ void Compile::Optimize() {
     }
   }
 
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC) {
+    print_method(PHASE_BEFORE_BARRIER_EXPAND, 2);
+    if (((ShenandoahBarrierSetC2*)BarrierSet::barrier_set()->barrier_set_c2())->expand_barriers(this, igvn)) {
+      assert(failing(), "must bail out w/ explicit message");
+      return;
+    }
+  }
+#endif
+
   if (opaque4_count() > 0) {
     C->remove_opaque4_nodes(igvn);
     igvn.optimize();
@@ -2862,6 +2875,17 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
   case Op_CallLeafNoFP: {
     assert (n->is_Call(), "");
     CallNode *call = n->as_Call();
+#if INCLUDE_SHENANDOAHGC
+    if (UseShenandoahGC && ShenandoahBarrierSetC2::is_shenandoah_wb_pre_call(call)) {
+      uint cnt = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type()->domain()->cnt();
+      if (call->req() > cnt) {
+        assert(call->req() == cnt+1, "only one extra input");
+        Node* addp = call->in(cnt);
+        assert(!ShenandoahBarrierSetC2::has_only_shenandoah_wb_pre_uses(addp), "useless address computation?");
+        call->del_req(cnt);
+      }
+    }
+#endif
     // Count call sites where the FP mode bit would have to be flipped.
     // Do not count uncommon runtime calls:
     // uncommon_trap, _complete_monitor_locking, _complete_monitor_unlocking,
@@ -3428,6 +3452,28 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
     }
     break;
   }
+#if INCLUDE_SHENANDOAHGC
+  case Op_ShenandoahCompareAndSwapP:
+  case Op_ShenandoahCompareAndSwapN:
+  case Op_ShenandoahWeakCompareAndSwapN:
+  case Op_ShenandoahWeakCompareAndSwapP:
+  case Op_ShenandoahCompareAndExchangeP:
+  case Op_ShenandoahCompareAndExchangeN:
+#ifdef ASSERT
+    if( VerifyOptoOopOffsets ) {
+      MemNode* mem  = n->as_Mem();
+      // Check to see if address types have grounded out somehow.
+      const TypeInstPtr *tp = mem->in(MemNode::Address)->bottom_type()->isa_instptr();
+      ciInstanceKlass *k = tp->klass()->as_instance_klass();
+      bool oop_offset_is_sane = k->contains_field_offset(tp->offset());
+      assert( !tp || oop_offset_is_sane, "" );
+    }
+#endif
+     break;
+  case Op_ShenandoahLoadReferenceBarrier:
+    assert(false, "should have been expanded already");
+    break;
+#endif
   case Op_RangeCheck: {
     RangeCheckNode* rc = n->as_RangeCheck();
     Node* iff = new IfNode(rc->in(0), rc->in(1), rc->_prob, rc->_fcnt);
@@ -3864,10 +3910,18 @@ void Compile::verify_graph_edges(bool no_dead_code) {
 // Currently supported:
 // - G1 pre-barriers (see GraphKit::g1_write_barrier_pre())
 void Compile::verify_barriers() {
-#if INCLUDE_G1GC
-  if (UseG1GC) {
+#if INCLUDE_G1GC || INCLUDE_SHENANDOAHGC
+  if (UseG1GC SHENANDOAHGC_ONLY(|| UseShenandoahGC)) {
     // Verify G1 pre-barriers
+
+#if INCLUDE_G1GC && INCLUDE_SHENANDOAHGC
+    const int marking_offset = in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_active_offset()
+                                                : ShenandoahThreadLocalData::satb_mark_queue_active_offset());
+#elif INCLUDE_G1GC
     const int marking_offset = in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset());
+#else
+    const int marking_offset = in_bytes(ShenandoahThreadLocalData::satb_mark_queue_active_offset());
+#endif
 
     ResourceArea *area = Thread::current()->resource_area();
     Unique_Node_List visited(area);

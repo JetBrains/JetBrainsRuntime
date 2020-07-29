@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import sun.jvm.hotspot.gc.cms.*;
 import sun.jvm.hotspot.gc.shared.*;
 import sun.jvm.hotspot.gc.epsilon.*;
 import sun.jvm.hotspot.gc.g1.*;
+import sun.jvm.hotspot.gc.shenandoah.*;
 import sun.jvm.hotspot.gc.parallel.*;
 import sun.jvm.hotspot.memory.*;
 import sun.jvm.hotspot.runtime.*;
@@ -439,6 +440,10 @@ public class ObjectHeap {
     } else if (heap instanceof G1CollectedHeap) {
         G1CollectedHeap g1h = (G1CollectedHeap) heap;
         g1h.heapRegionIterate(lrc);
+    } else if (heap instanceof ShenandoahHeap) {
+       // Operation (currently) not supported with Shenandoah GC. Print
+       // a warning and leave the list of live regions empty.
+       System.err.println("Warning: Operation not supported with Shenandoah GC");
     } else if (heap instanceof EpsilonHeap) {
        EpsilonHeap eh = (EpsilonHeap) heap;
        liveRegions.add(eh.space().top());

@@ -32,6 +32,7 @@
 #include "oops/instanceKlass.hpp"
 #include "oops/oopsHierarchy.hpp"
 #include "runtime/mutexLocker.hpp"
+#include "utilities/macros.hpp"
 
 // The CodeCache implements the code cache for various pieces of generated
 // code, e.g., compiled java methods, runtime stubs, transition frames, etc.
@@ -80,6 +81,9 @@ class CodeCache : AllStatic {
   template <class T, class Filter> friend class CodeBlobIterator;
   friend class WhiteBox;
   friend class CodeCacheLoader;
+#if INCLUDE_SHENANDOAHGC
+  friend class ShenandoahParallelCodeHeapIterator;
+#endif
  private:
   // CodeHeaps of the cache
   static GrowableArray<CodeHeap*>* _heaps;

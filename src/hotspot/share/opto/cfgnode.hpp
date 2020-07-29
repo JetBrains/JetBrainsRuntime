@@ -303,7 +303,9 @@ private:
 protected:
   ProjNode* range_check_trap_proj(int& flip, Node*& l, Node*& r);
   Node* Ideal_common(PhaseGVN *phase, bool can_reshape);
+SHENANDOAHGC_ONLY(public:)
   Node* dominated_by(Node* prev_dom, PhaseIterGVN* igvn);
+SHENANDOAHGC_ONLY(protected:)
   Node* search_identical(int dist);
 
 public:

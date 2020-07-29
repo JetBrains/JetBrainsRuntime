@@ -40,6 +40,10 @@
 #include "opto/mulnode.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/superword.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif
 
 //=============================================================================
 //------------------------------is_loop_iv-------------------------------------
@@ -2728,6 +2732,10 @@ bool PhaseIdealLoop::process_expensive_nodes() {
 void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
   bool do_split_ifs = (mode == LoopOptsDefault || mode == LoopOptsLastRound);
   bool skip_loop_opts = (mode == LoopOptsNone);
+#if INCLUDE_SHENANDOAHGC
+  bool shenandoah_opts = (mode == LoopOptsShenandoahExpand ||
+                          mode == LoopOptsShenandoahPostExpand);
+#endif
 
   ResourceMark rm;
 
@@ -2792,7 +2800,7 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
   }
 
   // Nothing to do, so get out
-  bool stop_early = !C->has_loops() && !skip_loop_opts && !do_split_ifs && !_verify_me && !_verify_only;
+  bool stop_early = !C->has_loops() && !skip_loop_opts && !do_split_ifs && !_verify_me && !_verify_only SHENANDOAHGC_ONLY(&& !shenandoah_opts);
   bool do_expensive_nodes = C->should_optimize_expensive_nodes(_igvn);
   if (stop_early && !do_expensive_nodes) {
     _igvn.optimize();           // Cleanup NeverBranches
@@ -2871,7 +2879,7 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
 
   // Given early legal placement, try finding counted loops.  This placement
   // is good enough to discover most loop invariants.
-  if( !_verify_me && !_verify_only )
+  if( !_verify_me && !_verify_only SHENANDOAHGC_ONLY(&& !shenandoah_opts))
     _ltree_root->counted_loop( this );
 
   // Find latest loop placement.  Find ideal loop placement.
@@ -2942,6 +2950,16 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
     }
     return;
   }
+
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC && ((ShenandoahBarrierSetC2*) BarrierSet::barrier_set()->barrier_set_c2())->optimize_loops(this, mode, visited, nstack, worklist)) {
+    _igvn.optimize();
+    if (C->log() != NULL) {
+      log_loop_tree(_ltree_root, _ltree_root, C->log());
+    }
+    return;
+  }
+#endif
 
   if (ReassociateInvariants) {
     // Reassociate invariants and prep for split_thru_phi
@@ -4166,7 +4184,12 @@ void PhaseIdealLoop::verify_strip_mined_scheduling(Node *n, Node* least) {
   }
   IdealLoopTree* loop = get_loop(least);
   Node* head = loop->_head;
-  if (head->is_OuterStripMinedLoop()) {
+  if (head->is_OuterStripMinedLoop()
+#if INCLUDE_SHENANDOAHGC
+      && // Verification can't be applied to fully built strip mined loops
+      head->as_Loop()->outer_loop_end()->in(1)->find_int_con(-1) == 0
+#endif
+      ) {
     Node* sfpt = head->as_Loop()->outer_safepoint();
     ResourceMark rm;
     Unique_Node_List wq;
@@ -4246,6 +4269,11 @@ void PhaseIdealLoop::build_loop_late_post( Node *n ) {
     case Op_HasNegatives:
       pinned = false;
     }
+#if INCLUDE_SHENANDOAHGC
+    if (UseShenandoahGC && n->is_CMove()) {
+      pinned = false;
+    }
+#endif
     if( pinned ) {
       IdealLoopTree *chosen_loop = get_loop(n->is_CFG() ? n : get_ctrl(n));
       if( !chosen_loop->_child )       // Inner loop?
@@ -4510,7 +4538,9 @@ void PhaseIdealLoop::dump( IdealLoopTree *loop, uint idx, Node_List &rpo_list ) 
     }
   }
 }
+#endif
 
+#if !defined(PRODUCT) || INCLUDE_SHENANDOAHGC
 // Collect a R-P-O for the whole CFG.
 // Result list is in post-order (scan backwards for RPO)
 void PhaseIdealLoop::rpo( Node *start, Node_Stack &stk, VectorSet &visited, Node_List &rpo_list ) const {
