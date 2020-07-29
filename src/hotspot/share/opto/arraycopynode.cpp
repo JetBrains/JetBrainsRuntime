@@ -30,6 +30,9 @@
 #include "opto/graphKit.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif
 
 ArrayCopyNode::ArrayCopyNode(Compile* C, bool alloc_tightly_coupled, bool has_negative_length_guard)
   : CallNode(arraycopy_type(), NULL, TypeRawPtr::BOTTOM),
@@ -205,6 +208,11 @@ Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, bool can_reshape, int c
 
     Node* v = LoadNode::make(*phase, ctl, mem->memory_at(fieldidx), next_src, adr_type, type, bt, MemNode::unordered);
     v = phase->transform(v);
+#if INCLUDE_SHENANDOAHGC
+    if (UseShenandoahGC && bt == T_OBJECT) {
+      v = ShenandoahBarrierSetC2::bsc2()->arraycopy_load_reference_barrier(phase, v);
+    }
+#endif
     Node* s = StoreNode::make(*phase, ctl, mem->memory_at(fieldidx), next_dest, adr_type, v, bt, MemNode::unordered);
     s = phase->transform(s);
     mem->set_memory_at(fieldidx, s);
@@ -373,6 +381,11 @@ Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
     if (count > 0) {
       Node* v = LoadNode::make(*phase, forward_ctl, start_mem_src, adr_src, atp_src, value_type, copy_type, MemNode::unordered);
       v = phase->transform(v);
+#if INCLUDE_SHENANDOAHGC
+      if (UseShenandoahGC && copy_type == T_OBJECT) {
+        v = ShenandoahBarrierSetC2::bsc2()->arraycopy_load_reference_barrier(phase, v);
+      }
+#endif
       mem = StoreNode::make(*phase, forward_ctl, mem, adr_dest, atp_dest, v, copy_type, MemNode::unordered);
       mem = phase->transform(mem);
       for (int i = 1; i < count; i++) {
@@ -381,6 +394,11 @@ Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
         Node* next_dest = phase->transform(new AddPNode(base_dest,adr_dest,off));
         v = LoadNode::make(*phase, forward_ctl, same_alias ? mem : start_mem_src, next_src, atp_src, value_type, copy_type, MemNode::unordered);
         v = phase->transform(v);
+#if INCLUDE_SHENANDOAHGC
+        if (UseShenandoahGC && copy_type == T_OBJECT) {
+          v = ShenandoahBarrierSetC2::bsc2()->arraycopy_load_reference_barrier(phase, v);
+        }
+#endif
         mem = StoreNode::make(*phase, forward_ctl,mem,next_dest,atp_dest,v, copy_type, MemNode::unordered);
         mem = phase->transform(mem);
       }
@@ -422,11 +440,21 @@ Node* ArrayCopyNode::array_copy_backward(PhaseGVN *phase,
         Node* next_dest = phase->transform(new AddPNode(base_dest,adr_dest,off));
         Node* v = LoadNode::make(*phase, backward_ctl, same_alias ? mem : start_mem_src, next_src, atp_src, value_type, copy_type, MemNode::unordered);
         v = phase->transform(v);
+#if INCLUDE_SHENANDOAHGC
+        if (UseShenandoahGC && copy_type == T_OBJECT) {
+          v = ShenandoahBarrierSetC2::bsc2()->arraycopy_load_reference_barrier(phase, v);
+        }
+#endif
         mem = StoreNode::make(*phase, backward_ctl,mem,next_dest,atp_dest,v, copy_type, MemNode::unordered);
         mem = phase->transform(mem);
       }
       Node* v = LoadNode::make(*phase, backward_ctl, same_alias ? mem : start_mem_src, adr_src, atp_src, value_type, copy_type, MemNode::unordered);
       v = phase->transform(v);
+#if INCLUDE_SHENANDOAHGC
+      if (UseShenandoahGC && copy_type == T_OBJECT) {
+        v = ShenandoahBarrierSetC2::bsc2()->arraycopy_load_reference_barrier(phase, v);
+      }
+#endif
       mem = StoreNode::make(*phase, backward_ctl, mem, adr_dest, atp_dest, v, copy_type, MemNode::unordered);
       mem = phase->transform(mem);
     } else if(can_reshape) {
@@ -485,7 +513,8 @@ bool ArrayCopyNode::finish_transform(PhaseGVN *phase, bool can_reshape,
   } else {
     if (in(TypeFunc::Control) != ctl) {
       // we can't return new memory and control from Ideal at parse time
-      assert(!is_clonebasic(), "added control for clone?");
+      assert(!is_clonebasic() SHENANDOAHGC_ONLY(|| UseShenandoahGC), "added control for clone?");
+      SHENANDOAHGC_ONLY(phase->record_for_igvn(this);)
       return false;
     }
   }

@@ -32,6 +32,9 @@
 #if INCLUDE_ZGC
 #include "gc/z/zBarrier.inline.hpp"
 #endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoahBarrierSet.hpp"
+#endif
 
 StackValue* StackValue::create_stack_value(const frame* fr, const RegisterMap* reg_map, ScopeValue* sv) {
   if (sv->is_location()) {
@@ -106,8 +109,15 @@ StackValue* StackValue::create_stack_value(const frame* fr, const RegisterMap* r
       } else {
         value.noop = *(narrowOop*) value_addr;
       }
-      // Decode narrowoop and wrap a handle around the oop
-      Handle h(Thread::current(), CompressedOops::decode(value.noop));
+      // Decode narrowoop
+      oop val = CompressedOops::decode(value.noop);
+#if INCLUDE_SHENANDOAHGC
+      if (UseShenandoahGC) {
+        // Deoptimization must make sure all oops have passed load barriers
+        val = ShenandoahBarrierSet::barrier_set()->load_reference_barrier(val);
+      }
+#endif
+      Handle h(Thread::current(), val); // Wrap a handle around the oop
       return new StackValue(h);
     }
 #endif
@@ -129,6 +139,11 @@ StackValue* StackValue::create_stack_value(const frame* fr, const RegisterMap* r
       }
 #endif
 
+#if INCLUDE_SHENANDOAHGC
+      if (UseShenandoahGC) {
+        val = ShenandoahBarrierSet::barrier_set()->load_reference_barrier(val);
+      }
+#endif
       Handle h(Thread::current(), val); // Wrap a handle around the oop
       return new StackValue(h);
     }

@@ -49,6 +49,7 @@
 #include "runtime/timer.hpp"
 #include "runtime/vframeArray.hpp"
 #include "utilities/debug.hpp"
+#include "utilities/macros.hpp"
 #include <sys/types.h>
 
 #ifndef PRODUCT
@@ -872,8 +873,16 @@ void TemplateInterpreterGenerator::generate_fixed_frame(bool native_call) {
   }
 
   // Get mirror and store it in the frame as GC root for this Method*
-  __ load_mirror(rscratch1, rmethod);
-  __ stp(rscratch1, zr, Address(sp, 4 * wordSize));
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC) {
+    __ load_mirror(r10, rmethod);
+    __ stp(r10, zr, Address(sp, 4 * wordSize));
+  } else
+#endif
+  {
+    __ load_mirror(rscratch1, rmethod);
+    __ stp(rscratch1, zr, Address(sp, 4 * wordSize));
+  }
 
   __ ldr(rcpool, Address(rmethod, Method::const_offset()));
   __ ldr(rcpool, Address(rcpool, ConstMethod::constants_offset()));

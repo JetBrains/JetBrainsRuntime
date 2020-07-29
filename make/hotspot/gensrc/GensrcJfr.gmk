@@ -57,11 +57,15 @@ JFR_SRCDIR := $(TOPDIR)/src/hotspot/share/jfr/metadata
 METADATA_XML := $(JFR_SRCDIR)/metadata.xml
 METADATA_XSD := $(JFR_SRCDIR)/metadata.xsd
 
-$(JFR_OUTPUTDIR)/jfrEventClasses.hpp: $(METADATA_XML) $(METADATA_XSD) \
-    $(BUILD_JFR_TOOLS)
+ifeq ($(call check-jvm-feature, shenandoahgc), true)
+  METADATA_SHENANDOAH_XML := $(JFR_SRCDIR)/metadata-shenandoah.xml
+endif
+
+$(JFR_OUTPUTDIR)/jfrEventClasses.hpp: $(METADATA_XSD) \
+    $(BUILD_JFR_TOOLS) $(METADATA_XML) $(METADATA_SHENANDOAH_XML)
 	$(call LogInfo, Generating $(@F))
 	$(call MakeDir, $(@D))
-	$(call ExecuteWithLog, $@, $(TOOL_JFR_GEN) $(METADATA_XML) $(METADATA_XSD) $(JFR_OUTPUTDIR))
+	$(call ExecuteWithLog, $@, $(TOOL_JFR_GEN) $(METADATA_XSD) $(JFR_OUTPUTDIR) $(METADATA_XML) $(METADATA_SHENANDOAH_XML) )
 	test -f $@
 
 TARGETS += $(JFR_OUTPUTDIR)/jfrEventClasses.hpp

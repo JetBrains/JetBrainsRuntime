@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "gc/shared/gcCause.hpp"
+#include "utilities/macros.hpp"
 
 const char* GCCause::to_string(GCCause::Cause cause) {
   switch (cause) {
@@ -104,6 +105,20 @@ const char* GCCause::to_string(GCCause::Cause cause) {
 
     case _dcmd_gc_run:
       return "Diagnostic Command";
+
+#if INCLUDE_SHENANDOAHGC
+    case _shenandoah_allocation_failure_evac:
+      return "Allocation Failure During Evacuation";
+
+    case _shenandoah_stop_vm:
+      return "Stopping VM";
+
+    case _shenandoah_concurrent_gc:
+      return "Concurrent GC";
+
+    case _shenandoah_upgrade_to_full_gc:
+      return "Upgrade To Full GC";
+#endif
 
     case _z_timer:
       return "Timer";
