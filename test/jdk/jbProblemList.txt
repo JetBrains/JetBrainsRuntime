@@ -200,7 +200,7 @@ java/awt/FontMetrics/MaxAdvanceIsMax.java                                       
 java/awt/Frame/DisposeParentGC/DisposeParentGC.java                                 8079786,8055833 macosx-all,linux-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/FramesGC/FramesGC.java                                               8079069 macosx-all
-java/awt/Frame/FrameLocation/FrameLocation.java                                     8019803 macosx-all
+java/awt/Frame/FrameLocation/FrameLocation.java                                     8019803,8233703 macosx-all,linux-all
 java/awt/Frame/HugeFrame/HugeFrame.java                                             JBR-2563 linux-all
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java                                   8169111 macosx-all,windows-all
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java                       8169472 windows-all
@@ -957,7 +957,6 @@ javax/swing/JScrollBar/4708809/bug4708809.java                                  
 javax/swing/JScrollBar/6924059/bug6924059.java                                      8199078 generic-all
 javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java 8197552,8169960 macosx-all,windows-all,linux-all
 javax/swing/JSlider/6348946/bug6348946.java                                         8197552,8172539 macosx-all,windows-all,linux-all
-javax/swing/JSpinner/4788637/bug4788637.java                                        7124307 macosx-all,windows-all
 javax/swing/JSpinner/4973721/bug4973721.java                                        8197552,8172408,8072110 macosx-all,windows-all,linux-all
 javax/swing/JSpinner/5012888/bug5012888.java                                        8169958 windows-all
 javax/swing/JSplitPane/4201995/bug4201995.java                                      8079127 generic-all
@@ -1043,7 +1042,7 @@ javax/swing/text/DefaultEditorKit/4278839/bug4278839.java                       
 javax/swing/text/DevanagariEditor.java                                              8198397 generic-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java                              8050988 generic-all
 javax/swing/text/JTextComponent/5074573/bug5074573.java                             7153690,8196100,8196100,8072110 macosx-all,windows-all,linux-all
-javax/swing/text/JTextComponent/6361367/bug6361367.java                             8233569 macosx-all,windows-all
+javax/swing/text/JTextComponent/6361367/bug6361367.java                             8233569 macosx-all,windows-all,linux-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java                            8214220,8172887 macosx-all,windows-all,linux-all
 javax/swing/text/StyledEditorKit/8016833/bug8016833.java                            8199055 generic-all
 javax/swing/text/TableView/TableViewLayoutTest.java                                 8194936 linux-all
