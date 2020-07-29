@@ -72,6 +72,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
@@ -1218,7 +1219,7 @@ public class SwingUtilities2 {
         return null;
     }
 
-    private static final Map<Object, FontRenderContext> cache = new HashMap<>();
+    private static final Map<Object, FontRenderContext> cache = new ConcurrentHashMap<>();
 
     private static FontRenderContext getFRCFromCache(AffineTransform tx, Object aaHint, Object fmHint) {
         if ((tx == null || tx.isIdentity())
