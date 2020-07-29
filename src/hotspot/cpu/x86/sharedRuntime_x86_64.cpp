@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@
 #include "runtime/vframeArray.hpp"
 #include "utilities/align.hpp"
 #include "utilities/formatBuffer.hpp"
+#include "utilities/macros.hpp"
 #include "vm_version_x86.hpp"
 #include "vmreg_x86.inline.hpp"
 #ifdef COMPILER1
@@ -52,6 +53,10 @@
 #endif
 #if INCLUDE_JVMCI
 #include "jvmci/jvmciJavaClasses.hpp"
+#endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoahBarrierSet.hpp"
+#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
 #endif
 
 #define __ masm->
@@ -2130,7 +2135,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
 
   const Register oop_handle_reg = r14;
 
-  if (is_critical_native) {
+  if (is_critical_native SHENANDOAHGC_ONLY(&& !UseShenandoahGC)) {
     check_needs_gc_for_critical_native(masm, stack_slots, total_c_args, total_in_args,
                                        oop_handle_offset, oop_maps, in_regs, in_sig_bt);
   }
@@ -2187,6 +2192,12 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
   // the incoming and outgoing registers are offset upwards and for
   // critical natives they are offset down.
   GrowableArray<int> arg_order(2 * total_in_args);
+#if INCLUDE_SHENANDOAHGC
+  // Inbound arguments that need to be pinned for critical natives
+  GrowableArray<int> pinned_args(total_in_args);
+  // Current stack slot for storing register based array argument
+  int pinned_slot = oop_handle_offset;
+#endif
   VMRegPair tmp_vmreg;
   tmp_vmreg.set2(rbx->as_VMReg());
 
@@ -2234,6 +2245,14 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     switch (in_sig_bt[i]) {
       case T_ARRAY:
         if (is_critical_native) {
+#if INCLUDE_SHENANDOAHGC
+          // pin before unpack
+          if (UseShenandoahGC) {
+            assert(pinned_slot <= stack_slots, "overflow");
+            ShenandoahBarrierSet::assembler()->pin_critical_native_array(masm, in_regs[i], pinned_slot);
+            pinned_args.append(i);
+          }
+#endif
           unpack_array_argument(masm, in_regs[i], in_elem_bt[i], out_regs[c_arg + 1], out_regs[c_arg]);
           c_arg++;
 #ifdef ASSERT
@@ -2450,6 +2469,22 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
   default       : ShouldNotReachHere();
   }
 
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC) {
+    // unpin pinned arguments
+    pinned_slot = oop_handle_offset;
+    if (pinned_args.length() > 0) {
+      // save return value that may be overwritten otherwise.
+      save_native_result(masm, ret_type, stack_slots);
+      for (int index = 0; index < pinned_args.length(); index ++) {
+        int i = pinned_args.at(index);
+        assert(pinned_slot <= stack_slots, "overflow");
+        ShenandoahBarrierSet::assembler()->unpin_critical_native_array(masm, in_regs[i], pinned_slot);
+      }
+      restore_native_result(masm, ret_type, stack_slots);
+    }
+  }
+#endif
   // Switch thread to "native transition" state before reading the synchronization state.
   // This additional state is necessary because reading and testing the synchronization
   // state is not atomic w.r.t. GC, as this scenario demonstrates:

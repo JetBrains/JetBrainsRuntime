@@ -26,7 +26,7 @@
  * @key gc
  * @bug 8025166
  * @summary Verify that heap devided among generations according to NewRatio
- * @requires vm.gc != "Z"
+ * @requires vm.gc != "Z" & vm.gc != "Shenandoah"
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management

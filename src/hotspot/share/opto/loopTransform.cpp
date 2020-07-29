@@ -2904,6 +2904,14 @@ void IdealLoopTree::adjust_loop_exit_prob( PhaseIdealLoop *phase ) {
             ((bol->in(1)->Opcode() == Op_StorePConditional ) ||
              (bol->in(1)->Opcode() == Op_StoreIConditional ) ||
              (bol->in(1)->Opcode() == Op_StoreLConditional ) ||
+#if INCLUDE_SHENANDOAHGC
+             (bol->in(1)->Opcode() == Op_ShenandoahCompareAndExchangeP ) ||
+             (bol->in(1)->Opcode() == Op_ShenandoahCompareAndExchangeN ) ||
+             (bol->in(1)->Opcode() == Op_ShenandoahWeakCompareAndSwapP ) ||
+             (bol->in(1)->Opcode() == Op_ShenandoahWeakCompareAndSwapN ) ||
+             (bol->in(1)->Opcode() == Op_ShenandoahCompareAndSwapP ) ||
+             (bol->in(1)->Opcode() == Op_ShenandoahCompareAndSwapN ) ||
+#endif
              (bol->in(1)->Opcode() == Op_CompareAndExchangeB ) ||
              (bol->in(1)->Opcode() == Op_CompareAndExchangeS ) ||
              (bol->in(1)->Opcode() == Op_CompareAndExchangeI ) ||

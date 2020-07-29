@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,10 @@
 #include "opto/mulnode.hpp"
 #include "opto/phaseX.hpp"
 #include "opto/subnode.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -473,6 +477,15 @@ Node *AndINode::Ideal(PhaseGVN *phase, bool can_reshape) {
   const int mask = t2->get_con();
   Node *load = in(1);
   uint lop = load->Opcode();
+
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC && ShenandoahBarrierC2Support::is_gc_state_load(load)) {
+    // Do not touch the load+mask, we would match the whole sequence exactly.
+    // Converting the load to LoadUB/LoadUS would mismatch and waste a register
+    // on the barrier fastpath.
+    return NULL;
+  }
+#endif
 
   // Masking bits off of a Character?  Hi bits are already zero.
   if( lop == Op_LoadUS &&
