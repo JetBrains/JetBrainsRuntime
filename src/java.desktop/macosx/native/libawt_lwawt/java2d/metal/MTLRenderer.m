@@ -70,70 +70,16 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
         return;
     }
 
-    J2dTraceLn5(J2D_TRACE_INFO, "MTLRenderer_DrawLine (x1=%1.2f y1=%1.2f x2=%1.2f y2=%1.2f), dst tex=%p", (jfloat)x1, (jfloat)y1, (jfloat)x2, (jfloat)y2, dstOps->pTexture);
+    J2dTraceLn5(J2D_TRACE_INFO, "MTLRenderer_DrawLine (x1=%1.2f y1=%1.2f x2=%1.2f y2=%1.2f), dst tex=%p", x1, y1, x2, y2, dstOps->pTexture);
 
     id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
     if (mtlEncoder == nil)
         return;
 
-    struct Vertex verts[2];
-
-    if (y1 == y2) {
-        // horizontal
-        jfloat fx1 = (jfloat)x1;
-        jfloat fx2 = (jfloat)x2;
-        jfloat fy  = ((jfloat)y1) + 0.2f;
-
-        if (x1 > x2) {
-            jfloat t = fx1; fx1 = fx2; fx2 = t;
-        }
-
-        verts[0].position[0] = fx1+0.2f;
-        verts[0].position[1] = fy;
-        verts[1].position[0] = fx2+1.2f;
-        verts[1].position[1] = fy;
-    } else if (x1 == x2) {
-        // vertical
-        jfloat fx  = ((jfloat)x1) + 0.2f;
-        jfloat fy1 = (jfloat)y1;
-        jfloat fy2 = (jfloat)y2;
-
-        if (y1 > y2) {
-            jfloat t = fy1; fy1 = fy2; fy2 = t;
-        }
-
-        verts[0].position[0] = fx;
-        verts[0].position[1] = fy1+0.2f;
-        verts[1].position[0] = fx;
-        verts[1].position[1] = fy2+1.2f;
-    } else {
-        // diagonal
-        jfloat fx1 = (jfloat)x1;
-        jfloat fy1 = (jfloat)y1;
-        jfloat fx2 = (jfloat)x2;
-        jfloat fy2 = (jfloat)y2;
-
-        if (x1 < x2) {
-            fx1 += 0.2f;
-            fx2 += 1.0f;
-        } else {
-            fx1 += 0.8f;
-            fx2 -= 0.2f;
-        }
-
-        if (y1 < y2) {
-            fy1 += 0.2f;
-            fy2 += 1.0f;
-        } else {
-            fy1 += 0.8f;
-            fy2 -= 0.2f;
-        }
-
-        verts[0].position[0] = fx1;
-        verts[0].position[1] = fy1;
-        verts[1].position[0] = fx2;
-        verts[1].position[1] = fy2;
-    }
+    struct Vertex verts[2] = {
+            {{x1, y1}},
+            {{x2, y2}}
+    };
 
     [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
@@ -153,27 +99,16 @@ void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, 
     if (mtlEncoder == nil)
         return;
 
-    if (w < 2 || h < 2) {
-        // If one dimension is less than 2 then there is no
-        // gap in the middle - draw a solid filled rectangle.
-        MTLRenderer_FillRect(mtlc, dstOps, x, y, w+1, h+1);
-    } else {
-        jfloat fx1 = ((jfloat)x) + 0.2f;
-        jfloat fy1 = ((jfloat)y) + 0.2f;
-        jfloat fx2 = fx1 + ((jfloat)w);
-        jfloat fy2 = fy1 + ((jfloat)h);
-
-        struct Vertex vertices[5] = {
-            {{fx1, fy1}},
-            {{fx2/*+1.0f*/, fy1}},
-            {{fx2/*+1.0f*/, fy2}},
-            {{fx1, fy2}},
-            {{fx1, fy1}}
-        };
-
-        [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
-        [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:5];
-    }
+    const int verticesCount = 5;
+    struct Vertex vertices[5] = {
+            {{x, y}},
+            {{x + w, y}},
+            {{x + w, y + h}},
+            {{x, y + h}},
+            {{x, y}},
+    };
+    [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
+    [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:verticesCount];
 }
 
 const int POLYLINE_BUF_SIZE = 64;
@@ -224,13 +159,13 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
         for (int i = 1; i < chunkSize; i++) {
             prevX = *(xPoints++);
             prevY = *(yPoints++);
-            fillVertex(pointsChunk.verts + i, prevX + transX + 0.5, prevY + transY + 0.5);
+            fillVertex(pointsChunk.verts + i, prevX + transX, prevY + transY);
         }
 
         bool drawCloseSegment = false;
         if (isClosed && isLastChunk) {
             if (chunkSize + 2 <= POLYLINE_BUF_SIZE) {
-                fillVertex(pointsChunk.verts + chunkSize, firstX + transX + 0.5, firstY + transY + 0.5);
+                fillVertex(pointsChunk.verts + chunkSize, firstX + transX, firstY + transY);
                 ++chunkSize;
             } else
                 drawCloseSegment = true;
@@ -246,8 +181,8 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
 
         if (drawCloseSegment) {
             struct Vertex vertices[2] = {
-                    {{prevX + transX + 0.5, prevY + transY + 0.5}},
-                    {{firstX + transX + 0.5, firstY + transY + 0.5}},
+                    {{prevX + transX, prevY + transY}},
+                    {{firstX + transX, firstY + transY}},
             };
 
             [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
@@ -264,36 +199,8 @@ Java_sun_java2d_metal_MTLRenderer_drawPoly
      jint transX, jint transY)
 {
     jint *xPoints, *yPoints;
-
-    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_drawPoly");
-
-    xPoints = (jint *)
-        (*env)->GetPrimitiveArrayCritical(env, xpointsArray, NULL);
-    if (xPoints != NULL) {
-        yPoints = (jint *)
-            (*env)->GetPrimitiveArrayCritical(env, ypointsArray, NULL);
-        if (yPoints != NULL) {
-            MTLContext* mtlc = MTLRenderQueue_GetCurrentContext();
-            BMTLSDOps* dstOps = MTLRenderQueue_GetCurrentDestination();
-
-            MTLRenderer_DrawPoly(mtlc, dstOps,
-                                 nPoints, isClosed,
-                                 transX, transY,
-                                 xPoints, yPoints);
-
-            // 6358147: reset current state, and ensure rendering is
-            // flushed to dest
-            //if (oglc != NULL) {
-            //    RESET_PREVIOUS_OP();
-            //    j2d_glFlush();
-            // }
-
-            (*env)->ReleasePrimitiveArrayCritical(env, ypointsArray, yPoints,
-                                                  JNI_ABORT);
-        }
-        (*env)->ReleasePrimitiveArrayCritical(env, xpointsArray, xPoints,
-                                              JNI_ABORT);
-    }
+    //TODO
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderer_drawPoly -- :TODO");
 }
 
 void

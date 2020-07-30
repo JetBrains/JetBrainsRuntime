@@ -420,7 +420,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint x = NEXT_INT(b);
                 jint y = NEXT_INT(b);
                 CONTINUE_IF_NULL(mtlc);
-                MTLRenderer_DrawLine(mtlc, dstOps, x, y, x, y);
+                //TODO
+                J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderQueue_DRAW_PIXEL -- :TODO");
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES:
