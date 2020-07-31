@@ -88,10 +88,10 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
             float t = fx1; fx1 = fx2; fx2 = t;
         }
 
-        struct Vertex v1 = {{fx1 + 0.2f, fy}};
-        struct Vertex v2 = {{fx2 + 1.2f, fy}};
-        verts[0] = v1;
-        verts[1] = v2;
+        verts[0].position[0] = fx1 + 0.2f;
+        verts[0].position[1] = fy;
+        verts[1].position[0] = fx2 + 1.2f;
+        verts[1].position[1] = fy;
     } else if (x1 == x2) {
         // vertical
         float fx  = ((float)x1) + 0.2f;
@@ -102,10 +102,10 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
             float t = fy1; fy1 = fy2; fy2 = t;
         }
 
-        struct Vertex v1 = {{fx, fy1 + 0.2f}};
-        struct Vertex v2 = {{fx, fy2 + 1.2f}};
-        verts[0] = v1;
-        verts[1] = v2;
+        verts[0].position[0] = fx;
+        verts[0].position[1] = fy1 + 0.2f;
+        verts[1].position[0] = fx;
+        verts[1].position[1] = fy2 + 1.2f;
     } else {
         // diagonal
         float fx1 = (float)x1;
@@ -128,10 +128,10 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
             fy1 += 0.8f;
             fy2 -= 0.2f;
         }
-        struct Vertex v1 = {{fx1, fy1}};
-        struct Vertex v2 = {{fx2, fy2}};
-        verts[0] = v1;
-        verts[1] = v2;
+        verts[0].position[0] = fx1;
+        verts[0].position[1] = fy1;
+        verts[1].position[0] = fx2;
+        verts[1].position[1] = fy2;
     }
 
     [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
