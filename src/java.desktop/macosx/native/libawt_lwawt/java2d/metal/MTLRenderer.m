@@ -155,8 +155,8 @@ void MTLRenderer_DrawPixel(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y)
     // that we hit pixel centers.
     float fx = (float)x + 0.2f;
     float fy = (float)y + 0.5f;
-    struct Vertex vert[1] = {{{fx, fy}}};
-    [mtlEncoder setVertexBytes:vert length:sizeof(vert) atIndex:MeshVertexBuffer];
+    struct Vertex vert = {{fx, fy}};
+    [mtlEncoder setVertexBytes:&vert length:sizeof(vert) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypePoint vertexStart:0 vertexCount:1];
 }
 
