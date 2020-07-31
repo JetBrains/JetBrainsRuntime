@@ -40,6 +40,8 @@
 
 void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps,
                           jint x1, jint y1, jint x2, jint y2);
+void MTLRenderer_DrawPixel(MTLContext *mtlc, BMTLSDOps * dstOps,
+                          jint x, jint y);
 void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps,
                           jint x, jint y, jint w, jint h);
 void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
