@@ -76,10 +76,63 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
     if (mtlEncoder == nil)
         return;
 
-    struct Vertex verts[2] = {
-            {{x1, y1}},
-            {{x2, y2}}
-    };
+    // DrawLine implementation same as in OGLRenderer.c
+    struct Vertex verts[2];
+    if (y1 == y2) {
+        // horizontal
+        float fx1 = (float)x1;
+        float fx2 = (float)x2;
+        float fy  = ((float)y1) + 0.2f;
+
+        if (x1 > x2) {
+            float t = fx1; fx1 = fx2; fx2 = t;
+        }
+
+        verts[0].position[0] = fx1 + 0.2f;
+        verts[0].position[1] = fy;
+        verts[1].position[0] = fx2 + 1.2f;
+        verts[1].position[1] = fy;
+    } else if (x1 == x2) {
+        // vertical
+        float fx  = ((float)x1) + 0.2f;
+        float fy1 = (float)y1;
+        float fy2 = (float)y2;
+
+        if (y1 > y2) {
+            float t = fy1; fy1 = fy2; fy2 = t;
+        }
+
+        verts[0].position[0] = fx;
+        verts[0].position[1] = fy1 + 0.2f;
+        verts[1].position[0] = fx;
+        verts[1].position[1] = fy2 + 1.2f;
+    } else {
+        // diagonal
+        float fx1 = (float)x1;
+        float fy1 = (float)y1;
+        float fx2 = (float)x2;
+        float fy2 = (float)y2;
+
+        if (x1 < x2) {
+            fx1 += 0.2f;
+            fx2 += 1.0f;
+        } else {
+            fx1 += 0.8f;
+            fx2 -= 0.2f;
+        }
+
+        if (y1 < y2) {
+            fy1 += 0.2f;
+            fy2 += 1.0f;
+        } else {
+            fy1 += 0.8f;
+            fy2 -= 0.2f;
+        }
+        verts[0].position[0] = fx1;
+        verts[0].position[1] = fy1;
+        verts[1].position[0] = fx2;
+        verts[1].position[1] = fy2;
+    }
 
     [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
