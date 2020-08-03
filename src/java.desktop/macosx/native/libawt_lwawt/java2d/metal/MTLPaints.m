@@ -35,6 +35,7 @@
 #include "sun_java2d_pipe_BufferedPaints.h"
 #import "MTLComposite.h"
 #import "MTLBufImgOps.h"
+#include "MTLRenderQueue.h"
 
 #define RGBA_TO_V4(c)              \
 {                                  \
@@ -458,6 +459,7 @@ static void setTxtUniforms(
 
             [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
             [encoder setFragmentTexture:_paintTexture atIndex:0];
+
         }
     }
 
@@ -483,18 +485,25 @@ static void setTxtUniforms(
 
     jint xorColor = (jint) [mtlc.composite getXorColor];
 
-    NSString * vertShader = @"vert_txt";
-    NSString * fragShader = @"frag_txt";
+    NSString * vertShader = @"vert_txt_xorMode";
+    NSString * fragShader = @"frag_txt_xorMode";
     MTLRenderPipelineDescriptor * rpDesc = templateTexturePipelineDesc;
 
     if (renderOptions->isTexture) {
         const int col = _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? _color ^ xorColor : 0 ^ xorColor;
-        setTxtUniforms(encoder, col, _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? 1 : 0, renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha], &renderOptions->srcFlags, &renderOptions->dstFlags);
+        setTxtUniforms(encoder, col, _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? 1 : 0,
+                       renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha],
+                       &renderOptions->srcFlags, &renderOptions->dstFlags);
         [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
+
+        BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+        [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
+
+        J2dTraceLn(J2D_TRACE_INFO, "MTLPaints - setXorModePipelineState -- TEXTURE DRAW");
     } else {
         if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-            vertShader = @"vert_col";
-            fragShader = @"frag_col";
+            vertShader = @"vert_col_xorMode";
+            fragShader = @"frag_col_xorMode";
             rpDesc = templateRenderPipelineDesc;
 
             // Calculate _color ^ xorColor for RGB components
@@ -502,27 +511,43 @@ static void setTxtUniforms(
             struct FrameUniforms uf = {RGBA_TO_V4(_color ^ xorColor)};
             [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
 
+            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+            [encoder setFragmentTexture:dstOps->pTexture atIndex:0];
+
+            J2dTraceLn(J2D_TRACE_INFO ,"MTLPaints - setXorModePipelineState -- PAINT_ALPHACOLOR");
         } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-            vertShader = @"vert_grad";
-            fragShader = @"frag_grad";
+            // This block is not reached in current implementation.
+            // Gradient paint XOR mode rendering uses a tile based rendering using a SW pipe (similar to OGL)
+            vertShader = @"vert_grad_xorMode";
+            fragShader = @"frag_grad_xorMode";
             rpDesc = templateRenderPipelineDesc;
 
-                struct GradFrameUniforms uf = {
+            struct GradFrameUniforms uf = {
                         {_p0, _p1, _p3},
                         RGBA_TO_V4(_pixel1 ^ xorColor),
                         RGBA_TO_V4(_pixel2 ^ xorColor)};
-                [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
-            } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-            vertShader = @"vert_tp";
+
+            [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
+            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+            [encoder setFragmentTexture:dstOps->pTexture atIndex:0];
+
+            J2dTraceLn(J2D_TRACE_INFO, "MTLPaints - setXorModePipelineState -- PAINT_GRADIENT");
+        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
+            // This block is not reached in current implementation.
+            // Texture paint XOR mode rendering uses a tile based rendering using a SW pipe (similar to OGL)
+            vertShader = @"vert_tp_xorMode";
             fragShader = @"frag_tp_xorMode";
             rpDesc = templateRenderPipelineDesc;
 
+            [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
+            [encoder setFragmentTexture:_paintTexture atIndex: 0];
+            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+            [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
+            [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
 
-                [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
-                [encoder setFragmentTexture:_paintTexture atIndex: 0];
-                [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
-            }
+            J2dTraceLn(J2D_TRACE_INFO, "MTLPaints - setXorModePipelineState -- PAINT_TEXTURE");
         }
+    }
 
     id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
                                                                         vertexShaderId:vertShader

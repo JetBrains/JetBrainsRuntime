@@ -130,12 +130,20 @@ static void setBlendingFactors(
             pipelineDesc.fragmentFunction = fragmentShader;
 
             if (useXorComposite) {
+                /* The below configuration is the best performant implementation of XOR mode rendering.
+                   It was found that it works ONLY for basic Colors and not for all RGB combinations.
+                   Hence, a slow performant XOR mode rendering has been implemented by
+                   disabling blending & committing after each draw call.
+                   In XOR mode rendering, subsequent draw calls are rendered
+                   by shader using already rendered framebuffer pixel value XORed
+                   with current draw color and XOR color.
                 pipelineDesc.colorAttachments[0].blendingEnabled = YES;
- 
                 pipelineDesc.colorAttachments[0].rgbBlendOperation = MTLBlendOperationAdd;
                 pipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOneMinusDestinationColor;
                 pipelineDesc.colorAttachments[0].destinationRGBBlendFactor =  MTLBlendFactorOneMinusSourceColor;
+                */
 
+                pipelineDesc.colorAttachments[0].blendingEnabled = NO;
             } else if (useComposite ||
                        (composite != nil  &&
                         FLT_LT([composite getExtraAlpha], 1.0f)))

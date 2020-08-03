@@ -163,6 +163,7 @@
  */
 - (void)setXorComposite:(jint)xorPixel;
 - (jboolean)isBlendingDisabled:(jboolean) isSrcOpaque;
+- (jboolean)useXORComposite;
 
 /**
  * Resets the OpenGL transform state back to the identity matrix.

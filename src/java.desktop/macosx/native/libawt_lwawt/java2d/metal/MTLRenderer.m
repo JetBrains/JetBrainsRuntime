@@ -70,7 +70,7 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
         return;
     }
 
-    J2dTraceLn5(J2D_TRACE_INFO, "MTLRenderer_DrawLine (x1=%1.2f y1=%1.2f x2=%1.2f y2=%1.2f), dst tex=%p", x1, y1, x2, y2, dstOps->pTexture);
+    J2dTraceLn5(J2D_TRACE_INFO, "MTLRenderer_DrawLine (x1=%d y1=%d x2=%d y2=%d), dst tex=%p", x1, y1, x2, y2, dstOps->pTexture);
 
     id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
     if (mtlEncoder == nil)
@@ -235,18 +235,22 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
         const bool isLastChunk = nPoints <= POLYLINE_BUF_SIZE;
         __block int chunkSize = isLastChunk ? nPoints : POLYLINE_BUF_SIZE;
 
-        fillVertex(pointsChunk.verts, prevX + transX, prevY + transY);
+        fillVertex(pointsChunk.verts, prevX + transX + 0.5f, prevY + transY + 0.5f);
+        J2dTraceLn2(J2D_TRACE_INFO, "MTLRenderer_DrawPoly: Point - (%1.2f, %1.2f)", prevX + transX + 0.5f, prevY + transY + 0.5f);
 
         for (int i = 1; i < chunkSize; i++) {
             prevX = *(xPoints++);
             prevY = *(yPoints++);
-            fillVertex(pointsChunk.verts + i, prevX + transX, prevY + transY);
+            fillVertex(pointsChunk.verts + i, prevX + transX + 0.5f, prevY + transY + 0.5f);
+            J2dTraceLn2(J2D_TRACE_INFO, "MTLRenderer_DrawPoly: Point - (%1.2f, %1.2f)", prevX + transX + 0.5f,prevY + transY + 0.5f);
         }
 
         bool drawCloseSegment = false;
         if (isClosed && isLastChunk) {
             if (chunkSize + 2 <= POLYLINE_BUF_SIZE) {
-                fillVertex(pointsChunk.verts + chunkSize, firstX + transX, firstY + transY);
+                fillVertex(pointsChunk.verts + chunkSize, firstX + transX + 0.5f, firstY + transY + 0.5f);
+                J2dTraceLn2(J2D_TRACE_INFO, "MTLRenderer_DrawPoly: Point - (%1.2f, %1.2f)",firstX + transX + 0.5f, firstY + transY + 0.5f);
+
                 ++chunkSize;
             } else
                 drawCloseSegment = true;
@@ -262,9 +266,12 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
 
         if (drawCloseSegment) {
             struct Vertex vertices[2] = {
-                    {{prevX + transX, prevY + transY}},
-                    {{firstX + transX, firstY + transY}},
+                    {{prevX + transX + 0.5f, prevY + transY + 0.5f}},
+                    {{firstX + transX + 0.5f, firstY + transY + 0.5f}}
             };
+
+            J2dTraceLn2(J2D_TRACE_INFO, "MTLRenderer_DrawPoly: last segment Point1 - (%1.2f, %1.2f)",prevX + transX + 0.5f, prevY + transY + 0.5f);
+            J2dTraceLn2(J2D_TRACE_INFO, "MTLRenderer_DrawPoly: last segment Point2 - (%1.2f, %1.2f)",firstX + transX + 0.5f, firstY + transY + 0.5f);
 
             [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
             [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];

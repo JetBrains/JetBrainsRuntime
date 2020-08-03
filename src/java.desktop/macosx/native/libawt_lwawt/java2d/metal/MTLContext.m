@@ -275,6 +275,9 @@ extern void initSamplers(id<MTLDevice> device);
     return [_composite isBlendingDisabled:isSrcOpaque];
 }
 
+- (jboolean) useXORComposite {
+    return ([_composite getCompositeState] == sun_java2d_SunGraphics2D_COMP_XOR);
+}
 
 - (void)resetTransform {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetTransform");

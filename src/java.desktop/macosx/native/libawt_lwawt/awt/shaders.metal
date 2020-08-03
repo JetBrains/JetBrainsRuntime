@@ -59,6 +59,20 @@ struct GradShaderInOut {
     float2 texCoords;
 };
 
+
+struct ColShaderInOut_XOR {
+    float4 position [[position]];
+    float2 orig_pos;
+    half4  color;
+};
+
+struct TxtShaderInOut_XOR {
+    float4 position [[position]];
+    float2 orig_pos;
+    float2 texCoords;
+    float2 tpCoords;
+};
+
 vertex ColShaderInOut vert_col(VertexInput in [[stage_in]],
        constant FrameUniforms& uniforms [[buffer(FrameUniformBuffer)]],
        constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
@@ -362,27 +376,7 @@ fragment half4 frag_tp(
     //TODO : implement alpha component value if source is transparent
 }
 
-fragment half4 frag_tp_xorMode(
-        TxtShaderInOut vert [[stage_in]],
-        texture2d<float, access::sample> renderTexture [[texture(0)]],
-        constant int& xorColor[[buffer(0)]])
-{
-    constexpr sampler textureSampler (address::repeat,
-                                      mag_filter::nearest,
-                                      min_filter::nearest);
 
-    float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
-
-    pixelColor.r = float( (unsigned char)(pixelColor.r * 255.0) ^ ((xorColor >> 16) & 0xFF) ) / 255.0f;
-    pixelColor.g = float( (unsigned char)(pixelColor.g * 255.0) ^ ((xorColor >> 8) & 0xFF)) / 255.0f;
-    pixelColor.b = float( (unsigned char)(pixelColor.b * 255.0) ^ (xorColor & 0xFF)) / 255.0f;
-    pixelColor.a = 1.0;
-
-    return half4(pixelColor.r, pixelColor.g, pixelColor.b, 1.0);
-
-    // This implementation defaults alpha to 1.0 as if source is opaque
-    //TODO : implement alpha component value if source is transparent
-}
 
 /* The variables involved in the equation can be expressed as follows:
  *
@@ -441,3 +435,142 @@ kernel void stencil2tex(const device uchar *imageBuffer [[buffer(0)]],
     uchar p = imageBuffer[gid];
     outputBuffer[gid] = uchar4(p, p, p, p);
 }
+
+// ----------------------------------------------------------------------------
+// Shaders for rendering in XOR Mode
+// ----------------------------------------------------------------------------
+vertex ColShaderInOut_XOR vert_col_xorMode(VertexInput in [[stage_in]],
+       constant FrameUniforms& uniforms [[buffer(FrameUniformBuffer)]],
+       constant TransformMatrix& transform [[buffer(MatrixBuffer)]])
+{
+    ColShaderInOut_XOR out;
+    float4 pos4 = float4(in.position, 0.0, 1.0);
+    out.position = transform.transformMatrix*pos4;
+    out.orig_pos = in.position;
+    out.color = half4(uniforms.color.r, uniforms.color.g, uniforms.color.b, uniforms.color.a);
+    return out;
+}
+
+fragment half4 frag_col_xorMode(ColShaderInOut_XOR in [[stage_in]],
+        texture2d<float, access::read> renderTexture [[texture(0)]])
+{
+    uint2 texCoord = {(unsigned int)(in.orig_pos.x), (unsigned int)(in.orig_pos.y)};
+
+    float4 pixelColor = renderTexture.read(texCoord);
+    half4 color = in.color;
+
+    half4 c;
+    c.r = float( (unsigned char)(pixelColor.r * 255.0) ^ (unsigned char)(color.r * 255.0)) / 255.0f;
+    c.g = float( (unsigned char)(pixelColor.g * 255.0) ^ (unsigned char)(color.g * 255.0)) / 255.0f;
+    c.b = float( (unsigned char)(pixelColor.b * 255.0) ^ (unsigned char)(color.b * 255.0)) / 255.0f;
+    c.a = 1.0;
+
+    return c;
+}
+
+
+vertex TxtShaderInOut_XOR vert_txt_xorMode(
+        TxtVertexInput in [[stage_in]],
+        constant TransformMatrix& transform [[buffer(MatrixBuffer)]])
+{
+    TxtShaderInOut_XOR out;
+    float4 pos4 = float4(in.position, 0.0, 1.0);
+    out.position = transform.transformMatrix*pos4;
+    out.orig_pos = in.position;
+    out.texCoords = in.texCoords;
+    return out;
+}
+
+fragment half4 frag_txt_xorMode(
+        TxtShaderInOut_XOR vert [[stage_in]],
+        texture2d<float, access::sample> renderTexture [[texture(0)]],
+        texture2d<float, access::read> backgroundTexture [[texture(1)]],
+        constant TxtFrameUniforms& uniforms [[buffer(1)]],
+        sampler textureSampler [[sampler(0)]])
+{
+    uint2 texCoord = {(unsigned int)(vert.orig_pos.x), (unsigned int)(vert.orig_pos.y)};
+    float4 bgColor = backgroundTexture.read(texCoord);
+
+    float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
+    float srcA = uniforms.isSrcOpaque ? 1 : pixelColor.a;
+
+    float4 c;
+    if (uniforms.mode) {
+        c = mix(pixelColor, uniforms.color, srcA);
+    } else {
+        c = float4(pixelColor.r,
+                 pixelColor.g,
+                 pixelColor.b, srcA*uniforms.extraAlpha);
+    }
+
+    half4 ret;
+    ret.r = half( (unsigned char)(c.r * 255.0) ^ (unsigned char)(bgColor.r * 255.0)) / 255.0f;
+    ret.g = half( (unsigned char)(c.g * 255.0) ^ (unsigned char)(bgColor.g * 255.0)) / 255.0f;
+    ret.b = half( (unsigned char)(c.b * 255.0) ^ (unsigned char)(bgColor.b * 255.0)) / 255.0f;
+    ret.a = c.a;
+
+    return ret;
+}
+
+
+/*
+    // --------------------------------------------------------------------------------------
+    Currently, gradient paint and texture paint XOR mode rendering has been implemented
+    through tile based rendering (similar to OGL) that uses MTLBlitLoops_SurfaceToSwBlit method for
+    getting framebuffer tiles and render using a different render pipe (not MTLRenderer)
+
+    In metal, we can avoid tile based rendering and use below shaders.
+    NOTE: These two shaders are incomplete and need some tweak.
+    // --------------------------------------------------------------------------------------
+
+fragment half4 frag_grad_xorMode(GradShaderInOut_XOR in [[stage_in]],
+                         texture2d<float, access::read> renderTexture [[texture(0)]],
+                         constant GradFrameUniforms& uniforms [[buffer(0)]]) {
+    uint2 texCoord = {(unsigned int)(in.orig_pos.x), (unsigned int)(in.orig_pos.y)};
+    float4 pixelColor = renderTexture.read(texCoord);
+
+    float3 v = float3(in.position.x, in.position.y, 1);
+    float  a = (dot(v,uniforms.params)-0.25)*2.0;
+    float4 c = mix(uniforms.color1, uniforms.color2, a);
+
+    half4 ret;
+    ret.r = float( (unsigned char)(pixelColor.r * 255.0) ^ (unsigned char)(c.r * 255.0)) / 255.0f;
+    ret.g = float( (unsigned char)(pixelColor.g * 255.0) ^ (unsigned char)(c.g * 255.0)) / 255.0f;
+    ret.b = float( (unsigned char)(pixelColor.b * 255.0) ^ (unsigned char)(c.b * 255.0)) / 255.0f;
+
+    return half4(ret);
+}
+
+
+fragment half4 frag_tp_xorMode(
+        TxtShaderInOut vert [[stage_in]],
+        texture2d<float, access::sample> renderTexture [[texture(0)]],
+        texture2d<float, access::read> backgroundTexture [[texture(1)]],
+        constant int& xorColor[[buffer(0)]])
+{
+    uint2 texCoord = {(unsigned int)(vert.orig_pos.x), (unsigned int)(vert.orig_pos.y)};
+    float4 bgColor = backgroundTexture.read(texCoord);
+
+    constexpr sampler textureSampler (address::repeat,
+                                      mag_filter::nearest,
+                                      min_filter::nearest);
+
+    float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
+
+    pixelColor.r = float( (unsigned char)(pixelColor.r * 255.0) ^ ((xorColor >> 16) & 0xFF) ) / 255.0f;
+    pixelColor.g = float( (unsigned char)(pixelColor.g * 255.0) ^ ((xorColor >> 8) & 0xFF)) / 255.0f;
+    pixelColor.b = float( (unsigned char)(pixelColor.b * 255.0) ^ (xorColor & 0xFF)) / 255.0f;
+    pixelColor.a = 1.0;
+
+    half4 ret;
+    ret.r = half( (unsigned char)(pixelColor.r * 255.0) ^ (unsigned char)(bgColor.r * 255.0)) / 255.0f;
+    ret.g = half( (unsigned char)(pixelColor.g * 255.0) ^ (unsigned char)(bgColor.g * 255.0)) / 255.0f;
+    ret.b = half( (unsigned char)(pixelColor.b * 255.0) ^ (unsigned char)(bgColor.b * 255.0)) / 255.0f;
+    ret.a = 1.0;
+
+    return ret;
+
+    // This implementation defaults alpha to 1.0 as if source is opaque
+    //TODO : implement alpha component value if source is transparent
+}
+*/
