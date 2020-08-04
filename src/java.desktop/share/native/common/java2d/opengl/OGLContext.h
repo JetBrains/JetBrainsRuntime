@@ -53,6 +53,16 @@ typedef struct {
 } OGLBlendRule;
 
 /**
+ * Use this hints if gray gamma shader is enabled
+ */
+typedef struct {
+    float light_gamma; // brightness of light text
+    float dark_gamma;  // brightness of dark text
+    float light_exp;   // thickness of light text
+    float dark_exp;    // thickness of dark text
+} GrayRenderHints;
+
+/**
  * The OGLContext structure contains cached state relevant to the native
  * OpenGL context stored within the native ctxInfo field.  Each Java-level
  * OGLContext object is associated with a native-level OGLContext structure.
@@ -85,6 +95,7 @@ typedef struct {
     GLuint     blitTextureID;
     GLint      textureFunction;
     jboolean   vertexCacheEnabled;
+    GrayRenderHints *grayRenderHints;
 } OGLContext;
 
 /**
@@ -221,5 +232,6 @@ void OGLContext_GetExtensionInfo(JNIEnv *env, jint *caps);
 jboolean OGLContext_IsVersionSupported(const unsigned char *versionstr);
 
 GLhandleARB OGLContext_CreateFragmentProgram(const char *fragmentShaderSource);
+void OGLContext_InitGrayRenderHints(JNIEnv *env, OGLContext *oglc);
 
 #endif /* OGLContext_h_Included */
