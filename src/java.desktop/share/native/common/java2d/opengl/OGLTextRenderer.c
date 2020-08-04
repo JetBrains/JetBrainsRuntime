@@ -1241,6 +1241,7 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
     int glyphCounter;
     GLuint dstTextureID = 0;
     jlong time;
+    jboolean fontSmoothing = JNI_FALSE;
 
     J2dTraceLn(J2D_TRACE_INFO, "OGLTR_DrawGlyphList");
     if (graphicsPrimitive_traceflags & J2D_PTRACE_TIME) {
@@ -1280,6 +1281,7 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
     }
 
     subPixPos = lcdSubPixelPosSupported ? subPixPos : 0;
+    fontSmoothing = useFontSmoothing;
 #endif
 
     for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {
@@ -1321,7 +1323,7 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
             if (ginfo->width <= OGLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= OGLTR_CACHE_CELL_HEIGHT)
             {
-                ok = OGLTR_DrawGrayscaleGlyphViaCache(oglc, ginfo, x, y, useFontSmoothing);
+                ok = OGLTR_DrawGrayscaleGlyphViaCache(oglc, ginfo, x, y, fontSmoothing);
             } else {
                 ok = OGLTR_DrawGrayscaleGlyphNoCache(oglc, ginfo, x, y);
             }
