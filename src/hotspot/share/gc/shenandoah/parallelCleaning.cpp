@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,9 @@ StringSymbolTableUnlinkTask::StringSymbolTableUnlinkTask(BoolObjectClosure* is_a
   if (process_symbols) {
     SymbolTable::clear_parallel_claimed_index();
   }
+  if (process_strings) {
+    StringTable::reset_dead_counter();
+  }
 }
 
 StringSymbolTableUnlinkTask::~StringSymbolTableUnlinkTask() {
@@ -59,6 +62,10 @@ StringSymbolTableUnlinkTask::~StringSymbolTableUnlinkTask() {
       "symbols: " SIZE_FORMAT " processed, " SIZE_FORMAT " removed",
       strings_processed(), strings_removed(),
       symbols_processed(), symbols_removed());
+
+  if (_process_strings) {
+    StringTable::finish_dead_counter();
+  }
 }
 
 void StringSymbolTableUnlinkTask::work(uint worker_id) {
