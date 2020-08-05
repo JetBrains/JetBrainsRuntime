@@ -63,6 +63,7 @@ static NSTimeInterval gsLastClickTime;
 static int gsEventNumber;
 static int* gsButtonEventNumber;
 static NSTimeInterval gNextKeyEventTime;
+static NSTimeInterval safeDelay;
 
 static inline CGKeyCode GetCGKeyCode(jint javaKeyCode);
 
@@ -99,17 +100,17 @@ static inline void autoDelay(BOOL isMove) {
             [NSThread sleepForTimeInterval:delay];
         }
     }
-    gNextKeyEventTime = [[NSDate date] timeIntervalSinceReferenceDate] + 0.050;
+    gNextKeyEventTime = [[NSDate date] timeIntervalSinceReferenceDate] + safeDelay;
 }
 
 /*
  * Class:     sun_lwawt_macosx_CRobot
  * Method:    initRobot
- * Signature: (V)V
+ * Signature: (I)V
  */
 JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_CRobot_initRobot
-(JNIEnv *env, jobject peer)
+(JNIEnv *env, jobject peer, jint safeDelayMillis)
 {
     // Set things up to let our app act like a synthetic keyboard and mouse.
     // Always set all states, in case Apple ever changes default behaviors.
@@ -138,6 +139,7 @@ Java_sun_lwawt_macosx_CRobot_initRobot
             gsClickCount = 0;
             gsLastClickTime = 0;
             gNextKeyEventTime = 0;
+            safeDelay = (NSTimeInterval)safeDelayMillis/1000;
             gsEventNumber = ROBOT_EVENT_NUMBER_START;
 
             gsButtonEventNumber = (int*)SAFE_SIZE_ARRAY_ALLOC(malloc, sizeof(int), gNumberOfButtons);
