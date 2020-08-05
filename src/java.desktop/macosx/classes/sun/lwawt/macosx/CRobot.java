@@ -36,6 +36,7 @@ import sun.awt.CGraphicsDevice;
 final class CRobot implements RobotPeer {
 
     private static final int MOUSE_LOCATION_UNKNOWN      = -1;
+    private static final int DEFAULT_SAFE_DELAY_MILLIS   = 50;
 
     private final CGraphicsDevice fDevice;
     private int mouseLastX = MOUSE_LOCATION_UNKNOWN;
@@ -52,7 +53,12 @@ final class CRobot implements RobotPeer {
      */
     CRobot(CGraphicsDevice d) {
         fDevice = d;
-        initRobot();
+        int safeDelayMillis = Integer.getInteger(
+                "sun.awt.osx.RobotSafeDelayMillis", DEFAULT_SAFE_DELAY_MILLIS);
+        if (safeDelayMillis < 0) {
+            safeDelayMillis = DEFAULT_SAFE_DELAY_MILLIS;
+        }
+        initRobot(safeDelayMillis);
     }
 
     /**
@@ -223,7 +229,7 @@ final class CRobot implements RobotPeer {
         return c;
     }
 
-    private native void initRobot();
+    private native void initRobot(int safeDelayMillis);
     private native void mouseEvent(int lastX, int lastY, int buttonsState,
                                    boolean isButtonsDownState,
                                    boolean isMouseMove);
