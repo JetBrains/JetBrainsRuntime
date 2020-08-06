@@ -372,7 +372,6 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     // J2dTraceLn1(J2D_TRACE_VERBOSE, "created render encoder to draw on
     // tex=%p", dest);
     _encoder = [[cbw getCommandBuffer] renderCommandEncoderWithDescriptor:rpd];
-    [rpd release];
 
     [_encoderStates reset:dest
                isDstOpaque:renderOptions->dstFlags.isOpaque
