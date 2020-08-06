@@ -112,9 +112,9 @@ typedef struct {
 static GrayRenderHints grayRenderHints[] = {
         // hints for "use font smoothing" option
         // disabled
-        {1.0f/0.6f, 1.0f/3.0f, 1.0f/2.2f, 1.0f/2.2f},
+        {1.0f/0.6f, 1.0f/3.0f, 1.0f, 1.0f},
         // enabled
-        {1.0f/0.6f, 1.0f/3.0f, 1.0f/2.2f, 1.0f/1.4f}
+        {1.0f/0.6f, 1.0f/3.0f, 1.0f/2.2f, 1.0f}
 };
 
 /**
