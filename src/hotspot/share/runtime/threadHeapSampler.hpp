@@ -45,13 +45,16 @@ class ThreadHeapSampler {
   static void init_log_table();
 
  public:
-  ThreadHeapSampler() : _bytes_until_sample(0) {
+  ThreadHeapSampler() {
     _rnd = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(this));
     if (_rnd == 0) {
       _rnd = 1;
     }
 
     _collectors_present = 0;
+
+    // Call this after _rnd is initialized to initialize _bytes_until_sample.
+    pick_next_sample();
   }
 
   size_t bytes_until_sample()                    { return _bytes_until_sample;   }
