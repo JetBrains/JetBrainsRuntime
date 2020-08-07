@@ -30,6 +30,7 @@
 #include "jfr/leakprofiler/utilities/unifiedOop.hpp"
 #include "oops/fieldStreams.hpp"
 #include "oops/instanceKlass.hpp"
+#include "oops/instanceMirrorKlass.hpp"
 #include "oops/objArrayOop.inline.hpp"
 #include "oops/oopsHierarchy.hpp"
 #include "runtime/handles.inline.hpp"
@@ -38,11 +39,17 @@ bool EdgeUtils::is_leak_edge(const Edge& edge) {
   return (const Edge*)edge.pointee()->mark() == &edge;
 }
 
-static int field_offset(const StoredEdge& edge) {
-  assert(!edge.is_root(), "invariant");
-  const oop ref_owner = edge.reference_owner();
+static bool is_static_field(const oop ref_owner, const InstanceKlass* ik, int offset) {
   assert(ref_owner != NULL, "invariant");
-  const oop* reference = UnifiedOop::decode(edge.reference());
+  assert(ik != NULL, "invariant");
+  assert(ref_owner->klass() == ik, "invariant");
+  return ik->is_mirror_instance_klass() && offset >= InstanceMirrorKlass::cast(ik)->offset_of_static_fields();
+}
+
+static int field_offset(const Edge& edge, const oop ref_owner) {
+  assert(!edge.is_root(), "invariant");
+  assert(ref_owner != NULL, "invariant");
+  const oop* const reference = UnifiedOop::decode(edge.reference());
   assert(reference != NULL, "invariant");
   assert(!UnifiedOop::is_narrow(reference), "invariant");
   assert(!ref_owner->is_array(), "invariant");
@@ -52,44 +59,32 @@ static int field_offset(const StoredEdge& edge) {
   return offset;
 }
 
-static const InstanceKlass* field_type(const StoredEdge& edge) {
-  assert(!edge.is_root() || !EdgeUtils::is_array_element(edge), "invariant");
-  return (const InstanceKlass*)edge.reference_owner_klass();
-}
-
-const Symbol* EdgeUtils::field_name_symbol(const Edge& edge) {
+const Symbol* EdgeUtils::field_name(const Edge& edge, jshort* modifiers) {
   assert(!edge.is_root(), "invariant");
-  assert(!is_array_element(edge), "invariant");
-  const int offset = field_offset(edge);
-  const InstanceKlass* ik = field_type(edge);
+  assert(!EdgeUtils::is_array_element(edge), "invariant");
+  assert(modifiers != NULL, "invariant");
+  const oop ref_owner = edge.reference_owner();
+  assert(ref_owner != NULL, "invariant");
+  assert(ref_owner->klass()->is_instance_klass(), "invariant");
+  const InstanceKlass* ik = InstanceKlass::cast(ref_owner->klass());
+  const int offset = field_offset(edge, ref_owner);
+  if (is_static_field(ref_owner, ik, offset)) {
+    assert(ik->is_mirror_instance_klass(), "invariant");
+    assert(java_lang_Class::as_Klass(ref_owner)->is_instance_klass(), "invariant");
+    ik = InstanceKlass::cast(java_lang_Class::as_Klass(ref_owner));
+  }
   while (ik != NULL) {
     JavaFieldStream jfs(ik);
     while (!jfs.done()) {
       if (offset == jfs.offset()) {
+        *modifiers = jfs.access_flags().as_short();
         return jfs.name();
       }
       jfs.next();
     }
-    ik = (InstanceKlass*)ik->super();
+    ik = (const InstanceKlass*)ik->super();
   }
   return NULL;
-}
-
-jshort EdgeUtils::field_modifiers(const Edge& edge) {
-  const int offset = field_offset(edge);
-  const InstanceKlass* ik = field_type(edge);
-
-  while (ik != NULL) {
-    JavaFieldStream jfs(ik);
-    while (!jfs.done()) {
-      if (offset == jfs.offset()) {
-        return jfs.access_flags().as_short();
-      }
-      jfs.next();
-    }
-    ik = (InstanceKlass*)ik->super();
-  }
-  return 0;
 }
 
 bool EdgeUtils::is_array_element(const Edge& edge) {
@@ -100,7 +95,7 @@ bool EdgeUtils::is_array_element(const Edge& edge) {
 }
 
 static int array_offset(const Edge& edge) {
-  assert(!edge.is_root(), "invariant");
+  assert(EdgeUtils::is_array_element(edge), "invariant");
   const oop ref_owner = edge.reference_owner();
   assert(ref_owner != NULL, "invariant");
   const oop* reference = UnifiedOop::decode(edge.reference());
@@ -114,17 +109,15 @@ static int array_offset(const Edge& edge) {
 }
 
 int EdgeUtils::array_index(const Edge& edge) {
-  return is_array_element(edge) ? array_offset(edge) : 0;
+  return array_offset(edge);
 }
 
 int EdgeUtils::array_size(const Edge& edge) {
-  if (is_array_element(edge)) {
-    const oop ref_owner = edge.reference_owner();
-    assert(ref_owner != NULL, "invariant");
-    assert(ref_owner->is_objArray(), "invariant");
-    return ((objArrayOop)(ref_owner))->length();
-  }
-  return 0;
+  assert(is_array_element(edge), "invariant");
+  const oop ref_owner = edge.reference_owner();
+  assert(ref_owner != NULL, "invariant");
+  assert(ref_owner->is_objArray(), "invariant");
+  return ((objArrayOop)ref_owner)->length();
 }
 
 const Edge* EdgeUtils::root(const Edge& edge) {
