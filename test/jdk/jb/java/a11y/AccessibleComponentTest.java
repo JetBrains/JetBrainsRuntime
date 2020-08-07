@@ -18,13 +18,11 @@ public abstract class AccessibleComponentTest {
     protected static volatile boolean testResult = true;
     protected static volatile CountDownLatch countDownLatch;
     protected static String INSTRUCTIONS;
-    protected static String exeptionString;
+    protected static String exceptionString;
     protected JFrame mainFrame;
     protected static AccessibleComponentTest a11yTest;
 
     public abstract CountDownLatch createCountDownLatch();
-
-    public abstract void createUI();
 
     public void createUI(JPanel component, String testName) {
         mainFrame = new JFrame(testName);

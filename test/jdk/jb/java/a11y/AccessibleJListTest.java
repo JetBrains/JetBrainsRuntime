@@ -31,7 +31,7 @@ public class AccessibleJListTest extends AccessibleComponentTest {
         countDownLatch.await();
 
         if (!testResult) {
-            throw new RuntimeException(a11yTest.exeptionString);
+            throw new RuntimeException(a11yTest.exceptionString);
         }
 
         countDownLatch = a11yTest.createCountDownLatch();
@@ -39,7 +39,7 @@ public class AccessibleJListTest extends AccessibleComponentTest {
         countDownLatch.await();
 
         if (!testResult) {
-            throw new RuntimeException(a11yTest.exeptionString);
+            throw new RuntimeException(a11yTest.exceptionString);
         }
 
         countDownLatch = a11yTest.createCountDownLatch();
@@ -47,7 +47,7 @@ public class AccessibleJListTest extends AccessibleComponentTest {
         countDownLatch.await();
 
         if (!testResult) {
-            throw new RuntimeException(a11yTest.exeptionString);
+            throw new RuntimeException(a11yTest.exceptionString);
         }
     }
 
@@ -56,17 +56,12 @@ public class AccessibleJListTest extends AccessibleComponentTest {
         return new CountDownLatch(1);
     }
 
-    @java.lang.Override
-    public void createUI() {
-
-    }
-
     public void createSimpleList() {
         INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Checking the accessibility of a list embedded in a window\n\n"
+                + "Check a11y of JList in a simple Window.\n\n"
                 + "Turn screen reader on, and Tab to the list.\n"
                 + "Press the up and down arrow buttons to move through the list.\n\n"
-                + "If you hear menu items, press PASS, else press FAIL.\n";
+                + "If you can hear menu items tab further and press PASS, otherwise press FAIL.\n";
 
         JPanel frame = new JPanel();
 
@@ -74,16 +69,16 @@ public class AccessibleJListTest extends AccessibleComponentTest {
 
         frame.setLayout(new FlowLayout());
         frame.add(list);
-        exeptionString = "Accessible JList simple list test fails!";
+        exceptionString = "Accessible JList simple list …test failed!";
         super.createUI(frame, "Accessible JList test");
     }
 
     public void createCombobox() {
         INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Checking the accessibility of a list embedded in a combobox\n\n"
+                + "Check a11y of JList in a combobox.\n\n"
                 + "Turn screen reader on, and Tab to the combobox.\n"
                 + "Press the up and down arrow buttons to move through the list.\n\n"
-                + "If you hear combobox items, press PASS, else press FAIL.\n";
+                + "If you can hear combobox items tab further and press PASS, otherwise press FAIL.\n";
 
         JPanel frame = new JPanel();
 
@@ -91,16 +86,16 @@ public class AccessibleJListTest extends AccessibleComponentTest {
 
         frame.setLayout(new FlowLayout());
         frame.add(combo);
-        exeptionString = "Accessible JList combobox test fails!";
+        exceptionString = "Accessible JList combobox …test failed!";
         super.createUI(frame, "Accessible JList test");
     }
 
     public void createPushButton() {
         INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Checking the accessibility of a list embedded in a popup\n\n"
+                + "Check a11y of JList in a popup.\n\n"
                 + "Turn screen reader on, and Tab to the show button and press space.\n"
                 + "Press the up and down arrow buttons to move through the list.\n\n"
-                + "If you hear popup menu items, press PASS, else press FAIL.\n";
+                + "If you can hear popup menu items tab further and press PASS, otherwise press FAIL.\n";
 
         JPanel frame = new JPanel();
 
@@ -142,7 +137,7 @@ public class AccessibleJListTest extends AccessibleComponentTest {
 
         frame.setLayout(new FlowLayout());
         frame.add(button);
-        exeptionString = "Accessible JList push button test fails!";
+        exceptionString = "Accessible JList push button …test failed!";
         super.createUI(frame, "Accessible JList test");
     }
 }
