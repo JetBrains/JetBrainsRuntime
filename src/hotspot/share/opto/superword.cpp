@@ -2512,8 +2512,10 @@ void SuperWord::output() {
         }
       }
 
-      if (vlen_in_bytes >= max_vlen_in_bytes && vlen > max_vlen) {
+      if (vlen > max_vlen) {
         max_vlen = vlen;
+      }
+      if (vlen_in_bytes > max_vlen_in_bytes) {
         max_vlen_in_bytes = vlen_in_bytes;
       }
 #ifdef ASSERT
