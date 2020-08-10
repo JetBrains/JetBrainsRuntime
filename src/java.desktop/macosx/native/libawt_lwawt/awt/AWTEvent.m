@@ -33,7 +33,6 @@
 
 #import "java_awt_event_InputEvent.h"
 #import "java_awt_event_KeyEvent.h"
-#import "sun_awt_event_KeyEvent.h"
 #import "LWCToolkit.h"
 
 #import "jni_util.h"
