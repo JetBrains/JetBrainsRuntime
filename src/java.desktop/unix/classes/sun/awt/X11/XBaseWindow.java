@@ -1303,7 +1303,7 @@ public class XBaseWindow {
         setUserTime(globalUserTime);
     }
 
-    private void setUserTime(long time) {
+    protected void setUserTime(long time) {
         if (time == userTime) return;
 
         userTime = time;
