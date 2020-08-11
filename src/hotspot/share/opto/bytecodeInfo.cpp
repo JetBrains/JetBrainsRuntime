@@ -162,8 +162,9 @@ bool InlineTree::should_inline(ciMethod* callee_method, ciMethod* caller_method,
   // bump the max size if the call is frequent
   if ((freq >= InlineFrequencyRatio) ||
       (call_site_count >= InlineFrequencyCount) ||
-      is_unboxing_method(callee_method, C) ||
-      is_init_with_ea(callee_method, caller_method, C)) {
+      is_unboxing_method(callee_method, C) // ||
+      //is_init_with_ea(callee_method, caller_method, C)
+      ) {
 
     max_inline_size = C->freq_inline_size();
     if (size <= max_inline_size && TraceFrequencyInlining) {
