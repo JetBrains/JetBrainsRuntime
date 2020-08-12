@@ -1,9 +1,8 @@
 // Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
-/*
 
+/*
  * @test
  * @summary manual test for JBR-2504
-
   * @author Artem.Semenov@jetbrains.com
  * @run main/manual AccessibleJListTest
  */
@@ -69,7 +68,7 @@ public class AccessibleJListTest extends AccessibleComponentTest {
 
         frame.setLayout(new FlowLayout());
         frame.add(list);
-        exceptionString = "Accessible JList simple list …test failed!";
+        exceptionString = "Accessible JList simple list test failed!";
         super.createUI(frame, "Accessible JList test");
     }
 
@@ -86,7 +85,7 @@ public class AccessibleJListTest extends AccessibleComponentTest {
 
         frame.setLayout(new FlowLayout());
         frame.add(combo);
-        exceptionString = "Accessible JList combobox …test failed!";
+        exceptionString = "Accessible JList combobox test failed!";
         super.createUI(frame, "Accessible JList test");
     }
 
@@ -137,7 +136,7 @@ public class AccessibleJListTest extends AccessibleComponentTest {
 
         frame.setLayout(new FlowLayout());
         frame.add(button);
-        exceptionString = "Accessible JList push button …test failed!";
+        exceptionString = "Accessible JList push button test failed!";
         super.createUI(frame, "Accessible JList test");
     }
 }
