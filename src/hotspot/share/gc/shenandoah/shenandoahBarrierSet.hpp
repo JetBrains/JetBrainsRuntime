@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2013, 2020, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -32,12 +32,6 @@
 class ShenandoahBarrierSetAssembler;
 
 class ShenandoahBarrierSet: public BarrierSet {
-public:
-  enum ArrayCopyStoreValMode {
-    NONE,
-    RESOLVE_BARRIER,
-    EVAC_BARRIER
-  };
 private:
 
   static ShenandoahSATBMarkQueueSet _satb_mark_queue_set;
