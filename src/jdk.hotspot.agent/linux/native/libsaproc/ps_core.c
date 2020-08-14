@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -103,7 +103,7 @@ static void core_release(struct ps_prochandle* ph) {
   }
 }
 
-static map_info* allocate_init_map(int fd, off_t offset, uintptr_t vaddr, size_t memsz) {
+static map_info* allocate_init_map(int fd, off_t offset, uintptr_t vaddr, size_t memsz, uint32_t flags) {
   map_info* map;
   if ( (map = (map_info*) calloc(1, sizeof(map_info))) == NULL) {
     print_debug("can't allocate memory for map_info\n");
@@ -115,14 +115,15 @@ static map_info* allocate_init_map(int fd, off_t offset, uintptr_t vaddr, size_t
   map->offset = offset;
   map->vaddr  = vaddr;
   map->memsz  = memsz;
+  map->flags  = flags;
   return map;
 }
 
 // add map info with given fd, offset, vaddr and memsz
 static map_info* add_map_info(struct ps_prochandle* ph, int fd, off_t offset,
-                             uintptr_t vaddr, size_t memsz) {
+                             uintptr_t vaddr, size_t memsz, uint32_t flags) {
   map_info* map;
-  if ((map = allocate_init_map(fd, offset, vaddr, memsz)) == NULL) {
+  if ((map = allocate_init_map(fd, offset, vaddr, memsz, flags)) == NULL) {
     return NULL;
   }
 
@@ -139,7 +140,7 @@ static map_info* add_class_share_map_info(struct ps_prochandle* ph, off_t offset
                              uintptr_t vaddr, size_t memsz) {
   map_info* map;
   if ((map = allocate_init_map(ph->core->classes_jsa_fd,
-                               offset, vaddr, memsz)) == NULL) {
+                               offset, vaddr, memsz, PF_R)) == NULL) {
     return NULL;
   }
 
@@ -673,7 +674,7 @@ static bool read_core_segments(struct ps_prochandle* ph, ELF_EHDR* core_ehdr) {
          case PT_LOAD: {
             if (core_php->p_filesz != 0) {
                if (add_map_info(ph, ph->core->core_fd, core_php->p_offset,
-                  core_php->p_vaddr, core_php->p_filesz) == NULL) goto err;
+                  core_php->p_vaddr, core_php->p_filesz, core_php->p_flags) == NULL) goto err;
             }
             break;
          }
@@ -712,10 +713,21 @@ static bool read_lib_segments(struct ps_prochandle* ph, int lib_fd, ELF_EHDR* li
 
       if (existing_map == NULL){
         if (add_map_info(ph, lib_fd, lib_php->p_offset,
-                          target_vaddr, lib_php->p_memsz) == NULL) {
+                          target_vaddr, lib_php->p_memsz, lib_php->p_flags) == NULL) {
           goto err;
         }
+      } else if (lib_php->p_flags != existing_map->flags) {
+        // Access flags for this memory region are different between the library
+        // and coredump. It might be caused by mprotect() call at runtime.
+        // We should respect the coredump.
+        continue;
       } else {
+        // Read only segments in ELF should not be any different from PT_LOAD segments
+        // in the coredump.
+        // Also the first page of the ELF header might be included
+        // in the coredump (See JDK-7133122).
+        // Thus we need to replace the PT_LOAD segment with the library version.
+        //
         // Coredump stores value of p_memsz elf field
         // rounded up to page boundary.
 
@@ -782,7 +794,7 @@ static bool read_exec_segments(struct ps_prochandle* ph, ELF_EHDR* exec_ehdr) {
     case PT_LOAD: {
       // add only non-writable segments of non-zero filesz
       if (!(exec_php->p_flags & PF_W) && exec_php->p_filesz != 0) {
-        if (add_map_info(ph, ph->core->exec_fd, exec_php->p_offset, exec_php->p_vaddr, exec_php->p_filesz) == NULL) goto err;
+        if (add_map_info(ph, ph->core->exec_fd, exec_php->p_offset, exec_php->p_vaddr, exec_php->p_filesz, exec_php->p_flags) == NULL) goto err;
       }
       break;
     }
