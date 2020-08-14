@@ -536,8 +536,40 @@ bool MemNode::detect_ptr_independence(Node* p1, AllocateNode* a1,
 // Find an arraycopy that must have set (can_see_stored_value=true) or
 // could have set (can_see_stored_value=false) the value for this load
 Node* LoadNode::find_previous_arraycopy(PhaseTransform* phase, Node* ld_alloc, Node*& mem, bool can_see_stored_value) const {
+  ArrayCopyNode* ac = find_array_copy_clone(phase, ld_alloc, mem);
+  if (ac != NULL) {
+    return ac;
+  } else if (mem->is_Proj() && mem->in(0) != NULL && mem->in(0)->is_ArrayCopy()) {
+    ArrayCopyNode* ac = mem->in(0)->as_ArrayCopy();
+
+    if (ac->is_arraycopy_validated() ||
+        ac->is_copyof_validated() ||
+        ac->is_copyofrange_validated()) {
+      Node* ld_addp = in(MemNode::Address);
+      if (ld_addp->is_AddP()) {
+        Node* ld_base = ld_addp->in(AddPNode::Address);
+        Node* ld_offs = ld_addp->in(AddPNode::Offset);
+
+        Node* dest = ac->in(ArrayCopyNode::Dest);
+
+        if (dest == ld_base) {
+          const TypeX *ld_offs_t = phase->type(ld_offs)->isa_intptr_t();
+          if (ac->modifies(ld_offs_t->_lo, ld_offs_t->_hi, phase, can_see_stored_value)) {
+            return ac;
+          }
+          if (!can_see_stored_value) {
+            mem = ac->in(TypeFunc::Memory);
+          }
+        }
+      }
+    }
+  }
+  return NULL;
+}
+
+ArrayCopyNode* MemNode::find_array_copy_clone(PhaseTransform* phase, Node* ld_alloc, Node* mem) const {
   if (mem->is_Proj() && mem->in(0) != NULL && (mem->in(0)->Opcode() == Op_MemBarStoreStore ||
-                                               mem->in(0)->Opcode() == Op_MemBarCPUOrder)) {
+                                                 mem->in(0)->Opcode() == Op_MemBarCPUOrder)) {
     if (ld_alloc != NULL) {
       // Check if there is an array copy for a clone
       Node* mb = mem->in(0);
@@ -560,30 +592,6 @@ Node* LoadNode::find_previous_arraycopy(PhaseTransform* phase, Node* ld_alloc, N
         AllocateNode* alloc = AllocateNode::Ideal_allocation(ac->in(ArrayCopyNode::Dest), phase, offset);
         if (alloc != NULL && alloc == ld_alloc) {
           return ac;
-        }
-      }
-    }
-  } else if (mem->is_Proj() && mem->in(0) != NULL && mem->in(0)->is_ArrayCopy()) {
-    ArrayCopyNode* ac = mem->in(0)->as_ArrayCopy();
-
-    if (ac->is_arraycopy_validated() ||
-        ac->is_copyof_validated() ||
-        ac->is_copyofrange_validated()) {
-      Node* ld_addp = in(MemNode::Address);
-      if (ld_addp->is_AddP()) {
-        Node* ld_base = ld_addp->in(AddPNode::Address);
-        Node* ld_offs = ld_addp->in(AddPNode::Offset);
-
-        Node* dest = ac->in(ArrayCopyNode::Dest);
-
-        if (dest == ld_base) {
-          const TypeX *ld_offs_t = phase->type(ld_offs)->isa_intptr_t();
-          if (ac->modifies(ld_offs_t->_lo, ld_offs_t->_hi, phase, can_see_stored_value)) {
-            return ac;
-          }
-          if (!can_see_stored_value) {
-            mem = ac->in(TypeFunc::Memory);
-          }
         }
       }
     }
@@ -1107,7 +1115,12 @@ Node* MemNode::can_see_stored_value(Node* st, PhaseTransform* phase) const {
       // (This is one of the few places where a generic PhaseTransform
       // can create new nodes.  Think of it as lazily manifesting
       // virtually pre-existing constants.)
-      return phase->zerocon(memory_type());
+      if (ReduceBulkZeroing || find_array_copy_clone(phase, ld_alloc, in(MemNode::Memory)) == NULL) {
+        // If ReduceBulkZeroing is disabled, we need to check if the allocation does not belong to an
+        // ArrayCopyNode clone. If it does, then we cannot assume zero since the initialization is done
+        // by the ArrayCopyNode.
+        return phase->zerocon(memory_type());
+      }
     }
 
     // A load from an initialization barrier can match a captured store.
