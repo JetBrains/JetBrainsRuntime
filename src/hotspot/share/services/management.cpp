@@ -892,7 +892,7 @@ static jlong get_long_attribute(jmmLongAttribute att) {
     return Management::ticks_to_ms(os::elapsed_counter());
 
   case JMM_COMPILE_TOTAL_TIME_MS:
-    return Management::ticks_to_ms(CompileBroker::total_compilation_ticks());
+    return Threads::compile_total_time_ms();
 
   case JMM_OS_PROCESS_ID:
     return os::current_process_id();
