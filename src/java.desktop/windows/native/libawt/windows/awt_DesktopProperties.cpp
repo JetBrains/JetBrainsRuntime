@@ -695,6 +695,20 @@ void AwtDesktopProperties::GetOtherParameters() {
             }
             free(value);
         }
+
+        // Add property for light/dark theme detection
+        value = getWindowsPropFromReg(TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"),
+                                      TEXT("AppsUseLightTheme"), &valueType);
+        if (value != NULL) {
+            if (valueType == REG_DWORD) {
+                SetBooleanProperty(TEXT("win.darkTheme.on"), (BOOL)((int)*value == 0));
+            }
+            free(value);
+        }
+        else {
+            SetBooleanProperty(TEXT("win.darkTheme.on"), FALSE);
+        }
+
     }
     catch (std::bad_alloc&) {
         if (value != NULL) {
