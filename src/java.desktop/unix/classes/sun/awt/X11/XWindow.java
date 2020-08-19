@@ -1239,6 +1239,12 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         return (uni > 0? sun.awt.ExtendedKeyCodes.getExtendedKeyCodeForChar(uni) : 0);
         //return (uni > 0? uni + 0x01000000 : 0);
     }
+
+    // java keycodes for unicode values consistent with MacOS and Windows
+    private static int addUnicodeOffset(int uni) {
+        return uni > 0 ? uni + 0x01000000 : 0;
+    }
+
     void logIncomingKeyEvent(XKeyEvent ev) {
         if (keyEventLog.isLoggable(PlatformLogger.Level.FINE)) {
             keyEventLog.fine("--XWindow.java:handleKeyEvent:"+ev);
@@ -1328,17 +1334,18 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
             );
         }
 
+        int jkeyExtended = jkc.getJavaKeycode() == java.awt.event.KeyEvent.VK_UNDEFINED ?
+                primaryUnicode2JavaKeycode( unicodeFromPrimaryKeysym ) :
+                jkc.getJavaKeycode();
+
         int jkeyToReturn;
         if (KeyEventProcessing.useNationalLayouts) {
-            // if jkeyToReturn is VK_UNDEFINED then look for keycode in extended key code
-            jkeyToReturn = jkc.getJavaKeycode();
+            jkeyToReturn = getNationalKeyCode(jkc, unicodeFromPrimaryKeysym);
+            jkeyExtended = jkeyToReturn;
         } else {
             jkeyToReturn = XKeysym.getLegacyJavaKeycodeOnly(ev); // someway backward compatible
         }
 
-        int jkeyExtended = jkc.getJavaKeycode() == java.awt.event.KeyEvent.VK_UNDEFINED ?
-                           primaryUnicode2JavaKeycode( unicodeFromPrimaryKeysym ) :
-                             jkc.getJavaKeycode();
         postKeyEvent( java.awt.event.KeyEvent.KEY_PRESSED,
                           isDeadKey ? jkeyExtended : jkeyToReturn,
                           (unicodeKey == 0 ? java.awt.event.KeyEvent.CHAR_UNDEFINED : unicodeKey),
@@ -1418,16 +1425,18 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         // is undefined, we still will have a guess of what was engraved on a keytop.
         int unicodeFromPrimaryKeysym = keysymToUnicode( xkeycodeToPrimaryKeysym(ev) ,0);
 
+        int jkeyExtended = jkc.getJavaKeycode() == java.awt.event.KeyEvent.VK_UNDEFINED ?
+                primaryUnicode2JavaKeycode( unicodeFromPrimaryKeysym ) :
+                jkc.getJavaKeycode();
+
         int jkeyToReturn;
         if (KeyEventProcessing.useNationalLayouts) {
-            // if jkeyToReturn is VK_UNDEFINED then look for keycode in extended key code
-            jkeyToReturn = jkc.getJavaKeycode();
+            jkeyToReturn = getNationalKeyCode(jkc, unicodeFromPrimaryKeysym);
+            jkeyExtended = jkeyToReturn;
         } else {
             jkeyToReturn = XKeysym.getLegacyJavaKeycodeOnly(ev); // someway backward compatible
         }
-        int jkeyExtended = jkc.getJavaKeycode() == java.awt.event.KeyEvent.VK_UNDEFINED ?
-                           primaryUnicode2JavaKeycode( unicodeFromPrimaryKeysym ) :
-                             jkc.getJavaKeycode();
+
         postKeyEvent(  java.awt.event.KeyEvent.KEY_RELEASED,
                           isDeadKey ? jkeyExtended : jkeyToReturn,
                           (unicodeKey == 0 ? java.awt.event.KeyEvent.CHAR_UNDEFINED : unicodeKey),
@@ -1437,6 +1446,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                           jkeyExtended);
 
 
+    }
+
+    private static int getNationalKeyCode(XKeysym.Keysym2JavaKeycode jkc, int unicodeFromPrimaryKeysym) {
+        // use this key code for both keyCode and extendedKeyCode
+        // compatible with MacOS and Windows
+        return jkc.getJavaKeycode() == java.awt.event.KeyEvent.VK_UNDEFINED ?
+                addUnicodeOffset(unicodeFromPrimaryKeysym) :
+                jkc.getJavaKeycode();
     }
 
 
