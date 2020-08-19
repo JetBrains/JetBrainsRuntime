@@ -696,6 +696,7 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
 
     SurfaceData_IntersectBoundsXYXY(&srcInfo.bounds,
                                     0, 0, srcOps->width, srcOps->height);
+
     SurfaceData_IntersectBlitBounds(&dstInfo.bounds, &srcInfo.bounds,
                                     srcx - dstx, srcy - dsty);
 
@@ -720,15 +721,6 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
             srcx = srcOps->xOffset + srcx;
             srcy = srcOps->yOffset + srcy;
             const int srcLength = width * height * 4; // NOTE: assume that src format is MTLPixelFormatBGRA8Unorm
-
-#ifdef DEBUG
-            void *pDstEnd = dstInfo.rasBase + (height - 1)*dstInfo.scanStride + width*dstInfo.pixelStride;
-            if (pDst + srcLength > pDstEnd) {
-                J2dTraceLn6(J2D_TRACE_ERROR, "MTLBlitLoops_SurfaceToSwBlit: length mismatch: dstx=%d, dsty=%d, w=%d, h=%d, pixStride=%d, scanStride=%d",
-                        dstx, dsty, width, height, dstInfo.pixelStride, dstInfo.scanStride);
-                return;
-            }
-#endif //DEBUG
 
             // Create MTLBuffer (or use static)
             MTLRasterFormatInfo rfi = RasterFormatInfos[dsttype];
@@ -789,7 +781,21 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
 
             // Perform conversion if necessary
             if (directCopy) {
-                memcpy(pDst, mtlbuf.contents, srcLength);
+                if ((dstInfo.scanStride == width * dstInfo.pixelStride) &&
+                    (height == (dstInfo.bounds.y2 - dstInfo.bounds.y1))) {
+                    // mtlbuf.contents have same dimensions as of pDst
+                    memcpy(pDst, mtlbuf.contents, srcLength);
+                } else {
+                    // mtlbuf.contents have smaller dimensions than pDst
+                    // copy each row from mtlbuf.contents at appropriate position in pDst
+                    // Note : pDst is already addjusted for offsets using PtrAddBytes above
+
+                    int rowSize = width * dstInfo.pixelStride;
+                    for (int y = 0; y < height; y++) {
+                        memcpy(pDst, mtlbuf.contents + (y * rowSize), rowSize);
+                        pDst = PtrAddBytes(pDst, dstInfo.scanStride);
+                    }
+                }
             } else {
                 J2dTraceLn6(J2D_TRACE_VERBOSE,"MTLBlitLoops_SurfaceToSwBlit: dsttype=%d, raster conversion will be performed, dest rfi: %d, %d, %d, %d, hasA=%d",
                             dsttype, rfi.permuteMap[0], rfi.permuteMap[1], rfi.permuteMap[2], rfi.permuteMap[3], rfi.hasAlpha);
