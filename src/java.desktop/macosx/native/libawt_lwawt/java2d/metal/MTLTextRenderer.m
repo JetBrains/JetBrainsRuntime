@@ -222,7 +222,6 @@ MTLTR_InitGlyphCache(MTLContext *mtlc, jboolean lcdCache)
                                                             mipmapped:NO];
 
     gcinfo->texture = [mtlc.device newTextureWithDescriptor:textureDescriptor];
-    [textureDescriptor release];
 
     if (lcdCache) {
         glyphCacheLCD = gcinfo;
@@ -336,7 +335,6 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
     }
 }
 
-static MTLRenderPipelineDescriptor * templateRenderPipelineDesc = nil;
 static MTLRenderPipelineDescriptor * templateLCDPipelineDesc = nil;
 
 /**
@@ -360,7 +358,7 @@ MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
         vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
         vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
 
-        templateLCDPipelineDesc = [[MTLRenderPipelineDescriptor new] autorelease];
+        templateLCDPipelineDesc = [MTLRenderPipelineDescriptor new];
         templateLCDPipelineDesc.sampleCount = 1;
         templateLCDPipelineDesc.vertexDescriptor = vertDesc;
         templateLCDPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
@@ -423,7 +421,7 @@ MTLTR_SetLCDCachePipelineState(MTLContext *mtlc)
         vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
         vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
 
-        templateLCDPipelineDesc = [[MTLRenderPipelineDescriptor new] autorelease];
+        templateLCDPipelineDesc = [MTLRenderPipelineDescriptor new];
         templateLCDPipelineDesc.sampleCount = 1;
         templateLCDPipelineDesc.vertexDescriptor = vertDesc;
         templateLCDPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;

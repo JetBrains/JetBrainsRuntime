@@ -69,13 +69,13 @@ static void initTemplatePipelineDescriptors() {
     vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
     vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
 
-    templateRenderPipelineDesc = [[MTLRenderPipelineDescriptor new] autorelease];
+    templateRenderPipelineDesc = [MTLRenderPipelineDescriptor new];
     templateRenderPipelineDesc.sampleCount = 1;
     templateRenderPipelineDesc.vertexDescriptor = vertDesc;
     templateRenderPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
     templateRenderPipelineDesc.label = @"template_render";
 
-    templateTexturePipelineDesc = [[templateRenderPipelineDesc copy] autorelease];
+    templateTexturePipelineDesc = [templateRenderPipelineDesc copy];
     templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
     templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].offset = 2*sizeof(float);
     templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
@@ -84,7 +84,7 @@ static void initTemplatePipelineDescriptors() {
     templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
     templateTexturePipelineDesc.label = @"template_texture";
 
-    templateAATexturePipelineDesc = [[templateTexturePipelineDesc copy] autorelease];
+    templateAATexturePipelineDesc = [templateTexturePipelineDesc copy];
     templateAATexturePipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
     templateAATexturePipelineDesc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
     templateAATexturePipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
@@ -363,7 +363,7 @@ static void setTxtUniforms(
 
     NSString * vertShader = @"vert_txt";
     NSString * fragShader = @"frag_txt";
-    MTLRenderPipelineDescriptor * rpDesc = templateTexturePipelineDesc;
+    MTLRenderPipelineDescriptor * rpDesc = [[templateTexturePipelineDesc copy] autorelease];
 
     if (renderOptions->isTexture) {
         NSObject *bufImgOp = [mtlc getBufImgOp];
@@ -487,7 +487,7 @@ static void setTxtUniforms(
 
     NSString * vertShader = @"vert_txt_xorMode";
     NSString * fragShader = @"frag_txt_xorMode";
-    MTLRenderPipelineDescriptor * rpDesc = templateTexturePipelineDesc;
+    MTLRenderPipelineDescriptor * rpDesc = [[templateTexturePipelineDesc copy] autorelease];
 
     if (renderOptions->isTexture) {
         const int col = _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? _color ^ xorColor : 0 ^ xorColor;

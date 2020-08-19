@@ -17,7 +17,7 @@ static void initTemplatePipelineDescriptors() {
     vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
     vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
 
-    templateStencilPipelineDesc = [[MTLRenderPipelineDescriptor new] autorelease];
+    templateStencilPipelineDesc = [MTLRenderPipelineDescriptor new];
     templateStencilPipelineDesc.sampleCount = 1;
     templateStencilPipelineDesc.vertexDescriptor = vertDesc;
     templateStencilPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatR8Uint; // A byte buffer format

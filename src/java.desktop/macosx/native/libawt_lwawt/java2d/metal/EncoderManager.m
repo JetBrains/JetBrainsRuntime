@@ -398,7 +398,6 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 - (void) endEncoder {
     if (_encoder != nil) {
       [_encoder endEncoding];
-      [_encoder release];
       _encoder = nil;
         if (_aaDestination != nil) {
           id<MTLTexture> aaDest = _aaDestination;
@@ -425,7 +424,6 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
           [_encoder setFragmentTexture:aaDest atIndex: 0];
           [_encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
           [_encoder endEncoding];
-          [_encoder release];
         }
 
         _encoder = nil;
