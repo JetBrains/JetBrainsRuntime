@@ -700,12 +700,12 @@ void AwtDesktopProperties::GetOtherParameters() {
                                       TEXT("AppsUseLightTheme"), &valueType);
         if (value != NULL) {
             if (valueType == REG_DWORD) {
-                SetBooleanProperty(TEXT("win.darkTheme.on"), (BOOL)((int)*value == 0));
+                SetBooleanProperty(TEXT("win.lightTheme.on"), (BOOL)((int)*value == 1));
             }
             free(value);
         }
         else {
-            SetBooleanProperty(TEXT("win.darkTheme.on"), FALSE);
+            SetBooleanProperty(TEXT("win.lightTheme.on"), TRUE);
         }
 
     }
