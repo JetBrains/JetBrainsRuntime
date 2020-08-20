@@ -835,6 +835,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pDst = NEXT_LONG(b);
 
                     dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
+                    if (mtlc != NULL) {
+                        [mtlc.encoderManager endEncoder];
+                    }
                     mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
                     break;
                 }
@@ -852,6 +855,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                         if (newMtlc == NULL) {
 
                         } else {
+                            if (mtlc != NULL) {
+                                [mtlc.encoderManager endEncoder];
+                            }
                             mtlc = newMtlc;
                             dstOps = NULL;
                         }
@@ -893,6 +899,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     // the previous method will call glX/wglMakeCurrent(None),
                     // so we should nullify the current mtlc and dstOps to avoid
                     // calling glFlush() (or similar) while no context is current
+                    if (mtlc != NULL) {
+                        [mtlc.encoderManager endEncoder];
+                    }
                     mtlc = NULL;
                  //   dstOps = NULL;
                     break;
@@ -902,6 +911,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     // invalidate the references to the current context and
                     // destination surface that are maintained at the native level
+                    if (mtlc != NULL) {
+                        [mtlc.encoderManager endEncoder];
+                    }
                     mtlc = NULL;
                 //    dstOps = NULL;
                     break;
