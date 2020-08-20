@@ -57,6 +57,7 @@ public class Key {
             // KeyEvent.getExtendedKeyCodeForChar(ch) does not return corresponding VK_ constant for dead keys
             return deadKeyCodesMap.get(ch);
         } else if (isLatinUnicode(ch)) {
+            // Please see JBR-2672
             final int UNICODE_OFFSET = 0x01000000;
             return UNICODE_OFFSET + (int) ch;
         } else {
