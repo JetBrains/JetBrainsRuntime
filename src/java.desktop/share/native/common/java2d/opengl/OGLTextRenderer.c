@@ -109,13 +109,6 @@ typedef struct {
 } GrayRenderHints;
 
 
-static GrayRenderHints grayRenderHints[] = {
-        // hints for "use font smoothing" option
-        // disabled
-        {1.0f/0.6f, 1.0f/3.0f, 1.0f, 1.2f},
-        // enabled
-        {1.0f/0.6f, 1.0f/3.0f, 1.0f/2.2f, 1.2f}
-};
 
 /**
  * This value tracks the previous LCD contrast setting, so if the contrast
@@ -395,6 +388,99 @@ OGLTR_CreateLCDTextProgram()
 
     return lcdTextProgram;
 }
+
+static int JVM_GetIntProperty(const char* name,  int defaultValue) {
+    JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    static jclass systemCls = NULL;
+    if (systemCls == NULL) {
+        systemCls = (*env)->FindClass(env, "java/lang/System");
+        if (systemCls == NULL) {
+            return defaultValue;
+        }
+    }
+
+    static jmethodID mid = NULL;
+
+    if (mid == NULL) {
+        mid = (*env)->GetStaticMethodID(env, systemCls, "getProperty",
+                                        "(Ljava/lang/String;)Ljava/lang/String;");
+        if (mid == NULL) {
+            return defaultValue;
+        }
+    }
+
+    jstring jName = (*env)->NewStringUTF(env, name);
+    if (jName == NULL) {
+        return defaultValue;
+    }
+
+    int result = defaultValue;
+    jstring jvalue = (*env)->CallStaticObjectMethod(env, systemCls, mid, jName);
+    if (jvalue != NULL) {
+        const char *utf8string = (*env)->GetStringUTFChars(env, jvalue, NULL);
+        if (utf8string != NULL) {
+            const int parsedVal = atoi(utf8string);
+            if (parsedVal > 0) {
+                result = parsedVal;
+            }
+        }
+        (*env)->ReleaseStringUTFChars(env, jvalue, utf8string);
+    }
+    (*env)->DeleteLocalRef(env, jName);
+    return result;
+}
+
+static GrayRenderHints* getGrayRenderHints() {
+    static GrayRenderHints *hints = NULL;
+    static GrayRenderHints defaultRenderHints[] = {
+            // hints for "use font smoothing" option
+            // disabled
+            {1.666f, 0.333f, 1.0f, 1.25f},
+            // enabled
+            {1.666f, 0.333f, 0.454f, 1.4f}
+    };
+
+    if (hints == NULL) {
+        // read from VM-properties
+        int val = JVM_GetIntProperty("awt.font.nosm.light_gamma", 0);
+        if (val > 0) {
+            defaultRenderHints[0].light_gamma = val / 1000.0;
+        }
+        val = JVM_GetIntProperty("awt.font.nosm.dark_gamma", 0);
+        if (val > 0) {
+            defaultRenderHints[0].dark_gamma = val / 1000.0;
+        }
+        val = JVM_GetIntProperty("awt.font.nosm.light_exp", 0);
+        if (val > 0) {
+            defaultRenderHints[0].light_exp = val / 1000.0;
+        }
+        val = JVM_GetIntProperty("awt.font.nosm.dark_exp", 0);
+        if (val > 0) {
+            defaultRenderHints[0].dark_exp = val / 1000.0;
+        }
+
+        val = JVM_GetIntProperty("awt.font.sm.light_gamma", 0);
+        if (val > 0) {
+            defaultRenderHints[1].light_gamma = val / 1000.0;
+        }
+        val = JVM_GetIntProperty("awt.font.sm.dark_gamma", 0);
+        if (val > 0) {
+            defaultRenderHints[1].dark_gamma = val / 1000.0;
+        }
+        val = JVM_GetIntProperty("awt.font.sm.light_exp", 0);
+        if (val > 0) {
+            defaultRenderHints[1].light_exp = val / 1000.0;
+        }
+        val = JVM_GetIntProperty("awt.font.sm.dark_exp", 0);
+        if (val > 0) {
+            defaultRenderHints[1].dark_exp = val / 1000.0;
+        }
+
+        hints = defaultRenderHints;
+    }
+    return hints;
+}
+
 /**
  * Compiles and links the LCD text shader program.  If successful, this
  * function returns a handle to the newly created shader program; otherwise
@@ -419,7 +505,7 @@ OGLTR_CreateGrayTextProgram(jboolean useFontSmoothing)
     // "use" the program object temporarily so that we can set the uniforms
     j2d_glUseProgramObjectARB(grayTextProgram);
 
-    GrayRenderHints *hints = &grayRenderHints[useFontSmoothing];
+    GrayRenderHints *hints = &(getGrayRenderHints()[useFontSmoothing]);
     J2dTraceLn5(J2D_TRACE_INFO,
                 "OGLTR_CreateGrayTextProgram: useFontSmoothing=%d "
                 "light_gamma=%f dark_gamma=%f light_exp=%f dark_exp=%f",
