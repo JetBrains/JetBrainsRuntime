@@ -752,7 +752,6 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                                                             mipmapped:NO];
 
     blitTexture = [mtlc.device newTextureWithDescriptor:textureDescriptor];
-    [textureDescriptor release];
 
     if (glyphMode != MODE_NO_CACHE_LCD) {
         if (glyphMode == MODE_NO_CACHE_GRAY) {
