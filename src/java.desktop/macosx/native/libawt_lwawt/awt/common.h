@@ -54,6 +54,7 @@ struct GradFrameUniforms {
     vector_float3 params;
     vector_float4 color1;
     vector_float4 color2;
+    int isCyclic;
 };
 
 struct Vertex {

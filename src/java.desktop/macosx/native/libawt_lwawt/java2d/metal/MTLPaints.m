@@ -420,7 +420,8 @@ static void setTxtUniforms(
             struct GradFrameUniforms uf = {
                     {_p0, _p1, _p3},
                     RGBA_TO_V4(_pixel1),
-                    RGBA_TO_V4(_pixel2)};
+                    RGBA_TO_V4(_pixel2),
+                    _cyclic};
             [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
 
         } else {
@@ -451,7 +452,9 @@ static void setTxtUniforms(
             struct GradFrameUniforms uf = {
                     {_p0, _p1, _p3},
                     RGBA_TO_V4(_pixel1),
-                    RGBA_TO_V4(_pixel2)};
+                    RGBA_TO_V4(_pixel2),
+                    _cyclic
+            };
             [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
         } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
             vertShader = @"vert_tp";
@@ -525,7 +528,9 @@ static void setTxtUniforms(
             struct GradFrameUniforms uf = {
                         {_p0, _p1, _p3},
                         RGBA_TO_V4(_pixel1 ^ xorColor),
-                        RGBA_TO_V4(_pixel2 ^ xorColor)};
+                        RGBA_TO_V4(_pixel2 ^ xorColor),
+                        _cyclic
+            };
 
             [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
             BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();

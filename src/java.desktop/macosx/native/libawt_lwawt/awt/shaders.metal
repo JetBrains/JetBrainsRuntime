@@ -206,6 +206,14 @@ fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
 
     float3 v = float3(in.position.x, in.position.y, 1);
     float  a = (dot(v,uniforms.params)-0.25)*2.0;
+    int fa = floor(a);
+    if (uniforms.isCyclic) {
+        if (fa%2) {
+            a = 1.0 + fa - a;
+        } else {
+            a = a - fa;
+        }
+    }
     float4 c = mix(uniforms.color1, uniforms.color2, a);
     return half4(c.r*renderColor.a,
                  c.g*renderColor.a,
@@ -352,6 +360,14 @@ fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
                          constant GradFrameUniforms& uniforms [[buffer(0)]]) {
     float3 v = float3(in.position.x, in.position.y, 1);
     float  a = (dot(v,uniforms.params)-0.25)*2.0;
+    int fa = floor(a);
+    if (uniforms.isCyclic) {
+        if (fa%2) {
+            a = 1.0 + fa - a;
+        } else {
+            a = a - fa;
+        }
+    }
     float4 c = mix(uniforms.color1, uniforms.color2, a);
     return half4(c);
 }
