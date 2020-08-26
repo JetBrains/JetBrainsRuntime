@@ -374,7 +374,7 @@ MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
     id<MTLRenderPipelineState> pipelineState =
                 [mtlc.pipelineStateStorage
                     getPipelineState:templateLCDPipelineDesc
-                    vertexShaderId:@"vert_txt"
+                    vertexShaderId:@"vert_txt_lcd"
                     fragmentShaderId:@"lcd_color"
                    ];
 
@@ -437,7 +437,7 @@ MTLTR_SetLCDCachePipelineState(MTLContext *mtlc)
     id<MTLRenderPipelineState> pipelineState =
                 [mtlc.pipelineStateStorage
                     getPipelineState:templateLCDPipelineDesc
-                    vertexShaderId:@"vert_txt"
+                    vertexShaderId:@"vert_txt_lcd"
                     fragmentShaderId:@"lcd_color"
                    ];
 
@@ -876,6 +876,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
     glyphMode = MODE_NOT_INITED;
     isCachedDestValid = JNI_FALSE;
     J2dTraceLn1(J2D_TRACE_INFO, "totalGlyphs = %d", totalGlyphs);
+    jboolean flushBeforeLCD = JNI_FALSE;
 
     for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {
         J2dTraceLn(J2D_TRACE_INFO, "Entered for loop for glyph list");
@@ -928,6 +929,18 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                 ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps);
             }
         } else {
+            if (!flushBeforeLCD) {
+                [mtlc.encoderManager endEncoder];
+                MTLCommandBufferWrapper* cbwrapper = [mtlc pullCommandBufferWrapper];
+
+                id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+                [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                    [cbwrapper release];
+                }];
+
+                [commandbuf commit];
+                flushBeforeLCD = JNI_TRUE;
+            }
             void* dstTexture = dstOps->textureLCD;
 
             // LCD-optimized glyph data

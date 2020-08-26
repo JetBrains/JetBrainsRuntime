@@ -54,6 +54,12 @@ struct TxtShaderInOut {
     float2 tpCoords;
 };
 
+struct LCDShaderInOut {
+    float4 position [[position]];
+    float2 orig_pos;
+    float2 texCoords;
+};
+
 struct GradShaderInOut {
     float4 position [[position]];
     float2 texCoords;
@@ -104,6 +110,15 @@ vertex TxtShaderInOut vert_txt(TxtVertexInput in [[stage_in]], constant Transfor
     TxtShaderInOut out;
     float4 pos4 = float4(in.position, 0.0, 1.0);
     out.position = transform.transformMatrix*pos4;
+    out.texCoords = in.texCoords;
+    return out;
+}
+
+vertex LCDShaderInOut vert_txt_lcd(TxtVertexInput in [[stage_in]], constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
+    LCDShaderInOut out;
+    float4 pos4 = float4(in.position, 0.0, 1.0);
+    out.position = transform.transformMatrix*pos4;
+    out.orig_pos = in.position;
     out.texCoords = in.texCoords;
     return out;
 }
@@ -392,7 +407,7 @@ fragment half4 frag_tp(
  *            Cr = (Ag*(Cs^Ga) + (1-Ag)*(Cd^Ga)) ^ (1/Ga)
  */
 fragment float4 lcd_color(
-        TxtShaderInOut vert [[stage_in]],
+        LCDShaderInOut vert [[stage_in]],
         texture2d<float, access::sample> glyphTexture [[texture(0)]],
         texture2d<float, access::sample> dstTexture [[texture(1)]],
         constant LCDFrameUniforms& uniforms [[buffer(1)]]) 
@@ -401,8 +416,9 @@ fragment float4 lcd_color(
     float3 gamma = uniforms.gamma;
     float3 invgamma = uniforms.invgamma;
 
-    constexpr sampler glyphTextureSampler (mag_filter::linear,
-                                      min_filter::linear);
+    constexpr sampler glyphTextureSampler (address::repeat,
+                                      mag_filter::nearest,
+                                      min_filter::nearest);
 
     // load the RGB value from the glyph image at the current texcoord
     float3 glyph_clr = float3(glyphTexture.sample(glyphTextureSampler, vert.texCoords));
@@ -411,10 +427,10 @@ fragment float4 lcd_color(
         // zero coverage, so skip this fragment
         discard_fragment();
     }
-    constexpr sampler dstTextureSampler (mag_filter::linear,
-                                      min_filter::linear);
+
     // load the RGB value from the corresponding destination pixel
-    float3 dst_clr = float3(dstTexture.sample(dstTextureSampler, vert.texCoords));
+    uint2 texCoord = {(unsigned int)(vert.orig_pos.x), (unsigned int)(vert.orig_pos.y)};
+    float4 dst_clr = dstTexture.read(texCoord);
 
     // gamma adjust the dest color
     float3 dst_adj = pow(dst_clr.rgb, gamma);
