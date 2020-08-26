@@ -213,6 +213,7 @@ java/awt/Frame/UnfocusableMaximizedFrameResizablity/UnfocusableMaximizedFrameRes
 java/awt/Frame/WindowDragTest/WindowDragTest.java                                   8169470 generic-all
 java/awt/FullScreen/8013581/bug8013581.java                                         8169471 macosx-all,windows-all,linux-all
 java/awt/FullScreen/AltTabCrashTest/AltTabCrashTest.java                            8047218 generic-all
+java/awt/FullScreen/BufferStrategyExceptionTest/BufferStrategyExceptionTest.java    8246558 windows-all
 java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java                    8169469,JBR-1897 windows-all,macosx-all,linux-all (linux: NPE commit testing)
 java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java                          7019055 windows-all,linux-all,macosx-all
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java    8169468 windows-all,macosx-all
@@ -1264,3 +1265,4 @@ sanity/client/SwingSet/src/GridBagLayoutDemoTest.java                           
 jb/java/jcef/JCEFStartupTest.java                                                   JBR-1996 linux-i386,windows-x86
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java                       nobug windows-6.1 not supported on Windows 7
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-2585 linux-all
+jb/java/awt/Focus/ChainOfPopupsFocusTest.java                                       JBR-2657 windows-all

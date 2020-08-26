@@ -41,7 +41,6 @@ java/awt/Frame/MiscUndecorated/FrameCloseTest.java                              
 java/awt/Frame/NormalToIconified/NormalToIconifiedTest.java                                 nobug linux-all,windows-all
 java/awt/Frame/ObscuredFrame/ObscuredFrameTest.java                                         nobug macosx-all,linux-all
 java/awt/Frame/UnfocusableMaximizedFrameResizablity/UnfocusableMaximizedFrameResizablity.java nobug linux-all,windows-all,macosx-all
-java/awt/FullScreen/BufferStrategyExceptionTest/BufferStrategyExceptionTest.java            nobug macosx-all,linux-all,windows-all
 java/awt/FullScreen/SetFSWindow/FSFrame.java                                                nobug windows-all
 java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java                                nobug windows-all
 java/awt/Graphics/LineClipTest.java                                                         nobug macosx-all,windows-all
