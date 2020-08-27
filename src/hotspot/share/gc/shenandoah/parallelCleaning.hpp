@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@
 
 #include "gc/shared/oopStorageParState.hpp"
 #include "gc/shared/workgroup.hpp"
+#include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 
 class StringSymbolTableUnlinkTask : public AbstractGangTask {
 private:
@@ -138,14 +139,16 @@ public:
 // To minimize the remark pause times, the tasks below are done in parallel.
 class ParallelCleaningTask : public AbstractGangTask {
 private:
-  StringSymbolTableUnlinkTask _string_symbol_task;
-  CodeCacheUnloadingTask      _code_cache_task;
-  KlassCleaningTask           _klass_cleaning_task;
-  ResolvedMethodCleaningTask  _resolved_method_cleaning_task;
+  StringSymbolTableUnlinkTask     _string_symbol_task;
+  CodeCacheUnloadingTask          _code_cache_task;
+  KlassCleaningTask               _klass_cleaning_task;
+  ResolvedMethodCleaningTask      _resolved_method_cleaning_task;
+  ShenandoahPhaseTimings::Phase   _phase;
 
 public:
   // The constructor is run in the VMThread.
-  ParallelCleaningTask(BoolObjectClosure* is_alive, bool process_strings, bool process_symbols, uint num_workers, bool unloading_occurred);
+  ParallelCleaningTask(ShenandoahPhaseTimings::Phase phase, BoolObjectClosure* is_alive, bool process_strings,
+                       bool process_symbols, uint num_workers, bool unloading_occurred);
 
   // The parallel work done by all worker threads.
   void work(uint worker_id);
