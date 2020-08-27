@@ -36,6 +36,7 @@ class outputStream;
   f(CNT_PREFIX ## TotalWork,                DESC_PREFIX "<total>")                     \
   f(CNT_PREFIX ## ThreadRoots,              DESC_PREFIX "Thread Roots")                \
   f(CNT_PREFIX ## CodeCacheRoots,           DESC_PREFIX "Code Cache Roots")            \
+  f(CNT_PREFIX ## CodeCacheRootsCleaning,   DESC_PREFIX "Code Cache Cleaning")         \
   f(CNT_PREFIX ## UniverseRoots,            DESC_PREFIX "Universe Roots")              \
   f(CNT_PREFIX ## JNIRoots,                 DESC_PREFIX "JNI Handles Roots")           \
   f(CNT_PREFIX ## JVMTIWeakRoots,           DESC_PREFIX "JVMTI Weak Roots")            \
@@ -79,6 +80,7 @@ class outputStream;
   f(weakrefs_process,                               "    Process")                     \
   f(purge,                                          "  System Purge")                  \
   f(purge_class_unload,                             "    Unload Classes")              \
+  f(purge_cleanup,                                  "    Cleanup")                     \
   SHENANDOAH_PAR_PHASE_DO(purge_cu_par_,            "      CU: ", f)                   \
   f(purge_weak_par,                                 "    Weak Roots")                  \
   SHENANDOAH_PAR_PHASE_DO(purge_weak_par_,          "      WR: ", f)                   \
@@ -129,6 +131,7 @@ class outputStream;
   f(full_gc_weakrefs_process,                       "      Process")                   \
   f(full_gc_purge,                                  "    System Purge")                \
   f(full_gc_purge_class_unload,                     "      Unload Classes")            \
+  f(full_gc_purge_cleanup,                          "      Cleanup")                   \
   SHENANDOAH_PAR_PHASE_DO(full_gc_purge_cu_par_,    "        CU: ", f)                 \
   f(full_gc_purge_weak_par,                         "      Weak Roots")                \
   SHENANDOAH_PAR_PHASE_DO(full_gc_purge_weak_p_,    "        WR: ", f)                 \

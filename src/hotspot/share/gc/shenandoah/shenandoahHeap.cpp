@@ -1916,15 +1916,21 @@ void ShenandoahHeap::stw_unload_classes(bool full_gc) {
   if (!unload_classes()) return;
 
   // Unload classes and purge SystemDictionary.
+  bool purged_class;
   {
     ShenandoahGCSubPhase phase(full_gc ?
                                ShenandoahPhaseTimings::full_gc_purge_class_unload :
                                ShenandoahPhaseTimings::purge_class_unload);
-    bool purged_class = SystemDictionary::do_unloading(gc_timer());
-
+    purged_class = SystemDictionary::do_unloading(gc_timer());
+  }
+  {
+    ShenandoahPhaseTimings::Phase p = full_gc ?
+                                      ShenandoahPhaseTimings::full_gc_purge_cleanup :
+                                      ShenandoahPhaseTimings::purge_cleanup;
+    ShenandoahGCSubPhase phase(p);
     ShenandoahIsAliveSelector is_alive;
     uint num_workers = _workers->active_workers();
-    ParallelCleaningTask unlink_task(is_alive.is_alive_closure(), true, true, num_workers, purged_class);
+    ParallelCleaningTask unlink_task(p, is_alive.is_alive_closure(), true, true, num_workers, purged_class);
     _workers->run_task(&unlink_task);
   }
 

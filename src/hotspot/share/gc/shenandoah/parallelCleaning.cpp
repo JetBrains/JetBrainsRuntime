@@ -297,7 +297,8 @@ void ResolvedMethodCleaningTask::work() {
   }
 }
 
-ParallelCleaningTask::ParallelCleaningTask(BoolObjectClosure* is_alive,
+ParallelCleaningTask::ParallelCleaningTask(ShenandoahPhaseTimings::Phase phase,
+                                           BoolObjectClosure* is_alive,
                                            bool process_strings,
                                            bool process_symbols,
                                            uint num_workers,
@@ -306,33 +307,47 @@ ParallelCleaningTask::ParallelCleaningTask(BoolObjectClosure* is_alive,
   _string_symbol_task(is_alive, process_strings, process_symbols),
   _code_cache_task(num_workers, is_alive, unloading_occurred),
   _klass_cleaning_task(is_alive),
-  _resolved_method_cleaning_task(is_alive)
+  _resolved_method_cleaning_task(is_alive),
+  _phase(phase)
 {
-
-
 }
 
 // The parallel work done by all worker threads.
 void ParallelCleaningTask::work(uint worker_id) {
-  // Do first pass of code cache cleaning.
-  _code_cache_task.work_first_pass(worker_id);
+  {
+    ShenandoahWorkerTimingsTracker x(_phase, ShenandoahPhaseTimings::CodeCacheRoots, worker_id);
+    // Do first pass of code cache cleaning.
+    _code_cache_task.work_first_pass(worker_id);
 
-  // Let the threads mark that the first pass is done.
-  _code_cache_task.barrier_mark(worker_id);
+    // Let the threads mark that the first pass is done.
+    _code_cache_task.barrier_mark(worker_id);
+  }
 
-  // Clean the Strings and Symbols.
-  _string_symbol_task.work(worker_id);
+  {
+    ShenandoahWorkerTimingsTracker x(_phase, ShenandoahPhaseTimings::StringTableRoots, worker_id);
+    // Clean the Strings and Symbols.
+    _string_symbol_task.work(worker_id);
+  }
 
-  // Clean unreferenced things in the ResolvedMethodTable
-  _resolved_method_cleaning_task.work();
+  {
+    ShenandoahWorkerTimingsTracker x(_phase, ShenandoahPhaseTimings::ResolvedMethodTableRoots, worker_id);
+    // Clean unreferenced things in the ResolvedMethodTable
+    _resolved_method_cleaning_task.work();
+  }
 
-  // Wait for all workers to finish the first code cache cleaning pass.
-  _code_cache_task.barrier_wait(worker_id);
+  {
+    ShenandoahWorkerTimingsTracker x(_phase, ShenandoahPhaseTimings::CodeCacheRootsCleaning, worker_id);
+    // Wait for all workers to finish the first code cache cleaning pass.
+    _code_cache_task.barrier_wait(worker_id);
 
-  // Do the second code cache cleaning work, which realize on
-  // the liveness information gathered during the first pass.
-  _code_cache_task.work_second_pass(worker_id);
+    // Do the second code cache cleaning work, which realize on
+    // the liveness information gathered during the first pass.
+    _code_cache_task.work_second_pass(worker_id);
+  }
 
-  // Clean all klasses that were not unloaded.
-  _klass_cleaning_task.work();
+  {
+    ShenandoahWorkerTimingsTracker x(_phase, ShenandoahPhaseTimings::CLDGRoots, worker_id);
+    // Clean all klasses that were not unloaded.
+    _klass_cleaning_task.work();
+  }
 }
