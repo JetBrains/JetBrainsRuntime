@@ -714,8 +714,7 @@ MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
             MTLVertexCache_AddMaskQuad(mtlc,
                                        sx, sy, x, y, sw, sh,
                                        w, ginfo->image,
-                                       dstOps,
-                                       ginfo->width);
+                                       dstOps);
         }
     }
 

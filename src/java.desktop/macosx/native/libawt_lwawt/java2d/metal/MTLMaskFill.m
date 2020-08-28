@@ -113,8 +113,7 @@ MTLMaskFill_MaskFill(MTLContext *mtlc, BMTLSDOps * dstOps,
             sw = ((sx + tw) > sx2) ? (sx2 - sx) : tw;
             MTLVertexCache_AddMaskQuad(mtlc,
                     sx, sy, x, y, sw, sh,
-                    MTLVC_MASK_CACHE_TILE_WIDTH, pMask, dstOps,
-                    MTLVC_MASK_CACHE_TILE_WIDTH);
+                    maskscan, pMask, dstOps);
         }
     }
 

@@ -260,8 +260,7 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
                            jint dstx, jint dsty,
                            jint width, jint height,
                            jint maskscan, void *mask,
-                           BMTLSDOps *dstOps,
-                           jint fullwidth)
+                           BMTLSDOps *dstOps)
 {
     jfloat tx1, ty1, tx2, ty2;
     jfloat dx1, dy1, dx2, dy2;
@@ -286,8 +285,8 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
                     (maskCacheIndex % MTLVC_MASK_CACHE_WIDTH_IN_TILES);
         jint texy = MTLVC_MASK_CACHE_TILE_HEIGHT *
                     (maskCacheIndex / MTLVC_MASK_CACHE_WIDTH_IN_TILES);
-        J2dTraceLn5(J2D_TRACE_INFO, "texx = %d texy = %d width = %d height = %d fullwidth = %d", texx, texy, width,
-                    height, fullwidth);
+        J2dTraceLn5(J2D_TRACE_INFO, "texx = %d texy = %d width = %d height = %d maskscan = %d", texx, texy, width,
+                    height, maskscan);
         NSUInteger bytesPerRow = 1 * width;
         NSUInteger slice = bytesPerRow * srcy + srcx;
         MTLRegion region = {
@@ -305,7 +304,7 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
         // We can use MTLBuffer and then copy source subtexture but that
         // adds extra blitting logic.
         // TODO : Research more and try removing memcpy logic.
-        if (fullwidth <= width) {
+        if (maskscan <= width) {
             int height_offset = bytesPerRow * srcy;
             [maskCacheTex.texture replaceRegion:region
                             mipmapLevel:0
@@ -318,7 +317,7 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
             dst_offset = 0;
             for (int i = srcy; i < srcy + height; i++) {
                 J2dTraceLn2(J2D_TRACE_INFO, "srcx = %d srcy = %d", srcx, srcy);
-                src_offset = fullwidth * i + srcx;
+                src_offset = maskscan * i + srcx;
                 J2dTraceLn2(J2D_TRACE_INFO, "src_offset = %d dst_offset = %d", src_offset, dst_offset);
                 memcpy(tile + dst_offset, mask + src_offset, width);
                 dst_offset = dst_offset + width;

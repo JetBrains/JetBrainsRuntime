@@ -78,8 +78,7 @@ void MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
                                 jint dstx, jint dsty,
                                 jint width, jint height,
                                 jint maskscan, void *mask,
-                                BMTLSDOps *dstOps,
-                                jint fullwidth);
+                                BMTLSDOps *dstOps);
 void
 MTLVertexCache_AddGlyphQuad(MTLContext *mtlc,
                             jfloat tx1, jfloat ty1, jfloat tx2, jfloat ty2,
