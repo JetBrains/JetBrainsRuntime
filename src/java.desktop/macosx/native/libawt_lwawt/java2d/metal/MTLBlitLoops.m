@@ -636,7 +636,7 @@ MTLBlitLoops_Blit(JNIEnv *env,
 #ifdef TRACE_BLIT
                     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via pooled + blit]");
 #endif //TRACE_BLIT
-                    MTLBlitSwToTextureViaPooledTexture(mtlc, &srcInfo, dstOps, &rfi, true, hint, dx1, dy1, dx2, dy2);
+                    MTLBlitSwToTextureViaPooledTexture(mtlc, &srcInfo, dstOps, &rfi, false, hint, dx1, dy1, dx2, dy2);
                 }
             } else { // !useReplaceRegion
 #ifdef TRACE_BLIT

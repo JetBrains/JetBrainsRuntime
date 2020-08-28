@@ -69,6 +69,7 @@
     self.leftInset = 0;
     self.framebufferOnly = NO;
     self.nextDrawableCount = 0;
+    self.opaque = FALSE;
     return self;
 }
 

@@ -73,6 +73,10 @@ static void initTemplatePipelineDescriptors() {
     templateRenderPipelineDesc.sampleCount = 1;
     templateRenderPipelineDesc.vertexDescriptor = vertDesc;
     templateRenderPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+    templateRenderPipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+    templateRenderPipelineDesc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
+    templateRenderPipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    templateRenderPipelineDesc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
     templateRenderPipelineDesc.label = @"template_render";
 
     templateTexturePipelineDesc = [templateRenderPipelineDesc copy];
@@ -85,10 +89,6 @@ static void initTemplatePipelineDescriptors() {
     templateTexturePipelineDesc.label = @"template_texture";
 
     templateAATexturePipelineDesc = [templateTexturePipelineDesc copy];
-    templateAATexturePipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
-    templateAATexturePipelineDesc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
-    templateAATexturePipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
-    templateAATexturePipelineDesc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
     templateAATexturePipelineDesc.label = @"template_aa_texture";
 
 }

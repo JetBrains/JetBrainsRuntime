@@ -539,7 +539,7 @@ fragment half4 frag_txt_xorMode(
     ret.r = half( (unsigned char)(c.r * 255.0) ^ (unsigned char)(bgColor.r * 255.0)) / 255.0f;
     ret.g = half( (unsigned char)(c.g * 255.0) ^ (unsigned char)(bgColor.g * 255.0)) / 255.0f;
     ret.b = half( (unsigned char)(c.b * 255.0) ^ (unsigned char)(bgColor.b * 255.0)) / 255.0f;
-    ret.a = c.a;
+    ret.a = c.a + (1.0 - c.a) * bgColor.a;
 
     return ret;
 }
