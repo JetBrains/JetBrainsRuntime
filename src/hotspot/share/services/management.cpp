@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2206,7 +2206,7 @@ JVM_END
 #if INCLUDE_MANAGEMENT
 const struct jmmInterface_1_ jmm_interface = {
   NULL,
-  NULL,
+  jmm_GetOneThreadAllocatedMemory,
   jmm_GetVersion,
   jmm_GetOptionalSupport,
   jmm_GetThreadInfo,
@@ -2214,7 +2214,6 @@ const struct jmmInterface_1_ jmm_interface = {
   jmm_GetMemoryManagers,
   jmm_GetMemoryPoolUsage,
   jmm_GetPeakMemoryPoolUsage,
-  jmm_GetOneThreadAllocatedMemory,
   jmm_GetThreadAllocatedMemory,
   jmm_GetMemoryUsage,
   jmm_GetLongAttribute,
