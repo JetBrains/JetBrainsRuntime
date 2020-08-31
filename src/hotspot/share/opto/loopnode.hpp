@@ -1301,6 +1301,11 @@ SHENANDOAHGC_ONLY(private:)
                                       uint idx_before_clone, Node_List &old_new);
 
   bool _created_loop_node;
+#ifdef ASSERT
+  void dump_real_LCA(Node* early, Node* wrong_lca);
+  bool check_idom_chains_intersection(const Node* n, uint& idom_idx_new, uint& idom_idx_other, const Node_List* nodes_seen) const;
+#endif
+
 public:
   void set_created_loop_node() { _created_loop_node = true; }
   bool created_loop_node()     { return _created_loop_node; }
@@ -1311,10 +1316,11 @@ public:
 #endif
 
 #ifndef PRODUCT
-  void dump( ) const;
-  void dump( IdealLoopTree *loop, uint rpo_idx, Node_List &rpo_list ) const;
+  void dump() const;
+  void dump_idom(Node* n) const;
+  void dump(IdealLoopTree *loop, uint rpo_idx, Node_List &rpo_list) const;
   void verify() const;          // Major slow  :-)
-  void verify_compare( Node *n, const PhaseIdealLoop *loop_verify, VectorSet &visited ) const;
+  void verify_compare(Node *n, const PhaseIdealLoop *loop_verify, VectorSet &visited) const;
   IdealLoopTree *get_loop_idx(Node* n) const {
     // Dead nodes have no loop, so return the top level loop instead
     return _nodes[n->_idx] ? (IdealLoopTree*)_nodes[n->_idx] : _ltree_root;
