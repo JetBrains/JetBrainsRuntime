@@ -48,6 +48,7 @@ import java.io.File;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
+import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_GRAD_SHADER;
 import static sun.java2d.opengl.OGLSurfaceData.TEXTURE;
 import static sun.java2d.pipe.hw.AccelSurface.RT_TEXTURE;
 import static sun.java2d.pipe.hw.ContextCapabilities.*;
@@ -159,7 +160,8 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         ContextCapabilities caps = new MTLContext.MTLContextCaps(
                 CAPS_PS30 | CAPS_PS20 | CAPS_RT_PLAIN_ALPHA |
                         CAPS_RT_TEXTURE_ALPHA | CAPS_RT_TEXTURE_OPAQUE |
-                        CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE | CAPS_EXT_BIOP_SHADER,
+                        CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE |
+                        CAPS_EXT_BIOP_SHADER | CAPS_EXT_GRAD_SHADER,
                 ids[0]);
         return new MTLGraphicsConfig(device, pixfmt, cfginfo, textureSize, caps);
     }

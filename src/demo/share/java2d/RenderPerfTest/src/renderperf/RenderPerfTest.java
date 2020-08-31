@@ -324,6 +324,28 @@ public class RenderPerfTest {
         }
     }
 
+    static class LinGrad3OvalRotParticleRenderer extends FlatOvalRotParticleRenderer {
+
+
+        LinGrad3OvalRotParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+
+        @Override
+        void setPaint(Graphics2D g2d, int id) {
+            Point2D start = new Point2D.Double(- r,  - 0.5*r);
+            Point2D end = new Point2D.Double( 2 * r, r);
+            float[] dist = {0.0f, 0.5f, 1.0f};
+            Color[] cls = {
+                colors[id %colors.length],
+                colors[(colors.length - id) %colors.length],
+                colors[(id*5) %colors.length]};
+            LinearGradientPaint p =
+                new LinearGradientPaint(start, end, dist, cls);
+            g2d.setPaint(p);
+        }
+    }
+
     static class FlatBoxParticleRenderer extends FlatParticleRenderer {
 
 
@@ -616,6 +638,7 @@ public class RenderPerfTest {
     private static final ParticleRenderer clipFlatBoxParticleRenderer = new ClipFlatBoxParticleRenderer(N, R);
     private static final ParticleRenderer flatBoxRotRenderer = new FlatBoxRotParticleRenderer(N, R);
     private static final ParticleRenderer linGradOvalRotRenderer = new LinGradOvalRotParticleRenderer(N, R);
+    private static final ParticleRenderer linGrad3OvalRotRenderer = new LinGrad3OvalRotParticleRenderer(N, R);
     private static final ParticleRenderer wiredRenderer = new WiredParticleRenderer(N, R);
     private static final ParticleRenderer wiredBoxRenderer = new WiredBoxParticleRenderer(N, R);
     private static final ParticleRenderer segRenderer = new SegParticleRenderer(N, R);
@@ -692,6 +715,14 @@ public class RenderPerfTest {
 
     public void testFlatOvalRotBubblesAA() throws Exception {
         (new PerfMeter("RotatedOvalAA")).exec(createPR(flatOvalRotRenderer).configure(AA)).report();
+    }
+
+    public void testLinGrad3OvalRotBubbles() throws Exception {
+        (new PerfMeter("LinGrad3RotatedOval")).exec(createPR(linGrad3OvalRotRenderer)).report();
+    }
+
+    public void testLinGrad3OvalRotBubblesAA() throws Exception {
+        (new PerfMeter("LinGrad3RotatedOvalAA")).exec(createPR(linGrad3OvalRotRenderer).configure(AA)).report();
     }
 
     public void testLinGradOvalRotBubbles() throws Exception {

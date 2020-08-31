@@ -217,13 +217,13 @@
                          pixel2:(jint) pixel2;
 - (void)setLinearGradientPaint:(jboolean)useMask
                    linear:(jboolean)linear
-              cycleMethod:(jboolean)cycleMethod
+              cycleMethod:(jint)cycleMethod
                  numStops:(jint)numStops
                        p0:(jfloat)p0
                        p1:(jfloat)p1
                        p3:(jfloat)p3
-                fractions:(void *)fractions
-                   pixels:(void *)pixels;
+                fractions:(jfloat *)fractions
+                   pixels:(jint *)pixels;
 - (void)setRadialGradientPaint:(jboolean)useMask
                    linear:(jboolean)linear
               cycleMethod:(jboolean)cycleMethod
