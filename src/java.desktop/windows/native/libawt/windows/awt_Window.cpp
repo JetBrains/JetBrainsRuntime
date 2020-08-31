@@ -187,6 +187,7 @@ jfieldID AwtWindow::sysWID;
 jfieldID AwtWindow::sysHID;
 jfieldID AwtWindow::windowTypeID;
 jfieldID AwtWindow::sysInsetsID;
+jmethodID AwtWindow::notifyWindowStateChangedMID;
 
 jmethodID AwtWindow::getWarningStringMID;
 jmethodID AwtWindow::calculateSecurityWarningPositionMID;
@@ -1742,6 +1743,16 @@ void AwtWindow::SendWindowEvent(jint id, HWND opposite,
     SendEvent(event);
 
     env->DeleteLocalRef(event);
+}
+
+void AwtWindow::NotifyWindowStateChanged(jint oldState, jint newState)
+{
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    jobject peer = GetPeer(env);
+    if (peer != NULL) {
+        env->CallVoidMethod(peer, AwtWindow::notifyWindowStateChangedMID,
+            oldState, newState);
+    }
 }
 
 BOOL AwtWindow::AwtSetActiveWindow(BOOL isMouseEventCause, UINT hittest)
@@ -3497,6 +3508,11 @@ Java_sun_awt_windows_WWindowPeer_initIDs(JNIEnv *env, jclass cls)
 
     AwtWindow::windowTypeID = env->GetFieldID(cls, "windowType",
             "Ljava/awt/Window$Type;");
+
+    AwtWindow::notifyWindowStateChangedMID =
+        env->GetMethodID(cls, "notifyWindowStateChanged", "(II)V");
+    DASSERT(AwtWindow::notifyWindowStateChangedMID);
+    CHECK_NULL(AwtWindow::notifyWindowStateChangedMID);
 
     CATCH_BAD_ALLOC;
 }
