@@ -336,13 +336,17 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (void)setLinearGradientPaint:(jboolean)useMask
                         linear:(jboolean)linear
-                   cycleMethod:(jboolean)cycleMethod
+                   cycleMethod:(jint)cycleMethod
+                                // 0 - NO_CYCLE
+                                // 1 - REFLECT
+                                // 2 - REPEAT
+
                       numStops:(jint)numStops
                             p0:(jfloat)p0
                             p1:(jfloat)p1
                             p3:(jfloat)p3
-                     fractions:(void *)fractions
-                        pixels:(void *)pixels
+                     fractions:(jfloat*)fractions
+                        pixels:(jint*)pixels
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.setLinearGradientPaint");
     [_paint setLinearGradient:useMask

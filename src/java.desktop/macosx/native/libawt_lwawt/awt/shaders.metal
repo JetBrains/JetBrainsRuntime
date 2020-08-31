@@ -221,6 +221,42 @@ fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
                  renderColor.a);
 }
 
+fragment half4 frag_txt_lin_grad(GradShaderInOut in [[stage_in]],
+                                 constant LinGradFrameUniforms& uniforms [[buffer(0)]],
+                                 texture2d<float, access::sample> renderTexture [[texture(0)]])
+{
+    constexpr sampler textureSampler (address::repeat, mag_filter::nearest,
+                                      min_filter::nearest);
+
+    float4 renderColor = renderTexture.sample(textureSampler, in.texCoords);
+
+    float3 v = float3(in.position.x, in.position.y, 1);
+    float  a = dot(v,uniforms.params);
+    float lf = 1.0/(uniforms.numFracts - 1);
+
+    if (uniforms.cycleMethod > GradNoCycle) {
+        int fa = floor(a);
+        a = a - fa;
+        if (uniforms.cycleMethod == GradReflect && fa%2) {
+            a = 1.0 - a;
+        }
+    }
+
+    int n = floor(a/lf);
+    if (uniforms.cycleMethod > GradNoCycle) {
+        n = ((n % uniforms.numFracts) + uniforms.numFracts) % uniforms.numFracts;
+    } else {
+        if (n < 0) n = 0;
+        if (n > uniforms.numFracts - 2) n = uniforms.numFracts - 2;
+    }
+    a = (a - n*lf)/lf;
+    float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
+    return half4(c.r*renderColor.a,
+                 c.g*renderColor.a,
+                 c.b*renderColor.a,
+                 renderColor.a);
+}
+
 fragment half4 aa_frag_txt(
         TxtShaderInOut vert [[stage_in]],
         texture2d<float, access::sample> renderTexture [[texture(0)]],
@@ -372,6 +408,32 @@ fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
     return half4(c);
 }
 
+// LinGradFrameUniforms
+fragment half4 frag_lin_grad(GradShaderInOut in [[stage_in]],
+                             constant LinGradFrameUniforms& uniforms [[buffer(0)]]) {
+    float3 v = float3(in.position.x, in.position.y, 1);
+    float  a = dot(v,uniforms.params);
+    float lf = 1.0/(uniforms.numFracts - 1);
+
+    if (uniforms.cycleMethod > GradNoCycle) {
+        int fa = floor(a);
+        a = a - fa;
+        if (uniforms.cycleMethod == GradReflect && fa%2) {
+            a = 1.0 - a;
+        }
+    }
+
+    int n = floor(a/lf);
+    if (uniforms.cycleMethod > GradNoCycle) {
+        n = ((n % uniforms.numFracts) + uniforms.numFracts) % uniforms.numFracts;
+    } else {
+        if (n < 0) n = 0;
+        if (n > uniforms.numFracts - 2) n = uniforms.numFracts - 2;
+    }
+    a = (a - n*lf)/lf;
+    float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
+    return half4(c);
+}
 
 vertex TxtShaderInOut vert_tp(VertexInput in [[stage_in]],
        constant AnchorData& anchorData [[buffer(FrameUniformBuffer)]],

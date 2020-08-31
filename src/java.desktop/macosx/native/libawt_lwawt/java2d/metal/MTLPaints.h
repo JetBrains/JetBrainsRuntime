@@ -64,8 +64,8 @@
                        p0:(jfloat)p0
                        p1:(jfloat)p1
                        p3:(jfloat)p3
-                fractions:(void *)fractions
-                   pixels:(void *)pixels;
+                fractions:(jfloat *)fractions
+                   pixels:(jint *)pixels;
 
 - (void)setRadialGradient:(jboolean)useMask
                    linear:(jboolean)linear

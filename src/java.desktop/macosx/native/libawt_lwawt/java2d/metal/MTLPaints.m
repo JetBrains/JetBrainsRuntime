@@ -104,9 +104,10 @@ static void initTemplatePipelineDescriptors() {
     jdouble       _p0;
     jdouble       _p1;
     jdouble       _p3;
-    jboolean      _cyclic;
-    jint          _pixel1;
-    jint          _pixel2;
+    jint          _cyclic;
+    jint          _pixel[GRAD_MAX_FRACTIONS];
+    jfloat        _fract[GRAD_MAX_FRACTIONS];
+    jint          _numFracts;
     jboolean      _useMask;
 
     // texture paint
@@ -133,9 +134,24 @@ static void initTemplatePipelineDescriptors() {
         return _p0 == other->_p0
                && _p1 == other->_p1
                && _p3 == other->_p3
-               && _pixel1 == other->_pixel1
-               && _pixel2 == other->_pixel2;
+               && _pixel[0] == other->_pixel[0]
+               && _pixel[1] == other->_pixel[1];
     }
+
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT) {
+        if (_p0 != other->_p0
+            || _p1 != other->_p1
+            || _p3 != other->_p3
+            || _numFracts != other->_numFracts) return NO;
+
+
+        for (int i = 0; i < _numFracts; i++) {
+            if (_fract[i] != other->_fract[i]) return NO;
+            if (_pixel[i] != other->_pixel[i]) return NO;
+        }
+        return YES;
+    }
+
     if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
         return _color == other->_color;
     }
@@ -162,10 +178,23 @@ static void initTemplatePipelineDescriptors() {
         _p0 = other->_p0;
         _p1 = other->_p1;
         _p3 = other->_p3;
-        _pixel1 = other->_pixel1;
-        _pixel2 = other->_pixel2;
+        _pixel[0] = other->_pixel[0];
+        _pixel[1] = other->_pixel[1];
         return;
     }
+
+    if (other->_paintState == sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT) {
+
+        _p0 = other->_p0;
+        _p1 = other->_p1;
+        _p3 = other->_p3;
+        _cyclic = other->_cyclic;
+        memcpy(_fract, other->_fract, other->_numFracts*sizeof(jfloat));
+        memcpy(_pixel, other->_pixel, other->_numFracts*sizeof(jint));
+        _numFracts = other->_numFracts;
+        return;
+    }
+
     if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
         _color = other->_color;
         return;
@@ -188,6 +217,10 @@ static void initTemplatePipelineDescriptors() {
     
     if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
         return [NSString stringWithFormat:@"gradient"];
+    }
+
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT) {
+        return [NSString stringWithFormat:@"linear_gradient"];
     }
 
     if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
@@ -231,8 +264,8 @@ static void initTemplatePipelineDescriptors() {
 
     _paintState = sun_java2d_SunGraphics2D_PAINT_GRADIENT;
     _useMask = useMask;
-    _pixel1 = pixel1;
-    _pixel2 = pixel2;
+    _pixel[0] = pixel1;
+    _pixel[1] = pixel2;
     _p0 = p0;
     _p1 = p1;
     _p3 = p3;
@@ -246,11 +279,20 @@ static void initTemplatePipelineDescriptors() {
                        p0:(jfloat)p0
                        p1:(jfloat)p1
                        p3:(jfloat)p3
-                fractions:(void *)fractions
-                   pixels:(void *)pixels
+                fractions:(jfloat*)fractions
+                   pixels:(jint*)pixels
 {
     J2dTraceLn(J2D_TRACE_ERROR, "setLinearGradient: UNIMPLEMENTED");
-    [self setColor:0];
+    _paintState = sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT;
+    _useMask = useMask;
+    memcpy(_fract, fractions, numStops*sizeof(jfloat));
+    memcpy(_pixel, pixels, numStops*sizeof(jint));
+    _p0 = p0;
+    _p1 = p1;
+    _p3 = p3;
+    _cyclic = cycleMethod;
+    _numFracts = numStops;
+
 }
 
 - (void)setRadialGradient:(jboolean)useMask
@@ -415,13 +457,34 @@ static void setTxtUniforms(
             setTxtUniforms(encoder, 0, 0, renderOptions->interpolation, YES, [mtlc.composite getExtraAlpha],
                            &renderOptions->srcFlags, &renderOptions->dstFlags);
         } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
+            // Gradient paint in AA mode
             vertShader = @"vert_txt_grad";
             fragShader = @"frag_txt_grad";
             struct GradFrameUniforms uf = {
                     {_p0, _p1, _p3},
-                    RGBA_TO_V4(_pixel1),
-                    RGBA_TO_V4(_pixel2),
+                    RGBA_TO_V4(_pixel[0]),
+                    RGBA_TO_V4(_pixel[1]),
                     _cyclic};
+            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
+
+        }  else if (_paintState == sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT) {
+            // Linear gradient paint in AA mode
+            vertShader = @"vert_txt_grad";
+            fragShader = @"frag_txt_lin_grad";
+
+            struct LinGradFrameUniforms uf = {
+                    {_p0, _p1, _p3},
+                    {},
+                    {},
+                    _numFracts,
+                    _cyclic
+            };
+
+            memcpy(uf.fract, _fract, _numFracts*sizeof(jfloat));
+            for (int i = 0; i < _numFracts; i++) {
+                vector_float4 v = RGBA_TO_V4(_pixel[i]);
+                uf.color[i] = v;
+            }
             [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
 
         } else {
@@ -451,11 +514,30 @@ static void setTxtUniforms(
 
             struct GradFrameUniforms uf = {
                     {_p0, _p1, _p3},
-                    RGBA_TO_V4(_pixel1),
-                    RGBA_TO_V4(_pixel2),
+                    RGBA_TO_V4(_pixel[0]),
+                    RGBA_TO_V4(_pixel[1]),
                     _cyclic
             };
             [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
+        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT) {
+            vertShader = @"vert_grad";
+            fragShader = @"frag_lin_grad";
+
+            struct LinGradFrameUniforms uf = {
+                    {_p0, _p1, _p3},
+                    {},
+                    {},
+                    _numFracts,
+                    _cyclic
+            };
+
+            memcpy(uf.fract, _fract, _numFracts*sizeof(jfloat));
+            for (int i = 0; i < _numFracts; i++) {
+                vector_float4 v = RGBA_TO_V4(_pixel[i]);
+                uf.color[i] = v;
+            }
+            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
+
         } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
             vertShader = @"vert_tp";
             fragShader = @"frag_tp";
@@ -527,8 +609,8 @@ static void setTxtUniforms(
 
             struct GradFrameUniforms uf = {
                         {_p0, _p1, _p3},
-                        RGBA_TO_V4(_pixel1 ^ xorColor),
-                        RGBA_TO_V4(_pixel2 ^ xorColor),
+                        RGBA_TO_V4(_pixel[0] ^ xorColor),
+                        RGBA_TO_V4(_pixel[1] ^ xorColor),
                         _cyclic
             };
 

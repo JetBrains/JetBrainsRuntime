@@ -30,7 +30,13 @@
 
 #define PGRAM_VERTEX_COUNT 6
 #define QUAD_VERTEX_COUNT 4
+#define GRAD_MAX_FRACTIONS 12
 
+enum GradCycleMethod {
+    GradNoCycle = 0,
+    GradReflect = 1,
+    GradRepeat = 2
+};
 enum VertexAttributes {
     VertexAttributePosition = 0,
     VertexAttributeTexPos = 1
@@ -55,6 +61,14 @@ struct GradFrameUniforms {
     vector_float4 color1;
     vector_float4 color2;
     int isCyclic;
+};
+
+struct LinGradFrameUniforms {
+    vector_float3 params;
+    float fract[GRAD_MAX_FRACTIONS];
+    vector_float4 color[GRAD_MAX_FRACTIONS];
+    int numFracts;
+    int cycleMethod;
 };
 
 struct Vertex {

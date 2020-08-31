@@ -193,5 +193,9 @@ abstract class MTLPaints {
 
     private static class RadialGradient extends MultiGradient {
         private RadialGradient() {}
+        @Override
+        boolean isPaintValid(SunGraphics2D sg2d) {
+            return false;
+        }
     }
 }
