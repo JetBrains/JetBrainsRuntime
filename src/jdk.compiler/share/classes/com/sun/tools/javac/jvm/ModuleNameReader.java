@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.nio.file.Path;
 
 import javax.tools.JavaFileObject;
 
+import com.sun.tools.javac.util.Convert;
 import static com.sun.tools.javac.jvm.ClassFile.*;
 
 
@@ -199,9 +200,9 @@ public class ModuleNameReader {
             int len = getChar(utf8Index + 1);
             int start = utf8Index + 3;
             if (internalize) {
-                return new String(ClassFile.internalize(buf, start, len));
+                return Convert.utf2string(ClassFile.internalize(buf, start, len));
             } else {
-                return new String(buf, start, len);
+                return Convert.utf2string(buf, start, len);
             }
         }
         throw new BadClassFile("bad name at index " + index);
