@@ -88,7 +88,7 @@ class WriterHost : public WriterPolicyImpl {
   void write(const Tickspan& time);
   void write(const JfrTicks& time);
   void write(const JfrTickspan& time);
-  void bytes(const void* buf, size_t len);
+  void write_bytes(const void* buf, intptr_t len);
   void write_utf8_u2_len(const char* value);
   template <typename T>
   void write_padded_at_offset(T value, int64_t offset);

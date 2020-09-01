@@ -30,7 +30,8 @@
 
 template <typename T>
 inline bool UnBufferedWriteToChunk<T>::write(T* t, const u1* data, size_t size) {
-  _writer.write_unbuffered(data, size);
+  assert((intptr_t)size >= 0, "invariant");
+  _writer.write_unbuffered(data, (intptr_t)size);
   _processed += size;
   return true;
 }
@@ -45,6 +46,7 @@ template <typename Operation>
 inline bool ConcurrentWriteOp<Operation>::process(typename Operation::Type* t) {
   const u1* const current_top = t->concurrent_top();
   const size_t unflushed_size = t->pos() - current_top;
+  assert((intptr_t)unflushed_size >= 0, "invariant");
   if (unflushed_size == 0) {
     t->set_concurrent_top(current_top);
     return true;
@@ -68,6 +70,7 @@ inline bool MutexedWriteOp<Operation>::process(typename Operation::Type* t) {
   assert(t != NULL, "invariant");
   const u1* const current_top = t->top();
   const size_t unflushed_size = t->pos() - current_top;
+  assert((intptr_t)unflushed_size >= 0, "invariant");
   if (unflushed_size == 0) {
     return true;
   }
@@ -103,6 +106,7 @@ inline bool DiscardOp<Operation>::process(typename Operation::Type* t) {
   assert(t != NULL, "invariant");
   const u1* const current_top = _mode == concurrent ? t->concurrent_top() : t->top();
   const size_t unflushed_size = t->pos() - current_top;
+  assert((intptr_t)unflushed_size >= 0, "invariant");
   if (unflushed_size == 0) {
     if (_mode == concurrent) {
       t->set_concurrent_top(current_top);
