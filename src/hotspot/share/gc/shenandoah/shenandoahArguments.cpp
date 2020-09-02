@@ -185,6 +185,14 @@ void ShenandoahArguments::initialize() {
   if (FLAG_IS_DEFAULT(TLABAllocationWeight)) {
     FLAG_SET_DEFAULT(TLABAllocationWeight, 90);
   }
+
+  if (FLAG_IS_DEFAULT(ShenandoahSoftMaxHeapSize)) {
+    FLAG_SET_DEFAULT(ShenandoahSoftMaxHeapSize, MaxHeapSize);
+  } else {
+    if (ShenandoahSoftMaxHeapSize > MaxHeapSize) {
+      vm_exit_during_initialization("ShenandoahSoftMaxHeapSize must be less than or equal to the maximum heap size\n");
+    }
+  }
 }
 
 size_t ShenandoahArguments::conservative_max_heap_alignment() {
