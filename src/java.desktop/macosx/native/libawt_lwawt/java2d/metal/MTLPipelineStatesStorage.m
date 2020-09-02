@@ -262,6 +262,8 @@ static void setBlendingFactors(
             } else {
                 cad.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
             }
+            cad.sourceAlphaBlendFactor = MTLBlendFactorSourceAlpha;
+
             if (!renderOptions->srcFlags.isPremultiplied) {
                 cad.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
             }
