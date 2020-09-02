@@ -607,7 +607,6 @@ MTLTR_UpdateCachedDestination(MTLSDOps *dstOps, GlyphInfo *ginfo,
 static jboolean
 MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                            GlyphInfo *ginfo, jint x, jint y,
-                           jint rowBytesOffset,
                            jboolean rgbOrder, jint contrast,
                            id<MTLTexture> dstTexture)
 {
@@ -790,9 +789,9 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
-            imageData[(i * w * 4) + j * 4] = ginfo->image[(i * w * 3) + j * 3];
-            imageData[(i * w * 4) + j * 4 + 1] = ginfo->image[(i * w * 3) + j * 3 + 1];
-            imageData[(i * w * 4) + j * 4 + 2] = ginfo->image[(i * w * 3) + j * 3 + 2];
+            imageData[(i * w * 4) + j * 4] = ginfo->image[((i * w * 3) + j * 3) + rowBytesOffset];
+            imageData[(i * w * 4) + j * 4 + 1] = ginfo->image[((i * w * 3) + j * 3 + 1) + rowBytesOffset];
+            imageData[(i * w * 4) + j * 4 + 2] = ginfo->image[((i * w * 3) + j * 3 + 2) + rowBytesOffset];
             imageData[(i * w * 4) + j * 4 + 3] = 0xFF;
         }
     }
@@ -960,7 +959,6 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD cache");
                 ok = MTLTR_DrawLCDGlyphViaCache(mtlc, dstOps,
                                                 ginfo, x, y,
-                                                rowBytesOffset,
                                                 rgbOrder, lcdContrast,
                                                 dstTexture);
             } else {
