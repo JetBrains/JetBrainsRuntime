@@ -471,6 +471,12 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
   diagnostic(bool, UseVectorizedMismatchIntrinsic, false,                   \
           "Enables intrinsification of ArraysSupport.vectorizedMismatch()") \
                                                                             \
+  diagnostic(bool, UseCopySignIntrinsic, false,                             \
+          "Enables intrinsification of Math.copySign")                      \
+                                                                            \
+  diagnostic(bool, UseSignumIntrinsic, false,                               \
+          "Enables intrinsification of Math.signum")                        \
+                                                                            \
   diagnostic(ccstrlist, DisableIntrinsic, "",                               \
          "do not expand intrinsics whose (internal) names appear here")     \
                                                                             \

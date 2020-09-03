@@ -1889,6 +1889,10 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   declare_c2_type(OverflowMulLNode, OverflowLNode)                        \
   declare_c2_type(FmaDNode, Node)                                         \
   declare_c2_type(FmaFNode, Node)                                         \
+  declare_c2_type(CopySignDNode, Node)                                    \
+  declare_c2_type(CopySignFNode, Node)                                    \
+  declare_c2_type(SignumDNode, Node)                                      \
+  declare_c2_type(SignumFNode, Node)                                      \
                                                                           \
   /*********************/                                                 \
   /* Adapter Blob Entries */                                              \
