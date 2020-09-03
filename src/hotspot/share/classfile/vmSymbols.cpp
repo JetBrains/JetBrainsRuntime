@@ -857,6 +857,14 @@ bool vmIntrinsics::is_disabled_by_flags(vmIntrinsics::ID id) {
   case vmIntrinsics::_isWhitespace:
     if (!UseCharacterCompareIntrinsics) return true;
     break;
+  case vmIntrinsics::_dcopySign:
+  case vmIntrinsics::_fcopySign:
+    if (!InlineMathNatives || !UseCopySignIntrinsic) return true;
+    break;
+  case vmIntrinsics::_dsignum:
+  case vmIntrinsics::_fsignum:
+    if (!InlineMathNatives || !UseSignumIntrinsic) return true;
+    break;
 #endif // COMPILER2
   default:
     return false;

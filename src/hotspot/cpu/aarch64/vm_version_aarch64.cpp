@@ -148,6 +148,12 @@ void VM_Version::initialize() {
     }
   }
 
+  if (_cpu == CPU_ARM) {
+    if (FLAG_IS_DEFAULT(UseSignumIntrinsic)) {
+      FLAG_SET_DEFAULT(UseSignumIntrinsic, true);
+    }
+  }
+
   if (_cpu == CPU_ARM && (_model == 0xd07 || _model2 == 0xd07)) _features |= CPU_STXR_PREFETCH;
   // If an olde style /proc/cpuinfo (cores == 1) then if _model is an A57 (0xd07)
   // we assume the worst and assume we could be on a big little system and have
