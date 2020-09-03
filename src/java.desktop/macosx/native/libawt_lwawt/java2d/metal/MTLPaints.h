@@ -69,7 +69,7 @@
 
 - (void)setRadialGradient:(jboolean)useMask
                    linear:(jboolean)linear
-              cycleMethod:(jboolean)cycleMethod
+              cycleMethod:(jint)cycleMethod
                  numStops:(jint)numStops
                       m00:(jfloat)m00
                       m01:(jfloat)m01

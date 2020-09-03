@@ -71,6 +71,16 @@ struct LinGradFrameUniforms {
     int cycleMethod;
 };
 
+struct RadGradFrameUniforms {
+    float fract[GRAD_MAX_FRACTIONS];
+    vector_float4 color[GRAD_MAX_FRACTIONS];
+    int numFracts;
+    int cycleMethod;
+    vector_float3 m0;
+    vector_float3 m1;
+    vector_float3 precalc;
+};
+
 struct Vertex {
     float position[2];
 };
