@@ -378,10 +378,14 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/lang/Math.abs(F)F",
                             "java/lang/Math.abs(I)I",
                             "java/lang/Math.abs(J)J",
+                            "java/lang/Math.copySign(DD)D",
+                            "java/lang/Math.copySign(FF)F",
                             "java/lang/Math.max(DD)D",
                             "java/lang/Math.max(FF)F",
                             "java/lang/Math.min(DD)D",
                             "java/lang/Math.min(FF)F",
+                            "java/lang/Math.signum(D)D",
+                            "java/lang/Math.signum(F)F",
                             "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V",
                             "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
         }
