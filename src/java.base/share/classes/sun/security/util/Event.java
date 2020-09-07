@@ -36,7 +36,7 @@ public final class Event {
     private Event() {}
 
     public enum ReporterCategory {
-        POSIXPERMS();
+        ZIPFILEATTRS();
 
         private Reporter reporter;
     }
