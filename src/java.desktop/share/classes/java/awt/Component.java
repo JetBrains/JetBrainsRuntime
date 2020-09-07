@@ -223,6 +223,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
     private static final PlatformLogger eventLog = PlatformLogger.getLogger("java.awt.event.Component");
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("java.awt.focus.Component");
     private static final PlatformLogger mixingLog = PlatformLogger.getLogger("java.awt.mixing.Component");
+    private static final PlatformLogger focusRequestLog = PlatformLogger.getLogger("jb.focus.requests");
 
     /**
      * The peer of the component. The peer implements the component's
@@ -7928,6 +7929,12 @@ public abstract class Component implements ImageObserver, MenuContainer,
                                      boolean focusedWindowChangeAllowed,
                                      FocusEvent.Cause cause)
     {
+        if (focusRequestLog.isLoggable(PlatformLogger.Level.FINE)) {
+            focusRequestLog.fine("requestFocus("
+                    + (temporary ? "temporary," : "")
+                    + (focusedWindowChangeAllowed ? "" : "inWindow,")
+                    + cause + ") for " + this, new Throwable());
+        }
         // 1) Check if the event being dispatched is a system-generated mouse event.
         AWTEvent currentEvent = EventQueue.getCurrentEvent();
         if (currentEvent instanceof MouseEvent &&
