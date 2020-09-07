@@ -48,7 +48,7 @@ import java.util.ArrayList;
 public class ReleaseDeflater {
     public static void main(String[] args) throws Throwable {
         Path zipFile = Paths.get("ReleaseDeflaterTest.zip").toAbsolutePath();
-        URI zipURI = URI.create("jar:file:" + zipFile);
+        URI zipURI = URI.create("jar:" + zipFile.toUri());
         try (FileSystem fs = FileSystems.newFileSystem(zipURI, Map.of("create", "true"))) {
             FileSystemProvider zprov = fs.provider();
             Path test = fs.getPath("test.txt");
