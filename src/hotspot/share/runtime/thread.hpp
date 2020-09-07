@@ -2250,8 +2250,6 @@ class Threads: AllStatic {
 
   // Deoptimizes all frames tied to marked nmethods
   static void deoptimized_wrt_marked_nmethods();
-
-  static jlong compile_total_time_ms();
 };
 
 
