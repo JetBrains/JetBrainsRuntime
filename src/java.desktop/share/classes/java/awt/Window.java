@@ -395,6 +395,7 @@ public class Window extends Container implements Accessible {
     private static final long serialVersionUID = 4497834738069338734L;
 
     private static final PlatformLogger log = PlatformLogger.getLogger("java.awt.Window");
+    private static final PlatformLogger focusRequestLog = PlatformLogger.getLogger("jb.focus.requests");
 
     private static final boolean locationByPlatformProp;
 
@@ -1312,6 +1313,9 @@ public class Window extends Container implements Accessible {
     // This functionality is implemented in a final package-private method
     // to insure that it cannot be overridden by client subclasses.
     final void toFront_NoClientCode() {
+        if (focusRequestLog.isLoggable(PlatformLogger.Level.FINE)) {
+            focusRequestLog.fine("toFront() for" + this, new Throwable());
+        }
         if (visible) {
             WindowPeer peer = (WindowPeer)this.peer;
             if (peer != null) {
@@ -1355,6 +1359,9 @@ public class Window extends Container implements Accessible {
     // This functionality is implemented in a final package-private method
     // to insure that it cannot be overridden by client subclasses.
     final void toBack_NoClientCode() {
+        if (focusRequestLog.isLoggable(PlatformLogger.Level.FINE)) {
+            focusRequestLog.fine("toBack() for " + this, new Throwable());
+        }
         if(isAlwaysOnTop()) {
             try {
                 setAlwaysOnTop(false);
