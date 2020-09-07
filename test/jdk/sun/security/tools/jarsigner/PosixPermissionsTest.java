@@ -44,8 +44,9 @@ public class PosixPermissionsTest {
     private final static String ZIPFILENAME = "8218021-test.zip";
     private final static String JARFILENAME = "8218021-test.jar";
     private final static URI ZIPURI = URI.create("jar:" + Path.of(ZIPFILENAME).toUri());
-    private static final String POSIXWARNING = "POSIX file permission attributes detected. " +
-        "These attributes are ignored when signing and are not protected by the signature.";
+    private static final String WARNING_MSG = "POSIX file permission and/or symlink " +
+        "attributes detected. These attributes are ignored when signing and are not " +
+        "protected by the signature.";
 
     public static void main(String[] args) throws Exception {
         // In JDK 11 we can't create a test zip file with POSIX permissions on the fly as its zipfs has no POSIX support.
@@ -76,7 +77,7 @@ public class PosixPermissionsTest {
                 "-keypass", "password",
                 "examplekey")
                 .shouldHaveExitValue(0)
-                .shouldContain(POSIXWARNING);
+                .shouldContain(WARNING_MSG);
 
         // sign jar file - no posix warning message expected
         SecurityTools.jarsigner("-keystore", "examplekeystore",
@@ -85,7 +86,7 @@ public class PosixPermissionsTest {
                 "-keypass", "password",
                 "examplekey")
                 .shouldHaveExitValue(0)
-                .shouldNotContain(POSIXWARNING);
+                .shouldNotContain(WARNING_MSG);
 
         SecurityTools.jarsigner("-keystore", "examplekeystore",
                 "-storepass", "password",
@@ -93,7 +94,7 @@ public class PosixPermissionsTest {
                 "-verbose",
                 "-verify", ZIPFILENAME)
                 .shouldHaveExitValue(0)
-                .shouldContain(POSIXWARNING);
+                .shouldContain(WARNING_MSG);
 
         // no warning expected for regular jar file
         SecurityTools.jarsigner("-keystore", "examplekeystore",
@@ -102,7 +103,7 @@ public class PosixPermissionsTest {
                 "-verbose",
                 "-verify", JARFILENAME)
                 .shouldHaveExitValue(0)
-                .shouldNotContain(POSIXWARNING);
+                .shouldNotContain(WARNING_MSG);
     }
 
     private static void createFiles() throws Exception {
