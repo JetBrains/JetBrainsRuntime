@@ -102,11 +102,6 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
         stencilTextureDescriptor.storageMode = MTLStorageModePrivate;
         bmtlsdo->pStencilTexture = [ctx.device newTextureWithDescriptor:stencilTextureDescriptor];
 
-        MTLTextureDescriptor *lcdTextureDescriptor = 
-            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:width height:height mipmapped:NO];
-
-        bmtlsdo->textureLCD = [ctx.device newTextureWithDescriptor:lcdTextureDescriptor];
-
         bmtlsdo->isOpaque = isOpaque;
         bmtlsdo->xOffset = 0;
         bmtlsdo->yOffset = 0;

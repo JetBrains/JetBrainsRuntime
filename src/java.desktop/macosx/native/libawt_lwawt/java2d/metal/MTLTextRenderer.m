@@ -82,18 +82,6 @@ static MTLGlyphCacheInfo *glyphCacheLCD = NULL;
 static MTLGlyphCacheInfo *glyphCacheAA = NULL;
 
 /**
- * The handle to the LCD text fragment program object.
- */
-static GLhandleARB lcdTextProgram = 0;
-
-/**
- * This value tracks the previous LCD contrast setting, so if the contrast
- * value hasn't changed since the last time the gamma uniforms were
- * updated (not very common), then we can skip updating the unforms.
- */
-static jint lastLCDContrast = -1;
-
-/**
  * This value tracks the previous LCD rgbOrder setting, so if the rgbOrder
  * value has changed since the last time, it indicates that we need to
  * invalidate the cache, which may already store glyph images in the reverse
@@ -109,61 +97,6 @@ static jboolean lastRGBOrder = JNI_TRUE;
  * restrict this value to a particular size.
  */
 #define MTLTR_NOCACHE_TILE_SIZE 32
-
-/**
- * These constants define the size of the "cached destination" texture.
- * This texture is only used when rendering LCD-optimized text, as that
- * codepath needs direct access to the destination.  There is no way to
- * access the framebuffer directly from an OpenGL shader, so we need to first
- * copy the destination region corresponding to a particular glyph into
- * this cached texture, and then that texture will be accessed inside the
- * shader.  Copying the destination into this cached texture can be a very
- * expensive operation (accounting for about half the rendering time for
- * LCD text), so to mitigate this cost we try to bulk read a horizontal
- * region of the destination at a time.  (These values are empirically
- * derived for the common case where text runs horizontally.)
- *
- * Note: It is assumed in various calculations below that:
- *     (MTLTR_CACHED_DEST_WIDTH  >= MTLTR_CACHE_CELL_WIDTH)  &&
- *     (MTLTR_CACHED_DEST_WIDTH  >= MTLTR_NOCACHE_TILE_SIZE) &&
- *     (MTLTR_CACHED_DEST_HEIGHT >= MTLTR_CACHE_CELL_HEIGHT) &&
- *     (MTLTR_CACHED_DEST_HEIGHT >= MTLTR_NOCACHE_TILE_SIZE)
- */
-#define MTLTR_CACHED_DEST_WIDTH  512
-#define MTLTR_CACHED_DEST_HEIGHT (MTLTR_CACHE_CELL_HEIGHT * 2)
-
-/**
- * The handle to the "cached destination" texture object.
- */
-static GLuint cachedDestTextureID = 0;
-
-/**
- * The current bounds of the "cached destination" texture, in destination
- * coordinate space.  The width/height of these bounds will not exceed the
- * MTLTR_CACHED_DEST_WIDTH/HEIGHT values defined above.  These bounds are
- * only considered valid when the isCachedDestValid flag is JNI_TRUE.
- */
-static SurfaceDataBounds cachedDestBounds;
-
-/**
- * This flag indicates whether the "cached destination" texture contains
- * valid data.  This flag is reset to JNI_FALSE at the beginning of every
- * call to MTLTR_DrawGlyphList().  Once we copy valid destination data
- * into the cached texture, this flag is set to JNI_TRUE.  This way, we can
- * limit the number of times we need to copy destination data, which is a
- * very costly operation.
- */
-static jboolean isCachedDestValid = JNI_FALSE;
-
-/**
- * The bounds of the previously rendered LCD glyph, in destination
- * coordinate space.  We use these bounds to determine whether the glyph
- * currently being rendered overlaps the previously rendered glyph (i.e.
- * its bounding box intersects that of the previously rendered glyph).  If
- * so, we need to re-read the destination area associated with that previous
- * glyph so that we can correctly blend with the actual destination data.
- */
-static SurfaceDataBounds previousGlyphBounds;
 
 static struct TxtVertex txtVertices[6];
 static jint vertexCacheIndex = 0;
@@ -502,33 +435,6 @@ MTLTR_DisableGlyphVertexCache(MTLContext *mtlc)
     MTLVertexCache_FreeVertexCache();
 }
 
-/**
- * Disables any pending state associated with the current "glyph mode".
- */
-void
-MTLTR_DisableGlyphModeState()
-{
-    // TODO : This is similar to OpenGL implementation
-    // When LCD implementation is done weshould make
-    // more changes.
-    J2dTraceLn1(J2D_TRACE_VERBOSE,
-                "MTLTR_DisableGlyphModeState: mode=%d", glyphMode);
-    switch (glyphMode) {
-    case MODE_NO_CACHE_LCD:
-        // TODO : Along with LCD implementation
-        // changes needs to be made
-    case MODE_USE_CACHE_LCD:
-        // TODO : Along with LCD implementation
-        // changes needs to be made
-        break;
-    case MODE_NO_CACHE_GRAY:
-    case MODE_USE_CACHE_GRAY:
-    case MODE_NOT_INITED:
-    default:
-        break;
-    }
-}
-
 static jboolean
 MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
                                  GlyphInfo *ginfo, jint x, jint y, BMTLSDOps *dstOps)
@@ -573,42 +479,10 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
     return JNI_TRUE;
 }
 
-/**
- * Evaluates to true if the rectangle defined by gx1/gy1/gx2/gy2 is
- * inside outerBounds.
- */
-#define INSIDE(gx1, gy1, gx2, gy2, outerBounds) \
-    (((gx1) >= outerBounds.x1) && ((gy1) >= outerBounds.y1) && \
-     ((gx2) <= outerBounds.x2) && ((gy2) <= outerBounds.y2))
-
-/**
- * Evaluates to true if the rectangle defined by gx1/gy1/gx2/gy2 intersects
- * the rectangle defined by bounds.
- */
-#define INTERSECTS(gx1, gy1, gx2, gy2, bounds) \
-    ((bounds.x2 > (gx1)) && (bounds.y2 > (gy1)) && \
-     (bounds.x1 < (gx2)) && (bounds.y1 < (gy2)))
-
-/**
- * This method checks to see if the given LCD glyph bounds fall within the
- * cached destination texture bounds.  If so, this method can return
- * immediately.  If not, this method will copy a chunk of framebuffer data
- * into the cached destination texture and then update the current cached
- * destination bounds before returning.
- */
-static void
-MTLTR_UpdateCachedDestination(MTLSDOps *dstOps, GlyphInfo *ginfo,
-                              jint gx1, jint gy1, jint gx2, jint gy2,
-                              jint glyphIndex, jint totalGlyphs)
-{
-    //TODO
-}
-
 static jboolean
 MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                            GlyphInfo *ginfo, jint x, jint y,
-                           jboolean rgbOrder, jint contrast,
-                           id<MTLTexture> dstTexture)
+                           jboolean rgbOrder, jint contrast)
 {
     CacheCellInfo *cell;
     jfloat tx1, ty1, tx2, ty2;
@@ -725,14 +599,10 @@ static jboolean
 MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                           GlyphInfo *ginfo, jint x, jint y,
                           jint rowBytesOffset,
-                          jboolean rgbOrder, jint contrast,
-                          id<MTLTexture> dstTexture)
+                          jboolean rgbOrder, jint contrast)
 {
     jfloat tx1, ty1, tx2, ty2;
-    jfloat dtx1=0, dty1=0, dtx2=0, dty2=0;
     jint tw, th;
-    jint sx=0, sy=0, sw=0, sh=0, dxadj=0, dyadj=0;
-    jint x0;
     jint w = ginfo->width;
     jint h = ginfo->height;
     id<MTLTexture> blitTexture = nil;
@@ -775,14 +645,6 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
         return JNI_FALSE;
     }
 
-    x0 = x;
-    tx1 = 0.0f;
-    ty1 = 0.0f;
-    dtx1 = 0.0f;
-    dty2 = 0.0f;
-    tw = MTLTR_NOCACHE_TILE_SIZE;
-    th = MTLTR_NOCACHE_TILE_SIZE;
-
     unsigned int imageBytes = w * h *4;
     unsigned char imageData[imageBytes];
     memset(&imageData, 0, sizeof(imageData));
@@ -805,24 +667,14 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                  withBytes:imageData
                  bytesPerRow:bytesPerRow];
 
-    J2dTraceLn7(J2D_TRACE_INFO, "sx = %d sy = %d x = %d y = %d sw = %d sh = %d w = %d", sx, sy, x, y, sw, sh, w);
-
-
-    // update the lower-right glyph texture coordinates
+    tx1 = 0.0f;
+    ty1 = 0.0f;
     tx2 = 1.0f;
     ty2 = 1.0f;
 
-    J2dTraceLn5(J2D_TRACE_INFO, "xOffset %d yOffset %d, dxadj %d, dyadj %d dstOps->height %d", dstOps->xOffset, dstOps->yOffset, dxadj, dyadj, dstOps->height);
-
-    dtx1 = ((jfloat)dxadj) / dstOps->textureWidth;
-    dtx2 = ((float)dxadj + sw) / dstOps->textureWidth;
-  
-    dty1 = ((jfloat)dyadj + sh) / dstOps->textureHeight;
-    dty2 = ((jfloat)dyadj) / dstOps->textureHeight;
-
+    J2dTraceLn3(J2D_TRACE_INFO, "xOffset %d yOffset %d, dstOps->height %d", dstOps->xOffset, dstOps->yOffset, dstOps->height);
     J2dTraceLn4(J2D_TRACE_INFO, "tx1 %f, ty1 %f, tx2 %f, ty2 %f", tx1, ty1, tx2, ty2);
     J2dTraceLn2(J2D_TRACE_INFO, "textureWidth %d textureHeight %d", dstOps->textureWidth, dstOps->textureHeight);
-    J2dTraceLn4(J2D_TRACE_INFO, "dtx1 %f, dty1 %f, dtx2 %f, dty2 %f", dtx1, dty1, dtx2, dty2);
 
     LCD_ADD_TRIANGLES(tx1, ty1, tx2, ty2, x, y, x+w, y+h);
 
@@ -872,7 +724,6 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
     }
 
     glyphMode = MODE_NOT_INITED;
-    isCachedDestValid = JNI_FALSE;
     J2dTraceLn1(J2D_TRACE_INFO, "totalGlyphs = %d", totalGlyphs);
     jboolean flushBeforeLCD = JNI_FALSE;
 
@@ -939,7 +790,6 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                 [commandbuf commit];
                 flushBeforeLCD = JNI_TRUE;
             }
-            void* dstTexture = dstOps->textureLCD;
 
             // LCD-optimized glyph data
             jint rowBytesOffset = 0;
@@ -959,15 +809,13 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD cache");
                 ok = MTLTR_DrawLCDGlyphViaCache(mtlc, dstOps,
                                                 ginfo, x, y,
-                                                rgbOrder, lcdContrast,
-                                                dstTexture);
+                                                rgbOrder, lcdContrast);
             } else {
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD no cache");
                 ok = MTLTR_DrawLCDGlyphNoCache(mtlc, dstOps,
                                                ginfo, x, y,
                                                rowBytesOffset,
-                                               rgbOrder, lcdContrast,
-                                               dstTexture);
+                                               rgbOrder, lcdContrast);
             }
         }
 

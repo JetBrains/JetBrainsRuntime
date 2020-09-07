@@ -177,7 +177,6 @@ typedef struct {
     void*                        pStencilTexture;   // stencil texture byte buffer stencil mask used in main rendering
     void*                        pAAStencilData;    // stencil data for AA rendering
     void*                        pAAStencilDataBuf; // MTLBuffer with AA stencil data
-    void*                        textureLCD;
     jint                         textureWidth;
     jint                         textureHeight;
    /* GLenum */ jint                      textureTarget;
