@@ -680,8 +680,8 @@ class ZipFile implements ZipConstants, Closeable {
         e.csize = CENSIZ(cen, pos);
         e.method = CENHOW(cen, pos);
         if (CENVEM_FA(cen, pos) == FILE_ATTRIBUTES_UNIX) {
-            // 12 bits for setuid, setgid, sticky + perms
-            e.posixPerms = CENATX_PERMS(cen, pos) & 0xFFF;
+            // read all bits in this field, including sym link attributes
+            e.extraAttributes = CENATX_PERMS(cen, pos) & 0xFFFF;
         }
 
         if (elen != 0) {
@@ -1139,14 +1139,13 @@ class ZipFile implements ZipConstants, Closeable {
                 public Stream<String> entryNameStream(ZipFile zip) {
                     return zip.entryNameStream();
                 }
-                // only set posix perms value via ZipEntry contructor for now
                 @Override
-                public int getPosixPerms(ZipEntry ze) {
-                    return ze.posixPerms;
+                public int getExtraAttributes(ZipEntry ze) {
+                    return ze.extraAttributes;
                 }
                 @Override
-                public void setPosixPerms(ZipEntry ze, int perms) {
-                    ze.posixPerms = perms;
+                public void setExtraAttributes(ZipEntry ze, int extraAttrs) {
+                    ze.extraAttributes = extraAttrs;
                 }
 
              }

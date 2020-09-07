@@ -58,7 +58,7 @@ class ZipEntry implements ZipConstants, Cloneable {
     int flag = 0;       // general purpose flag
     byte[] extra;       // optional extra field data for entry
     String comment;     // optional comment string for entry
-    int posixPerms = -1;// posix permissions
+    int extraAttributes = -1; // e.g. POSIX permissions, sym links.
     /**
      * Compression method for uncompressed entries.
      */
@@ -132,7 +132,7 @@ class ZipEntry implements ZipConstants, Cloneable {
         flag = e.flag;
         extra = e.extra;
         comment = e.comment;
-        posixPerms = e.posixPerms;
+        extraAttributes = e.extraAttributes;
     }
 
     /**
