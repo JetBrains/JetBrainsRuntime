@@ -4571,7 +4571,7 @@ void Threads::deoptimized_wrt_marked_nmethods() {
 jlong Threads::compile_total_time_ms() {
   jlong accumulator = 0;
   MutexLocker mu(Threads_lock);
-  for (JavaThread* i = _thread_list; i != NULL; i = i->next()) {
+  for (JavaThread* i = _thread_list; i != nullptr; i = i->next()) {
     if (i->is_Compiler_thread()) {
       jlong time = os::thread_cpu_time((Thread *) i, true) / 1000 / 1000;
       accumulator += time;
