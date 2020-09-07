@@ -96,8 +96,6 @@ import sun.awt.AppContext;
 import sun.awt.ComponentFactory;
 import sun.security.action.GetBooleanAction;
 import sun.security.action.GetPropertyAction;
-import sun.awt.AppContext;
-import sun.awt.AWTAccessor;
 import sun.awt.ConstrainableGraphics;
 import sun.awt.EmbeddedFrame;
 import sun.awt.RequestFocusController;
@@ -113,7 +111,6 @@ import sun.java2d.SunGraphics2D;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.pipe.Region;
 import sun.java2d.pipe.hw.ExtendedBufferCapabilities;
-import sun.security.action.GetPropertyAction;
 import sun.swing.SwingAccessor;
 import sun.util.logging.PlatformLogger;
 
@@ -227,6 +224,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
     private static final PlatformLogger eventLog = PlatformLogger.getLogger("java.awt.event.Component");
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("java.awt.focus.Component");
     private static final PlatformLogger mixingLog = PlatformLogger.getLogger("java.awt.mixing.Component");
+    private static final PlatformLogger focusRequestLog = PlatformLogger.getLogger("jb.focus.requests");
 
     /**
      * The peer of the component. The peer implements the component's
@@ -7935,6 +7933,12 @@ public abstract class Component implements ImageObserver, MenuContainer,
                                      boolean focusedWindowChangeAllowed,
                                      FocusEvent.Cause cause)
     {
+        if (focusRequestLog.isLoggable(PlatformLogger.Level.FINE)) {
+            focusRequestLog.fine("requestFocus("
+                    + (temporary ? "temporary," : "")
+                    + (focusedWindowChangeAllowed ? "" : "inWindow,")
+                    + cause + ") for " + this, new Throwable());
+        }
         // 1) Check if the event being dispatched is a system-generated mouse event.
         AWTEvent currentEvent = EventQueue.getCurrentEvent();
         if (currentEvent instanceof MouseEvent &&
