@@ -218,7 +218,7 @@ fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
     return half4(c.r*renderColor.a,
                  c.g*renderColor.a,
                  c.b*renderColor.a,
-                 renderColor.a);
+                 c.a*renderColor.a);
 }
 
 fragment half4 frag_txt_lin_grad(GradShaderInOut in [[stage_in]],
@@ -254,7 +254,7 @@ fragment half4 frag_txt_lin_grad(GradShaderInOut in [[stage_in]],
     return half4(c.r*renderColor.a,
                  c.g*renderColor.a,
                  c.b*renderColor.a,
-                 renderColor.a);
+                 c.a*renderColor.a);
 }
 
 fragment half4 frag_txt_rad_grad(GradShaderInOut in [[stage_in]],
@@ -294,7 +294,7 @@ fragment half4 frag_txt_rad_grad(GradShaderInOut in [[stage_in]],
     return half4(c.r*renderColor.a,
                      c.g*renderColor.a,
                      c.b*renderColor.a,
-                     renderColor.a);
+                     c.a*renderColor.a);
 }
 
 
