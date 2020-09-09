@@ -1086,7 +1086,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         if (!isVisible() && vis) {
             isBeforeFirstMapNotify = true;
             winAttr.initialFocus = isAutoRequestFocus();
-            if (!winAttr.initialFocus) {
+            if (!winAttr.initialFocus && XWM.getWMID() != XWM.I3_WM) {
                 /*
                  * It's easier and safer to temporary suppress WM_TAKE_FOCUS
                  * protocol itself than to ignore WM_TAKE_FOCUS client message.
@@ -1094,6 +1094,13 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                  * the message come after showing and the message come after
                  * activation. Also, on Metacity, for some reason, we have _two_
                  * WM_TAKE_FOCUS client messages when showing a frame/dialog.
+                 *
+                 * i3 window manager doesn't track updates to WM_TAKE_FOCUS
+                 * property, so this approach won't work for it, breaking
+                 * focus behaviour completely. So another way is used to
+                 * suppress focus take over - via setting _NET_WM_USER_TIME
+                 * to 0, as specified in EWMH spec (see
+                 * 'setUserTimeBeforeShowing' method).
                  */
                 suppressWmTakeFocus(true);
             }
@@ -1154,6 +1161,16 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     }
 
     protected void suppressWmTakeFocus(boolean doSuppress) {
+    }
+
+    @Override
+    void setUserTimeBeforeShowing() {
+        if (winAttr.initialFocus || XWM.getWMID() != XWM.I3_WM) {
+            super.setUserTimeBeforeShowing();
+        }
+        else {
+            setUserTime(0, false);
+        }
     }
 
     final boolean isSimpleWindow() {
@@ -1320,7 +1337,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         isUnhiding |= isWMStateNetHidden();
 
         super.handleMapNotifyEvent(xev);
-        if (!winAttr.initialFocus) {
+        if (!winAttr.initialFocus && XWM.getWMID() != XWM.I3_WM) {
             suppressWmTakeFocus(false); // restore the protocol.
             /*
              * For some reason, on Metacity, a frame/dialog being shown
@@ -1937,7 +1954,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             this.visible = visible;
             if (visible) {
                 applyWindowType();
-                setUserTimeFromGlobal();
+                setUserTimeBeforeShowing();
                 XlibWrapper.XMapRaised(XToolkit.getDisplay(), getWindow());
             } else {
                 XlibWrapper.XUnmapWindow(XToolkit.getDisplay(), getWindow());
