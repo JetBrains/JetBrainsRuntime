@@ -45,6 +45,8 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
         {{-1.0, 1.0}, {0.0, 0.0}}
 };
 
+MTLTransform* tempTransform = nil;
+
 @implementation MTLCommandBufferWrapper {
     id<MTLCommandBuffer> _commandBuffer;
     NSMutableArray * _pooledTextures;
@@ -137,6 +139,8 @@ extern void initSamplers(id<MTLDevice> device);
         commandQueue = [device newCommandQueue];
         blitCommandQueue = [device newCommandQueue];
 
+        tempTransform = [[MTLTransform alloc] init];
+
         initSamplers(device);
     }
     return self;
@@ -155,6 +159,8 @@ extern void initSamplers(id<MTLDevice> device);
     [_composite release];
     [_paint release];
     [_transform release];
+    [tempTransform release];
+    tempTransform = nil;
     [_clip release];
     [super dealloc];
 }
@@ -238,11 +244,19 @@ extern void initSamplers(id<MTLDevice> device);
 - (void)beginShapeClip:(BMTLSDOps *)dstOps {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.beginShapeClip");
     [_clip beginShapeClip:dstOps context:self];
+
+    // Store the current transform as we need to use identity transform
+    // for clip spans rendering
+    [tempTransform copyFrom:_transform];
+    [self resetTransform];
 }
 
 - (void)endShapeClip:(BMTLSDOps *)dstOps {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.endShapeClip");
     [_clip endShapeClip:dstOps context:self];
+
+    // Reset transform for further rendering
+    [_transform copyFrom:tempTransform];
 }
 
 - (void)resetComposite {
