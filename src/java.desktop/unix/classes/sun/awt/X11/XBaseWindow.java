@@ -77,7 +77,6 @@ public class XBaseWindow {
 
     private static XAtom wm_client_leader;
 
-    private long userTime;
     private static long globalUserTime;
 
     static enum InitialiseState {
@@ -654,7 +653,7 @@ public class XBaseWindow {
         try {
             this.visible = visible;
             if (visible) {
-                setUserTimeFromGlobal();
+                setUserTimeBeforeShowing();
                 XlibWrapper.XMapWindow(XToolkit.getDisplay(), getWindow());
             }
             else {
@@ -1014,7 +1013,7 @@ public class XBaseWindow {
     public void handleVisibilityEvent(XEvent xev) {
     }
     public void handleKeyPress(XEvent xev) {
-        setUserTime(xev.get_xkey().get_time());
+        setUserTime(xev.get_xkey().get_time(), true);
     }
     public void handleKeyRelease(XEvent xev) {
     }
@@ -1047,7 +1046,7 @@ public class XBaseWindow {
         if (!isWheel) {
             switch (xev.get_type()) {
                 case XConstants.ButtonPress:
-                    setUserTime(xbe.get_time());
+                    setUserTime(xbe.get_time(), true);
                     if (buttonState == 0) {
                         XWindowPeer parent = getToplevelXWindow();
                         // See 6385277, 6981400.
@@ -1265,15 +1264,12 @@ public class XBaseWindow {
         return x >= getAbsoluteX() && y >= getAbsoluteY() && x < (getAbsoluteX()+getWidth()) && y < (getAbsoluteY()+getHeight());
     }
 
-    void setUserTimeFromGlobal() {
-        setUserTime(globalUserTime);
+    void setUserTimeBeforeShowing() {
+        if (globalUserTime != 0) setUserTime(globalUserTime, false);
     }
 
-    protected void setUserTime(long time) {
-        if (time == userTime) return;
-
-        userTime = time;
-        if ((int)time - (int)globalUserTime > 0 /* accounting for wrap-around */) {
+    protected void setUserTime(long time, boolean updateGlobalTime) {
+        if (updateGlobalTime && (int)time - (int)globalUserTime > 0 /* accounting for wrap-around */) {
             globalUserTime = time;
         }
         XNETProtocol netProtocol = XWM.getWM().getNETProtocol();
