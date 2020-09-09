@@ -1123,7 +1123,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
         }
         // we should treat WM_TAKE_FOCUS message as user interaction, as it can originate e.g. from user clicking
         // on window title bar (there will be no ButtonPress/ButtonRelease events in this case)
-        setUserTime(requestTimeStamp);
+        setUserTime(requestTimeStamp, true);
 
         if (XWM.getWMID() == XWM.UNITY_COMPIZ_WM) {
             // JDK-8159460
