@@ -107,7 +107,8 @@ final class XWM
         MUTTER_WM = 15,
         UNITY_COMPIZ_WM = 16,
         XMONAD_WM = 17,
-        AWESOME_WM = 18;
+        AWESOME_WM = 18,
+        I3_WM = 19;
 
     public String toString() {
         switch  (WMID) {
@@ -617,6 +618,10 @@ final class XWM
         return isNetWMName("awesome");
     }
 
+    static boolean isI3() {
+        return isNetWMName("i3");
+    }
+
     static int awtWMNonReparenting = -1;
     static boolean isNonReparentingWM() {
         if (awtWMNonReparenting == -1) {
@@ -820,6 +825,8 @@ final class XWM
                 awt_wmgr = XWM.XMONAD_WM;
             } else if (isAwesome()) {
                 awt_wmgr = XWM.AWESOME_WM;
+            } else if (isI3()) {
+                awt_wmgr = XWM.I3_WM;
             }
             /*
              * We don't check for legacy WM when we already know that WM
