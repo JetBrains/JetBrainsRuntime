@@ -119,6 +119,7 @@ struct TxtFrameOpRescaleUniforms {
 
 struct TxtFrameOpConvolveUniforms {
     float extraAlpha;
+    int isSrcOpaque;
     vector_float4 imgEdge;
     int kernelSize;
     int isEdgeZeroFill;
@@ -126,6 +127,7 @@ struct TxtFrameOpConvolveUniforms {
 
 struct TxtFrameOpLookupUniforms {
     float extraAlpha;
+    int isSrcOpaque;
     vector_float4 offset;
     int isUseSrcAlpha;
     int isNonPremult;

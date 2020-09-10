@@ -479,7 +479,7 @@ static void setTxtUniforms(
                 fragShader = @"frag_txt_op_convolve";
 
                 struct TxtFrameOpConvolveUniforms uf = {
-                        [mtlc.composite getExtraAlpha], FLOAT_ARR_TO_V4([convolveOp getImgEdge]),
+                        [mtlc.composite getExtraAlpha], renderOptions->srcFlags.isOpaque, FLOAT_ARR_TO_V4([convolveOp getImgEdge]),
                         convolveOp.kernelSize, convolveOp.isEdgeZeroFill,
                 };
                 [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
@@ -492,8 +492,8 @@ static void setTxtUniforms(
                 fragShader = @"frag_txt_op_lookup";
 
                 struct TxtFrameOpLookupUniforms uf = {
-                        [mtlc.composite getExtraAlpha], FLOAT_ARR_TO_V4([lookupOp getOffset]),
-                        lookupOp.isUseSrcAlpha, lookupOp.isNonPremult,
+                        [mtlc.composite getExtraAlpha], renderOptions->srcFlags.isOpaque,
+                        FLOAT_ARR_TO_V4([lookupOp getOffset]), lookupOp.isUseSrcAlpha, lookupOp.isNonPremult,
                 };
                 [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
                 setSampler(encoder, renderOptions->interpolation, NO);

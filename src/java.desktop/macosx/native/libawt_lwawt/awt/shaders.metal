@@ -367,8 +367,8 @@ fragment half4 frag_txt_op_convolve(
         sum.b += kern.z * pixCol.b;
         sum.a += kern.z * pixCol.a;
     }
-
-    return half4(sum.r, sum.g, sum.b, sum.a*uniforms.extraAlpha);
+    const float srcA = uniforms.isSrcOpaque ? 1 : sum.a;
+    return half4(sum.r, sum.g, sum.b, srcA*uniforms.extraAlpha);
 
     // NOTE: GL-shader multiplies result with glColor (in order to apply extra alpha), probably it's better to do the
     // same here.
@@ -407,8 +407,8 @@ fragment half4 frag_txt_op_lookup(
     float4 lookupR = lookupTex.sample(textureSampler, posR);
     float4 lookupG = lookupTex.sample(textureSampler, posG);
     float4 lookupB = lookupTex.sample(textureSampler, posB);
-
-    const float a = uniforms.isUseSrcAlpha ? srcColor.a : lookupTex.sample(textureSampler, float2(srcIndex.a, 0.875)).a;
+    const float srcA = uniforms.isSrcOpaque ? 1 : srcColor.a;
+    const float a = uniforms.isUseSrcAlpha ? srcA : lookupTex.sample(textureSampler, float2(srcIndex.a, 0.875)).a;
 
     // TODO: check uniforms.isNonPremult and pre-multiply if necessary
     return half4(lookupR.a, lookupG.a, lookupB.a, a*uniforms.extraAlpha);
