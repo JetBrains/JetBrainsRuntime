@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2018 SAP SE. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -286,6 +286,11 @@ inline void Assembler::testbitdi(ConditionRegister cr, Register a, Register s, i
     Assembler::cmpdi(cr, a, 0);
   }
 }
+
+// Byte reverse instructions (introduced with Power10)
+inline void Assembler::brh(Register a, Register s) { emit_int32(BRH_OPCODE | rta(a) | rs(s)); }
+inline void Assembler::brw(Register a, Register s) { emit_int32(BRW_OPCODE | rta(a) | rs(s)); }
+inline void Assembler::brd(Register a, Register s) { emit_int32(BRD_OPCODE | rta(a) | rs(s)); }
 
 // rotate instructions
 inline void Assembler::rotldi( Register a, Register s, int n) { Assembler::rldicl(a, s, n, 0); }
