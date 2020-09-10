@@ -1843,7 +1843,7 @@ static jlong
         if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_LCD && width > 0) {
             glyphInfo->width = width/3;
             glyphInfo->topLeftX -= 1;
-            glyphInfo->width += 1;
+            glyphInfo->width += 2;
         } else if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_LCD_V) {
             glyphInfo->height = glyphInfo->height/3;
         }
