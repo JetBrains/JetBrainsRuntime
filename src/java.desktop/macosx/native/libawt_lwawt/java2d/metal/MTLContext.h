@@ -59,7 +59,7 @@
  * */
 @interface MTLContext : NSObject
 @property (readonly) MTLComposite * composite;
-@property (readonly) MTLPaint * paint;
+@property (readwrite, retain) MTLPaint * paint;
 @property (readonly) MTLTransform * transform;
 @property (readonly) MTLClip * clip;
 

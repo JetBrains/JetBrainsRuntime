@@ -100,7 +100,7 @@ MTLTransform* tempTransform = nil;
 @synthesize textureFunction,
             vertexCacheEnabled, aaEnabled, device, library, pipelineStateStorage,
             commandQueue, blitCommandQueue, vertexBuffer,
-            texturePool;
+            texturePool, paint=_paint;
 
 extern void initSamplers(id<MTLDevice> device);
 
@@ -318,12 +318,12 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (void)resetPaint {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.resetPaint");
-    [_paint reset];
+    self.paint = [[[MTLPaint alloc] init] autorelease];
 }
 
 - (void)setColorPaint:(int)pixel {
     J2dTraceLn5(J2D_TRACE_INFO, "MTLContext.setColorPaint: pixel=%08x [r=%d g=%d b=%d a=%d]", pixel, (pixel >> 16) & (0xFF), (pixel >> 8) & 0xFF, (pixel) & 0xFF, (pixel >> 24) & 0xFF);
-    [_paint setColor:pixel];
+    self.paint = [[[MTLColorPaint alloc] initWithColor:pixel] autorelease];
 }
 
 - (void)setGradientPaintUseMask:(jboolean)useMask
@@ -335,13 +335,13 @@ extern void initSamplers(id<MTLDevice> device);
                          pixel2:(jint) pixel2
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.setGradientPaintUseMask");
-    [_paint setGradientUseMask:useMask
-                            cyclic:cyclic
-                                p0:p0
-                                p1:p1
-                                p3:p3
-                            pixel1:pixel1
-                            pixel2:pixel2];
+    self.paint = [[[MTLGradPaint alloc] initWithUseMask:useMask
+                                                cyclic:cyclic
+                                                    p0:p0
+                                                    p1:p1
+                                                    p3:p3
+                                                pixel1:pixel1
+                                                pixel2:pixel2] autorelease];
 }
 
 - (void)setLinearGradientPaint:(jboolean)useMask
@@ -359,7 +359,7 @@ extern void initSamplers(id<MTLDevice> device);
                         pixels:(jint*)pixels
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.setLinearGradientPaint");
-    [_paint setLinearGradient:useMask
+    self.paint = [[[MTLLinearGradPaint alloc] initWithUseMask:useMask
                        linear:linear
                   cycleMethod:cycleMethod
                      numStops:numStops
@@ -367,7 +367,7 @@ extern void initSamplers(id<MTLDevice> device);
                            p1:p1
                            p3:p3
                     fractions:fractions
-                       pixels:pixels];
+                       pixels:pixels] autorelease];
 }
 
 - (void)setRadialGradientPaint:(jboolean)useMask
@@ -385,19 +385,19 @@ extern void initSamplers(id<MTLDevice> device);
                         pixels:(void *)pixels
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.setRadialGradientPaint");
-    [_paint setRadialGradient:useMask
-                       linear:linear
-                  cycleMethod:cycleMethod
-                     numStops:numStops
-                          m00:m00
-                          m01:m01
-                          m02:m02
-                          m10:m10
-                          m11:m11
-                          m12:m12
-                       focusX:focusX
-                    fractions:fractions
-                       pixels:pixels];
+    self.paint = [[[MTLRadialGradPaint alloc] initWithUseMask:useMask
+                                                      linear:linear
+                                                 cycleMethod:cycleMethod
+                                                    numStops:numStops
+                                                         m00:m00
+                                                         m01:m01
+                                                         m02:m02
+                                                         m10:m10
+                                                         m11:m11
+                                                         m12:m12
+                                                      focusX:focusX
+                                                   fractions:fractions
+                                                      pixels:pixels] autorelease];
 }
 
 - (void)setTexturePaint:(jboolean)useMask
@@ -419,16 +419,15 @@ extern void initSamplers(id<MTLDevice> device);
 
     J2dTraceLn1(J2D_TRACE_INFO, "MTLContext.setTexturePaint [tex=%p]", srcOps->pTexture);
 
-
-    [_paint setTexture:useMask
-               textureID:srcOps->pTexture
-                filter:filter
-                   xp0:xp0
-                   xp1:xp1
-                   xp3:xp3
-                   yp0:yp0
-                   yp1:yp1
-                   yp3:yp3];
+    self.paint = [[[MTLTexturePaint alloc] initWithUseMask:useMask
+                                                textureID:srcOps->pTexture
+                                                   filter:filter
+                                                      xp0:xp0
+                                                      xp1:xp1
+                                                      xp3:xp3
+                                                      yp0:yp0
+                                                      yp1:yp1
+                                                      yp3:yp3] autorelease] ;
 }
 
 - (id<MTLCommandBuffer>)createCommandBuffer {

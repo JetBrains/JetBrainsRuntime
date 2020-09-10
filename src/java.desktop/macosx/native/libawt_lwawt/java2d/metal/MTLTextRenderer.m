@@ -280,6 +280,10 @@ MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
                               MTLSDOps *dstOps,
                               jint contrast)
 {
+    if (![mtlc.paint isKindOfClass:[MTLColorPaint class]]) {
+        return JNI_FALSE;
+    }
+    MTLColorPaint* cPaint = (MTLColorPaint *) mtlc.paint;
     // create the LCD text shader, if necessary
     if (templateLCDPipelineDesc == nil) {
 
@@ -318,7 +322,7 @@ MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
     double invgamma = 1.0/gamma;
     jfloat radj, gadj, badj;
     jfloat clr[4];
-    jint col = [mtlc.paint getColor];
+    jint col = cPaint.color;
 
     J2dTraceLn2(J2D_TRACE_INFO, "primary color %x, contrast %d", col, contrast);
     J2dTraceLn2(J2D_TRACE_INFO, "gamma %f, invgamma %f", gamma, invgamma);
@@ -382,12 +386,16 @@ static jboolean
 MTLTR_SetLCDContrast(MTLContext *mtlc,
                      jint contrast)
 {
+    if (![mtlc.paint isKindOfClass:[MTLColorPaint class]]) {
+        return JNI_FALSE;
+    }
+    MTLColorPaint* cPaint = (MTLColorPaint *) mtlc.paint;
     // update the current color settings
     double gamma = ((double)contrast) / 100.0;
     double invgamma = 1.0/gamma;
     jfloat radj, gadj, badj;
     jfloat clr[4];
-    jint col = [mtlc.paint getColor];
+    jint col = cPaint.color;
 
     J2dTraceLn2(J2D_TRACE_INFO, "primary color %x, contrast %d", col, contrast);
     J2dTraceLn2(J2D_TRACE_INFO, "gamma %f, invgamma %f", gamma, invgamma);

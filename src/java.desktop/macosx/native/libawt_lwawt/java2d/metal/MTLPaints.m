@@ -56,6 +56,10 @@
 static MTLRenderPipelineDescriptor * templateRenderPipelineDesc = nil;
 static MTLRenderPipelineDescriptor * templateTexturePipelineDesc = nil;
 static MTLRenderPipelineDescriptor * templateAATexturePipelineDesc = nil;
+static void setTxtUniforms(
+        id<MTLRenderCommandEncoder> encoder, int color, int mode, int interpolation, bool repeat, jfloat extraAlpha,
+        const SurfaceRasterFlags * srcFlags, const SurfaceRasterFlags * dstFlags
+);
 
 static void initTemplatePipelineDescriptors() {
     if (templateRenderPipelineDesc != nil && templateTexturePipelineDesc != nil)
@@ -93,297 +97,711 @@ static void initTemplatePipelineDescriptors() {
 
 }
 
-@implementation MTLPaint {
-    // TODO: remove paintState, split into heirarchy of Paint-objects (i.e. PaintColor, PaintGrad, e.t.c)
-    jint          _paintState;
 
-    // color-mode
-    jint          _color;
+@implementation MTLColorPaint {
+// color-mode
+jint _color;
+}
+- (id)initWithColor:(jint)color {
+    self = [super initWithState:sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR];
 
-    // grad-mode
-    jdouble       _p0;
-    jdouble       _p1;
-    jdouble       _p3;
-    jint          _cyclic;
-    jboolean      _useMask;
-    jint          _pixel[GRAD_MAX_FRACTIONS];
-    jfloat        _fract[GRAD_MAX_FRACTIONS];
-
-    // lin-grad-mode
-    jint          _numFracts;
-    jboolean      _linear;
-
-    // rad-grad-mode
-    jfloat        _m00;
-    jfloat        _m01;
-    jfloat        _m02;
-    jfloat        _m10;
-    jfloat        _m11;
-    jfloat        _m12;
-    jfloat        _focusX;
-    // texture paint
-    id<MTLTexture> _paintTexture;
-    struct AnchorData _anchor;
+    if (self) {
+        _color = color;
+    }
+    return self;
 }
 
-- (id)init {
+- (jint)color {
+    return _color;
+}
+
+- (BOOL)isEqual:(MTLColorPaint *)other {
+    if (other == self)
+        return YES;
+    if (!other || ![[other class] isEqual:[self class]])
+        return NO;
+
+    return _color == other->_color;
+}
+
+- (NSUInteger)hash {
+    NSUInteger h = [super hash];
+    h = h*31 + _color;
+    return h;
+}
+
+- (NSString *)description {
+    return [NSString stringWithFormat:
+            @"[r=%d g=%d b=%d a=%d]",
+            (_color >> 16) & (0xFF),
+            (_color >> 8) & 0xFF,
+            (_color) & 0xFF,
+            (_color >> 24) & 0xFF];
+}
+
+- (void)setPipelineState:(id<MTLRenderCommandEncoder>)encoder
+                 context:(MTLContext *)mtlc
+           renderOptions:(const RenderOptions *)renderOptions
+    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+{
+    initTemplatePipelineDescriptors();
+
+    MTLRenderPipelineDescriptor *rpDesc = nil;
+
+    NSString *vertShader = @"vert_col";
+    NSString *fragShader = @"frag_col";
+
+    if (renderOptions->isTexture) {
+        vertShader = @"vert_txt";
+        fragShader = @"frag_txt";
+        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+        if (renderOptions->isAA) {
+            fragShader = @"aa_frag_txt";
+            rpDesc = [[templateAATexturePipelineDesc copy] autorelease];
+        }
+        setTxtUniforms(encoder, _color, 1,
+                       renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha], &renderOptions->srcFlags,
+                       &renderOptions->dstFlags);
+    } else {
+        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+    }
+
+    struct FrameUniforms uf = {RGBA_TO_V4(_color)};
+    [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+
+    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                        vertexShaderId:vertShader
+                                                                      fragmentShaderId:fragShader
+                                                                             composite:mtlc.composite
+                                                                         renderOptions:renderOptions
+                                                                         stencilNeeded:[mtlc.clip isShape]];
+    [encoder setRenderPipelineState:pipelineState];
+}
+
+- (void)setXorModePipelineState:(id<MTLRenderCommandEncoder>)encoder
+                        context:(MTLContext *)mtlc
+                  renderOptions:(const RenderOptions *)renderOptions
+           pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+{
+    initTemplatePipelineDescriptors();
+    NSString * vertShader = @"vert_col_xorMode";
+    NSString * fragShader = @"frag_col_xorMode";
+    MTLRenderPipelineDescriptor * rpDesc = nil;
+    jint xorColor = (jint) [mtlc.composite getXorColor];
+    // Calculate _color ^ xorColor for RGB components
+    // This color gets XORed with destination framebuffer pixel color
+    const int col = _color ^ xorColor;
+    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+
+    if (renderOptions->isTexture) {
+        vertShader = @"vert_txt_xorMode";
+        fragShader = @"frag_txt_xorMode";
+        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+
+        setTxtUniforms(encoder, col, 1,
+                       renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha],
+                       &renderOptions->srcFlags, &renderOptions->dstFlags);
+        [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex:0];
+
+        [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
+    } else {
+        struct FrameUniforms uf = {RGBA_TO_V4(col)};
+        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+
+        [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+        [encoder setFragmentTexture:dstOps->pTexture atIndex:0];
+    }
+
+    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                        vertexShaderId:vertShader
+                                                                      fragmentShaderId:fragShader
+                                                                             composite:mtlc.composite
+                                                                         renderOptions:renderOptions
+                                                                         stencilNeeded:[mtlc.clip isShape]];
+    [encoder setRenderPipelineState:pipelineState];
+}
+@end
+
+@implementation MTLBaseGradPaint {
+    jboolean      _useMask;
+}
+
+- (id)initWithState:(jint)state mask:(jboolean)useMask cyclic:(jboolean)cyclic {
+    self = [super initWithState:state];
+
+    if (self) {
+        _useMask = useMask;
+        _cyclic = cyclic;
+    }
+    return self;
+}
+
+- (BOOL)isEqual:(MTLBaseGradPaint *)other {
+    if (other == self)
+        return YES;
+    if (!other || ![[other class] isEqual:[self class]])
+        return NO;
+
+    return [super isEqual:self] && _cyclic == other->_cyclic && _useMask == other->_useMask;
+}
+
+- (NSUInteger)hash {
+    NSUInteger h = [super hash];
+    h = h*31 + _cyclic;
+    h = h*31 + _useMask;
+    return h;
+}
+
+@end
+
+@implementation MTLGradPaint {
+    jdouble _p0;
+    jdouble _p1;
+    jdouble _p3;
+    jint _pixel1;
+    jint _pixel2;
+}
+- (id)initWithUseMask:(jboolean)useMask
+               cyclic:(jboolean)cyclic
+                   p0:(jdouble)p0
+                   p1:(jdouble)p1
+                   p3:(jdouble)p3
+               pixel1:(jint)pixel1
+               pixel2:(jint)pixel2
+{
+    self = [super initWithState:sun_java2d_SunGraphics2D_PAINT_GRADIENT
+                           mask:useMask
+                         cyclic:cyclic];
+
+    if (self) {
+        _p0 = p0;
+        _p1 = p1;
+        _p3 = p3;
+        _pixel1 = pixel1;
+        _pixel2 = pixel2;
+    }
+    return self;
+}
+
+- (BOOL)isEqual:(MTLGradPaint *)other {
+    if (other == self)
+        return YES;
+    if (!other || ![[other class] isEqual:[self class]])
+        return NO;
+
+    return [super isEqual:self] && _p0 == other->_p0 &&
+           _p1 == other->_p1 && _p3 == other->_p3 &&
+           _pixel1 == other->_pixel1 && _pixel2 == other->_pixel2;
+}
+
+- (NSUInteger)hash {
+    NSUInteger h = [super hash];
+    h = h*31 + [@(_p0) hash];
+    h = h*31 + [@(_p1) hash];;
+    h = h*31 + [@(_p3) hash];;
+    h = h*31 + _pixel1;
+    h = h*31 + _pixel2;
+    return h;
+}
+- (NSString *)description {
+    return [NSString stringWithFormat:@"gradient"];
+}
+
+- (void)setPipelineState:(id)encoder
+                 context:(MTLContext *)mtlc
+           renderOptions:(const RenderOptions *)renderOptions
+    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+{
+    initTemplatePipelineDescriptors();
+    MTLRenderPipelineDescriptor *rpDesc = nil;
+
+    NSString *vertShader = @"vert_grad";
+    NSString *fragShader = @"frag_grad";
+
+    struct GradFrameUniforms uf = {
+            {_p0, _p1, _p3},
+            RGBA_TO_V4(_pixel1),
+            RGBA_TO_V4(_pixel2),
+            _cyclic
+    };
+    [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
+
+    if (renderOptions->isTexture) {
+        vertShader = @"vert_txt_grad";
+        fragShader = @"frag_txt_grad";
+        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+    } else {
+        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+    }
+
+    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                        vertexShaderId:vertShader
+                                                                      fragmentShaderId:fragShader
+                                                                             composite:mtlc.composite
+                                                                         renderOptions:renderOptions
+                                                                         stencilNeeded:[mtlc.clip isShape]];
+    [encoder setRenderPipelineState:pipelineState];
+}
+
+- (void)setXorModePipelineState:(id)encoder
+                        context:(MTLContext *)mtlc
+                  renderOptions:(const RenderOptions *)renderOptions
+           pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+{
+    // This block is not reached in current implementation.
+    // Gradient paint XOR mode rendering uses a tile based rendering using a SW pipe (similar to OGL)
+    NSString* vertShader = @"vert_grad_xorMode";
+    NSString* fragShader = @"frag_grad_xorMode";
+    MTLRenderPipelineDescriptor *rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+    jint xorColor = (jint) [mtlc.composite getXorColor];
+
+    struct GradFrameUniforms uf = {
+            {_p0, _p1, _p3},
+            RGBA_TO_V4(_pixel1 ^ xorColor),
+            RGBA_TO_V4(_pixel2 ^ xorColor),
+            _cyclic
+    };
+
+    [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
+    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+    [encoder setFragmentTexture:dstOps->pTexture atIndex:0];
+
+    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints - setXorModePipelineState -- PAINT_GRADIENT");
+
+    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                        vertexShaderId:vertShader
+                                                                      fragmentShaderId:fragShader
+                                                                             composite:mtlc.composite
+                                                                         renderOptions:renderOptions
+                                                                         stencilNeeded:[mtlc.clip isShape]];
+    [encoder setRenderPipelineState:pipelineState];
+}
+
+@end
+
+@implementation MTLBaseMultiGradPaint {
+    jboolean _linear;
+    @protected
+    jint _numFracts;
+    jfloat _fract[GRAD_MAX_FRACTIONS];
+    jint _pixel[GRAD_MAX_FRACTIONS];
+}
+
+- (id)initWithState:(jint)state
+               mask:(jboolean)useMask
+             linear:(jboolean)linear
+        cycleMethod:(jboolean)cycleMethod
+           numStops:(jint)numStops
+          fractions:(jfloat *)fractions
+             pixels:(jint *)pixels
+{
+    self = [super initWithState:state
+                           mask:useMask
+                         cyclic:cycleMethod];
+
+    if (self) {
+        _linear = linear;
+        memcpy(_fract, fractions,numStops*sizeof(jfloat));
+        memcpy(_pixel, pixels, numStops*sizeof(jint));
+        _numFracts = numStops;
+    }
+    return self;
+}
+
+- (BOOL)isEqual:(MTLBaseMultiGradPaint *)other {
+    if (other == self)
+        return YES;
+    if (!other || ![[other class] isEqual:[self class]])
+        return NO;
+
+    if (_numFracts != other->_numFracts || ![super isEqual:self])
+        return NO;
+    for (int i = 0; i < _numFracts; i++) {
+        if (_fract[i] != other->_fract[i]) return NO;
+        if (_pixel[i] != other->_pixel[i]) return NO;
+    }
+    return YES;
+}
+
+- (NSUInteger)hash {
+    NSUInteger h = [super hash];
+    h = h*31 + _numFracts;
+    for (int i = 0; i < _numFracts; i++) {
+        h = h*31 + [@(_fract[i]) hash];
+        h = h*31 + _pixel[i];
+    }
+    return h;
+}
+
+@end
+
+@implementation MTLLinearGradPaint {
+    jdouble _p0;
+    jdouble _p1;
+    jdouble _p3;
+}
+- (void)setPipelineState:(id)encoder
+                 context:(MTLContext *)mtlc
+           renderOptions:(const RenderOptions *)renderOptions
+    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+
+{
+    MTLRenderPipelineDescriptor *rpDesc = nil;
+
+    NSString *vertShader = @"vert_grad";
+    NSString *fragShader = @"frag_lin_grad";
+
+    if (renderOptions->isTexture) {
+        vertShader = @"vert_txt_grad";
+        fragShader = @"frag_txt_lin_grad";
+        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+    } else {
+        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+    }
+
+    struct LinGradFrameUniforms uf = {
+            {_p0, _p1, _p3},
+            {},
+            {},
+            _numFracts,
+            _cyclic
+    };
+
+    memcpy(uf.fract, _fract, _numFracts*sizeof(jfloat));
+    for (int i = 0; i < _numFracts; i++) {
+        vector_float4 v = RGBA_TO_V4(_pixel[i]);
+        uf.color[i] = v;
+    }
+    [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
+
+    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                        vertexShaderId:vertShader
+                                                                      fragmentShaderId:fragShader
+                                                                             composite:mtlc.composite
+                                                                         renderOptions:renderOptions
+                                                                         stencilNeeded:[mtlc.clip isShape]];
+    [encoder setRenderPipelineState:pipelineState];
+}
+
+- (id)initWithUseMask:(jboolean)useMask
+               linear:(jboolean)linear
+          cycleMethod:(jboolean)cycleMethod
+             numStops:(jint)numStops
+                   p0:(jfloat)p0
+                   p1:(jfloat)p1
+                   p3:(jfloat)p3
+            fractions:(jfloat *)fractions
+               pixels:(jint *)pixels
+{
+    self = [super initWithState:sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT
+                           mask:useMask
+                         linear:linear
+                    cycleMethod:cycleMethod
+                       numStops:numStops
+                      fractions:fractions
+                         pixels:pixels];
+
+    if (self) {
+        _p0 = p0;
+        _p1 = p1;
+        _p3 = p3;
+    }
+    return self;
+}
+
+- (BOOL)isEqual:(MTLLinearGradPaint *)other {
+    if (other == self)
+        return YES;
+    if (!other || ![[other class] isEqual:[self class]] || ![super isEqual:other])
+        return NO;
+
+    return _p0 == other->_p0 && _p1 == other->_p1 && _p3 == other->_p3;
+}
+
+- (NSUInteger)hash {
+    NSUInteger h = [super hash];
+    h = h*31 + [@(_p0) hash];
+    h = h*31 + [@(_p1) hash];
+    h = h*31 + [@(_p3) hash];
+    return h;
+}
+
+- (NSString *)description {
+    return [NSString stringWithFormat:@"linear_gradient"];
+}
+@end
+
+@implementation MTLRadialGradPaint {
+    jfloat _m00;
+    jfloat _m01;
+    jfloat _m02;
+    jfloat _m10;
+    jfloat _m11;
+    jfloat _m12;
+    jfloat _focusX;
+}
+
+- (id)initWithUseMask:(jboolean)useMask
+               linear:(jboolean)linear
+          cycleMethod:(jint)cycleMethod
+             numStops:(jint)numStops
+                  m00:(jfloat)m00
+                  m01:(jfloat)m01
+                  m02:(jfloat)m02
+                  m10:(jfloat)m10
+                  m11:(jfloat)m11
+                  m12:(jfloat)m12
+               focusX:(jfloat)focusX
+            fractions:(void *)fractions
+               pixels:(void *)pixels
+{
+    self = [super initWithState:sun_java2d_SunGraphics2D_PAINT_RAD_GRADIENT
+                           mask:useMask
+                         linear:linear
+                    cycleMethod:cycleMethod
+                       numStops:numStops
+                      fractions:fractions
+                         pixels:pixels];
+
+    if (self) {
+        _m00 = m00;
+        _m01 = m01;
+        _m02 = m02;
+        _m10 = m10;
+        _m11 = m11;
+        _m12 = m12;
+        _focusX = focusX;
+    }
+    return self;
+}
+
+- (BOOL)isEqual:(MTLRadialGradPaint *)other {
+    if (other == self)
+        return YES;
+    if (!other || ![[other class] isEqual:[self class]]
+            || ![super isEqual:self])
+        return NO;
+
+    return _m00 == other->_m00 && _m01 == other->_m01 && _m02 == other->_m02 &&
+           _m10 == other->_m10 && _m11 == other->_m11 && _m12 == other->_m12 &&
+           _focusX == other->_focusX;
+}
+
+- (NSUInteger)hash {
+    NSUInteger h = [super hash];
+    h = h*31 + [@(_m00) hash];
+    h = h*31 + [@(_m01) hash];
+    h = h*31 + [@(_m02) hash];
+    h = h*31 + [@(_m10) hash];
+    h = h*31 + [@(_m11) hash];
+    h = h*31 + [@(_m12) hash];
+    return h;
+}
+
+- (NSString *)description {
+    return [NSString stringWithFormat:@"radial_gradient"];
+}
+
+- (void)setPipelineState:(id)encoder
+                 context:(MTLContext *)mtlc
+           renderOptions:(const RenderOptions *)renderOptions
+    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+{
+    MTLRenderPipelineDescriptor *rpDesc = nil;
+
+    NSString *vertShader = @"vert_grad";
+    NSString *fragShader = @"frag_rad_grad";
+
+    if (renderOptions->isTexture) {
+        vertShader = @"vert_txt_grad";
+        fragShader = @"frag_txt_rad_grad";
+        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+    } else {
+        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+    }
+
+    struct RadGradFrameUniforms uf = {
+            {},
+            {},
+            _numFracts,
+            _cyclic,
+            {_m00, _m01, _m02},
+            {_m10, _m11, _m12},
+            {}
+    };
+
+    uf.precalc[0] = _focusX;
+    uf.precalc[1] = 1.0 - (_focusX * _focusX);
+    uf.precalc[2] = 1.0 / uf.precalc[1];
+
+    memcpy(uf.fract, _fract, _numFracts*sizeof(jfloat));
+    for (int i = 0; i < _numFracts; i++) {
+        vector_float4 v = RGBA_TO_V4(_pixel[i]);
+        uf.color[i] = v;
+    }
+    [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
+    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                        vertexShaderId:vertShader
+                                                                      fragmentShaderId:fragShader
+                                                                             composite:mtlc.composite
+                                                                         renderOptions:renderOptions
+                                                                         stencilNeeded:[mtlc.clip isShape]];
+    [encoder setRenderPipelineState:pipelineState];
+}
+
+
+@end
+
+@implementation MTLTexturePaint {
+    struct AnchorData _anchor;
+    id <MTLTexture> _paintTexture;
+}
+
+- (id)initWithUseMask:(jboolean)useMask
+              textureID:(id)textureId
+                 filter:(jboolean)filter
+                    xp0:(jdouble)xp0
+                    xp1:(jdouble)xp1
+                    xp3:(jdouble)xp3
+                    yp0:(jdouble)yp0
+                    yp1:(jdouble)yp1
+                    yp3:(jdouble)yp3
+{
+    self = [super initWithState:sun_java2d_SunGraphics2D_PAINT_TEXTURE];
+
+    if (self) {
+        _paintTexture = textureId;
+        _anchor.xParams[0] = xp0;
+        _anchor.xParams[1] = xp1;
+        _anchor.xParams[2] = xp3;
+
+        _anchor.yParams[0] = yp0;
+        _anchor.yParams[1] = yp1;
+        _anchor.yParams[2] = yp3;
+    }
+    return self;
+
+}
+
+- (BOOL)isEqual:(MTLTexturePaint *)other {
+    if (other == self)
+        return YES;
+    if (!other || ![[other class] isEqual:[self class]])
+        return NO;
+
+    return [_paintTexture isEqual:other->_paintTexture]
+            && _anchor.xParams[0] == other->_anchor.xParams[0]
+            && _anchor.xParams[1] == other->_anchor.xParams[1]
+            && _anchor.xParams[2] == other->_anchor.xParams[2]
+            && _anchor.yParams[0] == other->_anchor.yParams[0]
+            && _anchor.yParams[1] == other->_anchor.yParams[1]
+            && _anchor.yParams[2] == other->_anchor.yParams[2];
+}
+
+- (NSString *)description {
+    return [NSString stringWithFormat:@"radial_gradient"];
+}
+
+- (void)setPipelineState:(id)encoder
+                 context:(MTLContext *)mtlc
+           renderOptions:(const RenderOptions *)renderOptions
+    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+{
+    initTemplatePipelineDescriptors();
+    MTLRenderPipelineDescriptor *rpDesc = nil;
+
+    NSString* vertShader = @"vert_tp";
+    NSString* fragShader = @"frag_tp";
+
+    [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
+
+    if (renderOptions->isTexture) {
+        vertShader = @"vert_txt_tp";
+        fragShader = @"frag_txt_tp";
+        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+        [encoder setFragmentTexture:_paintTexture atIndex:1];
+        setTxtUniforms(encoder, 0, 0, renderOptions->interpolation, YES, [mtlc.composite getExtraAlpha],
+                   &renderOptions->srcFlags, &renderOptions->dstFlags);
+    } else {
+        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+        [encoder setFragmentTexture:_paintTexture atIndex:0];
+    }
+
+    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                        vertexShaderId:vertShader
+                                                                      fragmentShaderId:fragShader
+                                                                             composite:mtlc.composite
+                                                                         renderOptions:renderOptions
+                                                                         stencilNeeded:[mtlc.clip isShape]];
+    [encoder setRenderPipelineState:pipelineState];
+}
+
+- (void)setXorModePipelineState:(id)encoder
+                        context:(MTLContext *)mtlc
+                  renderOptions:(const RenderOptions *)renderOptions
+           pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+{
+    // This block is not reached in current implementation.
+    // Texture paint XOR mode rendering uses a tile based rendering using a SW pipe (similar to OGL)
+    NSString* vertShader = @"vert_tp_xorMode";
+    NSString* fragShader = @"frag_tp_xorMode";
+    MTLRenderPipelineDescriptor *rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+    jint xorColor = (jint) [mtlc.composite getXorColor];
+
+    [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
+    [encoder setFragmentTexture:_paintTexture atIndex: 0];
+    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+    [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
+    [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
+
+    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints - setXorModePipelineState -- PAINT_TEXTURE");
+
+    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                        vertexShaderId:vertShader
+                                                                      fragmentShaderId:fragShader
+                                                                             composite:mtlc.composite
+                                                                         renderOptions:renderOptions
+                                                                         stencilNeeded:[mtlc.clip isShape]];
+    [encoder setRenderPipelineState:pipelineState];
+}
+
+@end
+
+@implementation MTLPaint {
+    jint _paintState;
+}
+
+- (instancetype)init {
     self = [super init];
     if (self) {
         _paintState = sun_java2d_SunGraphics2D_PAINT_UNDEFINED;
+    }
+
+    return self;
+}
+
+- (instancetype)initWithState:(jint)state {
+    self = [super init];
+    if (self) {
+        _paintState = state;
     }
     return self;
 }
 
 - (BOOL)isEqual:(MTLPaint *)other {
-    if (self == other)
+    if (other == self)
         return YES;
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_UNDEFINED)
-        return _paintState == other->_paintState;
-    if (_paintState != other->_paintState)
+    if (!other || ![other isKindOfClass:[self class]])
         return NO;
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-        return _p0 == other->_p0
-               && _p1 == other->_p1
-               && _p3 == other->_p3
-               && _pixel[0] == other->_pixel[0]
-               && _pixel[1] == other->_pixel[1];
-    }
-
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT) {
-        if (_p0 != other->_p0
-            || _p1 != other->_p1
-            || _p3 != other->_p3
-            || _numFracts != other->_numFracts) return NO;
-
-
-        for (int i = 0; i < _numFracts; i++) {
-            if (_fract[i] != other->_fract[i]) return NO;
-            if (_pixel[i] != other->_pixel[i]) return NO;
-        }
-        return YES;
-    }
-
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_RAD_GRADIENT) {
-        if (_m00 != other->_m00
-            || _m01 != other->_m01
-            || _m02 != other->_m02
-            || _m10 != other->_m10
-            || _m11 != other->_m11
-            || _m12 != other->_m12
-            || _focusX != other->_focusX
-            || _numFracts != other->_numFracts) return NO;
-
-
-        for (int i = 0; i < _numFracts; i++) {
-            if (_fract[i] != other->_fract[i]) return NO;
-            if (_pixel[i] != other->_pixel[i]) return NO;
-        }
-        return YES;
-    }
-
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-        return _color == other->_color;
-    }
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-        return _paintTexture == other->_paintTexture
-               && _anchor.xParams[0] == other->_anchor.xParams[0]
-               && _anchor.xParams[1] == other->_anchor.xParams[1]
-               && _anchor.xParams[2] == other->_anchor.xParams[2]
-               && _anchor.yParams[0] == other->_anchor.yParams[0]
-               && _anchor.yParams[1] == other->_anchor.yParams[1]
-               && _anchor.yParams[2] == other->_anchor.yParams[2];
-    }
-
-    J2dTraceLn1(J2D_TRACE_ERROR, "Unimplemented paint mode %d", _paintState);
-    return NO;
+    return _paintState == other->_paintState;
 }
 
-- (void)copyFrom:(MTLPaint *)other {
-    _paintState = other->_paintState;
-    if (other->_paintState == sun_java2d_SunGraphics2D_PAINT_UNDEFINED)
-        return;
-
-    if (other->_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-        _p0 = other->_p0;
-        _p1 = other->_p1;
-        _p3 = other->_p3;
-        _pixel[0] = other->_pixel[0];
-        _pixel[1] = other->_pixel[1];
-        return;
-    }
-
-    if (other->_paintState == sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT) {
-
-        _p0 = other->_p0;
-        _p1 = other->_p1;
-        _p3 = other->_p3;
-        _cyclic = other->_cyclic;
-        memcpy(_fract, other->_fract, other->_numFracts*sizeof(jfloat));
-        memcpy(_pixel, other->_pixel, other->_numFracts*sizeof(jint));
-        _numFracts = other->_numFracts;
-        return;
-    }
-
-    if (other->_paintState == sun_java2d_SunGraphics2D_PAINT_RAD_GRADIENT) {
-
-        _m00 = other->_m00;
-        _m01 = other->_m01;
-        _m02 = other->_m02;
-        _m10 = other->_m10;
-        _m11 = other->_m11;
-        _m12 = other->_m12;
-        _focusX = other->_focusX;
-        _cyclic = other->_cyclic;
-        memcpy(_fract, other->_fract, other->_numFracts*sizeof(jfloat));
-        memcpy(_pixel, other->_pixel, other->_numFracts*sizeof(jint));
-        _numFracts = other->_numFracts;
-        return;
-    }
-
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-        _color = other->_color;
-        return;
-    }
-
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-        _color = other->_color;
-        _paintTexture = other->_paintTexture;
-        _anchor = other->_anchor;
-        return;
-    }
-
-    J2dTraceLn1(J2D_TRACE_ERROR, "Unsupported paint mode %d", _paintState);
+- (NSUInteger)hash {
+    return _paintState;
 }
 
-- (NSString *)getDescription {
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-        return [NSString stringWithFormat:@"[r=%d g=%d b=%d a=%d]", (_color >> 16) & (0xFF), (_color >> 8) & 0xFF, (_color) & 0xFF, (_color >> 24) & 0xFF];
-    }
-    
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-        return [NSString stringWithFormat:@"gradient"];
-    }
-
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT) {
-        return [NSString stringWithFormat:@"linear_gradient"];
-    }
-
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_RAD_GRADIENT) {
-        return [NSString stringWithFormat:@"radial_gradient"];
-    }
-
-    if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-        return [NSString stringWithFormat:@"texture_paint"];
-    }
-
+- (NSString *)description {
     return @"unknown-paint";
-}
-
-- (jint)getColor {
-    return _color;
-}
-
-- (void)reset {
-    _paintState = sun_java2d_SunGraphics2D_PAINT_UNDEFINED;
-    _paintTexture = nil;
-    _anchor.xParams[0] = _anchor.xParams[1] = _anchor.xParams[2] = 0.0f;
-    _anchor.yParams[0] = _anchor.yParams[1] = _anchor.yParams[2] = 0.0f; 
-}
-
-- (void)setColor:(jint)pixelColor {
-    _paintState = sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR;
-    _color = pixelColor;
-}
-
-- (void)setGradientUseMask:(jboolean)useMask
-                    cyclic:(jboolean)cyclic
-                        p0:(jdouble)p0
-                        p1:(jdouble)p1
-                        p3:(jdouble)p3
-                    pixel1:(jint)pixel1
-                    pixel2:(jint)pixel2
-{
-    _paintState = sun_java2d_SunGraphics2D_PAINT_GRADIENT;
-    _useMask = useMask;
-    _pixel[0] = pixel1;
-    _pixel[1] = pixel2;
-    _p0 = p0;
-    _p1 = p1;
-    _p3 = p3;
-    _cyclic = cyclic;
-}
-
-- (void)setLinearGradient:(jboolean)useMask
-                   linear:(jboolean)linear
-              cycleMethod:(jboolean)cycleMethod
-                 numStops:(jint)numStops
-                       p0:(jfloat)p0
-                       p1:(jfloat)p1
-                       p3:(jfloat)p3
-                fractions:(jfloat*)fractions
-                   pixels:(jint*)pixels
-{
-    _paintState = sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT;
-    _useMask = useMask;
-    _linear = linear; // TODO: to be implemented
-    memcpy(_fract, fractions, numStops*sizeof(jfloat));
-    memcpy(_pixel, pixels, numStops*sizeof(jint));
-    _p0 = p0;
-    _p1 = p1;
-    _p3 = p3;
-    _cyclic = cycleMethod;
-    _numFracts = numStops;
-}
-
-- (void)setRadialGradient:(jboolean)useMask
-                   linear:(jboolean)linear
-              cycleMethod:(jint)cycleMethod
-                 numStops:(jint)numStops
-                      m00:(jfloat)m00
-                      m01:(jfloat)m01
-                      m02:(jfloat)m02
-                      m10:(jfloat)m10
-                      m11:(jfloat)m11
-                      m12:(jfloat)m12
-                   focusX:(jfloat)focusX
-                fractions:(void *)fractions
-                   pixels:(void *)pixels
-{
-    _paintState = sun_java2d_SunGraphics2D_PAINT_RAD_GRADIENT;
-    _useMask = useMask;
-    _cyclic = cycleMethod;
-    _numFracts = numStops;
-    memcpy(_fract, fractions, numStops * sizeof(jfloat));
-    memcpy(_pixel, pixels, numStops * sizeof(jint));
-    _m00 = m00;
-    _m01 = m01;
-    _m02 = m02;
-    _m10 = m10;
-    _m11 = m11;
-    _m12 = m12;
-    _focusX = focusX;
-}
-
-- (void)setTexture:(jboolean)useMask
-           textureID:(id<MTLTexture>)textureID
-            filter:(jboolean)filter
-               xp0:(jdouble)xp0
-               xp1:(jdouble)xp1
-               xp3:(jdouble)xp3
-               yp0:(jdouble)yp0
-               yp1:(jdouble)yp1
-               yp3:(jdouble)yp3
-{
-    _paintState = sun_java2d_SunGraphics2D_PAINT_TEXTURE;
-    _paintTexture = textureID;
-    
-    _anchor.xParams[0] = xp0;
-    _anchor.xParams[1] = xp1;
-    _anchor.xParams[2] = xp3;
-
-    _anchor.yParams[0] = yp0;
-    _anchor.yParams[1] = yp1;
-    _anchor.yParams[2] = yp3;
 }
 
 static id<MTLSamplerState> samplerNearestClamp = nil;
@@ -397,7 +815,7 @@ void initSamplers(id<MTLDevice> device) {
     if (samplerNearestClamp != nil)
         return;
 
-    MTLSamplerDescriptor *samplerDescriptor = [MTLSamplerDescriptor new];
+    MTLSamplerDescriptor *samplerDescriptor = [[MTLSamplerDescriptor new] autorelease];
 
     samplerDescriptor.rAddressMode = MTLSamplerAddressModeClampToEdge;
     samplerDescriptor.sAddressMode = MTLSamplerAddressModeClampToEdge;
@@ -447,23 +865,23 @@ static void setTxtUniforms(
 // For the current paint mode:
 // 1. Selects vertex+fragment shaders (and corresponding pipelineDesc) and set pipelineState
 // 2. Set vertex and fragment buffers
-- (void)setPipelineState:(id<MTLRenderCommandEncoder>)encoder
+// Base implementation is used in drawTex2Tex
+- (void)setPipelineState:(id <MTLRenderCommandEncoder>)encoder
                  context:(MTLContext *)mtlc
            renderOptions:(const RenderOptions *)renderOptions
     pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
 {
     initTemplatePipelineDescriptors();
-
-    NSString * vertShader = @"vert_txt";
-    NSString * fragShader = @"frag_txt";
-    MTLRenderPipelineDescriptor * rpDesc = [[templateTexturePipelineDesc copy] autorelease];
-
+    // Called from drawTex2Tex used in flushBuffer and for buffered image ops
     if (renderOptions->isTexture) {
+        NSString * vertShader = @"vert_txt";
+        NSString * fragShader = @"frag_txt";
+        MTLRenderPipelineDescriptor* rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+
         NSObject *bufImgOp = [mtlc getBufImgOp];
         if (bufImgOp != nil) {
             if ([bufImgOp isKindOfClass:[MTLRescaleOp class]]) {
                 MTLRescaleOp *rescaleOp = bufImgOp;
-                vertShader = @"vert_txt";
                 fragShader = @"frag_txt_op_rescale";
 
                 struct TxtFrameOpRescaleUniforms uf = {
@@ -474,12 +892,12 @@ static void setTxtUniforms(
                 [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
                 setSampler(encoder, renderOptions->interpolation, NO);
             } else if ([bufImgOp isKindOfClass:[MTLConvolveOp class]]) {
-                MTLConvolveOp * convolveOp = bufImgOp;
-                vertShader = @"vert_txt";
+                MTLConvolveOp *convolveOp = bufImgOp;
                 fragShader = @"frag_txt_op_convolve";
 
                 struct TxtFrameOpConvolveUniforms uf = {
-                        [mtlc.composite getExtraAlpha], renderOptions->srcFlags.isOpaque, FLOAT_ARR_TO_V4([convolveOp getImgEdge]),
+                        [mtlc.composite getExtraAlpha], renderOptions->srcFlags.isOpaque,
+                        FLOAT_ARR_TO_V4([convolveOp getImgEdge]),
                         convolveOp.kernelSize, convolveOp.isEdgeZeroFill,
                 };
                 [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
@@ -487,8 +905,7 @@ static void setTxtUniforms(
 
                 [encoder setFragmentBuffer:[convolveOp getBuffer] offset:0 atIndex:2];
             } else if ([bufImgOp isKindOfClass:[MTLLookupOp class]]) {
-                MTLLookupOp * lookupOp = bufImgOp;
-                vertShader = @"vert_txt";
+                MTLLookupOp *lookupOp = bufImgOp;
                 fragShader = @"frag_txt_op_lookup";
 
                 struct TxtFrameOpLookupUniforms uf = {
@@ -497,185 +914,42 @@ static void setTxtUniforms(
                 };
                 [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
                 setSampler(encoder, renderOptions->interpolation, NO);
-                [encoder setFragmentTexture:[lookupOp getLookupTexture] atIndex: 1];
+                [encoder setFragmentTexture:[lookupOp getLookupTexture] atIndex:1];
             }
-        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-            vertShader = @"vert_txt_tp";
-            fragShader = @"frag_txt_tp";
-            [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
-            [encoder setFragmentTexture:_paintTexture atIndex:1];
-
-            setTxtUniforms(encoder, 0, 0, renderOptions->interpolation, YES, [mtlc.composite getExtraAlpha],
-                           &renderOptions->srcFlags, &renderOptions->dstFlags);
-        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-            // Gradient paint in AA mode
-            vertShader = @"vert_txt_grad";
-            fragShader = @"frag_txt_grad";
-            struct GradFrameUniforms uf = {
-                    {_p0, _p1, _p3},
-                    RGBA_TO_V4(_pixel[0]),
-                    RGBA_TO_V4(_pixel[1]),
-                    _cyclic};
-            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
-
-        }  else if (_paintState == sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT) {
-            // Linear gradient paint in AA mode
-            vertShader = @"vert_txt_grad";
-            fragShader = @"frag_txt_lin_grad";
-
-            struct LinGradFrameUniforms uf = {
-                    {_p0, _p1, _p3},
-                    {},
-                    {},
-                    _numFracts,
-                    _cyclic
-            };
-
-            memcpy(uf.fract, _fract, _numFracts*sizeof(jfloat));
-            for (int i = 0; i < _numFracts; i++) {
-                vector_float4 v = RGBA_TO_V4(_pixel[i]);
-                uf.color[i] = v;
-            }
-            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
-        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_RAD_GRADIENT) {
-            vertShader = @"vert_txt_grad";
-            fragShader = @"frag_txt_rad_grad";
-
-            struct RadGradFrameUniforms uf = {
-                    {},
-                    {},
-                    _numFracts,
-                    _cyclic,
-                    {_m00, _m01, _m02},
-                    {_m10, _m11, _m12},
-                    {}
-            };
-
-            uf.precalc[0] = _focusX;
-            uf.precalc[1] = 1.0 - (_focusX * _focusX);
-            uf.precalc[2] = 1.0 / uf.precalc[1];
-
-            memcpy(uf.fract, _fract, _numFracts*sizeof(jfloat));
-            for (int i = 0; i < _numFracts; i++) {
-                vector_float4 v = RGBA_TO_V4(_pixel[i]);
-                uf.color[i] = v;
-            }
-            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
         } else {
-            vertShader = @"vert_txt";
-            fragShader = @"frag_txt";
-            if (renderOptions->isAA) {
-                fragShader = @"aa_frag_txt";
-                rpDesc = templateAATexturePipelineDesc;
-            }
-
-            setTxtUniforms(encoder, _color, _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? 1 : 0,
-                           renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha], &renderOptions->srcFlags,
+            setTxtUniforms(encoder, 0, 0,
+                           renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha],
+                           &renderOptions->srcFlags,
                            &renderOptions->dstFlags);
-        }
-    } else {
-        rpDesc = templateRenderPipelineDesc;
-
-        if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-            vertShader = @"vert_col";
-            fragShader = @"frag_col";
-
-            struct FrameUniforms uf = {RGBA_TO_V4(_color)};
-            [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-            vertShader = @"vert_grad";
-            fragShader = @"frag_grad";
-
-            struct GradFrameUniforms uf = {
-                    {_p0, _p1, _p3},
-                    RGBA_TO_V4(_pixel[0]),
-                    RGBA_TO_V4(_pixel[1]),
-                    _cyclic
-            };
-            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
-        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_LIN_GRADIENT) {
-            vertShader = @"vert_grad";
-            fragShader = @"frag_lin_grad";
-
-            struct LinGradFrameUniforms uf = {
-                    {_p0, _p1, _p3},
-                    {},
-                    {},
-                    _numFracts,
-                    _cyclic
-            };
-
-            memcpy(uf.fract, _fract, _numFracts*sizeof(jfloat));
-            for (int i = 0; i < _numFracts; i++) {
-                vector_float4 v = RGBA_TO_V4(_pixel[i]);
-                uf.color[i] = v;
-            }
-            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
-
-        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_RAD_GRADIENT) {
-            vertShader = @"vert_grad";
-            fragShader = @"frag_rad_grad";
-
-            struct RadGradFrameUniforms uf = {
-                    {},
-                    {},
-                    _numFracts,
-                    _cyclic,
-                    {_m00, _m01, _m02},
-                    {_m10, _m11, _m12},
-                    {}
-            };
-
-            uf.precalc[0] = _focusX;
-            uf.precalc[1] = 1.0 - (_focusX * _focusX);
-            uf.precalc[2] = 1.0 / uf.precalc[1];
-
-            memcpy(uf.fract, _fract, _numFracts*sizeof(jfloat));
-            for (int i = 0; i < _numFracts; i++) {
-                vector_float4 v = RGBA_TO_V4(_pixel[i]);
-                uf.color[i] = v;
-            }
-            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
-
-        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-            vertShader = @"vert_tp";
-            fragShader = @"frag_tp";
-
-            [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
-            [encoder setFragmentTexture:_paintTexture atIndex:0];
 
         }
+        id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                            vertexShaderId:vertShader
+                                                                          fragmentShaderId:fragShader
+                                                                                 composite:mtlc.composite
+                                                                             renderOptions:renderOptions
+                                                                             stencilNeeded:[mtlc.clip isShape]];
+        [encoder setRenderPipelineState:pipelineState];
     }
-
-    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
-                                                                        vertexShaderId:vertShader
-                                                                      fragmentShaderId:fragShader
-                                                                             composite:mtlc.composite
-                                                                         renderOptions:renderOptions
-                                                                         stencilNeeded:[mtlc.clip isShape]];
-    [encoder setRenderPipelineState:pipelineState];
 }
 
-
-// For the current paint mode: and for XOR composite - a separate method is added as fragment shader differ in some cases
+// For the current paint mode:
 // 1. Selects vertex+fragment shaders (and corresponding pipelineDesc) and set pipelineState
 // 2. Set vertex and fragment buffers
-- (void)setXorModePipelineState:(id<MTLRenderCommandEncoder>)encoder
-                        context:(MTLContext *)mtlc
-                  renderOptions:(const RenderOptions *)renderOptions
-           pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+- (void)setXorModePipelineState:(id <MTLRenderCommandEncoder>)encoder
+                 context:(MTLContext *)mtlc
+           renderOptions:(const RenderOptions *)renderOptions
+    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
 {
-    initTemplatePipelineDescriptors();
-
-    jint xorColor = (jint) [mtlc.composite getXorColor];
-
-    NSString * vertShader = @"vert_txt_xorMode";
-    NSString * fragShader = @"frag_txt_xorMode";
-    MTLRenderPipelineDescriptor * rpDesc = [[templateTexturePipelineDesc copy] autorelease];
-
     if (renderOptions->isTexture) {
-        const int col = _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? _color ^ xorColor : 0 ^ xorColor;
-        setTxtUniforms(encoder, col, _paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR ? 1 : 0,
+        initTemplatePipelineDescriptors();
+        jint xorColor = (jint) [mtlc.composite getXorColor];
+        NSString * vertShader = @"vert_txt_xorMode";
+        NSString * fragShader = @"frag_txt_xorMode";
+        MTLRenderPipelineDescriptor * rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+
+        const int col = 0 ^ xorColor;
+        setTxtUniforms(encoder, col, 0,
                        renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha],
                        &renderOptions->srcFlags, &renderOptions->dstFlags);
         [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
@@ -683,68 +957,23 @@ static void setTxtUniforms(
         BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
         [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
 
-        J2dTraceLn(J2D_TRACE_INFO, "MTLPaints - setXorModePipelineState -- TEXTURE DRAW");
-    } else {
-        if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-            vertShader = @"vert_col_xorMode";
-            fragShader = @"frag_col_xorMode";
-            rpDesc = templateRenderPipelineDesc;
+        setTxtUniforms(encoder, 0, 0,
+                       renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha],
+                       &renderOptions->srcFlags,
+                       &renderOptions->dstFlags);
 
-            // Calculate _color ^ xorColor for RGB components
-            // This color gets XORed with destination framebuffer pixel color
-            struct FrameUniforms uf = {RGBA_TO_V4(_color ^ xorColor)};
-            [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-
-            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
-            [encoder setFragmentTexture:dstOps->pTexture atIndex:0];
-
-            J2dTraceLn(J2D_TRACE_INFO ,"MTLPaints - setXorModePipelineState -- PAINT_ALPHACOLOR");
-        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-            // This block is not reached in current implementation.
-            // Gradient paint XOR mode rendering uses a tile based rendering using a SW pipe (similar to OGL)
-            vertShader = @"vert_grad_xorMode";
-            fragShader = @"frag_grad_xorMode";
-            rpDesc = templateRenderPipelineDesc;
-
-            struct GradFrameUniforms uf = {
-                        {_p0, _p1, _p3},
-                        RGBA_TO_V4(_pixel[0] ^ xorColor),
-                        RGBA_TO_V4(_pixel[1] ^ xorColor),
-                        _cyclic
-            };
-
-            [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
-            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
-            [encoder setFragmentTexture:dstOps->pTexture atIndex:0];
-
-            J2dTraceLn(J2D_TRACE_INFO, "MTLPaints - setXorModePipelineState -- PAINT_GRADIENT");
-        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_TEXTURE) {
-            // This block is not reached in current implementation.
-            // Texture paint XOR mode rendering uses a tile based rendering using a SW pipe (similar to OGL)
-            vertShader = @"vert_tp_xorMode";
-            fragShader = @"frag_tp_xorMode";
-            rpDesc = templateRenderPipelineDesc;
-
-            [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
-            [encoder setFragmentTexture:_paintTexture atIndex: 0];
-            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
-            [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
-            [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
-
-            J2dTraceLn(J2D_TRACE_INFO, "MTLPaints - setXorModePipelineState -- PAINT_TEXTURE");
-        }
+        id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                            vertexShaderId:vertShader
+                                                                          fragmentShaderId:fragShader
+                                                                                 composite:mtlc.composite
+                                                                             renderOptions:renderOptions
+                                                                             stencilNeeded:[mtlc.clip isShape]];
+        [encoder setRenderPipelineState:pipelineState];
     }
-
-    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
-                                                                        vertexShaderId:vertShader
-                                                                      fragmentShaderId:fragShader
-                                                                             composite:mtlc.composite
-                                                                         renderOptions:renderOptions
-                                                                         stencilNeeded:[mtlc.clip isShape]];
-    [encoder setRenderPipelineState:pipelineState];
 }
 
 @end
+
 
 /************************* GradientPaint support ****************************/
 
