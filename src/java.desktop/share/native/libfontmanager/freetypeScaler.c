@@ -1713,11 +1713,6 @@ static jlong
     glyphInfo->width     = width;
     glyphInfo->height    = height;
 
-    if (ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_BGRA) glyphInfo->type = 2;
-    else if (ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD ||
-             ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD_V) glyphInfo->type = 1;
-    else glyphInfo->type = 0;
-
     if (renderImage) {
         if (context->fixedSizeIndex == -1) {
             glyphInfo->topLeftX  = (float)  ftglyph->bitmap_left;

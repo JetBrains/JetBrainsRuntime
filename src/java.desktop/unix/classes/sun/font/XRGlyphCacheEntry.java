@@ -185,7 +185,13 @@ public class XRGlyphCacheEntry {
     }
 
     public Type getType() {
-        return Type.VALUES[StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.typeOffset)];
+        int rowBytes = getSourceRowBytes();
+        int width = getWidth();
+        // 0x0 is just for backward compatibiity
+        if (width == 0 || getHeight() == 0) return Type.LCD;
+        if (width == rowBytes) return Type.GRAYSCALE;
+        if (width * 4 == rowBytes) return Type.BGRA;
+        return Type.LCD;
     }
 
     public int getPaddedWidth() {
@@ -229,10 +235,7 @@ public class XRGlyphCacheEntry {
     public enum Type {
         GRAYSCALE,
         LCD,
-        BGRA;
-
-        private static final Type[] VALUES = values();
-
+        BGRA
     }
 
 
