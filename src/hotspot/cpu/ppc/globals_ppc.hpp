@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2018 SAP SE. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,8 +95,9 @@ define_pd_global(bool, ThreadLocalHandshakes, true);
                    writeable)    \
                                                                             \
   product(uintx, PowerArchitecturePPC64, 0,                                 \
-          "CPU Version: x for PowerX. Currently recognizes Power5 to "      \
-          "Power8. Default is 0. Newer CPUs will be recognized as Power8.") \
+          "Specify the PowerPC family version in use. If not provided, "    \
+          "HotSpot will determine it automatically. Host family version "   \
+          "is the maximum value allowed (instructions are not emulated).")  \
                                                                             \
   product(bool, SuperwordUseVSX, false,                                     \
           "Use Power8 VSX instructions for superword optimization.")        \
@@ -123,6 +124,8 @@ define_pd_global(bool, ThreadLocalHandshakes, true);
           "Use load instructions for stack banging.")                       \
                                                                             \
   /* special instructions */                                                \
+  product(bool, UseByteReverseInstructions, false,                          \
+          "Use byte reverse instructions.")                                 \
                                                                             \
   product(bool, UseCountLeadingZerosInstructionsPPC64, true,                \
           "Use count leading zeros instructions.")                          \
