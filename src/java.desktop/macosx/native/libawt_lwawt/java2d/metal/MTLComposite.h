@@ -33,7 +33,6 @@
 - (jint)getXorColor;
 - (jfloat)getExtraAlpha;
 
-- (jboolean)isBlendingDisabled:(jboolean) isSrcOpaque;
 - (NSString *)getDescription; // creates autorelease string
 @end
 
