@@ -162,7 +162,6 @@
  * later in the MTLContext_SetColor() method.
  */
 - (void)setXorComposite:(jint)xorPixel;
-- (jboolean)isBlendingDisabled:(jboolean) isSrcOpaque;
 - (jboolean)useXORComposite;
 
 /**
