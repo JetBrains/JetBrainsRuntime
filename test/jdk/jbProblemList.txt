@@ -1265,4 +1265,4 @@ sanity/client/SwingSet/src/GridBagLayoutDemoTest.java                           
 jb/java/jcef/JCEFStartupTest.java                                                   JBR-1996 linux-i386,windows-x86
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java                       JBR-2585 linux-all,windows-all nobug windows-6.1 not supported on Windows 7
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-2585 linux-all
-jb/java/awt/Focus/ChainOfPopupsFocusTest.java                                       JBR-2657 windows-all
+jb/java/awt/Focus/ChainOfPopupsFocusTest.java                                       JBR-2657 windows-all,linux-all
