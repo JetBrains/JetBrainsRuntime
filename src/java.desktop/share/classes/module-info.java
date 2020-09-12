@@ -122,6 +122,8 @@ module java.desktop {
     exports sun.awt.dnd to jdk.unsupported.desktop;
     exports sun.swing to jdk.unsupported.desktop;
 
+    exports sun.font to jetbrains.api.impl;
+
     opens javax.swing.plaf.basic to
         jdk.jconsole;
 
