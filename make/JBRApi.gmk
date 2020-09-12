@@ -1,0 +1,20 @@
+include Makefile
+include make/MainSupport.gmk
+
+.PHONY: jbr-api
+
+ifeq ($(SPEC),)
+  ifneq ($(words $(SPECS)),1)
+	@echo "Error: Multiple build specification files found. Please select one explicitly."
+	@exit 2
+  endif
+  jbr-api:
+	@cd $(topdir)
+	@$(MAKE) $(MFLAGS) $(MAKE_LOG_FLAGS) -r -R -j 1 -f $(topdir)/make/JBRApi.gmk SPEC=$(SPECS) HAS_SPEC=true ACTUAL_TOPDIR=$(topdir) MODULES="$(MODULES)" jbr-api
+else #with SPEC
+
+  jbr-api:
+	$(ECHO) "BUILD_DIR=$(OUTPUTDIR)" > $(OUT)
+	$(ECHO) "BOOT_JDK=\"$(BOOT_JDK)\"" >> $(OUT)
+
+endif
