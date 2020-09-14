@@ -27,7 +27,7 @@
  * @modules java.base/jdk.internal.misc:+open
  * @summary Validate barriers after Unsafe getObject, CAS and swap (GetAndSet)
  * @requires vm.gc.Z & !vm.graal.enabled
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+UnlockDiagnosticVMOptions -XX:+ZUnmapBadViews -XX:ZCollectionInterval=1 -XX:-CreateCoredumpOnCrash -XX:CompileCommand=dontinline,*::mergeImpl* compiler.gcbarriers.UnsafeIntrinsicsTest
+ * @run main/othervm -Xmx256m -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+UnlockDiagnosticVMOptions -XX:+ZUnmapBadViews -XX:ZCollectionInterval=1 -XX:-CreateCoredumpOnCrash -XX:CompileCommand=dontinline,*::mergeImpl* compiler.gcbarriers.UnsafeIntrinsicsTest
  */
 
 package compiler.gcbarriers;
