@@ -24,7 +24,8 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
               context:(MTLContext *)mtlc
         renderOptions:(const RenderOptions *)renderOptions
           forceUpdate:(jboolean)forceUpdate;
-@property jboolean aa;
+@property (assign) jboolean aa;
+@property (retain) MTLPaint* paint;
 @end
 
 @implementation EncoderStates {
@@ -59,6 +60,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     MTLTransform * _transform;
 }
 @synthesize aa = _isAA;
+@synthesize paint = _paint;
 
 - (id)init {
     self = [super init];
@@ -142,7 +144,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
         && _srcFlags.isOpaque == renderOptions->srcFlags.isOpaque && _srcFlags.isPremultiplied == renderOptions->srcFlags.isPremultiplied)
         return;
 
-    [_paint copyFrom:mtlc.paint];
+    self.paint = mtlc.paint;
     [_composite copyFrom:mtlc.composite];
     _isTexture = renderOptions->isTexture;
     _interpolationMode = renderOptions->interpolation;
@@ -150,15 +152,16 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     _srcFlags = renderOptions->srcFlags;
 
     if ((jint)[mtlc.composite getCompositeState] == sun_java2d_SunGraphics2D_COMP_XOR) {
+
         [mtlc.paint setXorModePipelineState:encoder
                                context:mtlc
                          renderOptions:renderOptions
                   pipelineStateStorage:_pipelineStateStorage];
     } else {
-        [mtlc.paint setPipelineState:encoder
-                        context:mtlc
-                  renderOptions:renderOptions
-           pipelineStateStorage:_pipelineStateStorage];
+        [mtlc.paint  setPipelineState:encoder
+                              context:mtlc
+                        renderOptions:renderOptions
+                 pipelineStateStorage:_pipelineStateStorage];
     }
 }
 
