@@ -140,20 +140,6 @@
     return [NSString stringWithFormat:@"%s", result];
 }
 
-- (jboolean)isBlendingDisabled:(jboolean)isSrcOpaque {
-
-    // We need to check both extra alpha and isSrcOpaque for
-    // SRC mode for correct handling TRANSLUCENT images.
-    // See test/jdk/java/awt/image/DrawImage/IncorrectUnmanagedImageRotatedClip.java
-    // for example
-    if (_compositeRule == java_awt_AlphaComposite_SRC ||
-        _compositeRule == java_awt_AlphaComposite_SRC_OVER)
-    {
-        return FLT_GE(_extraAlpha, 1.0f) && isSrcOpaque;
-    }
-    return isSrcOpaque;
-}
-
 - (void)setAlphaComposite:(jint)rule {
     _compState = sun_java2d_SunGraphics2D_COMP_ALPHA;
     [self setRule:rule];

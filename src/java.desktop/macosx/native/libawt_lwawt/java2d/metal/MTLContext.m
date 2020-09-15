@@ -285,10 +285,6 @@ extern void initSamplers(id<MTLDevice> device);
     [_composite setXORComposite:xp];
 }
 
-- (jboolean)isBlendingDisabled:(jboolean) isSrcOpaque {
-    return [_composite isBlendingDisabled:isSrcOpaque];
-}
-
 - (jboolean) useXORComposite {
     return ([_composite getCompositeState] == sun_java2d_SunGraphics2D_COMP_XOR);
 }

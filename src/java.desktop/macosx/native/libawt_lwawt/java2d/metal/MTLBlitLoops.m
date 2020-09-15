@@ -481,7 +481,7 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
 #endif //TRACE_ISOBLIT
 
     if (!texture && !xform
-        && [mtlc isBlendingDisabled:srcOps->isOpaque]
+        && srcOps->isOpaque
         && isIntegerAndUnscaled(sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)
         && (dstOps->isOpaque || !srcOps->isOpaque)
     ) {
@@ -507,8 +507,8 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via sampling]");
 #endif //TRACE_ISOBLIT
     drawTex2Tex(mtlc, srcTex, dstTex,
-            [mtlc isBlendingDisabled:srcOps->isOpaque],
-            dstOps->isOpaque, hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+            srcOps->isOpaque, dstOps->isOpaque,
+            hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 }
 
 /**
@@ -622,9 +622,9 @@ MTLBlitLoops_Blit(JNIEnv *env,
 
             MTLRasterFormatInfo rfi = RasterFormatInfos[srctype];
             const jboolean useReplaceRegion = texture ||
-                    ([mtlc isBlendingDisabled:!rfi.hasAlpha]
-                    && !xform
-                    && isIntegerAndUnscaled(sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2));
+                    (!rfi.hasAlpha
+                     && !xform
+                     && isIntegerAndUnscaled(sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2));
 
             if (useReplaceRegion) {
                 if (dstOps->isOpaque || rfi.hasAlpha) {
