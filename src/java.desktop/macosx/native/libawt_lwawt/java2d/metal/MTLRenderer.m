@@ -307,8 +307,8 @@ MTLRenderer_DrawScanlines(MTLContext *mtlc, BMTLSDOps * dstOps,
     if (mtlEncoder == nil) return;
 
     struct Vertex verts[2*scanlineCount];
-    
-    for (int j = 0, i = 0; j < scanlineCount; j++) {    
+
+    for (int j = 0, i = 0; j < scanlineCount; j++) {
         // Translate each vertex by a fraction so
         // that we hit pixel centers.
         float x1 = ((float)*(scanlines++)) + 0.2f;

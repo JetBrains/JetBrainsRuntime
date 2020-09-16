@@ -411,7 +411,7 @@ extern void initSamplers(id<MTLDevice> device);
                     yp3:(jdouble)yp3
 {
     BMTLSDOps *srcOps = (BMTLSDOps *)jlong_to_ptr(pSrcOps);
-    
+
     if (srcOps == NULL || srcOps->pTexture == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext_setTexturePaint: texture paint - texture is null");
         return;

@@ -276,7 +276,7 @@ static MTLRenderPipelineDescriptor * templateLCDPipelineDesc = nil;
  */
 static jboolean
 MTLTR_EnableLCDGlyphModeState(id<MTLRenderCommandEncoder> encoder,
-                              MTLContext *mtlc, 
+                              MTLContext *mtlc,
                               MTLSDOps *dstOps,
                               jint contrast)
 {

@@ -84,7 +84,7 @@ Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
 
         if (fgets(str, 60, f) != NULL) {
             // Check for string
-            // "Metal:	Supported, feature set macOS GPUFamily1 v4"
+            // "Metal:  Supported, feature set macOS GPUFamily1 v4"
             if (strstr(str, "Metal") != NULL) {
                 puts(str);
                 metalSupport = JNI_TRUE;

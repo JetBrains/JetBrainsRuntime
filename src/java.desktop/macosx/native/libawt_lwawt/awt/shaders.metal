@@ -522,7 +522,7 @@ vertex TxtShaderInOut vert_tp(VertexInput in [[stage_in]],
     out.texCoords.y = (anchorData.yParams[0] * in.position.x) +
                       (anchorData.yParams[1] * in.position.y) +
                       (anchorData.yParams[2] * out.position.w);
-   
+
     return out;
 }
 
@@ -560,7 +560,7 @@ fragment float4 lcd_color(
         LCDShaderInOut vert [[stage_in]],
         texture2d<float, access::sample> glyphTexture [[texture(0)]],
         texture2d<float, access::sample> dstTexture [[texture(1)]],
-        constant LCDFrameUniforms& uniforms [[buffer(1)]]) 
+        constant LCDFrameUniforms& uniforms [[buffer(1)]])
 {
     float3 src_adj = uniforms.src_adj;
     float3 gamma = uniforms.gamma;
