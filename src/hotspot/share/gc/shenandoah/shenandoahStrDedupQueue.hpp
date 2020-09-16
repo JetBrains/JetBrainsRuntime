@@ -108,8 +108,6 @@ private:
   bool pop_candidate(oop& obj);
 
   void set_producer_buffer(ShenandoahQueueBuffer* buf, size_t queue_id);
-
-  void verify(ShenandoahQueueBuffer* head);
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHSTRINGDEDUPQUEUE_HPP
