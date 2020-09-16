@@ -33,4 +33,4 @@ version=0
 domain=openjdk.org
 
 [checks "whitespace"]
-files=.*\.java$|.*\.c$|.*\.h$|.*\.cpp$|.*\.hpp$
+files=.*\.cpp|.*\.hpp|.*\.c|.*\.h|.*\.java|.*\.cc|.*\.hh|.*\.m|.*\.mm
