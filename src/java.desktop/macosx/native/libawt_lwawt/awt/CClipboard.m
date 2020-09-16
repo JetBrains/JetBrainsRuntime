@@ -187,7 +187,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CClipboard_writeObjects
     }
     
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
     jint nBytes = (*env)->GetArrayLength(env, inBytes);
     jbyte *rawBytes = (*env)->GetPrimitiveArrayCritical(env, inBytes, NULL);
     CHECK_NULL(rawBytes);
@@ -212,7 +212,7 @@ JNF_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
         [[NSPasteboard generalPasteboard] writeObjects:formatArray];
     }];
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 
