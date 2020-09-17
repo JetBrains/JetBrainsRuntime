@@ -91,6 +91,7 @@ MTLTransform* tempTransform = nil;
     MTLComposite *     _composite;
     MTLPaint *         _paint;
     MTLTransform *     _transform;
+    MTLTransform *     _tempTransform;
     MTLClip *          _clip;
     NSObject*          _bufImgOp; // TODO: pass as parameter of IsoBlit
 
@@ -139,7 +140,7 @@ extern void initSamplers(id<MTLDevice> device);
         commandQueue = [device newCommandQueue];
         blitCommandQueue = [device newCommandQueue];
 
-        tempTransform = [[MTLTransform alloc] init];
+        _tempTransform = [[MTLTransform alloc] init];
 
         initSamplers(device);
     }
@@ -159,8 +160,7 @@ extern void initSamplers(id<MTLDevice> device);
     [_composite release];
     [_paint release];
     [_transform release];
-    [tempTransform release];
-    tempTransform = nil;
+    [_tempTransform release];
     [_clip release];
     [super dealloc];
 }
@@ -247,7 +247,7 @@ extern void initSamplers(id<MTLDevice> device);
 
     // Store the current transform as we need to use identity transform
     // for clip spans rendering
-    [tempTransform copyFrom:_transform];
+    [_tempTransform copyFrom:_transform];
     [self resetTransform];
 }
 
@@ -256,7 +256,7 @@ extern void initSamplers(id<MTLDevice> device);
     [_clip endShapeClip:dstOps context:self];
 
     // Reset transform for further rendering
-    [_transform copyFrom:tempTransform];
+    [_transform copyFrom:_tempTransform];
 }
 
 - (void)resetComposite {
