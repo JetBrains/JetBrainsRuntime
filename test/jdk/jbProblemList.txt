@@ -1052,9 +1052,9 @@ javax/swing/text/StyledEditorKit/8016833/bug8016833.java                        
 javax/swing/text/TableView/TableViewLayoutTest.java                                 8194936 linux-all
 javax/swing/text/Utilities/8134721/bug8134721.java                                  8199062 generic-all
 javax/swing/text/Utilities/8142966/SwingFontMetricsTest.java                        8199529 windows-all
-javax/swing/text/View/8014863/bug8014863.java                                       8072110 windows-all,linux-all
+javax/swing/text/View/8014863/bug8014863.java                                       8072110,8233561 windows-all,linux-all,macosx-all
 javax/swing/text/html/CSS/4530474/bug4530474.java                                   8194941,8151301 linux-all,macosx-all,windows-all (windows - nobug commit testing)
-javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java                         8072110 windows-all,linux-all
+javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java                         8072110,8233570 windows-all,linux-all,macosx-all
 javax/swing/text/html/StyleSheet/BackgroundImage/BackgroundImagePosition.java       8198409 generic-all
 javax/swing/text/html/StyleSheet/bug4936917.java                                    8208569 macosx-all
 javax/swing/text/html/parser/Parser/6836089/bug6836089.java                         8198401 generic-all
