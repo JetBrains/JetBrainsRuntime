@@ -871,6 +871,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         CONTINUE_IF_NULL(mtlc);
+                        MTLTR_FreeGlyphCaches();
                         MTLSD_Delete(env, mtlsdo);
                     }
                     break;

@@ -443,6 +443,22 @@ MTLTR_DisableGlyphVertexCache(MTLContext *mtlc)
     MTLVertexCache_FreeVertexCache();
 }
 
+void MTLTR_FreeGlyphCaches() {
+    J2dTraceLn(J2D_TRACE_INFO, "MTLTR_FreeGlyphCaches : freeing glyph caches.");
+
+    if (glyphCacheAA != NULL) {
+        [glyphCacheAA->texture release];
+        MTLGlyphCache_Free(glyphCacheAA);
+        glyphCacheAA = NULL;
+    }
+
+    if (glyphCacheLCD != NULL) {
+        [glyphCacheLCD->texture release];
+        MTLGlyphCache_Free(glyphCacheLCD);
+        glyphCacheLCD = NULL;
+    }
+}
+
 static jboolean
 MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
                                  GlyphInfo *ginfo, jint x, jint y, BMTLSDOps *dstOps)
