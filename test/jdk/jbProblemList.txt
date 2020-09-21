@@ -197,8 +197,9 @@ java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowRetaining.java 6829264
 java/awt/datatransfer/DragImage/MultiResolutionDragImageTest.java 8080982 generic-all
 java/awt/datatransfer/SystemFlavorMap/AddFlavorTest.java 8079268 linux-all
 java/awt/PopupMenu/PopupMenuLocation.java                                           8238720 windows-all,linux-all
-java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java 6829250 windows-all
+java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java 6829250,8253398 windows-all
 java/awt/Toolkit/RealSync/Test.java 6849383 macosx-all,linux-all
+java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252 windows-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252 windows-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java 8203047 macosx-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java 8073636 macosx-all
@@ -709,6 +710,7 @@ sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                 8209398 generic-
 
 security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java 8224768 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/BuypassCA.java 8243543 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/QuoVadisCA.java 8248899 generic-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
 sun/security/smartcardio/TestConnect.java                       8039280 generic-all
