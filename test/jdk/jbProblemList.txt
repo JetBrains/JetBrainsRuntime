@@ -577,7 +577,7 @@ java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java           
 java/awt/Toolkit/DesktopProperties/rfe4758438.java                                  8193547 linux-all
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java                       8208514 windows-all
 java/awt/Toolkit/RealSync/Test.java                                                 6849383 generic-all
-java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java                             6829250 windows-all,linux-all,macosx-all
+java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java                             6829250,8253398 windows-all,linux-all,macosx-all
 java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Enable.java                6847163 generic-all
 java/awt/TrayIcon/ActionCommand/ActionCommand.java                                  8197575,8150540 macosx-all,windows-all
 java/awt/TrayIcon/ActionEventMask/ActionEventMask.java                              8197575,8150540 macosx-all,windows-all
