@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,12 @@
 # Install the launcher name, release version string, full version
 # string and the runtime name into the VersionProps.java file.
 
+ifeq ($(COMPANY_NAME), N/A)
+  VENDOR=Oracle Corporation
+else
+  VENDOR=$(COMPANY_NAME)
+endif
+
 $(eval $(call SetupTextFileProcessing, BUILD_VERSION_JAVA, \
     SOURCE_FILES := $(TOPDIR)/src/java.base/share/classes/java/lang/VersionProps.java.template, \
     OUTPUT_FILE := $(SUPPORT_OUTPUTDIR)/gensrc/java.base/java/lang/VersionProps.java, \
@@ -41,7 +47,7 @@ $(eval $(call SetupTextFileProcessing, BUILD_VERSION_JAVA, \
         @@VERSION_OPT@@ => $(VERSION_OPT) ; \
         @@VERSION_DATE@@ => $(VERSION_DATE) ; \
         @@VENDOR_VERSION_STRING@@ => $(VENDOR_VERSION_STRING) ; \
-        @@VENDOR@@ => $(COMPANY_NAME) ; \
+        @@VENDOR@@ => $(VENDOR) ; \
         @@VENDOR_URL@@ => $(VENDOR_URL) ; \
         @@VENDOR_URL_BUG@@ => $(VENDOR_URL_BUG) ; \
         @@VENDOR_URL_VM_BUG@@ => $(VENDOR_URL_VM_BUG), \
