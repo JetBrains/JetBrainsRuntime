@@ -200,7 +200,7 @@ bool JfrStackTrace::record_thread(JavaThread& thread, frame& frame) {
     const int lineno = method->line_number_from_bci(bci);
     // Can we determine if it's inlined?
     _hash = (_hash << 2) + (unsigned int)(((size_t)mid >> 2) + (bci << 4) + type);
-    _frames[count] = JfrStackFrame(mid, bci, type, method);
+    _frames[count] = JfrStackFrame(mid, bci, type, lineno);
     st.samples_next();
     count++;
   }
