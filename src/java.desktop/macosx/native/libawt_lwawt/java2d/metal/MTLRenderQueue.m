@@ -330,14 +330,14 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
     if (mtlc != NULL) {
         [mtlc.encoderManager endEncoder];
 
-        if (op == MTL_OP_RESET_PAINT || op == MTL_OP_SYNC) {
+        if (op == MTL_OP_RESET_PAINT || op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS) {
             MTLCommandBufferWrapper *cbwrapper = [mtlc pullCommandBufferWrapper];
             id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
             [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
                 [cbwrapper release];
             }];
             [commandbuf commit];
-            if (op == MTL_OP_SYNC) {
+            if (op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS) {
                 [commandbuf waitUntilCompleted];
             }
         }
@@ -758,7 +758,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_SET_SHAPE_CLIP_SPANS:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_PREVIOUS_OP(MTL_OP_SHAPE_CLIP_SPANS);
                     // This results in creation of new render encoder with
                     // stencil buffer set as render target
                     jint count = NEXT_INT(b);
