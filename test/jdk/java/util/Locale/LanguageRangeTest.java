@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,11 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+/**
+ * @test
+ * @bug 8253321
+ * @summary test LanguageRange class
+ * @run testng LanguageRangeTest
+ */
 
-#include "precompiled.hpp"
-#include "gc/z/zInitialize.hpp"
-#include "gc/z/zSyscall_windows.hpp"
+import static java.util.Locale.LanguageRange;
 
-void ZInitialize::pd_initialize() {
-  ZSyscall::initialize();
+import org.testng.annotations.Test;
+import static org.testng.Assert.assertEquals;
+
+@Test
+public class LanguageRangeTest {
+
+    @Test
+    public void hashCodeTest() {
+        var range1 = new LanguageRange("en-GB", 0);
+        var range2 = new LanguageRange("en-GB", 0);
+        assertEquals(range1, range2);
+        range1.hashCode();
+        assertEquals(range1, range2);
+        range2.hashCode();
+        assertEquals(range1, range2);
+    }
 }
