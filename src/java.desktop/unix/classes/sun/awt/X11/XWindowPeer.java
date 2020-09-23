@@ -143,10 +143,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     private static final int MAXIMUM_BUFFER_LENGTH_NET_WM_ICON = (2<<15) - 1;
 
     static {
-        /* https://userbase.kde.org/KDE_System_Administration/Environment_Variables#KDE_FULL_SESSION */
-        final String kdeSession = AccessController.doPrivileged((PrivilegedAction<String>) () -> System.getenv("KDE_FULL_SESSION"));
-        final boolean isKDE = kdeSession != null && !kdeSession.isEmpty();
-
+        final boolean isKDE = XWM.getWMID() == XWM.KDE2_WM;
         X11_DISABLE_OVERRIDE_FLAG =
                 GetPropertyAction.privilegedGetProperty("x11.disable.override.flag", isKDE ? "true" : "false").equalsIgnoreCase("true");
         X11_DISABLE_OVERRIDE_XWINDOWPEER =
