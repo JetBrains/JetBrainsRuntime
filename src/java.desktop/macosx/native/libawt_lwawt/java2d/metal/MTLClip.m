@@ -170,7 +170,6 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
                   destinationOrigin:origin];
         [blitEncoder endEncoding];
         [commandBuf commit];
-        [commandBuf waitUntilCompleted];
 
         [buff release];
     }
@@ -194,7 +193,6 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
     }];
 
     [commandBuffer commit];
-    [commandBuffer waitUntilCompleted];
 
     // Now the stencil data is ready, this needs to be used while rendering further
     @autoreleasepool {
@@ -219,7 +217,6 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
                 destinationBytesPerImage:size];
             [blitEncoder endEncoding];
             [cb commit];
-            [cb waitUntilCompleted];
         }
     }
 
@@ -318,7 +315,6 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
                       destinationOrigin:MTLOriginMake(0, 0, 0)];
             [blitEncoder endEncoding];
             [cb commit];
-            [cb waitUntilCompleted];
             _clipReady = YES;
         }
     }
@@ -374,7 +370,6 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
             [blitEncoder endEncoding];
 
             [cb commit];
-            [cb waitUntilCompleted];
             _aaClipReady = YES;
         }
     }
