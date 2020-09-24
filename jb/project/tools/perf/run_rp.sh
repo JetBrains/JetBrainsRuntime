@@ -1,10 +1,13 @@
 #!/bin/bash
 
+set -euo pipefail
+#set -x
+
 BASE_DIR=$(dirname "$0")
 source $BASE_DIR/run_inc.sh
 
 RENDERPERFTEST_DIR=$WS_ROOT/test/jdk/performance/client/RenderPerfTest
-
+RENDERPERFTEST=""
 if [ -z "$RENDERPERFTEST" ]; then
   if [ ! -f "$RENDERPERFTEST_DIR/dist/RenderPerfTest.jar" ]; then
     PATH=$JAVA_HOME/bin:$PATH make -C $RENDERPERFTEST_DIR
@@ -60,10 +63,11 @@ if [[ ($# -eq 1 && "$1" == "-help") || ($# -eq 0)  ]] ; then
   echo "            -buffer   : rendering to buffered image" 
   echo "$RENDER_OPS_DOC"
   exit 2
-fi 
+fi
 
+OPTS=""
 # use time + repeat
-OPTS="$OPTS -r$R -t -e$MODE $1"
+OPTS="$OPTS -r=$R -t -e$MODE $1"
 
 echo "OPTS: $OPTS"
 
@@ -74,8 +78,12 @@ for i in `seq $N` ; do
     echo x
   fi
 
+#  echo "[debug] " + "test run"
+#  $JAVA $J2D_OPTS -DTRACE=$TRACE \
+#  -jar $RENDERPERFTEST $OPTS 2>&1 | awk '/'$1'/{print $3 }' | tee test_run.log
+
   $JAVA $J2D_OPTS -DTRACE=$TRACE \
-  -jar $RENDERPERFTEST $OPTS 2>&1 | tail -n +2 | \
+  -jar $RENDERPERFTEST $OPTS -v 2>&1 | tee render_$1.log | grep -v "^#" | tail -n 2 | \
   awk '/'$1'/{print $3 }' 
   if [ $i -ne $N ]; then
     sleep $ST

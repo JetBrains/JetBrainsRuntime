@@ -25,14 +25,13 @@ case "$OSTYPE" in
       ;;
 esac
 
-read -r -d '' RENDER_OPS_DOC << EOM
+read -r RENDER_OPS_DOC << EOM
 rendering_options:
   -opengl # OpenGL pipeline (windows, linux, macOS)
   -metal  # Metal pipeline (macOS)
   -tk tk_name # AWT toolkit (linux: WLToolkit|XToolkit)
   -scale # UI scale
 EOM
-
 while [ $# -ge 1 ] ; do
   case "$1" in
     -opengl) J2D_OPTS=$J2D_OPTS" -Dsun.java2d.opengl=true"
