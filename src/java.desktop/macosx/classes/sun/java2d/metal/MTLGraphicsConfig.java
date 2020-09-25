@@ -158,7 +158,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         }
 
         ContextCapabilities caps = new MTLContext.MTLContextCaps(
-                CAPS_PS30 | CAPS_PS20 | CAPS_RT_PLAIN_ALPHA |
+                CAPS_PS30 | CAPS_PS20 |
                         CAPS_RT_TEXTURE_ALPHA | CAPS_RT_TEXTURE_OPAQUE |
                         CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE |
                         CAPS_EXT_BIOP_SHADER | CAPS_EXT_GRAD_SHADER,
