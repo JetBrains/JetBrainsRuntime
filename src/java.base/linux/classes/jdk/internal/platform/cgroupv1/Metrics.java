@@ -226,6 +226,8 @@ public class Metrics implements jdk.internal.platform.Metrics {
                 MemorySubSystem memorySubSystem = (MemorySubSystem)subsystem;
                 boolean isHierarchial = getHierarchical(memorySubSystem);
                 memorySubSystem.setHierarchical(isHierarchial);
+                boolean isSwapEnabled = getSwapEnabled(memorySubSystem);
+                memorySubSystem.setSwapEnabled(isSwapEnabled);
             }
             metric.setActiveSubSystems();
         }
@@ -238,6 +240,11 @@ public class Metrics implements jdk.internal.platform.Metrics {
     private static boolean getHierarchical(MemorySubSystem subsystem) {
         long hierarchical = SubSystem.getLongValue(subsystem, "memory.use_hierarchy");
         return hierarchical > 0;
+    }
+
+    private static boolean getSwapEnabled(MemorySubSystem subsystem) {
+        long retval = SubSystem.getLongValue(subsystem, "memory.memsw.limit_in_bytes");
+        return retval > 0;
     }
 
     private void setActiveSubSystems() {
@@ -469,10 +476,16 @@ public class Metrics implements jdk.internal.platform.Metrics {
     }
 
     public long getMemoryAndSwapFailCount() {
+        if (!memory.isSwapEnabled()) {
+            return getMemoryFailCount();
+        }
         return SubSystem.getLongValue(memory, "memory.memsw.failcnt");
     }
 
     public long getMemoryAndSwapLimit() {
+        if (!memory.isSwapEnabled()) {
+            return getMemoryLimit();
+        }
         long retval = SubSystem.getLongValue(memory, "memory.memsw.limit_in_bytes");
         if (retval > unlimited_minimum) {
             if (memory.isHierarchical()) {
@@ -489,10 +502,16 @@ public class Metrics implements jdk.internal.platform.Metrics {
     }
 
     public long getMemoryAndSwapMaxUsage() {
+        if (!memory.isSwapEnabled()) {
+            return getMemoryMaxUsage();
+        }
         return SubSystem.getLongValue(memory, "memory.memsw.max_usage_in_bytes");
     }
 
     public long getMemoryAndSwapUsage() {
+        if (!memory.isSwapEnabled()) {
+            return getMemoryUsage();
+        }
         return SubSystem.getLongValue(memory, "memory.memsw.usage_in_bytes");
     }
 
