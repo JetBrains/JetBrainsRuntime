@@ -16,7 +16,9 @@
 #import "JavaAccessibilityUtilities.h"
 #import "JavaTextAccessibility.h"
 #import "JavaListAccessibility.h"
+#import "JavaTableAccessibility.h"
 #import "JavaRowAccessibility.h"
+#import "JavaCellAccessibility.h"
 #import "JavaComponentAccessibility.h"
 #import "ThreadUtilities.h"
 #import "AWTView.h"
@@ -296,12 +298,16 @@ static jobject sAccessibilityClass = NULL;
         newChild = [ScrollAreaAccessibility alloc];
     } else if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityListRole]) {
         newChild = [JavaRowAccessibility alloc];
+    } if ( [[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityTableRole]) {
+        newChild = [JavaCellAccessibility alloc];
     } else {
         NSString *nsRole = [sRoles objectForKey:javaRole];
         if ([nsRole isEqualToString:NSAccessibilityStaticTextRole] || [nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
             newChild = [JavaTextAccessibility alloc];
         } else if ([nsRole isEqualToString:NSAccessibilityListRole]) {
             newChild = [JavaListAccessibility alloc];
+        } else if ([nsRole isEqualToString:NSAccessibilityTableRole]) {
+            newChild = [JavaTableAccessibility alloc];
         } else {
             newChild = [JavaComponentAccessibility alloc];
         }
@@ -490,6 +496,10 @@ static jobject sAccessibilityClass = NULL;
 
 -(jint)index {
     return fIndex;
+}
+
+- (void)setParent:(id)javaBaseAccessibilityParent { 
+    fParent = javaBaseAccessibilityParent;
 }
 
 @end

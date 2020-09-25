@@ -48,7 +48,7 @@ static void RaiseMustOverrideException(NSString *method)
     NSArray *children = [JavaBaseAccessibility childrenOfParent:self.javaBase
                                                         withEnv:env
                                                withChildrenCode:JAVA_AX_ALL_CHILDREN
-                                                   allowIgnored:[[self accessibilityRole] isEqualToString:NSAccessibilityListRole]];
+                                                   allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole])];
     if ([children count] > 0) {
         return children;
     }
@@ -61,7 +61,7 @@ static void RaiseMustOverrideException(NSString *method)
     NSArray *selectedChildren = [JavaBaseAccessibility childrenOfParent:self.javaBase
                                                                 withEnv:env
                                                        withChildrenCode:JAVA_AX_SELECTED_CHILDREN
-                                                           allowIgnored:[[self accessibilityRole] isEqualToString:NSAccessibilityListRole]];
+                                                           allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole])];
     if ([selectedChildren count] > 0) {
         return selectedChildren;
     }
@@ -99,6 +99,10 @@ static void RaiseMustOverrideException(NSString *method)
 - (id)getAccessibilityWindow
 {
     return [self.javaBase window];
+}
+
+- (void)setAccessibilityParent:(id)accessibilityParent {
+    [[self javaBase] setParent:accessibilityParent];
 }
 
 @end
