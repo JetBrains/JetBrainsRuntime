@@ -49,12 +49,7 @@ public class RenderPerfTest {
     private static HashSet<String> ignoredTests = new HashSet<>();
 
     static {
-            ignoredTests.add("testWhiteTextBubblesNoAA");
-            ignoredTests.add("testWhiteTextBubblesLCD");
-            ignoredTests.add("testWhiteTextBubblesGray");
-            ignoredTests.add("testLinGradOvalRotBubblesAA");
-            ignoredTests.add("testWiredBoxBubblesAA");
-            ignoredTests.add("testLinesAA");
+        ignoredTests.add("testWiredBoxAA");
     }
 
     private final static int N = 1000;
@@ -683,83 +678,83 @@ public class RenderPerfTest {
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                 RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-    public void testFlatBubbles() throws Exception {
+    public void testFlatOval() throws Exception {
         (new PerfMeter("FlatOval")).exec(createPR(flatRenderer)).report();
     }
 
-    public void testFlatBubblesAA() throws Exception {
+    public void testFlatOvalAA() throws Exception {
         (new PerfMeter("FlatOvalAA")).exec(createPR(flatRenderer).configure(AA)).report();
     }
 
-    public void testClipFlatBubbles() throws Exception {
+    public void testClipFlatOval() throws Exception {
         (new PerfMeter("ClipFlatOval")).exec(createPR(clipFlatRenderer)).report();
     }
 
-    public void testClipFlatBubblesAA() throws Exception {
+    public void testClipFlatOvalAA() throws Exception {
         (new PerfMeter("ClipFlatOvalAA")).exec(createPR(clipFlatRenderer).configure(AA)).report();
     }
 
-    public void testFlatBoxBubbles() throws Exception {
+    public void testFlatBox() throws Exception {
         (new PerfMeter("FlatBox")).exec(createPR(flatBoxRenderer)).report();
     }
 
-    public void testFlatBoxBubblesAA() throws Exception {
+    public void testFlatBoxAA() throws Exception {
         (new PerfMeter("FlatBoxAA")).exec(createPR(flatBoxRenderer).configure(AA)).report();
     }
 
-    public void testClipFlatBoxBubbles() throws Exception {
+    public void testClipFlatBox() throws Exception {
         (new PerfMeter("ClipFlatBox")).exec(createPR(clipFlatBoxParticleRenderer)).report();
     }
 
-    public void testClipFlatBoxBubblesAA() throws Exception {
+    public void testClipFlatBoxAA() throws Exception {
         (new PerfMeter("ClipFlatBoxAA")).exec(createPR(clipFlatBoxParticleRenderer).configure(AA)).report();
     }
 
-    public void testImgBubbles() throws Exception {
+    public void testImage() throws Exception {
         (new PerfMeter("Image")).exec(createPR(imgRenderer)).report();
     }
 
-    public void testImgBubblesAA() throws Exception {
+    public void testImageAA() throws Exception {
         (new PerfMeter("ImageAA")).exec(createPR(imgRenderer).configure(AA)).report();
     }
 
-    public void testFlatBoxRotBubbles() throws Exception {
+    public void testRotatedBox() throws Exception {
         (new PerfMeter("RotatedBox")).exec(createPR(flatBoxRotRenderer)).report();
     }
 
-    public void testFlatBoxRotBubblesAA() throws Exception {
+    public void testRotatedBoxAA() throws Exception {
         (new PerfMeter("RotatedBoxAA")).exec(createPR(flatBoxRotRenderer).configure(AA)).report();
     }
 
-    public void testFlatOvalRotBubbles() throws Exception {
+    public void testRotatedOval() throws Exception {
         (new PerfMeter("RotatedOval")).exec(createPR(flatOvalRotRenderer)).report();
     }
 
-    public void testFlatOvalRotBubblesAA() throws Exception {
+    public void testRotatedOvalAA() throws Exception {
         (new PerfMeter("RotatedOvalAA")).exec(createPR(flatOvalRotRenderer).configure(AA)).report();
     }
 
-    public void testLinGrad3OvalRotBubbles() throws Exception {
+    public void testLinGrad3RotatedOval() throws Exception {
         (new PerfMeter("LinGrad3RotatedOval")).exec(createPR(linGrad3OvalRotRenderer)).report();
     }
 
-    public void testLinGrad3OvalRotBubblesAA() throws Exception {
+    public void testLinGrad3RotatedOvalAA() throws Exception {
         (new PerfMeter("LinGrad3RotatedOvalAA")).exec(createPR(linGrad3OvalRotRenderer).configure(AA)).report();
     }
 
-    public void testRadGrad3OvalRotBubbles() throws Exception {
+    public void testRadGrad3RotatedOval() throws Exception {
         (new PerfMeter("RadGrad3RotatedOval")).exec(createPR(radGrad3OvalRotRenderer)).report();
     }
 
-    public void testRadGrad3OvalRotBubblesAA() throws Exception {
+    public void testRadGrad3RotatedOvalAA() throws Exception {
         (new PerfMeter("RadGrad3RotatedOvalAA")).exec(createPR(radGrad3OvalRotRenderer).configure(AA)).report();
     }
 
-    public void testLinGradOvalRotBubbles() throws Exception {
+    public void testLinGradRotatedOval() throws Exception {
         (new PerfMeter("LinGradRotatedOval")).exec(createPR(linGradOvalRotRenderer)).report();
     }
 
-    public void testLinGradOvalRotBubblesAA() throws Exception {
+    public void testLinGradRotatedOvalAA() throws Exception {
         (new PerfMeter("LinGradRotatedOvalAA")).exec(createPR(linGradOvalRotRenderer).configure(AA)).report();
     }
 
@@ -771,11 +766,11 @@ public class RenderPerfTest {
         (new PerfMeter("WiredBubblesAA")).exec(createPR(wiredRenderer).configure(AA)).report();
     }
 
-    public void testWiredBoxBubbles() throws Exception {
+    public void testWiredBox() throws Exception {
         (new PerfMeter("WiredBox")).exec(createPR(wiredBoxRenderer)).report();
     }
 
-    public void testWiredBoxBubblesAA() throws Exception {
+    public void testWiredBoxAA() throws Exception {
         (new PerfMeter("WiredBoxAA")).exec(createPR(wiredBoxRenderer).configure(AA)).report();
     }
 
@@ -803,38 +798,38 @@ public class RenderPerfTest {
         (new PerfMeter("WiredQuadAA")).exec(createPR(wiredQuadRenderer).configure(AA)).report();
     }
 
-    public void testTextBubblesNoAA() throws Exception {
+    public void testTextNoAA() throws Exception {
         (new PerfMeter("TextNoAA")).exec(createPR(textRenderer)).report();
     }
 
-    public void testTextBubblesLCD() throws Exception {
+    public void testTextLCD() throws Exception {
         (new PerfMeter("TextLCD")).exec(createPR(textRenderer).configure(TextLCD)).report();
     }
 
-    public void testTextBubblesGray() throws Exception {
+    public void testTextGray() throws Exception {
         (new PerfMeter("TextGray")).exec(createPR(textRenderer).configure(TextAA)).report();
     }
 
-    public void testLargeTextBubblesNoAA() throws Exception {
+    public void testLargeTextNoAA() throws Exception {
         (new PerfMeter("LargeTextNoAA")).exec(createPR(largeTextRenderer)).report();
     }
 
-    public void testLargeTextBubblesLCD() throws Exception {
+    public void testLargeTextLCD() throws Exception {
         (new PerfMeter("LargeTextLCD")).exec(createPR(largeTextRenderer).configure(TextLCD)).report();
     }
 
-    public void testLargeTextBubblesGray() throws Exception {
+    public void testLargeTextGray() throws Exception {
         (new PerfMeter("LargeTextGray")).exec(createPR(largeTextRenderer).configure(TextAA)).report();
     }
-    public void testWhiteTextBubblesNoAA() throws Exception {
+    public void testWhiteTextNoAA() throws Exception {
         (new PerfMeter("WhiteTextNoAA")).exec(createPR(whiteTextRenderer)).report();
     }
 
-    public void testWhiteTextBubblesLCD() throws Exception {
+    public void testWhiteTextLCD() throws Exception {
         (new PerfMeter("WhiteTextLCD")).exec(createPR(whiteTextRenderer).configure(TextLCD)).report();
     }
 
-    public void testWhiteTextBubblesGray() throws Exception {
+    public void testWhiteTextGray() throws Exception {
         (new PerfMeter("WhiteTextGray")).exec(createPR(whiteTextRenderer).configure(TextAA)).report();
     }
 
@@ -845,7 +840,7 @@ public class RenderPerfTest {
 
         if (args.length > 0) {
             for (String testCase : args) {
-                Method m = RenderPerfTest.class.getDeclaredMethod(testCase);
+                Method m = RenderPerfTest.class.getDeclaredMethod("test" + testCase);
                 m.invoke(test);
             }
         } else {
