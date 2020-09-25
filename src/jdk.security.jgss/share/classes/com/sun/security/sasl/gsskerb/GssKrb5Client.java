@@ -34,6 +34,7 @@ import javax.security.sasl.*;
 import javax.security.auth.callback.CallbackHandler;
 
 // JGSS
+import sun.security.jgss.krb5.internal.TlsChannelBindingImpl;
 import org.ietf.jgss.*;
 
 /**
@@ -139,6 +140,16 @@ final class GssKrb5Client extends GssKrb5Base implements SaslClient {
                 }
             }
             secCtx.requestMutualAuth(mutual);
+
+            if (props != null) {
+                // TLS Channel Binding
+                // Property name is defined in the TLSChannelBinding class of
+                // the java.naming module
+                byte[] tlsCB = (byte[])props.get("jdk.internal.sasl.tlschannelbinding");
+                if (tlsCB != null) {
+                    secCtx.setChannelBinding(new TlsChannelBindingImpl(tlsCB));
+                }
+            }
 
             // Always specify potential need for integrity and confidentiality
             // Decision will be made during final handshake
