@@ -94,7 +94,6 @@
 // NOTE: called from RQ-thread (on blit operations)
 - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format
                           isMultiSample:(bool)isMultiSample {
-    @autoreleasepool {
         // 1. clean pool if necessary
         const int requestedPixels = width*height;
         const int requestedBytes = requestedPixels*4;
@@ -199,8 +198,11 @@
 
         minDeltaTpi.isBusy = YES;
         minDeltaTpi.lastUsed = [NSDate date];
-        return [[MTLPooledTextureHandle alloc] initWithPoolItem:minDeltaTpi.texture rect:MTLRegionMake2D(0, 0, minDeltaTpi.texture.width, minDeltaTpi.texture.height) poolItem:minDeltaTpi];
-    }
+        return [[[MTLPooledTextureHandle alloc] initWithPoolItem:minDeltaTpi.texture
+                                                            rect:MTLRegionMake2D(0, 0,
+                                                                                 minDeltaTpi.texture.width,
+                                                                                 minDeltaTpi.texture.height)
+                                                        poolItem:minDeltaTpi] autorelease];
 }
 
 - (void) cleanIfNecessary:(int)lastUsedTimeThreshold {

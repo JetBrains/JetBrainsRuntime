@@ -344,7 +344,6 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                                                       height:dest.height
                                                       format:MTLPixelFormatBGRA8Unorm];
       [cbw registerPooledTexture:tiBuf];
-      [tiBuf release];
       _aaDestination = tiBuf.texture;
 
       MTLTexturePoolItem *ti = [_mtlc.texturePool getTexture:dest.width
@@ -352,7 +351,6 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
                                                       format:_aaDestination.pixelFormat
                                                isMultiSample:YES];
       [cbw registerPooledTexture:ti];
-      [ti release];
       ca.texture = ti.texture;
       ca.resolveTexture = _aaDestination;
       ca.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 0.0f);

@@ -62,7 +62,6 @@ MTLMaskBlit_MaskBlit(JNIEnv *env, MTLContext *mtlc, BMTLSDOps * dstOps,
         return;
     }
     [[mtlc getCommandBufferWrapper] registerPooledTexture:texHandle];
-    [texHandle release];
 
     id<MTLTexture> texBuff = texHandle.texture;
     MTLRegion region = MTLRegionMake2D(0, 0, width, height);
