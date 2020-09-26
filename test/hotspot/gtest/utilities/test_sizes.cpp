@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2020, Red Hat Inc.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,30 +21,21 @@
  * questions.
  */
 
-package jdk.internal.platform.cgroupv1;
+#include "precompiled.hpp"
+#include "utilities/sizes.hpp"
+#include "unittest.hpp"
 
-public class CgroupV1MemorySubSystemController extends CgroupV1SubsystemController {
+TEST(ByteSize, constructors) {
+  EXPECT_EQ(in_bytes(in_ByteSize(10)), 10);
+}
 
-    private boolean hierarchical;
-    private boolean swapenabled;
+TEST(ByteSize, operators) {
+  ByteSize s = in_ByteSize(7);
+  ASSERT_EQ(in_bytes(s + in_ByteSize(3)), 10);
+  ASSERT_EQ(in_bytes(s - in_ByteSize(3)), 4);
+  ASSERT_EQ(in_bytes(s * 3), 21);
+}
 
-    public CgroupV1MemorySubSystemController(String root, String mountPoint) {
-        super(root, mountPoint);
-    }
-
-    boolean isHierarchical() {
-        return hierarchical;
-    }
-
-    void setHierarchical(boolean hierarchical) {
-        this.hierarchical = hierarchical;
-    }
-
-    boolean isSwapEnabled() {
-        return swapenabled;
-    }
-
-    void setSwapEnabled(boolean swapenabled) {
-        this.swapenabled = swapenabled;
-    }
+TEST(WordSize, constructors) {
+  EXPECT_EQ(in_words(in_WordSize(10)), 10);
 }
