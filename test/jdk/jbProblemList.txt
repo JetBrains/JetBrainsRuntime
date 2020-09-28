@@ -730,6 +730,7 @@ java/lang/String/StringRepeat.java                                              
 java/lang/StringCoding/CheckEncodings.sh                                            7008363 generic-all
 java/lang/System/LoggerFinder/modules/JDKLoggerForImageTest.java                    nobug windows-6.1 fails on Windows 7 only
 java/lang/System/LoggerFinder/modules/UnnamedLoggerForImageTest.java                nobug windows-6.1 fails on Windows 7 only
+java/lang/System/OsVersionTest.java                                                 8253702 macosx-10.16
 
 ############################################################################
 
