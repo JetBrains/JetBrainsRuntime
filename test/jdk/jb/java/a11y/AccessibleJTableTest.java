@@ -23,7 +23,7 @@ public class AccessibleJTableTest extends AccessibleComponentTest {
         INSTRUCTIONS = "INSTRUCTIONS:\n"
                 + "Check a11y of JTable in a simple Window.\n\n"
                 + "Turn screen reader on, and Tab to the table.\n"
-                + "On Windows ress the arrow buttons to move through the table.\n\n"
+                + "On Windows press the arrow buttons to move through the table.\n\n"
                 + "On MacOS, use the up and down arrow buttons to move through rows, and VoiceOver fast navigation to move through columns.\n\n"
                 + "If you can hear table cells tab further and press PASS, otherwise press FAIL.\n";
 
@@ -41,8 +41,8 @@ public class AccessibleJTableTest extends AccessibleComponentTest {
         JScrollPane scrollPane = new JScrollPane(table);
         panel.add(scrollPane);
         panel.setFocusable(false);
-                exceptionString = "AccessibleJTable test failed!";
-                super.createUI(panel, "AccessibleJTableTest");
+        exceptionString = "AccessibleJTable test failed!";
+        super.createUI(panel, "AccessibleJTableTest");
     }
 
     public static void main(String[] args) throws Exception {
