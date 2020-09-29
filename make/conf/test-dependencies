@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -23,33 +23,21 @@
 # questions.
 #
 
-# Default version, product, and vendor information to use,
-# unless overridden by configure
+# Versions and download locations for dependencies used by pre-submit testing.
 
-DEFAULT_VERSION_FEATURE=16
-DEFAULT_VERSION_INTERIM=0
-DEFAULT_VERSION_UPDATE=0
-DEFAULT_VERSION_PATCH=0
-DEFAULT_VERSION_EXTRA1=0
-DEFAULT_VERSION_EXTRA2=0
-DEFAULT_VERSION_EXTRA3=0
-DEFAULT_VERSION_DATE=2021-03-16
-DEFAULT_VERSION_CLASSFILE_MAJOR=60  # "`$EXPR $DEFAULT_VERSION_FEATURE + 44`"
-DEFAULT_VERSION_CLASSFILE_MINOR=0
-DEFAULT_ACCEPTABLE_BOOT_VERSIONS="15 16"
-DEFAULT_JDK_SOURCE_TARGET_VERSION=16
-DEFAULT_PROMOTED_VERSION_PRE=ea
+BOOT_JDK_VERSION=15
+JTREG_VERSION=5.1
+JTREG_BUILD=b01
+GTEST_VERSION=1.8.1
 
-LAUNCHER_NAME=openjdk
-PRODUCT_NAME=OpenJDK
-PRODUCT_SUFFIX="Runtime Environment"
-JDK_RC_PLATFORM_NAME=Platform
-COMPANY_NAME=N/A
-HOTSPOT_VM_DISTRO="OpenJDK"
-VENDOR_URL=https://openjdk.java.net/
-VENDOR_URL_BUG=https://bugreport.java.com/bugreport/
-VENDOR_URL_VM_BUG=https://bugreport.java.com/bugreport/crash.jsp
+LINUX_X64_BOOT_JDK_FILENAME=openjdk-15_linux-x64_bin.tar.gz
+LINUX_X64_BOOT_JDK_URL=https://download.java.net/java/GA/jdk15/779bf45e88a44cbd9ea6621d33e33db1/36/GPL/openjdk-15_linux-x64_bin.tar.gz
+LINUX_X64_BOOT_JDK_SHA256=bb67cadee687d7b486583d03c9850342afea4593be4f436044d785fba9508fb7
 
-# Might need better names for these
-MACOSX_BUNDLE_NAME_BASE="OpenJDK"
-MACOSX_BUNDLE_ID_BASE="net.java.openjdk"
+WINDOWS_X64_BOOT_JDK_FILENAME=openjdk-15_windows-x64_bin.zip
+WINDOWS_X64_BOOT_JDK_URL=https://download.java.net/java/GA/jdk15/779bf45e88a44cbd9ea6621d33e33db1/36/GPL/openjdk-15_windows-x64_bin.zip
+WINDOWS_X64_BOOT_JDK_SHA256=764e39a71252a9791118a31ae56a4247c049463bda5eb72497122ec50b1d07f8
+
+MACOS_X64_BOOT_JDK_FILENAME=openjdk-115_osx-x64_bin.tar.gz
+MACOS_X64_BOOT_JDK_URL=https://download.java.net/java/GA/jdk15/779bf45e88a44cbd9ea6621d33e33db1/36/GPL/openjdk-15_osx-x64_bin.tar.gz
+MACOS_X64_BOOT_JDK_SHA256=ab842c8c0953b816be308c098c1a021177a4776bef24da85b6bafbbd657c7e1a
