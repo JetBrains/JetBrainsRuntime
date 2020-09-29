@@ -13,7 +13,7 @@
 [github.com/JetBrains/JetBrainsRuntime](https://github.com/JetBrains/JetBrainsRuntime)  
 
 ## Getting sources
-__OSX, Linux:__
+__macOS, Linux:__
 ```
 git config --global core.autocrlf input
 git clone git@github.com:JetBrains/JetBrainsRuntime.git
@@ -25,12 +25,12 @@ git config --global core.autocrlf false
 git clone git@github.com:JetBrains/JetBrainsRuntime.git
 ```
 
-# Configure Local Build Environment
+# Configure local build environment
 [OpenJDK build docs](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html)  
-Tip for all platforms: run ./configure and check output.  
+Tip for all platforms: run `./configure` and check output.  
 Usually, it has meaningful advice how to solve your problem.
 
-## Linux (docker)
+## Linux (Docker)
 ```
 $ cd jb/project/docker
 $ docker build .
@@ -42,7 +42,6 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 # cd /JetBrainsRuntime
 # sh ./configure
 # make images CONF=linux-x86_64-normal-server-release
-
 ```
 
 ## Linux (Ubuntu 18.10 desktop)
@@ -56,35 +55,33 @@ $ make images
 
 ## Windows
 Install:
-
 * [Cygwin x64](http://www.cygwin.com/)  
   Required packages: autoconf, binutils, cpio, diffutils, file, gawk, gcc-core, make, m4, unzip, zip.  
-  **Install them while installing cygwin**.
+  **Install them while installing Cygwin**.
 * Visual Studio compiler toolset [Download](https://visualstudio.microsoft.com/downloads/)  
   Visual Studio 2015 has support by default.  
   **Install with desktop development kit, it includes Windows SDK and compilers**.
 * [Java 11](http://www.oracle.com/technetwork/java/javase/downloads/index.html)  
-  If you have problems while configuring [read java tips on cygwin](http://horstmann.com/articles/cygwin-tips.html)
+  If you have problems while configuring [read Java tips on Cygwin](http://horstmann.com/articles/cygwin-tips.html)
 
-From command line 
+From command line: 
 ```
 "c:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 "c:\Program_Files\cygwin64\bin\mintty.exe" /bin/bash -l
 ```
-First command will set env vars, the second will run cygwin shell with proper environment.  
-In cygwin shell 
+First command will set env vars, the second will run Cygwin shell with proper environment.  
+
+In Cygwin shell: 
 ```    
 cd JetBrainsRuntime
 bash configure --enable-option-checking=fatal --with-toolchain-version=2015 --with-boot-jdk="/cygdrive/c/Program Files/Java/jdk-11.0.5" --disable-warnings-as-errors
 make images
 ```
 
-## OSX
+## macOS
+Install Xcode command line developer tools, autoconf (via Homebrew).
 
-install Xcode console tools, autoconf (via homebrew)
-
-run
-
+Run:
 ```
 sh ./configure --prefix=$(pwd)/build  --disable-warnings-as-errors
 make images
