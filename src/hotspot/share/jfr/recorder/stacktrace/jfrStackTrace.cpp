@@ -203,7 +203,7 @@ bool JfrStackTrace::record_thread(JavaThread& thread, frame& frame) {
     _hash = (_hash * 31) + mid;
     _hash = (_hash * 31) + bci;
     _hash = (_hash * 31) + type;
-    _frames[count] = JfrStackFrame(mid, bci, type, lineno);
+    _frames[count] = JfrStackFrame(mid, bci, type, method);
     st.samples_next();
     count++;
   }
