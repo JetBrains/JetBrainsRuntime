@@ -151,11 +151,11 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
 
         NSUInteger width = (NSUInteger)dstOps->width;
         NSUInteger height = (NSUInteger)dstOps->height;
-        NSUInteger size = width*height;
-        id <MTLBuffer> buff = [mtlc.device newBufferWithLength:size*4 options:MTLResourceStorageModePrivate];
+        NSUInteger size = width * height;
+        id <MTLBuffer> buff = [mtlc.device newBufferWithLength:size options:MTLResourceStorageModePrivate];
         id<MTLCommandBuffer> commandBuf = [mtlc createCommandBuffer];
         id<MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
-        [blitEncoder fillBuffer:buff range:NSMakeRange(0, size*4) value:0];
+        [blitEncoder fillBuffer:buff range:NSMakeRange(0, size) value:0];
 
         MTLOrigin origin = MTLOriginMake(0, 0, 0);
         MTLSize sourceSize = MTLSizeMake(width, height, 1);
@@ -199,8 +199,7 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
         if (dstOps->width > 0 && dstOps->height > 0) {
             NSUInteger width = (NSUInteger)dstOps->width;
             NSUInteger height = (NSUInteger)dstOps->height;
-            NSUInteger size = width*height;
-            NSUInteger sizeX4 = size*4;
+            NSUInteger size = width * height;
 
             id<MTLCommandBuffer> cb = [mtlc createCommandBuffer];
             id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
