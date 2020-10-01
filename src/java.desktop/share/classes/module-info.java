@@ -115,10 +115,7 @@ module java.desktop {
     // qualified exports may be inserted at build time
     // see make/GensrcModuleInfo.gmk
     exports sun.awt to
-        jdk.unsupported.desktop,
-        jcef;
-
-    exports java.awt.peer to jcef;
+        jdk.unsupported.desktop;
 
     exports java.awt.dnd.peer to jdk.unsupported.desktop;
     exports sun.awt.dnd to jdk.unsupported.desktop;
