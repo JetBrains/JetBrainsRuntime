@@ -53,5 +53,4 @@ jdk.security.jgss,
 jdk.unsupported,
 jdk.xml.dom,
 jdk.zipfs,
-jdk.hotspot.agent,
-jcef
+jdk.hotspot.agent
