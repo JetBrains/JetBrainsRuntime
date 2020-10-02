@@ -101,6 +101,7 @@ HWND AwtComponent::sm_focusOwner = NULL;
 HWND AwtComponent::sm_focusedWindow = NULL;
 BOOL AwtComponent::sm_bMenuLoop = FALSE;
 BOOL AwtComponent::sm_inSynthesizeFocus = FALSE;
+BOOL AwtComponent::sm_priorityFocusEvents = FALSE;
 
 /************************************************************************/
 // Struct for _Reshape() and ReshapeNoCheck() methods
@@ -1290,6 +1291,7 @@ void SpyWinMessage(HWND hwnd, UINT message, LPCTSTR szComment) {
         WIN_MSG(WM_AWT_COMPONENT_HIDE)
         WIN_MSG(WM_AWT_COMPONENT_SETFOCUS)
         WIN_MSG(WM_AWT_WINDOW_SETACTIVE)
+        WIN_MSG(WM_AWT_WINDOW_TOFRONT)
         WIN_MSG(WM_AWT_LIST_SETMULTISELECT)
         WIN_MSG(WM_AWT_HANDLE_EVENT)
         WIN_MSG(WM_AWT_PRINT_COMPONENT)
@@ -1955,24 +1957,38 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
            * there.
            */
       case WM_AWT_COMPONENT_SHOW:
+          sm_priorityFocusEvents = TRUE;
           Show();
+          sm_priorityFocusEvents = FALSE;
           mr = mrConsume;
           break;
       case WM_AWT_COMPONENT_HIDE:
+          sm_priorityFocusEvents = TRUE;
           Hide();
+          sm_priorityFocusEvents = FALSE;
           mr = mrConsume;
           break;
 
       case WM_AWT_COMPONENT_SETFOCUS:
+          sm_priorityFocusEvents = TRUE;
           if ((BOOL)wParam) {
               retValue = SynthesizeWmSetFocus(GetHWnd(), NULL);
           } else {
               retValue = SynthesizeWmKillFocus(GetHWnd(), NULL);
           }
+          sm_priorityFocusEvents = FALSE;
           mr = mrConsume;
           break;
       case WM_AWT_WINDOW_SETACTIVE:
+          sm_priorityFocusEvents = TRUE;
           retValue = (LRESULT)((AwtWindow*)this)->AwtSetActiveWindow((BOOL)wParam);
+          sm_priorityFocusEvents = FALSE;
+          mr = mrConsume;
+          break;
+      case WM_AWT_WINDOW_TOFRONT:
+          sm_priorityFocusEvents = TRUE;
+          ((AwtWindow*)this)->ToFront();
+          sm_priorityFocusEvents = FALSE;
           mr = mrConsume;
           break;
 
