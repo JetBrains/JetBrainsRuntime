@@ -196,13 +196,13 @@ JNF_COCOA_ENTER(env);
     NSString *format = formatForIndex(inFormat);
     NSMutableArray *formatArray = [NSMutableArray arrayWithCapacity:2];
     const char *bytes = [bytesAsData bytes];
-    char isStart = 1;
+    BOOL isStart=YES;
     for (int i = 0; i < [bytesAsData length]; i++) {
         if ((unsigned char)bytes[i] == 0) {
-            isStart = 1;
+            isStart = YES;
         } else {
             if (isStart) {
-                isStart = 0;
+                isStart = NO;
                 NSString *path = [NSString stringWithUTF8String:(const char *)&bytes[i]];
                 NSURL *fileURL = [NSURL fileURLWithPath:path relativeToURL:nil];
                 [formatArray addObject:fileURL];
