@@ -198,7 +198,7 @@ public class XEmbedChildProxyPeer implements ComponentPeer, XEventDispatcher{
     {
         int result = XKeyboardFocusManagerPeer
             .shouldNativelyFocusHeavyweight(proxy, lightweightChild,
-                                            temporary, false, time, cause);
+                                            temporary, false, time, cause, false);
 
         switch (result) {
           case XKeyboardFocusManagerPeer.SNFH_FAILURE:

@@ -139,6 +139,9 @@ public final class WToolkit extends SunToolkit implements Runnable {
         {
             @Override
             public Void run() {
+                // temporary measure, until corresponding code is disabled in IntelliJ platform
+                System.setProperty("action.aware.typeAhead", "false");
+
                 String browserProp = System.getProperty("browser");
                 if (browserProp != null && browserProp.equals("sun.plugin")) {
                     disableCustomPalette();
