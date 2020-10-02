@@ -477,6 +477,14 @@ public abstract class SunToolkit extends Toolkit
      * Post AWTEvent of high priority.
      */
     public static void postPriorityEvent(final AWTEvent e) {
+        if (e.getID() == WindowEvent.WINDOW_LOST_FOCUS &&
+                e instanceof TimedWindowEvent)
+        {
+            TimedWindowEvent twe = (TimedWindowEvent)e;
+            ((SunToolkit)Toolkit.getDefaultToolkit()).
+                    setWindowDeactivationTime((Window)twe.getSource(), twe.getWhen());
+        }
+
         PeerEvent pe = new PeerEvent(Toolkit.getDefaultToolkit(), new Runnable() {
                 @Override
                 public void run() {
