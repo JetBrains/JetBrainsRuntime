@@ -1284,6 +1284,7 @@ void SpyWinMessage(HWND hwnd, UINT message, LPCTSTR szComment) {
         WIN_MSG(WM_AWT_COMPONENT_HIDE)
         WIN_MSG(WM_AWT_COMPONENT_SETFOCUS)
         WIN_MSG(WM_AWT_WINDOW_SETACTIVE)
+        WIN_MSG(WM_AWT_WINDOW_TOFRONT)
         WIN_MSG(WM_AWT_LIST_SETMULTISELECT)
         WIN_MSG(WM_AWT_HANDLE_EVENT)
         WIN_MSG(WM_AWT_RESHAPE_COMPONENT)
@@ -1945,6 +1946,10 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           break;
       case WM_AWT_WINDOW_SETACTIVE:
           retValue = (LRESULT)((AwtWindow*)this)->AwtSetActiveWindow((BOOL)wParam);
+          mr = mrConsume;
+          break;
+      case WM_AWT_WINDOW_TOFRONT:
+          ((AwtWindow*)this)->ToFront();
           mr = mrConsume;
           break;
 
