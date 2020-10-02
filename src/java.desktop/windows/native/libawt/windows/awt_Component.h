@@ -693,6 +693,7 @@ public:
     static void *GetNativeFocusOwner();
 
     static BOOL sm_inSynthesizeFocus;
+    static BOOL sm_priorityFocusEvents;
 
     // Execute on Toolkit only.
     INLINE static LRESULT SynthesizeWmSetFocus(HWND targetHWnd, HWND oppositeHWnd) {
