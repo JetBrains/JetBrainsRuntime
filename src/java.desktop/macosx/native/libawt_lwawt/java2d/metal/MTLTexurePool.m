@@ -10,13 +10,16 @@
 
 @implementation MTLTexturePoolItem
 
-@synthesize texture, isBusy, lastUsed, isMultiSample;
+@synthesize texture, isBusy, lastUsed, isMultiSample, next, cell;
 
-- (id) initWithTexture:(id<MTLTexture>)tex {
+- (id) initWithTexture:(id<MTLTexture>)tex cell:(MTLPoolCell*)c{
     self = [super init];
     if (self == nil) return self;
     self.texture = tex;
     isBusy = NO;
+    self.next = nil;
+    self.prev = nil;
+    self.cell = c;
     return self;
 }
 
@@ -40,15 +43,214 @@
     self = [super init];
     if (self == nil) return self;
 
-    self->_rect = rectangle;
-    self->_texture = texture;
-    self->_poolItem = poolItem;
+    _rect = rectangle;
+    _texture = texture;
+    _poolItem = poolItem;
     return self;
 }
 
 - (void) releaseTexture {
-    self->_poolItem.isBusy = NO;
+    [_poolItem.cell releaseItem:_poolItem];
 }
+
+@end
+
+@implementation MTLPoolCell {
+    NSLock* _lock;
+}
+@synthesize available, occupied;
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        self.available = nil;
+        self.occupied = nil;
+        _lock = [[NSLock alloc] init];
+    }
+    return self;
+}
+
+- (void)occupyItem:(MTLTexturePoolItem *)item {
+    if (item.isBusy) return;
+    [item retain];
+    if (item.prev == nil) {
+        self.available = item.next;
+        if (item.next) item.next.prev = nil;
+    } else {
+        item.prev.next = item.next;
+        if (item.next) item.next.prev = item.prev;
+        item.prev = nil;
+    }
+    if (occupied) occupied.prev = item;
+    item.next = occupied;
+    self.occupied = item;
+    [item release];
+    item.isBusy = YES;
+}
+
+- (void)releaseItem:(MTLTexturePoolItem *)item {
+    [_lock lock];
+    @try {
+        if (!item.isBusy) return;
+        [item retain];
+        if (item.prev == nil) {
+            self.occupied = item.next;
+            if (item.next) item.next.prev = nil;
+        } else {
+            item.prev.next = item.next;
+            if (item.next) item.next.prev = item.prev;
+            item.prev = nil;
+        }
+        if (self.available) self.available.prev = item;
+        item.next = self.available;
+        self.available = item;
+        item.isBusy = NO;
+        [item release];
+    } @finally {
+        [_lock unlock];
+    }
+}
+
+- (void)addOccupiedItem:(MTLTexturePoolItem *)item {
+    if (self.occupied) self.occupied.prev = item;
+    item.next = self.occupied;
+    item.isBusy = YES;
+    self.occupied = item;
+}
+
+- (void)removeAvailableItem:(MTLTexturePoolItem*)item {
+    [item retain];
+    if (item.prev == nil) {
+        self.available = item.next;
+        if (item.next) {
+            item.next.prev = nil;
+            item.next = nil;
+        }
+    } else {
+        item.prev.next = item.next;
+        if (item.next) {
+            item.next.prev = item.prev;
+            item.next = nil;
+        }
+    }
+    [item release];
+}
+
+- (void)removeAllItems {
+    MTLTexturePoolItem *cur = self.available;
+    while (cur != nil) {
+        cur = cur.next;
+        self.available = cur;
+    }
+    cur = self.occupied;
+    while (cur != nil) {
+        cur = cur.next;
+        self.occupied = cur;
+    }
+}
+
+- (MTLTexturePoolItem *)createItem:(id<MTLDevice>)dev
+                             width:(int)width
+                            height:(int)height
+                            format:(MTLPixelFormat)format
+                     isMultiSample:(bool)isMultiSample
+{
+    MTLTextureDescriptor *textureDescriptor =
+            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format
+                                                               width:(NSUInteger) width
+                                                              height:(NSUInteger) height
+                                                           mipmapped:NO];
+    if (isMultiSample) {
+        textureDescriptor.textureType = MTLTextureType2DMultisample;
+        textureDescriptor.sampleCount = MTLAASampleCount;
+        textureDescriptor.storageMode = MTLStorageModePrivate;
+    }
+
+    id <MTLTexture> tex = (id <MTLTexture>) [[dev newTextureWithDescriptor:textureDescriptor] autorelease];
+    MTLTexturePoolItem* item = [[[MTLTexturePoolItem alloc] initWithTexture:tex cell:self] autorelease];
+    item.isMultiSample = isMultiSample;
+    [_lock lock];
+    @try {
+        [self addOccupiedItem:item];
+    } @finally {
+        [_lock unlock];
+    }
+    return item;
+}
+
+
+- (NSUInteger)cleanIfNecessary:(int)lastUsedTimeThreshold {
+    NSUInteger deallocMem = 0;
+    [_lock lock];
+    MTLTexturePoolItem *cur = available;
+    @try {
+        while (cur != nil) {
+            MTLTexturePoolItem *next = cur.next;
+            if (lastUsedTimeThreshold <= 0 ||
+                (int) (-[cur.lastUsed timeIntervalSinceNow]) > lastUsedTimeThreshold) {
+#ifdef DEBUG
+                J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE,
+                             "MTLTexturePool: remove pool item: tex=%p, w=%d h=%d, elapsed=%d",
+                             cur.texture, cur.texture.width, cur.texture.height,
+                             (int) (-[cur.lastUsed timeIntervalSinceNow]));
+#endif //DEBUG
+                deallocMem += cur.texture.width * cur.texture.height * 4;
+                [self removeAvailableItem:cur];
+            }
+            cur = next;
+        }
+    } @finally {
+        [_lock unlock];
+    }
+    return deallocMem;
+}
+
+- (MTLTexturePoolItem *)occupyItem:(int)width height:(int)height format:(MTLPixelFormat)format
+                     isMultiSample:(bool)isMultiSample {
+    int minDeltaArea = -1;
+    const int requestedPixels = width*height;
+    MTLTexturePoolItem *minDeltaTpi = nil;
+    [_lock lock];
+    @try {
+        for (MTLTexturePoolItem *cur = available; cur != nil; cur = cur.next) {
+            if (cur.texture.pixelFormat != format
+                || cur.isMultiSample != isMultiSample) { // TODO: use swizzle when formats are not equal
+                continue;
+            }
+            if (cur.texture.width < width || cur.texture.height < height) {
+                continue;
+            }
+            const int deltaArea = cur.texture.width * cur.texture.height - requestedPixels;
+            if (minDeltaArea < 0 || deltaArea < minDeltaArea) {
+                minDeltaArea = deltaArea;
+                minDeltaTpi = cur;
+                if (deltaArea == 0) {
+                    // found exact match in current cell
+                    break;
+                }
+            }
+        }
+
+        if (minDeltaTpi) {
+            [self occupyItem:minDeltaTpi];
+        }
+    } @finally {
+        [_lock unlock];
+    }
+    return minDeltaTpi;
+}
+
+- (void) dealloc {
+    [_lock lock];
+    @try {
+        [self removeAllItems];
+    } @finally {
+        [_lock unlock];
+    }
+    [_lock release];
+    [super dealloc];
+}
+
 @end
 
 @implementation MTLTexturePool {
@@ -77,7 +279,7 @@
 
 - (void) dealloc {
     for (int c = 0; c < _poolCellWidth * _poolCellHeight; ++c) {
-        NSMutableArray * cell = _cells[c];
+        MTLPoolCell * cell = _cells[c];
         if (cell != NULL) {
             [cell release];
         }
@@ -133,27 +335,16 @@
         }
 
         MTLTexturePoolItem * minDeltaTpi = nil;
+        int minDeltaArea = -1;
         for (int cy = cellY0; cy < cellY1; ++cy) {
             for (int cx = cellX0; cx < cellX1; ++cx) {
-                NSMutableArray * cell = _cells[cy * _poolCellWidth + cx];
-                if (cell == NULL)
-                    continue;
-
-                const int count = [cell count];
-                int minDeltaArea = -1;
-                int minDeltaAreaIndex = -1;
-                for (int c = 0; c < count; ++c) {
-                    MTLTexturePoolItem *tpi = [cell objectAtIndex:c];
-                    if (tpi == nil || tpi.isBusy || tpi.texture.pixelFormat != format
-                        || tpi.isMultiSample != isMultiSample) { // TODO: use swizzle when formats are not equal
-                        continue;
-                    }
-                    if (tpi.texture.width < width || tpi.texture.height < height) {
-                        continue;
-                    }
+                MTLPoolCell * cell = _cells[cy * _poolCellWidth + cx];
+                if (cell != NULL) {
+                    MTLTexturePoolItem* tpi = [cell occupyItem:width height:height
+                                                        format:format isMultiSample:isMultiSample];
+                    if (!tpi) continue;
                     const int deltaArea = tpi.texture.width*tpi.texture.height - requestedPixels;
                     if (minDeltaArea < 0 || deltaArea < minDeltaArea) {
-                        minDeltaAreaIndex = c;
                         minDeltaArea = deltaArea;
                         minDeltaTpi = tpi;
                         if (deltaArea == 0) {
@@ -162,9 +353,6 @@
                         }
                     }
                 }
-                if (minDeltaTpi != nil) {
-                    break;
-                }
             }
             if (minDeltaTpi != nil) {
                 break;
@@ -172,28 +360,14 @@
         }
 
         if (minDeltaTpi == NULL) {
-            MTLTextureDescriptor *textureDescriptor =
-                    [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format
-                                                                       width:(NSUInteger) width
-                                                                      height:(NSUInteger) height
-                                                                   mipmapped:NO];
-            if (isMultiSample) {
-                textureDescriptor.textureType = MTLTextureType2DMultisample;
-                textureDescriptor.sampleCount = MTLAASampleCount;
-                textureDescriptor.storageMode = MTLStorageModePrivate;
-            }
-
-            id <MTLTexture> tex = [[self.device newTextureWithDescriptor:textureDescriptor] autorelease];
-            minDeltaTpi = [[[MTLTexturePoolItem alloc] initWithTexture:tex] autorelease];
-            minDeltaTpi.isMultiSample = isMultiSample;
-            NSMutableArray * cell = _cells[cellY0 * _poolCellWidth + cellX0];
+            MTLPoolCell* cell = _cells[cellY0 * _poolCellWidth + cellX0];
             if (cell == NULL) {
-                cell = [[NSMutableArray arrayWithCapacity:10] retain];
+                cell = [[MTLPoolCell alloc] init];
                 _cells[cellY0 * _poolCellWidth + cellX0] = cell;
             }
-            [cell addObject:minDeltaTpi];
+            minDeltaTpi = [cell createItem:device width:width height:height format:format isMultiSample:isMultiSample];
             _memoryTotalAllocated += requestedBytes;
-            J2dTraceLn5(J2D_TRACE_VERBOSE, "MTLTexturePool: created pool item: tex=%p, w=%d h=%d, pf=%d | total memory = %d Kb", tex, width, height, format, _memoryTotalAllocated/1024);
+            J2dTraceLn5(J2D_TRACE_VERBOSE, "MTLTexturePool: created pool item: tex=%p, w=%d h=%d, pf=%d | total memory = %d Kb", minDeltaTpi.texture, width, height, format, _memoryTotalAllocated/1024);
         }
 
         minDeltaTpi.isBusy = YES;
@@ -208,26 +382,9 @@
 - (void) cleanIfNecessary:(int)lastUsedTimeThreshold {
     for (int cy = 0; cy < _poolCellHeight; ++cy) {
         for (int cx = 0; cx < _poolCellWidth; ++cx) {
-            NSMutableArray * cell = _cells[cy * _poolCellWidth + cx];
-            if (cell == NULL)
-                continue;
-
-            for (int c = 0; c < [cell count];) {
-                MTLTexturePoolItem *tpi = [cell objectAtIndex:c];
-                if (!tpi.isBusy) {
-                    if (
-                        lastUsedTimeThreshold <= 0
-                        || (int)(-[tpi.lastUsed timeIntervalSinceNow]) > lastUsedTimeThreshold
-                    ) {
-#ifdef DEBUG
-                        J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLTexturePool: remove pool item: tex=%p, w=%d h=%d, elapsed=%d", tpi.texture, tpi.texture.width, tpi.texture.height, (int)(-[tpi.lastUsed timeIntervalSinceNow]));
-#endif //DEBUG
-                        _memoryTotalAllocated -= tpi.texture.width * tpi.texture.height * 4;
-                        [cell removeObjectAtIndex:c];
-                        continue;
-                    }
-                }
-                ++c;
+            MTLPoolCell * cell = _cells[cy * _poolCellWidth + cx];
+            if (cell != NULL) {
+                _memoryTotalAllocated -= [cell cleanIfNecessary:lastUsedTimeThreshold];
             }
         }
     }
