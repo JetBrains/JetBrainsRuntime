@@ -519,7 +519,9 @@ MsgRouting AwtDialog::WmEndModal()
     jobject peer = GetPeer(env);
     jobject target = GetTarget(env);
     if (::GetForegroundWindow() == GetHWnd()) {
+        sm_priorityFocusEvents = TRUE;
         ModalActivateNextWindow(GetHWnd(), target, peer);
+        sm_priorityFocusEvents = FALSE;
     }
     // hide the dialog
     SendMessage(WM_AWT_COMPONENT_HIDE);
