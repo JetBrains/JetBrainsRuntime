@@ -1,14 +1,12 @@
 #!/bin/bash -x
 
-#!/bin/bash -x
-
 # The following parameters must be specified:
 #   JBSDK_VERSION    - specifies major version of OpenJDK e.g. 11_0_6 (instead of dots '.' underbars "_" are used)
-#   JDK_BUILD_NUMBER - specifies udate release of OpenJDK build or the value of --with-version-build argument to configure
+#   JDK_BUILD_NUMBER - specifies update release of OpenJDK build or the value of --with-version-build argument to configure
 #   build_number     - specifies the number of JetBrainsRuntime build
 #   bundle_type      - specifies bundle to be built; possible values:
-#                        <empty> or nomod - the bundles without any additional modules (jcef)
-#                        jcef - the bundles with jcef
+#                        <empty> or nomod - the release bundles without any additional modules (jcef)
+#                        jcef - the release bundles with jcef
 #                        fd - the fastdebug bundles which also include the jcef module
 #
 # jbrsdk-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
@@ -22,8 +20,8 @@
 # Environment variables:
 #   MODULAR_SDK_PATH - specifies the path to the directory where imported modules are located.
 #               By default imported modules should be located in ./modular-sdk
-#   JCEF_PATH - specifies the path to the directory where JCEF binaries are located.
-#               By default imported modules should be located in ./jcef_linux_x64
+#   JCEF_PATH - specifies the path to the directory with JCEF binaries.
+#               By default JCEF binaries should be located in ./jcef_linux_x64
 
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
@@ -85,7 +83,6 @@ case "$bundle_type" in
     do_reset_changes=1
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=linux-x86_64-server-fastdebug
-    JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}-fastdebug
     JBSDK=${JBRSDK_BASE_NAME}-linux-x64-fastdebug-b${build_number}
     ;;
 esac

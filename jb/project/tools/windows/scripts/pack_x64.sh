@@ -50,7 +50,6 @@ case "$bundle_type" in
     ;;
   "fd")
     RELEASE_NAME=macosx-x86_64-server-fastdebug
-    JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}-fastdebug
     JBSDK=${JBRSDK_BASE_NAME}-osx-x64-fastdebug-b${build_number}
     ;;
 esac
