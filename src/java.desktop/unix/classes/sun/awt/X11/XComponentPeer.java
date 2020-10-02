@@ -265,7 +265,7 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
         int result = XKeyboardFocusManagerPeer.
             shouldNativelyFocusHeavyweight(target, lightweightChild,
                                            temporary, focusedWindowChangeAllowed,
-                                           time, cause);
+                                           time, cause, false);
 
         switch (result) {
           case XKeyboardFocusManagerPeer.SNFH_FAILURE:
