@@ -213,13 +213,15 @@ public:
     void UpdateWindow(JNIEnv* env, jintArray data, int width, int height,
                       HBITMAP hNewBitmap = NULL);
 
+    void ToFront();
+
     INLINE virtual BOOL IsTopLevel() { return TRUE; }
     static AwtWindow * GetGrabbedWindow() { return m_grabbedWindow; }
 
     static void FlashWindowEx(HWND hWnd, UINT count, DWORD timeout, DWORD flags);
 
     // some methods invoked on Toolkit thread
-    static void _ToFront(void *param);
+    static void _ToFront(void *param, BOOL wait);
     static void _ToBack(void *param);
     static void _Grab(void *param);
     static void _Ungrab(void *param);
