@@ -340,22 +340,24 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
         [MTLRenderPassDescriptor renderPassDescriptor];
     MTLRenderPassColorAttachmentDescriptor *ca = rpd.colorAttachments[0];
     if (renderOptions->isAA && !renderOptions->isTexture) {
-      MTLTexturePoolItem *tiBuf = [_mtlc.texturePool getTexture:dest.width
-                                                      height:dest.height
-                                                      format:MTLPixelFormatBGRA8Unorm];
-      [cbw registerPooledTexture:tiBuf];
-      _aaDestination = tiBuf.texture;
+        @autoreleasepool {
+            MTLTexturePoolItem *tiBuf = [_mtlc.texturePool getTexture:dest.width
+                                                               height:dest.height
+                                                               format:MTLPixelFormatBGRA8Unorm];
+            [cbw registerPooledTexture:tiBuf];
+            _aaDestination = tiBuf.texture;
 
-      MTLTexturePoolItem *ti = [_mtlc.texturePool getTexture:dest.width
-                                                      height:dest.height
-                                                      format:_aaDestination.pixelFormat
-                                               isMultiSample:YES];
-      [cbw registerPooledTexture:ti];
-      ca.texture = ti.texture;
-      ca.resolveTexture = _aaDestination;
-      ca.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 0.0f);
-      ca.loadAction = MTLLoadActionClear;
-      ca.storeAction = MTLStoreActionMultisampleResolve;
+            MTLTexturePoolItem *ti = [_mtlc.texturePool getTexture:dest.width
+                                                            height:dest.height
+                                                            format:_aaDestination.pixelFormat
+                                                     isMultiSample:YES];
+            [cbw registerPooledTexture:ti];
+            ca.texture = ti.texture;
+            ca.resolveTexture = _aaDestination;
+            ca.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 0.0f);
+            ca.loadAction = MTLLoadActionClear;
+            ca.storeAction = MTLStoreActionMultisampleResolve;
+        }
     } else {
       ca.texture = dest;
       ca.loadAction = MTLLoadActionLoad;
