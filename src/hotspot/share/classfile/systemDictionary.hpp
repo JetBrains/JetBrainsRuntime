@@ -129,6 +129,7 @@ class SystemDictionary : AllStatic {
                                      Handle class_loader,
                                      ClassFileStream* st,
                                      const ClassLoadInfo& cl_info,
+                                     InstanceKlass* old_klass,
                                      TRAPS);
 
   // Resolve from stream (called by jni_DefineClass and JVM_DefineClass)

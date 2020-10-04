@@ -975,10 +975,14 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
                                               Handle class_loader,
                                               ClassFileStream* st,
                                               const ClassLoadInfo& cl_info,
+                                              InstanceKlass* old_klass,
                                               TRAPS) {
 
   EventClassLoad class_load_start_event;
   ClassLoaderData* loader_data;
+  
+  bool is_redefining = (old_klass != NULL);
+  
   bool is_unsafe_anon_class = cl_info.unsafe_anonymous_host() != NULL;
 
   // - for unsafe anonymous class: create a new CLD whith a class holder that uses
@@ -1007,8 +1011,12 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
                                                       class_name,
                                                       loader_data,
                                                       cl_info,
-                                                      false, // pick_newest
+                                                      is_redefining, // pick_newest
                                                       CHECK_NULL);
+  if (is_redefining && k != NULL) {
+    k->set_redefining(true);
+    k->set_old_version(old_klass);
+  }
 
   if ((cl_info.is_hidden() || is_unsafe_anon_class) && k != NULL) {
     // Hidden classes that are not strong and unsafe anonymous classes must update
