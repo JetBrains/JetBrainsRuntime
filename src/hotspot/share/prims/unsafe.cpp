@@ -868,6 +868,7 @@ Unsafe_DefineAnonymousClass_impl(JNIEnv *env,
   InstanceKlass* anonk = SystemDictionary::resolve_from_stream(&st, no_class_name,
                                                                host_loader,
                                                                cl_info,
+                                                               NULL,
                                                                CHECK_NULL);
   assert(anonk != NULL, "no klass created");
   return anonk;
