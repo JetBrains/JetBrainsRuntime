@@ -820,6 +820,7 @@ Unsafe_DefineAnonymousClass_impl(JNIEnv *env,
                                                 host_domain,
                                                 &st,
                                                 InstanceKlass::cast(host_klass),
+                                                NULL,
                                                 cp_patches,
                                                 CHECK_NULL);
   if (anonk == NULL) {
