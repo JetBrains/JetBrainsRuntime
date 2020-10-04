@@ -865,6 +865,7 @@ Unsafe_DefineAnonymousClass_impl(JNIEnv *env,
                                                 host_loader,
                                                 &st,
                                                 cl_info,
+                                                NULL,
                                                 CHECK_NULL);
   if (anonk == NULL) {
     return NULL;
