@@ -301,6 +301,7 @@ public:
                         protection_domain,
                         st,
                         NULL, // host klass
+                        NULL, // old class
                         NULL, // cp_patches
                         THREAD);
   }
@@ -309,6 +310,7 @@ public:
                                      Handle protection_domain,
                                      ClassFileStream* st,
                                      const InstanceKlass* host_klass,
+                                     InstanceKlass* old_klass,
                                      GrowableArray<Handle>* cp_patches,
                                      TRAPS);
 
