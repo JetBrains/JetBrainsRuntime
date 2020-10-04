@@ -825,10 +825,14 @@ InstanceKlass* SystemDictionary::resolve_hidden_class_from_stream(
                                                      Symbol* class_name,
                                                      Handle class_loader,
                                                      const ClassLoadInfo& cl_info,
+                                                     InstanceKlass* old_klass,
                                                      TRAPS) {
 
   EventClassLoad class_load_start_event;
   ClassLoaderData* loader_data;
+ 
+  bool is_redefining = (old_klass != NULL);
+  
 
   // - for hidden classes that are not strong: create a new CLD that has a class holder and
   //                                           whose loader is the Lookup class's loader.
@@ -845,9 +849,13 @@ InstanceKlass* SystemDictionary::resolve_hidden_class_from_stream(
                                                       class_name,
                                                       loader_data,
                                                       cl_info,
-                                                      false, // pick_newest
+                                                      is_redefining, // pick_newest
                                                       CHECK_NULL);
   assert(k != NULL, "no klass created");
+  if (is_redefining && k != NULL) {
+    k->set_redefining(true);
+    k->set_old_version(old_klass);
+  }
 
   // Hidden classes that are not strong must update ClassLoaderData holder
   // so that they can be unloaded when the mirror is no longer referenced.
