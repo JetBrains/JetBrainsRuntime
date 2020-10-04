@@ -24,7 +24,6 @@
 }
 
 - (void) dealloc {
-    [lastUsed release];
     [texture release];
     [super dealloc];
 }
@@ -179,20 +178,20 @@
 }
 
 
-- (NSUInteger)cleanIfNecessary:(int)lastUsedTimeThreshold {
+- (NSUInteger)cleanIfBefore:(time_t)lastUsedTimeToRemove {
     NSUInteger deallocMem = 0;
     [_lock lock];
     MTLTexturePoolItem *cur = available;
     @try {
         while (cur != nil) {
             MTLTexturePoolItem *next = cur.next;
-            if (lastUsedTimeThreshold <= 0 ||
-                (int) (-[cur.lastUsed timeIntervalSinceNow]) > lastUsedTimeThreshold) {
+            if (lastUsedTimeToRemove <= 0 ||
+                cur.lastUsed < lastUsedTimeToRemove) {
 #ifdef DEBUG
                 J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE,
                              "MTLTexturePool: remove pool item: tex=%p, w=%d h=%d, elapsed=%d",
                              cur.texture, cur.texture.width, cur.texture.height,
-                             (int) (-[cur.lastUsed timeIntervalSinceNow]));
+                             time(NULL) - cur.lastUsed);
 #endif //DEBUG
                 deallocMem += cur.texture.width * cur.texture.height * 4;
                 [self removeAvailableItem:cur];
@@ -371,7 +370,7 @@
         }
 
         minDeltaTpi.isBusy = YES;
-        minDeltaTpi.lastUsed = [NSDate date];
+        minDeltaTpi.lastUsed = time(NULL);
         return [[[MTLPooledTextureHandle alloc] initWithPoolItem:minDeltaTpi.texture
                                                             rect:MTLRegionMake2D(0, 0,
                                                                                  minDeltaTpi.texture.width,
@@ -380,11 +379,15 @@
 }
 
 - (void) cleanIfNecessary:(int)lastUsedTimeThreshold {
+    NSTimeInterval lastUsedTimeToRemove =
+            lastUsedTimeThreshold > 0 ?
+                time(NULL) - lastUsedTimeThreshold :
+                lastUsedTimeThreshold;
     for (int cy = 0; cy < _poolCellHeight; ++cy) {
         for (int cx = 0; cx < _poolCellWidth; ++cx) {
             MTLPoolCell * cell = _cells[cy * _poolCellWidth + cx];
             if (cell != NULL) {
-                _memoryTotalAllocated -= [cell cleanIfNecessary:lastUsedTimeThreshold];
+                _memoryTotalAllocated -= [cell cleanIfBefore:lastUsedTimeToRemove];
             }
         }
     }
