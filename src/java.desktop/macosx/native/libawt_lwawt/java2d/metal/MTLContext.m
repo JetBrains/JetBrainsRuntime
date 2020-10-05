@@ -50,6 +50,7 @@ MTLTransform* tempTransform = nil;
 @implementation MTLCommandBufferWrapper {
     id<MTLCommandBuffer> _commandBuffer;
     NSMutableArray * _pooledTextures;
+    NSLock* _lock;
 }
 
 - (id) initWithCommandBuffer:(id<MTLCommandBuffer>)cmdBuf {
@@ -57,6 +58,7 @@ MTLTransform* tempTransform = nil;
     if (self) {
         _commandBuffer = [cmdBuf retain];
         _pooledTextures = [[NSMutableArray alloc] init];
+        _lock = [[NSLock alloc] init];
     }
     return self;
 }
@@ -66,20 +68,32 @@ MTLTransform* tempTransform = nil;
 }
 
 - (void) onComplete { // invoked from completion handler in some pooled thread
-    for (int c = 0; c < [_pooledTextures count]; ++c)
-        [[_pooledTextures objectAtIndex:c] releaseTexture];
-    [_pooledTextures removeAllObjects];
+    [_lock lock];
+    @try {
+        for (int c = 0; c < [_pooledTextures count]; ++c)
+            [[_pooledTextures objectAtIndex:c] releaseTexture];
+        [_pooledTextures removeAllObjects];
+    } @finally {
+        [_lock unlock];
+    }
+
 }
 
 - (void) registerPooledTexture:(MTLPooledTextureHandle *)handle {
-    [_pooledTextures addObject:handle];
+    [_lock lock];
+    @try {
+        [_pooledTextures addObject:handle];
+    } @finally {
+        [_lock unlock];
+    }
 }
 
 - (void) dealloc {
     [self onComplete];
 
-    [self->_pooledTextures release];
-    [self->_commandBuffer release];
+    [_pooledTextures release];
+    [_commandBuffer release];
+    [_lock release];
     [super dealloc];
 }
 
