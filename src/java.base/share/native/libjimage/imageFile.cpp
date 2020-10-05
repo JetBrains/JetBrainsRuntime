@@ -337,7 +337,8 @@ ImageFileReader* ImageFileReader::id_to_reader(u8 id) {
 }
 
 // Constructor intializes to a closed state.
-ImageFileReader::ImageFileReader(const char* name, bool big_endian) {
+ImageFileReader::ImageFileReader(const char* name, bool big_endian) :
+    _module_data(NULL) {
     // Copy the image file name.
      int len = (int) strlen(name) + 1;
     _name = new char[len];
@@ -357,6 +358,10 @@ ImageFileReader::~ImageFileReader() {
     if (_name) {
         delete[] _name;
         _name = NULL;
+    }
+
+    if (_module_data != NULL) {
+        delete _module_data;
     }
 }
 
@@ -408,9 +413,9 @@ bool ImageFileReader::open() {
     _string_bytes = _index_data + string_bytes_offset;
 
     // Initialize the module data
-    module_data = new ImageModuleData(this);
+    _module_data = new ImageModuleData(this);
     // Successful open (if memory allocation succeeded).
-    return module_data != NULL;
+    return _module_data != NULL;
 }
 
 // Close image file.
@@ -424,6 +429,11 @@ void ImageFileReader::close() {
     if (_fd != -1) {
         osSupport::close(_fd);
         _fd = -1;
+    }
+
+    if (_module_data != NULL) {
+        delete _module_data;
+        _module_data = NULL;
     }
 }
 
@@ -616,5 +626,5 @@ void ImageFileReader::get_resource(ImageLocation& location, u1* uncompressed_dat
 
 // Return the ImageModuleData for this image
 ImageModuleData * ImageFileReader::get_image_module_data() {
-        return module_data;
+    return _module_data;
 }
