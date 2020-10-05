@@ -62,4 +62,6 @@ jdk.unsupported,
 jdk.xml.dom,
 jdk.zipfs,
 jdk.hotspot.agent,
-jcef
+jcef,
+gluegen.rt,
+jogl.all

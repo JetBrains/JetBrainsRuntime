@@ -110,7 +110,8 @@ module java.desktop {
     exports sun.awt to
         jdk.accessibility,
         jdk.unsupported.desktop,
-        jcef;
+        jcef,
+        jogl.all;
 
     exports java.awt.peer to jcef;
 
