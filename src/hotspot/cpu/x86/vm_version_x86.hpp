@@ -88,7 +88,8 @@ class VM_Version : public Abstract_VM_Version {
                         : 1,
                osxsave  : 1,
                avx      : 1,
-                        : 3;
+                        : 2,
+               hv       : 1;
     } bits;
   };
 
@@ -336,6 +337,7 @@ protected:
 #define CPU_AVX512_VPOPCNTDQ ((uint64_t)UCONST64(0x2000000000)) // Vector popcount
 #define CPU_AVX512_VPCLMULQDQ ((uint64_t)UCONST64(0x4000000000)) //Vector carryless multiplication
 #define CPU_VAES ((uint64_t)UCONST64(0x8000000000))    // Vector AES instructions
+#define CPU_HV_PRESENT ((uint64_t)UCONST64(0x400000000000)) // for hypervisor detection
 
   enum Extended_Family {
     // AMD
@@ -550,6 +552,8 @@ protected:
           result |= CPU_VAES;
       }
     }
+    if (_cpuid_info.std_cpuid1_ecx.bits.hv != 0)
+      result |= CPU_HV_PRESENT;
     if(_cpuid_info.sef_cpuid7_ebx.bits.bmi1 != 0)
       result |= CPU_BMI1;
     if (_cpuid_info.std_cpuid1_edx.bits.tsc != 0)
@@ -833,6 +837,7 @@ public:
   static bool supports_vpopcntdq()  { return (_features & CPU_AVX512_VPOPCNTDQ) != 0; }
   static bool supports_avx512_vpclmulqdq() { return (_features & CPU_AVX512_VPCLMULQDQ) != 0; }
   static bool supports_vaes()       { return (_features & CPU_VAES) != 0; }
+  static bool supports_hv()         { return (_features & CPU_HV_PRESENT) != 0; }
 
   // Intel features
   static bool is_intel_family_core() { return is_intel() &&
@@ -937,7 +942,6 @@ public:
 
   // support functions for virtualization detection
  private:
-  static void check_virt_cpuid(uint32_t idx, uint32_t *regs);
   static void check_virtualizations();
 };
 

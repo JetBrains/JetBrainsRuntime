@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1607,9 +1607,7 @@ void os::print_os_info(outputStream* st) {
 
   os::win32::print_uptime_info(st);
 
-#ifdef _LP64
   VM_Version::print_platform_virtualization_info(st);
-#endif
 }
 
 void os::win32::print_windows_version(outputStream* st) {
