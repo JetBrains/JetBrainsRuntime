@@ -1356,7 +1356,7 @@ JNF_CLASS_CACHE(jc_CInputMethod, "sun/lwawt/macosx/CInputMethod");
 
     NSTextInputContext *curContxt = [NSTextInputContext currentInputContext];
     kbdLayout = curContxt.selectedKeyboardInputSource;
-    [[NSNotificationCenter defaultCenter] addObserver:self
+    [[NSNotificationCenter defaultCenter] addObserver:[AWTView class]
                                            selector:@selector(keyboardInputSourceChanged:)
                                                name:NSTextInputContextKeyboardSelectionDidChangeNotification
                                              object:nil];
