@@ -57,12 +57,13 @@
 @implementation MTLPoolCell {
     NSLock* _lock;
 }
-@synthesize available, occupied;
+@synthesize available, availableTail, occupied;
 
 - (instancetype)init {
     self = [super init];
     if (self) {
         self.available = nil;
+        self.availableTail = nil;
         self.occupied = nil;
         _lock = [[NSLock alloc] init];
     }
@@ -74,10 +75,18 @@
     [item retain];
     if (item.prev == nil) {
         self.available = item.next;
-        if (item.next) item.next.prev = nil;
+        if (item.next) {
+            item.next.prev = nil;
+        } else {
+            self.availableTail = item.prev;
+        }
     } else {
         item.prev.next = item.next;
-        if (item.next) item.next.prev = item.prev;
+        if (item.next) {
+            item.next.prev = item.prev;
+        } else {
+            self.availableTail = item.prev;
+        }
         item.prev = nil;
     }
     if (occupied) occupied.prev = item;
@@ -100,7 +109,11 @@
             if (item.next) item.next.prev = item.prev;
             item.prev = nil;
         }
-        if (self.available) self.available.prev = item;
+        if (self.available) {
+            self.available.prev = item;
+        } else {
+            self.availableTail = item;
+        }
         item.next = self.available;
         self.available = item;
         item.isBusy = NO;
@@ -124,12 +137,16 @@
         if (item.next) {
             item.next.prev = nil;
             item.next = nil;
+        } else {
+            self.availableTail = item.prev;
         }
     } else {
         item.prev.next = item.next;
         if (item.next) {
             item.next.prev = item.prev;
             item.next = nil;
+        } else {
+            self.availableTail = item.prev;
         }
     }
     [item release];
@@ -146,6 +163,7 @@
         cur = cur.next;
         self.occupied = cur;
     }
+    self.availableTail = nil;
 }
 
 - (MTLTexturePoolItem *)createItem:(id<MTLDevice>)dev
@@ -181,10 +199,10 @@
 - (NSUInteger)cleanIfBefore:(time_t)lastUsedTimeToRemove {
     NSUInteger deallocMem = 0;
     [_lock lock];
-    MTLTexturePoolItem *cur = available;
+    MTLTexturePoolItem *cur = availableTail;
     @try {
         while (cur != nil) {
-            MTLTexturePoolItem *next = cur.next;
+            MTLTexturePoolItem *prev = cur.prev;
             if (lastUsedTimeToRemove <= 0 ||
                 cur.lastUsed < lastUsedTimeToRemove) {
 #ifdef DEBUG
@@ -195,8 +213,10 @@
 #endif //DEBUG
                 deallocMem += cur.texture.width * cur.texture.height * 4;
                 [self removeAvailableItem:cur];
+            } else {
+                if (lastUsedTimeToRemove > 0) break;
             }
-            cur = next;
+            cur = prev;
         }
     } @finally {
         [_lock unlock];
@@ -219,7 +239,7 @@
             if (cur.texture.width < width || cur.texture.height < height) {
                 continue;
             }
-            const int deltaArea = cur.texture.width * cur.texture.height - requestedPixels;
+            const int deltaArea = (const int) (cur.texture.width * cur.texture.height - requestedPixels);
             if (minDeltaArea < 0 || deltaArea < minDeltaArea) {
                 minDeltaArea = deltaArea;
                 minDeltaTpi = cur;
@@ -313,7 +333,9 @@
             const int newCellWidth = cellX1 <= _poolCellWidth ? _poolCellWidth : cellX1;
             const int newCellHeight = cellY1 <= _poolCellHeight ? _poolCellHeight : cellY1;
             const int newCellsCount = newCellWidth*newCellHeight;
+#ifdef DEBUG
             J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLTexturePool: resize: %d -> %d", _poolCellWidth * _poolCellHeight, newCellsCount);
+#endif
             void ** newcells = malloc(newCellsCount*sizeof(void*));
             const int strideBytes = _poolCellWidth * sizeof(void*);
             for (int cy = 0; cy < _poolCellHeight; ++cy) {
@@ -342,7 +364,7 @@
                     MTLTexturePoolItem* tpi = [cell occupyItem:width height:height
                                                         format:format isMultiSample:isMultiSample];
                     if (!tpi) continue;
-                    const int deltaArea = tpi.texture.width*tpi.texture.height - requestedPixels;
+                    const int deltaArea = (const int) (tpi.texture.width * tpi.texture.height - requestedPixels);
                     if (minDeltaArea < 0 || deltaArea < minDeltaArea) {
                         minDeltaArea = deltaArea;
                         minDeltaTpi = tpi;
@@ -379,7 +401,7 @@
 }
 
 - (void) cleanIfNecessary:(int)lastUsedTimeThreshold {
-    NSTimeInterval lastUsedTimeToRemove =
+    time_t lastUsedTimeToRemove =
             lastUsedTimeThreshold > 0 ?
                 time(NULL) - lastUsedTimeThreshold :
                 lastUsedTimeThreshold;

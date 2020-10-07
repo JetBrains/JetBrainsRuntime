@@ -8,14 +8,13 @@
 @interface MTLTexturePoolItem : NSObject
 @property (readwrite, retain) id<MTLTexture> texture;
 @property (readwrite) bool isBusy;
-@property (readwrite) NSTimeInterval lastUsed;
+@property (readwrite) time_t lastUsed;
 @property (readwrite) bool isMultiSample;
 @property (readwrite, assign) MTLTexturePoolItem* prev;
 @property (readwrite, retain) MTLTexturePoolItem* next;
 @property (readwrite, assign) MTLPoolCell* cell;
 
 - (id) initWithTexture:(id<MTLTexture>)tex cell:(MTLPoolCell*)cell;
-- (void) releaseTexture;
 @end
 
 @interface MTLPooledTextureHandle : NSObject
@@ -36,8 +35,13 @@
 
 @interface MTLPoolCell : NSObject
 @property (readwrite, retain) MTLTexturePoolItem* available;
+@property (readwrite, assign) MTLTexturePoolItem* availableTail;
 @property (readwrite, retain) MTLTexturePoolItem* occupied;
-- (MTLTexturePoolItem*) createItem:(id<MTLTexture>) texture;
+- (MTLTexturePoolItem *)createItem:(id<MTLDevice>)dev
+                             width:(int)width
+                            height:(int)height
+                            format:(MTLPixelFormat)format
+                     isMultiSample:(bool)isMultiSample;
 - (NSUInteger)cleanIfBefore:(time_t)lastUsedTimeToRemove;
 - (void)releaseItem:(MTLTexturePoolItem *)item;
 @end
