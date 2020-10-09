@@ -49,8 +49,6 @@ import java.awt.event.WindowEvent;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
 import java.io.UnsupportedEncodingException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
@@ -850,7 +848,16 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
             focusLog.fine("Requesting window focus");
         }
-        requestWindowFocus(time, timeProvided, () -> {}, () -> {});
+        Runnable finishRunnable = this::dequeueKeyEvents;
+        requestWindowFocus(time, timeProvided, finishRunnable, finishRunnable);
+    }
+
+    private void dequeueKeyEvents() {
+        AWTAccessor.getKeyboardFocusManagerAccessor().dequeueKeyEvents(target);
+    }
+
+    private void enqueueKeyEvents() {
+        AWTAccessor.getKeyboardFocusManagerAccessor().enqueueKeyEvents(target);
     }
 
     public final boolean focusAllowedFor() {
@@ -1132,6 +1139,18 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             warningWindow.setSecurityWarningVisible(false, false);
         }
         boolean refreshChildsTransientFor = isVisible() != vis;
+        if (vis && isSimpleWindow() && shouldFocusOnMapNotify()) {
+            // We enable type-ahead mechanism only for showing of simple windows. That's because, when enabling it,
+            // we need to be sure that the final state (focusing) of the target window will definitely be available
+            // very soon, not to block key events for a long period of time. As simple windows are not focused natively,
+            // the only event we should wait for before focusing them internally is MapNotify, and that event usually
+            // comes quite fast after map request. There are known cases when window manager delays mapping the window
+            // for a long time (e.g. i3wm does this when another window is in full-screen mode), but no known cases
+            // when it does it for popup windows, so we hope that we're safe here with simple windows. For decorated
+            // windows we also wait for the native focus to be transferred to the target window (FocusIn event),
+            // which adds to the uncertainty - the focus might or might not be transferred.
+            enqueueKeyEvents();
+        }
         super.setVisible(vis);
         if (refreshChildsTransientFor) {
             for (Window child : ((Window) target).getOwnedWindows()) {
@@ -1441,6 +1460,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         if (shouldFocusOnMapNotify()) {
             focusLog.fine("Automatically request focus on window");
             requestInitialFocus();
+        } else {
+            dequeueKeyEvents();
         }
         isUnhiding = false;
         isBeforeFirstMapNotify = false;
