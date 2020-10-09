@@ -20,6 +20,11 @@ public class KeyEventProcessing {
     public final static boolean useLatinNonAlphaNumKeycodes = "true".equals(
             getProperty(useLatinNonAlphaNumKeycodesOption, "false"));
 
+    public final static String defaultTouchHandlingOption = "com.jetbrains.default.touchscreen.mode";
+
+    @Native
+    public final static boolean defaultTouchHandling = "true".equalsIgnoreCase(getProperty(defaultTouchHandlingOption, "false"));
+
     private static String getProperty(String option, String dflt) {
         return java.security.AccessController.doPrivileged(
                 (PrivilegedAction<String>) () -> System.getProperty(option, dflt)
