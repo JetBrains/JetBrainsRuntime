@@ -213,5 +213,4 @@ jb/javax/swing/JDialog/JDialog705.java                                          
 jb/javax/swing/JDialog/JDialog741/JDialog741.html                                           nobug macosx-all,linux-all,windows-all
 jb/sun/awt/macos/KeyPressAndHoldTest.java                                                   nobug macosx-all
 jb/sun/lwawt/macosx/NSEvent/nsevent422.sh                                                   nobug macosx-all
-jb/java/awt/Focus/TypeaheadSetVisibleTest.java                                              JBR-2759 linux-all
 jb/java/awt/Focus/ModalDialogFromMenuTest.java                                              JBR-2768 macosx-all
