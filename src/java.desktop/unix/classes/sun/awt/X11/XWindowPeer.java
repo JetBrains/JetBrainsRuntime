@@ -25,23 +25,30 @@
 
 package sun.awt.X11;
 
-import java.awt.*;
+import java.awt.AWTEvent;
+import java.awt.Component;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.EventQueue;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Shape;
+import java.awt.SystemColor;
+import java.awt.Window;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
-import java.awt.event.InvocationEvent;
 import java.awt.event.WindowEvent;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.*;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
@@ -835,7 +842,16 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
             focusLog.fine("Requesting window focus");
         }
-        requestWindowFocus(time, timeProvided, () -> {}, () -> {});
+        Runnable finishRunnable = this::dequeueKeyEvents;
+        requestWindowFocus(time, timeProvided, finishRunnable, finishRunnable);
+    }
+
+    private void dequeueKeyEvents() {
+        AWTAccessor.getKeyboardFocusManagerAccessor().dequeueKeyEvents(target);
+    }
+
+    private void enqueueKeyEvents() {
+        AWTAccessor.getKeyboardFocusManagerAccessor().enqueueKeyEvents(target);
     }
 
     public final boolean focusAllowedFor() {
@@ -1117,6 +1133,18 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             warningWindow.setSecurityWarningVisible(false, false);
         }
         boolean refreshChildsTransientFor = isVisible() != vis;
+        if (vis && isSimpleWindow() && shouldFocusOnMapNotify()) {
+            // We enable type-ahead mechanism only for showing of simple windows. That's because, when enabling it,
+            // we need to be sure that the final state (focusing) of the target window will definitely be available
+            // very soon, not to block key events for a long period of time. As simple windows are not focused natively,
+            // the only event we should wait for before focusing them internally is MapNotify, and that event usually
+            // comes quite fast after map request. There are known cases when window manager delays mapping the window
+            // for a long time (e.g. i3wm does this when another window is in full-screen mode), but no known cases
+            // when it does it for popup windows, so we hope that we're safe here with simple windows. For decorated
+            // windows we also wait for the native focus to be transferred to the target window (FocusIn event),
+            // which adds to the uncertainty - the focus might or might not be transferred.
+            enqueueKeyEvents();
+        }
         super.setVisible(vis);
         if (refreshChildsTransientFor) {
             for (Window child : ((Window) target).getOwnedWindows()) {
@@ -1437,6 +1465,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         if (shouldFocusOnMapNotify()) {
             focusLog.fine("Automatically request focus on window");
             requestInitialFocus();
+        } else {
+            dequeueKeyEvents();
         }
         isUnhiding = false;
         isBeforeFirstMapNotify = false;
