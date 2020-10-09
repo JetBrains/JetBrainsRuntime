@@ -66,7 +66,9 @@
 - (NSView*)view;
 - (NSWindow*)window;
 - (id)parent;
+-(void)setParent:(id)javaBaseAccessibilityParent;
 - (NSString *)javaRole;
+- (NSString *)nsRole;
 - (BOOL)isMenu;
 - (BOOL)isSelected:(JNIEnv *)env;
 - (BOOL)isSelectable:(JNIEnv *)env;

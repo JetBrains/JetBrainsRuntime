@@ -27,7 +27,7 @@
 
 - (NSString *)accessibilityLabel
 {
-    return @"List";
+    return [super accessibilityLabel];
 }
 
 - (BOOL)accessibilityIsIgnored

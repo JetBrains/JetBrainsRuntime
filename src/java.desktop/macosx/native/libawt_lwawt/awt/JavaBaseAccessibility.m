@@ -16,7 +16,9 @@
 #import "JavaAccessibilityUtilities.h"
 #import "JavaTextAccessibility.h"
 #import "JavaListAccessibility.h"
+#import "JavaTableAccessibility.h"
 #import "JavaRowAccessibility.h"
+#import "JavaCellAccessibility.h"
 #import "JavaComponentAccessibility.h"
 #import "ThreadUtilities.h"
 #import "AWTView.h"
@@ -250,8 +252,13 @@ static jobject sAccessibilityClass = NULL;
         (*env)->DeleteLocalRef(env, jchild);
         (*env)->DeleteLocalRef(env, jchildJavaRole);
 
-        [children addObject:child.platformAxElement];
-
+        if ([parent isKindOfClass:[JavaTableAccessibility class]]) {
+            if ([child isKindOfClass:[JavaRowAccessibility class]]) {
+                [children addObject:child.platformAxElement];
+            }
+        } else {
+            [children addObject:child.platformAxElement];
+        }
         childIndex++;
     }
     (*env)->DeleteLocalRef(env, jchildrenAndRoles);
@@ -296,12 +303,17 @@ static jobject sAccessibilityClass = NULL;
         newChild = [ScrollAreaAccessibility alloc];
     } else if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityListRole]) {
         newChild = [JavaRowAccessibility alloc];
+    } else if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityTableRole] &&
+               (((int)index % [(PlatformAxTable *)[parent platformAxElement] accessibleColCount]) == 0)) {
+            newChild = [JavaRowAccessibility alloc];
     } else {
         NSString *nsRole = [sRoles objectForKey:javaRole];
         if ([nsRole isEqualToString:NSAccessibilityStaticTextRole] || [nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
             newChild = [JavaTextAccessibility alloc];
         } else if ([nsRole isEqualToString:NSAccessibilityListRole]) {
             newChild = [JavaListAccessibility alloc];
+        } else if ([nsRole isEqualToString:NSAccessibilityTableRole]) {
+            newChild = [JavaTableAccessibility alloc];
         } else {
             newChild = [JavaComponentAccessibility alloc];
         }
@@ -490,6 +502,26 @@ static jobject sAccessibilityClass = NULL;
 
 -(jint)index {
     return fIndex;
+}
+
+- (void)setParent:(id)javaBaseAccessibilityParent { 
+    fParent = javaBaseAccessibilityParent;
+}
+
+- (NSString *)nsRole {
+    return fNSRole;
+}
+
+- (NSUInteger)accessibilityIndexOfChild:(id)child {
+
+    if ([child isKindOfClass:[PlatformAxElement class]]) {
+        child = [child javaBase];
+    }
+    jint returnValue = JNFCallStaticIntMethod( [ThreadUtilities getJNIEnv],
+                                sjm_getAccessibleIndexInParent,
+                                [child accessible],
+                                [child component]);
+    return (returnValue == -1) ? NSNotFound : returnValue;
 }
 
 @end

@@ -6,6 +6,9 @@
 
 static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;");
 
+static JNF_CLASS_CACHE(sjc_CAccessible, "sun/lwawt/macosx/CAccessible");
+static JNF_MEMBER_CACHE(jm_getAccessibleContext, sjc_CAccessible, "getAccessibleContext", "()Ljavax/accessibility/AccessibleContext;");
+
 static void RaiseMustOverrideException(NSString *method)
 {
     @throw [NSException exceptionWithName:NSInternalInconsistencyException
@@ -48,7 +51,7 @@ static void RaiseMustOverrideException(NSString *method)
     NSArray *children = [JavaBaseAccessibility childrenOfParent:self.javaBase
                                                         withEnv:env
                                                withChildrenCode:JAVA_AX_ALL_CHILDREN
-                                                   allowIgnored:[[self accessibilityRole] isEqualToString:NSAccessibilityListRole]];
+                                                   allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole])];
     if ([children count] > 0) {
         return children;
     }
@@ -61,7 +64,7 @@ static void RaiseMustOverrideException(NSString *method)
     NSArray *selectedChildren = [JavaBaseAccessibility childrenOfParent:self.javaBase
                                                                 withEnv:env
                                                        withChildrenCode:JAVA_AX_SELECTED_CHILDREN
-                                                           allowIgnored:[[self accessibilityRole] isEqualToString:NSAccessibilityListRole]];
+                                                           allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole])];
     if ([selectedChildren count] > 0) {
         return selectedChildren;
     }
@@ -99,6 +102,14 @@ static void RaiseMustOverrideException(NSString *method)
 - (id)getAccessibilityWindow
 {
     return [self.javaBase window];
+}
+
+- (void)setAccessibilityParent:(id)accessibilityParent {
+    [[self javaBase] setParent:accessibilityParent];
+}
+
+- (NSUInteger)accessibilityIndexOfChild:(id)child {
+    return [[self javaBase] accessibilityIndexOfChild:child];
 }
 
 @end

@@ -8,4 +8,9 @@
 @interface PlatformAxRow : PlatformAxElement <NSAccessibilityRow> {
     BOOL enabled;
 }
+
+@property(readonly) bool isTableRow;
+@property(readonly) bool IsListRow;
+@property(readonly) NSUInteger rowNumberInTable;
+
 @end
