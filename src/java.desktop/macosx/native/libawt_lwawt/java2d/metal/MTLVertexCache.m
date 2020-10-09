@@ -239,11 +239,6 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_DisableMaskCache");
     MTLVertexCache_FlushVertexCache(mtlc);
     MTLVertexCache_RestoreColorState(mtlc);
-    if (maskCacheTex != nil) {
-        [[mtlc getCommandBufferWrapper] registerPooledTexture:maskCacheTex];
-        [maskCacheTex release];
-        maskCacheTex = nil;
-    }
     maskCacheIndex = 0;
     free(vertexCache);
     vertexCache = NULL;

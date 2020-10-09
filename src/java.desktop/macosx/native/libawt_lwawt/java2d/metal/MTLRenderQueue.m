@@ -315,16 +315,26 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
         return;
     }
 
+    if (op == MTL_OP_SET_COLOR) {
+        if (mtlPreviousOp != MTL_OP_MASK_OP) {
+            return; // SET_COLOR should not cause endEncoder
+        }
+    } else if (op == MTL_OP_MASK_OP) {
+        MTLVertexCache_EnableMaskCache(mtlc, dstOps);
+        mtlPreviousOp = op;
+        return;
+    }
+
     J2dTraceLn1(J2D_TRACE_VERBOSE,
                 "MTLRenderQueue_CheckPreviousOp: new op=%d", op);
 
-    if (op == MTL_OP_SET_COLOR) {
-        return; // SET_COLOR should not cause endEncoder
-    }
-
-    if (mtlPreviousOp == MTL_OP_INIT) {
-        mtlPreviousOp = op;
-        return;
+    switch (mtlPreviousOp) {
+        case MTL_OP_INIT :
+            mtlPreviousOp = op;
+            return;
+        case MTL_OP_MASK_OP :
+            MTLVertexCache_DisableMaskCache(mtlc);
+            break;
     }
 
     if (mtlc != NULL) {
@@ -711,7 +721,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_MASK_FILL:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     jint x        = NEXT_INT(b);
                     jint y        = NEXT_INT(b);
                     jint w        = NEXT_INT(b);
@@ -1137,6 +1146,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         }
 
         if (mtlc != NULL) {
+            if (mtlPreviousOp == MTL_OP_MASK_OP) {
+                MTLVertexCache_DisableMaskCache(mtlc);
+            }
             [mtlc.encoderManager endEncoder];
             MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
             id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
