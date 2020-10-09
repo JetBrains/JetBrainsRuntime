@@ -2,10 +2,11 @@
 
 #import "JavaElementAccessibility.h"
 
-@interface JavaRowAccessibility : JavaElementAccessibility
+@interface JavaColumnAccessibility : JavaElementAccessibility
 @end
 
-@interface PlatformAxRow : PlatformAxElement <NSAccessibilityRow> {
-    BOOL enabled;
-}
+@interface PlatformAxColumn : PlatformAxElement
+
+@property(readonly) NSUInteger columnNumberInTable;
 @end
+
