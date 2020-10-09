@@ -3,6 +3,9 @@
 #import "JavaBaseAccessibility.h"
 
 @interface JavaElementAccessibility : JavaBaseAccessibility
+
+@property(readonly) int accessibleIndexOfParent;
+
 @end
 
 @interface PlatformAxElement : NSAccessibilityElement <JavaBaseProvider>
