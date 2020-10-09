@@ -152,6 +152,17 @@ public abstract class KeyboardFocusManager
                 public Container getCurrentFocusCycleRoot() {
                     return KeyboardFocusManager.currentFocusCycleRoot;
                 }
+
+                @Override
+                public void enqueueKeyEvents(Component untilFocused) {
+                    KeyboardFocusManager.getCurrentKeyboardFocusManager().enqueueKeyEvents(
+                            Toolkit.getEventQueue().getMostRecentKeyEventTime(), untilFocused);
+                }
+
+                @Override
+                public void dequeueKeyEvents(Component untilFocused) {
+                    KeyboardFocusManager.getCurrentKeyboardFocusManager().dequeueKeyEvents(-1, untilFocused);
+                }
             }
         );
     }
