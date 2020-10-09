@@ -25,16 +25,29 @@
 
 package sun.awt.X11;
 
-import java.awt.*;
+import java.awt.AWTEvent;
+import java.awt.Component;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.EventQueue;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Shape;
+import java.awt.SystemColor;
+import java.awt.Window;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.WindowEvent;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Vector;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import sun.awt.AWTAccessor;
@@ -1181,6 +1194,17 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             updateFocusability();
         }
         promoteDefaultPosition();
+
+        // To enable type-ahead for 'simple' windows, we initiate internal focus transfer to such a window even before
+        // it's mapped by a window manager. 'Simple' windows aren't natively focusable, so for this to work as expected
+        // we only need to be sure that the window will be mapped soon after we request it. There are known cases when
+        // window manager delays mapping the window for a long time (e.g. i3wm does this when another window is in
+        // full-screen mode), but no known cases when it does it for popup windows, so we hope that we're safe here with
+        // 'simple' windows.
+        if (vis && isSimpleWindow() && shouldFocusOnMapNotify()) {
+            requestInitialFocus();
+        }
+
         super.setVisible(vis);
         if (refreshChildsTransientFor) {
             for (Window child : ((Window) target).getOwnedWindows()) {
@@ -1450,7 +1474,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                 }
             }
         }
-        if (shouldFocusOnMapNotify()) {
+        if (!isSimpleWindow() && shouldFocusOnMapNotify()) {
             focusLog.fine("Automatically request focus on window");
             requestInitialFocus();
         }
