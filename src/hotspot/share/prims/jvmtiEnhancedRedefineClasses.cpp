@@ -217,7 +217,14 @@ void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
   }
 }
 
-void VM_EnhancedRedefineClasses::mark_as_scavengable_g1(nmethod* nm) {
+void VM_EnhancedRedefineClasses::unregister_nmethod_g1(nmethod* nm) {
+  // It should work not only for G1 but also for another GCs, but this way is safer now
+  if (!nm->is_zombie() && !nm->is_unloaded()) {
+    Universe::heap()->unregister_nmethod(nm);
+  }
+}
+
+void VM_EnhancedRedefineClasses::register_nmethod_g1(nmethod* nm) {
   // It should work not only for G1 but also for another GCs, but this way is safer now
   if (!nm->is_zombie() && !nm->is_unloaded()) {
     Universe::heap()->register_nmethod(nm);
@@ -520,8 +527,9 @@ void VM_EnhancedRedefineClasses::doit() {
     // For now, mark all nmethod's as scavengable that are not scavengable already
     if (ScavengeRootsInCode) {
       if (UseG1GC) {
-        // this should work also for other GCs
-        CodeCache::nmethods_do(mark_as_scavengable_g1);
+        // G1 holds references to nmethods in regions based on oops values. Since oops in nmethod can be changed in ChangePointers* closures
+        // we unregister nmethods from G1 heap, then closures are processed (oops are changed) and finally we register nmethod to G1 again
+        CodeCache::nmethods_do(unregister_nmethod_g1);
       } else {
         CodeCache::nmethods_do(mark_as_scavengable);
       }
@@ -543,6 +551,11 @@ void VM_EnhancedRedefineClasses::doit() {
     }
 
     Universe::root_oops_do(&oopClosureNoBarrier);
+
+    if (UseG1GC) {
+      // this should work also for other GCs
+      CodeCache::nmethods_do(register_nmethod_g1);
+    }
 
   }
   log_trace(redefine, class, obsolete, metadata)("After updating instances");
