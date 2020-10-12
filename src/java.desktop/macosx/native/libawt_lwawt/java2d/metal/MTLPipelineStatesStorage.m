@@ -162,8 +162,8 @@ static void setBlendingFactors(
                 pipelineDesc.sampleCount = MTLAASampleCount;
                 pipelineDesc.colorAttachments[0].rgbBlendOperation =   MTLBlendOperationAdd;
                 pipelineDesc.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
-                pipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
-                pipelineDesc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorSourceAlpha;
+                pipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+                pipelineDesc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
                 pipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
                 pipelineDesc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
                 pipelineDesc.colorAttachments[0].blendingEnabled = YES;

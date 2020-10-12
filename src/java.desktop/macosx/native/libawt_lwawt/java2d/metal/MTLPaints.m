@@ -77,6 +77,8 @@ static void initTemplatePipelineDescriptors() {
     templateRenderPipelineDesc.sampleCount = 1;
     templateRenderPipelineDesc.vertexDescriptor = vertDesc;
     templateRenderPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+    templateRenderPipelineDesc.colorAttachments[0].rgbBlendOperation =   MTLBlendOperationAdd;
+    templateRenderPipelineDesc.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
     templateRenderPipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
     templateRenderPipelineDesc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
     templateRenderPipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
