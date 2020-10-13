@@ -68,11 +68,13 @@ static jobject sAccessibilityClass = NULL;
         fView = [view retain];
         fJavaRole = [javaRole retain];
 
-        fAccessible = (*env)->NewWeakGlobalRef(env, accessible);
-        (*env)->ExceptionClear(env); // in case of OOME
-        jobject jcomponent = [(AWTView *)fView awtComponent:env];
-        fComponent = (*env)->NewWeakGlobalRef(env, jcomponent);
-        (*env)->DeleteLocalRef(env, jcomponent);
+        if (accessible != NULL) {
+            fAccessible = (*env)->NewWeakGlobalRef(env, accessible);
+            (*env)->ExceptionClear(env); // in case of OOME
+            jobject jcomponent = [(AWTView *)fView awtComponent:env];
+            fComponent = (*env)->NewWeakGlobalRef(env, jcomponent);
+            (*env)->DeleteLocalRef(env, jcomponent);
+        }
 
         fIndex = index;
     }
@@ -235,7 +237,9 @@ static jobject sAccessibilityClass = NULL;
 
     NSInteger i;
     NSUInteger childIndex = (whichChildren >= 0) ? whichChildren : 0; // if we're getting one particular child, make sure to set its index correctly
-    for(i = 0; i < arrayLen; i+=2)
+    
+    int inc = [parent isKindOfClass:[JavaTableAccessibility class]] ? (int)[[parent platformAxElement] accessibleColCount] * 2 : 2;
+    for(i = 0; i < arrayLen; i+=inc)
     {
         jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
         jobject /* String */ jchildJavaRole = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+1);
@@ -252,13 +256,7 @@ static jobject sAccessibilityClass = NULL;
         (*env)->DeleteLocalRef(env, jchild);
         (*env)->DeleteLocalRef(env, jchildJavaRole);
 
-        if ([parent isKindOfClass:[JavaTableAccessibility class]]) {
-            if ([child isKindOfClass:[JavaRowAccessibility class]]) {
-                [children addObject:child.platformAxElement];
-            }
-        } else {
-            [children addObject:child.platformAxElement];
-        }
+        [children addObject:child.platformAxElement];
         childIndex++;
     }
     (*env)->DeleteLocalRef(env, jchildrenAndRoles);
@@ -303,9 +301,8 @@ static jobject sAccessibilityClass = NULL;
         newChild = [ScrollAreaAccessibility alloc];
     } else if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityListRole]) {
         newChild = [JavaRowAccessibility alloc];
-    } else if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityTableRole] &&
-               (((int)index % [(PlatformAxTable *)[parent platformAxElement] accessibleColCount]) == 0)) {
-            newChild = [JavaRowAccessibility alloc];
+    } else if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityTableRole]) {
+        newChild = [JavaRowAccessibility alloc];
     } else {
         NSString *nsRole = [sRoles objectForKey:javaRole];
         if ([nsRole isEqualToString:NSAccessibilityStaticTextRole] || [nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
