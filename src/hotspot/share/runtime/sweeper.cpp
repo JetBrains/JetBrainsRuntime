@@ -384,11 +384,12 @@ void NMethodSweeper::possibly_sweep() {
   if (_should_sweep || forced) {
     init_sweeper_log();
     sweep_code_cache();
+
+    // We are done with sweeping the code cache once.
+    _total_nof_code_cache_sweeps++;
+    _last_sweep = _time_counter;
   }
 
-  // We are done with sweeping the code cache once.
-  _total_nof_code_cache_sweeps++;
-  _last_sweep = _time_counter;
   // Reset flag; temporarily disables sweeper
   _should_sweep = false;
   // If there was enough state change, 'possibly_enable_sweeper()'
@@ -570,6 +571,8 @@ void NMethodSweeper::possibly_enable_sweeper() {
   double percent_changed = ((double)_bytes_changed / (double)ReservedCodeCacheSize) * 100;
   if (percent_changed > 1.0) {
     _should_sweep = true;
+    MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+    CodeCache_lock->notify();
   }
 }
 
