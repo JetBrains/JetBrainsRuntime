@@ -511,7 +511,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jfloat lwr21 = NEXT_FLOAT(b);
                     jfloat lwr12 = NEXT_FLOAT(b);
 
-                    MTLRenderer_DrawParallelogram(mtlc, dstOps,
+                    MTLRenderer_DrawParallelogram(mtlc, dstOps, JNI_FALSE,
                                                   x11, y11,
                                                   dx21, dy21,
                                                   dx12, dy12,
@@ -530,7 +530,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jfloat lwr21 = NEXT_FLOAT(b);
                     jfloat lwr12 = NEXT_FLOAT(b);
 
-                    MTLRenderer_DrawAAParallelogram(mtlc, dstOps,
+                    MTLRenderer_DrawParallelogram(mtlc, dstOps, JNI_TRUE,
                                                     x11, y11,
                                                     dx21, dy21,
                                                     dx12, dy12,
@@ -588,7 +588,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jfloat dy21 = NEXT_FLOAT(b);
                     jfloat dx12 = NEXT_FLOAT(b);
                     jfloat dy12 = NEXT_FLOAT(b);
-                    MTLRenderer_FillParallelogram(mtlc, dstOps,
+                    MTLRenderer_FillParallelogram(mtlc, dstOps, JNI_FALSE,
                                                   x11, y11,
                                                   dx21, dy21,
                                                   dx12, dy12);
@@ -603,7 +603,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jfloat dy21 = NEXT_FLOAT(b);
                     jfloat dx12 = NEXT_FLOAT(b);
                     jfloat dy12 = NEXT_FLOAT(b);
-                    MTLRenderer_FillAAParallelogram(mtlc, dstOps,
+                    MTLRenderer_FillParallelogram(mtlc, dstOps, JNI_TRUE,
                                                     x11, y11,
                                                     dx21, dy21,
                                                     dx12, dy12);

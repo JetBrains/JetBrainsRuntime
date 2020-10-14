@@ -50,31 +50,19 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
                           jint *xPoints, jint *yPoints);
 void MTLRenderer_DrawScanlines(MTLContext *mtlc, BMTLSDOps * dstOps,
                                jint count, jint *scanlines);
-void MTLRenderer_DrawParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
+void MTLRenderer_DrawParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps, jboolean isAA,
                                    jfloat fx11, jfloat fy11,
                                    jfloat dx21, jfloat dy21,
                                    jfloat dx12, jfloat dy12,
                                    jfloat lw21, jfloat lw12);
-void MTLRenderer_DrawAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
-                                     jfloat fx11, jfloat fy11,
-                                     jfloat dx21, jfloat dy21,
-                                     jfloat dx12, jfloat dy12,
-                                     jfloat lw21, jfloat lw12);
 
 void MTLRenderer_FillRect(MTLContext *mtlc, BMTLSDOps * dstOps,
                           jint x, jint y, jint w, jint h);
 void MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps,
                            jint count, jint *spans);
-void MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
+void MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps, jboolean isAA,
                                    jfloat fx11, jfloat fy11,
                                    jfloat dx21, jfloat dy21,
                                    jfloat dx12, jfloat dy12);
-void MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
-                                     jfloat fx11, jfloat fy11,
-                                     jfloat dx21, jfloat dy21,
-                                     jfloat dx12, jfloat dy12);
-
-void MTLRenderer_EnableAAParallelogramProgram();
-void MTLRenderer_DisableAAParallelogramProgram();
 
 #endif /* MTLRenderer_h_Included */
