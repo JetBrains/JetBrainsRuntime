@@ -45,7 +45,7 @@ function create_jbr {
     --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output ${JBR_BUNDLE} || exit $?
   if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]]
   then
-    cp -R jcef_win_x64/* ${JBR_BUNDLE}/bin
+    rsync -av jcef_win_x64/ ${JBR_BUNDLE}/bin --exclude="modular-sdk" || exit $?
   fi
   echo Modifying release info ...
   cat ${JSDK}/release | tr -d '\r' | grep -v 'JAVA_VERSION' | grep -v 'MODULES' >> ${JBR_BUNDLE}/release
@@ -100,7 +100,7 @@ BASE_DIR=build/windows-x86_64-normal-server-release/images
 JBRSDK_BUNDLE=jbrsdk
 
 rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE} && rsync -a --exclude demo --exclude sample ${JSDK}/ ${JBRSDK_BUNDLE} || exit 1
-cp -R jcef_win_x64/* ${JBRSDK_BUNDLE}/bin
+rsync -av jcef_win_x64/ ${JBRSDK_BUNDLE}/bin --exclude='modular-sdk' || _exit $?
 sed 's/JBR/JBRSDK/g' ${JSDK}/release > release
 mv release ${JBRSDK_BUNDLE}/release
 

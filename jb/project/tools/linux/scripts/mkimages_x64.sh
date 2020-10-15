@@ -55,7 +55,7 @@ function create_jbr {
 
   if [[ "$bundle_type" == *jcef* ]] || [[ "$bundle_type" == *dcevm* ]]; then
     cp -R $BASE_DIR/$JBR_BUNDLE $BASE_DIR/jbr
-    cp -R jcef_linux_x64/* $BASE_DIR/$JBR_BUNDLE/lib || exit $?
+    rsync -av jcef_linux_x64/ $BASE_DIR/$JBR_BUNDLE/lib --exclude="modular-sdk" || exit $?
   fi
   grep -v "^JAVA_VERSION" $JSDK/release | grep -v "^MODULES" >> $BASE_DIR/$JBR_BUNDLE/release
 
@@ -108,7 +108,7 @@ rm -rf $BASE_DIR/$JBRSDK_BUNDLE
 cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 
 if [[ "$bundle_type" == *jcef* ]] || [[ "$bundle_type" == *dcevm* ]]; then
-  cp -R jcef_linux_x64/* $BASE_DIR/$JBRSDK_BUNDLE/lib || exit $?
+  rsync -av jcef_linux_x64/ $BASE_DIR/$JBRSDK_BUNDLE/lib --exclude="modular-sdk" || exit $?
 fi
 if [ "$bundle_type" == "jfx_jcef" ]; then
   echo Creating $JBSDK.tar.gz ...

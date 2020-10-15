@@ -42,6 +42,7 @@ function pack_jbr {
   JBR=$JBR_BASE_NAME-windows-x64-b$build_number
   echo Creating $JBR.tar.gz ...
   rm -rf ${BASE_DIR}/jbr
+  chmod -R ug+rwx,o+rx ${BASE_DIR}/${JBR_BUNDLE}
   cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
 
   /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR jbr || exit 1
