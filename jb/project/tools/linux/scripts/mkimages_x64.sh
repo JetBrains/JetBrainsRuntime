@@ -63,7 +63,7 @@ function create_jbr {
 
   if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
     cp -R $BASE_DIR/$JBR_BUNDLE $BASE_DIR/jbr
-    cp -R ${JCEF_PATH}/* $BASE_DIR/$JBR_BUNDLE/lib || exit $?
+    rsync -av ${JCEF_PATH}/ $BASE_DIR/$JBR_BUNDLE/lib --exclude="modular-sdk" || do_exit $?
   fi
   grep -v "^JAVA_VERSION" $JSDK/release | grep -v "^MODULES" >> $BASE_DIR/$JBR_BUNDLE/release
 
@@ -140,7 +140,7 @@ rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE}
 cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || do_exit $?
 
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
-  cp -R ${JCEF_PATH}/* $BASE_DIR/$JBRSDK_BUNDLE/lib || do_exit $?
+  rsync -av ${JCEF_PATH}/ $BASE_DIR/$JBRSDK_BUNDLE/lib --exclude="modular-sdk" || do_exit $?
 fi
 if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
   echo Creating $JBSDK.tar.gz ...
