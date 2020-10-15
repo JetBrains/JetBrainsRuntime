@@ -62,7 +62,7 @@ function create_jbr {
     --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output ${JBR_BUNDLE} || do_exit $?
   if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]
   then
-    cp -R ${JCEF_PATH}/* ${JBR_BUNDLE}/bin || do_exit $?
+    rsync -av ${JCEF_PATH}/ ${JBR_BUNDLE}/bin --exclude="modular-sdk" || do_exit $?
   fi
   echo Modifying release info ...
   cat ${JSDK}/release | tr -d '\r' | grep -v 'JAVA_VERSION' | grep -v 'MODULES' >> ${JBR_BUNDLE}/release
@@ -136,7 +136,7 @@ JBRSDK_BUNDLE=jbrsdk
 rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE} && rsync -a --exclude demo --exclude sample ${JSDK}/ ${JBRSDK_BUNDLE} || do_exit $?
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]
 then
-  cp -R ${JCEF_PATH}/* ${JBRSDK_BUNDLE}/bin
+  rsync -av ${JCEF_PATH}/ ${JBRSDK_BUNDLE}/bin --exclude='modular-sdk' || do_exit $?
   sed 's/JBR/JBRSDK/g' ${JSDK}/release > release
   mv release ${JBRSDK_BUNDLE}/release
 fi
