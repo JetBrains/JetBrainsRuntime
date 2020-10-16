@@ -20,7 +20,7 @@ build_number=$3
 
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 
-source jb/project/tools/common.sh
+source jb/project/tools/common/scripts/common.sh
 
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 WORK_DIR=$(pwd)
@@ -55,7 +55,7 @@ mv release ${JBRSDK_BUNDLE}/release
 JBR_BUNDLE=jbr
 rm -rf ${JBR_BUNDLE}
 grep -v javafx modules.list | grep -v "jdk.internal.vm\|jdk.aot\|jcef" > modules.list.x86
-${JSDK}/bin/jlink \
+${JSDK}/bin/jlink.exe \
   --module-path ${JSDK}/jmods --no-man-pages --compress=2 \
   --add-modules $(xargs < modules.list.x86 | sed s/" "//g) --output ${JBR_BUNDLE} || exit $?
 
