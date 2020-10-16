@@ -18,8 +18,6 @@
 # OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
 #
 # Environment variables:
-#   MODULAR_SDK_PATH - specifies the path to the directory where imported modules are located.
-#               By default imported modules should be located in ./modular-sdk
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
 #               By default JCEF binaries should be located in ./jcef_win_x64
 
@@ -29,84 +27,81 @@ build_number=$3
 bundle_type=$4
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 WORK_DIR=$(pwd)
-WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=$WORK_DIR/modular-sdk}"
 JCEF_PATH=${JCEF_PATH:=$WORK_DIR/jcef_win_x64}
 
-source jb/project/tools/common.sh
+source jb/project/tools/common/scripts/common.sh
 
-function create_jbr {
+function create_image_bundle {
+  __bundle_name=$1
+  __modules_path=$2
+  __modules=$3
 
-  if [ -z "${bundle_type}" ]; then
-    JBR_BUNDLE=jbr
-  else
-    JBR_BUNDLE=jbr_${bundle_type}
-  fi
-  cat modules.list > modules_tmp.list
-  rm -rf ${JBR_BUNDLE}
+  [ -d $__bundle_name ] && rm -rf $__bundle_name
 
-  echo Running jlink....
+  echo Running jlink ...
   ${JSDK}/bin/jlink \
-    --module-path ${JSDK}/jmods --no-man-pages --compress=2 \
-    --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output ${JBR_BUNDLE} || do_exit $?
-
-  [ ! -z "${bundle_type}" ] && (rsync -av ${JCEF_PATH}/ ${JBR_BUNDLE}/bin --exclude="modular-sdk" || do_exit $?)
-  echo Modifying release info ...
-  cat ${JSDK}/release | tr -d '\r' | grep -v 'JAVA_VERSION' | grep -v 'MODULES' >> ${JBR_BUNDLE}/release
+    --module-path $__modules_path --no-man-pages --compress=2 \
+    --add-modules $__modules --output $__bundle_name || do_exit $?
 }
 
-JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 WITH_DEBUG_LEVEL="--with-debug-level=release"
 RELEASE_NAME=windows-x86_64-server-release
-JBSDK=${JBRSDK_BASE_NAME}-osx-x64-b${build_number}
+
 case "$bundle_type" in
   "jcef")
-    git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
     do_reset_changes=1
     ;;
   "nomod" | "")
     bundle_type=""
-    WITH_IMPORT_MODULES=""
     ;;
   "fd")
-    git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
     do_reset_changes=1
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=windows-x86_64-server-fastdebug
-    JBSDK=${JBRSDK_BASE_NAME}-osx-x64-fastdebug-b${build_number}
     ;;
 esac
 
 sh ./configure \
   --disable-warnings-as-errors \
   $WITH_DEBUG_LEVEL \
-  --with-vendor-name="${VENDOR_NAME}" \
-  --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
+  --with-vendor-name="$VENDOR_NAME" \
+  --with-vendor-version-string="$VENDOR_VERSION_STRING" \
   --with-version-pre= \
-  --with-version-build=${JDK_BUILD_NUMBER} \
+  --with-version-build=$JDK_BUILD_NUMBER \
   --with-version-opt=b${build_number} \
-  $WITH_IMPORT_MODULES \
-  --with-toolchain-version=${TOOLCHAIN_VERSION} \
-  --with-boot-jdk=${BOOT_JDK} \
+  --with-toolchain-version=$TOOLCHAIN_VERSION \
+  --with-boot-jdk=$BOOT_JDK \
   --disable-ccache \
   --enable-cds=yes || do_exit $?
 
-if [ "$bundle_type" == "jcef" ]; then
-  make LOG=info CONF=$RELEASE_NAME clean images test-image   || do_exit $?
+if [ -z "$bundle_type" ]; then
+  make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
 else
   make LOG=info CONF=$RELEASE_NAME clean images || do_exit $?
 fi
 
-JSDK=build/$RELEASE_NAME/images/jdk
-BASE_DIR=build/$RELEASE_NAME/images
+IMAGES_DIR=build/$RELEASE_NAME/images
+JSDK=$IMAGES_DIR/jdk
+JSDK_MODS_DIR=$IMAGES_DIR/jmods
 JBRSDK_BUNDLE=jbrsdk
 
-rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE} && rsync -a --exclude demo --exclude sample ${JSDK}/ ${JBRSDK_BUNDLE} || do_exit $?
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
-  rsync -av ${JCEF_PATH}/ ${JBRSDK_BUNDLE}/bin --exclude='modular-sdk' || do_exit $?
-  sed 's/JBR/JBRSDK/g' ${JSDK}/release > release
-  mv release ${JBRSDK_BUNDLE}/release
+  git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
+  update_jsdk_mods "$JSDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
+  cp $JCEF_PATH/jmods/* ${JSDK_MODS_DIR} # $JSDK/jmods is not unchanged
+
+  jbr_name_postfix="_${bundle_type}"
 fi
 
-create_jbr || do_exit $?
+# create runtime image bundle
+modules=$(xargs < modules.list | sed s/" "//g) || do_exit $?
+create_image_bundle "jbr${jbr_name_postfix}" $JSDK_MODS_DIR "$modules" || do_exit $?
+
+# create sdk image bundle
+modules=$(cat ${JSDK}/release | grep MODULES | sed s/MODULES=//g | sed s/' '/,/g | sed s/\"//g | sed s/\\r//g | sed s/\\n//g)
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
+  modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
+fi
+create_image_bundle "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
 
 do_exit 0
