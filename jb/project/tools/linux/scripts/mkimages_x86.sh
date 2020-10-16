@@ -20,7 +20,7 @@ build_number=$3
 
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 
-source jb/project/tools/common.sh
+source jb/project/tools/common/scripts/common.sh
 
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 
