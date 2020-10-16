@@ -303,6 +303,16 @@ Java_sun_java2d_metal_MTLRenderer_drawPoly
                                  nPoints, isClosed,
                                  transX, transY,
                                  xPoints, yPoints);
+            if (mtlc != NULL) {
+                RESET_PREVIOUS_OP();
+                [mtlc.encoderManager endEncoder];
+                MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
+                id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+                [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                    [cbwrapper release];
+                }];
+                [commandbuf commit];
+            }
 
             (*env)->ReleasePrimitiveArrayCritical(env, ypointsArray, yPoints,
                                                   JNI_ABORT);

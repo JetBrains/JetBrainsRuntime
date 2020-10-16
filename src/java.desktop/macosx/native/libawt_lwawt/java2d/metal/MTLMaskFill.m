@@ -139,6 +139,16 @@ Java_sun_java2d_metal_MTLMaskFill_maskFill
     MTLMaskFill_MaskFill(mtlc, dstOps,
                          x, y, w, h,
                          maskoff, maskscan, masklen, mask);
+    if (mtlc != NULL) {
+        RESET_PREVIOUS_OP();
+        [mtlc.encoderManager endEncoder];
+        MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
+        id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+            [cbwrapper release];
+        }];
+        [commandbuf commit];
+    }
 
     if (mask != NULL) {
         (*env)->ReleasePrimitiveArrayCritical(env, maskArray, mask, JNI_ABORT);
