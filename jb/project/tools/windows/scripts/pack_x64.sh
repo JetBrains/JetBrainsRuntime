@@ -18,6 +18,8 @@
 # OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
 #
 
+source jb/project/tools/common/scripts/common.sh
+
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
@@ -68,7 +70,7 @@ fi
 
 pack_jbr $bundle_type
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ -z "$bundle_type" ]; then
   JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number
   echo Creating $JBRSDK_TEST.tar.gz ...
   /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
