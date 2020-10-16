@@ -215,170 +215,66 @@ static void setBlendingFactors(
 }
 @end
 
+/**
+ * The MTLBlendRule structure encapsulates the two enumerated values that
+ * comprise a given Porter-Duff blending (compositing) rule.  For example,
+ * the "SrcOver" rule can be represented by:
+ *     rule.src = GL_ONE;
+ *     rule.dst = GL_ONE_MINUS_SRC_ALPHA;
+ *
+ *     GLenum src;
+ * The constant representing the source factor in this Porter-Duff rule.
+ *
+ *     GLenum dst;
+ * The constant representing the destination factor in this Porter-Duff rule.
+ */
+struct MTLBlendRule {
+    MTLBlendFactor src;
+    MTLBlendFactor dst;
+};
+
+/**
+ * This table contains the standard blending rules (or Porter-Duff compositing
+ * factors) used in setBlendingFactors(), indexed by the rule constants from the
+ * AlphaComposite class.
+ */
+static struct MTLBlendRule StdBlendRules[] = {
+        { MTLBlendFactorZero,                     MTLBlendFactorZero                }, /* 0 - Nothing      */
+        { MTLBlendFactorZero,                     MTLBlendFactorZero                }, /* 1 - RULE_Clear   */
+        { MTLBlendFactorOne,                      MTLBlendFactorZero                }, /* 2 - RULE_Src     */
+        { MTLBlendFactorOne,                      MTLBlendFactorOneMinusSourceAlpha }, /* 3 - RULE_SrcOver */
+        { MTLBlendFactorOneMinusDestinationAlpha, MTLBlendFactorOne                 }, /* 4 - RULE_DstOver */
+        { MTLBlendFactorDestinationAlpha,         MTLBlendFactorZero                }, /* 5 - RULE_SrcIn   */
+        { MTLBlendFactorZero,                     MTLBlendFactorSourceAlpha         }, /* 6 - RULE_DstIn   */
+        { MTLBlendFactorOneMinusDestinationAlpha, MTLBlendFactorZero                }, /* 7 - RULE_SrcOut  */
+        { MTLBlendFactorZero,                     MTLBlendFactorOneMinusSourceAlpha }, /* 8 - RULE_DstOut  */
+        { MTLBlendFactorZero,                     MTLBlendFactorOne                 }, /* 9 - RULE_Dst     */
+        { MTLBlendFactorDestinationAlpha,         MTLBlendFactorOneMinusSourceAlpha }, /*10 - RULE_SrcAtop */
+        { MTLBlendFactorOneMinusDestinationAlpha, MTLBlendFactorSourceAlpha         }, /*11 - RULE_DstAtop */
+        { MTLBlendFactorOneMinusDestinationAlpha, MTLBlendFactorOneMinusSourceAlpha }, /*12 - RULE_AlphaXor*/
+};
+
 static void setBlendingFactors(
         MTLRenderPipelineColorAttachmentDescriptor * cad,
         MTLComposite* composite,
         const RenderOptions * renderOptions
 ) {
-    const jint compositeRule = composite != nil ? [composite getRule] : RULE_Src;
-    if (compositeRule == RULE_Src &&
-        (composite == nil || FLT_GE([composite getExtraAlpha], 1.0f))) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_Src but blending is disabled because src is opaque");
+    const long compositeRule = composite != nil ? [composite getRule] : RULE_Src;
+
+    if ((compositeRule == RULE_Src || compositeRule == RULE_SrcOver) &&
+        (composite == nil || FLT_GE([composite getExtraAlpha], 1.0f)) &&
+        (renderOptions->srcFlags.isOpaque))
+    {
+        cad.blendingEnabled = NO;
         return;
     }
 
     cad.blendingEnabled = YES;
+    cad.rgbBlendOperation = MTLBlendOperationAdd;
+    cad.alphaBlendOperation = MTLBlendOperationAdd;
 
-    // RGB = Source.rgb * SBFc + Dest.rgb * DBFc
-    // A = Source.a * SBFa + Dest.a * DBFa
-    //
-    // default mode == RULE_Src with constants:
-    // DBFa=0
-    // DBFc=0
-    // SBFa=1
-    // SBFc=1
-    //
-    // NOTE: constants MTLBlendFactorBlendAlpha, MTLBlendFactorOneMinusBlendAlpha refers to [encoder setBlendColorRed:green:blue:alpha:] (default value is zero)
-    //
-    // TODO: implement alpha-composite via shaders (will be much more simpler and can support all rules and modes)
-
-    switch (compositeRule) {
-        case RULE_SrcOver: {
-            // Ar = As + Ad*(1-As)
-            // Cr = Cs + Cd*(1-As)
-            if (renderOptions->srcFlags.isOpaque &&
-                (composite == nil ||
-                 FLT_GE([composite getExtraAlpha], 1.0f)))
-            {
-                J2dTraceLn(J2D_TRACE_VERBOSE, "rule=RULE_SrcOver, but blending is disabled because src is opaque");
-                cad.blendingEnabled = NO;
-                return;
-            }
-            if (renderOptions->dstFlags.isOpaque) {
-                // Ar = 1, can be ignored, so
-                // Cr = Cs + Cd*(1-As)
-                // TODO: select any multiplier with best performance
-                // for example: cad.destinationAlphaBlendFactor = MTLBlendFactorZero;
-            } else {
-                cad.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
-            }
-            if (!renderOptions->srcFlags.isPremultiplied) {
-                cad.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
-            }
-            if (composite != nil && FLT_LT([composite getExtraAlpha], 1.0f)) {
-                cad.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
-            }
-            cad.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
-
-            J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_SrcOver");
-            break;
-        }
-        case RULE_DstOver: {
-            // Ar = As*(1-Ad) + Ad
-            // Cr = Cs*(1-Ad) + Cd
-            if (renderOptions->srcFlags.isOpaque) {
-                J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstOver with opaque src isn't implemented (src alpha won't be ignored)");
-            }
-            if (renderOptions->dstFlags.isOpaque) {
-                J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstOver with opaque dest hasn't any sense");
-            }
-            if (!renderOptions->srcFlags.isPremultiplied) {
-                J2dTrace(J2D_TRACE_ERROR, "Composite rule RULE_DstOver with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
-            }
-            cad.sourceAlphaBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;
-            cad.sourceRGBBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;
-            cad.destinationAlphaBlendFactor = MTLBlendFactorOne;
-            cad.destinationRGBBlendFactor = MTLBlendFactorOne;
-            J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_DstOver");
-            break;
-        }
-        case RULE_SrcIn: {
-            // Ar = As*Ad
-            // Cr = Cs*Ad
-            if (renderOptions->srcFlags.isOpaque) {
-                J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_SrcIn with opaque src isn't implemented (src alpha won't be ignored)");
-            }
-            if (renderOptions->dstFlags.isOpaque) {
-                J2dTraceLn(J2D_TRACE_VERBOSE, "rule=RULE_SrcIn, but blending is disabled because dest is opaque");
-                cad.blendingEnabled = NO;
-                return;
-            }
-            if (!renderOptions->srcFlags.isPremultiplied) {
-                J2dTrace(J2D_TRACE_ERROR, "Composite rule RULE_SrcIn with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
-            }
-            cad.sourceAlphaBlendFactor = MTLBlendFactorDestinationAlpha;
-            cad.sourceRGBBlendFactor = MTLBlendFactorDestinationAlpha;
-            cad.destinationAlphaBlendFactor = MTLBlendFactorZero;
-            cad.destinationRGBBlendFactor = MTLBlendFactorZero;
-            J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_SrcIn");
-            break;
-        }
-        case RULE_DstIn: {
-            // Ar = Ad*As
-            // Cr = Cd*As
-            if (renderOptions->srcFlags.isOpaque) {
-                J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstIn with opaque src isn't implemented (src alpha won't be ignored)");
-            }
-            if (renderOptions->dstFlags.isOpaque) {
-                J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstIn with opaque dest isn't implemented (dest alpha won't be ignored)");
-            }
-            cad.sourceAlphaBlendFactor = MTLBlendFactorZero;
-            cad.sourceRGBBlendFactor = MTLBlendFactorZero;
-            cad.destinationAlphaBlendFactor = MTLBlendFactorSourceAlpha;
-            cad.destinationRGBBlendFactor = MTLBlendFactorSourceAlpha;
-            J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_DstIn");
-            break;
-        }
-        case RULE_SrcOut: {
-            // Ar = As*(1-Ad)
-            // Cr = Cs*(1-Ad)
-            if (!renderOptions->srcFlags.isPremultiplied) {
-                J2dTrace(J2D_TRACE_ERROR, "Composite rule SrcOut with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
-            }
-            cad.sourceAlphaBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;
-            cad.sourceRGBBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;
-            cad.destinationAlphaBlendFactor = MTLBlendFactorZero;
-            cad.destinationRGBBlendFactor = MTLBlendFactorZero;
-            J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_SrcOut");
-            break;
-        }
-        case RULE_DstOut: {
-            // Ar = Ad*(1-As)
-            // Cr = Cd*(1-As)
-            cad.sourceAlphaBlendFactor = MTLBlendFactorZero;
-            cad.sourceRGBBlendFactor = MTLBlendFactorZero;
-            cad.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
-            cad.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
-            J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_DstOut");
-            break;
-        }
-        case RULE_Xor: {
-            // Ar = As*(1-Ad) + Ad*(1-As)
-            // Cr = Cs*(1-Ad) + Cd*(1-As)
-            if (!renderOptions->srcFlags.isPremultiplied) {
-                J2dTrace(J2D_TRACE_ERROR, "Composite rule Xor with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
-            }
-            cad.sourceAlphaBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;
-            cad.sourceRGBBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;
-            cad.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
-            cad.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
-            J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_Xor");
-            break;
-        }
-        case RULE_Clear: {
-            // Ar = 0
-            // Cr = 0
-            cad.sourceAlphaBlendFactor = MTLBlendFactorZero;
-            cad.sourceRGBBlendFactor = MTLBlendFactorZero;
-            cad.destinationAlphaBlendFactor = MTLBlendFactorZero;
-            cad.destinationRGBBlendFactor = MTLBlendFactorZero;
-            J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_Clear");
-            break;
-        }
-
-        default: {
-            J2dTrace1(J2D_TRACE_ERROR, "Unimplemented composite rule %d (will be used Src)", compositeRule);
-            cad.blendingEnabled = NO;
-        }
-    }
+    cad.sourceAlphaBlendFactor = StdBlendRules[compositeRule].src;
+    cad.sourceRGBBlendFactor = StdBlendRules[compositeRule].src;
+    cad.destinationAlphaBlendFactor = StdBlendRules[compositeRule].dst;
+    cad.destinationRGBBlendFactor = StdBlendRules[compositeRule].dst;
 }

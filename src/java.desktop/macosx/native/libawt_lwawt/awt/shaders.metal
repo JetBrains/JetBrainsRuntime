@@ -179,7 +179,7 @@ fragment half4 frag_txt(
 
     return half4(pixelColor.r,
                  pixelColor.g,
-                 pixelColor.b, srcA*uniforms.extraAlpha);
+                 pixelColor.b, srcA)*uniforms.extraAlpha;
 }
 
 fragment half4 frag_txt_tp(TxtShaderInOut vert [[stage_in]],
@@ -327,7 +327,7 @@ fragment half4 frag_txt_op_rescale(
     // TODO: check uniforms.isNonPremult and pre-multiply if necessary
     return half4(srcColor.r*uniforms.normScaleFactors.r + uniforms.normOffsets.r,
                  srcColor.g*uniforms.normScaleFactors.g + uniforms.normOffsets.g,
-                 srcColor.b*uniforms.normScaleFactors.b + uniforms.normOffsets.b, srcA*uniforms.extraAlpha);
+                 srcColor.b*uniforms.normScaleFactors.b + uniforms.normOffsets.b, srcA)*uniforms.extraAlpha;
 
     // NOTE: GL-shader multiplies result with glColor (in order to apply extra alpha), probably it's better to do the
     // same here.
@@ -368,7 +368,7 @@ fragment half4 frag_txt_op_convolve(
         sum.a += kern.z * pixCol.a;
     }
     const float srcA = uniforms.isSrcOpaque ? 1 : sum.a;
-    return half4(sum.r, sum.g, sum.b, srcA*uniforms.extraAlpha);
+    return half4(sum.r, sum.g, sum.b, srcA)*uniforms.extraAlpha;
 
     // NOTE: GL-shader multiplies result with glColor (in order to apply extra alpha), probably it's better to do the
     // same here.
@@ -411,7 +411,7 @@ fragment half4 frag_txt_op_lookup(
     const float a = uniforms.isUseSrcAlpha ? srcA : lookupTex.sample(textureSampler, float2(srcIndex.a, 0.875)).a;
 
     // TODO: check uniforms.isNonPremult and pre-multiply if necessary
-    return half4(lookupR.a, lookupG.a, lookupB.a, a*uniforms.extraAlpha);
+    return half4(lookupR.a, lookupG.a, lookupB.a, a)*uniforms.extraAlpha;
 
     // NOTE: GL-shader multiplies result with glColor (in order to apply extra alpha), probably it's better to do the
     // same here.
@@ -666,7 +666,7 @@ fragment half4 frag_txt_xorMode(
     } else {
         c = float4(pixelColor.r,
                  pixelColor.g,
-                 pixelColor.b, srcA*uniforms.extraAlpha);
+                 pixelColor.b, srcA)*uniforms.extraAlpha;
     }
 
     half4 ret;
