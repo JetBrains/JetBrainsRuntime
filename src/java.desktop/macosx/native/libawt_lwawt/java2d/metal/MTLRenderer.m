@@ -287,8 +287,29 @@ Java_sun_java2d_metal_MTLRenderer_drawPoly
      jint transX, jint transY)
 {
     jint *xPoints, *yPoints;
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderer_drawPoly -- :TODO");
+
+    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_drawPoly");
+
+    xPoints = (jint *)
+        (*env)->GetPrimitiveArrayCritical(env, xpointsArray, NULL);
+    if (xPoints != NULL) {
+        yPoints = (jint *)
+            (*env)->GetPrimitiveArrayCritical(env, ypointsArray, NULL);
+        if (yPoints != NULL) {
+            MTLContext *mtlc = MTLRenderQueue_GetCurrentContext();
+            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+
+            MTLRenderer_DrawPoly(mtlc, dstOps,
+                                 nPoints, isClosed,
+                                 transX, transY,
+                                 xPoints, yPoints);
+
+            (*env)->ReleasePrimitiveArrayCritical(env, ypointsArray, yPoints,
+                                                  JNI_ABORT);
+        }
+        (*env)->ReleasePrimitiveArrayCritical(env, xpointsArray, xPoints,
+                                              JNI_ABORT);
+    }
 }
 
 void
