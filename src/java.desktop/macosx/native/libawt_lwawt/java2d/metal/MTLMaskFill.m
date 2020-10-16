@@ -90,8 +90,6 @@ MTLMaskFill_MaskFill(MTLContext *mtlc, BMTLSDOps * dstOps,
                      unsigned char *pMask)
 {
     J2dTraceLn5(J2D_TRACE_INFO, "MTLMaskFill_MaskFill (x=%d y=%d w=%d h=%d pMask=%p)", x, y, w, h, dstOps->pTexture);
-    if (mtlc == nil) return;
-    CHECK_PREVIOUS_OP(MTL_OP_MASK_OP);
     jint tw, th, x0;
     jint sx1, sy1, sx2, sy2;
     jint sx, sy, sw, sh;

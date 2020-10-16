@@ -729,6 +729,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jint maskscan = NEXT_INT(b);
                     jint masklen  = NEXT_INT(b);
                     unsigned char *pMask = (masklen > 0) ? b : NULL;
+                    if (mtlc == nil)
+                        return;
+                    CHECK_PREVIOUS_OP(MTL_OP_MASK_OP);
                     MTLMaskFill_MaskFill(mtlc, dstOps, x, y, w, h,
                                          maskoff, maskscan, masklen, pMask);
                     SKIP_BYTES(b, masklen);

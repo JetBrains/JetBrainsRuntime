@@ -53,7 +53,6 @@ enum {
   MTL_OP_MASK_OP,
   MTL_OP_OTHER
 };
-void MTLRenderQueue_CheckPreviousOp(jint op);
 /*
  * These macros now simply delegate to the CheckPreviousOp() method.
  */
