@@ -35,6 +35,7 @@ import javax.swing.JMenuBar;
 import sun.lwawt.*;
 import sun.lwawt.macosx.*;
 import sun.awt.AWTAccessor;
+import sun.util.logging.PlatformLogger;
 
 /**
  * The <code>Application</code> class allows you to integrate your Java application with the native Mac OS X environment.
@@ -55,6 +56,8 @@ import sun.awt.AWTAccessor;
  * @since 1.4
  */
 public class Application {
+    private static final PlatformLogger focusRequestLog = PlatformLogger.getLogger("jb.focus.requests");
+
     private static native void nativeInitializeApplicationDelegate();
 
     static Application sApplication = null;
@@ -284,6 +287,9 @@ public class Application {
      * @since Java for Mac OS X 10.5 Update 6 - 1.6, 1.5
      */
     public void requestForeground(final boolean allWindows) {
+        if (focusRequestLog.isLoggable(PlatformLogger.Level.FINE)) {
+            focusRequestLog.fine("requestForeground(" + (allWindows ? "allWindows" : "") + ")", new Throwable());
+        }
         _AppMiscHandlers.requestActivation(allWindows);
     }
 
