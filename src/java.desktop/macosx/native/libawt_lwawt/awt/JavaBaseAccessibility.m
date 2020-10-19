@@ -68,13 +68,11 @@ static jobject sAccessibilityClass = NULL;
         fView = [view retain];
         fJavaRole = [javaRole retain];
 
-        if (accessible != NULL) {
             fAccessible = (*env)->NewWeakGlobalRef(env, accessible);
             (*env)->ExceptionClear(env); // in case of OOME
             jobject jcomponent = [(AWTView *)fView awtComponent:env];
             fComponent = (*env)->NewWeakGlobalRef(env, jcomponent);
             (*env)->DeleteLocalRef(env, jcomponent);
-        }
 
         fIndex = index;
     }
@@ -228,6 +226,40 @@ static jobject sAccessibilityClass = NULL;
 
 + (NSArray *)childrenOfParent:(JavaBaseAccessibility *)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored
 {
+    if ([parent isKindOfClass:[JavaTableAccessibility class]]) {
+        if (whichChildren == JAVA_AX_SELECTED_CHILDREN) {
+            NSArray<NSNumber *> *selectedRowIndexses = [[parent platformAxElement] selectedAccessibleRows];
+            NSMutableArray *children = [NSMutableArray arrayWithCapacity:[selectedRowIndexses count]];
+            for (NSNumber *index in selectedRowIndexses) {
+                [children addObject:[[JavaRowAccessibility alloc] initWithParent:parent
+                                                                         withEnv:env
+                                                                  withAccessible:NULL
+                                                                       withIndex:index.unsignedIntValue
+                                                                        withView:[parent view]
+                                                                    withJavaRole:JavaAccessibilityIgnore].platformAxElement];
+            }
+            return [NSArray arrayWithArray:children];
+        } else if (whichChildren == JAVA_AX_ALL_CHILDREN) {
+            int rowCount = [[parent platformAxElement] accessibleRowCount];
+            NSMutableArray *children = [NSMutableArray arrayWithCapacity:rowCount];
+            for (int i = 0; i < rowCount; i++) {
+                [children addObject:[[JavaRowAccessibility alloc] initWithParent:parent
+                                                                         withEnv:env
+                                                                  withAccessible:NULL
+                                                                       withIndex:i
+                                                                        withView:[parent view]
+                                                                    withJavaRole:JavaAccessibilityIgnore].platformAxElement];
+            }
+            return [NSArray arrayWithArray:children];
+        } else {
+            return [NSArray arrayWithObject:[[JavaRowAccessibility alloc] initWithParent:parent
+                                                                                 withEnv:env
+                                                                          withAccessible:NULL
+                                                                               withIndex:whichChildren
+                                                                                withView:[parent view]
+                                                                            withJavaRole:JavaAccessibilityIgnore].platformAxElement];
+        }
+    }
     if (parent->fAccessible == NULL) return nil;
     jobjectArray jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, whichChildren, allowIgnored); // AWT_THREADING Safe (AWTRunLoop)
     if (jchildrenAndRoles == NULL) return nil;

@@ -28,12 +28,7 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
 }
 
 - (nullable NSArray<id<NSAccessibilityRow>> *)accessibilitySelectedRows {
-    NSArray<NSNumber *> *selectedRowIndexes = [self selectedAccessibleRows];
-    NSMutableArray *selectedRows = [NSMutableArray arrayWithCapacity:[selectedRowIndexes count]];
-    for (NSNumber *index in selectedRowIndexes) {
-        [selectedRows addObject:[[self accessibilityChildren] objectAtIndex:index.unsignedIntegerValue]];
-    }
-    return [NSArray arrayWithArray:selectedRows];
+    return [self accessibilitySelectedChildren];
 }
 
 - (NSString *)accessibilityLabel {
@@ -91,9 +86,10 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
         return nil;
     }
     jsize arrayLen = (*env)->GetArrayLength(env, selectidRowNumbers);
+    jint *indexsis = (*env)->GetIntArrayElements(env, selectidRowNumbers, 0);
     NSMutableArray<NSNumber *> *nsArraySelectidRowNumbers = [NSMutableArray<NSNumber *> arrayWithCapacity:arrayLen];
     for (int i = 0; i < arrayLen; i++) {
-        [nsArraySelectidRowNumbers addObject:[NSNumber numberWithInt:(*env)->GetObjectArrayElement(env, selectidRowNumbers, i)]];
+        [nsArraySelectidRowNumbers addObject:[NSNumber numberWithInt:indexsis[i]]];
     }
     return [NSArray<NSNumber *> arrayWithArray:nsArraySelectidRowNumbers];
 }
@@ -109,9 +105,10 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
         return nil;
     }
     jsize arrayLen = (*env)->GetArrayLength(env, selectidColumnNumbers);
+    jint *indexsis = (*env)->GetIntArrayElements(env, selectidColumnNumbers, 0);
     NSMutableArray<NSNumber *> *nsArraySelectidColumnNumbers = [NSMutableArray<NSNumber *> arrayWithCapacity:arrayLen];
     for (int i = 0; i < arrayLen; i++) {
-        [nsArraySelectidColumnNumbers addObject:[NSNumber numberWithInt:(*env)->GetObjectArrayElement(env, selectidColumnNumbers, i)]];
+        [nsArraySelectidColumnNumbers addObject:[NSNumber numberWithInt:indexsis[i]]];
     }
     return [NSArray<NSNumber *> arrayWithArray:nsArraySelectidColumnNumbers];
 }

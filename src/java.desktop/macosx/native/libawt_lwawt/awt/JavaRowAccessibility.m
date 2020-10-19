@@ -48,7 +48,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
                        withIndex:[[self javaBase] index]
                         withView:[[self javaBase] view]
                     withJavaRole:javaRole];
-        return [NSArray arrayWithObject:[newChild autorelease]];
+        return [NSArray arrayWithObject:[newChild autorelease].platformAxElement];
         } else if ([self isTableRow]) {
             JNIEnv *env = [ThreadUtilities getJNIEnv];
             if ([[[self accessibilityParent] javaBase] accessible] == NULL) return nil;
@@ -97,7 +97,10 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 }
 
 - (NSInteger)accessibilityIndex {
-    return [[self accessibilityParent] accessibilityIndexOfChild:self];
+    if ([self isTableRow]) {
+        return [[self javaBase] index];
+    }
+    return [super accessibilityIndex];
 }
 
 - (NSString *)accessibilityLabel {
@@ -116,13 +119,6 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     }
 }
 
-// to avoid warning (why?): method in protocol 'NSAccessibilityElement' not implemented
-- (NSRect)accessibilityFrame
-{
-    return [super accessibilityFrame];
-}
-
-// to avoid warning (why?): method in protocol 'NSAccessibilityElement' not implemented
 - (id)accessibilityParent
 {
     return [super accessibilityParent];
@@ -138,10 +134,23 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
 - (NSUInteger)rowNumberInTable {
     if ([self isTableRow]) {
-        return [[self accessibilityParent] accessibleRowAtIndex:[[self accessibilityParent] accessibilityIndexOfChild:self]];
+        return [[self javaBase] index];
     } else if ([self IsListRow]) {
         return [[self accessibilityParent] accessibilityIndexOfChild:self];
     }
+}
+
+- (NSRect)accessibilityFrame {
+    if ([self IsListRow]) {
+        int height = [[[self accessibilityChildren] objectAtIndex:0] accessibilityFrame].size.height;
+        int width = 0;
+        NSPoint point = [[[self accessibilityChildren] objectAtIndex:0] accessibilityFrame].origin;
+        for (id cell in [self accessibilityChildren]) {
+            width += [cell accessibilityFrame].size.width;
+        }
+        return NSMakeRect(point.x, point.y, width, height);
+    }
+    return [super accessibilityFrame];;
 }
 
 @end

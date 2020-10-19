@@ -26,28 +26,13 @@
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
         NSString *javaRole = [[self javaBase] javaRole];
-        JavaBaseAccessibility *newChild = nil;
-        if ([javaRole isEqualToString:@"pagetablist"]) {
-            newChild = [TabGroupAccessibility alloc];
-        } else if ([javaRole isEqualToString:@"scrollpane"]) {
-            newChild = [ScrollAreaAccessibility alloc];
-        } else {
-            NSString *nsRole = [sRoles objectForKey:javaRole];
-            if ([nsRole isEqualToString:NSAccessibilityStaticTextRole] || [nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
-                newChild = [JavaTextAccessibility alloc];
-            } else if ([nsRole isEqualToString:NSAccessibilityListRole]) {
-                newChild = [JavaListAccessibility alloc];
-            } else {
-                newChild = [JavaComponentAccessibility alloc];
-            }
-        }
-        [newChild initWithParent:[self javaBase]
-                         withEnv:[ThreadUtilities getJNIEnv]
-                  withAccessible:[[self javaBase] accessible]
-                       withIndex:[[self javaBase] index]
-                        withView:[[self javaBase] view]
-                    withJavaRole:javaRole];
-        return [NSArray arrayWithObject:[newChild autorelease]];
+        JavaBaseAccessibility *newChild = [JavaBaseAccessibility createWithParent:[self javaBase]
+                                                                       accessible:[[self javaBase] accessible]
+                                                                             role:javaRole
+                                                                            index:[[self javaBase] index]
+                                                                          withEnv:[ThreadUtilities getJNIEnv]
+                                                                         withView:[[self javaBase] view]];
+        return [NSArray arrayWithObject:newChild.platformAxElement];
     } else {
         return children;
     }
