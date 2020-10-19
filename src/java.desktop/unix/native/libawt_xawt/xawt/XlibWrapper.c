@@ -2352,7 +2352,7 @@ Java_sun_awt_X11_XlibWrapper_XISelectEvents
         unsigned char mask[8];
     } converter;
     converter.value = mask;
-    evmask.mask = &converter.mask;
+    evmask.mask = (unsigned char*)&converter.mask;
     return XISelectEvents((Display *)jlong_to_ptr(display), (Window)jlong_to_ptr(window),
                           &evmask, /*num masks*/ 1);
 }
