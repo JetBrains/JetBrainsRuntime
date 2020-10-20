@@ -1,7 +1,7 @@
-From cbe52ffcde1851f2c3527825f37145428aeedc67 Mon Sep 17 00:00:00 2001
+From 7fd25130005527d73d87ad0fe36b86795cfb1f4f Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 12 Dec 2018 19:38:28 +0100
-Subject: [PATCH 09/50] Support for Concurrent Mark Sweep (CMS) collector
+Subject: [PATCH 03/13] Support for Concurrent Mark Sweep (CMS) collector
 
 ---
  .../share/gc/cms/compactibleFreeListSpace.cpp | 139 ++++++++++++------
@@ -266,7 +266,7 @@ index 8aac2b39e1e..39364a64cb2 100644
      FLAG_SET_ERGO(bool, UseSerialGC, true);
    } else if (os::is_server_class_machine()) {
 diff --git a/src/hotspot/share/gc/shared/space.cpp b/src/hotspot/share/gc/shared/space.cpp
-index 763abc91a39..947dff8ae0c 100644
+index bc0dd1980db..56b144b46f1 100644
 --- a/src/hotspot/share/gc/shared/space.cpp
 +++ b/src/hotspot/share/gc/shared/space.cpp
 @@ -388,11 +388,11 @@ HeapWord* CompactibleSpace::forward_compact_top(size_t size, CompactPoint* cp, H
@@ -301,7 +301,7 @@ index 763abc91a39..947dff8ae0c 100644
    size_t forward_size = size;
  
    // (DCEVM) There is a new version of the class of q => different size
-   if (oop(q)->klass()->new_version() != NULL && oop(q)->klass()->new_version()->update_information() != NULL) {
+   if (oop(q)->klass()->new_version() != NULL) {
  
      size_t new_size = oop(q)->size_given_klass(oop(q)->klass()->new_version());
 -    assert(size != new_size, "instances without changed size have to be updated prior to GC run");
@@ -360,7 +360,7 @@ index 8eb5669fb79..901c89d8a30 100644
    HeapWord* forward_rescued(CompactPoint* cp, HeapWord* compact_top);
  
 diff --git a/src/hotspot/share/gc/shared/space.inline.hpp b/src/hotspot/share/gc/shared/space.inline.hpp
-index 75d7e685edf..26e56ae6f7e 100644
+index 6b109fcd2e5..8c255d6d428 100644
 --- a/src/hotspot/share/gc/shared/space.inline.hpp
 +++ b/src/hotspot/share/gc/shared/space.inline.hpp
 @@ -163,6 +163,8 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
@@ -402,7 +402,7 @@ index 75d7e685edf..26e56ae6f7e 100644
          end_of_live = end;
        } else {
          // otherwise, it really is a free region.
-@@ -351,7 +354,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
+@@ -352,7 +355,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
        HeapWord* compaction_top = (HeapWord*)oop(cur_obj)->forwardee();
  
        if (redefinition_run &&  space->must_rescue(oop(cur_obj), oop(cur_obj)->forwardee())) {
@@ -411,7 +411,7 @@ index 75d7e685edf..26e56ae6f7e 100644
          debug_only(Copy::fill_to_words(cur_obj, size, 0));
          cur_obj += size;
          continue;
-@@ -361,8 +364,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
+@@ -362,8 +365,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
        Prefetch::write(compaction_top, copy_interval);
  
        // copy object and reinit its mark
@@ -422,10 +422,10 @@ index 75d7e685edf..26e56ae6f7e 100644
          Klass* new_version = oop(cur_obj)->klass()->new_version();
          if (new_version->update_information() == NULL) {
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index c64d6bb1bb5..9b8678a53fb 100644
+index 92ce6c27b8a..41e82ae7a69 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-@@ -52,6 +52,7 @@
+@@ -54,6 +54,7 @@
  #include "prims/jvmtiThreadState.inline.hpp"
  #include "utilities/events.hpp"
  #include "oops/constantPool.inline.hpp"
@@ -433,7 +433,7 @@ index c64d6bb1bb5..9b8678a53fb 100644
  
  Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
  Array<Method*>* VM_EnhancedRedefineClasses::_new_methods = NULL;
-@@ -420,13 +421,11 @@ public:
+@@ -416,13 +417,11 @@ public:
        Klass* new_klass = obj->klass()->new_version();
  
        if (new_klass->update_information() != NULL) {
@@ -449,7 +449,7 @@ index c64d6bb1bb5..9b8678a53fb 100644
            oop src = obj;
            if (new_klass->is_copying_backwards()) {
              copy_to_tmp(obj);
-@@ -436,11 +435,6 @@ public:
+@@ -432,11 +431,6 @@ public:
            //  FIXME: instance updates...
            //guarantee(false, "instance updates!");
            MarkSweep::update_fields(obj, src, new_klass->update_information());
@@ -462,10 +462,10 @@ index c64d6bb1bb5..9b8678a53fb 100644
        } else {
          obj->set_klass(obj->klass()->new_version());
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index ca57b524593..2ca6dde069d 100644
+index a11dfe48dd6..013ba213c00 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
-@@ -2047,14 +2047,14 @@ bool Arguments::check_gc_consistency() {
+@@ -2045,14 +2045,14 @@ bool Arguments::check_gc_consistency() {
    if (AllowEnhancedClassRedefinition) {
      // Must use serial GC. This limitation applies because the instance size changing GC modifications
      // are only built into the mark and compact algorithm.
@@ -484,5 +484,5 @@ index ca57b524593..2ca6dde069d 100644
                  "Conflicting collector combinations in option list; "
                  "please refer to the release notes for the combinations "
 -- 
-2.24.3 (Apple Git-128)
+2.23.0
 

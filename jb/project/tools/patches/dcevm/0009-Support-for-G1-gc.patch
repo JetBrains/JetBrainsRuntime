@@ -1,10 +1,11 @@
-From caf7fe94c42bea9606f96023cebe466058a1eef5 Mon Sep 17 00:00:00 2001
+From 65ff0a93f95b86fe7a53c571d34c9cc478cb701a Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 12 Jun 2020 17:43:52 +0200
-Subject: [PATCH 49/50] Support for G1 gc
+Subject: [PATCH 09/13] Support for G1 gc
 
 ---
- src/hotspot/share/gc/g1/g1CollectedHeap.hpp   |   1 +
+ src/hotspot/share/gc/g1/g1CollectedHeap.cpp   |  20 +++
+ src/hotspot/share/gc/g1/g1CollectedHeap.hpp   |   3 +
  src/hotspot/share/gc/g1/g1FullCollector.cpp   |  16 +-
  .../share/gc/g1/g1FullGCCompactTask.cpp       |  92 +++++++++-
  .../share/gc/g1/g1FullGCCompactTask.hpp       |  19 +++
@@ -21,16 +22,54 @@ Subject: [PATCH 49/50] Support for G1 gc
  src/hotspot/share/gc/shared/gcConfig.cpp      |   2 +-
  src/hotspot/share/gc/shared/space.inline.hpp  |   3 +-
  src/hotspot/share/memory/universe.cpp         |   5 +
- .../prims/jvmtiEnhancedRedefineClasses.cpp    |  31 +++-
- .../prims/jvmtiEnhancedRedefineClasses.hpp    |   1 +
- src/hotspot/share/runtime/arguments.cpp       |   2 +-
+ .../prims/jvmtiEnhancedRedefineClasses.cpp    |  75 ++++++---
+ .../prims/jvmtiEnhancedRedefineClasses.hpp    |   6 +-
+ src/hotspot/share/runtime/arguments.cpp       |   4 +-
  src/hotspot/share/utilities/growableArray.hpp |   4 +
- 21 files changed, 570 insertions(+), 126 deletions(-)
+ 22 files changed, 628 insertions(+), 141 deletions(-)
  create mode 100644 src/hotspot/share/gc/shared/dcevmSharedGC.cpp
  create mode 100644 src/hotspot/share/gc/shared/dcevmSharedGC.hpp
 
+diff --git a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
+index dea8d9fdb0e..33664a30519 100644
+--- a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
++++ b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
+@@ -2108,6 +2108,21 @@ public:
+   }
+ };
+ 
++class G1IterateObjectClosureTask : public AbstractGangTask {
++ private:
++  ObjectClosure* _cl;
++  G1CollectedHeap* _g1h;
++  HeapRegionClaimer _hrclaimer;
++ public:
++  G1IterateObjectClosureTask(ObjectClosure* cl, G1CollectedHeap* g1h) : AbstractGangTask("IterateObject Closure"),
++    _cl(cl), _g1h(g1h),  _hrclaimer(g1h->workers()->active_workers()) { }
++
++  virtual void work(uint worker_id) {
++    IterateObjectClosureRegionClosure blk(_cl);
++    _g1h->heap_region_par_iterate_from_worker_offset(&blk, &_hrclaimer, worker_id);
++  }
++};
++
+ void G1CollectedHeap::object_iterate(ObjectClosure* cl) {
+   IterateObjectClosureRegionClosure blk(cl);
+   heap_region_iterate(&blk);
+@@ -2117,6 +2132,11 @@ void G1CollectedHeap::heap_region_iterate(HeapRegionClosure* cl) const {
+   _hrm.iterate(cl);
+ }
+ 
++void G1CollectedHeap::object_par_iterate(ObjectClosure* cl) {
++  G1IterateObjectClosureTask iocl_task(cl, this);
++  workers()->run_task(&iocl_task);
++}
++
+ void G1CollectedHeap::heap_region_par_iterate_from_worker_offset(HeapRegionClosure* cl,
+                                                                  HeapRegionClaimer *hrclaimer,
+                                                                  uint worker_id) const {
 diff --git a/src/hotspot/share/gc/g1/g1CollectedHeap.hpp b/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
-index 8a171dc6b52..0735eef0da8 100644
+index 8a171dc6b52..05a068bb2e0 100644
 --- a/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
 +++ b/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
 @@ -144,6 +144,7 @@ class G1CollectedHeap : public CollectedHeap {
@@ -41,6 +80,15 @@ index 8a171dc6b52..0735eef0da8 100644
  
    // Other related classes.
    friend class HeapRegionClaimer;
+@@ -1116,6 +1117,8 @@ public:
+ 
+   // Iteration functions.
+ 
++  void object_par_iterate(ObjectClosure* cl);
++
+   // Iterate over all objects, calling "cl.do_object" on each.
+   virtual void object_iterate(ObjectClosure* cl);
+ 
 diff --git a/src/hotspot/share/gc/g1/g1FullCollector.cpp b/src/hotspot/share/gc/g1/g1FullCollector.cpp
 index 4362ee87e30..7b9496976b8 100644
 --- a/src/hotspot/share/gc/g1/g1FullCollector.cpp
@@ -76,7 +124,7 @@ index 4362ee87e30..7b9496976b8 100644
  }
  
 diff --git a/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp b/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp
-index 660afc88f02..d101a9f2177 100644
+index 0c2fc088fa4..e7d830979f6 100644
 --- a/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp
 +++ b/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp
 @@ -30,6 +30,7 @@
@@ -236,7 +284,7 @@ index 6c8eaf5967e..ea52a2db8cc 100644
  
  #endif // SHARE_GC_G1_G1FULLGCCOMPACTTASK_HPP
 diff --git a/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.cpp b/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.cpp
-index 3e3440804e4..23c0d615088 100644
+index 76e9e77d739..44fc32c1c47 100644
 --- a/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.cpp
 +++ b/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.cpp
 @@ -31,13 +31,19 @@
@@ -992,7 +1040,7 @@ index d0a6d665aa0..3dc4cc1323c 100644
    SystemDictionary::oops_do(oopClosure);
  }
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 1fbba406087..32929b3d7a0 100644
+index 1fbba406087..e67fc2dd58f 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -36,7 +36,6 @@
@@ -1003,15 +1051,16 @@ index 1fbba406087..32929b3d7a0 100644
  #include "oops/fieldStreams.hpp"
  #include "oops/klassVtable.hpp"
  #include "oops/oop.inline.hpp"
-@@ -55,6 +54,7 @@
+@@ -55,6 +54,8 @@
  #include "utilities/events.hpp"
  #include "oops/constantPool.inline.hpp"
  #include "gc/cms/cmsHeap.hpp"
++#include "gc/g1/g1CollectedHeap.hpp"
 +#include "gc/shared/dcevmSharedGC.hpp"
  
  Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
  Array<Method*>* VM_EnhancedRedefineClasses::_new_methods = NULL;
-@@ -78,7 +78,7 @@ Klass*      VM_EnhancedRedefineClasses::_the_class_oop = NULL;
+@@ -78,7 +79,7 @@ Klass*      VM_EnhancedRedefineClasses::_the_class_oop = NULL;
  //  - class_defs class definition - either new class or redefined class
  //               note that this is not the final array of classes to be redefined
  //               we need to scan for all affected classes (e.g. subclasses) and
@@ -1020,7 +1069,7 @@ index 1fbba406087..32929b3d7a0 100644
  // @param class_load_kind always jvmti_class_load_kind_redefine
  VM_EnhancedRedefineClasses::VM_EnhancedRedefineClasses(jint class_count, const jvmtiClassDefinition *class_defs, JvmtiClassLoadKind class_load_kind) :
          VM_GC_Operation(Universe::heap()->total_collections(), GCCause::_heap_inspection, Universe::heap()->total_full_collections(), true) {
-@@ -216,6 +216,13 @@ void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
+@@ -216,6 +217,13 @@ void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
    }
  }
  
@@ -1034,7 +1083,7 @@ index 1fbba406087..32929b3d7a0 100644
  // TODO comment
  struct StoreBarrier {
    // TODO: j10 review change ::oop_store -> HeapAccess<>::oop_store
-@@ -430,7 +437,7 @@ public:
+@@ -430,7 +438,7 @@ public:
            src->set_klass(obj->klass()->new_version());
            //  FIXME: instance updates...
            //guarantee(false, "instance updates!");
@@ -1043,7 +1092,18 @@ index 1fbba406087..32929b3d7a0 100644
          }
        } else {
          obj->set_klass(obj->klass()->new_version());
-@@ -507,7 +514,12 @@ void VM_EnhancedRedefineClasses::doit() {
+@@ -452,6 +460,10 @@ public:
+ void VM_EnhancedRedefineClasses::doit() {
+   Thread *thread = Thread::current();
+ 
++  if (log_is_enabled(Info, redefine, class, timer)) {
++    _timer_vm_op_doit.start();
++  }
++
+ #if INCLUDE_CDS
+   if (UseSharedSpaces) {
+     // Sharing is enabled so we remap the shared readonly space to
+@@ -507,12 +519,31 @@ void VM_EnhancedRedefineClasses::doit() {
      // mark such nmethod's as "scavengable".
      // For now, mark all nmethod's as scavengable that are not scavengable already
      if (ScavengeRootsInCode) {
@@ -1057,24 +1117,85 @@ index 1fbba406087..32929b3d7a0 100644
      }
  
      Universe::heap()->ensure_parsability(false);
-@@ -567,6 +579,7 @@ void VM_EnhancedRedefineClasses::doit() {
+-    Universe::heap()->object_iterate(&objectClosure);
++    if (UseG1GC) {
++      if (log_is_enabled(Info, redefine, class, timer)) {
++        _timer_heap_iterate.start();
++      }
++      G1CollectedHeap::heap()->object_par_iterate(&objectClosure);
++      _timer_heap_iterate.stop();
++    } else {
++      if (log_is_enabled(Info, redefine, class, timer)) {
++        _timer_heap_iterate.start();
++      }
++      Universe::heap()->object_iterate(&objectClosure);
++      _timer_heap_iterate.stop();
++    }
++
+     Universe::root_oops_do(&oopClosureNoBarrier);
++
+   }
+   log_trace(redefine, class, obsolete, metadata)("After updating instances");
+ 
+@@ -565,11 +596,19 @@ void VM_EnhancedRedefineClasses::doit() {
+ 
+   if (objectClosure.needs_instance_update()) {
      // Do a full garbage collection to update the instance sizes accordingly
++
++    if (log_is_enabled(Info, redefine, class, timer)) {
++      _timer_heap_full_gc.start();
++    }
++
      Universe::set_redefining_gc_run(true);
      notify_gc_begin(true);
 +    // TODO: check _metadata_GC_clear_soft_refs with ScavengeRootsInCode
      Universe::heap()->collect_as_vm_thread(GCCause::_heap_inspection);
      notify_gc_end();
      Universe::set_redefining_gc_run(false);
-@@ -877,7 +890,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
-  // Calculated the difference between new and old class  (field change, method change, supertype change, ...).
- int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_class) {
-   int result = Klass::NoRedefinition;
--  log_info(redefine, class, load)("Comparing different class versions of class %s",new_class->name()->as_C_string());
-+  log_debug(redefine, class, load)("Comparing different class versions of class %s",new_class->name()->as_C_string());
++
++    _timer_heap_full_gc.stop();
+   }
  
-   assert(new_class->old_version() != NULL, "must have old version");
-   InstanceKlass* the_class = InstanceKlass::cast(new_class->old_version());
-@@ -1584,7 +1597,7 @@ class TransferNativeFunctionRegistration {
+   // Unmark Klass*s as "redefining"
+@@ -617,6 +656,7 @@ void VM_EnhancedRedefineClasses::doit() {
+   }
+ #endif
+ 
++  _timer_vm_op_doit.stop();
+ }
+ 
+ // Cleanup - runs in JVM thread
+@@ -640,16 +680,14 @@ void VM_EnhancedRedefineClasses::doit_epilogue() {
+   if (log_is_enabled(Info, redefine, class, timer)) {
+     // Used to have separate timers for "doit" and "all", but the timer
+     // overhead skewed the measurements.
+-    jlong doit_time = _timer_rsc_phase1.milliseconds() +
+-                      _timer_rsc_phase2.milliseconds();
+-    jlong all_time = _timer_vm_op_prologue.milliseconds() + doit_time;
++    jlong all_time = _timer_vm_op_prologue.milliseconds() + _timer_vm_op_doit.milliseconds();
+ 
+     log_info(redefine, class, timer)
+       ("vm_op: all=" JLONG_FORMAT "  prologue=" JLONG_FORMAT "  doit=" JLONG_FORMAT,
+-       all_time, _timer_vm_op_prologue.milliseconds(), doit_time);
++       all_time, _timer_vm_op_prologue.milliseconds(), _timer_vm_op_doit.milliseconds());
+     log_info(redefine, class, timer)
+-      ("redefine_single_class: phase1=" JLONG_FORMAT "  phase2=" JLONG_FORMAT,
+-       _timer_rsc_phase1.milliseconds(), _timer_rsc_phase2.milliseconds());
++      ("doit: heap iterate=" JLONG_FORMAT "  fullgc=" JLONG_FORMAT,
++       _timer_heap_iterate.milliseconds(), _timer_heap_full_gc.milliseconds());
+   }
+ }
+ 
+@@ -1398,7 +1436,7 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
+ // arrayKlassOops. See Open Issues in jvmtiRedefineClasses.hpp.
+ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
+   if (!k->is_instance_klass()) {
+-	return;
++    return;
+   }
+ 
+   HandleMark hm(_thread);
+@@ -1584,7 +1622,7 @@ class TransferNativeFunctionRegistration {
  
    // Recursively search the binary tree of possibly prefixed method names.
    // Iteration could be used if all agents were well behaved. Full tree walk is
@@ -1083,7 +1204,7 @@ index 1fbba406087..32929b3d7a0 100644
    // Branch at each depth in the binary tree is:
    //    (1) without the prefix.
    //    (2) with the prefix.
-@@ -1689,7 +1702,7 @@ void VM_EnhancedRedefineClasses::transfer_old_native_function_registrations(Inst
+@@ -1689,7 +1727,7 @@ void VM_EnhancedRedefineClasses::transfer_old_native_function_registrations(Inst
    transfer.transfer_registrations(_matching_old_methods, _matching_methods_length);
  }
  
@@ -1092,7 +1213,26 @@ index 1fbba406087..32929b3d7a0 100644
  // Deoptimize all compiled code that depends on this class.
  //
  // If the can_redefine_classes capability is obtained in the onload
-@@ -2057,8 +2070,8 @@ static bool match_second(void* value, KlassPair elem) {
+@@ -1816,10 +1854,6 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
+ 
+   HandleMark hm(THREAD);   // make sure handles from this call are freed
+ 
+-  if (log_is_enabled(Info, redefine, class, timer)) {
+-    _timer_rsc_phase1.start();
+-  }
+-
+   InstanceKlass* new_class = new_class_oop;
+   InstanceKlass* the_class = InstanceKlass::cast(new_class_oop->old_version());
+   assert(the_class != NULL, "must have old version");
+@@ -1874,7 +1908,6 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
+                              new_class->external_name(),
+                              java_lang_Class::classRedefinedCount(new_class->java_mirror()));
+   }
+-  _timer_rsc_phase2.stop();
+ } // end redefine_single_class()
+ 
+ 
+@@ -2057,8 +2090,8 @@ static bool match_second(void* value, KlassPair elem) {
  // For each class to be redefined parse the bytecode and figure out the superclass and all interfaces.
  // First newly introduced classes (_class_defs) are scanned and then affected classed (_affected_klasses).
  // Affected flag is cleared (clear_redefinition_flag(Klass::MarkedAsAffected))
@@ -1104,10 +1244,23 @@ index 1fbba406087..32929b3d7a0 100644
    ResourceMark mark(THREAD);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index d8a11b51fe9..030852b160a 100644
+index d8a11b51fe9..9755944d70b 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-@@ -115,6 +115,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
+@@ -86,9 +86,10 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
+   // Performance measurement support. These timers do not cover all
+   // the work done for JVM/TI RedefineClasses() but they do cover
+   // the heavy lifting.
+-  elapsedTimer  _timer_rsc_phase1;
+-  elapsedTimer  _timer_rsc_phase2;
++  elapsedTimer  _timer_vm_op_doit;
+   elapsedTimer  _timer_vm_op_prologue;
++  elapsedTimer  _timer_heap_iterate;
++  elapsedTimer  _timer_heap_full_gc;
+ 
+   // These routines are roughly in call order unless otherwise noted.
+ 
+@@ -115,6 +116,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
  
    void rollback();
    static void mark_as_scavengable(nmethod* nm);
@@ -1116,18 +1269,21 @@ index d8a11b51fe9..030852b160a 100644
    static void fix_invoke_method(Method* method);
  
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index 72580b384dd..45f0858e57d 100644
+index 2b5ba619f43..5053ad7ee61 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
-@@ -2047,7 +2047,7 @@ bool Arguments::check_gc_consistency() {
+@@ -2045,9 +2045,9 @@ bool Arguments::check_gc_consistency() {
    if (AllowEnhancedClassRedefinition) {
      // Must use serial GC. This limitation applies because the instance size changing GC modifications
      // are only built into the mark and compact algorithm.
 -    if ((!UseSerialGC && !UseConcMarkSweepGC) && i >= 1) {
 +    if ((!UseSerialGC && !UseConcMarkSweepGC && !UseG1GC) && i >= 1) {
        jio_fprintf(defaultStream::error_stream(),
-                   "Must use the serial or concurrent mark sweep GC with enhanced class redefinition.\n");
+-                  "Must use the serial or concurrent mark sweep GC with enhanced class redefinition.\n");
++                  "Must use the Serial, Concurrent Mark Sweep or G1 GC with enhanced class redefinition.\n");
        return false;
+     }
+   }
 diff --git a/src/hotspot/share/utilities/growableArray.hpp b/src/hotspot/share/utilities/growableArray.hpp
 index f37d94a0529..738d475aea6 100644
 --- a/src/hotspot/share/utilities/growableArray.hpp
@@ -1144,5 +1300,5 @@ index f37d94a0529..738d475aea6 100644
  
  // Custom STL-style iterator to iterate over elements of a GrowableArray that satisfy a given predicate
 -- 
-2.24.3 (Apple Git-128)
+2.23.0
 

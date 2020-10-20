@@ -1,11 +1,11 @@
-From d0d6602fe3d664cb2322d7066bf46fa7e20d5d4e Mon Sep 17 00:00:00 2001
+From 278abd7996ebb06b3a217b7c677ed947020bbeae Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 23 May 2020 10:02:15 +0200
-Subject: [PATCH 45/50] Fix "no original bytecode found" error if method with
+Subject: [PATCH 07/13] Fix "no original bytecode found" error if method with
  bkp is missing
 
 Sometimes IDE can deploy class with erroneous method, such method has
-no bytecode, but breakpoint position can still exist.
+n bytecode, but breakpoint position can still exist.
 ---
  src/hotspot/share/interpreter/bytecodes.cpp    |  2 +-
  .../share/interpreter/interpreterRuntime.cpp   |  2 +-
@@ -41,10 +41,10 @@ index f367e658879..71bbd15a4f5 100644
  
  IRT_ENTRY(void, InterpreterRuntime::set_original_bytecode_at(JavaThread* thread, Method* method, address bcp, Bytecodes::Code new_code))
 diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
-index bee69f9cec6..f1e22db70d6 100644
+index ed6f769bf1b..031f255e632 100644
 --- a/src/hotspot/share/oops/method.cpp
 +++ b/src/hotspot/share/oops/method.cpp
-@@ -1747,14 +1747,14 @@ bool CompressedLineNumberReadStream::read_pair() {
+@@ -1744,14 +1744,14 @@ bool CompressedLineNumberReadStream::read_pair() {
  
  #if INCLUDE_JVMTI
  
@@ -61,7 +61,7 @@ index bee69f9cec6..f1e22db70d6 100644
      ResourceMark rm;
      fatal("no original bytecode found in %s at bci %d", name_and_sig_as_C_string(), bci);
    }
-@@ -1900,7 +1900,7 @@ BreakpointInfo::BreakpointInfo(Method* m, int bci) {
+@@ -1897,7 +1897,7 @@ BreakpointInfo::BreakpointInfo(Method* m, int bci) {
    _signature_index = m->signature_index();
    _orig_bytecode = (Bytecodes::Code) *m->bcp_from(_bci);
    if (_orig_bytecode == Bytecodes::_breakpoint)
@@ -70,7 +70,7 @@ index bee69f9cec6..f1e22db70d6 100644
    _next = NULL;
  }
  
-@@ -1909,7 +1909,7 @@ void BreakpointInfo::set(Method* method) {
+@@ -1906,7 +1906,7 @@ void BreakpointInfo::set(Method* method) {
    {
      Bytecodes::Code code = (Bytecodes::Code) *method->bcp_from(_bci);
      if (code == Bytecodes::_breakpoint)
@@ -102,10 +102,10 @@ index 4533476ff8f..193e1845b23 100644
    void set_breakpoint(int bci);
    void clear_breakpoint(int bci);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index a785a43d352..2321483dcbd 100644
+index b94caa39562..1fbba406087 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-@@ -1389,14 +1389,16 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
+@@ -1356,14 +1356,16 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
  
      if (code == Bytecodes::_breakpoint) {
        int bci = method->bci_from(bcp);
@@ -131,5 +131,5 @@ index a785a43d352..2321483dcbd 100644
      } else {
        java_code = Bytecodes::java_code(code);
 -- 
-2.24.3 (Apple Git-128)
+2.23.0
 

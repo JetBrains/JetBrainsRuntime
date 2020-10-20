@@ -1,17 +1,17 @@
-From dc397b652d9810f6f261070afbb8519f1c2964ee Mon Sep 17 00:00:00 2001
-From: skybber <lada.dvorak7@gmail.com>
-Date: Sun, 16 Dec 2018 09:55:31 +0100
-Subject: [PATCH 16/50] Add dcevm distro name
+From 82c3c60345b38acd04e6f1aea7d43e9283a71b8f Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Mon, 19 Oct 2020 20:00:04 +0200
+Subject: [PATCH 13/13] Set HOTSPOT_VM_DISTRO=Dynamic Code Evolution
 
 ---
  make/autoconf/version-numbers | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/make/autoconf/version-numbers b/make/autoconf/version-numbers
-index b5a23138213..5c0a3242c80 100644
+index 6e7a13956b2..47ec50e6d22 100644
 --- a/make/autoconf/version-numbers
 +++ b/make/autoconf/version-numbers
-@@ -43,7 +43,7 @@ PRODUCT_NAME=OpenJDK
+@@ -44,7 +44,7 @@ PRODUCT_NAME=OpenJDK
  PRODUCT_SUFFIX="Runtime Environment"
  JDK_RC_PLATFORM_NAME=Platform
  COMPANY_NAME=N/A
@@ -21,5 +21,5 @@ index b5a23138213..5c0a3242c80 100644
  VENDOR_URL_BUG=https://bugreport.java.com/bugreport/
  VENDOR_URL_VM_BUG=https://bugreport.java.com/bugreport/crash.jsp
 -- 
-2.24.3 (Apple Git-128)
+2.23.0
 

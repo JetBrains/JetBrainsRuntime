@@ -1,7 +1,7 @@
-From 24a60477aef7098ea23ab50a573332957741ea7b Mon Sep 17 00:00:00 2001
+From 4b8bc521e3e494da9761f904d2dabbd5810a4461 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:20:08 +0100
-Subject: [PATCH 15/50] HotswapAgent integration
+Subject: [PATCH 05/13] HotswapAgent integration
 
 It include:
 
@@ -9,16 +9,25 @@ It include:
 to CFLAGS (bash configure --with-extra-cflags="-DDCEVM_ONLY"), by
 default compilation goes with HotswapAgent
 
+Allow ha class initializer calls
+
 Add --add-opens for necessary modules/packages
 - java.base/java.lang - for reflection access to Proxy.proxyCache
 - java.base/jdk.internal.loader - for access proxyCache class
 - java.desktop/java.beans - for reflection access to Introspector
+- java.desktop/com.sun.beans
+- java.base/java.io
+- com.sun.beans.util
+
+Open jdk module to access ClassInfo.CACHE
 
 - be quiet if HotswapAgent is not found in lib/, it is compatible with
 old DCEVM
-- disable hotswapagent for -Xshare:dump
+- disable HotswapAgent for -Xshare:dump
 - disable HotswapAgent in jvm tools
+- disable HotswapAgent in keytool
 ---
+ make/launcher/Launcher-java.base.gmk          |  1 +
  make/launcher/Launcher-java.rmi.gmk           |  2 +
  make/launcher/Launcher-java.scripting.gmk     |  3 +-
  make/launcher/Launcher-java.security.jgss.gmk |  3 +
@@ -37,11 +46,32 @@ old DCEVM
  make/launcher/Launcher-jdk.pack.gmk           |  1 +
  make/launcher/Launcher-jdk.rmic.gmk           |  1 +
  .../Launcher-jdk.scripting.nashorn.shell.gmk  |  3 +-
- src/hotspot/share/runtime/arguments.cpp       | 59 +++++++++++++++++++
+ src/hotspot/share/classfile/vmSymbols.hpp     |  1 +
+ .../share/interpreter/linkResolver.cpp        |  2 +-
+ src/hotspot/share/runtime/arguments.cpp       | 67 +++++++++++++++++++
  src/hotspot/share/runtime/arguments.hpp       |  3 +
  src/hotspot/share/runtime/globals.hpp         | 12 +++-
- 21 files changed, 117 insertions(+), 10 deletions(-)
+ .../sun/beans/introspect/package-info.java    | 26 +++++++
+ .../classes/com/sun/beans/package-info.java   | 26 +++++++
+ .../com/sun/beans/util/package-info.java      | 26 +++++++
+ .../share/classes/module-info.java            |  3 +
+ 28 files changed, 209 insertions(+), 11 deletions(-)
+ create mode 100644 src/java.desktop/share/classes/com/sun/beans/introspect/package-info.java
+ create mode 100644 src/java.desktop/share/classes/com/sun/beans/package-info.java
+ create mode 100644 src/java.desktop/share/classes/com/sun/beans/util/package-info.java
 
+diff --git a/make/launcher/Launcher-java.base.gmk b/make/launcher/Launcher-java.base.gmk
+index f6d4aa28fe6..38ba29530d8 100644
+--- a/make/launcher/Launcher-java.base.gmk
++++ b/make/launcher/Launcher-java.base.gmk
+@@ -52,6 +52,7 @@ endif
+ 
+ $(eval $(call SetupBuildLauncher, keytool, \
+     MAIN_CLASS := sun.security.tools.keytool.Main, \
++    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+ ))
+ 
+ ################################################################################
 diff --git a/make/launcher/Launcher-java.rmi.gmk b/make/launcher/Launcher-java.rmi.gmk
 index a69a90bcc81..07046232275 100644
 --- a/make/launcher/Launcher-java.rmi.gmk
@@ -361,11 +391,36 @@ index 82311e69fd6..bd39f8595b2 100644
 +        -XX:+DisableHotswapAgent, \
      CFLAGS := -DENABLE_ARG_FILES, \
  ))
+diff --git a/src/hotspot/share/classfile/vmSymbols.hpp b/src/hotspot/share/classfile/vmSymbols.hpp
+index 6e0b95ef5e8..8e0f1610f31 100644
+--- a/src/hotspot/share/classfile/vmSymbols.hpp
++++ b/src/hotspot/share/classfile/vmSymbols.hpp
+@@ -342,6 +342,7 @@
+   /* common method and field names */                                                             \
+   template(object_initializer_name,                   "<init>")                                   \
+   template(class_initializer_name,                    "<clinit>")                                 \
++  template(ha_class_initializer_name,                 "$$ha$clinit")                              \
+   template(println_name,                              "println")                                  \
+   template(printStackTrace_name,                      "printStackTrace")                          \
+   template(main_name,                                 "main")                                     \
+diff --git a/src/hotspot/share/interpreter/linkResolver.cpp b/src/hotspot/share/interpreter/linkResolver.cpp
+index 0c24146ff00..9dc184d02f5 100644
+--- a/src/hotspot/share/interpreter/linkResolver.cpp
++++ b/src/hotspot/share/interpreter/linkResolver.cpp
+@@ -1009,7 +1009,7 @@ void LinkResolver::resolve_field(fieldDescriptor& fd,
+         assert(!m.is_null(), "information about the current method must be available for 'put' bytecodes");
+         bool is_initialized_static_final_update = (byte == Bytecodes::_putstatic &&
+                                                    fd.is_static() &&
+-                                                   !m()->is_static_initializer());
++                                                   !(m()->is_static_initializer() || m()->name() == vmSymbols::ha_class_initializer_name()));
+         bool is_initialized_instance_final_update = ((byte == Bytecodes::_putfield || byte == Bytecodes::_nofast_putfield) &&
+                                                      !fd.is_static() &&
+                                                      !m->is_object_initializer());
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index 2ca6dde069d..c75bb5d8f49 100644
+index 013ba213c00..2b5ba619f43 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
-@@ -3937,6 +3937,8 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
+@@ -3962,6 +3962,8 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
    // Set object alignment values.
    set_object_alignment();
  
@@ -374,7 +429,7 @@ index 2ca6dde069d..c75bb5d8f49 100644
  #if !INCLUDE_CDS
    if (DumpSharedSpaces || RequireSharedSpaces) {
      jio_fprintf(defaultStream::error_stream(),
-@@ -4270,3 +4272,60 @@ bool Arguments::copy_expand_pid(const char* src, size_t srclen,
+@@ -4295,3 +4297,68 @@ bool Arguments::copy_expand_pid(const char* src, size_t srclen,
    *b = '\0';
    return (p == src_end); // return false if not all of the source was copied
  }
@@ -431,15 +486,23 @@ index 2ca6dde069d..c75bb5d8f49 100644
 +  create_numbered_property("jdk.module.addopens", "java.base/java.lang=ALL-UNNAMED", addopens_count++);
 +  // Class of  field java.lang.reflect.Proxy/proxyCache
 +  create_numbered_property("jdk.module.addopens", "java.base/jdk.internal.loader=ALL-UNNAMED", addopens_count++);
++  // Use to access java.io.Reader, java.io.InputStream, java.io.FileInputStream
++  create_numbered_property("jdk.module.addopens", "java.base/java.io=ALL-UNNAMED", addopens_count++);
 +  // java.beans.Introspector access
 +  create_numbered_property("jdk.module.addopens", "java.desktop/java.beans=ALL-UNNAMED", addopens_count++);
++  // java.beans.Introspector access
++  create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans=ALL-UNNAMED", addopens_count++);
++  // com.sun.beans.introspect.ClassInfo access
++  create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans.introspect=ALL-UNNAMED", addopens_count++);
++  // com.sun.beans.introspect.util.Cache access
++  create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans.util=ALL-UNNAMED", addopens_count++);
 +
 +}
 diff --git a/src/hotspot/share/runtime/arguments.hpp b/src/hotspot/share/runtime/arguments.hpp
-index 46450cce5c9..3dc5b3d4bae 100644
+index cc7f71a4404..b2bab2e1f44 100644
 --- a/src/hotspot/share/runtime/arguments.hpp
 +++ b/src/hotspot/share/runtime/arguments.hpp
-@@ -506,6 +506,9 @@ class Arguments : AllStatic {
+@@ -507,6 +507,9 @@ class Arguments : AllStatic {
  
    static size_t conservative_max_heap_alignment() { return _conservative_max_heap_alignment; }
  
@@ -450,7 +513,7 @@ index 46450cce5c9..3dc5b3d4bae 100644
    static size_t max_heap_for_compressed_oops();
  
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index f3cf08fffb6..5f6c7b8e388 100644
+index ab5d08390ff..7720ceebc81 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
 @@ -32,6 +32,12 @@
@@ -479,6 +542,116 @@ index f3cf08fffb6..5f6c7b8e388 100644
  #define VM_FLAGS(develop,                                                   \
                   develop_pd,                                                \
                   product,                                                   \
+diff --git a/src/java.desktop/share/classes/com/sun/beans/introspect/package-info.java b/src/java.desktop/share/classes/com/sun/beans/introspect/package-info.java
+new file mode 100644
+index 00000000000..6636e4dd62a
+--- /dev/null
++++ b/src/java.desktop/share/classes/com/sun/beans/introspect/package-info.java
+@@ -0,0 +1,26 @@
++/*
++ * Copyright (c) 1998, 2017, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.  Oracle designates this
++ * particular file as subject to the "Classpath" exception as provided
++ * by Oracle in the LICENSE file that accompanied this code.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++package com.sun.beans.introspect;
+diff --git a/src/java.desktop/share/classes/com/sun/beans/package-info.java b/src/java.desktop/share/classes/com/sun/beans/package-info.java
+new file mode 100644
+index 00000000000..5c097eeaa53
+--- /dev/null
++++ b/src/java.desktop/share/classes/com/sun/beans/package-info.java
+@@ -0,0 +1,26 @@
++/*
++ * Copyright (c) 1998, 2017, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.  Oracle designates this
++ * particular file as subject to the "Classpath" exception as provided
++ * by Oracle in the LICENSE file that accompanied this code.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++package com.sun.beans;
+diff --git a/src/java.desktop/share/classes/com/sun/beans/util/package-info.java b/src/java.desktop/share/classes/com/sun/beans/util/package-info.java
+new file mode 100644
+index 00000000000..2d5d735ffa8
+--- /dev/null
++++ b/src/java.desktop/share/classes/com/sun/beans/util/package-info.java
+@@ -0,0 +1,26 @@
++/*
++ * Copyright (c) 1998, 2017, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.  Oracle designates this
++ * particular file as subject to the "Classpath" exception as provided
++ * by Oracle in the LICENSE file that accompanied this code.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++package com.sun.beans.util;
+diff --git a/src/java.desktop/share/classes/module-info.java b/src/java.desktop/share/classes/module-info.java
+index b663b382f52..2a8f0a67d52 100644
+--- a/src/java.desktop/share/classes/module-info.java
++++ b/src/java.desktop/share/classes/module-info.java
+@@ -104,6 +104,9 @@ module java.desktop {
+     exports javax.swing.text.rtf;
+     exports javax.swing.tree;
+     exports javax.swing.undo;
++    exports com.sun.beans;
++    exports com.sun.beans.introspect;
++    exports com.sun.beans.util;
+ 
+     // qualified exports may be inserted at build time
+     // see make/GensrcModuleInfo.gmk
 -- 
-2.24.3 (Apple Git-128)
+2.23.0
 

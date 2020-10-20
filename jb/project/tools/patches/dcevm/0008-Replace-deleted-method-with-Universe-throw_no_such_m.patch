@@ -1,7 +1,7 @@
-From 8b79e673a3a9d12c97b8b7dd2f4d79c2d4cdd1d6 Mon Sep 17 00:00:00 2001
+From 198a6a93669a1957f472b25afa89b7fe354ceb8f Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 24 May 2020 12:07:42 +0200
-Subject: [PATCH 48/50] Replace deleted method with
+Subject: [PATCH 08/13] Replace deleted method with
  Universe::throw_no_such_method_error
 
 ---
@@ -53,5 +53,5 @@ index 7741328979f..06581643c3b 100644
  
          java_lang_invoke_ResolvedMethodName::set_vmtarget(mem_name, newer_method);
 -- 
-2.24.3 (Apple Git-128)
+2.23.0
 
