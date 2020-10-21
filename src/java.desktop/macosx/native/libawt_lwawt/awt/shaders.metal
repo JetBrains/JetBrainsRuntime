@@ -177,6 +177,10 @@ fragment half4 frag_txt(
         return half4(c.r, c.g, c.b , c.a);
     }
 
+    if (uniforms.isSrcPremult) {
+        pixelColor.rgb /= srcA;
+    }
+
     return half4(pixelColor.r,
                  pixelColor.g,
                  pixelColor.b, srcA)*uniforms.extraAlpha;

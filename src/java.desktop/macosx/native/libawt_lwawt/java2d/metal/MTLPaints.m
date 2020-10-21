@@ -858,7 +858,9 @@ static void setTxtUniforms(
         id<MTLRenderCommandEncoder> encoder, int color, int mode, int interpolation, bool repeat, jfloat extraAlpha,
         const SurfaceRasterFlags * srcFlags, const SurfaceRasterFlags * dstFlags
 ) {
-    struct TxtFrameUniforms uf = {RGBA_TO_V4(color), mode, srcFlags->isOpaque, dstFlags->isOpaque, extraAlpha};
+    struct TxtFrameUniforms uf = {
+      RGBA_TO_V4(color), mode, srcFlags->isOpaque, srcFlags->isPremultiplied,
+      dstFlags->isOpaque, extraAlpha};
     [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
 
     setSampler(encoder, interpolation, repeat);
