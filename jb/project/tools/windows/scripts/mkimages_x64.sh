@@ -74,7 +74,7 @@ sh ./configure \
   --disable-ccache \
   --enable-cds=yes || do_exit $?
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ -z "$bundle_type" ]; then
   make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
 else
   make LOG=info CONF=$RELEASE_NAME clean images || do_exit $?

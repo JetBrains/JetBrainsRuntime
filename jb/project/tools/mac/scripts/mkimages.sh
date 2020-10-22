@@ -115,7 +115,7 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
 fi
 create_image_bundle "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ -z "$bundle_type" ]; then
     JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-osx-test-x64-b${build_number}
     echo Creating "$JBRSDK_TEST" ...
     make test-image CONF=$RELEASE_NAME || do_exit $?
