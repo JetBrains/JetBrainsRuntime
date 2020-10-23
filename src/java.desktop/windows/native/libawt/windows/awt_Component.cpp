@@ -1402,6 +1402,19 @@ static BOOL IsMouseEventFromTouch()
 {
     return (::GetMessageExtraInfo() & MOUSEEVENTF_FROMTOUCH_MASK) == MOUSEEVENTF_FROMTOUCH;
 }
+
+// consider making general function
+// T getClassStaticField(cls, field, default_val)
+static BOOL IsDefaultTouch()
+{
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    jclass cls = env->FindClass("sun/awt/event/TouchEvent");
+    CHECK_NULL_RETURN(cls, FALSE);
+    jfieldID fieldID = env->GetStaticFieldID(cls, "defaultTouchHandling", "Z");
+    CHECK_NULL_RETURN(fieldID, FALSE);
+    return static_cast<BOOL>(env->GetStaticBooleanField(cls, fieldID));
+}
+
 /*
  * Dispatch messages for this window class--general component
  */
@@ -1426,6 +1439,8 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
     // resource hogging ::SetProp
         return (LRESULT)TRUE;
     }
+
+    static const BOOL PROCESS_TOUCH_EVENTS = !IsDefaultTouch();
 
     DWORD curPos = 0;
 
@@ -1718,7 +1733,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
       case WM_MOUSEHWHEEL:
       case WM_AWT_MOUSEENTER:
       case WM_AWT_MOUSEEXIT:
-          if (IsMouseEventFromTouch()) {
+          if (IsMouseEventFromTouch() && PROCESS_TOUCH_EVENTS) {
               break;
           }
           curPos = ::GetMessagePos();
@@ -1798,8 +1813,10 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           }
           break;
       case WM_TOUCH:
-          WmTouch(wParam, lParam);
-          break;
+          if (PROCESS_TOUCH_EVENTS) {
+              WmTouch(wParam, lParam);
+              break;
+          }
       case WM_SETCURSOR:
           mr = mrDoDefault;
           if (LOWORD(lParam) == HTCLIENT) {
