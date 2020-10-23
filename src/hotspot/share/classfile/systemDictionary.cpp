@@ -1147,7 +1147,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
     MutexLocker mu(SystemDictionary_lock, THREAD);
 
     Klass* check = find_class(h_name, k->class_loader_data());
-    assert((check == k && !k->is_redefining()) || (k->is_redefining() && check == k->old_version()), "should be present in the dictionary");
+    assert(check == k && !k->is_redefining() || k->is_redefining() && check == k->old_version(), "should be present in the dictionary");
   } );
 
   return k;
@@ -2149,7 +2149,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
       // also hold array classes.
 
       assert(check->is_instance_klass(), "noninstance in systemdictionary");
-      if ((defining == true) || ((k != check) && k->old_version() != check)) {
+      if ((defining == true) || (k != check && (!AllowEnhancedClassRedefinition || k->old_version() != check))) {
         throwException = true;
         ss.print("loader %s", loader_data->loader_name_and_id());
         ss.print(" attempted duplicate %s definition for %s. (%s)",

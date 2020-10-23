@@ -295,8 +295,13 @@ void LinkResolver::check_klass_accessability(Klass* ref_klass, Klass* sel_klass,
       return;  // no relevant check to do
     }
   }
-  Reflection::VerifyClassAccessResults vca_result =
-    Reflection::verify_class_access(ref_klass->newest_version(), InstanceKlass::cast(base_klass->newest_version()), true);
+  Klass* refKlassNewest = ref_klass;
+  Klass* baseKlassNewest = base_klass;
+  if (AllowEnhancedClassRedefinition) {
+    refKlassNewest = ref_klass->newest_version();
+    baseKlassNewest = base_klass->newest_version();
+  }
+  Reflection::VerifyClassAccessResults vca_result = Reflection::verify_class_access(refKlassNewest, InstanceKlass::cast(baseKlassNewest), true);
   if (vca_result != Reflection::ACCESS_OK) {
     ResourceMark rm(THREAD);
     char* msg = Reflection::verify_class_access_msg(ref_klass,
@@ -572,7 +577,8 @@ void LinkResolver::check_method_accessability(Klass* ref_klass,
   // We'll check for the method name first, as that's most likely
   // to be false (so we'll short-circuit out of these tests).
   if (sel_method->name() == vmSymbols::clone_name() &&
-      sel_klass->newest_version() == SystemDictionary::Object_klass()->newest_version() &&
+      ( !AllowEnhancedClassRedefinition && sel_klass == SystemDictionary::Object_klass() ||
+      AllowEnhancedClassRedefinition && sel_klass->newest_version() == SystemDictionary::Object_klass()->newest_version()) &&
       resolved_klass->is_array_klass()) {
     // We need to change "protected" to "public".
     assert(flags.is_protected(), "clone not protected?");
@@ -997,7 +1003,7 @@ void LinkResolver::resolve_field(fieldDescriptor& fd,
       ResourceMark rm(THREAD);
       stringStream ss;
 
-      if (sel_klass != current_klass && sel_klass != current_klass->active_version()) {
+      if (sel_klass != current_klass && (!AllowEnhancedClassRedefinition || sel_klass != current_klass->active_version())) {
         ss.print("Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
                  is_static ? "static" : "non-static", resolved_klass->external_name(), fd.name()->as_C_string(),
                 current_klass->external_name());

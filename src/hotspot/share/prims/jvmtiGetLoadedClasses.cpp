@@ -51,7 +51,7 @@ public:
     //         the new version (SystemDictionary stores only new versions). But the LoadedClassesClosure's functionality was
     //         changed in java8  where jvmtiLoadedClasses collects all classes from all classloaders, therefore we
     //         must use new versions only.
-    if (k->new_version()==NULL) {
+    if (AllowEnhancedClassRedefinition && k->new_version()==NULL) {
       _classStack.push((jclass) _env->jni_reference(Handle(_cur_thread, k->java_mirror())));
     }
   }
