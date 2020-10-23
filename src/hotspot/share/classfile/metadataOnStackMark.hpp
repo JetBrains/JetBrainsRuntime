@@ -47,8 +47,9 @@ class MetadataOnStackMark : public StackObj {
   static MetadataOnStackBuffer* allocate_buffer();
   static void retire_buffer(MetadataOnStackBuffer* buffer);
 
+  bool _ignore;
  public:
-  MetadataOnStackMark(bool redefinition_walk);
+  MetadataOnStackMark(bool redefinition_walk, bool ignore);
    ~MetadataOnStackMark();
 
   static void record(Metadata* m);
