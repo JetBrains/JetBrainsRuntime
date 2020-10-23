@@ -660,7 +660,7 @@ bool Reflection::verify_member_access(const Klass* current_class,
                                       TRAPS) {
 
   // (DCEVM) Decide accessibility based on active version
-  if (current_class != NULL) {
+  if (AllowEnhancedClassRedefinition && current_class != NULL) {
     current_class = current_class->active_version();
   }
 

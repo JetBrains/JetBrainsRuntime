@@ -178,7 +178,9 @@ bool InstanceKlass::has_nest_member(InstanceKlass* k, TRAPS) const {
       }
 
       Klass* k2 = _constants->klass_at(cp_index, CHECK_false);
-      k2 = k2->newest_version();
+      if (AllowEnhancedClassRedefinition) {
+        k2 = k2->newest_version();
+      }
       if (k2 == k) {
         log_trace(class, nestmates)("- class is listed as a nest member");
         return true;
@@ -837,7 +839,7 @@ bool InstanceKlass::link_class_impl(bool throw_verifyerror, TRAPS) {
 #endif
       set_init_state(linked);
       // (DCEVM) Must check for old version in order to prevent infinite loops.
-      if (JvmtiExport::should_post_class_prepare() && old_version() == NULL /* JVMTI deadlock otherwise */) {
+      if (JvmtiExport::should_post_class_prepare() && (!AllowEnhancedClassRedefinition || old_version() == NULL) /* JVMTI deadlock otherwise */) {
         Thread *thread = THREAD;
         assert(thread->is_Java_thread(), "thread->is_Java_thread()");
         JvmtiExport::post_class_prepare((JavaThread *) thread, this);
@@ -919,7 +921,7 @@ void InstanceKlass::initialize_impl(TRAPS) {
     // that aren't expected to throw.  This would wreak havoc.  See 6320309.
     // (DCEVM) Wait also for the old class version to be fully initialized.
     while((is_being_initialized() && !is_reentrant_initialization(self))
-        || (old_version() != NULL && InstanceKlass::cast(old_version())->is_being_initialized())) {
+        || (AllowEnhancedClassRedefinition && old_version() != NULL && InstanceKlass::cast(old_version())->is_being_initialized())) {
         wait = true;
       ol.waitUninterruptibly(CHECK);
     }
@@ -3617,7 +3619,7 @@ void InstanceKlass::verify_on(outputStream* st) {
 
     guarantee(sib->is_klass(), "should be klass");
     // TODO: (DCEVM) explain
-    guarantee(sib->super() == super || super->newest_version() == SystemDictionary::Object_klass(), "siblings should have same superklass");
+    guarantee(sib->super() == super || AllowEnhancedClassRedefinition && super->newest_version() == SystemDictionary::Object_klass(), "siblings should have same superklass");
   }
 
   // Verify implementor fields requires the Compile_lock, but this is sometimes
