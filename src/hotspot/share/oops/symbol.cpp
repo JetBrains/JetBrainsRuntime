@@ -266,7 +266,7 @@ void Symbol::print_as_signature_external_parameters(outputStream *os) {
 unsigned int Symbol::new_hash(juint seed) {
   ResourceMark rm;
   // Use alternate hashing algorithm on this symbol.
-  return AltHashing::murmur3_32(seed, (const jbyte*)as_C_string(), utf8_length());
+  return AltHashing::halfsiphash_32(seed, (const uint8_t*)as_C_string(), utf8_length());
 }
 
 void Symbol::increment_refcount() {

@@ -285,7 +285,7 @@ Symbol* SymbolTable::decode_shared(u4 offset) {
 // Pick hashing algorithm.
 unsigned int SymbolTable::hash_symbol(const char* s, int len) {
   return use_alternate_hashcode() ?
-           AltHashing::murmur3_32(seed(), (const jbyte*)s, len) :
+           AltHashing::halfsiphash_32(seed(), (const uint8_t*)s, len) :
            java_lang_String::hash_code((const jbyte*)s, len);
 }
 
