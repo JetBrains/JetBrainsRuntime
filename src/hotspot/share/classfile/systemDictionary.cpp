@@ -830,9 +830,8 @@ InstanceKlass* SystemDictionary::resolve_hidden_class_from_stream(
 
   EventClassLoad class_load_start_event;
   ClassLoaderData* loader_data;
- 
+
   bool is_redefining = (old_klass != NULL);
-  
 
   // - for hidden classes that are not strong: create a new CLD that has a class holder and
   //                                           whose loader is the Lookup class's loader.
