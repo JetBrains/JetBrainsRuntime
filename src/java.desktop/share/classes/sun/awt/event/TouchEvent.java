@@ -18,4 +18,10 @@ public class TouchEvent {
      * in ms
      */
     public static final long NO_UPDATE_TIMEOUT = 1000L;
+
+    public final static String defaultTouchHandlingOption = "com.jetbrains.default.touchscreen.mode";
+
+    @Native
+    public final static boolean defaultTouchHandling = "true".equalsIgnoreCase(
+            Util.getProperty(defaultTouchHandlingOption, "false"));
 }
