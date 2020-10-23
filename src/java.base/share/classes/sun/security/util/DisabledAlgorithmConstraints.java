@@ -291,15 +291,16 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
                 int space = constraintEntry.indexOf(' ');
                 String algorithm = AlgorithmDecomposer.hashName(
                         ((space > 0 ? constraintEntry.substring(0, space) :
-                                constraintEntry).
-                                toUpperCase(Locale.ENGLISH)));
+                                constraintEntry)));
                 List<Constraint> constraintList =
-                        constraintsMap.getOrDefault(algorithm,
+                        constraintsMap.getOrDefault(
+                                algorithm.toUpperCase(Locale.ENGLISH),
                                 new ArrayList<>(1));
 
                 // Consider the impact of algorithm aliases.
                 for (String alias : AlgorithmDecomposer.getAliases(algorithm)) {
-                    constraintsMap.putIfAbsent(alias, constraintList);
+                    constraintsMap.putIfAbsent(
+                            alias.toUpperCase(Locale.ENGLISH), constraintList);
                 }
 
                 // If there is no whitespace, it is a algorithm name; however,
@@ -391,7 +392,7 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
 
         // Get applicable constraints based off the signature algorithm
         private List<Constraint> getConstraints(String algorithm) {
-            return constraintsMap.get(algorithm);
+            return constraintsMap.get(algorithm.toUpperCase(Locale.ENGLISH));
         }
 
         // Check if KeySizeConstraints permit the specified key
@@ -446,6 +447,7 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
             Set<String> algorithms = new HashSet<>();
             if (algorithm != null) {
                 algorithms.addAll(AlgorithmDecomposer.decomposeOneHash(algorithm));
+                algorithms.add(algorithm);
             }
 
             // Attempt to add the public key algorithm if cert provided
