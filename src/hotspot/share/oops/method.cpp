@@ -2100,7 +2100,7 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
 // Add a method id to the jmethod_ids
 jmethodID Method::make_jmethod_id(ClassLoaderData* loader_data, Method* m) {
   // FIXME: (DCEVM) ???
-  if (m != m->newest_version()) {
+  if (AllowEnhancedClassRedefinition && m != m->newest_version()) {
     m = m->newest_version();
   }
   ClassLoaderData* cld = loader_data;
