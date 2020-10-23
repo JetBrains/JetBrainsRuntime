@@ -968,7 +968,7 @@ bool InstanceKlass::link_class_impl(TRAPS) {
         set_init_state(linked);
       }
       // (DCEVM) Must check for old version in order to prevent infinite loops.
-      if (JvmtiExport::should_post_class_prepare() && old_version() == NULL /* JVMTI deadlock otherwise */) {
+      if (JvmtiExport::should_post_class_prepare()  && (!AllowEnhancedClassRedefinition || old_version() == NULL /* JVMTI deadlock otherwise */) {
         JvmtiExport::post_class_prepare(THREAD, this);
       }
     }
@@ -1046,7 +1046,7 @@ void InstanceKlass::initialize_impl(TRAPS) {
     // we might end up throwing IE from link/symbol resolution sites
     // that aren't expected to throw.  This would wreak havoc.  See 6320309.
     while ((is_being_initialized() && !is_reentrant_initialization(jt))
-            || (old_version() != NULL && InstanceKlass::cast(old_version())->is_being_initialized())) {
+            || (AllowEnhancedClassRedefinition && old_version() != NULL && InstanceKlass::cast(old_version())->is_being_initialized())) {
       wait = true;
       jt->set_class_to_be_initialized(this);
       ol.wait_uninterruptibly(jt);
@@ -3808,7 +3808,7 @@ void InstanceKlass::verify_on(outputStream* st) {
 
     guarantee(sib->is_klass(), "should be klass");
     // TODO: (DCEVM) explain
-    guarantee(sib->super() == super || super->newest_version() == SystemDictionary::Object_klass(), "siblings should have same superklass");
+    guarantee(sib->super() == super || AllowEnhancedClassRedefinition && super->newest_version() == SystemDictionary::Object_klass(), "siblings should have same superklass");
   }
 
   // Verify local interfaces

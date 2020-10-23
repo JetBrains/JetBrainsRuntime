@@ -148,13 +148,13 @@ class ConstantPoolCacheEntry {
   void set_bytecode_2(Bytecodes::Code code);
   void set_f1(Metadata* f1) {
     Metadata* existing_f1 = _f1; // read once
-    //assert(existing_f1 == NULL || existing_f1 == f1, "illegal field change");
+    assert(AllowEnhancedClassRedefinition || existing_f1 == NULL || existing_f1 == f1, "illegal field change");
     _f1 = f1;
   }
   void release_set_f1(Metadata* f1);
   void set_f2(intx f2) {
     intx existing_f2 = _f2; // read once
-    //assert(existing_f2 == 0 || existing_f2 == f2, "illegal field change");
+    assert(AllowEnhancedClassRedefinition || existing_f2 == 0 || existing_f2 == f2, "illegal field change");
     _f2 = f2;
   }
   void set_f2_as_vfinal_method(Method* f2) {
@@ -215,7 +215,9 @@ class ConstantPoolCacheEntry {
   void initialize_resolved_reference_index(int ref_index) {
     assert(_f2 == 0, "set once");  // note: ref_index might be zero also
     _f2 = ref_index;
-    _flags = 1 << is_resolved_ref_shift;
+    if (AllowEnhancedClassRedefinition) {
+      _flags = 1 << is_resolved_ref_shift;
+    }
   }
 
   void set_field(                                // sets entry to resolved field state
