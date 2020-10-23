@@ -46,23 +46,25 @@ NOT_PRODUCT(bool MetadataOnStackMark::_is_active = false;)
 // it.  Class unloading only deletes in-error class files, methods created by
 // the relocator and dummy constant pools.  None of these appear anywhere except
 // in metadata Handles.
-MetadataOnStackMark::MetadataOnStackMark(bool redefinition_walk) {
+MetadataOnStackMark::MetadataOnStackMark(bool redefinition_walk, bool ignore) : _ignore(ignore) {
   assert(SafepointSynchronize::is_at_safepoint(), "sanity check");
   assert(_used_buffers == NULL, "sanity check");
   assert(!_is_active, "MetadataOnStackMarks do not nest");
   NOT_PRODUCT(_is_active = true;)
 
-  Threads::metadata_handles_do(Metadata::mark_on_stack);
+  if (!ignore) {
+    Threads::metadata_handles_do(Metadata::mark_on_stack);
 
-  if (redefinition_walk) {
-    Threads::metadata_do(Metadata::mark_on_stack);
-    CodeCache::metadata_do(Metadata::mark_on_stack);
-    CompileBroker::mark_on_stack();
-    JvmtiCurrentBreakpoints::metadata_do(Metadata::mark_on_stack);
-    ThreadService::metadata_do(Metadata::mark_on_stack);
+    if (redefinition_walk) {
+      Threads::metadata_do(Metadata::mark_on_stack);
+      CodeCache::metadata_do(Metadata::mark_on_stack);
+      CompileBroker::mark_on_stack();
+      JvmtiCurrentBreakpoints::metadata_do(Metadata::mark_on_stack);
+      ThreadService::metadata_do(Metadata::mark_on_stack);
 #if INCLUDE_JVMCI
-    JVMCIRuntime::metadata_do(Metadata::mark_on_stack);
+      JVMCIRuntime::metadata_do(Metadata::mark_on_stack);
 #endif
+    }
   }
 }
 
@@ -71,32 +73,35 @@ MetadataOnStackMark::~MetadataOnStackMark() {
   // Unmark everything that was marked.   Can't do the same walk because
   // redefine classes messes up the code cache so the set of methods
   // might not be the same.
-  retire_current_buffer();
+  if (!_ignore)
+  {
+    retire_current_buffer();
 
-  MetadataOnStackBuffer* buffer = _used_buffers;
-  while (buffer != NULL) {
-    // Clear on stack state for all metadata.
-    size_t size = buffer->size();
-    for (size_t i  = 0; i < size; i++) {
-      Metadata* md = buffer->at(i);
-      md->set_on_stack(false);
+    MetadataOnStackBuffer* buffer = _used_buffers;
+    while (buffer != NULL) {
+      // Clear on stack state for all metadata.
+      size_t size = buffer->size();
+      for (size_t i  = 0; i < size; i++) {
+        Metadata* md = buffer->at(i);
+        md->set_on_stack(false);
+      }
+
+      MetadataOnStackBuffer* next = buffer->next_used();
+
+      // Move the buffer to the free list.
+      buffer->clear();
+      buffer->set_next_used(NULL);
+      buffer->set_next_free(_free_buffers);
+      _free_buffers = buffer;
+
+      // Step to next used buffer.
+      buffer = next;
     }
 
-    MetadataOnStackBuffer* next = buffer->next_used();
+    _used_buffers = NULL;
 
-    // Move the buffer to the free list.
-    buffer->clear();
-    buffer->set_next_used(NULL);
-    buffer->set_next_free(_free_buffers);
-    _free_buffers = buffer;
-
-    // Step to next used buffer.
-    buffer = next;
+    NOT_PRODUCT(_is_active = false;)
   }
-
-  _used_buffers = NULL;
-
-  NOT_PRODUCT(_is_active = false;)
 }
 
 void MetadataOnStackMark::retire_buffer(MetadataOnStackBuffer* buffer) {
