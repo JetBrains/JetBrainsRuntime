@@ -980,9 +980,9 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
 
   EventClassLoad class_load_start_event;
   ClassLoaderData* loader_data;
-  
+
   bool is_redefining = (old_klass != NULL);
-  
+
   bool is_unsafe_anon_class = cl_info.unsafe_anonymous_host() != NULL;
 
   // - for unsafe anonymous class: create a new CLD whith a class holder that uses

@@ -289,9 +289,14 @@ void LinkResolver::check_klass_accessibility(Klass* ref_klass, Klass* sel_klass,
   if (!base_klass->is_instance_klass()) {
     return;  // no relevant check to do
   }
-
+  Klass* refKlassNewest = ref_klass;
+  Klass* baseKlassNewest = base_klass;
+  if (AllowEnhancedClassRedefinition) {
+    refKlassNewest = ref_klass->newest_version();
+    baseKlassNewest = base_klass->newest_version();
+  }
   Reflection::VerifyClassAccessResults vca_result =
-    Reflection::verify_class_access(ref_klass->newest_version(), InstanceKlass::cast(base_klass->newest_version()), true);
+    Reflection::verify_class_access(refKlassNewest, InstanceKlass::cast(baseKlassNewest), true);
   if (vca_result != Reflection::ACCESS_OK) {
     ResourceMark rm(THREAD);
     char* msg = Reflection::verify_class_access_msg(ref_klass,
@@ -575,7 +580,8 @@ void LinkResolver::check_method_accessability(Klass* ref_klass,
   // We'll check for the method name first, as that's most likely
   // to be false (so we'll short-circuit out of these tests).
   if (sel_method->name() == vmSymbols::clone_name() &&
-      sel_klass->newest_version() == vmClasses::Object_klass()->newest_version() &&
+      ( !AllowEnhancedClassRedefinition && sel_klass == vmClasses::Object_klass() ||
+      AllowEnhancedClassRedefinition && sel_klass->newest_version() == vmClasses::Object_klass()->newest_version()) &&
       resolved_klass->is_array_klass()) {
     // We need to change "protected" to "public".
     assert(flags.is_protected(), "clone not protected?");
@@ -1022,7 +1028,7 @@ void LinkResolver::resolve_field(fieldDescriptor& fd,
     //     or by the <init> method (in case of an instance field).
     if (is_put && fd.access_flags().is_final()) {
 
-      if (sel_klass != current_klass && sel_klass != current_klass->active_version()) {
+      if (sel_klass != current_klass && (!AllowEnhancedClassRedefinition || sel_klass != current_klass->active_version())) {
         ResourceMark rm(THREAD);
         stringStream ss;
         ss.print("Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
