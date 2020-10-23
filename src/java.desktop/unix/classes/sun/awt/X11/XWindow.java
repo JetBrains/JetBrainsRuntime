@@ -58,6 +58,7 @@ import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
 import sun.awt.X11ComponentPeer;
 import sun.awt.X11GraphicsConfig;
+import sun.awt.event.TouchEvent;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 import sun.util.logging.PlatformLogger;
@@ -822,7 +823,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         int modifiers = getModifiers(dev.get_mods().get_effective(), MouseEvent.BUTTON1, 0);
         int scrollModifiers = modifiers & ~InputEvent.SHIFT_DOWN_MASK;
 
-        long jWhen = XToolkit.nowMillisUTC_offset(dev.get_time());
+        long jWhen = System.currentTimeMillis();
 
         switch (dev.get_evtype()) {
             case XConstants.XI_TouchBegin:
