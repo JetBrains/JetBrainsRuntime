@@ -1,7 +1,7 @@
-From 4b8bc521e3e494da9761f904d2dabbd5810a4461 Mon Sep 17 00:00:00 2001
+From 9e9912de1cc7b351b16618a392dd2510d893cb0a Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:20:08 +0100
-Subject: [PATCH 05/13] HotswapAgent integration
+Subject: [PATCH 05/17] HotswapAgent integration
 
 It include:
 

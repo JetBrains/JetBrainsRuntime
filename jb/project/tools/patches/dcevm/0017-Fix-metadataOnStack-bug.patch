@@ -1,0 +1,160 @@
+From 80157b4ede87108c0baf439da660d72d67e0a3c3 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Fri, 23 Oct 2020 11:07:40 +0200
+Subject: [PATCH 17/17] Fix metadataOnStack bug
+
+---
+ .../share/classfile/classLoaderData.cpp       |  7 +-
+ .../share/classfile/metadataOnStackMark.cpp   | 67 ++++++++++---------
+ .../share/classfile/metadataOnStackMark.hpp   |  3 +-
+ .../share/prims/jvmtiRedefineClasses.cpp      |  2 +-
+ 4 files changed, 41 insertions(+), 38 deletions(-)
+
+diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
+index 1bc67adf5a7..bba5ce0511f 100644
+--- a/src/hotspot/share/classfile/classLoaderData.cpp
++++ b/src/hotspot/share/classfile/classLoaderData.cpp
+@@ -1398,13 +1398,10 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
+   // Klassesoto delete.
+ 
+   // FIXME: dcevm - block asserts in MetadataOnStackMark
+-  bool walk_all_metadata = false;
+-  if (!AllowEnhancedClassRedefinition) {
+-    walk_all_metadata = clean_previous_versions &&
++  bool walk_all_metadata = clean_previous_versions &&
+                              JvmtiExport::has_redefined_a_class() &&
+                              InstanceKlass::has_previous_versions_and_reset();
+-    MetadataOnStackMark md_on_stack(walk_all_metadata);
+-  }
++  MetadataOnStackMark md_on_stack(walk_all_metadata, AllowEnhancedClassRedefinition);
+ 
+   // Save previous _unloading pointer for CMS which may add to unloading list before
+   // purging and we don't want to rewalk the previously unloaded class loader data.
+diff --git a/src/hotspot/share/classfile/metadataOnStackMark.cpp b/src/hotspot/share/classfile/metadataOnStackMark.cpp
+index 3a62c789702..9d7bdbde74b 100644
+--- a/src/hotspot/share/classfile/metadataOnStackMark.cpp
++++ b/src/hotspot/share/classfile/metadataOnStackMark.cpp
+@@ -46,23 +46,25 @@ NOT_PRODUCT(bool MetadataOnStackMark::_is_active = false;)
+ // it.  Class unloading only deletes in-error class files, methods created by
+ // the relocator and dummy constant pools.  None of these appear anywhere except
+ // in metadata Handles.
+-MetadataOnStackMark::MetadataOnStackMark(bool redefinition_walk) {
++MetadataOnStackMark::MetadataOnStackMark(bool redefinition_walk, bool ignore) : _ignore(ignore) {
+   assert(SafepointSynchronize::is_at_safepoint(), "sanity check");
+   assert(_used_buffers == NULL, "sanity check");
+   assert(!_is_active, "MetadataOnStackMarks do not nest");
+   NOT_PRODUCT(_is_active = true;)
+ 
+-  Threads::metadata_handles_do(Metadata::mark_on_stack);
++  if (!ignore) {
++    Threads::metadata_handles_do(Metadata::mark_on_stack);
+ 
+-  if (redefinition_walk) {
+-    Threads::metadata_do(Metadata::mark_on_stack);
+-    CodeCache::metadata_do(Metadata::mark_on_stack);
+-    CompileBroker::mark_on_stack();
+-    JvmtiCurrentBreakpoints::metadata_do(Metadata::mark_on_stack);
+-    ThreadService::metadata_do(Metadata::mark_on_stack);
++    if (redefinition_walk) {
++      Threads::metadata_do(Metadata::mark_on_stack);
++      CodeCache::metadata_do(Metadata::mark_on_stack);
++      CompileBroker::mark_on_stack();
++      JvmtiCurrentBreakpoints::metadata_do(Metadata::mark_on_stack);
++      ThreadService::metadata_do(Metadata::mark_on_stack);
+ #if INCLUDE_JVMCI
+-    JVMCIRuntime::metadata_do(Metadata::mark_on_stack);
++      JVMCIRuntime::metadata_do(Metadata::mark_on_stack);
+ #endif
++    }
+   }
+ }
+ 
+@@ -71,32 +73,35 @@ MetadataOnStackMark::~MetadataOnStackMark() {
+   // Unmark everything that was marked.   Can't do the same walk because
+   // redefine classes messes up the code cache so the set of methods
+   // might not be the same.
+-  retire_current_buffer();
+-
+-  MetadataOnStackBuffer* buffer = _used_buffers;
+-  while (buffer != NULL) {
+-    // Clear on stack state for all metadata.
+-    size_t size = buffer->size();
+-    for (size_t i  = 0; i < size; i++) {
+-      Metadata* md = buffer->at(i);
+-      md->set_on_stack(false);
++  if (!_ignore)
++  {
++    retire_current_buffer();
++
++    MetadataOnStackBuffer* buffer = _used_buffers;
++    while (buffer != NULL) {
++      // Clear on stack state for all metadata.
++      size_t size = buffer->size();
++      for (size_t i  = 0; i < size; i++) {
++        Metadata* md = buffer->at(i);
++        md->set_on_stack(false);
++      }
++
++      MetadataOnStackBuffer* next = buffer->next_used();
++
++      // Move the buffer to the free list.
++      buffer->clear();
++      buffer->set_next_used(NULL);
++      buffer->set_next_free(_free_buffers);
++      _free_buffers = buffer;
++
++      // Step to next used buffer.
++      buffer = next;
+     }
+ 
+-    MetadataOnStackBuffer* next = buffer->next_used();
+-
+-    // Move the buffer to the free list.
+-    buffer->clear();
+-    buffer->set_next_used(NULL);
+-    buffer->set_next_free(_free_buffers);
+-    _free_buffers = buffer;
++    _used_buffers = NULL;
+ 
+-    // Step to next used buffer.
+-    buffer = next;
++    NOT_PRODUCT(_is_active = false;)
+   }
+-
+-  _used_buffers = NULL;
+-
+-  NOT_PRODUCT(_is_active = false;)
+ }
+ 
+ void MetadataOnStackMark::retire_buffer(MetadataOnStackBuffer* buffer) {
+diff --git a/src/hotspot/share/classfile/metadataOnStackMark.hpp b/src/hotspot/share/classfile/metadataOnStackMark.hpp
+index 8da4ac6f92b..6d327ab98f2 100644
+--- a/src/hotspot/share/classfile/metadataOnStackMark.hpp
++++ b/src/hotspot/share/classfile/metadataOnStackMark.hpp
+@@ -47,8 +47,9 @@ class MetadataOnStackMark : public StackObj {
+   static MetadataOnStackBuffer* allocate_buffer();
+   static void retire_buffer(MetadataOnStackBuffer* buffer);
+ 
++  bool _ignore;
+  public:
+-  MetadataOnStackMark(bool redefinition_walk);
++  MetadataOnStackMark(bool redefinition_walk, bool ignore);
+    ~MetadataOnStackMark();
+ 
+   static void record(Metadata* m);
+diff --git a/src/hotspot/share/prims/jvmtiRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiRedefineClasses.cpp
+index 1b2070d686f..1178c863c30 100644
+--- a/src/hotspot/share/prims/jvmtiRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiRedefineClasses.cpp
+@@ -199,7 +199,7 @@ void VM_RedefineClasses::doit() {
+ 
+   // Mark methods seen on stack and everywhere else so old methods are not
+   // cleaned up if they're on the stack.
+-  MetadataOnStackMark md_on_stack(true);
++  MetadataOnStackMark md_on_stack(true, false);
+   HandleMark hm(thread);   // make sure any handles created are deleted
+                            // before the stack walk again.
+ 
+-- 
+2.23.0
+

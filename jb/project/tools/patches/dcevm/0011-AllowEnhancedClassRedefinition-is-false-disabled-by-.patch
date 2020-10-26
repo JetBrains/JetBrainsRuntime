@@ -1,7 +1,7 @@
-From 5b4b2a8af787fed3cdaee5c603dd7fe99246dae2 Mon Sep 17 00:00:00 2001
+From fef0c5128dbae46404cef6c5e9b7e01f3480fbd7 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Tue, 6 Oct 2020 22:15:31 +0200
-Subject: [PATCH 11/13] AllowEnhancedClassRedefinition is false (disabled) by
+Subject: [PATCH 11/17] AllowEnhancedClassRedefinition is false (disabled) by
  default
 
 ---
