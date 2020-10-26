@@ -1,7 +1,7 @@
-From 82c3c60345b38acd04e6f1aea7d43e9283a71b8f Mon Sep 17 00:00:00 2001
+From 6f2b901f0b7e9d5fd0d59129d69fe49198828e0b Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Mon, 19 Oct 2020 20:00:04 +0200
-Subject: [PATCH 13/13] Set HOTSPOT_VM_DISTRO=Dynamic Code Evolution
+Subject: [PATCH 13/17] Set HOTSPOT_VM_DISTRO=Dynamic Code Evolution
 
 ---
  make/autoconf/version-numbers | 2 +-

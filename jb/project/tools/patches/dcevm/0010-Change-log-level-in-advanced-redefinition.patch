@@ -1,7 +1,7 @@
-From eaba630276969a0ebbb410716bae44875c6c75a2 Mon Sep 17 00:00:00 2001
+From 37acfbed999385af023b9ce4ca68dcb089f9d44f Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 13 Jun 2020 18:50:59 +0200
-Subject: [PATCH 10/13] Change log level in advanced redefinition
+Subject: [PATCH 10/17] Change log level in advanced redefinition
 
 - Change log level for "Comparing different class ver.." to debug
 - Fix adjust_method_entries_dcevm logging levels and severity

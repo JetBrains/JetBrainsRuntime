@@ -1,7 +1,7 @@
-From 1f0bf4680faa58c5d234cac5440da4cf671e6291 Mon Sep 17 00:00:00 2001
+From ce8bc47dc43dac36d642445b49e82f4e5811a1e3 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 4 Oct 2020 21:12:12 +0200
-Subject: [PATCH 06/13] Support for Lambda class redefinition
+Subject: [PATCH 06/17] Support for Lambda class redefinition
 
 ---
  .../share/classfile/classLoaderData.cpp       |  9 +++
