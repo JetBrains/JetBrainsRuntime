@@ -107,9 +107,12 @@ public class TrueTypeFont extends FileFont {
     /* MS locale id for US English is the "default" */
     public static final short ENGLISH_LOCALE_ID = 0x0409; // 1033 decimal
     public static final int FAMILY_NAME_ID = 1;
+    public static final int SUBFAMILY_NAME_ID = 2;
     // public static final int STYLE_WEIGHT_ID = 2; // currently unused.
     public static final int FULL_NAME_ID = 4;
     public static final int POSTSCRIPT_NAME_ID = 6;
+    public static final int TYPOGRAPHIC_FAMILY_NAME_ID = 16;
+    public static final int TYPOGRAPHIC_SUBFAMILY_NAME_ID = 17;
 
     private static final short US_LCID = 0x0409;  // US English - default
 
@@ -179,6 +182,8 @@ public class TrueTypeFont extends FileFont {
     private Locale nameLocale;
     private String localeFamilyName;
     private String localeFullName;
+    private String typographicFamilyName;
+    private String typographicSubfamilyName;
 
     private Byte supportedCharset;
 
@@ -1122,6 +1127,8 @@ public class TrueTypeFont extends FileFont {
             languageCompatibleLCIDs =
                 getLanguageCompatibleLCIDsFromLocale(nameLocale);
 
+            String subfamilyName = null;
+
             for (int i=0; i<numRecords; i++) {
                 short platformID = sbuffer.get();
                 if (platformID != MS_PLATFORM_ID &&
@@ -1199,6 +1206,30 @@ public class TrueTypeFont extends FileFont {
                         }
                     }
                     break;
+
+               case SUBFAMILY_NAME_ID:
+                    if (subfamilyName == null || langID == ENGLISH_LOCALE_ID) {
+                        buffer.position(namePtr);
+                        buffer.get(name, 0, nameLen);
+                        subfamilyName = makeString(name, nameLen, platformID, encodingID);
+                    }
+                    break;
+
+                case TYPOGRAPHIC_FAMILY_NAME_ID:
+                    if (typographicFamilyName == null || langID == ENGLISH_LOCALE_ID) {
+                        buffer.position(namePtr);
+                        buffer.get(name, 0, nameLen);
+                        typographicFamilyName = makeString(name, nameLen, platformID, encodingID);
+                    }
+                    break;
+
+                case TYPOGRAPHIC_SUBFAMILY_NAME_ID:
+                    if (typographicSubfamilyName == null || langID == ENGLISH_LOCALE_ID) {
+                        buffer.position(namePtr);
+                        buffer.get(name, 0, nameLen);
+                        typographicSubfamilyName = makeString(name, nameLen, platformID, encodingID);
+                    }
+                    break;
                 }
             }
             if (localeFamilyName == null) {
@@ -1206,6 +1237,9 @@ public class TrueTypeFont extends FileFont {
             }
             if (localeFullName == null) {
                 localeFullName = fullName;
+            }
+            if (typographicSubfamilyName == null) {
+                typographicSubfamilyName = subfamilyName;
             }
         }
     }
@@ -1302,6 +1336,16 @@ public class TrueTypeFont extends FileFont {
                 return name;
             }
         }
+    }
+
+    @Override
+    public String getTypographicFamilyName() {
+        return typographicFamilyName == null ? super.getTypographicFamilyName() : typographicFamilyName;
+    }
+
+    @Override
+    public String getTypographicSubfamilyName() {
+        return typographicSubfamilyName == null ? super.getTypographicSubfamilyName() : typographicSubfamilyName;
     }
 
     // Return a Microsoft LCID from the given Locale.
