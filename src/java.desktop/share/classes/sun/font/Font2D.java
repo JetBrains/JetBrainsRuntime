@@ -524,6 +524,28 @@ public abstract class Font2D {
         return familyName;
     }
 
+    /*
+     * As defined in OpenType specification
+     *(https://docs.microsoft.com/en-us/typography/opentype/spec/name#name-ids, nameID=16)
+     */
+    public String getTypographicFamilyName() {
+        return familyName;
+    }
+
+    /*
+     * As defined in OpenType specification
+     *(https://docs.microsoft.com/en-us/typography/opentype/spec/name#name-ids, nameID=17)
+     */
+    public String getTypographicSubfamilyName() {
+        int style = getStyle();
+        switch (style) {
+            case Font.BOLD: return "Bold";
+            case Font.ITALIC: return "Italic";
+            case Font.BOLD | Font.ITALIC: return "Bold Italic";
+            default: return "Regular";
+        }
+    }
+
     public int getNumGlyphs() {
         return getMapper().getNumGlyphs();
     }
