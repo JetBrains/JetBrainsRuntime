@@ -87,6 +87,7 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
                                                 final int style);
     private static native void disposeNativeFont(final long nativeFontPtr);
 
+    private String faceName;
     private boolean isFakeItalic;
     private String nativeFontName;
     private long nativeFontPtr;
@@ -152,14 +153,15 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
 
     // this constructor is called from CFontWrapper.m
     public CFont(String name) {
-        this(name, name);
+        this(name, name, null);
     }
 
-    public CFont(String name, String inFamilyName) {
+    public CFont(String name, String inFamilyName, String faceName) {
         handle = new Font2DHandle(this);
         fullName = name;
         familyName = inFamilyName;
         nativeFontName = fullName;
+        this.faceName = faceName;
         setStyle();
     }
 
@@ -240,6 +242,11 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
 
     String getNativeFontName() {
         return nativeFontName;
+    }
+
+    @Override
+    public String getTypographicSubfamilyName() {
+        return faceName == null ? super.getTypographicSubfamilyName() : faceName;
     }
 
     // <rdar://problem/5321707> sun.font.Font2D caches the last used strike,
