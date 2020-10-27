@@ -280,12 +280,15 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         int numLogical = sLogicalFonts.length;
         int numOtherFonts = superFonts.length;
 
-        newFonts = new Font[numOtherFonts + numLogical];
-        System.arraycopy(superFonts,0,newFonts,numLogical,numOtherFonts);
+        newFonts = new Font[numOtherFonts + numLogical * 4];
+        System.arraycopy(superFonts, 0, newFonts, numLogical * 4, numOtherFonts);
 
         for (int i = 0; i < numLogical; i++)
         {
-            newFonts[i] = new Font(sLogicalFonts[i], Font.PLAIN, 1);
+            for (int j = 0; j < 4; j++)
+            {
+                newFonts[i * 4 + j] = new Font(sLogicalFonts[i], j, 1);
+            }
         }
         return newFonts;
     }
