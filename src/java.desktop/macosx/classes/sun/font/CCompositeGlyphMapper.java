@@ -70,7 +70,7 @@ public final class CCompositeGlyphMapper extends CompositeGlyphMapper {
                 // Native font fallback mechanism can return "hidden" fonts - their names start with dot,
                 // and they are not returned in a list of fonts available in system, but they can still be used
                 // if requested explicitly.
-                fallbackFont = new CFont(fallbackFontName, fallbackFontFamilyName);
+                fallbackFont = new CFont(fallbackFontName, fallbackFontFamilyName, null);
             }
 
             if (mainFont.isFakeItalic()) fallbackFont = ((CFont)fallbackFont).createItalicVariant(false);
