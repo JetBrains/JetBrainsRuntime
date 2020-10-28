@@ -256,14 +256,16 @@ fragment half4 frag_txt(
 fragment half4 frag_txt_tp(TxtShaderInOut vert [[stage_in]],
                        texture2d<float, access::sample> renderTexture [[texture(0)]],
                        texture2d<float, access::sample> paintTexture [[texture(1)]],
+                       constant TxtFrameUniforms& uniforms [[buffer(1)]],
                        sampler textureSampler [[sampler(0)]]
 ) {
     float4 renderColor = renderTexture.sample(textureSampler, vert.texCoords);
     float4 paintColor = paintTexture.sample(textureSampler, vert.tpCoords);
+    const float srcA = uniforms.isSrcOpaque ? 1 : paintColor.a;
     return half4(paintColor.r*renderColor.a,
                  paintColor.g*renderColor.a,
                  paintColor.b*renderColor.a,
-                 renderColor.a);
+                 srcA*renderColor.a) * uniforms.extraAlpha;
 }
 
 fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
