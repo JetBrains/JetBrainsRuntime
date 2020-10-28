@@ -435,6 +435,7 @@ extern void initSamplers(id<MTLDevice> device);
 
     self.paint = [[[MTLTexturePaint alloc] initWithUseMask:useMask
                                                 textureID:srcOps->pTexture
+                                                  isOpaque:srcOps->isOpaque
                                                    filter:filter
                                                       xp0:xp0
                                                       xp1:xp1
