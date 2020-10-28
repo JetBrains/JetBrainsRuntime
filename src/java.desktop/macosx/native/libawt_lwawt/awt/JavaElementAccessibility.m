@@ -8,6 +8,7 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
 
 static JNF_CLASS_CACHE(sjc_CAccessible, "sun/lwawt/macosx/CAccessible");
 static JNF_MEMBER_CACHE(jm_getAccessibleContext, sjc_CAccessible, "getAccessibleContext", "()Ljavax/accessibility/AccessibleContext;");
+static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleIndexInParent, sjc_CAccessibility, "getAccessibleIndexInParent", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)I");
 
 static void RaiseMustOverrideException(NSString *method)
 {
@@ -22,6 +23,10 @@ static void RaiseMustOverrideException(NSString *method)
 {
     RaiseMustOverrideException(@"getPlatformAxElementClassName");
     return NULL;
+}
+
+- (int)accessibleIndexOfParent {
+    return (int)JNFCallStaticIntMethod    ([ThreadUtilities getJNIEnv], sjm_getAccessibleIndexInParent, fAccessible, fComponent);
 }
 
 @end

@@ -1,11 +1,6 @@
 // Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
-#include "jni.h"
 #import "JavaCellAccessibility.h"
-#import "JavaAccessibilityAction.h"
-#import "JavaAccessibilityUtilities.h"
-#import "JavaTextAccessibility.h"
-#import "JavaListAccessibility.h"
 #import "ThreadUtilities.h"
 
 @implementation JavaCellAccessibility

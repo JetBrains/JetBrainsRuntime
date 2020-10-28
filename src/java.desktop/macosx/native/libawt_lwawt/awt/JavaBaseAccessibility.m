@@ -17,7 +17,8 @@
 #import "JavaTextAccessibility.h"
 #import "JavaListAccessibility.h"
 #import "JavaTableAccessibility.h"
-#import "JavaRowAccessibility.h"
+#import "JavaListRowAccessibility.h"
+#import "JavaTableRowAccessibility.h"
 #import "JavaCellAccessibility.h"
 #import "JavaComponentAccessibility.h"
 #import "ThreadUtilities.h"
@@ -228,10 +229,10 @@ static jobject sAccessibilityClass = NULL;
 {
     if ([parent isKindOfClass:[JavaTableAccessibility class]]) {
         if (whichChildren == JAVA_AX_SELECTED_CHILDREN) {
-            NSArray<NSNumber *> *selectedRowIndexses = [[parent platformAxElement] selectedAccessibleRows];
+            NSArray<NSNumber *> *selectedRowIndexses = [parent selectedAccessibleRows];
             NSMutableArray *children = [NSMutableArray arrayWithCapacity:[selectedRowIndexses count]];
             for (NSNumber *index in selectedRowIndexses) {
-                [children addObject:[[JavaRowAccessibility alloc] initWithParent:parent
+                [children addObject:[[JavaTableRowAccessibility alloc] initWithParent:parent
                                                                          withEnv:env
                                                                   withAccessible:NULL
                                                                        withIndex:index.unsignedIntValue
@@ -240,10 +241,10 @@ static jobject sAccessibilityClass = NULL;
             }
             return [NSArray arrayWithArray:children];
         } else if (whichChildren == JAVA_AX_ALL_CHILDREN) {
-            int rowCount = [[parent platformAxElement] accessibleRowCount];
+            int rowCount = [parent accessibleRowCount];
             NSMutableArray *children = [NSMutableArray arrayWithCapacity:rowCount];
             for (int i = 0; i < rowCount; i++) {
-                [children addObject:[[JavaRowAccessibility alloc] initWithParent:parent
+                [children addObject:[[JavaTableRowAccessibility alloc] initWithParent:parent
                                                                          withEnv:env
                                                                   withAccessible:NULL
                                                                        withIndex:i
@@ -252,7 +253,7 @@ static jobject sAccessibilityClass = NULL;
             }
             return [NSArray arrayWithArray:children];
         } else {
-            return [NSArray arrayWithObject:[[JavaRowAccessibility alloc] initWithParent:parent
+            return [NSArray arrayWithObject:[[JavaTableRowAccessibility alloc] initWithParent:parent
                                                                                  withEnv:env
                                                                           withAccessible:NULL
                                                                                withIndex:whichChildren
@@ -269,9 +270,7 @@ static jobject sAccessibilityClass = NULL;
 
     NSInteger i;
     NSUInteger childIndex = (whichChildren >= 0) ? whichChildren : 0; // if we're getting one particular child, make sure to set its index correctly
-    
-    int inc = [parent isKindOfClass:[JavaTableAccessibility class]] ? (int)[[parent platformAxElement] accessibleColCount] * 2 : 2;
-    for(i = 0; i < arrayLen; i+=inc)
+    for(i = 0; i < arrayLen; i += 2)
     {
         jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
         jobject /* String */ jchildJavaRole = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+1);
@@ -332,9 +331,7 @@ static jobject sAccessibilityClass = NULL;
     } else if ([javaRole isEqualToString:@"scrollpane"]) {
         newChild = [ScrollAreaAccessibility alloc];
     } else if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityListRole]) {
-        newChild = [JavaRowAccessibility alloc];
-    } else if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityTableRole]) {
-        newChild = [JavaRowAccessibility alloc];
+        newChild = [JavaListRowAccessibility alloc];
     } else {
         NSString *nsRole = [sRoles objectForKey:javaRole];
         if ([nsRole isEqualToString:NSAccessibilityStaticTextRole] || [nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
