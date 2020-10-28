@@ -224,7 +224,7 @@ fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
     return half4(c.r*renderColor.a,
                  c.g*renderColor.a,
                  c.b*renderColor.a,
-                 c.a*renderColor.a);
+                 c.a*renderColor.a) * uniforms.extraAlpha;
 }
 
 fragment half4 frag_txt_lin_grad(GradShaderInOut in [[stage_in]],
@@ -260,7 +260,7 @@ fragment half4 frag_txt_lin_grad(GradShaderInOut in [[stage_in]],
     return half4(c.r*renderColor.a,
                  c.g*renderColor.a,
                  c.b*renderColor.a,
-                 c.a*renderColor.a);
+                 c.a*renderColor.a) * uniforms.extraAlpha;
 }
 
 fragment half4 frag_txt_rad_grad(GradShaderInOut in [[stage_in]],
@@ -300,7 +300,7 @@ fragment half4 frag_txt_rad_grad(GradShaderInOut in [[stage_in]],
     return half4(c.r*renderColor.a,
                      c.g*renderColor.a,
                      c.b*renderColor.a,
-                     c.a*renderColor.a);
+                     c.a*renderColor.a) * uniforms.extraAlpha;
 }
 
 
@@ -452,7 +452,7 @@ fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
         }
     }
     float4 c = mix(uniforms.color1, uniforms.color2, a);
-    return half4(c);
+    return half4(c) * uniforms.extraAlpha;
 }
 
 // LinGradFrameUniforms
@@ -479,7 +479,7 @@ fragment half4 frag_lin_grad(GradShaderInOut in [[stage_in]],
     }
     a = (a - n*lf)/lf;
     float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
-    return half4(c);
+    return half4(c) * uniforms.extraAlpha;
 }
 
 fragment half4 frag_rad_grad(GradShaderInOut in [[stage_in]],
@@ -509,7 +509,7 @@ fragment half4 frag_rad_grad(GradShaderInOut in [[stage_in]],
     }
     a = (a - n*lf)/lf;
     float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
-    return half4(c);
+    return half4(c) * uniforms.extraAlpha;
 }
 
 
