@@ -324,7 +324,8 @@ jint _color;
             {_p0, _p1, _p3},
             RGBA_TO_V4(_pixel1),
             RGBA_TO_V4(_pixel2),
-            _cyclic
+            _cyclic,
+            [mtlc.composite getExtraAlpha]
     };
     [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:0];
 
@@ -361,7 +362,8 @@ jint _color;
             {_p0, _p1, _p3},
             RGBA_TO_V4(_pixel1 ^ xorColor),
             RGBA_TO_V4(_pixel2 ^ xorColor),
-            _cyclic
+            _cyclic,
+            [mtlc.composite getExtraAlpha]
     };
 
     [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
@@ -466,7 +468,8 @@ jint _color;
             {},
             {},
             _numFracts,
-            _cyclic
+            _cyclic,
+            [mtlc.composite getExtraAlpha]
     };
 
     memcpy(uf.fract, _fract, _numFracts*sizeof(jfloat));
@@ -629,7 +632,8 @@ jint _color;
             _cyclic,
             {_m00, _m01, _m02},
             {_m10, _m11, _m12},
-            {}
+            {},
+            [mtlc.composite getExtraAlpha]
     };
 
     uf.precalc[0] = _focusX;
