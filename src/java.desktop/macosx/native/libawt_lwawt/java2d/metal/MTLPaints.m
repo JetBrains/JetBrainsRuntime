@@ -725,17 +725,14 @@ jint _color;
         fragShader = @"frag_txt_tp";
         rpDesc = [[templateTexturePipelineDesc copy] autorelease];
         [encoder setFragmentTexture:_paintTexture atIndex:1];
-        setTxtUniforms(encoder, 0, 0, renderOptions->interpolation, YES, [mtlc.composite getExtraAlpha],
-                   &renderOptions->srcFlags, &renderOptions->dstFlags);
     } else {
         rpDesc = [[templateRenderPipelineDesc copy] autorelease];
         [encoder setFragmentTexture:_paintTexture atIndex:0];
-        const SurfaceRasterFlags srcFlags = {_isOpaque, renderOptions->srcFlags.isPremultiplied};
-        setTxtUniforms(encoder, 0, 0,
-                       renderOptions->interpolation, YES, [mtlc.composite getExtraAlpha],
-                       &srcFlags,
-                       &renderOptions->dstFlags);
     }
+    const SurfaceRasterFlags srcFlags = {_isOpaque, renderOptions->srcFlags.isPremultiplied};
+    setTxtUniforms(encoder, 0, 0,
+                   renderOptions->interpolation, YES, [mtlc.composite getExtraAlpha],
+                   &srcFlags, &renderOptions->dstFlags);
 
     id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
                                                                         vertexShaderId:vertShader
