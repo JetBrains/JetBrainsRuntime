@@ -732,11 +732,6 @@ jint _color;
     } else {
         rpDesc = [[templateRenderPipelineDesc copy] autorelease];
         [encoder setFragmentTexture:_paintTexture atIndex:0];
-        const SurfaceRasterFlags srcFlags = {_isOpaque, renderOptions->srcFlags.isPremultiplied};
-        setTxtUniforms(encoder, 0, 0,
-                       renderOptions->interpolation, YES, [mtlc.composite getExtraAlpha],
-                       &srcFlags,
-                       &renderOptions->dstFlags);
     }
     const SurfaceRasterFlags srcFlags = {_isOpaque, renderOptions->srcFlags.isPremultiplied};
     setTxtUniforms(encoder, 0, 0,
