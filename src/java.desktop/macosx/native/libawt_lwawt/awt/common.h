@@ -61,6 +61,7 @@ struct GradFrameUniforms {
     vector_float4 color1;
     vector_float4 color2;
     int isCyclic;
+    float extraAlpha;
 };
 
 struct LinGradFrameUniforms {
@@ -69,6 +70,7 @@ struct LinGradFrameUniforms {
     vector_float4 color[GRAD_MAX_FRACTIONS];
     int numFracts;
     int cycleMethod;
+    float extraAlpha;
 };
 
 struct RadGradFrameUniforms {
@@ -79,6 +81,7 @@ struct RadGradFrameUniforms {
     vector_float3 m0;
     vector_float3 m1;
     vector_float3 precalc;
+    float extraAlpha;
 };
 
 struct Vertex {
