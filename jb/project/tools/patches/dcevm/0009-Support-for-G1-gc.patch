@@ -1,4 +1,4 @@
-From cf59dead9cd4e748b23f154bece19a873dab6088 Mon Sep 17 00:00:00 2001
+From a89a7aad1d44b540e4704332939d639e66392bd5 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 12 Jun 2020 17:43:52 +0200
 Subject: [PATCH 09/17] Support for G1 gc
@@ -990,10 +990,10 @@ index 00000000000..e2ef0171fb2
 +
 +#endif
 diff --git a/src/hotspot/share/gc/shared/gcConfig.cpp b/src/hotspot/share/gc/shared/gcConfig.cpp
-index 39364a64cb2..945b06ad2a4 100644
+index adb0f5dd25c..20e0ef9ee8a 100644
 --- a/src/hotspot/share/gc/shared/gcConfig.cpp
 +++ b/src/hotspot/share/gc/shared/gcConfig.cpp
-@@ -101,7 +101,7 @@ void GCConfig::fail_if_unsupported_gc_is_selected() {
+@@ -106,7 +106,7 @@ void GCConfig::fail_if_unsupported_gc_is_selected() {
  }
  
  void GCConfig::select_gc_ergonomically() {
@@ -1040,7 +1040,7 @@ index d0a6d665aa0..3dc4cc1323c 100644
    SystemDictionary::oops_do(oopClosure);
  }
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 1fbba406087..e67fc2dd58f 100644
+index aba99bb60fa..8b6fad2128e 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -36,7 +36,6 @@
@@ -1244,7 +1244,7 @@ index 1fbba406087..e67fc2dd58f 100644
    ResourceMark mark(THREAD);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index d8a11b51fe9..9755944d70b 100644
+index 3551b06ecde..62a0fbf54d4 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -86,9 +86,10 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

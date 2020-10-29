@@ -1,4 +1,4 @@
-From 9e9912de1cc7b351b16618a392dd2510d893cb0a Mon Sep 17 00:00:00 2001
+From 25cb9b5fa97749d3bc13dc6c848c7eb9cc1b66bb Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:20:08 +0100
 Subject: [PATCH 05/17] HotswapAgent integration
@@ -259,16 +259,16 @@ index 7117fa78059..761a52d8466 100644
  
  # Hook to include the corresponding custom file, if present.
 diff --git a/make/launcher/Launcher-jdk.jconsole.gmk b/make/launcher/Launcher-jdk.jconsole.gmk
-index 6205ae63d16..5ca6a0c123b 100644
+index 575b9e0595b..9b38683a489 100644
 --- a/make/launcher/Launcher-jdk.jconsole.gmk
 +++ b/make/launcher/Launcher-jdk.jconsole.gmk
-@@ -28,7 +28,8 @@ include LauncherCommon.gmk
- $(eval $(call SetupBuildLauncher, jconsole, \
+@@ -29,7 +29,8 @@ $(eval $(call SetupBuildLauncher, jconsole, \
      MAIN_CLASS := sun.tools.jconsole.JConsole, \
      JAVA_ARGS := --add-opens java.base/java.io=jdk.jconsole \
--		 -Djconsole.showOutputViewer, \
-+      -Djconsole.showOutputViewer \
-+      -XX:+DisableHotswapAgent, \
+ 		 -Djconsole.showOutputViewer \
+-		 -Djdk.attach.allowAttachSelf=true, \
++		 -Djdk.attach.allowAttachSelf=true \
++		 -XX:+DisableHotswapAgent, \
      CFLAGS_windows := -DJAVAW, \
      LIBS_windows := user32.lib, \
  ))
@@ -392,7 +392,7 @@ index 82311e69fd6..bd39f8595b2 100644
      CFLAGS := -DENABLE_ARG_FILES, \
  ))
 diff --git a/src/hotspot/share/classfile/vmSymbols.hpp b/src/hotspot/share/classfile/vmSymbols.hpp
-index 6e0b95ef5e8..8e0f1610f31 100644
+index 41e9a84cd69..1f67eb202b5 100644
 --- a/src/hotspot/share/classfile/vmSymbols.hpp
 +++ b/src/hotspot/share/classfile/vmSymbols.hpp
 @@ -342,6 +342,7 @@
@@ -513,7 +513,7 @@ index cc7f71a4404..b2bab2e1f44 100644
    static size_t max_heap_for_compressed_oops();
  
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index ab5d08390ff..7720ceebc81 100644
+index 7b061359c1d..fc0405b5df2 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
 @@ -32,6 +32,12 @@
@@ -529,7 +529,7 @@ index ab5d08390ff..7720ceebc81 100644
  // The larger HeapWordSize for 64bit requires larger heaps
  // for the same application running in 64bit.  See bug 4967770.
  // The minimum alignment to a heap word size is done.  Other
-@@ -2675,8 +2681,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
+@@ -2678,8 +2684,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
                                                                              \
    product(bool, AllowEnhancedClassRedefinition, true,                       \
               "Allow enhanced class redefinition beyond swapping method "    \

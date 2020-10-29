@@ -1,4 +1,4 @@
-From 67f5de17ece45fadaf70b064f0cb53f8613122de Mon Sep 17 00:00:00 2001
+From dcf2c02f9ce950170b0e448b8ef3aceb19732a86 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 12 Dec 2018 19:38:28 +0100
 Subject: [PATCH 03/17] Support for Concurrent Mark Sweep (CMS) collector
@@ -17,7 +17,7 @@ Subject: [PATCH 03/17] Support for Concurrent Mark Sweep (CMS) collector
  10 files changed, 135 insertions(+), 79 deletions(-)
 
 diff --git a/src/hotspot/share/gc/cms/compactibleFreeListSpace.cpp b/src/hotspot/share/gc/cms/compactibleFreeListSpace.cpp
-index a93f764f1b9..efaa09473a9 100644
+index 4c9918627a2..f335173576f 100644
 --- a/src/hotspot/share/gc/cms/compactibleFreeListSpace.cpp
 +++ b/src/hotspot/share/gc/cms/compactibleFreeListSpace.cpp
 @@ -376,55 +376,58 @@ CompactibleFreeListSpace::CompactibleFreeListSpace(BlockOffsetSharedArray* bs, M
@@ -118,7 +118,7 @@ index a93f764f1b9..efaa09473a9 100644
      q->forward_to(oop(compact_top));
      assert(q->is_gc_marked(), "encoding the pointer should preserve the mark");
    } else {
-@@ -2196,13 +2199,60 @@ CompactibleFreeListSpace::refillLinearAllocBlock(LinearAllocBlock* blk) {
+@@ -2209,13 +2212,60 @@ CompactibleFreeListSpace::refillLinearAllocBlock(LinearAllocBlock* blk) {
  
  // Support for compaction
  void CompactibleFreeListSpace::prepare_for_compaction(CompactPoint* cp) {
@@ -181,7 +181,7 @@ index a93f764f1b9..efaa09473a9 100644
  void CompactibleFreeListSpace::adjust_pointers() {
    // In other versions of adjust_pointers(), a bail out
    // based on the amount of live data in the generation
-@@ -2215,7 +2265,12 @@ void CompactibleFreeListSpace::adjust_pointers() {
+@@ -2228,7 +2278,12 @@ void CompactibleFreeListSpace::adjust_pointers() {
  }
  
  void CompactibleFreeListSpace::compact() {
@@ -253,10 +253,10 @@ index d0ff86c8215..b4ed59f020c 100644
      }
      _rescued_oops->clear();
 diff --git a/src/hotspot/share/gc/shared/gcConfig.cpp b/src/hotspot/share/gc/shared/gcConfig.cpp
-index 8aac2b39e1e..39364a64cb2 100644
+index 9779df92447..adb0f5dd25c 100644
 --- a/src/hotspot/share/gc/shared/gcConfig.cpp
 +++ b/src/hotspot/share/gc/shared/gcConfig.cpp
-@@ -101,7 +101,7 @@ void GCConfig::fail_if_unsupported_gc_is_selected() {
+@@ -106,7 +106,7 @@ void GCConfig::fail_if_unsupported_gc_is_selected() {
  }
  
  void GCConfig::select_gc_ergonomically() {
@@ -422,7 +422,7 @@ index 6b109fcd2e5..8c255d6d428 100644
          Klass* new_version = oop(cur_obj)->klass()->new_version();
          if (new_version->update_information() == NULL) {
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 92ce6c27b8a..41e82ae7a69 100644
+index 43d761cdbb2..14af1aad21b 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -54,6 +54,7 @@
