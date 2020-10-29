@@ -1,4 +1,4 @@
-From 5a608d7c890f59278b29ac15eb75b282a54edd79 Mon Sep 17 00:00:00 2001
+From 5504812403a0673c428fc5589cd94f2c3fea7616 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 23 Oct 2020 10:20:26 +0200
 Subject: [PATCH 16/17] Clear dcevm code separation
@@ -15,7 +15,7 @@ Subject: [PATCH 16/17] Clear dcevm code separation
  8 files changed, 27 insertions(+), 17 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index cc9f1fa7831..8c93ade80dc 100644
+index 791b49c68ad..011a14eab32 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
 @@ -1152,7 +1152,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
@@ -27,7 +27,7 @@ index cc9f1fa7831..8c93ade80dc 100644
    } );
  
    return k;
-@@ -2129,7 +2129,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
+@@ -2153,7 +2153,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
        // also hold array classes.
  
        assert(check->is_instance_klass(), "noninstance in systemdictionary");
@@ -106,7 +106,7 @@ index 8afe8985026..4e7b39406fa 100644
    if (HAS_PENDING_EXCEPTION) {
      log_pending_exception(PENDING_EXCEPTION);
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index 889f228d087..8c7cd750212 100644
+index 4312c2c4ca9..7335f0cffc9 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -178,7 +178,9 @@ bool InstanceKlass::has_nest_member(InstanceKlass* k, TRAPS) const {
@@ -138,7 +138,7 @@ index 889f228d087..8c7cd750212 100644
          wait = true;
        ol.waitUninterruptibly(CHECK);
      }
-@@ -3597,7 +3599,7 @@ void InstanceKlass::verify_on(outputStream* st) {
+@@ -3617,7 +3619,7 @@ void InstanceKlass::verify_on(outputStream* st) {
  
      guarantee(sib->is_klass(), "should be klass");
      // TODO: (DCEVM) explain

@@ -1,4 +1,4 @@
-From 189a4bc2077dcca3d0c355a68ca353a57e9e3fa6 Mon Sep 17 00:00:00 2001
+From 3b6c7d2f807857712df6fd51a36a5a906b705f57 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 23 May 2020 10:02:15 +0200
 Subject: [PATCH 07/17] Fix "no original bytecode found" error if method with
@@ -102,7 +102,7 @@ index 4533476ff8f..193e1845b23 100644
    void set_breakpoint(int bci);
    void clear_breakpoint(int bci);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index b94caa39562..1fbba406087 100644
+index 0b239b2ff6d..aba99bb60fa 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1356,14 +1356,16 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
