@@ -1058,7 +1058,6 @@ javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java                     
 javax/swing/text/html/StyleSheet/BackgroundImage/BackgroundImagePosition.java       8198409 generic-all
 javax/swing/text/html/StyleSheet/bug4936917.java                                    8208569 macosx-all
 javax/swing/text/html/parser/Parser/6836089/bug6836089.java                         8198401 generic-all
-javax/swing/text/html/parser/Test8017492.java                                       8022535 generic-all
 javax/swing/text/html/parser/Parser/6990651/bug6990651.java                         8199060 generic-all
 javax/swing/text/html/parser/Parser/8078268/bug8078268.java                         8199092 generic-all
 javax/swing/text/html/parser/Parser/HtmlCommentTagParseTest/HtmlCommentTagParseTest.java 8199073 generic-all
