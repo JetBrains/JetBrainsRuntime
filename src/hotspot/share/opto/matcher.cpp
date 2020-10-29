@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2261,6 +2261,14 @@ void Matcher::find_shared( Node *n ) {
       case Op_StorePConditional:
       case Op_StoreIConditional:
       case Op_StoreLConditional:
+#if INCLUDE_SHENANDOAHGC
+      case Op_ShenandoahCompareAndExchangeP:
+      case Op_ShenandoahCompareAndExchangeN:
+      case Op_ShenandoahWeakCompareAndSwapP:
+      case Op_ShenandoahWeakCompareAndSwapN:
+      case Op_ShenandoahCompareAndSwapP:
+      case Op_ShenandoahCompareAndSwapN:
+#endif
       case Op_CompareAndExchangeB:
       case Op_CompareAndExchangeS:
       case Op_CompareAndExchangeI:
@@ -2504,6 +2512,14 @@ bool Matcher::post_store_load_barrier(const Node* vmb) {
     // that a monitor exit operation contains a serializing instruction.
 
     if (xop == Op_MemBarVolatile ||
+#if INCLUDE_SHENANDOAHGC
+        xop == Op_ShenandoahCompareAndExchangeP ||
+        xop == Op_ShenandoahCompareAndExchangeN ||
+        xop == Op_ShenandoahWeakCompareAndSwapP ||
+        xop == Op_ShenandoahWeakCompareAndSwapN ||
+        xop == Op_ShenandoahCompareAndSwapN ||
+        xop == Op_ShenandoahCompareAndSwapP ||
+#endif
         xop == Op_CompareAndExchangeB ||
         xop == Op_CompareAndExchangeS ||
         xop == Op_CompareAndExchangeI ||

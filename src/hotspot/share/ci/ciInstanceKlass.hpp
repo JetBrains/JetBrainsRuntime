@@ -202,6 +202,10 @@ public:
     return _has_injected_fields > 0 ? true : false;
   }
 
+#if INCLUDE_SHENANDOAHGC
+  bool has_object_fields() const;
+#endif
+
   // nth nonstatic field (presented by ascending address)
   ciField* nonstatic_field_at(int i) {
     assert(_nonstatic_fields != NULL, "");

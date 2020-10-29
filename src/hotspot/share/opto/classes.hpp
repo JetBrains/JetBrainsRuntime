@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@
 macro(AbsD)
 macro(AbsF)
 macro(AbsI)
+macro(AbsL)
 macro(AddD)
 macro(AddF)
 macro(AddI)
@@ -264,6 +265,16 @@ macro(RoundDouble)
 macro(RoundFloat)
 macro(SafePoint)
 macro(SafePointScalarObject)
+#if INCLUDE_SHENANDOAHGC
+macro(ShenandoahCompareAndExchangeP)
+macro(ShenandoahCompareAndExchangeN)
+macro(ShenandoahCompareAndSwapN)
+macro(ShenandoahCompareAndSwapP)
+macro(ShenandoahWeakCompareAndSwapN)
+macro(ShenandoahWeakCompareAndSwapP)
+macro(ShenandoahEnqueueBarrier)
+macro(ShenandoahLoadReferenceBarrier)
+#endif
 macro(SCMemProj)
 macro(SqrtD)
 macro(SqrtF)
@@ -317,6 +328,7 @@ macro(SubVI)
 macro(SubVL)
 macro(SubVF)
 macro(SubVD)
+macro(MulVB)
 macro(MulVS)
 macro(MulVI)
 macro(MulReductionVI)
@@ -330,6 +342,10 @@ macro(FmaVD)
 macro(FmaVF)
 macro(DivVF)
 macro(DivVD)
+macro(AbsVB)
+macro(AbsVS)
+macro(AbsVI)
+macro(AbsVL)
 macro(AbsVF)
 macro(AbsVD)
 macro(NegVF)

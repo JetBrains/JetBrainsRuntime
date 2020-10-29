@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +57,7 @@ typedef struct map_info {
    off_t            offset;   // file offset of this mapping
    uintptr_t        vaddr;    // starting virtual address
    size_t           memsz;    // size of the mapping
+   uint32_t         flags;    // acces flags
    struct map_info* next;
 } map_info;
 

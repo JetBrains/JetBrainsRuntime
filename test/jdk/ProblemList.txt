@@ -243,7 +243,6 @@ sun/java2d/SunGraphics2D/DrawImageBilinear.java 8191406 generic-all
 sun/java2d/SunGraphics2D/PolyVertTest.java 6986565 generic-all
 sun/java2d/SunGraphics2D/SimplePrimQuality.java 6992007 generic-all
 sun/java2d/SunGraphics2D/SourceClippingBlitTest/SourceClippingBlitTest.java 8196185 generic-all
-sun/java2d/loops/RenderToCustomBufferTest.java 8220150 macosx-all
 sun/java2d/pipe/InterpolationQualityTest.java 8171303 windows-all,linux-all,macosx-all
 java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java 8169469 windows-all
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8197796 generic-all
@@ -659,7 +658,6 @@ sun/security/provider/KeyStore/DKSTest.sh                       8180266 windows-
 sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                 8209398 generic-all
 
 security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java  8224768 generic-all
-security/infra/java/security/cert/CertPathValidator/certification/LuxTrustCA.java 8237888 generic-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
 sun/security/smartcardio/TestConnect.java                       8039280 generic-all
@@ -712,7 +710,6 @@ javax/swing/JComponent/7154030/bug7154030.java 7190978 generic-all
 javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java 8067986 generic-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
 javax/swing/JComboBox/6236162/bug6236162.java 8028707 windows-all,macosx-all
-javax/swing/text/html/parser/Test8017492.java 8022535 generic-all
 javax/swing/JButton/8151303/PressedIconTest.java 8198689 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8081476 windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128 macosx-all
@@ -874,15 +871,7 @@ tools/pack200/CommandLineTests.java                             8059906 generic-
 
 com/sun/jdi/BasicJDWPConnectionTest.java                        8195703 generic-all
 
-com/sun/jdi/RedefineImplementor.sh                              8004127 generic-all
-
-com/sun/jdi/JdbExprTest.sh                                      8203393 solaris-all
-
-com/sun/jdi/JdbMethodExitTest.sh                                8203393 solaris-all
-
 com/sun/jdi/RepStep.java                                        8043571 generic-all
-
-com/sun/jdi/GetLocalVariables4Test.sh                           8067354 windows-all
 
 com/sun/jdi/sde/SourceDebugExtensionTest.java                   8158066 windows-all
 
@@ -905,7 +894,8 @@ com/sun/jdi/NashornPopFrameTest.java                            8187143 generic-
 # svc_tools
 
 sun/tools/jstat/jstatClassloadOutput1.sh                        8173942 generic-all
-sun/tools/jhsdb/BasicLauncherTest.java                          8211767 linux-ppc64,linux-ppc64le
+sun/tools/jhsdb/BasicLauncherTest.java                          8193639,8211767 linux-ppc64,linux-ppc64le,solaris-all
+sun/tools/jhsdb/HeapDumpTest.java                               8193639 solaris-all
 
 
 ############################################################################
@@ -913,8 +903,6 @@ sun/tools/jhsdb/BasicLauncherTest.java                          8211767 linux-pp
 # jdk_other
 
 com/sun/jndi/ldap/DeadSSLLdapTimeoutTest.java                   8169942 linux-i586,macosx-all,windows-x64
-
-com/sun/jndi/ldap/LdapTimeoutTest.java                          8151678 linux-all
 
 javax/rmi/ssl/SSLSocketParametersTest.sh                        8162906 generic-all
 

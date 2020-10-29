@@ -41,8 +41,17 @@
 #if INCLUDE_SERIALGC
 #include "gc/serial/serial_globals.hpp"
 #endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoah_globals.hpp"
+#endif
 #if INCLUDE_ZGC
 #include "gc/z/z_globals.hpp"
+#endif
+
+#if INCLUDE_SHENANDOAHGC
+#define shproduct(product, type, name, value, doc) product(type, name, value, doc)
+#else
+#define shproduct(product, type, name, value, doc)
 #endif
 
 #define GC_FLAGS(develop,                                                   \
@@ -140,6 +149,22 @@
     constraint,                                                             \
     writeable))                                                             \
                                                                             \
+  SHENANDOAHGC_ONLY(GC_SHENANDOAH_FLAGS(                                    \
+    develop,                                                                \
+    develop_pd,                                                             \
+    product,                                                                \
+    product_pd,                                                             \
+    diagnostic,                                                             \
+    diagnostic_pd,                                                          \
+    experimental,                                                           \
+    notproduct,                                                             \
+    manageable,                                                             \
+    product_rw,                                                             \
+    lp64_product,                                                           \
+    range,                                                                  \
+    constraint,                                                             \
+    writeable))                                                             \
+                                                                            \
   ZGC_ONLY(GC_Z_FLAGS(                                                      \
     develop,                                                                \
     develop_pd,                                                             \
@@ -178,6 +203,9 @@
                                                                             \
   experimental(bool, UseZGC, false,                                         \
           "Use the Z garbage collector")                                    \
+                                                                            \
+  shproduct(product, bool, UseShenandoahGC, false,                          \
+          "Use the Shenandoah garbage collector")                           \
                                                                             \
   product(uint, ParallelGCThreads, 0,                                       \
           "Number of parallel threads parallel gc will use")                \

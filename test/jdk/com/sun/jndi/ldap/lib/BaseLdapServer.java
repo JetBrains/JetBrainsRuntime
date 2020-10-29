@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
 
 import static java.lang.System.Logger.Level.INFO;
 
@@ -44,8 +43,9 @@ import static java.lang.System.Logger.Level.INFO;
  *
  * Override the following methods to provide customized behavior
  *
+ *     * beforeAcceptingConnections
  *     * beforeConnectionHandled
- *     * handleRequest
+ *     * handleRequest (or handleRequestEx)
  *
  * Instances of this class are safe for use by multiple threads.
  */
@@ -83,6 +83,7 @@ public class BaseLdapServer implements Closeable {
         logger().log(INFO, "Server is accepting connections at port {0}",
                      getPort());
         try {
+            beforeAcceptingConnections();
             while (isRunning()) {
                 Socket socket = serverSocket.accept();
                 logger().log(INFO, "Accepted new connection at {0}", socket);
@@ -97,16 +98,23 @@ public class BaseLdapServer implements Closeable {
                 }
                 connectionsPool.submit(() -> handleConnection(socket));
             }
-        } catch (IOException | RejectedExecutionException e) {
+        } catch (Throwable t) {
             if (isRunning()) {
                 throw new RuntimeException(
-                        "Unexpected exception while accepting connections", e);
+                        "Unexpected exception while accepting connections", t);
             }
         } finally {
             logger().log(INFO, "Server stopped accepting connections at port {0}",
                                 getPort());
         }
     }
+
+    /*
+     * Called once immediately preceding the server accepting connections.
+     *
+     * Override to customize the behavior.
+     */
+    protected void beforeAcceptingConnections() { }
 
     /*
      * A "Template Method" describing how a connection (represented by a socket)
@@ -119,6 +127,7 @@ public class BaseLdapServer implements Closeable {
         // No need to close socket's streams separately, they will be closed
         // automatically when `socket.close()` is called
         beforeConnectionHandled(socket);
+        ConnWrapper connWrapper = new ConnWrapper(socket);
         try (socket) {
             OutputStream out = socket.getOutputStream();
             InputStream in = socket.getInputStream();
@@ -152,7 +161,13 @@ public class BaseLdapServer implements Closeable {
                             "bytes received {0}, expected {1}", buffer.size(), msgLen);
                     continue;
                 }
-                handleRequest(socket, new LdapMessage(request), out);
+                handleRequestEx(socket, new LdapMessage(request), out, connWrapper);
+                if (connWrapper.updateRequired()) {
+                    var wrapper = connWrapper.getWrapper();
+                    in = wrapper.getInputStream();
+                    out = wrapper.getOutputStream();
+                    connWrapper.clearFlag();
+                }
             }
         } catch (Throwable t) {
             if (!isRunning()) {
@@ -160,6 +175,10 @@ public class BaseLdapServer implements Closeable {
             } else {
                 t.printStackTrace();
             }
+        }
+
+        if (connWrapper.getWrapper() != null) {
+            closeSilently(connWrapper.getWrapper());
         }
     }
 
@@ -183,6 +202,40 @@ public class BaseLdapServer implements Closeable {
         logger().log(INFO, "Discarding message {0} from {1}. "
                              + "Override {2}.handleRequest to change this behavior.",
                      request, socket, getClass().getName());
+    }
+
+    /*
+     * Called after an LDAP request has been read in `handleConnection()`.
+     *
+     * Override to customize the behavior if you want to handle starttls
+     * extended op, otherwise override handleRequest method instead.
+     *
+     * This is extended handleRequest method which provide possibility to
+     * wrap current socket connection, that's necessary to handle starttls
+     * extended request, here is sample code about how to wrap current socket
+     *
+     * switch (request.getOperation()) {
+     *     ......
+     *     case EXTENDED_REQUEST:
+     *         if (new String(request.getMessage()).endsWith(STARTTLS_REQ_OID)) {
+     *             out.write(STARTTLS_RESPONSE);
+     *             SSLSocket sslSocket = (SSLSocket) sslSocketFactory
+     *                     .createSocket(socket, null, socket.getLocalPort(),
+     *                             false);
+     *             sslSocket.setUseClientMode(false);
+     *             connWrapper.setWrapper(sslSocket);
+     *         }
+     *         break;
+     *     ......
+     * }
+     */
+    protected void handleRequestEx(Socket socket,
+            LdapMessage request,
+            OutputStream out,
+            ConnWrapper connWrapper)
+            throws IOException {
+        // by default, just call handleRequest to keep compatibility
+        handleRequest(socket, request, out);
     }
 
     /*
@@ -240,10 +293,23 @@ public class BaseLdapServer implements Closeable {
     /**
      * Returns the local port this server is listening at.
      *
+     * This method can be called at any time.
+     *
      * @return the port this server is listening at
      */
     public int getPort() {
         return serverSocket.getLocalPort();
+    }
+
+    /**
+     * Returns the address this server is listening at.
+     *
+     * This method can be called at any time.
+     *
+     * @return the address
+     */
+    public InetAddress getInetAddress() {
+        return serverSocket.getInetAddress();
     }
 
     /*
@@ -264,5 +330,37 @@ public class BaseLdapServer implements Closeable {
         try {
             resource.close();
         } catch (IOException ignored) { }
+    }
+
+    /*
+     * To be used for handling starttls extended request
+     */
+    protected class ConnWrapper {
+        private Socket original;
+        private Socket wrapper;
+        private boolean flag = false;
+
+        public ConnWrapper(Socket socket) {
+            original = socket;
+        }
+
+        public Socket getWrapper() {
+            return wrapper;
+        }
+
+        public void setWrapper(Socket wrapper) {
+            if (wrapper != null && wrapper != original) {
+                this.wrapper = wrapper;
+                flag = true;
+            }
+        }
+
+        public boolean updateRequired() {
+            return flag;
+        }
+
+        public void clearFlag() {
+            flag = false;
+        }
     }
 }

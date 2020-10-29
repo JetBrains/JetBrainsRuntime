@@ -2718,19 +2718,39 @@ bool InstanceKlass::is_override(const methodHandle& super_method, Handle targetc
    return(is_same_class_package(targetclassloader(), targetclassname));
 }
 
+
+static bool is_prohibited_package_slow(Symbol* class_name) {
+  // Caller has ResourceMark
+  int length;
+  jchar* unicode = class_name->as_unicode(length);
+  return (length >= 5 &&
+          unicode[0] == 'j' &&
+          unicode[1] == 'a' &&
+          unicode[2] == 'v' &&
+          unicode[3] == 'a' &&
+          unicode[4] == '/');
+}
+
 // Only boot and platform class loaders can define classes in "java/" packages.
 void InstanceKlass::check_prohibited_package(Symbol* class_name,
                                              ClassLoaderData* loader_data,
                                              TRAPS) {
   if (!loader_data->is_boot_class_loader_data() &&
       !loader_data->is_platform_class_loader_data() &&
-      class_name != NULL) {
+      class_name != NULL && class_name->utf8_length() >= 5) {
     ResourceMark rm(THREAD);
-    char* name = class_name->as_C_string();
-    if (strncmp(name, JAVAPKG, JAVAPKG_LEN) == 0 && name[JAVAPKG_LEN] == '/') {
+    bool prohibited;
+    const jbyte* base = class_name->base();
+    if ((base[0] | base[1] | base[2] | base[3] | base[4]) & 0x80) {
+      prohibited = is_prohibited_package_slow(class_name);
+    } else {
+      char* name = class_name->as_C_string();
+      prohibited = (strncmp(name, JAVAPKG, JAVAPKG_LEN) == 0 && name[JAVAPKG_LEN] == '/');
+    }
+    if (prohibited) {
       TempNewSymbol pkg_name = InstanceKlass::package_from_name(class_name, CHECK);
       assert(pkg_name != NULL, "Error in parsing package name starting with 'java/'");
-      name = pkg_name->as_C_string();
+      char* name = pkg_name->as_C_string();
       const char* class_loader_name = loader_data->loader_name_and_id();
       StringUtils::replace_no_expand(name, "/", ".");
       const char* msg_text1 = "Class loader (instance of): ";
@@ -2958,9 +2978,9 @@ void InstanceKlass::adjust_default_methods(InstanceKlass* holder, bool* trace_na
 void InstanceKlass::add_osr_nmethod(nmethod* n) {
 #ifndef PRODUCT
   if (TieredCompilation) {
-      nmethod * prev = lookup_osr_nmethod(n->method(), n->osr_entry_bci(), n->comp_level(), true);
-      assert(prev == NULL || !prev->is_in_use(),
-      "redundunt OSR recompilation detected. memory leak in CodeCache!");
+    nmethod* prev = lookup_osr_nmethod(n->method(), n->osr_entry_bci(), n->comp_level(), true);
+    assert(prev == NULL || !prev->is_in_use() COMPILER2_PRESENT(|| StressRecompilation),
+           "redundant OSR recompilation detected. memory leak in CodeCache!");
   }
 #endif
   // only one compilation can be active

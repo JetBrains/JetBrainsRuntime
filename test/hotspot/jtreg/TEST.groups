@@ -177,7 +177,8 @@ tier1_gc = \
   :tier1_gc_1 \
   :tier1_gc_2 \
   :tier1_gc_gcold \
-  :tier1_gc_gcbasher
+  :tier1_gc_gcbasher \
+  :tier1_gc_shenandoah
 
 hotspot_not_fast_gc = \
   :hotspot_gc \
@@ -197,7 +198,8 @@ tier1_gc_2 = \
   -gc/stress \
   -gc/survivorAlignment/TestPromotionFromSurvivorToTenuredAfterMinorGC.java \
   -gc/cms/TestMBeanCMS.java \
-  -gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java
+  -gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java \
+  -gc/shenandoah
 
 tier1_gc_gcold = \
   gc/stress/gcold/TestGCOldWithG1.java \
@@ -210,6 +212,51 @@ tier1_gc_gcbasher = \
   gc/stress/gcbasher/TestGCBasherWithCMS.java \
   gc/stress/gcbasher/TestGCBasherWithSerial.java \
   gc/stress/gcbasher/TestGCBasherWithParallel.java
+  
+tier1_gc_shenandoah = \
+  gc/shenandoah/options/ \
+  gc/shenandoah/compiler/ \
+  gc/shenandoah/mxbeans/ \
+  gc/shenandoah/TestSmallHeap.java \
+  gc/shenandoah/oom/
+
+tier2_gc_shenandoah = \
+  runtime/MemberName/MemberNameLeak.java \
+  runtime/CompressedOops/UseCompressedOops.java \
+  gc/TestHumongousReferenceObject.java \
+  gc/TestSystemGC.java \
+  gc/arguments/TestDisableDefaultGC.java \
+  gc/arguments/TestUseCompressedOopsErgo.java \
+  gc/arguments/TestAlignmentToUseLargePages.java \
+  gc/class_unloading/TestClassUnloadingDisabled.java \
+  gc/ergonomics/TestInitialGCThreadLogging.java \
+  gc/ergonomics/TestDynamicNumberOfGCThreads.java \
+  gc/logging/TestGCId.java \
+  gc/metaspace/TestMetaspacePerfCounters.java \
+  gc/metaspace/TestMetaspacePerfCounters.java \
+  gc/startup_warnings/TestShenandoah.java \
+  gc/TestFullGCALot.java \
+  gc/logging/TestUnifiedLoggingSwitchStress.java \
+  runtime/Metaspace/DefineClass.java \
+  gc/shenandoah/ \
+  serviceability/sa/TestHeapDumpForInvokeDynamic.java \
+  -gc/shenandoah/TestStringDedupStress.java \
+  -gc/shenandoah/jni/CriticalNativeStress.java \
+  -:tier1_gc_shenandoah
+
+tier3_gc_shenandoah = \
+  gc/stress/gcold/TestGCOldWithShenandoah.java \
+  gc/stress/gcbasher/TestGCBasherWithShenandoah.java \
+  gc/stress/gclocker/TestGCLockerWithShenandoah.java \
+  gc/stress/systemgc/TestSystemGCWithShenandoah.java \
+  gc/shenandoah/TestStringDedupStress.java \
+  gc/shenandoah/jni/CriticalNativeStress.java \
+  -:tier2_gc_shenandoah
+
+hotspot_gc_shenandoah = \
+  :tier1_gc_shenandoah \
+  :tier2_gc_shenandoah \
+  :tier3_gc_shenandoah
 
 tier1_runtime = \
   runtime/ \

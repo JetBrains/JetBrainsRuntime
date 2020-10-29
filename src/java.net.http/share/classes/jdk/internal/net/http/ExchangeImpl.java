@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -160,6 +160,12 @@ abstract class ExchangeImpl<T> {
         }
     }
 
+    // Called for 204 response - when no body is permitted
+    void nullBody(HttpResponse<T> resp, Throwable t) {
+        // Needed for HTTP/1.1 to close the connection or return it to the pool
+        // Needed for HTTP/2 to subscribe a dummy subscriber and close the stream
+    }
+
     /* The following methods have separate HTTP/1.1 and HTTP/2 implementations */
 
     abstract CompletableFuture<ExchangeImpl<T>> sendHeadersAsync();
@@ -175,6 +181,7 @@ abstract class ExchangeImpl<T> {
      * Ignore/consume the body.
      */
     abstract CompletableFuture<Void> ignoreBody();
+
 
     /** Gets the response headers. Completes before body is read. */
     abstract CompletableFuture<Response> getResponseAsync(Executor executor);

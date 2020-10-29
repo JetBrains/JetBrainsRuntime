@@ -43,6 +43,10 @@
 #include "opto/runtime.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif
 
 //----------------------------GraphKit-----------------------------------------
 // Main utility constructor.
@@ -3740,6 +3744,14 @@ AllocateNode* AllocateNode::Ideal_allocation(Node* ptr, PhaseTransform* phase) {
   if (ptr == NULL) {     // reduce dumb test in callers
     return NULL;
   }
+
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC) {
+    BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+    ptr = bs->step_over_gc_barrier(ptr);
+  }
+#endif
+
   if (ptr->is_CheckCastPP()) { // strip only one raw-to-oop cast
     ptr = ptr->in(1);
     if (ptr == NULL) return NULL;

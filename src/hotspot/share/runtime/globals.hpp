@@ -435,6 +435,9 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
   product(bool, CriticalJNINatives, true,                                   \
           "Check for critical JNI entry points")                            \
                                                                             \
+  product(bool, UseLegacyJNINameEscaping, false,                            \
+          "Use the original JNI name escaping scheme")                      \
+                                                                            \
   notproduct(bool, StressCriticalJNINatives, false,                         \
           "Exercise register saving code in critical natives")              \
                                                                             \

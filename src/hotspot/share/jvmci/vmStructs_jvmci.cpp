@@ -298,6 +298,8 @@
   static_field(StubRoutines,                _aescrypt_decryptBlock,                           address)                               \
   static_field(StubRoutines,                _cipherBlockChaining_encryptAESCrypt,             address)                               \
   static_field(StubRoutines,                _cipherBlockChaining_decryptAESCrypt,             address)                               \
+  static_field(StubRoutines,                _electronicCodeBook_encryptAESCrypt,              address)                               \
+  static_field(StubRoutines,                _electronicCodeBook_decryptAESCrypt,              address)                               \
   static_field(StubRoutines,                _counterMode_AESCrypt,                            address)                               \
   static_field(StubRoutines,                _base64_encodeBlock,                              address)                               \
   static_field(StubRoutines,                _ghash_processBlocks,                             address)                               \
@@ -528,7 +530,14 @@
                                                                           \
   declare_constant(InstanceKlass::linked)                                 \
   declare_constant(InstanceKlass::fully_initialized)                      \
+                                                                          \
+  /*********************************/                                     \
+  /* InstanceKlass _misc_flags */                                         \
+  /*********************************/                                     \
+                                                                          \
   declare_constant(InstanceKlass::_misc_is_anonymous)                     \
+  declare_constant(InstanceKlass::_misc_has_nonstatic_concrete_methods)   \
+  declare_constant(InstanceKlass::_misc_declares_nonstatic_concrete_methods) \
                                                                           \
   declare_constant(JumpData::taken_off_set)                               \
   declare_constant(JumpData::displacement_off_set)                        \

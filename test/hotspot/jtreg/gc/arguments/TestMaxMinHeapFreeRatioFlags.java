@@ -25,7 +25,7 @@
  * @test TestMaxMinHeapFreeRatioFlags
  * @key gc
  * @summary Verify that heap size changes according to max and min heap free ratios.
- * @requires vm.gc != "Z"
+ * @requires vm.gc != "Z" & vm.gc != "Shenandoah"
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management

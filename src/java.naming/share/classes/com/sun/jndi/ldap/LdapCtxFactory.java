@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,17 @@
 package com.sun.jndi.ldap;
 
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Vector;
 import java.util.Enumeration;
 
 import javax.naming.*;
 import javax.naming.directory.*;
+
 import javax.naming.spi.ObjectFactory;
+
+import jdk.internal.misc.Unsafe;
+
 import javax.naming.spi.InitialContextFactory;
 import javax.naming.ldap.Control;
 
@@ -42,6 +47,33 @@ final public class LdapCtxFactory implements ObjectFactory, InitialContextFactor
      * The type of each address in an LDAP reference.
      */
     public final static String ADDRESS_TYPE = "URL";
+
+    /**
+     * Access to LDAP DNS providers implementing abstract service class
+     * com.sun.jndi.ldap.spi.LdapDnsProvider of module jdk.naming.ldap
+     */
+    private static LdapDnsProviderServiceInternal ldapDNSService = null;
+
+    // trigger initialization of class LdapDnsProviderService which implements
+    // LdapDnsProviderServiceInternal and registers itself by calling
+    // registerLdapDnsProviderService
+    static {
+        try {
+            Class<?> c = Class.forName("com.sun.jndi.ldap.dns.LdapDnsProviderService");
+            Unsafe.getUnsafe().ensureClassInitialized(c);
+        } catch (ClassNotFoundException e) {
+            // ignore
+        }
+    }
+
+    /**
+     * Register the LDAP DNS provider service.
+     *
+     * @param theService Implementation of LdapDnsProviderServiceInternal to be registered
+     */
+    public static void registerLdapDnsProviderService(LdapDnsProviderServiceInternal theService) {
+        ldapDNSService = theService;
+    }
 
     // ----------------- ObjectFactory interface --------------------
 
@@ -158,41 +190,79 @@ final public class LdapCtxFactory implements ObjectFactory, InitialContextFactor
     }
 
     private static DirContext getUsingURL(String url, Hashtable<?,?> env)
-            throws NamingException {
-        DirContext ctx = null;
-        LdapURL ldapUrl = new LdapURL(url);
-        String dn = ldapUrl.getDN();
-        String host = ldapUrl.getHost();
-        int port = ldapUrl.getPort();
-        String[] hostports;
-        String domainName = null;
+            throws NamingException
+    {
+        try {
+            LdapDnsProviderResultInternal r = (ldapDNSService != null) ?
+                    ldapDNSService.lookupEndpointsInternal(url, env) : null;
 
-        // handle a URL with no hostport (ldap:/// or ldaps:///)
-        // locate the LDAP service using the URL's distinguished name
-        if (host == null &&
-            port == -1 &&
-            dn != null &&
-            (domainName = ServiceLocator.mapDnToDomainName(dn)) != null &&
-            (hostports = ServiceLocator.getLdapService(domainName, env))
-                != null) {
-            // Generate new URLs that include the discovered hostports.
-            // Reuse the original URL scheme.
-            String scheme = ldapUrl.getScheme() + "://";
-            String[] newUrls = new String[hostports.length];
-            String query = ldapUrl.getQuery();
-            String urlSuffix = ldapUrl.getPath() + (query != null ? query : "");
-            for (int i = 0; i < hostports.length; i++) {
-                newUrls[i] = scheme + hostports[i] + urlSuffix;
+            if (r == null) {
+                r = new DefaultLdapDnsProvider().lookupEndpoints(url, env)
+                        .orElse(new LdapDnsProviderResultInternal("", List.of()));
             }
-            ctx = getUsingURLs(newUrls, env);
-            // Associate the derived domain name with the context
-            ((LdapCtx)ctx).setDomainName(domainName);
 
-        } else {
-            ctx = new LdapCtx(dn, host, port, env, ldapUrl.useSsl());
-            // Record the URL that created the context
-            ((LdapCtx)ctx).setProviderUrl(url);
+            LdapCtx ctx;
+            NamingException lastException = null;
+
+            /*
+             * Prior to this change we had been assuming that the url.getDN()
+             * should be converted to a domain name via
+             * ServiceLocator.mapDnToDomainName(url.getDN())
+             *
+             * However this is incorrect as we can't assume that the supplied
+             * url.getDN() is the same as the dns domain for the directory
+             * server.
+             *
+             * This means that we depend on the dnsProvider to return both
+             * the list of urls of individual hosts from which we attempt to
+             * create an LdapCtx from *AND* the domain name that they serve
+             *
+             * In order to do this the dnsProvider must return an
+             * {@link LdapDnsProviderResult}.
+             *
+             */
+            for (String u : r.getEndpoints()) {
+                try {
+                    ctx = getLdapCtxFromUrl(
+                            r.getDomainName(), url, new LdapURL(u), env);
+                    return ctx;
+                } catch (NamingException e) {
+                    // try the next element
+                    lastException = e;
+                }
+            }
+
+            if (lastException != null) {
+                throw lastException;
+            }
+
+            // lookupEndpoints returned an LdapDnsProviderResult with an empty
+            // list of endpoints
+            throw new NamingException("Could not resolve a valid ldap host");
+        } catch (NamingException e) {
+            // lookupEndpoints(url, env) may throw a NamingException, which
+            // there is no need to wrap.
+            throw e;
+        } catch (Exception e) {
+            NamingException ex = new NamingException();
+            ex.setRootCause(e);
+            throw ex;
         }
+    }
+
+    private static LdapCtx getLdapCtxFromUrl(String domain,
+                                             String url,
+                                             LdapURL u,
+                                             Hashtable<?,?> env)
+            throws NamingException
+    {
+        String dn = u.getDN();
+        String host = u.getHost();
+        int port = u.getPort();
+        LdapCtx ctx = new LdapCtx(dn, host, port, env, u.useSsl());
+        ctx.setDomainName(domain);
+        // Record the URL that created the context
+        ctx.setProviderUrl(url);
         return ctx;
     }
 
@@ -202,19 +272,17 @@ final public class LdapCtxFactory implements ObjectFactory, InitialContextFactor
      * Not pretty, but potentially more informative than returning null.
      */
     private static DirContext getUsingURLs(String[] urls, Hashtable<?,?> env)
-            throws NamingException {
-        NamingException ne = null;
-        DirContext ctx = null;
-        for (int i = 0; i < urls.length; i++) {
+            throws NamingException
+    {
+        NamingException ex = null;
+        for (String u : urls) {
             try {
-                return getUsingURL(urls[i], env);
-            } catch (AuthenticationException e) {
-                throw e;
+                return getUsingURL(u, env);
             } catch (NamingException e) {
-                ne = e;
+                ex = e;
             }
         }
-        throw ne;
+        throw ex;
     }
 
     /**
