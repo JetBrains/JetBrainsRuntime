@@ -312,27 +312,10 @@ public class BasicPopupMenuUI extends PopupMenuUI {
      * @since 1.5
      */
     private class BasicMenuKeyListener implements MenuKeyListener {
-        MenuElement menuToOpen = null;
+        JMenuItem menuToOpen = null;
 
         public void menuKeyTyped(MenuKeyEvent e) {
-            if (menuToOpen != null) {
-                // we have a submenu to open
-                JPopupMenu subpopup = ((JMenu)menuToOpen).getPopupMenu();
-                MenuElement subitem = findEnabledChild(
-                        subpopup.getSubElements(), -1, true);
-
-                ArrayList<MenuElement> lst = new ArrayList<MenuElement>(Arrays.asList(e.getPath()));
-                lst.add(menuToOpen);
-                lst.add(subpopup);
-                if (subitem != null) {
-                    lst.add(subitem);
-                }
-                MenuElement newPath[] = new MenuElement[0];
-                newPath = lst.toArray(newPath);
-                MenuSelectionManager.defaultManager().setSelectedPath(newPath);
-                e.consume();
-            }
-            menuToOpen = null;
+            processDelayedAction(e);
         }
 
         public void menuKeyPressed(MenuKeyEvent e) {
@@ -375,19 +358,13 @@ public class BasicPopupMenuUI extends PopupMenuUI {
                 }
             }
 
+            menuToOpen = null;
             if (matches == 0) {
                 // no op
             } else if (matches == 1) {
-                // Invoke the menu action
-                JMenuItem item = (JMenuItem)items[firstMatch];
-                if (item instanceof JMenu) {
-                    // submenus are handled in menuKeyTyped
-                    menuToOpen = item;
-                } else if (item.isEnabled()) {
-                    // we have a menu item
-                    manager.clearSelectedPath();
-                    item.doClick();
-                }
+                // action is performed in menuKeyTyped
+                // (or in menuKeyReleased as a last resort)
+                menuToOpen = (JMenuItem)items[firstMatch];
                 e.consume();
             } else {
                 // Select the menu item with the matching mnemonic. If
@@ -406,6 +383,33 @@ public class BasicPopupMenuUI extends PopupMenuUI {
         }
 
         public void menuKeyReleased(MenuKeyEvent e) {
+            processDelayedAction(e);
+        }
+
+        private void processDelayedAction(MenuKeyEvent e) {
+            if (menuToOpen != null) {
+                if (menuToOpen instanceof JMenu) {
+                    // we have a submenu to open
+                    JPopupMenu subpopup = ((JMenu) menuToOpen).getPopupMenu();
+                    MenuElement subitem = findEnabledChild(
+                            subpopup.getSubElements(), -1, true);
+
+                    ArrayList<MenuElement> lst = new ArrayList<MenuElement>(Arrays.asList(e.getPath()));
+                    lst.add(menuToOpen);
+                    lst.add(subpopup);
+                    if (subitem != null) {
+                        lst.add(subitem);
+                    }
+                    MenuElement newPath[] = new MenuElement[0];
+                    newPath = lst.toArray(newPath);
+                    MenuSelectionManager.defaultManager().setSelectedPath(newPath);
+                } else {
+                    MenuSelectionManager.defaultManager().clearSelectedPath();
+                    menuToOpen.doClick();
+                }
+                e.consume();
+                menuToOpen = null;
+            }
         }
 
         private char lower(char keyChar) {

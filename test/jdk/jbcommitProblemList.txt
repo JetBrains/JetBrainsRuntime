@@ -46,7 +46,6 @@ java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java                    
 java/awt/Graphics/LineClipTest.java                                                         nobug macosx-all,windows-all
 java/awt/Graphics2D/ScaledTransform/ScaledTransform.java                                    nobug macosx-all,linux-all,windows-all
 java/awt/JAWT/JAWT.sh                                                                       nobug linux-all,windows-all
-java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemonicKeyTypedTest.html nobug macosx-all,windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java    nobug macosx-all,windows-all,linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html    nobug windows-all reproduced with Adopt
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java                              nobug windows-all
