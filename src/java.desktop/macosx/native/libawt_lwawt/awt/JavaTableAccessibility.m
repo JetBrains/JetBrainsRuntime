@@ -123,6 +123,7 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
 - (NSString *)accessibilityLabel {
     return [super accessibilityLabel];
 }
+
 /*
 - (nullable NSArray<id<NSAccessibilityRow>> *)accessibilityVisibleRows;
 - (nullable NSArray *)accessibilityColumns;

@@ -67,59 +67,10 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     }
 }
 
-- (NSArray *)accessibilitySelectedChildren {
-    NSArray *children = [super accessibilitySelectedChildren];
-    if (children == NULL) {
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
-        if ([[[self accessibilityParent] javaBase] accessible] == NULL) return nil;
-        jobjectArray jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, [[[self accessibilityParent] javaBase] accessible], [[[self accessibilityParent] javaBase] component], JAVA_AX_SELECTED_CHILDREN, NO);
-        if (jchildrenAndRoles == NULL) return nil;
-
-        jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
-        NSMutableArray *childrenCells = [NSMutableArray arrayWithCapacity:arrayLen/2];
-
-        NSUInteger childIndex = 0;
-        NSInteger i = 0;
-        JavaTableRowAccessibility *selfRow = [self javaBase];
-        for(i; i < arrayLen; i+=2)
-        {
-            jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
-            jobject /* String */ jchildJavaRole = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+1);
-
-            NSString *childJavaRole = nil;
-            if (jchildJavaRole != NULL) {
-                jobject jkey = JNFGetObjectField(env, jchildJavaRole, sjf_key);
-                childJavaRole = JNFJavaToNSString(env, jkey);
-                (*env)->DeleteLocalRef(env, jkey);
-            }
-
-            JavaCellAccessibility *child = [[JavaCellAccessibility alloc] initWithParent:selfRow
-                                                                                 withEnv:env
-                                                                          withAccessible:jchild
-                                                                               withIndex:childIndex
-                                                                                withView:[selfRow view]
-                                                                            withJavaRole:childJavaRole];
-            printf("предпологаемо %d на деле %d\n", [[[self accessibilityParent] javaBase] accessibleRowAtIndex:[[child javaBase] accessibleIndexOfParent]], [self rowNumberInTable]);
-            if ([[[self accessibilityParent] javaBase] accessibleRowAtIndex:[[child javaBase] accessibleIndexOfParent]] == [self rowNumberInTable]) {
-                [childrenCells addObject:[child autorelease].platformAxElement];
-                childIndex++;
-            }
-
-            (*env)->DeleteLocalRef(env, jchild);
-            (*env)->DeleteLocalRef(env, jchildJavaRole);
-        }
-        (*env)->DeleteLocalRef(env, jchildrenAndRoles);
-        return childrenCells;
-    } else {
-        return children;
-    }
-}
-
 - (NSInteger)accessibilityIndex {
         return [[self javaBase] index];
 }
 
-/*
 - (NSString *)accessibilityLabel {
     NSString *accessibilityName = @"";
         for (id cell in [self accessibilityChildren]) {
@@ -131,7 +82,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
         }
         return accessibilityName;
 }
-*/
+
 - (id)accessibilityParent
 {
     return [super accessibilityParent];
