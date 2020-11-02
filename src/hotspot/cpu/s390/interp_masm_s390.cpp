@@ -954,8 +954,7 @@ void InterpreterMacroAssembler::remove_activation(TosState state,
 void InterpreterMacroAssembler::lock_object(Register monitor, Register object) {
 
   if (UseHeavyMonitors) {
-    call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
-            monitor, /*check_for_exceptions=*/false);
+    call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter), monitor);
     return;
   }
 
@@ -1040,9 +1039,7 @@ void InterpreterMacroAssembler::lock_object(Register monitor, Register object) {
   // None of the above fast optimizations worked so we have to get into the
   // slow case of monitor enter.
   bind(slow_case);
-
-  call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
-          monitor, /*check_for_exceptions=*/false);
+  call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter), monitor);
 
   // }
 
