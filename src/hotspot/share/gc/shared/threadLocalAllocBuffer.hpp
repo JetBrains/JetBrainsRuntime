@@ -115,7 +115,8 @@ private:
   static GlobalTLABStats* global_stats() { return _global_stats; }
 
 public:
-  ThreadLocalAllocBuffer() : _allocation_fraction(TLABAllocationWeight), _allocated_before_last_gc(0) {
+  ThreadLocalAllocBuffer() : _allocation_fraction(TLABAllocationWeight), _allocated_before_last_gc(0),
+      _bytes_since_last_sample_point(0) {
     // do nothing.  tlabs must be inited by initialize() calls
   }
 

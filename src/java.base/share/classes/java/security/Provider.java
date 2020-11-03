@@ -1188,7 +1188,10 @@ public abstract class Provider extends Properties {
             String type = getEngineName(typeAndAlg[0]);
             String aliasAlg = typeAndAlg[1].intern();
             ServiceKey key = new ServiceKey(type, stdAlg, true);
-            Service s = legacyMap.get(key);
+            Service s = serviceMap.get(key);
+            if (s == null) {
+                s = legacyMap.get(key);
+            }
             if (s == null) {
                 s = new Service(this);
                 s.type = type;

@@ -1,4 +1,4 @@
-#
+
 # Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -78,12 +78,8 @@ ifneq ($(CREATING_BUILDJDK), true)
   interim-rmic:
 	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f CompileInterimRmic.gmk)
 
-  interim-cldrconverter:
-	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f CopyInterimCLDRConverter.gmk)
-
-interim-tzdb:
+  interim-tzdb:
 	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f CopyInterimTZDB.gmk)
-
 
   buildtools-jdk:
 	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f CompileToolsJdk.gmk)
@@ -96,7 +92,7 @@ interim-tzdb:
 endif
 
 ALL_TARGETS += buildtools-langtools interim-langtools \
-    interim-rmic interim-cldrconverter interim-tzdb buildtools-jdk buildtools-modules \
+    interim-rmic interim-tzdb buildtools-jdk buildtools-modules \
     buildtools-hotspot
 
 ################################################################################
@@ -233,7 +229,7 @@ $(eval $(call DeclareRecipesForPhase, STATIC_LIBS, \
     TARGET_SUFFIX := static-libs, \
     FILE_PREFIX := Lib, \
     MAKE_SUBDIR := lib, \
-    CHECK_MODULES := $(STATIC_LIBS_MODULES), \
+    CHECK_MODULES := $(ALL_MODULES), \
     USE_WRAPPER := true, \
     EXTRA_ARGS := STATIC_LIBS=true, \
 ))
@@ -689,7 +685,7 @@ else
 
   interim-langtools: $(INTERIM_LANGTOOLS_GENSRC_TARGETS)
 
-  buildtools-jdk: interim-langtools interim-cldrconverter interim-tzdb
+  buildtools-jdk: interim-langtools interim-tzdb
 
   buildtools-hotspot: interim-langtools
 
@@ -721,9 +717,13 @@ else
 
   # If not already set, set the JVM variant target so that the JVM will be built.
   JVM_MAIN_LIB_TARGETS ?= hotspot-$(JVM_VARIANT_MAIN)-libs
+  JVM_MAIN_GENSRC_TARGETS ?= hotspot-$(JVM_VARIANT_MAIN)-gensrc
 
   # Building one JVM variant is enough to start building the other libs
   $(LIBS_TARGETS): $(JVM_MAIN_LIB_TARGETS)
+
+  # Static libs depend on hotspot gensrc
+  $(STATIC_LIBS_TARGETS): $(JVM_MAIN_GENSRC_TARGETS)
 
   $(LAUNCHER_TARGETS): java.base-libs
 

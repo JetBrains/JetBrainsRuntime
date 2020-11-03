@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,8 @@ module java.naming {
     exports com.sun.jndi.toolkit.url to
         jdk.naming.dns,
         jdk.naming.rmi;
+    exports com.sun.jndi.ldap to
+        jdk.naming.ldap;
 
     uses javax.naming.ldap.StartTlsResponse;
     uses javax.naming.spi.InitialContextFactory;
@@ -50,4 +52,3 @@ module java.naming {
     provides java.security.Provider with
         sun.security.provider.certpath.ldap.JdkLDAP;
 }
-

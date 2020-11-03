@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,6 @@ package sun.security.util;
 
 import sun.security.validator.Validator;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import java.security.CryptoPrimitive;
 import java.security.AlgorithmParameters;
 import java.security.Key;
@@ -37,6 +35,7 @@ import java.security.cert.CertPathValidatorException.BasicReason;
 import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -60,19 +59,27 @@ import java.util.regex.Matcher;
 public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
     private static final Debug debug = Debug.getInstance("certpath");
 
-    // the known security property, jdk.certpath.disabledAlgorithms
+    // Disabled algorithm security property for certificate path
     public static final String PROPERTY_CERTPATH_DISABLED_ALGS =
             "jdk.certpath.disabledAlgorithms";
 
-    // the known security property, jdk.tls.disabledAlgorithms
+    // Legacy algorithm security property for certificate path and jar
+    public static final String PROPERTY_SECURITY_LEGACY_ALGS =
+            "jdk.security.legacyAlgorithms";
+
+    // Disabled algorithm security property for TLS
     public static final String PROPERTY_TLS_DISABLED_ALGS =
             "jdk.tls.disabledAlgorithms";
 
-    // the known security property, jdk.jar.disabledAlgorithms
+    // Disabled algorithm security property for jar
     public static final String PROPERTY_JAR_DISABLED_ALGS =
             "jdk.jar.disabledAlgorithms";
 
-    private final String[] disabledAlgorithms;
+    // Property for disabled EC named curves
+    private static final String PROPERTY_DISABLED_EC_CURVES =
+            "jdk.disabled.namedCurves";
+
+    private final List<String> disabledAlgorithms;
     private final Constraints algorithmConstraints;
 
     /**
@@ -97,6 +104,24 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
             AlgorithmDecomposer decomposer) {
         super(decomposer);
         disabledAlgorithms = getAlgorithms(propertyName);
+
+        // Check for alias
+        int ecindex = -1, i = 0;
+        for (String s : disabledAlgorithms) {
+            if (s.regionMatches(true, 0,"include ", 0, 8)) {
+                if (s.regionMatches(true, 8, PROPERTY_DISABLED_EC_CURVES, 0,
+                        PROPERTY_DISABLED_EC_CURVES.length())) {
+                    ecindex = i;
+                    break;
+                }
+            }
+            i++;
+        }
+        if (ecindex > -1) {
+            disabledAlgorithms.remove(ecindex);
+            disabledAlgorithms.addAll(ecindex,
+                    getAlgorithms(PROPERTY_DISABLED_EC_CURVES));
+        }
         algorithmConstraints = new Constraints(disabledAlgorithms);
     }
 
@@ -164,6 +189,19 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
 
     public final void permits(String algorithm, ConstraintsParameters cp)
             throws CertPathValidatorException {
+
+        // Check if named curves in the ConstraintParameters are disabled.
+        if (cp.getNamedCurve() != null) {
+            for (String curve : cp.getNamedCurve()) {
+                if (!checkAlgorithm(disabledAlgorithms, curve, decomposer)) {
+                    throw new CertPathValidatorException(
+                            "Algorithm constraints check failed on disabled " +
+                                    "algorithm: " + curve,
+                            null, null, -1, BasicReason.ALGORITHM_CONSTRAINED);
+                }
+            }
+        }
+
         algorithmConstraints.permits(algorithm, cp);
     }
 
@@ -199,6 +237,13 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
             return false;
         }
 
+        // If this is an elliptic curve, check disabled the named curve.
+        for (String curve : ConstraintsParameters.getNamedCurveFromKey(key)) {
+            if (!permits(primitives, curve, null)) {
+                return false;
+            }
+        }
+
         // check the key constraints
         return algorithmConstraints.permits(key);
     }
@@ -230,7 +275,7 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
                     "denyAfter\\s+(\\d{4})-(\\d{2})-(\\d{2})");
         }
 
-        public Constraints(String[] constraintArray) {
+        public Constraints(List<String> constraintArray) {
             for (String constraintEntry : constraintArray) {
                 if (constraintEntry == null || constraintEntry.isEmpty()) {
                     continue;
@@ -246,18 +291,21 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
                 int space = constraintEntry.indexOf(' ');
                 String algorithm = AlgorithmDecomposer.hashName(
                         ((space > 0 ? constraintEntry.substring(0, space) :
-                                constraintEntry).
-                                toUpperCase(Locale.ENGLISH)));
+                                constraintEntry)));
                 List<Constraint> constraintList =
-                        constraintsMap.getOrDefault(algorithm,
+                        constraintsMap.getOrDefault(
+                                algorithm.toUpperCase(Locale.ENGLISH),
                                 new ArrayList<>(1));
 
                 // Consider the impact of algorithm aliases.
                 for (String alias : AlgorithmDecomposer.getAliases(algorithm)) {
-                    constraintsMap.putIfAbsent(alias, constraintList);
+                    constraintsMap.putIfAbsent(
+                            alias.toUpperCase(Locale.ENGLISH), constraintList);
                 }
 
-                if (space <= 0) {
+                // If there is no whitespace, it is a algorithm name; however,
+                // if there is a whitespace, could be a multi-word EC curve too.
+                if (space <= 0 || CurveDB.lookup(constraintEntry) != null) {
                     constraintList.add(new DisabledConstraint(algorithm));
                     continue;
                 }
@@ -344,7 +392,7 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
 
         // Get applicable constraints based off the signature algorithm
         private List<Constraint> getConstraints(String algorithm) {
-            return constraintsMap.get(algorithm);
+            return constraintsMap.get(algorithm.toUpperCase(Locale.ENGLISH));
         }
 
         // Check if KeySizeConstraints permit the specified key
@@ -356,7 +404,7 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
             for (Constraint constraint : list) {
                 if (!constraint.permits(key)) {
                     if (debug != null) {
-                        debug.println("keySizeConstraint: failed key " +
+                        debug.println("Constraints: failed key size" +
                                 "constraint check " + KeyUtil.getKeySize(key));
                     }
                     return false;
@@ -375,7 +423,7 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
             for (Constraint constraint : list) {
                 if (!constraint.permits(aps)) {
                     if (debug != null) {
-                        debug.println("keySizeConstraint: failed algorithm " +
+                        debug.println("Constraints: failed algorithm " +
                                 "parameters constraint check " + aps);
                     }
 
@@ -392,22 +440,22 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
             X509Certificate cert = cp.getCertificate();
 
             if (debug != null) {
-                debug.println("Constraints.permits(): " + algorithm +
-                        " Variant: " + cp.getVariant());
+                debug.println("Constraints.permits(): " + cp.toString());
             }
 
             // Get all signature algorithms to check for constraints
             Set<String> algorithms = new HashSet<>();
             if (algorithm != null) {
                 algorithms.addAll(AlgorithmDecomposer.decomposeOneHash(algorithm));
+                algorithms.add(algorithm);
             }
 
             // Attempt to add the public key algorithm if cert provided
             if (cert != null) {
                 algorithms.add(cert.getPublicKey().getAlgorithm());
             }
-            if (cp.getPublicKey() != null) {
-                algorithms.add(cp.getPublicKey().getAlgorithm());
+            if (cp.getKey() != null) {
+                algorithms.add(cp.getKey().getAlgorithm());
             }
             // Check all applicable constraints
             for (String alg : algorithms) {
@@ -546,10 +594,7 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
          * the constraint denies the operation.
          */
         boolean next(Key key) {
-            if (nextConstraint != null && nextConstraint.permits(key)) {
-                return true;
-            }
-            return false;
+            return nextConstraint != null && nextConstraint.permits(key);
         }
 
         String extendedMsg(ConstraintsParameters cp) {
@@ -799,8 +844,8 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
         public void permits(ConstraintsParameters cp)
                 throws CertPathValidatorException {
             Key key = null;
-            if (cp.getPublicKey() != null) {
-                key = cp.getPublicKey();
+            if (cp.getKey() != null) {
+                key = cp.getKey();
             } else if (cp.getCertificate() != null) {
                 key = cp.getCertificate().getPublicKey();
             }
@@ -900,4 +945,3 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
         }
     }
 }
-

@@ -1,7 +1,7 @@
-From 4f9a0ded48f51bdfb3ed7cc18df812c456d48a8c Mon Sep 17 00:00:00 2001
+From 3b899c25e7ff58ce8b0e04e537507f64a5b1c87d Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:09:39 +0100
-Subject: [PATCH 01/50] Apply basic dcevm11 patch
+Subject: [PATCH 01/13] Apply basic dcevm11 patch
 
 ---
  src/hotspot/share/ci/ciObjectFactory.cpp      |   25 +
@@ -14,8 +14,9 @@ Subject: [PATCH 01/50] Apply basic dcevm11 patch
  .../share/classfile/classLoaderExt.cpp        |    1 +
  src/hotspot/share/classfile/dictionary.cpp    |   46 +-
  src/hotspot/share/classfile/dictionary.hpp    |   10 +
- src/hotspot/share/classfile/javaClasses.cpp   |   51 +
- src/hotspot/share/classfile/javaClasses.hpp   |   52 +-
+ src/hotspot/share/classfile/javaClasses.cpp   |   63 +
+ src/hotspot/share/classfile/javaClasses.hpp   |   54 +-
+ .../share/classfile/javaClasses.inline.hpp    |    8 +
  src/hotspot/share/classfile/klassFactory.cpp  |    3 +
  src/hotspot/share/classfile/klassFactory.hpp  |    1 +
  .../share/classfile/loaderConstraints.cpp     |   15 +-
@@ -66,7 +67,7 @@ Subject: [PATCH 01/50] Apply basic dcevm11 patch
  src/hotspot/share/runtime/mutexLocker.cpp     |    5 +-
  src/hotspot/share/runtime/mutexLocker.hpp     |    2 +
  src/hotspot/share/runtime/reflection.cpp      |    6 +
- 62 files changed, 3530 insertions(+), 74 deletions(-)
+ 63 files changed, 3552 insertions(+), 74 deletions(-)
  create mode 100644 src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
  create mode 100644 src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 
@@ -125,7 +126,7 @@ index 1063c9853e1..3e9d48c4cdc 100644
  
  #endif // SHARE_VM_CI_CIOBJECTFACTORY_HPP
 diff --git a/src/hotspot/share/classfile/classFileParser.cpp b/src/hotspot/share/classfile/classFileParser.cpp
-index 0d4862dd449..ea150df9104 100644
+index bf8ac6f3b17..cd8f517e8be 100644
 --- a/src/hotspot/share/classfile/classFileParser.cpp
 +++ b/src/hotspot/share/classfile/classFileParser.cpp
 @@ -954,6 +954,8 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
@@ -158,7 +159,7 @@ index 0d4862dd449..ea150df9104 100644
      }
    }
  
-@@ -5792,6 +5797,7 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
+@@ -5793,6 +5798,7 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
                                   const InstanceKlass* host_klass,
                                   GrowableArray<Handle>* cp_patches,
                                   Publicity pub_level,
@@ -166,7 +167,7 @@ index 0d4862dd449..ea150df9104 100644
                                   TRAPS) :
    _stream(stream),
    _requested_name(name),
-@@ -5850,7 +5856,8 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
+@@ -5851,7 +5857,8 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
    _has_finalizer(false),
    _has_empty_finalizer(false),
    _has_vanilla_constructor(false),
@@ -176,7 +177,7 @@ index 0d4862dd449..ea150df9104 100644
  
    _class_name = name != NULL ? name : vmSymbols::unknown_class_name();
  
-@@ -6251,14 +6258,15 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
+@@ -6252,14 +6259,15 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
          CHECK);
      }
      Handle loader(THREAD, _loader_data->class_loader());
@@ -235,7 +236,7 @@ index 9f7204be9b6..3db14b678f3 100644
    ReferenceType reference_type() const { return _rt; }
    AccessFlags access_flags() const { return _access_flags; }
 diff --git a/src/hotspot/share/classfile/classLoader.cpp b/src/hotspot/share/classfile/classLoader.cpp
-index 2c73ef93934..28ed54b93e1 100644
+index d4f7d92b19c..599ce40a2c5 100644
 --- a/src/hotspot/share/classfile/classLoader.cpp
 +++ b/src/hotspot/share/classfile/classLoader.cpp
 @@ -1501,6 +1501,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
@@ -448,7 +449,7 @@ index d26f1f11fb4..fd4b134d7a7 100644
  
  // An entry in the class loader data dictionaries, this describes a class as
 diff --git a/src/hotspot/share/classfile/javaClasses.cpp b/src/hotspot/share/classfile/javaClasses.cpp
-index 438e7aa4ec9..a89443d22ea 100644
+index 438e7aa4ec9..ea0588e5388 100644
 --- a/src/hotspot/share/classfile/javaClasses.cpp
 +++ b/src/hotspot/share/classfile/javaClasses.cpp
 @@ -2443,6 +2443,8 @@ void java_lang_Throwable::fill_in_stack_trace(Handle throwable, const methodHand
@@ -460,7 +461,7 @@ index 438e7aa4ec9..a89443d22ea 100644
      if (method->is_hidden()) {
        if (skip_hidden)  continue;
      }
-@@ -3625,6 +3627,50 @@ void java_lang_invoke_DirectMethodHandle::serialize_offsets(SerializeClosure* f)
+@@ -3625,6 +3627,62 @@ void java_lang_invoke_DirectMethodHandle::serialize_offsets(SerializeClosure* f)
  }
  #endif
  
@@ -478,13 +479,19 @@ index 438e7aa4ec9..a89443d22ea 100644
 +  dmh->long_field_put(_static_offset_offset, static_offset);
 +}
 +
++#define DIRECTMETHODHANDLE_STATIC_ACCESSOR_FIELDS_DO(macro) \
++  macro(_static_offset_offset, k, vmSymbols::static_offset_name(), long_signature, false)
 +
 +void java_lang_invoke_DirectMethodHandle_StaticAccessor::compute_offsets() {
-+  Klass* klass_oop = SystemDictionary::DirectMethodHandle_StaticAccessor_klass();
-+  if (klass_oop != NULL) {
-+    compute_offset(_static_offset_offset, InstanceKlass::cast(klass_oop), vmSymbols::static_offset_name(), vmSymbols::long_signature());
-+  }
++  InstanceKlass* k = SystemDictionary::DirectMethodHandle_StaticAccessor_klass();
++  DIRECTMETHODHANDLE_STATIC_ACCESSOR_FIELDS_DO(FIELD_COMPUTE_OFFSET);
 +}
++
++#if INCLUDE_CDS
++void java_lang_invoke_DirectMethodHandle_StaticAccessor::serialize_offsets(SerializeClosure* f) {
++  DIRECTMETHODHANDLE_STATIC_ACCESSOR_FIELDS_DO(FIELD_SERIALIZE_OFFSET);
++}
++#endif
 +
 +// Support for java_lang_invoke_DirectMethodHandle$Accessor
 +
@@ -500,18 +507,24 @@ index 438e7aa4ec9..a89443d22ea 100644
 +  dmh->int_field_put(_field_offset_offset, field_offset);
 +}
 +
++#define DIRECTMETHODHANDLE_ACCESSOR_FIELDS_DO(macro) \
++  macro(_field_offset_offset, k, vmSymbols::field_offset_name(), int_signature, false)
 +
 +void java_lang_invoke_DirectMethodHandle_Accessor::compute_offsets() {
-+  Klass* klass_oop = SystemDictionary::DirectMethodHandle_Accessor_klass();
-+  if (klass_oop != NULL) {
-+    compute_offset(_field_offset_offset, InstanceKlass::cast(klass_oop), vmSymbols::field_offset_name(), vmSymbols::int_signature());
-+  }
++  InstanceKlass* k = SystemDictionary::DirectMethodHandle_Accessor_klass();
++  DIRECTMETHODHANDLE_ACCESSOR_FIELDS_DO(FIELD_COMPUTE_OFFSET);
 +}
++
++#if INCLUDE_CDS
++void java_lang_invoke_DirectMethodHandle_Accessor::serialize_offsets(SerializeClosure* f) {
++  DIRECTMETHODHANDLE_ACCESSOR_FIELDS_DO(FIELD_SERIALIZE_OFFSET);
++}
++#endif
 +
  // Support for java_lang_invoke_MethodHandle
  
  int java_lang_invoke_MethodHandle::_type_offset;
-@@ -3811,6 +3857,11 @@ void java_lang_invoke_ResolvedMethodName::set_vmtarget(oop resolved_method, Meth
+@@ -3811,6 +3869,11 @@ void java_lang_invoke_ResolvedMethodName::set_vmtarget(oop resolved_method, Meth
    resolved_method->address_field_put(_vmtarget_offset, (address)m);
  }
  
@@ -524,10 +537,19 @@ index 438e7aa4ec9..a89443d22ea 100644
    // lookup ResolvedMethod oop in the table, or create a new one and intern it
    oop resolved_method = ResolvedMethodTable::find_method(m());
 diff --git a/src/hotspot/share/classfile/javaClasses.hpp b/src/hotspot/share/classfile/javaClasses.hpp
-index bd9cdca3fe3..ceb1670df5d 100644
+index bd9cdca3fe3..da004d1b307 100644
 --- a/src/hotspot/share/classfile/javaClasses.hpp
 +++ b/src/hotspot/share/classfile/javaClasses.hpp
-@@ -253,10 +253,10 @@ class java_lang_Class : AllStatic {
+@@ -67,6 +67,8 @@
+   f(java_lang_invoke_LambdaForm) \
+   f(java_lang_invoke_MethodType) \
+   f(java_lang_invoke_CallSite) \
++  f(java_lang_invoke_DirectMethodHandle_StaticAccessor) \
++  f(java_lang_invoke_DirectMethodHandle_Accessor) \
+   f(java_lang_invoke_MethodHandleNatives_CallSiteContext) \
+   f(java_security_AccessControlContext) \
+   f(java_lang_reflect_AccessibleObject) \
+@@ -253,10 +255,10 @@ class java_lang_Class : AllStatic {
    static void set_init_lock(oop java_class, oop init_lock);
    static void set_protection_domain(oop java_class, oop protection_domain);
    static void set_class_loader(oop java_class, oop class_loader);
@@ -539,7 +561,7 @@ index bd9cdca3fe3..ceb1670df5d 100644
    static void allocate_fixup_lists();
    static void compute_offsets();
  
-@@ -1055,6 +1055,55 @@ class java_lang_invoke_DirectMethodHandle: AllStatic {
+@@ -1055,6 +1057,55 @@ class java_lang_invoke_DirectMethodHandle: AllStatic {
    static int member_offset_in_bytes()           { return _member_offset; }
  };
  
@@ -562,9 +584,9 @@ index bd9cdca3fe3..ceb1670df5d 100644
 +  static bool is_subclass(Klass* klass) {
 +    return klass->is_subclass_of(SystemDictionary::DirectMethodHandle_StaticAccessor_klass());
 +  }
-+  static bool is_instance(oop obj) {
-+    return obj != NULL && is_subclass(obj->klass());
-+  }
++  static bool is_instance(oop obj);
++
++  static void serialize_offsets(SerializeClosure* f) NOT_CDS_RETURN;
 +};
 +
 +// Interface to java.lang.invoke.DirectMethodHandle$Accessor objects
@@ -586,16 +608,16 @@ index bd9cdca3fe3..ceb1670df5d 100644
 +  static bool is_subclass(Klass* klass) {
 +    return klass->is_subclass_of(SystemDictionary::DirectMethodHandle_Accessor_klass());
 +  }
-+  static bool is_instance(oop obj) {
-+    return obj != NULL && is_subclass(obj->klass());
-+  }
++  static bool is_instance(oop obj);
++
++  static void serialize_offsets(SerializeClosure* f) NOT_CDS_RETURN;
 +};
 +
 +
  // Interface to java.lang.invoke.LambdaForm objects
  // (These are a private interface for managing adapter code generation.)
  
-@@ -1106,6 +1155,7 @@ class java_lang_invoke_ResolvedMethodName : AllStatic {
+@@ -1106,6 +1157,7 @@ class java_lang_invoke_ResolvedMethodName : AllStatic {
  
    static Method* vmtarget(oop resolved_method);
    static void set_vmtarget(oop resolved_method, Method* method);
@@ -603,6 +625,25 @@ index bd9cdca3fe3..ceb1670df5d 100644
  
    // find or create resolved member name
    static oop find_resolved_method(const methodHandle& m, TRAPS);
+diff --git a/src/hotspot/share/classfile/javaClasses.inline.hpp b/src/hotspot/share/classfile/javaClasses.inline.hpp
+index 6c5787f4b70..ba9cffa8c62 100644
+--- a/src/hotspot/share/classfile/javaClasses.inline.hpp
++++ b/src/hotspot/share/classfile/javaClasses.inline.hpp
+@@ -175,6 +175,14 @@ inline bool java_lang_invoke_DirectMethodHandle::is_instance(oop obj) {
+   return obj != NULL && is_subclass(obj->klass());
+ }
+ 
++inline bool java_lang_invoke_DirectMethodHandle_StaticAccessor::is_instance(oop obj) {
++  return obj != NULL && is_subclass(obj->klass());
++}
++
++inline bool java_lang_invoke_DirectMethodHandle_Accessor::is_instance(oop obj) {
++  return obj != NULL && is_subclass(obj->klass());
++}
++
+ inline bool java_lang_Module::is_instance(oop obj) {
+   return obj != NULL && obj->klass() == SystemDictionary::Module_klass();
+ }
 diff --git a/src/hotspot/share/classfile/klassFactory.cpp b/src/hotspot/share/classfile/klassFactory.cpp
 index 3614480f16b..355016c8f61 100644
 --- a/src/hotspot/share/classfile/klassFactory.cpp
@@ -898,7 +939,7 @@ index d38dd0fd003..717f34ce9a0 100644
                                                  Handle class_loader,
                                                  InstanceKlass* k, TRAPS);
 diff --git a/src/hotspot/share/classfile/systemDictionaryShared.cpp b/src/hotspot/share/classfile/systemDictionaryShared.cpp
-index ed75ecd9261..1f1441f3ffb 100644
+index ad638e26579..32de261588a 100644
 --- a/src/hotspot/share/classfile/systemDictionaryShared.cpp
 +++ b/src/hotspot/share/classfile/systemDictionaryShared.cpp
 @@ -520,7 +520,7 @@ InstanceKlass* SystemDictionaryShared::find_or_load_shared_class(
@@ -936,10 +977,10 @@ index 05239c57866..c1357bde0ed 100644
    methodHandle        _method; // current method being verified
    VerificationType    _this_type; // the verification type of the current class
 diff --git a/src/hotspot/share/classfile/vmSymbols.hpp b/src/hotspot/share/classfile/vmSymbols.hpp
-index 73645b42857..e2bac31b27f 100644
+index 37b68a27962..6e0b95ef5e8 100644
 --- a/src/hotspot/share/classfile/vmSymbols.hpp
 +++ b/src/hotspot/share/classfile/vmSymbols.hpp
-@@ -284,6 +284,8 @@
+@@ -286,6 +286,8 @@
    template(java_lang_invoke_CallSite,                 "java/lang/invoke/CallSite")                \
    template(java_lang_invoke_ConstantCallSite,         "java/lang/invoke/ConstantCallSite")        \
    template(java_lang_invoke_DirectMethodHandle,       "java/lang/invoke/DirectMethodHandle")      \
@@ -948,7 +989,7 @@ index 73645b42857..e2bac31b27f 100644
    template(java_lang_invoke_MutableCallSite,          "java/lang/invoke/MutableCallSite")         \
    template(java_lang_invoke_VolatileCallSite,         "java/lang/invoke/VolatileCallSite")        \
    template(java_lang_invoke_MethodHandle,             "java/lang/invoke/MethodHandle")            \
-@@ -444,6 +446,12 @@
+@@ -446,6 +448,12 @@
    template(module_entry_name,                         "module_entry")                             \
    template(resolved_references_name,                  "<resolved_references>")                    \
    template(init_lock_name,                            "<init_lock>")                              \
@@ -1878,7 +1919,7 @@ index 2a93500b794..2a9eb978b43 100644
  
    // RedefineClasses support
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index 9ba36f2de3f..8a262bc3735 100644
+index d48d4bd6fb5..7e44092f39b 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -832,7 +832,8 @@ bool InstanceKlass::link_class_impl(bool throw_verifyerror, TRAPS) {
@@ -2145,10 +2186,10 @@ index b77a19deb38..5573b10f021 100644
    // Compiler support
    static ByteSize super_offset()                 { return in_ByteSize(offset_of(Klass, _super)); }
 diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
-index 7ca9b4b90ca..bee69f9cec6 100644
+index 916772c0b10..ed6f769bf1b 100644
 --- a/src/hotspot/share/oops/method.cpp
 +++ b/src/hotspot/share/oops/method.cpp
-@@ -1405,6 +1405,8 @@ methodHandle Method::clone_with_new_data(const methodHandle& m, u_char* new_code
+@@ -1402,6 +1402,8 @@ methodHandle Method::clone_with_new_data(const methodHandle& m, u_char* new_code
  
    // Reset correct method/const method, method size, and parameter info
    newm->set_constMethod(newcm);
@@ -2157,7 +2198,7 @@ index 7ca9b4b90ca..bee69f9cec6 100644
    newm->constMethod()->set_code_size(new_code_length);
    newm->constMethod()->set_constMethod_size(new_const_method_size);
    assert(newm->code_size() == new_code_length, "check");
-@@ -2099,6 +2101,10 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
+@@ -2096,6 +2098,10 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
  
  // Add a method id to the jmethod_ids
  jmethodID Method::make_jmethod_id(ClassLoaderData* loader_data, Method* m) {
@@ -4894,10 +4935,10 @@ index c071e0641d4..a9057893368 100644
  }
  #endif // INCLUDE_JVMTI
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index 740c44cded4..ca57b524593 100644
+index 3e7d48ad5a3..a11dfe48dd6 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
-@@ -2035,6 +2035,36 @@ unsigned int addopens_count = 0;
+@@ -2033,6 +2033,36 @@ unsigned int addopens_count = 0;
  unsigned int addmods_count = 0;
  unsigned int patch_mod_count = 0;
  
@@ -4934,7 +4975,7 @@ index 740c44cded4..ca57b524593 100644
  // Check the consistency of vm_init_args
  bool Arguments::check_vm_args_consistency() {
    // Method for adding checks for flag consistency.
-@@ -2051,6 +2081,8 @@ bool Arguments::check_vm_args_consistency() {
+@@ -2049,6 +2079,8 @@ bool Arguments::check_vm_args_consistency() {
      status = false;
    }
  
@@ -4944,10 +4985,10 @@ index 740c44cded4..ca57b524593 100644
  #if INCLUDE_NMT
      if (MemTracker::tracking_level() == NMT_off) {
 diff --git a/src/hotspot/share/runtime/arguments.hpp b/src/hotspot/share/runtime/arguments.hpp
-index 72bfd2bf9e3..46450cce5c9 100644
+index bd439aab073..cc7f71a4404 100644
 --- a/src/hotspot/share/runtime/arguments.hpp
 +++ b/src/hotspot/share/runtime/arguments.hpp
-@@ -505,6 +505,7 @@ class Arguments : AllStatic {
+@@ -506,6 +506,7 @@ class Arguments : AllStatic {
    static bool process_settings_file(const char* file_name, bool should_exist, jboolean ignore_unrecognized);
  
    static size_t conservative_max_heap_alignment() { return _conservative_max_heap_alignment; }
@@ -4956,7 +4997,7 @@ index 72bfd2bf9e3..46450cce5c9 100644
    static size_t max_heap_for_compressed_oops();
  
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index 6b5713be433..f3cf08fffb6 100644
+index 1e2408b4ba7..ab5d08390ff 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
 @@ -2671,7 +2671,11 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
@@ -5062,5 +5103,5 @@ index a49b5108821..ed789b0bc2b 100644
    // field's access bits are "access".  We assume that we've already verified
    // that current_class can access member_class.
 -- 
-2.24.3 (Apple Git-128)
+2.23.0
 

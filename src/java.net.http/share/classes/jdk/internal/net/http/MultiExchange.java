@@ -284,7 +284,8 @@ class MultiExchange<T> {
                 result.complete(this.response);
             }
         });
-        return result;
+        // ensure that the connection is closed or returned to the pool.
+        return result.whenComplete(exch::nullBody);
     }
 
     private CompletableFuture<HttpResponse<T>>

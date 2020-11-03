@@ -627,6 +627,15 @@ public final class SSLSocketImpl
             }
         }
 
+        // Deliver the user_canceled alert and the close notify alert.
+        closeNotify(useUserCanceled);
+
+        if (!isInputShutdown()) {
+            bruteForceCloseInput(hasCloseReceipt);
+        }
+    }
+
+    void closeNotify(boolean useUserCanceled) throws IOException {
         // Need a lock here so that the user_canceled alert and the
         // close_notify alert can be delivered together.
         try {
@@ -647,10 +656,6 @@ public final class SSLSocketImpl
             if ((autoClose || !isLayered()) && !super.isOutputShutdown()) {
                 super.shutdownOutput();
             }
-        }
-
-        if (!isInputShutdown()) {
-            bruteForceCloseInput(hasCloseReceipt);
         }
     }
 

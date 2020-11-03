@@ -25,7 +25,7 @@
  * @test TestWBGC
  * @bug 8055098
  * @summary Test verify that WB methods isObjectInOldGen and youngGC works correctly.
- * @requires vm.gc != "Z"
+ * @requires vm.gc != "Z" & vm.gc != "Shenandoah"
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management

@@ -134,10 +134,10 @@ public class ElementStructureTest {
         (byte) 0x0C, (byte) 0x2D, (byte) 0x3A, (byte) 0x7C
     };
     static final byte[] hash8 = new byte[] {
-        (byte) 0x44, (byte) 0x77, (byte) 0x6E, (byte) 0x52,
-        (byte) 0x2B, (byte) 0x16, (byte) 0xD3, (byte) 0x3C,
-        (byte) 0x78, (byte) 0x75, (byte) 0xF5, (byte) 0x0A,
-        (byte) 0x01, (byte) 0x24, (byte) 0xBD, (byte) 0x2A
+        (byte) 0xCD, (byte) 0x1C, (byte) 0x27, (byte) 0xDD,
+        (byte) 0x63, (byte) 0x9C, (byte) 0xAE, (byte) 0xBF,
+        (byte) 0x1D, (byte) 0x56, (byte) 0xF0, (byte) 0x8D,
+        (byte) 0x71, (byte) 0x3B, (byte) 0x3B, (byte) 0xE2
     };
 
     final static Map<String, byte[]> version2Hash = new HashMap<>();

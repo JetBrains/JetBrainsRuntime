@@ -121,9 +121,9 @@ public class AlgorithmId implements Serializable, DerEncoder {
     }
 
     protected void decodeParams() throws IOException {
-        String algidString = algid.toString();
+        String algidName = getName();
         try {
-            algParams = AlgorithmParameters.getInstance(algidString);
+            algParams = AlgorithmParameters.getInstance(algidName);
         } catch (NoSuchAlgorithmException e) {
             /*
              * This algorithm parameter type is not supported, so we cannot
@@ -1070,6 +1070,8 @@ public class AlgorithmId implements Serializable, DerEncoder {
             case "RSA":
                 return ifcFfcStrength(KeyUtil.getKeySize(k))
                     + "withRSA";
+            case "RSASSA-PSS":
+                return "RSASSA-PSS";
             default:
                 return null;
         }

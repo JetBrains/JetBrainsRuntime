@@ -85,21 +85,24 @@ class ProtectionDomainCacheEntry;
 class GCTimer;
 class OopStorage;
 
-// Certain classes are preloaded, such as java.lang.Object and java.lang.String.
-// They are all "well-known", in the sense that no class loader is allowed
+#define WK_KLASS_ENUM_NAME(kname)    kname##_knum
+
+// Certain classes, such as java.lang.Object and java.lang.String,
+// are "well-known", in the sense that no class loader is allowed
 // to provide a different definition.
 //
-// These klasses must all have names defined in vmSymbols.
-
-#define WK_KLASS_ENUM_NAME(kname)    kname##_knum
 
 // Each well-known class has a short klass name (like object_klass),
 // a vmSymbol name (like java_lang_Object), and a flag word
 // that makes some minor distinctions, like whether the klass
 // is preloaded, optional, release-specific, etc.
-// The order of these definitions is significant; it is the order in which
-// preloading is actually performed by initialize_preloaded_classes.
 
+//
+// The order of these definitions is significant: the classes are
+// resolved during early VM start-up by resolve_well_known_classes
+// in this order. Changing the order may require careful restructuring
+// of the VM start-up sequence.
+//
 #define WK_KLASSES_DO(do_klass)                                                                                          \
   /* well-known classes */                                                                                               \
   do_klass(Object_klass,                                java_lang_Object,                          Pre                 ) \
@@ -129,7 +132,7 @@ class OopStorage;
   do_klass(IllegalMonitorStateException_klass,          java_lang_IllegalMonitorStateException,    Pre                 ) \
   do_klass(Reference_klass,                             java_lang_ref_Reference,                   Pre                 ) \
                                                                                                                          \
-  /* Preload ref klasses and set reference types */                                                                      \
+  /* ref klasses and set reference types */                                                                              \
   do_klass(SoftReference_klass,                         java_lang_ref_SoftReference,               Pre                 ) \
   do_klass(WeakReference_klass,                         java_lang_ref_WeakReference,               Pre                 ) \
   do_klass(FinalReference_klass,                        java_lang_ref_FinalReference,              Pre                 ) \
@@ -202,7 +205,7 @@ class OopStorage;
   /* support for stack dump lock analysis */                                                                             \
   do_klass(java_util_concurrent_locks_AbstractOwnableSynchronizer_klass, java_util_concurrent_locks_AbstractOwnableSynchronizer, Pre ) \
                                                                                                                          \
-  /* Preload boxing klasses */                                                                                           \
+  /* boxing klasses */                                                                                           \
   do_klass(Boolean_klass,                               java_lang_Boolean,                         Pre                 ) \
   do_klass(Character_klass,                             java_lang_Character,                       Pre                 ) \
   do_klass(Float_klass,                                 java_lang_Float,                           Pre                 ) \
@@ -405,7 +408,8 @@ public:
   // Initialization
   static void initialize(TRAPS);
 
-  // Checked fast access to commonly used classes - mostly preloaded
+  // Checked fast access to the well-known classes -- so that you don't try to use them
+  // before they are resolved.
   static InstanceKlass* check_klass(InstanceKlass* k) {
     assert(k != NULL, "klass not loaded");
     return k;
@@ -416,11 +420,11 @@ public:
 
   JVMCI_ONLY(static InstanceKlass* check_klass_Jvmci(InstanceKlass* k) { return k; })
 
-  static bool initialize_wk_klass(WKID id, int init_opt, TRAPS);
-  static void initialize_wk_klasses_until(WKID limit_id, WKID &start_id, TRAPS);
-  static void initialize_wk_klasses_through(WKID end_id, WKID &start_id, TRAPS) {
+  static bool resolve_wk_klass(WKID id, int init_opt, TRAPS);
+  static void resolve_wk_klasses_until(WKID limit_id, WKID &start_id, TRAPS);
+  static void resolve_wk_klasses_through(WKID end_id, WKID &start_id, TRAPS) {
     int limit = (int)end_id + 1;
-    initialize_wk_klasses_until((WKID) limit, start_id, THREAD);
+    resolve_wk_klasses_until((WKID) limit, start_id, THREAD);
   }
 
 public:
@@ -451,6 +455,12 @@ public:
     return check_klass(_box_klasses[t]);
   }
   static BasicType box_klass_type(Klass* k);  // inverse of box_klass
+#ifdef ASSERT
+  static bool is_well_known_klass(Klass* k) {
+    return is_well_known_klass(k->name());
+  }
+  static bool is_well_known_klass(Symbol* class_name);
+#endif
 
 protected:
   // Returns the class loader data to be used when looking up/updating the
@@ -707,8 +717,8 @@ protected:
                                   ClassLoaderData* loader_data,
                                   TRAPS);
 
-  // Initialization
-  static void initialize_preloaded_classes(TRAPS);
+  // Resolve well-known classes so they can be used like SystemDictionary::String_klass()
+  static void resolve_well_known_classes(TRAPS);
 
   // Class loader constraints
   static void check_constraints(unsigned int hash,
@@ -719,7 +729,6 @@ protected:
                                 InstanceKlass* k, Handle loader,
                                 TRAPS);
 
-  // Variables holding commonly used klasses (preloaded)
   static InstanceKlass* _well_known_klasses[];
 
   // table of box klasses (int_klass, etc.)

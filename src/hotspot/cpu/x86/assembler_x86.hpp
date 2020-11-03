@@ -957,6 +957,9 @@ private:
   void aesenc(XMMRegister dst, XMMRegister src);
   void aesenclast(XMMRegister dst, Address src);
   void aesenclast(XMMRegister dst, XMMRegister src);
+  // Vector AES instructions
+  void vaesenc(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len);
+  void vaesenclast(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len);
   void vaesdec(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len);
   void vaesdeclast(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len);
 
@@ -1101,6 +1104,15 @@ private:
   void cvttss2siq(Register dst, XMMRegister src);
 
   void cvttpd2dq(XMMRegister dst, XMMRegister src);
+
+  //Abs of packed Integer values
+  void pabsb(XMMRegister dst, XMMRegister src);
+  void pabsw(XMMRegister dst, XMMRegister src);
+  void pabsd(XMMRegister dst, XMMRegister src);
+  void vpabsb(XMMRegister dst, XMMRegister src, int vector_len);
+  void vpabsw(XMMRegister dst, XMMRegister src, int vector_len);
+  void vpabsd(XMMRegister dst, XMMRegister src, int vector_len);
+  void evpabsq(XMMRegister dst, XMMRegister src, int vector_len);
 
   // Divide Scalar Double-Precision Floating-Point Values
   void divsd(XMMRegister dst, Address src);
@@ -1583,6 +1595,7 @@ private:
   // Pemutation of 64bit words
   void vpermq(XMMRegister dst, XMMRegister src, int imm8, int vector_len);
   void vpermq(XMMRegister dst, XMMRegister src, int imm8);
+  void vpermq(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len);
   void vperm2i128(XMMRegister dst,  XMMRegister nds, XMMRegister src, int imm8);
   void vperm2f128(XMMRegister dst, XMMRegister nds, XMMRegister src, int imm8);
   void evpermi2q(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len);
@@ -1661,6 +1674,10 @@ private:
   void vpmovzxwd(XMMRegister dst, XMMRegister src, int vector_len);
 
   void evpmovdb(Address dst, XMMRegister src, int vector_len);
+
+  // Sign extend moves
+  void pmovsxbw(XMMRegister dst, XMMRegister src);
+  void vpmovsxbw(XMMRegister dst, XMMRegister src, int vector_len);
 
 #ifndef _LP64 // no 32bit push/pop on amd64
   void popl(Address dst);
@@ -2049,6 +2066,7 @@ private:
   void vpsllw(XMMRegister dst, XMMRegister src, XMMRegister shift, int vector_len);
   void vpslld(XMMRegister dst, XMMRegister src, XMMRegister shift, int vector_len);
   void vpsllq(XMMRegister dst, XMMRegister src, XMMRegister shift, int vector_len);
+  void vpslldq(XMMRegister dst, XMMRegister src, int shift, int vector_len);
 
   // Logical shift right packed integers
   void psrlw(XMMRegister dst, int shift);
@@ -2063,6 +2081,7 @@ private:
   void vpsrlw(XMMRegister dst, XMMRegister src, XMMRegister shift, int vector_len);
   void vpsrld(XMMRegister dst, XMMRegister src, XMMRegister shift, int vector_len);
   void vpsrlq(XMMRegister dst, XMMRegister src, XMMRegister shift, int vector_len);
+  void vpsrldq(XMMRegister dst, XMMRegister src, int shift, int vector_len);
   void evpsrlvw(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len);
   void evpsllvw(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len);
 
@@ -2075,6 +2094,8 @@ private:
   void vpsrad(XMMRegister dst, XMMRegister src, int shift, int vector_len);
   void vpsraw(XMMRegister dst, XMMRegister src, XMMRegister shift, int vector_len);
   void vpsrad(XMMRegister dst, XMMRegister src, XMMRegister shift, int vector_len);
+  void evpsraq(XMMRegister dst, XMMRegister src, int shift, int vector_len);
+  void evpsraq(XMMRegister dst, XMMRegister src, XMMRegister shift, int vector_len);
 
   // And packed integers
   void pand(XMMRegister dst, XMMRegister src);

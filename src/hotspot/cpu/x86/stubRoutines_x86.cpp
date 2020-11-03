@@ -38,9 +38,18 @@ address StubRoutines::x86::_key_shuffle_mask_addr = NULL;
 address StubRoutines::x86::_counter_shuffle_mask_addr = NULL;
 address StubRoutines::x86::_ghash_long_swap_mask_addr = NULL;
 address StubRoutines::x86::_ghash_byte_swap_mask_addr = NULL;
+address StubRoutines::x86::_ghash_poly_addr = NULL;
+address StubRoutines::x86::_ghash_shuffmask_addr = NULL;
 address StubRoutines::x86::_upper_word_mask_addr = NULL;
 address StubRoutines::x86::_shuffle_byte_flip_mask_addr = NULL;
 address StubRoutines::x86::_k256_adr = NULL;
+address StubRoutines::x86::_vector_short_to_byte_mask = NULL;
+address StubRoutines::x86::_vector_float_sign_mask = NULL;
+address StubRoutines::x86::_vector_float_sign_flip = NULL;
+address StubRoutines::x86::_vector_double_sign_mask = NULL;
+address StubRoutines::x86::_vector_double_sign_flip = NULL;
+address StubRoutines::x86::_vector_byte_perm_mask = NULL;
+address StubRoutines::x86::_vector_long_sign_mask = NULL;
 #ifdef _LP64
 address StubRoutines::x86::_k256_W_adr = NULL;
 address StubRoutines::x86::_k512_W_addr = NULL;
@@ -53,7 +62,7 @@ address StubRoutines::x86::_right_shift_mask = NULL;
 address StubRoutines::x86::_left_shift_mask = NULL;
 address StubRoutines::x86::_and_mask = NULL;
 address StubRoutines::x86::_url_charset = NULL;
-
+address StubRoutines::x86::_counter_mask_addr = NULL;
 #endif
 address StubRoutines::x86::_pshuffle_byte_flip_mask_addr = NULL;
 
