@@ -150,7 +150,7 @@ cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || do_exit
   if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
   cp -a ${JCEF_PATH}/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 fi
-if [ "${bundle_type}" == "jcef" ] || [ "{$bundle_type}" == "fd" ]; then
+if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
   echo Creating $JBSDK.tar.gz ...
   sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
