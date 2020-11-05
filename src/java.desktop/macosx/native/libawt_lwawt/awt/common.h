@@ -39,7 +39,8 @@ enum GradCycleMethod {
 };
 enum VertexAttributes {
     VertexAttributePosition = 0,
-    VertexAttributeTexPos = 1
+    VertexAttributeTexPos = 1,
+    VertexAttributeITexPos = 2
 };
 
 enum BufferIndex  {
@@ -88,6 +89,12 @@ struct Vertex {
 struct TxtVertex {
     float position[2];
     float txtpos[2];
+};
+
+struct AAVertex {
+    float position[2];
+    float otxtpos[2];
+    float itxtpos[2];
 };
 
 // These values are mapped from AffineTransformOp

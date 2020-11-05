@@ -511,7 +511,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jfloat lwr21 = NEXT_FLOAT(b);
                     jfloat lwr12 = NEXT_FLOAT(b);
 
-                    MTLRenderer_DrawParallelogram(mtlc, dstOps, JNI_FALSE,
+                    MTLRenderer_DrawParallelogram(mtlc, dstOps,
                                                   x11, y11,
                                                   dx21, dy21,
                                                   dx12, dy12,
@@ -530,7 +530,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jfloat lwr21 = NEXT_FLOAT(b);
                     jfloat lwr12 = NEXT_FLOAT(b);
 
-                    MTLRenderer_DrawParallelogram(mtlc, dstOps, JNI_TRUE,
+                    MTLRenderer_DrawAAParallelogram(mtlc, dstOps,
                                                     x11, y11,
                                                     dx21, dy21,
                                                     dx12, dy12,
@@ -588,7 +588,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jfloat dy21 = NEXT_FLOAT(b);
                     jfloat dx12 = NEXT_FLOAT(b);
                     jfloat dy12 = NEXT_FLOAT(b);
-                    MTLRenderer_FillParallelogram(mtlc, dstOps, JNI_FALSE,
+                    MTLRenderer_FillParallelogram(mtlc, dstOps,
                                                   x11, y11,
                                                   dx21, dy21,
                                                   dx12, dy12);
@@ -596,14 +596,14 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_AA);
+                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     jfloat x11 = NEXT_FLOAT(b);
                     jfloat y11 = NEXT_FLOAT(b);
                     jfloat dx21 = NEXT_FLOAT(b);
                     jfloat dy21 = NEXT_FLOAT(b);
                     jfloat dx12 = NEXT_FLOAT(b);
                     jfloat dy12 = NEXT_FLOAT(b);
-                    MTLRenderer_FillParallelogram(mtlc, dstOps, JNI_TRUE,
+                    MTLRenderer_FillAAParallelogram(mtlc, dstOps,
                                                     x11, y11,
                                                     dx21, dy21,
                                                     dx12, dy12);

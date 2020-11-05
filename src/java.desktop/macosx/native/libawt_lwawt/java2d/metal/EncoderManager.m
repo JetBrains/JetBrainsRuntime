@@ -339,28 +339,9 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     MTLRenderPassDescriptor *rpd =
         [MTLRenderPassDescriptor renderPassDescriptor];
     MTLRenderPassColorAttachmentDescriptor *ca = rpd.colorAttachments[0];
-    if (renderOptions->isAA && !renderOptions->isTexture) {
-      MTLTexturePoolItem *tiBuf = [_mtlc.texturePool getTexture:dest.width
-                                                      height:dest.height
-                                                      format:MTLPixelFormatBGRA8Unorm];
-      [cbw registerPooledTexture:tiBuf];
-      _aaDestination = tiBuf.texture;
-
-      MTLTexturePoolItem *ti = [_mtlc.texturePool getTexture:dest.width
-                                                      height:dest.height
-                                                      format:_aaDestination.pixelFormat
-                                               isMultiSample:YES];
-      [cbw registerPooledTexture:ti];
-      ca.texture = ti.texture;
-      ca.resolveTexture = _aaDestination;
-      ca.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 0.0f);
-      ca.loadAction = MTLLoadActionClear;
-      ca.storeAction = MTLStoreActionMultisampleResolve;
-    } else {
-      ca.texture = dest;
-      ca.loadAction = MTLLoadActionLoad;
-      ca.storeAction = MTLStoreActionStore;
-    }
+    ca.texture = dest;
+    ca.loadAction = MTLLoadActionLoad;
+    ca.storeAction = MTLStoreActionStore;
 
     if (_useStencil && !renderOptions->isAA) {
         // If you enable stencil testing or stencil writing, the
@@ -400,35 +381,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     if (_encoder != nil) {
       [_encoder endEncoding];
       _encoder = nil;
-        if (_aaDestination != nil) {
-          id<MTLTexture> aaDest = _aaDestination;
-          _aaDestination = nil;
-          NSUInteger _w = _destination.width;
-          NSUInteger _h = _destination.height;
-          _encoder = [self getTextureEncoder:_destination
-                                 isSrcOpaque:JNI_FALSE
-                                 isDstOpaque:JNI_TRUE
-                               interpolation:INTERPOLATION_NEAREST_NEIGHBOR
-                                        isAA:JNI_TRUE];
-          [_encoder setFragmentTexture:_mtlc.clip.stencilAADataRef atIndex: 1];
-
-          struct TxtVertex quadTxVerticesBuffer[] = {
-              {{0, 0}, {0, 0}},
-              {{0,_h}, {0, 1}},
-              {{_w, 0},{1, 0}},
-              {{0, _h},{0, 1}},
-              {{_w, _h}, {1, 1}},
-              {{_w, 0}, {1, 0}}
-          };
-
-          [_encoder setVertexBytes:quadTxVerticesBuffer length:sizeof(quadTxVerticesBuffer) atIndex:MeshVertexBuffer];
-          [_encoder setFragmentTexture:aaDest atIndex: 0];
-          [_encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
-          [_encoder endEncoding];
-        }
-
-        _encoder = nil;
-        _destination = nil;
+      _destination = nil;
     }
 }
 

@@ -38,8 +38,21 @@ struct TxtVertexInput {
     float2 texCoords [[attribute(VertexAttributeTexPos)]];
 };
 
+struct AAVertexInput {
+    float2 position [[attribute(VertexAttributePosition)]];
+    float2 oTexCoords [[attribute(VertexAttributeTexPos)]];
+    float2 iTexCoords [[attribute(VertexAttributeITexPos)]];
+};
+
 struct ColShaderInOut {
     float4 position [[position]];
+    half4  color;
+};
+
+struct AAShaderInOut {
+    float4 position [[position]];
+    float2 outerTexCoords;
+    float2 innerTexCoords;
     half4  color;
 };
 
@@ -86,6 +99,18 @@ vertex ColShaderInOut vert_col(VertexInput in [[stage_in]],
     float4 pos4 = float4(in.position, 0.0, 1.0);
     out.position = transform.transformMatrix*pos4;
     out.color = half4(uniforms.color.r, uniforms.color.g, uniforms.color.b, uniforms.color.a);
+    return out;
+}
+
+vertex AAShaderInOut vert_col_aa(AAVertexInput in [[stage_in]],
+       constant FrameUniforms& uniforms [[buffer(FrameUniformBuffer)]],
+       constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
+    AAShaderInOut out;
+    float4 pos4 = float4(in.position, 0.0, 1.0);
+    out.position = transform.transformMatrix*pos4;
+    out.color = half4(uniforms.color.r, uniforms.color.g, uniforms.color.b, uniforms.color.a);
+    out.outerTexCoords = in.oTexCoords;
+    out.innerTexCoords = in.iTexCoords;
     return out;
 }
 
@@ -152,6 +177,48 @@ vertex GradShaderInOut vert_txt_grad(TxtVertexInput in [[stage_in]],
 
 fragment half4 frag_col(ColShaderInOut in [[stage_in]]) {
     return in.color;
+}
+
+fragment half4 frag_col_aa(AAShaderInOut in [[stage_in]]) {
+    float2 oleg1 = dfdx(in.outerTexCoords);
+    float2 oleg2 = dfdy(in.outerTexCoords);
+    // Calculate the bounds of the distorted pixel parallelogram.
+    float2 corner = in.outerTexCoords - (oleg1+oleg2)/2.0;
+    float2 omin = min(corner, corner+oleg1);
+    omin = min(omin, corner+oleg2);
+    omin = min(omin, corner+oleg1+oleg2);
+    float2 omax = max(corner, corner+oleg1);
+    omax = max(omax, corner+oleg2);
+    omax = max(omax, corner+oleg1+oleg2);
+    // Calculate the vectors for the "legs" of the pixel parallelogram
+    // for the inner parallelogram.
+    float2 ileg1 = dfdx(in.innerTexCoords);
+    float2 ileg2 = dfdy(in.innerTexCoords);
+    // Calculate the bounds of the distorted pixel parallelogram.
+    corner = in.innerTexCoords - (ileg1+ileg2)/2.0;
+    float2 imin = min(corner, corner+ileg1);
+    imin = min(imin, corner+ileg2);
+    imin = min(imin, corner+ileg1+ileg2);
+    float2 imax = max(corner, corner+ileg1);
+    imax = max(imax, corner+ileg2);
+    imax = max(imax, corner+ileg1+ileg2);
+    // Clamp the bounds of the parallelograms to the unit square to
+    // estimate the intersection of the pixel parallelogram with
+    // the unit square.  The ratio of the 2 rectangle areas is a
+    // reasonable estimate of the proportion of coverage.
+    float2 o1 = clamp(omin, 0.0, 1.0);
+    float2 o2 = clamp(omax, 0.0, 1.0);
+    float oint = (o2.y-o1.y)*(o2.x-o1.x);
+    float oarea = (omax.y-omin.y)*(omax.x-omin.x);
+    float2 i1 = clamp(imin, 0.0, 1.0);
+    float2 i2 = clamp(imax, 0.0, 1.0);
+    float iint = (i2.y-i1.y)*(i2.x-i1.x);
+    float iarea = (imax.y-imin.y)*(imax.x-imin.x);
+    // Proportion of pixel in outer shape minus the proportion
+    // of pixel in the inner shape == the coverage of the pixel
+    // in the area between the two.
+    float coverage = oint/oarea - iint / iarea;
+    return (in.color * coverage);
 }
 
 fragment unsigned int frag_stencil(StencilShaderInOut in [[stage_in]]) {

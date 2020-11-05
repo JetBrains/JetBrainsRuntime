@@ -455,7 +455,7 @@ void MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount,
 }
 
 void
-MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps, jboolean isAA,
+MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
                               jfloat fx11, jfloat fy11,
                               jfloat dx21, jfloat dy21,
                               jfloat dx12, jfloat dy12)
@@ -467,12 +467,11 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps, jboolean isA
     }
 
     id<MTLTexture> dest = dstOps->pTexture;
-    J2dTraceLn8(J2D_TRACE_INFO,
-                "MTLRenderer_FillParallelogram (isAA = %d)"
+    J2dTraceLn7(J2D_TRACE_INFO,
+                "MTLRenderer_FillParallelogram"
                 "(x=%6.2f y=%6.2f "
                 "dx1=%6.2f dy1=%6.2f "
                 "dx2=%6.2f dy2=%6.2f dst tex=%p)",
-                isAA,
                 fx11, fy11,
                 dx21, dy21,
                 dx12, dy12, dest);
@@ -485,12 +484,7 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps, jboolean isA
         }};
 
     // Encode render command.
-    id<MTLRenderCommandEncoder> mtlEncoder = nil;
-    if (isAA == JNI_TRUE) {
-        mtlEncoder = [mtlc.encoderManager getAARenderEncoder:dstOps];
-    } else {
-        mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
-    }
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];;
 
     if (mtlEncoder == nil) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLRenderer_FillParallelogram: error creating MTLRenderCommandEncoder.");
@@ -502,7 +496,7 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps, jboolean isA
 }
 
 void
-MTLRenderer_DrawParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps, jboolean isAA,
+MTLRenderer_DrawParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
                               jfloat fx11, jfloat fy11,
                               jfloat dx21, jfloat dy21,
                               jfloat dx12, jfloat dy12,
@@ -518,8 +512,8 @@ MTLRenderer_DrawParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps, jboolean isA
     jfloat ox11 = fx11 - (ldx21 + ldx12) / 2.0f;
     jfloat oy11 = fy11 - (ldy21 + ldy12) / 2.0f;
 
-    J2dTraceLn1(J2D_TRACE_INFO, "MTLRenderer_DrawParallelogram (isAA = %d)", isAA);
     J2dTraceLn8(J2D_TRACE_INFO,
+                "MTLRenderer_DrawParallelogram"
                 "(x=%6.2f y=%6.2f "
                 "dx1=%6.2f dy1=%6.2f lwr1=%6.2f "
                 "dx2=%6.2f dy2=%6.2f lwr2=%6.2f)",
@@ -614,12 +608,7 @@ MTLRenderer_DrawParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps, jboolean isA
         fillVertex(vertexList + (i++), fx11, fy11);
 
         // Encode render command.
-        id<MTLRenderCommandEncoder> mtlEncoder = nil;
-        if (isAA == JNI_TRUE) {
-            mtlEncoder = [mtlc.encoderManager getAARenderEncoder:dstOps];
-        } else {
-            mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
-        }
+        id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
 
         if (mtlEncoder == nil) {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLRenderer_DrawParallelogram: error creating MTLRenderCommandEncoder.");
@@ -637,8 +626,310 @@ MTLRenderer_DrawParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps, jboolean isA
         dy21 += ldy21;
         dx12 += ldx12;
         dy12 += ldy12;
-        MTLRenderer_FillParallelogram(mtlc, dstOps, isAA, ox11, oy11, dx21, dy21, dx12, dy12);
+        MTLRenderer_FillParallelogram(mtlc, dstOps, ox11, oy11, dx21, dy21, dx12, dy12);
     }
 }
 
+static struct AAVertex aaVertices[6];
+static jint vertexCacheIndex = 0;
+
+#define AA_ADD_VERTEX(OU, OV, IU, IV, DX, DY) \
+    do { \
+        struct AAVertex *v = &aaVertices[vertexCacheIndex++]; \
+        v->otxtpos[0] = OU; \
+        v->otxtpos[1] = OV; \
+        v->itxtpos[0] = IU; \
+        v->itxtpos[1] = IV; \
+        v->position[0]= DX; \
+        v->position[1] = DY; \
+    } while (0)
+
+#define AA_ADD_TRIANGLES(ou11, ov11, iu11, iv11, ou21, ov21, iu21, iv21, ou22, ov22, iu22, iv22, ou12, ov12, iu12, iv12, DX1, DY1, DX2, DY2) \
+    do { \
+        AA_ADD_VERTEX(ou11, ov11, iu11, iv11, DX1, DY1); \
+        AA_ADD_VERTEX(ou21, ov21, iu21, iv21, DX2, DY1); \
+        AA_ADD_VERTEX(ou22, ov22, iu22, iv22, DX2, DY2); \
+        AA_ADD_VERTEX(ou22, ov22, iu22, iv22, DX2, DY2); \
+        AA_ADD_VERTEX(ou12, ov12, iu12, iv12, DX1, DY2); \
+        AA_ADD_VERTEX(ou11, ov11, iu11, iv11, DX1, DY1); \
+    } while (0)
+
+static MTLRenderPipelineDescriptor * templateAAPipelineDesc = nil;
+
+static jboolean
+setupAAShaderState(id<MTLRenderCommandEncoder> encoder,
+                    MTLContext *mtlc,
+                    MTLSDOps *dstOps)
+{
+    if (templateAAPipelineDesc == nil) {
+
+        MTLVertexDescriptor *vertDesc = [[MTLVertexDescriptor new] autorelease];
+        vertDesc.attributes[VertexAttributePosition].format = MTLVertexFormatFloat2;
+        vertDesc.attributes[VertexAttributePosition].offset = 0;
+        vertDesc.attributes[VertexAttributePosition].bufferIndex = MeshVertexBuffer;
+        vertDesc.layouts[MeshVertexBuffer].stride = sizeof(struct AAVertex);
+        vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
+        vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
+
+        templateAAPipelineDesc = [MTLRenderPipelineDescriptor new];
+        templateAAPipelineDesc.sampleCount = 1;
+        templateAAPipelineDesc.vertexDescriptor = vertDesc;
+        templateAAPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+        templateAAPipelineDesc.colorAttachments[0].rgbBlendOperation =   MTLBlendOperationAdd;
+        templateAAPipelineDesc.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
+        templateAAPipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+        templateAAPipelineDesc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
+        templateAAPipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+        templateAAPipelineDesc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+        templateAAPipelineDesc.colorAttachments[0].blendingEnabled = YES;
+        templateAAPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
+        templateAAPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].offset = 2*sizeof(float);
+        templateAAPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
+        templateAAPipelineDesc.vertexDescriptor.attributes[VertexAttributeITexPos].format = MTLVertexFormatFloat2;
+        templateAAPipelineDesc.vertexDescriptor.attributes[VertexAttributeITexPos].offset = 4*sizeof(float);
+        templateAAPipelineDesc.vertexDescriptor.attributes[VertexAttributeITexPos].bufferIndex = MeshVertexBuffer;
+        templateAAPipelineDesc.label = @"template_aa";
+    }
+
+    id<MTLRenderPipelineState> pipelineState =
+                [mtlc.pipelineStateStorage
+                    getPipelineState:templateAAPipelineDesc
+                    vertexShaderId:@"vert_col_aa"
+                    fragmentShaderId:@"frag_col_aa"
+                   ];
+
+    [encoder setRenderPipelineState:pipelineState];
+    return JNI_TRUE;
+}
+
+#define ADJUST_PGRAM(V1, DV, V2) \
+    do { \
+        if ((DV) >= 0) { \
+            (V2) += (DV); \
+        } else { \
+            (V1) += (DV); \
+        } \
+    } while (0)
+
+// Invert the following transform:
+// DeltaT(0, 0) == (0,       0)
+// DeltaT(1, 0) == (DX1,     DY1)
+// DeltaT(0, 1) == (DX2,     DY2)
+// DeltaT(1, 1) == (DX1+DX2, DY1+DY2)
+// TM00 = DX1,   TM01 = DX2,   (TM02 = X11)
+// TM10 = DY1,   TM11 = DY2,   (TM12 = Y11)
+// Determinant = TM00*TM11 - TM01*TM10
+//             =  DX1*DY2  -  DX2*DY1
+// Inverse is:
+// IM00 =  TM11/det,   IM01 = -TM01/det
+// IM10 = -TM10/det,   IM11 =  TM00/det
+// IM02 = (TM01 * TM12 - TM11 * TM02) / det,
+// IM12 = (TM10 * TM02 - TM00 * TM12) / det,
+
+#define DECLARE_MATRIX(MAT) \
+    jfloat MAT ## 00, MAT ## 01, MAT ## 02, MAT ## 10, MAT ## 11, MAT ## 12
+
+#define GET_INVERTED_MATRIX(MAT, X11, Y11, DX1, DY1, DX2, DY2, RET_CODE) \
+    do { \
+        jfloat det = DX1*DY2 - DX2*DY1; \
+        if (det == 0) { \
+            RET_CODE; \
+        } \
+        MAT ## 00 = DY2/det; \
+        MAT ## 01 = -DX2/det; \
+        MAT ## 10 = -DY1/det; \
+        MAT ## 11 = DX1/det; \
+        MAT ## 02 = (DX2 * Y11 - DY2 * X11) / det; \
+        MAT ## 12 = (DY1 * X11 - DX1 * Y11) / det; \
+    } while (0)
+
+#define TRANSFORM(MAT, TX, TY, X, Y) \
+    do { \
+        TX = (X) * MAT ## 00 + (Y) * MAT ## 01 + MAT ## 02; \
+        TY = (X) * MAT ## 10 + (Y) * MAT ## 11 + MAT ## 12; \
+    } while (0)
+
+void
+MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
+                              jfloat fx11, jfloat fy11,
+                              jfloat dx21, jfloat dy21,
+                              jfloat dx12, jfloat dy12)
+{
+    DECLARE_MATRIX(om);
+    // parameters for parallelogram bounding box
+    jfloat bx11, by11, bx22, by22;
+    // parameters for uv texture coordinates of parallelogram corners
+    jfloat ou11, ov11, ou12, ov12, ou21, ov21, ou22, ov22;
+
+    J2dTraceLn6(J2D_TRACE_INFO,
+                "MTLRenderer_FillAAParallelogram "
+                "(x=%6.2f y=%6.2f "
+                "dx1=%6.2f dy1=%6.2f "
+                "dx2=%6.2f dy2=%6.2f)",
+                fx11, fy11,
+                dx21, dy21,
+                dx12, dy12);
+
+    RETURN_IF_NULL(mtlc);
+    RETURN_IF_NULL(dstOps);
+
+    GET_INVERTED_MATRIX(om, fx11, fy11, dx21, dy21, dx12, dy12,
+                        return);
+
+    bx11 = bx22 = fx11;
+    by11 = by22 = fy11;
+    ADJUST_PGRAM(bx11, dx21, bx22);
+    ADJUST_PGRAM(by11, dy21, by22);
+    ADJUST_PGRAM(bx11, dx12, bx22);
+    ADJUST_PGRAM(by11, dy12, by22);
+    bx11 = (jfloat) floor(bx11);
+    by11 = (jfloat) floor(by11);
+    bx22 = (jfloat) ceil(bx22);
+    by22 = (jfloat) ceil(by22);
+
+    TRANSFORM(om, ou11, ov11, bx11, by11);
+    TRANSFORM(om, ou21, ov21, bx22, by11);
+    TRANSFORM(om, ou12, ov12, bx11, by22);
+    TRANSFORM(om, ou22, ov22, bx22, by22);
+
+    id<MTLRenderCommandEncoder> encoder =
+        [mtlc.encoderManager getRenderEncoder:dstOps];
+    setupAAShaderState(encoder, mtlc, dstOps);
+
+    AA_ADD_TRIANGLES(ou11, ov11, 5.f, 5.f, ou21, ov21, 6.f, 5.f, ou22, ov22, 6.f, 6.f, ou12, ov12, 5.f, 5.f, bx11, by11, bx22, by22);
+    [encoder setVertexBytes:aaVertices length:sizeof(aaVertices) atIndex:MeshVertexBuffer];
+    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    vertexCacheIndex = 0;
+}
+
+void
+MTLRenderer_FillAAParallelogramInnerOuter(MTLContext *mtlc, MTLSDOps *dstOps,
+                                          jfloat ox11, jfloat oy11,
+                                          jfloat ox21, jfloat oy21,
+                                          jfloat ox12, jfloat oy12,
+                                          jfloat ix11, jfloat iy11,
+                                          jfloat ix21, jfloat iy21,
+                                          jfloat ix12, jfloat iy12)
+{
+    DECLARE_MATRIX(om);
+    DECLARE_MATRIX(im);
+    // parameters for parallelogram bounding box
+    jfloat bx11, by11, bx22, by22;
+    // parameters for uv texture coordinates of outer parallelogram corners
+    jfloat ou11, ov11, ou12, ov12, ou21, ov21, ou22, ov22;
+    // parameters for uv texture coordinates of inner parallelogram corners
+    jfloat iu11, iv11, iu12, iv12, iu21, iv21, iu22, iv22;
+
+    RETURN_IF_NULL(mtlc);
+    RETURN_IF_NULL(dstOps);
+
+    GET_INVERTED_MATRIX(im, ix11, iy11, ix21, iy21, ix12, iy12,
+                        // inner parallelogram is degenerate
+                        // therefore it encloses no area
+                        // fill outer
+                        MTLRenderer_FillAAParallelogram(mtlc, dstOps,
+                                                        ox11, oy11,
+                                                        ox21, oy21,
+                                                        ox12, oy12);
+                        return);
+    GET_INVERTED_MATRIX(om, ox11, oy11, ox21, oy21, ox12, oy12,
+                        return);
+
+    bx11 = bx22 = ox11;
+    by11 = by22 = oy11;
+    ADJUST_PGRAM(bx11, ox21, bx22);
+    ADJUST_PGRAM(by11, oy21, by22);
+    ADJUST_PGRAM(bx11, ox12, bx22);
+    ADJUST_PGRAM(by11, oy12, by22);
+    bx11 = (jfloat) floor(bx11);
+    by11 = (jfloat) floor(by11);
+    bx22 = (jfloat) ceil(bx22);
+    by22 = (jfloat) ceil(by22);
+
+    TRANSFORM(om, ou11, ov11, bx11, by11);
+    TRANSFORM(om, ou21, ov21, bx22, by11);
+    TRANSFORM(om, ou12, ov12, bx11, by22);
+    TRANSFORM(om, ou22, ov22, bx22, by22);
+
+    TRANSFORM(im, iu11, iv11, bx11, by11);
+    TRANSFORM(im, iu21, iv21, bx22, by11);
+    TRANSFORM(im, iu12, iv12, bx11, by22);
+    TRANSFORM(im, iu22, iv22, bx22, by22);
+
+    id<MTLRenderCommandEncoder> encoder =
+        [mtlc.encoderManager getRenderEncoder:dstOps];
+    setupAAShaderState(encoder, mtlc, dstOps);
+
+    AA_ADD_TRIANGLES(ou11, ov11, iu11, iv11, ou21, ov21, iu21, iv21, ou22, ov22, iu22, iv22, ou12, ov12, iu12, iv12, bx11, by11, bx22, by22);
+    [encoder setVertexBytes:aaVertices length:sizeof(aaVertices) atIndex:MeshVertexBuffer];
+    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    vertexCacheIndex = 0;
+}
+
+void
+MTLRenderer_DrawAAParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
+                              jfloat fx11, jfloat fy11,
+                              jfloat dx21, jfloat dy21,
+                              jfloat dx12, jfloat dy12,
+                              jfloat lwr21, jfloat lwr12)
+{
+    // dx,dy for line width in the "21" and "12" directions.
+    jfloat ldx21, ldy21, ldx12, ldy12;
+    // parameters for "outer" parallelogram
+    jfloat ofx11, ofy11, odx21, ody21, odx12, ody12;
+    // parameters for "inner" parallelogram
+    jfloat ifx11, ify11, idx21, idy21, idx12, idy12;
+
+    J2dTraceLn8(J2D_TRACE_INFO,
+                "MTLRenderer_DrawAAParallelogram "
+                "(x=%6.2f y=%6.2f "
+                "dx1=%6.2f dy1=%6.2f lwr1=%6.2f "
+                "dx2=%6.2f dy2=%6.2f lwr2=%6.2f)",
+                fx11, fy11,
+                dx21, dy21, lwr21,
+                dx12, dy12, lwr12);
+
+    RETURN_IF_NULL(mtlc);
+    RETURN_IF_NULL(dstOps);
+
+    // calculate true dx,dy for line widths from the "line width ratios"
+    ldx21 = dx21 * lwr21;
+    ldy21 = dy21 * lwr21;
+    ldx12 = dx12 * lwr12;
+    ldy12 = dy12 * lwr12;
+
+    // calculate coordinates of the outer parallelogram
+    ofx11 = fx11 - (ldx21 + ldx12) / 2.0f;
+    ofy11 = fy11 - (ldy21 + ldy12) / 2.0f;
+    odx21 = dx21 + ldx21;
+    ody21 = dy21 + ldy21;
+    odx12 = dx12 + ldx12;
+    ody12 = dy12 + ldy12;
+
+    // Only process the inner parallelogram if the line width ratio
+    // did not consume the entire interior of the parallelogram
+    // (i.e. if the width ratio was less than 1.0)
+    if (lwr21 < 1.0f && lwr12 < 1.0f) {
+        // calculate coordinates of the inner parallelogram
+        ifx11 = fx11 + (ldx21 + ldx12) / 2.0f;
+        ify11 = fy11 + (ldy21 + ldy12) / 2.0f;
+        idx21 = dx21 - ldx21;
+        idy21 = dy21 - ldy21;
+        idx12 = dx12 - ldx12;
+        idy12 = dy12 - ldy12;
+
+        MTLRenderer_FillAAParallelogramInnerOuter(mtlc, dstOps,
+                                                  ofx11, ofy11,
+                                                  odx21, ody21,
+                                                  odx12, ody12,
+                                                  ifx11, ify11,
+                                                  idx21, idy21,
+                                                  idx12, idy12);
+    } else {
+        MTLRenderer_FillAAParallelogram(mtlc, dstOps,
+                                        ofx11, ofy11,
+                                        odx21, ody21,
+                                        odx12, ody12);
+    }
+}
 #endif /* !HEADLESS */
