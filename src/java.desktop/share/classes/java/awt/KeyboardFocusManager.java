@@ -121,11 +121,10 @@ public abstract class KeyboardFocusManager
                                                    boolean temporary,
                                                    boolean focusedWindowChangeAllowed,
                                                    long time,
-                                                   FocusEvent.Cause cause,
-                                                   boolean highPriorityEvents)
+                                                   FocusEvent.Cause cause)
                 {
                     return KeyboardFocusManager.shouldNativelyFocusHeavyweight(
-                        heavyweight, descendant, temporary, focusedWindowChangeAllowed, time, cause, highPriorityEvents);
+                        heavyweight, descendant, temporary, focusedWindowChangeAllowed, time, cause);
                 }
                 public boolean processSynchronousLightweightTransfer(Component heavyweight,
                                                               Component descendant,
@@ -2393,8 +2392,7 @@ public abstract class KeyboardFocusManager
      */
     static int shouldNativelyFocusHeavyweight
         (Component heavyweight, Component descendant, boolean temporary,
-         boolean focusedWindowChangeAllowed, long time, FocusEvent.Cause cause,
-         boolean highPriorityEvents)
+         boolean focusedWindowChangeAllowed, long time, FocusEvent.Cause cause)
     {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             if (heavyweight == null) {
@@ -2463,22 +2461,17 @@ public abstract class KeyboardFocusManager
                         new FocusEvent(currentFocusOwner,
                                        FocusEvent.FOCUS_LOST,
                                        temporary, descendant, cause);
-                    if (highPriorityEvents) {
-                        SunToolkit.postPriorityEvent(currentFocusOwnerEvent);
-                    } else {
-                        SunToolkit.postEvent(currentFocusOwner.appContext,
-                                currentFocusOwnerEvent);
-                    }
+                    // Fix 5028014. Rolled out.
+                    // SunToolkit.postPriorityEvent(currentFocusOwnerEvent);
+                    SunToolkit.postEvent(currentFocusOwner.appContext,
+                                         currentFocusOwnerEvent);
                 }
                 FocusEvent newFocusOwnerEvent =
                     new FocusEvent(descendant, FocusEvent.FOCUS_GAINED,
                                    temporary, currentFocusOwner, cause);
-                if (highPriorityEvents) {
-                    SunToolkit.postPriorityEvent(newFocusOwnerEvent);
-                } else {
-                    SunToolkit.postEvent(descendant.appContext,
-                            newFocusOwnerEvent);
-                }
+                // Fix 5028014. Rolled out.
+                // SunToolkit.postPriorityEvent(newFocusOwnerEvent);
+                SunToolkit.postEvent(descendant.appContext, newFocusOwnerEvent);
 
                 if (focusLog.isLoggable(PlatformLogger.Level.FINEST))
                     focusLog.finest("2. SNFH_HANDLED for {0}", String.valueOf(descendant));

@@ -440,8 +440,7 @@ public final class AWTAccessor {
                                            boolean temporary,
                                            boolean focusedWindowChangeAllowed,
                                            long time,
-                                           Cause cause,
-                                           boolean highPriorityEvents);
+                                           Cause cause);
         /**
          * Delivers focus for the lightweight descendant of the heavyweight
          * synchronously.

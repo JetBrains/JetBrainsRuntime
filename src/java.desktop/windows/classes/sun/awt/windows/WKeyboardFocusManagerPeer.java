@@ -80,7 +80,9 @@ final class WKeyboardFocusManagerPeer extends KeyboardFocusManagerPeerImpl {
         // TODO: do something to eliminate this forwarding
         return KeyboardFocusManagerPeerImpl.deliverFocus(lightweightChild,
                                                          target,
-                                                         true,
+                                                         temporary,
+                                                         focusedWindowChangeAllowed,
+                                                         time,
                                                          cause,
                                                          getNativeFocusOwner());
     }

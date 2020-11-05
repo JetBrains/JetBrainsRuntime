@@ -701,7 +701,7 @@ public abstract class WComponentPeer extends WObjectPeer
         int result = WKeyboardFocusManagerPeer
             .shouldNativelyFocusHeavyweight((Component)target, lightweightChild,
                                             temporary, focusedWindowChangeAllowed,
-                                            time, cause, true);
+                                            time, cause);
 
         switch (result) {
           case WKeyboardFocusManagerPeer.SNFH_FAILURE:

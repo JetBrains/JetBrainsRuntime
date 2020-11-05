@@ -107,7 +107,9 @@ public abstract class KeyboardFocusManagerPeerImpl implements KeyboardFocusManag
     @SuppressWarnings("deprecation")
     public static boolean deliverFocus(Component lightweightChild,
                                        Component target,
-                                       boolean highPriority,
+                                       boolean temporary,
+                                       boolean focusedWindowChangeAllowed,
+                                       long time,
                                        FocusEvent.Cause cause,
                                        Component currentFocusOwner) // provided by the descendant peers
     {
@@ -126,11 +128,7 @@ public abstract class KeyboardFocusManagerPeerImpl implements KeyboardFocusManag
             if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
                 focusLog.finer("Posting focus event: " + fl);
             }
-            if (highPriority) {
-                SunToolkit.postPriorityEvent(fl);
-            } else {
-                SunToolkit.postEvent(SunToolkit.targetToAppContext(currentOwner), fl);
-            }
+            SunToolkit.postEvent(SunToolkit.targetToAppContext(currentOwner), fl);
         }
 
         FocusEvent fg = new FocusEvent(lightweightChild, FocusEvent.FOCUS_GAINED,
@@ -139,11 +137,7 @@ public abstract class KeyboardFocusManagerPeerImpl implements KeyboardFocusManag
         if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
             focusLog.finer("Posting focus event: " + fg);
         }
-        if (highPriority) {
-            SunToolkit.postPriorityEvent(fg);
-        } else {
-            SunToolkit.postEvent(SunToolkit.targetToAppContext(lightweightChild), fg);
-        }
+        SunToolkit.postEvent(SunToolkit.targetToAppContext(lightweightChild), fg);
         return true;
     }
 
@@ -158,12 +152,11 @@ public abstract class KeyboardFocusManagerPeerImpl implements KeyboardFocusManag
                                                      boolean temporary,
                                                      boolean focusedWindowChangeAllowed,
                                                      long time,
-                                                     FocusEvent.Cause cause,
-                                                     boolean highPriorityEvents)
+                                                     FocusEvent.Cause cause)
     {
         return KfmAccessor.instance.shouldNativelyFocusHeavyweight(
             heavyweight, descendant, temporary, focusedWindowChangeAllowed,
-                time, cause, highPriorityEvents);
+                time, cause);
     }
 
     public static void removeLastFocusRequest(Component heavyweight) {
