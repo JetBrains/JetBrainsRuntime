@@ -79,6 +79,7 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
     private LinkedList<TypeAheadMarker> typeAheadMarkers = new LinkedList<TypeAheadMarker>();
     private boolean consumeNextKeyTyped;
     private Component restoreFocusTo;
+    private Component keyPressedComponent;
 
     private static boolean fxAppThreadIsDispatchThread;
 
@@ -869,7 +870,7 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
      * @see Component#dispatchEvent
      */
     public boolean dispatchKeyEvent(KeyEvent e) {
-        Component focusOwner = (((AWTEvent)e).isPosted) ? getFocusOwner() : e.getComponent();
+        Component focusOwner = (((AWTEvent)e).isPosted && e.getID() != KeyEvent.KEY_TYPED) ? getFocusOwner() : e.getComponent();
 
         if (focusOwner != null && focusOwner.isShowing() && focusOwner.canBeFocusOwner()) {
             if (!e.isConsumed()) {
@@ -1094,8 +1095,21 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
     @SuppressWarnings("deprecation")
     private boolean preDispatchKeyEvent(KeyEvent ke) {
         if (((AWTEvent) ke).isPosted) {
-            Component focusOwner = getFocusOwner();
-            ke.setSource(((focusOwner != null) ? focusOwner : getFocusedWindow()));
+            Component focusOwner;
+            if (ke.getID() == KeyEvent.KEY_TYPED) {
+                focusOwner = keyPressedComponent;
+            } else {
+                focusOwner = getFocusOwner();
+                if (focusOwner == null) {
+                    focusOwner = getFocusedWindow();
+                }
+            }
+            ke.setSource(focusOwner);
+            if (ke.getID() == KeyEvent.KEY_PRESSED) {
+                keyPressedComponent = focusOwner;
+            } else if (ke.getID() == KeyEvent.KEY_RELEASED) {
+                keyPressedComponent = null;
+            }
         }
         if (ke.getSource() == null) {
             return true;
