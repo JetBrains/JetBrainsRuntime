@@ -79,6 +79,7 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
     private LinkedList<TypeAheadMarker> typeAheadMarkers = new LinkedList<TypeAheadMarker>();
     private boolean consumeNextKeyTyped;
     private Component restoreFocusTo;
+    private WeakReference<Component> lastKeyPressedOrReleasedTarget = NULL_COMPONENT_WR;
 
     private static boolean fxAppThreadIsDispatchThread;
 
@@ -874,7 +875,9 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
      * @see Component#dispatchEvent
      */
     public boolean dispatchKeyEvent(KeyEvent e) {
-        Component focusOwner = (((AWTEvent)e).isPosted) ? getFocusOwner() : e.getComponent();
+        Component focusOwner = (((AWTEvent)e).isPosted &&
+                !(e.getID() == KeyEvent.KEY_TYPED && SunToolkit.isSystemGenerated(e)))
+                ? getFocusOwner() : e.getComponent();
 
         if (focusOwner != null && focusOwner.isShowing() && focusOwner.canBeFocusOwner()) {
             if (!e.isConsumed()) {
@@ -1099,8 +1102,21 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
     @SuppressWarnings("deprecation")
     private boolean preDispatchKeyEvent(KeyEvent ke) {
         if (((AWTEvent) ke).isPosted) {
-            Component focusOwner = getFocusOwner();
-            ke.setSource(((focusOwner != null) ? focusOwner : getFocusedWindow()));
+            boolean typedEvent = ke.getID() == KeyEvent.KEY_TYPED;
+            boolean systemEvent = SunToolkit.isSystemGenerated(ke);
+            Component focusOwner;
+            if (typedEvent && systemEvent) {
+                focusOwner = lastKeyPressedOrReleasedTarget.get();
+            } else {
+                focusOwner = getFocusOwner();
+                if (focusOwner == null) {
+                    focusOwner = getFocusedWindow();
+                }
+            }
+            if (!typedEvent && systemEvent) {
+                lastKeyPressedOrReleasedTarget = new WeakReference<>(focusOwner);
+            }
+            ke.setSource(focusOwner);
         }
         if (ke.getSource() == null) {
             return true;
