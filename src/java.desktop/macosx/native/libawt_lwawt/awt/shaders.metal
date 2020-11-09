@@ -256,14 +256,16 @@ fragment half4 frag_txt(
 fragment half4 frag_txt_tp(TxtShaderInOut vert [[stage_in]],
                        texture2d<float, access::sample> renderTexture [[texture(0)]],
                        texture2d<float, access::sample> paintTexture [[texture(1)]],
+                       constant TxtFrameUniforms& uniforms [[buffer(1)]],
                        sampler textureSampler [[sampler(0)]]
 ) {
     float4 renderColor = renderTexture.sample(textureSampler, vert.texCoords);
     float4 paintColor = paintTexture.sample(textureSampler, vert.tpCoords);
+    const float srcA = uniforms.isSrcOpaque ? 1 : paintColor.a;
     return half4(paintColor.r*renderColor.a,
                  paintColor.g*renderColor.a,
                  paintColor.b*renderColor.a,
-                 renderColor.a);
+                 srcA*renderColor.a) * uniforms.extraAlpha;
 }
 
 fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
@@ -599,17 +601,13 @@ vertex TxtShaderInOut vert_tp(VertexInput in [[stage_in]],
 
 fragment half4 frag_tp(
         TxtShaderInOut vert [[stage_in]],
-        texture2d<float, access::sample> renderTexture [[texture(0)]])
+        texture2d<float, access::sample> renderTexture [[texture(0)]],
+        constant TxtFrameUniforms& uniforms [[buffer(1)]],
+        sampler textureSampler [[sampler(0)]])
 {
-    constexpr sampler textureSampler (address::repeat,
-                                      mag_filter::nearest,
-                                      min_filter::nearest);
-
     float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
-    return half4(pixelColor.r, pixelColor.g, pixelColor.b, 1.0);
-
-    // This implementation defaults alpha to 1.0 as if source is opaque
-    //TODO : implement alpha component value if source is transparent
+    const float srcA = uniforms.isSrcOpaque ? 1 : pixelColor.a;
+    return half4(pixelColor.r, pixelColor.g, pixelColor.b, srcA) * uniforms.extraAlpha;
 }
 
 

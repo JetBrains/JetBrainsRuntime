@@ -435,13 +435,14 @@ extern void initSamplers(id<MTLDevice> device);
 
     self.paint = [[[MTLTexturePaint alloc] initWithUseMask:useMask
                                                 textureID:srcOps->pTexture
+                                                  isOpaque:srcOps->isOpaque
                                                    filter:filter
                                                       xp0:xp0
                                                       xp1:xp1
                                                       xp3:xp3
                                                       yp0:yp0
                                                       yp1:yp1
-                                                      yp3:yp3] autorelease] ;
+                                                      yp3:yp3] autorelease];
 }
 
 - (id<MTLCommandBuffer>)createCommandBuffer {

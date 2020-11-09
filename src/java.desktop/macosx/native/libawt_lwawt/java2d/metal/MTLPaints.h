@@ -133,6 +133,7 @@
 
 - (id)initWithUseMask:(jboolean)useMask
               textureID:(id <MTLTexture>)textureID
+               isOpaque:(jboolean)isOpaque
                  filter:(jboolean)filter
                     xp0:(jdouble)xp0
                     xp1:(jdouble)xp1

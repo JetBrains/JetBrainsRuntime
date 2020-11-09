@@ -657,10 +657,12 @@ jint _color;
 @implementation MTLTexturePaint {
     struct AnchorData _anchor;
     id <MTLTexture> _paintTexture;
+    jboolean _isOpaque;
 }
 
 - (id)initWithUseMask:(jboolean)useMask
               textureID:(id)textureId
+               isOpaque:(jboolean)isOpaque
                  filter:(jboolean)filter
                     xp0:(jdouble)xp0
                     xp1:(jdouble)xp1
@@ -680,6 +682,7 @@ jint _color;
         _anchor.yParams[0] = yp0;
         _anchor.yParams[1] = yp1;
         _anchor.yParams[2] = yp3;
+        _isOpaque = isOpaque;
     }
     return self;
 
@@ -701,7 +704,7 @@ jint _color;
 }
 
 - (NSString *)description {
-    return [NSString stringWithFormat:@"radial_gradient"];
+    return [NSString stringWithFormat:@"texture_paint"];
 }
 
 - (void)setPipelineState:(id)encoder
@@ -722,12 +725,14 @@ jint _color;
         fragShader = @"frag_txt_tp";
         rpDesc = [[templateTexturePipelineDesc copy] autorelease];
         [encoder setFragmentTexture:_paintTexture atIndex:1];
-        setTxtUniforms(encoder, 0, 0, renderOptions->interpolation, YES, [mtlc.composite getExtraAlpha],
-                   &renderOptions->srcFlags, &renderOptions->dstFlags);
     } else {
         rpDesc = [[templateRenderPipelineDesc copy] autorelease];
         [encoder setFragmentTexture:_paintTexture atIndex:0];
     }
+    const SurfaceRasterFlags srcFlags = {_isOpaque, renderOptions->srcFlags.isPremultiplied};
+    setTxtUniforms(encoder, 0, 0,
+                   renderOptions->interpolation, YES, [mtlc.composite getExtraAlpha],
+                   &srcFlags, &renderOptions->dstFlags);
 
     id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
                                                                         vertexShaderId:vertShader
