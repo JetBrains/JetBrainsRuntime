@@ -1226,21 +1226,11 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     // returns a combination of SHOULD_BECOME_KEY/SHOULD_BECOME_MAIN relevant for the current window
     private int getFocusableStyleBits() {
-        if (target == null || !target.getFocusableWindowState()) {
-            return 0;
-        }
-
-        boolean isDecoratedWindow = true;
-        Window window = target;
-        do {
-            if (window instanceof Frame || window instanceof Dialog) {
-                return isDecoratedWindow ? SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN : SHOULD_BECOME_KEY;
-            }
-            window = window.getOwner();
-            isDecoratedWindow = false;
-        } while (window != null);
-
-        return 0;
+        return (peer == null || target == null || !target.isFocusableWindow())
+                ? 0
+                : peer.isSimpleWindow()
+                    ? SHOULD_BECOME_KEY
+                    : SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN;
     }
 
     private boolean isBlocked() {
