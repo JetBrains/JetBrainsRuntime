@@ -2,22 +2,29 @@
 
 import java.awt.*;
 import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @test
  * @key headful
- * @summary Regression test for JBR-2639. The test checks that mouse actions are handled on jcef browser.
- * @run main/othervm MouseEventTest
+ * @summary Regression test for JBR-2412. The test checks that mouse actions are handled on jcef browser after hide and show it.
+ * @run main/othervm MouseEventAfterHideAndShowBrowserTest
  */
 
-
-public class MouseEventTest {
+public class MouseEventAfterHideAndShowBrowserTest {
 
     public static void main(String[] args) throws InvocationTargetException, InterruptedException {
 
         MouseEventScenario scenario = new MouseEventScenario();
         try {
+
             scenario.initUI();
+            scenario.mouseMove(scenario.getBrowserFrame().getFrameCenter());
+
+            MouseEventScenario.latch = new CountDownLatch(1);
+            scenario.getBrowserFrame().hideAndShowBrowser();
+            MouseEventScenario.latch.await(2, TimeUnit.SECONDS);
 
             //mouseEntered and mouseExited events work unstable. These actions are not tested.
             scenario.doMouseActions();
