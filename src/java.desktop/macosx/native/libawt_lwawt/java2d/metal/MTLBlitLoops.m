@@ -649,6 +649,18 @@ MTLBlitLoops_Blit(JNIEnv *env,
     SurfaceData_InvokeUnlock(env, srcOps, &srcInfo);
 }
 
+void copyFromMTLBuffer(void *pDst, id<MTLBuffer> srcBuf, jint offset, jint len, BOOL convertFromArgbPre) {
+    char *pSrc = (char*)srcBuf.contents + offset;
+    if (convertFromArgbPre) {
+        jint pixelLen = len>>2;
+        for (int i = 0; i < pixelLen; i++) {
+            LoadIntArgbPreTo1IntArgb((jint*)pSrc, 0, i, ((jint*)pDst)[i]);
+        }
+    } else {
+        memcpy(pDst, pSrc, len);
+    }
+}
+
 /**
  * Specialized blit method for copying a native MTL "Surface" (pbuffer,
  * window, etc.) to a system memory ("Sw") surface.
@@ -719,7 +731,7 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
             // Metal texture is (0,0) at left-top
             srcx = srcOps->xOffset + srcx;
             srcy = srcOps->yOffset + srcy;
-            const int srcLength = width * height * 4; // NOTE: assume that src format is MTLPixelFormatBGRA8Unorm
+            const int byteLength = width * height * 4; // NOTE: assume that src format is MTLPixelFormatBGRA8Unorm
 
             // Create MTLBuffer (or use static)
             MTLRasterFormatInfo rfi = RasterFormatInfos[dsttype];
@@ -771,7 +783,7 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
                                toBuffer:mtlbuf
                       destinationOffset:0 /*offset already taken in: pDst = PtrAddBytes(pDst, dstx * dstInfo.pixelStride)*/
                  destinationBytesPerRow:width*4
-               destinationBytesPerImage:width * height*4];
+               destinationBytesPerImage:byteLength];
             [blitEncoder endEncoding];
 
             // Commit and wait for reading complete
@@ -779,11 +791,12 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
             [cb waitUntilCompleted];
 
             // Perform conversion if necessary
+            BOOL convertFromPre = !RasterFormatInfos[dsttype].isPremult && !srcOps->isOpaque;
             if (directCopy) {
                 if ((dstInfo.scanStride == width * dstInfo.pixelStride) &&
                     (height == (dstInfo.bounds.y2 - dstInfo.bounds.y1))) {
                     // mtlbuf.contents have same dimensions as of pDst
-                    memcpy(pDst, mtlbuf.contents, srcLength);
+                    copyFromMTLBuffer(pDst, mtlbuf, 0, byteLength, convertFromPre);
                 } else {
                     // mtlbuf.contents have smaller dimensions than pDst
                     // copy each row from mtlbuf.contents at appropriate position in pDst
@@ -791,7 +804,7 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
 
                     int rowSize = width * dstInfo.pixelStride;
                     for (int y = 0; y < height; y++) {
-                        memcpy(pDst, mtlbuf.contents + (y * rowSize), rowSize);
+                        copyFromMTLBuffer(pDst, mtlbuf, y * rowSize, rowSize, convertFromPre);
                         pDst = PtrAddBytes(pDst, dstInfo.scanStride);
                     }
                 }
