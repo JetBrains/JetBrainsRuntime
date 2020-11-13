@@ -42,4 +42,10 @@
     *(jlong *) dst = *(const jlong *) src;
   }
 
+private:
+
+  static void current_thread_enable_wx_impl(WXMode mode) { }
+
+public:
+
 #endif // OS_CPU_LINUX_AARCH64_VM_OS_LINUX_AARCH64_HPP
