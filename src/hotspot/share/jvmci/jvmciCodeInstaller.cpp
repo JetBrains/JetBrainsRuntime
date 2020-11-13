@@ -917,6 +917,7 @@ JVMCIEnv::CodeInstallResult CodeInstaller::initialize_buffer(CodeBuffer& buffer,
     if (SafepointMechanism::poll(thread)) {
       // this is a hacky way to force a safepoint check but nothing else was jumping out at me.
       ThreadToNativeFromVM ttnfv(thread);
+      Thread::WXWriteVerifier wx_write;
     }
   }
 

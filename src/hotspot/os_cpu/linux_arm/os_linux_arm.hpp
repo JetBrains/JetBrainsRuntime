@@ -76,4 +76,10 @@
                                            volatile int32_t *dest);
 #endif // !AARCH64
 
+private:
+
+  static void current_thread_enable_wx_impl(WXMode mode) { }
+
+public:
+
 #endif // OS_CPU_LINUX_ARM_VM_OS_LINUX_ARM_HPP

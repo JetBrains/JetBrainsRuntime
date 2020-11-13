@@ -954,6 +954,8 @@ void SafepointSynchronize::handle_polling_page_exception(JavaThread *thread) {
     assert(SafepointSynchronize::is_synchronizing(), "polling encountered outside safepoint synchronization");
   }
 
+  Thread::WXWriteFromExecSetter wx_write;
+
   if (PrintSafepointStatistics) {
     inc_page_trap_count();
   }

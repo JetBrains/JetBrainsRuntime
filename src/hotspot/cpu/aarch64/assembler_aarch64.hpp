@@ -199,7 +199,7 @@ public:
     return extend(uval, msb - lsb);
   }
 
-  static void patch(address a, int msb, int lsb, unsigned long val) {
+  static void patch(address a, int msb, int lsb, uint64_t val) {
     int nbits = msb - lsb + 1;
     guarantee(val < (1U << nbits), "Field too big for insn");
     assert_cond(msb >= lsb);
@@ -212,9 +212,9 @@ public:
     *(unsigned *)a = target;
   }
 
-  static void spatch(address a, int msb, int lsb, long val) {
+  static void spatch(address a, int msb, int lsb, int64_t val) {
     int nbits = msb - lsb + 1;
-    long chk = val >> (nbits - 1);
+    int64_t chk = val >> (nbits - 1);
     guarantee (chk == -1 || chk == 0, "Field too big for insn");
     unsigned uval = val;
     unsigned mask = (1U << nbits) - 1;
@@ -245,9 +245,9 @@ public:
     f(val, bit, bit);
   }
 
-  void sf(long val, int msb, int lsb) {
+  void sf(int64_t val, int msb, int lsb) {
     int nbits = msb - lsb + 1;
-    long chk = val >> (nbits - 1);
+    int64_t chk = val >> (nbits - 1);
     guarantee (chk == -1 || chk == 0, "Field too big for insn");
     unsigned uval = val;
     unsigned mask = (1U << nbits) - 1;
@@ -355,7 +355,7 @@ class Address {
  private:
   Register _base;
   Register _index;
-  long _offset;
+  int64_t _offset;
   enum mode _mode;
   extend _ext;
 
@@ -380,7 +380,13 @@ class Address {
     : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
   Address(Register r, long o)
     : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
+  Address(Register r, long long o)
+    : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
+  Address(Register r, unsigned int o)
+    : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
   Address(Register r, unsigned long o)
+    : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
+  Address(Register r, unsigned long long o)
     : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
 #ifdef ASSERT
   Address(Register r, ByteSize disp)
@@ -421,7 +427,7 @@ class Address {
               "wrong mode");
     return _base;
   }
-  long offset() const {
+  int64_t offset() const {
     return _offset;
   }
   Register index() const {
@@ -553,10 +559,10 @@ class Address {
 
   void lea(MacroAssembler *, Register) const;
 
-  static bool offset_ok_for_immed(long offset, int shift = 0) {
+  static bool offset_ok_for_immed(int64_t offset, int shift = 0) {
     unsigned mask = (1 << shift) - 1;
     if (offset < 0 || offset & mask) {
-      return (uabs(offset) < (1 << (20 - 12))); // Unscaled offset
+      return (uabs((julong)offset) < (1 << (20 - 12))); // Unscaled offset
     } else {
       return ((offset >> shift) < (1 << (21 - 10 + 1))); // Scaled, unsigned offset
     }
@@ -613,10 +619,10 @@ typedef enum {
 class Assembler : public AbstractAssembler {
 
 #ifndef PRODUCT
-  static const unsigned long asm_bp;
+  static const uintptr_t asm_bp;
 
   void emit_long(jint x) {
-    if ((unsigned long)pc() == asm_bp)
+    if ((uintptr_t)pc() == asm_bp)
       asm volatile ("nop");
     AbstractAssembler::emit_int32(x);
   }
@@ -659,7 +665,7 @@ public:
   void f(unsigned val, int msb) {
     current->f(val, msb, msb);
   }
-  void sf(long val, int msb, int lsb) {
+  void sf(int64_t val, int msb, int lsb) {
     current->sf(val, msb, lsb);
   }
   void rf(Register reg, int lsb) {
@@ -709,7 +715,7 @@ public:
     wrap_label(Rd, L, &Assembler::_adrp);
   }
 
-  void adrp(Register Rd, const Address &dest, unsigned long &offset);
+  void adrp(Register Rd, const Address &dest, uint64_t &offset);
 
 #undef INSN
 
@@ -833,7 +839,7 @@ public:
   // architecture.  In debug mode we shrink it in order to test
   // trampolines, but not so small that branches in the interpreter
   // are out of range.
-  static const unsigned long branch_range = NOT_DEBUG(128 * M) DEBUG_ONLY(2 * M);
+  static const uint64_t branch_range = NOT_DEBUG(128 * M) DEBUG_ONLY(2 * M);
 
   static bool reachable_from_branch_at(address branch, address target) {
     return uabs(target - branch) < branch_range;
@@ -843,7 +849,7 @@ public:
 #define INSN(NAME, opcode)                                              \
   void NAME(address dest) {                                             \
     starti;                                                             \
-    long offset = (dest - pc()) >> 2;                                   \
+    int64_t offset = (dest - pc()) >> 2;                                \
     DEBUG_ONLY(assert(reachable_from_branch_at(pc(), dest), "debug only")); \
     f(opcode, 31), f(0b00101, 30, 26), sf(offset, 25, 0);               \
   }                                                                     \
@@ -860,7 +866,7 @@ public:
   // Compare & branch (immediate)
 #define INSN(NAME, opcode)                              \
   void NAME(Register Rt, address dest) {                \
-    long offset = (dest - pc()) >> 2;                   \
+    int64_t offset = (dest - pc()) >> 2;                \
     starti;                                             \
     f(opcode, 31, 24), sf(offset, 23, 5), rf(Rt, 0);    \
   }                                                     \
@@ -878,7 +884,7 @@ public:
   // Test & branch (immediate)
 #define INSN(NAME, opcode)                                              \
   void NAME(Register Rt, int bitpos, address dest) {                    \
-    long offset = (dest - pc()) >> 2;                                   \
+    int64_t offset = (dest - pc()) >> 2;                                \
     int b5 = bitpos >> 5;                                               \
     bitpos &= 0x1f;                                                     \
     starti;                                                             \
@@ -899,7 +905,7 @@ public:
     {EQ, NE, HS, CS=HS, LO, CC=LO, MI, PL, VS, VC, HI, LS, GE, LT, GT, LE, AL, NV};
 
   void br(Condition  cond, address dest) {
-    long offset = (dest - pc()) >> 2;
+    int64_t offset = (dest - pc()) >> 2;
     starti;
     f(0b0101010, 31, 25), f(0, 24), sf(offset, 23, 5), f(0, 4), f(cond, 3, 0);
   }
@@ -1278,7 +1284,7 @@ public:
   // Load register (literal)
 #define INSN(NAME, opc, V)                                              \
   void NAME(Register Rt, address dest) {                                \
-    long offset = (dest - pc()) >> 2;                                   \
+    int64_t offset = (dest - pc()) >> 2;                                \
     starti;                                                             \
     f(opc, 31, 30), f(0b011, 29, 27), f(V, 26), f(0b00, 25, 24),        \
       sf(offset, 23, 5);                                                \
@@ -1303,7 +1309,7 @@ public:
 
 #define INSN(NAME, opc, V)                                              \
   void NAME(FloatRegister Rt, address dest) {                           \
-    long offset = (dest - pc()) >> 2;                                   \
+    int64_t offset = (dest - pc()) >> 2;                                \
     starti;                                                             \
     f(opc, 31, 30), f(0b011, 29, 27), f(V, 26), f(0b00, 25, 24),        \
       sf(offset, 23, 5);                                                \
@@ -1318,7 +1324,7 @@ public:
 
 #define INSN(NAME, opc, V)                                              \
   void NAME(address dest, prfop op = PLDL1KEEP) {                       \
-    long offset = (dest - pc()) >> 2;                                   \
+    int64_t offset = (dest - pc()) >> 2;                                \
     starti;                                                             \
     f(opc, 31, 30), f(0b011, 29, 27), f(V, 26), f(0b00, 25, 24),        \
       sf(offset, 23, 5);                                                \
@@ -1394,7 +1400,7 @@ public:
       assert(size == 0b10 || size == 0b11, "bad operand size in ldr");
       assert(op == 0b01, "literal form can only be used with loads");
       f(size & 0b01, 31, 30), f(0b011, 29, 27), f(0b00, 25, 24);
-      long offset = (adr.target() - pc()) >> 2;
+      int64_t offset = (adr.target() - pc()) >> 2;
       sf(offset, 23, 5);
       code_section()->relocate(pc(), adr.rspec());
       return;
@@ -2612,7 +2618,7 @@ void ext(FloatRegister Vd, SIMD_Arrangement T, FloatRegister Vn, FloatRegister V
   virtual void bang_stack_with_offset(int offset);
 
   static bool operand_valid_for_logical_immediate(bool is32, uint64_t imm);
-  static bool operand_valid_for_add_sub_immediate(long imm);
+  static bool operand_valid_for_add_sub_immediate(int64_t imm);
   static bool operand_valid_for_float_immediate(double imm);
 
   void emit_data64(jlong data, relocInfo::relocType rtype, int format = 0);

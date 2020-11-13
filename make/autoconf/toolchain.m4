@@ -948,9 +948,14 @@ AC_DEFUN_ONCE([TOOLCHAIN_SETUP_BUILD_COMPILERS],
     # FIXME: we should list the discovered compilers as an exclude pattern!
     # If we do that, we can do this detection before POST_DETECTION, and still
     # find the build compilers in the tools dir, if needed.
-    BASIC_REQUIRE_PROGS(BUILD_CC, [cl cc gcc])
+    if test "x$OPENJDK_BUILD_OS" = xmacosx; then
+      BASIC_REQUIRE_PROGS(BUILD_CC, [clang cl cc gcc])
+      BASIC_REQUIRE_PROGS(BUILD_CXX, [clang++ cl CC g++])
+    else
+      BASIC_REQUIRE_PROGS(BUILD_CC, [cl cc gcc])
+      BASIC_REQUIRE_PROGS(BUILD_CXX, [cl CC g++])
+    fi
     BASIC_FIXUP_EXECUTABLE(BUILD_CC)
-    BASIC_REQUIRE_PROGS(BUILD_CXX, [cl CC g++])
     BASIC_FIXUP_EXECUTABLE(BUILD_CXX)
     BASIC_PATH_PROGS(BUILD_NM, nm gcc-nm)
     BASIC_FIXUP_EXECUTABLE(BUILD_NM)

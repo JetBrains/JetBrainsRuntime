@@ -88,7 +88,7 @@ class MacroAssembler: public Assembler {
       = (operand_valid_for_logical_immediate(false /*is32*/,
                                              (uint64_t)Universe::narrow_klass_base())
          && ((uint64_t)Universe::narrow_klass_base()
-             > (1UL << log2_intptr(Universe::narrow_klass_range()))));
+             > (1UL << log2_intptr((uintptr_t)Universe::narrow_klass_range()))));
   }
 
  // These routines should emit JVMTI PopFrame and ForceEarlyReturn handling code.
@@ -456,29 +456,18 @@ public:
   // now mov instructions for loading absolute addresses and 32 or
   // 64 bit integers
 
-  inline void mov(Register dst, address addr)
-  {
-    mov_immediate64(dst, (u_int64_t)addr);
-  }
+  inline void mov(Register dst, address addr)             { mov_immediate64(dst, (uint64_t)addr); }
 
-  inline void mov(Register dst, u_int64_t imm64)
-  {
-    mov_immediate64(dst, imm64);
-  }
+  inline void mov(Register dst, int imm64)                { mov_immediate64(dst, (uint64_t)imm64); }
+  inline void mov(Register dst, long imm64)               { mov_immediate64(dst, (uint64_t)imm64); }
+  inline void mov(Register dst, long long imm64)          { mov_immediate64(dst, (uint64_t)imm64); }
+  inline void mov(Register dst, unsigned int imm64)       { mov_immediate64(dst, (uint64_t)imm64); }
+  inline void mov(Register dst, unsigned long imm64)      { mov_immediate64(dst, (uint64_t)imm64); }
+  inline void mov(Register dst, unsigned long long imm64) { mov_immediate64(dst, (uint64_t)imm64); }
 
   inline void movw(Register dst, u_int32_t imm32)
   {
     mov_immediate32(dst, imm32);
-  }
-
-  inline void mov(Register dst, long l)
-  {
-    mov(dst, (u_int64_t)l);
-  }
-
-  inline void mov(Register dst, int i)
-  {
-    mov(dst, (long)i);
   }
 
   void mov(Register dst, RegisterOrConstant src) {
@@ -1134,7 +1123,7 @@ public:
   void sub(Register Rd, Register Rn, RegisterOrConstant decrement);
   void subw(Register Rd, Register Rn, RegisterOrConstant decrement);
 
-  void adrp(Register reg1, const Address &dest, unsigned long &byte_offset);
+  void adrp(Register reg1, const Address &dest, uint64_t &byte_offset);
 
   void tableswitch(Register index, jint lowbound, jint highbound,
                    Label &jumptable, Label &jumptable_end, int stride = 1) {
@@ -1151,7 +1140,7 @@ public:
   // actually be used: you must use the Address that is returned.  It
   // is up to you to ensure that the shift provided matches the size
   // of your data.
-  Address form_address(Register Rd, Register base, long byte_offset, int shift);
+  Address form_address(Register Rd, Register base, int64_t byte_offset, int shift);
 
   // Return true iff an address is within the 48-bit AArch64 address
   // space.
@@ -1176,7 +1165,7 @@ public:
     if (NearCpool) {
       ldr(dest, const_addr);
     } else {
-      unsigned long offset;
+      uint64_t offset;
       adrp(dest, InternalAddress(const_addr.target()), offset);
       ldr(dest, Address(dest, offset));
     }
@@ -1288,7 +1277,7 @@ private:
   // Uses rscratch2 if the address is not directly reachable
   Address spill_address(int size, int offset, Register tmp=rscratch2);
 
-  bool merge_alignment_check(Register base, size_t size, long cur_offset, long prev_offset) const;
+  bool merge_alignment_check(Register base, size_t size, int64_t cur_offset, int64_t prev_offset) const;
 
   // Check whether two loads/stores can be merged into ldp/stp.
   bool ldst_can_merge(Register rx, const Address &adr, size_t cur_size_in_bytes, bool is_store) const;

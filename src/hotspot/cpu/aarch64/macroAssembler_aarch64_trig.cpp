@@ -201,9 +201,9 @@
 // NOTE: fpu registers are actively reused. See comments in code about their usage
 void MacroAssembler::generate__ieee754_rem_pio2(address npio2_hw,
     address two_over_pi, address pio2) {
-  const long PIO2_1t = 0x3DD0B4611A626331UL;
-  const long PIO2_2  = 0x3DD0B4611A600000UL;
-  const long PIO2_2t = 0x3BA3198A2E037073UL;
+  const int64_t PIO2_1t = 0x3DD0B4611A626331ULL;
+  const int64_t PIO2_2  = 0x3DD0B4611A600000ULL;
+  const int64_t PIO2_2t = 0x3BA3198A2E037073ULL;
   Label X_IS_NEGATIVE, X_IS_MEDIUM_OR_LARGE, X_IS_POSITIVE_LONG_PI, LARGE_ELSE,
       REDUCTION_DONE, X_IS_MEDIUM_BRANCH_DONE, X_IS_LARGE, NX_SET,
       X_IS_NEGATIVE_LONG_PI;
@@ -689,7 +689,7 @@ void MacroAssembler::generate__kernel_rem_pio2(address two_over_pi, address pio2
       RECOMP_FOR1_CHECK;
   Register tmp2 = r1, n = r2, jv = r4, tmp5 = r5, jx = r6,
       tmp3 = r7, iqBase = r10, ih = r11, tmp4 = r12, tmp1 = r13,
-      jz = r14, j = r15, twoOverPiBase = r16, i = r17, qBase = r18;
+      jz = r14, j = r15, twoOverPiBase = r16, i = r17, qBase = r20;
     // jp = jk == init_jk[prec] = init_jk[2] == {2,3,4,6}[2] == 4
     // jx = nx - 1
     lea(twoOverPiBase, ExternalAddress(two_over_pi));

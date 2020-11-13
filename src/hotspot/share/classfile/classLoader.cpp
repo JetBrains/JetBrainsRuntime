@@ -313,6 +313,7 @@ u1* ClassPathZipEntry::open_entry(const char* name, jint* filesize, bool nul_ter
     // enable call to C land
   JavaThread* thread = JavaThread::current();
   ThreadToNativeFromVM ttn(thread);
+  Thread::WXExecFromWriteSetter wx_exec;
   // check whether zip archive contains name
   jint name_len;
   jzentry* entry = (*FindEntry)(_zip, name, filesize, &name_len);
@@ -443,6 +444,7 @@ void ClassPathZipEntry::contents_do(void f(const char* name, void* context), voi
   JavaThread* thread = JavaThread::current();
   HandleMark  handle_mark(thread);
   ThreadToNativeFromVM ttn(thread);
+  Thread::WXExecFromWriteSetter wx_exec;
   for (int n = 0; ; n++) {
     jzentry * ze = ((*GetNextEntry)(_zip, n));
     if (ze == NULL) break;
@@ -942,6 +944,7 @@ ClassPathEntry* ClassLoader::create_class_path_entry(const char *path, const str
       {
         // enable call to C land
         ThreadToNativeFromVM ttn(thread);
+        Thread::WXExecFromWriteSetter wx_exec;
         HandleMark hm(thread);
         zip = (*ZipOpen)(canonical_path, &error_msg);
       }
@@ -991,6 +994,7 @@ ClassPathZipEntry* ClassLoader::create_class_path_zip_entry(const char *path, bo
           // enable call to C land
           JavaThread* thread = JavaThread::current();
           ThreadToNativeFromVM ttn(thread);
+          Thread::WXExecFromWriteSetter wx_exec;
           HandleMark hm(thread);
           zip = (*ZipOpen)(canonical_path, &error_msg);
         }

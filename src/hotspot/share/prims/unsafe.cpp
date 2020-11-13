@@ -364,6 +364,7 @@ UNSAFE_LEAF(void, Unsafe_FullFence(JNIEnv *env, jobject unsafe)) {
 
 UNSAFE_ENTRY(jobject, Unsafe_AllocateInstance(JNIEnv *env, jobject unsafe, jclass cls)) {
   ThreadToNativeFromVM ttnfv(thread);
+  Thread::WXExecFromWriteSetter wx_exec;
   return env->AllocObject(cls);
 } UNSAFE_END
 
@@ -679,6 +680,7 @@ static jclass Unsafe_DefineClass_impl(JNIEnv *env, jstring name, jbyteArray data
 
 UNSAFE_ENTRY(jclass, Unsafe_DefineClass0(JNIEnv *env, jobject unsafe, jstring name, jbyteArray data, int offset, int length, jobject loader, jobject pd)) {
   ThreadToNativeFromVM ttnfv(thread);
+  Thread::WXExecFromWriteSetter wx_exec;
 
   return Unsafe_DefineClass_impl(env, name, data, offset, length, loader, pd);
 } UNSAFE_END
@@ -859,6 +861,7 @@ UNSAFE_ENTRY(jclass, Unsafe_DefineAnonymousClass0(JNIEnv *env, jobject unsafe, j
 
 UNSAFE_ENTRY(void, Unsafe_ThrowException(JNIEnv *env, jobject unsafe, jthrowable thr)) {
   ThreadToNativeFromVM ttnfv(thread);
+  Thread::WXExecFromWriteSetter wx_exec;
   env->Throw(thr);
 } UNSAFE_END
 
@@ -1127,6 +1130,7 @@ static JNINativeMethod jdk_internal_misc_Unsafe_methods[] = {
 
 JVM_ENTRY(void, JVM_RegisterJDKInternalMiscUnsafeMethods(JNIEnv *env, jclass unsafeclass)) {
   ThreadToNativeFromVM ttnfv(thread);
+  Thread::WXExecFromWriteSetter wx_exec;
 
   int ok = env->RegisterNatives(unsafeclass, jdk_internal_misc_Unsafe_methods, sizeof(jdk_internal_misc_Unsafe_methods)/sizeof(JNINativeMethod));
   guarantee(ok == 0, "register jdk.internal.misc.Unsafe natives");

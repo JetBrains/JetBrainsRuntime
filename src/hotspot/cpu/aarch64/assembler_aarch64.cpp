@@ -31,7 +31,7 @@
 #include "interpreter/interpreter.hpp"
 
 #ifndef PRODUCT
-const unsigned long Assembler::asm_bp = 0x00007fffee09ac88;
+const uintptr_t Assembler::asm_bp = 0x00007fffee09ac88;
 #endif
 
 #include "compiler/disassembler.hpp"
@@ -134,14 +134,14 @@ void entry(CodeBuffer *cb) {
     __ subs(r11, r5, 582u);                            //       subs    x11, x5, #582
 
 // LogicalImmOp
-    __ andw(r23, r22, 32768ul);                        //       and     w23, w22, #0x8000
-    __ orrw(r4, r10, 4042322160ul);                    //       orr     w4, w10, #0xf0f0f0f0
-    __ eorw(r0, r24, 4042322160ul);                    //       eor     w0, w24, #0xf0f0f0f0
-    __ andsw(r19, r29, 2139127680ul);                  //       ands    w19, w29, #0x7f807f80
-    __ andr(r5, r10, 4503599627354112ul);              //       and     x5, x10, #0xfffffffffc000
-    __ orr(r12, r30, 18445618178097414144ul);          //       orr     x12, x30, #0xfffc0000fffc0000
-    __ eor(r30, r5, 262128ul);                         //       eor     x30, x5, #0x3fff0
-    __ ands(r26, r23, 4194300ul);                      //       ands    x26, x23, #0x3ffffc
+    __ andw(r23, r22, 32768ull);                        //       and     w23, w22, #0x8000
+    __ orrw(r4, r10, 4042322160ull);                    //       orr     w4, w10, #0xf0f0f0f0
+    __ eorw(r0, r24, 4042322160ull);                    //       eor     w0, w24, #0xf0f0f0f0
+    __ andsw(r19, r29, 2139127680ull);                  //       ands    w19, w29, #0x7f807f80
+    __ andr(r5, r10, 4503599627354112ull);              //       and     x5, x10, #0xfffffffffc000
+    __ orr(r12, r30, 18445618178097414144ull);          //       orr     x12, x30, #0xfffc0000fffc0000
+    __ eor(r30, r5, 262128ull);                         //       eor     x30, x5, #0x3fff0
+    __ ands(r26, r23, 4194300ull);                      //       ands    x26, x23, #0x3ffffc
 
 // AbsOp
     __ b(__ pc());                                     //       b       .
@@ -1226,7 +1226,7 @@ extern "C" {
       Disassembler::decode((address)start, (address)start + len);
   }
 
-  JNIEXPORT void das1(unsigned long insn) {
+  JNIEXPORT void das1(uintptr_t insn) {
     das(insn, 1);
   }
 }
@@ -1265,7 +1265,7 @@ void Address::lea(MacroAssembler *as, Register r) const {
   }
 }
 
-void Assembler::adrp(Register reg1, const Address &dest, unsigned long &byte_offset) {
+void Assembler::adrp(Register reg1, const Address &dest, uint64_t &byte_offset) {
   ShouldNotReachHere();
 }
 
@@ -1274,7 +1274,7 @@ void Assembler::adrp(Register reg1, const Address &dest, unsigned long &byte_off
 #define starti Instruction_aarch64 do_not_use(this); set_current(&do_not_use)
 
   void Assembler::adr(Register Rd, address adr) {
-    long offset = adr - pc();
+    intptr_t offset = adr - pc();
     int offset_lo = offset & 3;
     offset >>= 2;
     starti;
@@ -1285,7 +1285,7 @@ void Assembler::adrp(Register reg1, const Address &dest, unsigned long &byte_off
   void Assembler::_adrp(Register Rd, address adr) {
     uint64_t pc_page = (uint64_t)pc() >> 12;
     uint64_t adr_page = (uint64_t)adr >> 12;
-    long offset = adr_page - pc_page;
+    intptr_t offset = adr_page - pc_page;
     int offset_lo = offset & 3;
     offset >>= 2;
     starti;
@@ -1434,9 +1434,8 @@ void Assembler::add_sub_immediate(Register Rd, Register Rn, unsigned uimm, int o
   srf(Rn, 5);
 }
 
-bool Assembler::operand_valid_for_add_sub_immediate(long imm) {
-  bool shift = false;
-  unsigned long uimm = uabs(imm);
+bool Assembler::operand_valid_for_add_sub_immediate(int64_t imm) {
+  uint64_t uimm = (uint64_t)uabs((jlong)imm);
   if (uimm < (1 << 12))
     return true;
   if (uimm < (1 << 24)

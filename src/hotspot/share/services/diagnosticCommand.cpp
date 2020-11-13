@@ -1084,6 +1084,7 @@ void DebugOnCmdStartDCmd::execute(DCmdSource source, TRAPS) {
   JavaThread* thread = (JavaThread*) THREAD;
   jthread jt = JNIHandles::make_local(thread->threadObj());
   ThreadToNativeFromVM ttn(thread);
+  Thread::WXExecFromWriteSetter wx_exec;
   const char *error = "Could not find jdwp agent.";
 
   if (!dvc_start_ptr) {
