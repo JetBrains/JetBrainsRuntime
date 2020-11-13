@@ -245,6 +245,12 @@ AC_DEFUN_ONCE([HOTSPOT_ENABLE_DISABLE_AOT],
     fi
   fi
 
+  if test "x$ENABLE_AOT" = "xtrue"; then
+    # Disable aot on macos-aarch64 as it's not supported yet
+    if test "x$OPENJDK_TARGET_OS" = "xmacosx" && test "x$OPENJDK_TARGET_CPU" = "xaarch64" ; then
+      ENABLE_AOT="false"
+    fi
+  fi
   AC_SUBST(ENABLE_AOT)
 ])
 
@@ -268,6 +274,14 @@ AC_DEFUN_ONCE([HOTSPOT_ENABLE_DISABLE_CDS],
 
   # Disable CDS on AIX.
   if test "x$OPENJDK_TARGET_OS" = "xaix"; then
+    ENABLE_CDS="false"
+    if test "x$enable_cds" = "xyes"; then
+      AC_MSG_ERROR([CDS is currently not supported on AIX. Remove --enable-cds.])
+    fi
+  fi
+
+  # Disable CDS on macos-aarch64
+  if test "x$OPENJDK_TARGET_OS" = "xmacosx" && test "x$OPENJDK_TARGET_CPU" = "xaarch64"; then
     ENABLE_CDS="false"
     if test "x$enable_cds" = "xyes"; then
       AC_MSG_ERROR([CDS is currently not supported on AIX. Remove --enable-cds.])

@@ -38,6 +38,7 @@ class CompileTask;
 #define JVMCI_VM_ENTRY_MARK                       \
   JavaThread* thread = JavaThread::current(); \
   ThreadInVMfromNative __tiv(thread);       \
+  Thread::WXWriteFromExecSetter __wx_write; \
   ResetNoHandleMark rnhm;                   \
   HandleMarkCleaner __hm(thread);           \
   Thread* THREAD = thread;                  \

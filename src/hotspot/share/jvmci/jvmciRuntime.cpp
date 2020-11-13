@@ -809,6 +809,7 @@ JVM_ENTRY(void, JVM_RegisterJVMCINatives(JNIEnv *env, jclass c2vmClass))
 
   {
     ThreadToNativeFromVM trans(thread);
+    Thread::WXExecFromWriteSetter wx_exec;
     env->RegisterNatives(c2vmClass, CompilerToVM::methods, CompilerToVM::methods_count());
   }
 JVM_END

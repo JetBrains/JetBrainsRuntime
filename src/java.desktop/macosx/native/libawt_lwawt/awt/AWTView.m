@@ -25,6 +25,7 @@
 
 #import "jni_util.h"
 #import "CGLGraphicsConfig.h"
+#import "OSVersion.h"
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
@@ -57,10 +58,7 @@
 //#define EXTRA_DEBUG
 
 static BOOL shouldUsePressAndHold() {
-    static int shouldUsePressAndHold = -1;
-    if (shouldUsePressAndHold != -1) return shouldUsePressAndHold;
-    shouldUsePressAndHold = !isSnowLeopardOrLower();
-    return shouldUsePressAndHold;
+    return YES;
 }
 
 extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, NSString * chars);

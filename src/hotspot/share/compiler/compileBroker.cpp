@@ -1673,6 +1673,7 @@ bool CompileBroker::init_compiler_runtime() {
   {
     // Must switch to native to allocate ci_env
     ThreadToNativeFromVM ttn(thread);
+    Thread::WXWriteVerifier wx_write;
     ciEnv ci_env(NULL, system_dictionary_modification_counter);
     // Cache Jvmti state
     ci_env.cache_jvmti_state();
@@ -1975,6 +1976,7 @@ void CompileBroker::maybe_block() {
       tty->print_cr("compiler thread " INTPTR_FORMAT " poll detects block request", p2i(Thread::current()));
 #endif
     ThreadInVMfromNative tivfn(JavaThread::current());
+    Thread::WXWriteVerifier wx_write;
   }
 }
 
@@ -2157,6 +2159,7 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
   {
     NoHandleMark  nhm;
     ThreadToNativeFromVM ttn(thread);
+    Thread::WXWriteVerifier wx_write;
 
     ciEnv ci_env(task, system_dictionary_modification_counter);
     if (should_break) {
