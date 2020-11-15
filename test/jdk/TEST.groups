@@ -385,7 +385,7 @@ jdk_desktop = \
     :jdk_imageio \
     :jdk_accessibility \
     :jfc_demo \
-    :jdk_client_sanity\
+    :jdk_client_sanity \
     :jdk_jb
 
 # SwingSet3 tests.
