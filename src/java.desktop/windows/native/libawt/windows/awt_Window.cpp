@@ -199,6 +199,7 @@ AwtWindow::AwtWindow() {
     m_isFocusableWindow = TRUE;
     m_isRetainingHierarchyZOrder = FALSE;
     m_filterFocusAndActivation = FALSE;
+    m_isIgnoringMouseEvents = FALSE;
 
     if (AwtWindow::ms_instanceCounter == 1) {
         AwtWindow::ms_hCBTFilter =
@@ -1099,6 +1100,7 @@ AwtWindow* AwtWindow::Create(jobject self, jobject parent)
             DWORD exStyle = WS_EX_NOACTIVATE;
             if (JNU_CallMethodByName(env, NULL, target, "isIgnoreMouseEvents", "()Z").z) {
                 exStyle |= WS_EX_LAYERED | WS_EX_TRANSPARENT;
+                window->m_isIgnoringMouseEvents = TRUE;
             }
             if (GetRTL()) {
                 exStyle |= WS_EX_RIGHT | WS_EX_LEFTSCROLLBAR;
@@ -1398,12 +1400,32 @@ void AwtWindow::Show()
     }
     if (!done) {
         // transient windows shouldn't change the owner window's position in the z-order
-        if (IsRetainingHierarchyZOrder()){
+        if (IsRetainingHierarchyZOrder() || m_isIgnoringMouseEvents) {
             UINT flags = SWP_NOSIZE | SWP_NOMOVE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER;
-            if (nCmdShow == SW_SHOWNA) {
+            if (nCmdShow == SW_SHOWNA || m_isIgnoringMouseEvents) {
                 flags |= SWP_NOACTIVATE;
             }
-            ::SetWindowPos(GetHWnd(), HWND_TOPMOST, 0, 0, 0, 0, flags);
+            // This flag allows the toplevel to be bellow other process toplevels.
+            // This behaviour is preferable for popups, but it is not appropriate
+            // for menus
+            BOOL isLightweightDialog = TRUE;
+            jclass windowPeerClass = env->FindClass("java/awt/peer/WindowPeer");
+            if (windowPeerClass != NULL) {
+                jmethodID isLightweightDialogMID = env->GetStaticMethodID(windowPeerClass, "isLightweightDialog", "(Ljava/awt/Window;)Z");
+                if (isLightweightDialogMID != NULL) {
+                    isLightweightDialog = env->CallStaticBooleanMethod(windowPeerClass, isLightweightDialogMID, target);
+                }
+            }
+
+            HWND hInsertAfter = isLightweightDialog ? HWND_TOP : HWND_TOPMOST;
+            if (m_isIgnoringMouseEvents) {
+                HWND hFgWindow = ::GetForegroundWindow();
+                HWND hOwner = ::GetWindow(GetHWnd(), GW_OWNER);
+                if (hFgWindow != NULL && hOwner != hFgWindow) {
+                    hInsertAfter = hFgWindow; // at least do not show above fg window
+                }
+            }
+            ::SetWindowPos(GetHWnd(), hInsertAfter, 0, 0, 0, 0, flags);
         } else {
             ::ShowWindow(GetHWnd(), nCmdShow);
         }
