@@ -33,6 +33,7 @@ public class WindowWithoutParentTest {
     private static final CompletableFuture<Boolean> typedInField = new CompletableFuture<>();
     private static Robot robot;
     private static JFrame frame;
+    private static JTextField field;
     private static JWindow window;
 
     public static void main(String[] args) throws Exception {
@@ -41,6 +42,7 @@ public class WindowWithoutParentTest {
         try {
             SwingUtilities.invokeAndWait(WindowWithoutParentTest::initUI);
             initFinished.get(10, TimeUnit.SECONDS);
+            clickOn(field);
             pressAndRelease(KeyEvent.VK_ENTER);
             pressAndRelease(KeyEvent.VK_A);
             typedInField.get(10, TimeUnit.SECONDS);
@@ -51,19 +53,19 @@ public class WindowWithoutParentTest {
 
     private static void initUI() {
         frame = new JFrame("WindowWithoutParentTest");
-        JTextField tf = new JTextField(20);
-        tf.addFocusListener(new FocusAdapter() {
+        field = new JTextField(20);
+        field.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
                 initFinished.complete(true);
             }
         });
-        tf.addActionListener(e -> {
+        field.addActionListener(e -> {
             window = new JWindow();
             window.setSize(50, 50);
             window.setVisible(true);
         });
-        tf.getDocument().addDocumentListener(new DocumentListener() {
+        field.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
                 typedInField.complete(true);
@@ -75,7 +77,7 @@ public class WindowWithoutParentTest {
             @Override
             public void changedUpdate(DocumentEvent e) {}
         });
-        frame.add(tf);
+        frame.add(field);
         frame.pack();
         frame.setVisible(true);
     }
@@ -88,5 +90,17 @@ public class WindowWithoutParentTest {
     private static void pressAndRelease(int keyCode) {
         robot.keyPress(keyCode);
         robot.keyRelease(keyCode);
+    }
+
+    private static void clickAt(int x, int y) {
+        robot.delay(1000); // needed for GNOME, to give it some time to update internal state after window showing
+        robot.mouseMove(x, y);
+        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+    }
+
+    private static void clickOn(Component component) {
+        Point location = component.getLocationOnScreen();
+        clickAt(location.x + component.getWidth() / 2, location.y + component.getHeight() / 2);
     }
 }
