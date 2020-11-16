@@ -31,7 +31,6 @@
 #import "sun_font_CFont.h"
 #import "sun_font_CFontManager.h"
 
-#import "OSVersion.h"
 #import "AWTFont.h"
 #import "AWTStrike.h"
 #import "CoreTextSupport.h"

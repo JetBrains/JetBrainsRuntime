@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Red Hat Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +23,25 @@
  *
  */
 
-#include "precompiled.hpp"
-#include "logging/log.hpp"
-#include "logging/logStream.hpp"
-#include "runtime/vm_version.hpp"
+package sun.jvm.hotspot.debugger.bsd.aarch64;
 
-void VM_Version_init() {
-  VM_Version::initialize();
+import sun.jvm.hotspot.debugger.*;
+import sun.jvm.hotspot.debugger.aarch64.*;
+import sun.jvm.hotspot.debugger.bsd.*;
 
-  if (log_is_enabled(Info, os, cpu)) {
-    char buf[1024];
-    ResourceMark rm;
-    LogStream ls(Log(os, cpu)::info());
-    os::print_cpu_info(&ls, buf, sizeof(buf));
+public class BsdAARCH64ThreadContext extends AARCH64ThreadContext {
+  private BsdDebugger debugger;
+
+  public BsdAARCH64ThreadContext(BsdDebugger debugger) {
+    super();
+    this.debugger = debugger;
+  }
+
+  public void setRegisterAsAddress(int index, Address value) {
+    setRegister(index, debugger.getAddressValue(value));
+  }
+
+  public Address getRegisterAsAddress(int index) {
+    return debugger.newAddress(getRegister(index));
   }
 }
