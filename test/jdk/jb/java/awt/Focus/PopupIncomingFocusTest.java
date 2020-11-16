@@ -43,9 +43,9 @@ public class PopupIncomingFocusTest {
         robot = new Robot();
         robot.setAutoWaitForIdle(true);
         try {
-            launchProcessWithWindow();
             SwingUtilities.invokeAndWait(PopupIncomingFocusTest::init);
             windowOpened.get(10, TimeUnit.SECONDS);
+            launchProcessWithWindow();
             clickAt(button);
             popupOpened.get(10, TimeUnit.SECONDS);
             clickAt(400, 100); // other process' window
@@ -67,9 +67,9 @@ public class PopupIncomingFocusTest {
         frame = new JFrame();
         frame.add(button);
         frame.setBounds(50, 50, 200, 100);
-        frame.addWindowListener(new WindowAdapter() {
+        frame.addWindowFocusListener(new WindowAdapter() {
             @Override
-            public void windowOpened(WindowEvent e) {
+            public void windowGainedFocus(WindowEvent e) {
                 windowOpened.complete(Boolean.TRUE);
             }
         });
@@ -83,9 +83,9 @@ public class PopupIncomingFocusTest {
         popup.add(field);
         popup.pack();
         popup.setLocation(50, 200);
-        popup.addWindowListener(new WindowAdapter() {
+        popup.addWindowFocusListener(new WindowAdapter() {
             @Override
-            public void windowOpened(WindowEvent e) {
+            public void windowGainedFocus(WindowEvent e) {
                 popupOpened.complete(Boolean.TRUE);
             }
         });
@@ -99,6 +99,7 @@ public class PopupIncomingFocusTest {
     }
 
     private static void clickAt(int x, int y) {
+        robot.delay(1000);
         robot.mouseMove(x, y);
         robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
         robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
@@ -125,9 +126,9 @@ public class PopupIncomingFocusTest {
                 "    public static void main(String[] args) {\n" +
                 "        SwingUtilities.invokeLater(() -> {\n" +
                 "            JFrame f = new JFrame();\n" +
-                "            f.addWindowListener(new WindowAdapter() {\n" +
+                "            f.addWindowFocusListener(new WindowAdapter() {\n" +
                 "                @Override\n" +
-                "                public void windowOpened(WindowEvent e) {\n" +
+                "                public void windowGainedFocus(WindowEvent e) {\n" +
                 "                    System.out.println();\n" +
                 "                }\n" +
                 "            });\n" +
