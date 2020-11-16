@@ -37,7 +37,6 @@
 #import "JavaTextAccessibility.h"
 #import "JavaAccessibilityUtilities.h"
 #import "GeomUtilities.h"
-#import "OSVersion.h"
 #import "CGLLayer.h"
 #import "java_awt_event_KeyEvent.h"
 
