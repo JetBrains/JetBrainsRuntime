@@ -48,7 +48,7 @@ public final class StringPool {
 
     private static class SimpleStringIdPool {
         /* string id index */
-        private final AtomicLong sidIdx = new AtomicLong();
+        private final AtomicLong sidIdx = new AtomicLong(1);
         /* the cache */
         private final ConcurrentHashMap<String, Long> cache;
         /* max size */
