@@ -55,9 +55,9 @@ public class TypeaheadRequestFocusTest {
 
     private static void initUI() {
         frame = new JFrame("TypeaheadRequestFocusTest");
-        frame.addWindowListener(new WindowAdapter() {
+        frame.addWindowFocusListener(new WindowAdapter() {
             @Override
-            public void windowOpened(WindowEvent e) {
+            public void windowGainedFocus(WindowEvent e) {
                 initFinished.complete(true);
             }
         });
@@ -103,6 +103,7 @@ public class TypeaheadRequestFocusTest {
     }
 
     private static void clickAt(int x, int y) {
+        robot.delay(1000);
         robot.mouseMove(x, y);
         robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
         robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);

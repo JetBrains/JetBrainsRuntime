@@ -56,9 +56,9 @@ public class ModalDialogFromMenuTest {
 
     private static void initUI() {
         frame = new JFrame("ModalDialogFromMenuTest");
-        frame.addWindowListener(new WindowAdapter() {
+        frame.addWindowFocusListener(new WindowAdapter() {
             @Override
-            public void windowOpened(WindowEvent e) {
+            public void windowGainedFocus(WindowEvent e) {
                 initFinished.complete(true);
             }
         });
@@ -106,6 +106,7 @@ public class ModalDialogFromMenuTest {
     }
 
     private static void clickAt(int x, int y, int buttons) {
+        robot.delay(1000);
         robot.mouseMove(x, y);
         robot.mousePress(buttons);
         robot.mouseRelease(buttons);

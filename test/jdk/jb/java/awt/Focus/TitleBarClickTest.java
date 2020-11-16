@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
  * @key headful
  */
 public class TitleBarClickTest {
+    private static final CompletableFuture<Boolean> f1Opened = new CompletableFuture<>();
     private static final CompletableFuture<Boolean> f2Opened = new CompletableFuture<>();
     private static final CompletableFuture<Boolean> t2Clicked = new CompletableFuture<>();
     private static CompletableFuture<Boolean> t1Focused;
@@ -41,7 +42,9 @@ public class TitleBarClickTest {
         robot = new Robot();
 
         try {
-            SwingUtilities.invokeAndWait(TitleBarClickTest::initUI);
+            SwingUtilities.invokeAndWait(TitleBarClickTest::initFrame1);
+            f1Opened.get(10, TimeUnit.SECONDS);
+            SwingUtilities.invokeAndWait(TitleBarClickTest::initFrame2);
             f2Opened.get(10, TimeUnit.SECONDS);
             clickAt(t2);
             t2Clicked.get(10, TimeUnit.SECONDS);
@@ -58,7 +61,7 @@ public class TitleBarClickTest {
         }
     }
 
-    private static void initUI() {
+    private static void initFrame1() {
         f1 = new JFrame("first");
         f1.add(t1 = new JTextField());
         t1.addFocusListener(new FocusAdapter() {
@@ -67,8 +70,17 @@ public class TitleBarClickTest {
                 if (t1Focused != null) t1Focused.complete(Boolean.TRUE);
             }
         });
+        f1.addWindowFocusListener(new WindowAdapter() {
+            @Override
+            public void windowGainedFocus(WindowEvent e) {
+                f1Opened.complete(Boolean.TRUE);
+            }
+        });
         f1.setBounds(100, 100, 300, 100);
         f1.setVisible(true);
+    }
+
+   private static void initFrame2() {
         f2 = new JFrame("second");
         f2.add(t2 = new JTextField());
         t2.addFocusListener(new FocusAdapter() {
@@ -83,9 +95,9 @@ public class TitleBarClickTest {
                 t2Clicked.complete(Boolean.TRUE);
             }
         });
-        f2.addWindowListener(new WindowAdapter() {
+        f2.addWindowFocusListener(new WindowAdapter() {
             @Override
-            public void windowOpened(WindowEvent e) {
+            public void windowGainedFocus(WindowEvent e) {
                 f2Opened.complete(Boolean.TRUE);
             }
         });
@@ -99,6 +111,7 @@ public class TitleBarClickTest {
     }
 
     private static void clickAt(int x, int y) {
+        robot.delay(1000);
         robot.mouseMove(x, y);
         robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
         robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
