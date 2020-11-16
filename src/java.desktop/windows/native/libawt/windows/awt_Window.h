@@ -289,7 +289,7 @@ private:
     BOOL m_isRetainingHierarchyZOrder; // Is this a window that shouldn't change z-order of any window
                                        // from its hierarchy when shown. Currently applied to instances of
                                        // javax/swing/Popup$HeavyWeightWindow class.
-
+    BOOL m_isIgnoringMouseEvents; // Make window transparent for mouse events (used for JCEF)
     RECT m_boundsOnDPIChange; /* bounds to asynchronously adjust on DPI change */
 
     // SetTranslucency() is the setter for the following two fields
