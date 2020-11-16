@@ -2128,13 +2128,15 @@ bool Arguments::check_gc_consistency() {
   // of collectors.
   uint i = 0;
   if (UseSerialGC)                       i++;
-  if (UseConcMarkSweepGC)                i++;
-  if (UseParallelGC || UseParallelOldGC) i++;
+  if (UseParallelGC)                     i++;
   if (UseG1GC)                           i++;
+  if (UseEpsilonGC)                      i++;
+  if (UseZGC)                            i++;
+  if (UseShenandoahGC)                   i++;
   if (AllowEnhancedClassRedefinition) {
     // Must use serial GC. This limitation applies because the instance size changing GC modifications
     // are only built into the mark and compact algorithm.
-    if ((!UseSerialGC && !UseG1GC) && i >= 1) {
+    if (!UseSerialGC && !UseG1GC && i >= 1) {
       jio_fprintf(defaultStream::error_stream(),
                   "Must use the Serial or G1 GC with enhanced class redefinition.\n");
       return false;
@@ -4494,18 +4496,18 @@ void Arguments::setup_hotswap_agent() {
 
   // TODO: open it only for org.hotswap.agent module
   // Use to access java.lang.reflect.Proxy/proxyCache
-  create_numbered_property("jdk.module.addopens", "java.base/java.lang=ALL-UNNAMED", addopens_count++);
+  create_numbered_module_property("jdk.module.addopens", "java.base/java.lang=ALL-UNNAMED", addopens_count++);
   // Class of  field java.lang.reflect.Proxy/proxyCache
-  create_numbered_property("jdk.module.addopens", "java.base/jdk.internal.loader=ALL-UNNAMED", addopens_count++);
+  create_numbered_module_property("jdk.module.addopens", "java.base/jdk.internal.loader=ALL-UNNAMED", addopens_count++);
   // Use to access java.io.Reader, java.io.InputStream, java.io.FileInputStream
-  create_numbered_property("jdk.module.addopens", "java.base/java.io=ALL-UNNAMED", addopens_count++);
+  create_numbered_module_property("jdk.module.addopens", "java.base/java.io=ALL-UNNAMED", addopens_count++);
   // java.beans.Introspector access
-  create_numbered_property("jdk.module.addopens", "java.desktop/java.beans=ALL-UNNAMED", addopens_count++);
+  create_numbered_module_property("jdk.module.addopens", "java.desktop/java.beans=ALL-UNNAMED", addopens_count++);
   // java.beans.Introspector access
-  create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans=ALL-UNNAMED", addopens_count++);
+  create_numbered_module_property("jdk.module.addopens", "java.desktop/com.sun.beans=ALL-UNNAMED", addopens_count++);
   // com.sun.beans.introspect.ClassInfo access
-  create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans.introspect=ALL-UNNAMED", addopens_count++);
+  create_numbered_module_property("jdk.module.addopens", "java.desktop/com.sun.beans.introspect=ALL-UNNAMED", addopens_count++);
   // com.sun.beans.introspect.util.Cache access
-  create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans.util=ALL-UNNAMED", addopens_count++);
+  create_numbered_module_property("jdk.module.addopens", "java.desktop/com.sun.beans.util=ALL-UNNAMED", addopens_count++);
 
 }

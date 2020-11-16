@@ -1031,7 +1031,7 @@ void LinkResolver::resolve_field(fieldDescriptor& fd,
         assert(m != NULL, "information about the current method must be available for 'put' bytecodes");
         bool is_initialized_static_final_update = (byte == Bytecodes::_putstatic &&
                                                    fd.is_static() &&
-                                                   !(m()->is_static_initializer() || m()->name() == vmSymbols::ha_class_initializer_name()));
+                                                   !(m->is_static_initializer() || m->name() == vmSymbols::ha_class_initializer_name()));
         bool is_initialized_instance_final_update = ((byte == Bytecodes::_putfield || byte == Bytecodes::_nofast_putfield) &&
                                                      !fd.is_static() &&
                                                      !m->is_object_initializer());
