@@ -37,7 +37,7 @@ public class WindowWithoutParentTest {
 
     public static void main(String[] args) throws Exception {
         robot = new Robot();
-        robot.setAutoDelay(50);
+        robot.setAutoDelay(50); // ensure different timestamps for key events (can impact typeahead logic)
         try {
             SwingUtilities.invokeAndWait(WindowWithoutParentTest::initUI);
             initFinished.get(10, TimeUnit.SECONDS);

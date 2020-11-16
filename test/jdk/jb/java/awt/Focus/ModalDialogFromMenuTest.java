@@ -40,7 +40,7 @@ public class ModalDialogFromMenuTest {
 
     public static void main(String[] args) throws Exception {
         robot = new Robot();
-        robot.setAutoDelay(50);
+        robot.setAutoDelay(50); // ensure different timestamps for key events (can impact typeahead logic)
         try {
             SwingUtilities.invokeAndWait(ModalDialogFromMenuTest::initUI);
             initFinished.get(10, TimeUnit.SECONDS);
@@ -106,7 +106,7 @@ public class ModalDialogFromMenuTest {
     }
 
     private static void clickAt(int x, int y, int buttons) {
-        robot.delay(1000);
+        robot.delay(1000); // needed for GNOME, to give it some time to update internal state after window showing
         robot.mouseMove(x, y);
         robot.mousePress(buttons);
         robot.mouseRelease(buttons);
