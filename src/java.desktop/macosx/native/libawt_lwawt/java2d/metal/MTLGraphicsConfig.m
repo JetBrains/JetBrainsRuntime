@@ -38,6 +38,9 @@
 #pragma mark -
 #pragma mark "--- Mac OS X specific methods for GL pipeline ---"
 
+// Uncomment this line to see Metal specific fprintfs
+//#define METAL_DEBUG
+
 /**
  * Disposes all memory and resources associated with the given
  * CGLGraphicsConfigInfo (including its native MTLContext data).
@@ -76,6 +79,7 @@ Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
 {
     J2dRlsTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfig_initMTL");
 
+#ifdef METAL_DEBUG
     FILE *f = popen("/usr/sbin/system_profiler SPDisplaysDataType", "r");
     bool metalSupport = FALSE;
     while (getc(f) != EOF)
@@ -98,6 +102,7 @@ Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
     } else {
         fprintf(stderr, "Metal support is present\n");
     }
+#endif
 
     if (!MTLFuncs_OpenLibrary()) {
         return JNI_FALSE;

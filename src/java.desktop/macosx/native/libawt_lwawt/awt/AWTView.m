@@ -54,7 +54,8 @@ jboolean metalEnabled = JNI_FALSE;
 //#define IM_DEBUG TRUE
 //#define EXTRA_DEBUG
 
-#define METAL_DEBUG
+// Uncomment this line to see Metal specific fprintfs
+//#define METAL_DEBUG
 
 static BOOL shouldUsePressAndHold() {
     static int shouldUsePressAndHold = -1;
