@@ -263,7 +263,7 @@ void G1FullGCPrepareTask::prepare_serial_compaction_dcevm() {
 
     // collect remaining, not forwarded rescued oops using serial compact point
     while (cp->last_rescued_oop() < cp->rescued_oops()->length()) {
-      HeapRegion* hr = G1CollectedHeap::heap()->new_region(HeapRegion::GrainBytes / HeapWordSize, false, true);
+      HeapRegion* hr = G1CollectedHeap::heap()->new_region(HeapRegion::GrainBytes / HeapWordSize, HeapRegionType::Eden, true, G1NUMA::AnyNodeIndex);
       if (hr == NULL) {
         vm_exit_out_of_memory(0, OOM_MMAP_ERROR, "G1 - not enough of free regions after redefinition.");
       }
