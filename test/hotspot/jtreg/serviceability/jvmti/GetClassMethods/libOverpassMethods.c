@@ -95,7 +95,8 @@ JNIEXPORT jobjectArray JNICALL Java_OverpassMethods_getJVMTIDeclaredMethods(JNIE
     return NULL;
   }
 
-  for (int i = 0; i < method_count; i++) {
+  int i;
+  for (i = 0; i < method_count; i++) {
     jint modifiers = 0;
     err = JNI_ENV_PTR(jvmti)->GetMethodModifiers(JNI_ENV_ARG2(jvmti, methods[i], &modifiers));
     if (err != JVMTI_ERROR_NONE) {
