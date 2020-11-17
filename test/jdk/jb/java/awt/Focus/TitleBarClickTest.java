@@ -54,6 +54,7 @@ public class TitleBarClickTest {
             t1Focused.get(10, TimeUnit.SECONDS);
 
             SwingUtilities.invokeAndWait(() -> t2Focused = new CompletableFuture<>());
+            robot.delay(1000); // give WM a bit more time
             f2.toFront();
             t2Focused.get(10, TimeUnit.SECONDS);
         } finally {
