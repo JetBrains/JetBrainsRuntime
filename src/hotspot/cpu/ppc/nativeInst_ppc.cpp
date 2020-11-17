@@ -176,6 +176,7 @@ void NativeFarCall::verify() {
 address NativeMovConstReg::next_instruction_address() const {
 #ifdef ASSERT
   CodeBlob* nm = CodeCache::find_blob(instruction_address());
+  assert(nm != NULL, "Could not find code blob");
   assert(!MacroAssembler::is_set_narrow_oop(addr_at(0), nm->content_begin()), "Should not patch narrow oop here");
 #endif
 
@@ -194,6 +195,7 @@ intptr_t NativeMovConstReg::data() const {
   }
 
   CodeBlob* cb = CodeCache::find_blob_unsafe(addr);
+  assert(cb != NULL, "Could not find code blob");
   if (MacroAssembler::is_set_narrow_oop(addr, cb->content_begin())) {
     narrowOop no = (narrowOop)MacroAssembler::get_narrow_oop(addr, cb->content_begin());
     return cast_from_oop<intptr_t>(CompressedOops::decode(no));
@@ -292,6 +294,7 @@ void NativeMovConstReg::set_data(intptr_t data) {
 void NativeMovConstReg::set_narrow_oop(narrowOop data, CodeBlob *code /* = NULL */) {
   address   inst2_addr = addr_at(0);
   CodeBlob* cb = (code) ? code : CodeCache::find_blob(instruction_address());
+  assert(cb != NULL, "Could not find code blob");
   if (MacroAssembler::get_narrow_oop(inst2_addr, cb->content_begin()) == (long)data)
     return;
   const address inst1_addr =
@@ -402,6 +405,7 @@ address NativeCallTrampolineStub::encoded_destination_addr() const {
 
 address NativeCallTrampolineStub::destination(nmethod *nm) const {
   CodeBlob* cb = nm ? nm : CodeCache::find_blob_unsafe(addr_at(0));
+  assert(cb != NULL, "Could not find code blob");
   address ctable = cb->content_begin();
 
   return *(address*)(ctable + destination_toc_offset());
@@ -413,6 +417,7 @@ int NativeCallTrampolineStub::destination_toc_offset() const {
 
 void NativeCallTrampolineStub::set_destination(address new_destination) {
   CodeBlob* cb = CodeCache::find_blob(addr_at(0));
+  assert(cb != NULL, "Could not find code blob");
   address ctable = cb->content_begin();
 
   *(address*)(ctable + destination_toc_offset()) = new_destination;
