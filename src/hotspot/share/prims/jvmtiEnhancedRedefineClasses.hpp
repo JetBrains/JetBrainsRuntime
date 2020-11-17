@@ -142,7 +142,9 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // and in all direct and indirect subclasses.
   void increment_class_counter(InstanceKlass *ik, TRAPS);
 
-  void flush_dependent_code(InstanceKlass* k_h, TRAPS);
+  void mark_dependent_code(InstanceKlass* ik);
+
+  void flush_dependent_code(TRAPS);
 
   u8 next_id();
 
