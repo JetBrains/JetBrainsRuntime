@@ -434,11 +434,13 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
     }
 #endif // DEBUG_ISOBLIT
 
-    clipDestCoords(
-            &dx1, &dy1, &dx2, &dy2,
-            &sx1, &sy1, &sx2, &sy2,
-            dstTex.width, dstTex.height, texture ? NULL : [mtlc.clip getRect]
-    );
+    if (!xform) {
+        clipDestCoords(
+                &dx1, &dy1, &dx2, &dy2,
+                &sx1, &sy1, &sx2, &sy2,
+                dstTex.width, dstTex.height, texture ? NULL : [mtlc.clip getRect]
+        );
+    }
 
     SurfaceDataBounds bounds;
     bounds.x1 = sx1;
@@ -569,12 +571,13 @@ MTLBlitLoops_Blit(JNIEnv *env,
         }
     }
 #endif // DEBUG_BLIT
-
-    clipDestCoords(
-            &dx1, &dy1, &dx2, &dy2,
-            &sx1, &sy1, &sx2, &sy2,
-            dest.width, dest.height, texture ? NULL : [mtlc.clip getRect]
-    );
+    if (!xform) {
+        clipDestCoords(
+                &dx1, &dy1, &dx2, &dy2,
+                &sx1, &sy1, &sx2, &sy2,
+                dest.width, dest.height, texture ? NULL : [mtlc.clip getRect]
+        );
+    }
 
     SurfaceDataRasInfo srcInfo;
     srcInfo.bounds.x1 = sx1;
