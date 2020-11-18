@@ -26,7 +26,8 @@
                                                                              role:javaRole
                                                                             index:[[self javaBase] index]
                                                                           withEnv:[ThreadUtilities getJNIEnv]
-                                                                         withView:[[self javaBase] view]];
+                                                                         withView:[[self javaBase] view]
+                                                                        isWrapped:YES];
         return [NSArray arrayWithObject:newChild.platformAxElement];
     } else {
         return children;
