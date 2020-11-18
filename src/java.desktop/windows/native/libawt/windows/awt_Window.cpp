@@ -1422,7 +1422,7 @@ void AwtWindow::Show()
                 HWND hFgWindow = ::GetForegroundWindow();
                 HWND hOwner = ::GetWindow(GetHWnd(), GW_OWNER);
                 if (hFgWindow != NULL && hOwner != hFgWindow) {
-                    hInsertAfter = hFgWindow; // at least do not show above fg window
+                    hInsertAfter = ::GetWindow(hOwner, GW_HWNDPREV); // insert below the wnd above the owner
                 }
             }
             ::SetWindowPos(GetHWnd(), hInsertAfter, 0, 0, 0, 0, flags);
