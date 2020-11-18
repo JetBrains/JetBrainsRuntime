@@ -25,8 +25,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * @test
@@ -40,30 +42,34 @@ import java.util.concurrent.TimeUnit;
     static final Color TRANSPARENT_COLOR = new Color(1, 1, 1, 0);
     static final Color BG_COLOR = Color.red;
 
-    static JFrame bottomFrame = new JFrame("bottom frame");
-    static JFrame topFrame = new JFrame("top frame");
-    static JWindow window = new JWindow(bottomFrame);
+    static volatile JFrame bottomFrame;
+    static volatile JFrame topFrame;
+    static volatile JWindow window;
 
     public static void main(String[] args) throws InterruptedException, AWTException, InvocationTargetException {
-        EventQueue.invokeLater(HwFacadeWindowNoFrontTest::showGUI);
-        awaitVisibilityChanged(window, true);
+        performAndWait(latch -> EventQueue.invokeLater(() -> showGUI(latch)), "initializing GUI");
+        performAndWait(latch -> waitVisibilityChanged(window, latch, true), "waiting for the window to show");
 
         Robot robot = new Robot();
 
+        //
         // 1) Check window is below top frame
-        Color pixel = robot.getPixelColor(topFrame.getX() + 100, topFrame.getY() + 100);
-        if (pixel.equals(BG_COLOR)) {
-            throw new RuntimeException("Test FAILED");
-        }
+        //
+        performAndRepeat(10, robot, "window is not below the top frame", () -> {
+            Color pixel = robot.getPixelColor(topFrame.getX() + 100, topFrame.getY() + 100);
+            return !pixel.equals(BG_COLOR);
+        });
 
         EventQueue.invokeLater(() -> topFrame.dispose());
-        awaitVisibilityChanged(topFrame, false);
+        performAndWait(latch -> waitVisibilityChanged(topFrame, latch, false), "waiting for the top frame to dispose");
 
+        //
         // 2) Check window is above bottom frame
-        pixel = robot.getPixelColor(bottomFrame.getX() + 100, bottomFrame.getY() + 100);
-        if (!pixel.equals(BG_COLOR)) {
-            throw new RuntimeException("Test FAILED");
-        }
+        //
+        performAndRepeat(10, robot, "window is not above the bottom frame", () -> {
+            Color pixel = robot.getPixelColor(bottomFrame.getX() + 100, bottomFrame.getY() + 100);
+            return pixel.equals(BG_COLOR);
+        });
 
         EventQueue.invokeLater(() -> {
             bottomFrame.dispose();
@@ -73,7 +79,7 @@ import java.util.concurrent.TimeUnit;
         System.out.println("Test PASSED");
     }
 
-    static void showGUI() {
+    static void showGUI(CountDownLatch latch) {
         bottomFrame = new JFrame("frame1");
         bottomFrame.setSize(400, 200);
         bottomFrame.setLocationRelativeTo(null);
@@ -102,28 +108,20 @@ import java.util.concurrent.TimeUnit;
         // the order matters
         bottomFrame.setVisible(true);
         topFrame.setVisible(true);
-        // window should appear above bottomFrame, below topFrame
         window.setVisible(true);
+
+        latch.countDown();
     }
 
-    private static void awaitVisibilityChanged(Window window, boolean shown) throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(1);
-        checkVisibilityChanged(window, latch, shown);
-        latch.await(2, TimeUnit.SECONDS);
-    }
-
-    private static void checkVisibilityChanged(Window window, CountDownLatch latch, boolean shown) {
+    private static void waitVisibilityChanged(Window window, CountDownLatch latch, boolean shown) {
         EventQueue.invokeLater(() -> {
+            boolean locationRetrieved = false;
             try {
-                window.getLocationOnScreen();
+                locationRetrieved = window.getLocationOnScreen() != null;
             } catch (IllegalComponentStateException ignored) {
-                if (shown) {
-                    checkVisibilityChanged(window, latch, shown);
-                    return;
-                }
             }
-            if (!shown) {
-                checkVisibilityChanged(window, latch, shown);
+            if (shown == !locationRetrieved) {
+                waitVisibilityChanged(window, latch, shown);
                 return;
             }
             latch.countDown();
@@ -138,5 +136,27 @@ import java.util.concurrent.TimeUnit;
             m.invoke(window, true);
         } catch (Throwable ignore) {
         }
+    }
+
+    private static void performAndWait(Consumer<CountDownLatch> performer, String errMsg) {
+        CountDownLatch latch = new CountDownLatch(1);
+        performer.accept(latch);
+        try {
+            if (!latch.await(2, TimeUnit.SECONDS)) {
+                throw new RuntimeException("Test ERROR: " + errMsg);
+            }
+        } catch (InterruptedException ignored) {
+        }
+    }
+
+    private static void performAndRepeat(int count, Robot robot, String errMsg, Callable<Boolean> action) {
+        while (count-- >= 0) {
+            try {
+                if (action.call()) return;
+                robot.delay(50);
+            } catch (Exception ignored) {
+            }
+        }
+        throw new RuntimeException("Test ERROR: " + errMsg);
     }
 }
