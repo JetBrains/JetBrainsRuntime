@@ -23,28 +23,13 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 - (NSArray *)accessibilityChildren {
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
-        NSString *javaRole = [[self javaBase] javaRole];
-        JavaBaseAccessibility *newChild = nil;
-        if ([javaRole isEqualToString:@"pagetablist"]) {
-            newChild = [TabGroupAccessibility alloc];
-        } else if ([javaRole isEqualToString:@"scrollpane"]) {
-            newChild = [ScrollAreaAccessibility alloc];
-        } else {
-            NSString *nsRole = [sRoles objectForKey:javaRole];
-            if ([nsRole isEqualToString:NSAccessibilityStaticTextRole] || [nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
-                newChild = [JavaTextAccessibility alloc];
-            } else if ([nsRole isEqualToString:NSAccessibilityListRole]) {
-                newChild = [JavaListAccessibility alloc];
-            } else {
-                newChild = [JavaComponentAccessibility alloc];
-            }
-        }
-        [newChild initWithParent:[self javaBase]
-                         withEnv:[ThreadUtilities getJNIEnv]
-                  withAccessible:[[self javaBase] accessible]
-                       withIndex:[[self javaBase] index]
-                        withView:[[self javaBase] view]
-                    withJavaRole:javaRole];
+        JavaBaseAccessibility *newChild = [JavaBaseAccessibility createWithParent:[self javaBase]
+                                                                       accessible:[[self javaBase] accessible]
+                                                                             role:[[self javaBase] javaRole]
+                                                                            index:[[self javaBase] index]
+                                                                          withEnv:[ThreadUtilities getJNIEnv]
+                                                                         withView:[[self javaBase] view]
+                                                                        isWrapped:YES];
         return [NSArray arrayWithObject:[newChild autorelease].platformAxElement];
     } else {
         return children;
@@ -52,9 +37,6 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 }
 
 - (NSInteger)accessibilityIndex {
-    if ([self isTableRow]) {
-        return [[self javaBase] index];
-    }
     return [super accessibilityIndex];
 }
 

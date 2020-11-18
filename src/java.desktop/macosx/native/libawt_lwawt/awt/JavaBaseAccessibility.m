@@ -313,25 +313,31 @@ static jobject sAccessibilityClass = NULL;
     return [self createWithParent:nil accessible:jaccessible role:javaRole index:index withEnv:env withView:view];
 }
 
-+ (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view
++ (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view {
+    return [JavaBaseAccessibility createWithParent:parent accessible:jaccessible role:javaRole index:index withEnv:env withView:view isWrapped:NO];
+}
+
++ (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped
 {
     // try to fetch the jCAX from Java, and return autoreleased
     jobject jCAX = [JavaBaseAccessibility getCAccessible:jaccessible withEnv:env];
     if (jCAX == NULL) return nil;
+    if (!wrapped) {
     JavaBaseAccessibility *value = (JavaBaseAccessibility *) jlong_to_ptr(JNFGetLongField(env, jCAX, jf_ptr));
     if (value != nil) {
         (*env)->DeleteLocalRef(env, jCAX);
         return [[value retain] autorelease];
     }
+    }
 
     // otherwise, create a new instance
     JavaBaseAccessibility *newChild = nil;
-    if ([javaRole isEqualToString:@"pagetablist"]) {
+    if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityListRole]) {
+        newChild = [JavaListRowAccessibility alloc];
+    } else if ([javaRole isEqualToString:@"pagetablist"]) {
         newChild = [TabGroupAccessibility alloc];
     } else if ([javaRole isEqualToString:@"scrollpane"]) {
         newChild = [ScrollAreaAccessibility alloc];
-    } else if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityListRole]) {
-        newChild = [JavaListRowAccessibility alloc];
     } else {
         NSString *nsRole = [sRoles objectForKey:javaRole];
         if ([nsRole isEqualToString:NSAccessibilityStaticTextRole] || [nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
