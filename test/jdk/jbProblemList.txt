@@ -758,6 +758,7 @@ java/io/pathNames/GeneralWin32.java                                             
 com/sun/management/OperatingSystemMXBean/GetCommittedVirtualMemorySize.java         8206179 macosx-all
 com/sun/management/OperatingSystemMXBean/GetProcessCpuLoad.java                     8030957 aix-all
 com/sun/management/OperatingSystemMXBean/GetSystemCpuLoad.java                      8030957 aix-all
+com/sun/management/OperatingSystemMXBean/TestTotalSwap.java                         8255263 linux-i386
 
 sun/management/jmxremote/bootstrap/RmiSslBootstrapTest.sh                           8205653 generic-all
 sun/management/jmxremote/bootstrap/RmiRegistrySslTest.java                          8205653 generic-all
