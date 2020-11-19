@@ -213,3 +213,6 @@ jb/javax/swing/JDialog/JDialog741/JDialog741.html                               
 jb/sun/awt/macos/KeyPressAndHoldTest.java                                                   nobug macosx-all
 jb/sun/lwawt/macosx/NSEvent/nsevent422.sh                                                   nobug macosx-all
 jb/java/awt/Focus/ModalDialogFromMenuTest.java                                              JBR-2768 macosx-all
+
+jb/java/jcef/MouseEventTest.java                                                            JBR-2750 linux-all
+jb/java/jcef/MouseEventAfterHideAndShowBrowserTest.java                                     JBR-2750 linux-all
