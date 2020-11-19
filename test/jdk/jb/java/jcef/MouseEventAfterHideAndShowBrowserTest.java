@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
  * @run main/othervm MouseEventTestAfterHideAndShowBrowser
  */
 
-public class MouseEventTestAfterHideAndShowBrowser {
+public class MouseEventAfterHideAndShowBrowserTest {
 
     public static void main(String[] args) throws InvocationTargetException, InterruptedException {
 
