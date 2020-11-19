@@ -133,7 +133,7 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
 }
 
 - (NSString *)accessibilityLabel {
-    return [super accessibilityLabel];
+    return [super accessibilityLabel] == NULL ? @"table" : [super accessibilityLabel];
 }
 
 - (NSRect)accessibilityFrame {
