@@ -300,10 +300,14 @@ final class CPlatformResponder {
             characterToGetKeyCode = checkedChar;
         }
 
+        char testCharIgnoringModifiers = nsEvent.getCharactersIgnoringModifiers() != null && nsEvent.getCharactersIgnoringModifiers().length() > 0 ?
+                    nsEvent.getCharactersIgnoringModifiers().charAt(0) : KeyEvent.CHAR_UNDEFINED;
+
+
         // We use char candidate if modifiers are not used
         // otherwise, we use char ignoring modifiers
         int[] in = new int[] {
-                characterToGetKeyCode,
+                testCharIgnoringModifiers,
                 nsEvent.isHasDeadKey() ? 1 : 0,
                 nsEvent.getModifierFlags(),
                 nsEvent.getKeyCode(),
