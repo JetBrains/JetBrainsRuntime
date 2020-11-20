@@ -26,12 +26,12 @@
  * @key gc
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
  *
- * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx512m
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx128m
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=passive
  *      -XX:+ShenandoahVerify -XX:+ShenandoahDegeneratedGC
  *      TestPinnedGarbage
  *
- * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx512m
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx128m
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=passive
  *      -XX:+ShenandoahVerify -XX:-ShenandoahDegeneratedGC
  *      TestPinnedGarbage
@@ -42,11 +42,11 @@
  * @key gc
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
  *
- * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx512m
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx128m
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
  *      TestPinnedGarbage
  *
- * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx512m
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx128m
  *      -XX:+UseShenandoahGC
  *      -XX:+ShenandoahVerify
  *      TestPinnedGarbage
@@ -61,31 +61,32 @@ public class TestPinnedGarbage {
     }
 
     private static final int NUM_RUNS      = 1_000;
-    private static final int OBJS_COUNT    = 1_000;
-    private static final int GARBAGE_COUNT = 1_000_000;
+    private static final int OBJS_COUNT    = 1 << 10;
+    private static final int GARBAGE_COUNT = 1 << 18;
 
     private static native void pin(int[] a);
     private static native void unpin(int[] a);
 
     public static void main(String[] args) {
+        ThreadLocalRandom rng = ThreadLocalRandom.current();
         for (int i = 0; i < NUM_RUNS; i++) {
-            test();
+            test(rng);
         }
     }
 
-    private static void test() {
+    private static void test(ThreadLocalRandom rng) {
         Object[] objs = new Object[OBJS_COUNT];
         for (int i = 0; i < OBJS_COUNT; i++) {
             objs[i] = new MyClass();
         }
 
         int[] cog = new int[10];
-        int cogIdx = ThreadLocalRandom.current().nextInt(OBJS_COUNT);
+        int cogIdx = rng.nextInt(OBJS_COUNT);
         objs[cogIdx] = cog;
         pin(cog);
 
         for (int i = 0; i < GARBAGE_COUNT; i++) {
-            int rIdx = ThreadLocalRandom.current().nextInt(OBJS_COUNT);
+            int rIdx = rng.nextInt(OBJS_COUNT);
             if (rIdx != cogIdx) {
                 objs[rIdx] = new MyClass();
             }
