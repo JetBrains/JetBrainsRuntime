@@ -110,6 +110,10 @@ static NSPoint lastTopLeftPoint;
     [super becomeKeyWindow];                                    \
     [(AWTWindow*)[self delegate] becomeKeyWindow];              \
 }                                                               \
+                                                                \
+- (NSWindowTabbingMode)tabbingMode {                            \
+    return NSWindowTabbingModeDisallowed;                       \
+}
 
 @implementation AWTWindow_Normal
 AWT_NS_WINDOW_IMPLEMENTATION
