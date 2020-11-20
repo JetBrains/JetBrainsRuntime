@@ -46,6 +46,7 @@ import java.util.Locale;import java.util.MissingResourceException;import java.ut
 final class CPlatformResponder {
 
     private static final PlatformLogger keyboardLog = PlatformLogger.getLogger("sun.lwawt.macosx.CPlatformResponder");
+    private static final boolean USE_FOKIN_LOGIC = Boolean.getBoolean("cplatformresponder.use.fokin.logic"); // NOTE: will be removed when Fokin's fix reverted
 
     private final PlatformEventNotifier eventNotifier;
     private final boolean isNpapiCallback;
@@ -300,10 +301,13 @@ final class CPlatformResponder {
             characterToGetKeyCode = checkedChar;
         }
 
+        char testCharIgnoringModifiers = USE_FOKIN_LOGIC ? characterToGetKeyCode: nsEvent.getCharactersIgnoringModifiers() != null && nsEvent.getCharactersIgnoringModifiers().length() > 0 ?
+                    nsEvent.getCharactersIgnoringModifiers().charAt(0) : KeyEvent.CHAR_UNDEFINED;
+
         // We use char candidate if modifiers are not used
         // otherwise, we use char ignoring modifiers
         int[] in = new int[] {
-                characterToGetKeyCode,
+                testCharIgnoringModifiers,
                 nsEvent.isHasDeadKey() ? 1 : 0,
                 nsEvent.getModifierFlags(),
                 nsEvent.getKeyCode(),
