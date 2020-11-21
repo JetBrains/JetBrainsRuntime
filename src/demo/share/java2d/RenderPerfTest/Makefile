@@ -39,7 +39,7 @@ RENDERPERFLCD_CLASSES = $(CLASSES)/renderperf/RenderPerfLCDTest.class
 RENDERPERF_SOURCES = $(SOURCEPATH)/renderperf/RenderPerfTest.java
 RENDERPERFLCD_SOURCES = $(SOURCEPATH)/renderperf/RenderPerfLCDTest.java
 
-RENDERPERF_RESOURCES = $(CLASSES)/renderperf/images/duke.png 
+RENDERPERF_RESOURCES = $(CLASSES)/renderperf/images/duke.png
 
 all: mkdirs $(DIST)/RenderPerfTest.jar $(DIST)/RenderPerfLCDTest.jar
 

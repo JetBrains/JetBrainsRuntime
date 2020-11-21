@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,26 +19,23 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#include "precompiled.hpp"
-#include "runtime/deoptimization.hpp"
-#include "runtime/frame.inline.hpp"
-#include "runtime/stubRoutines.hpp"
-#include "runtime/thread.inline.hpp"
+/**
+ * @test
+ * @bug 6232281
+ * @requires vm.debug == true & vm.compiler2.enabled
+ * @summary Tests that C2 does not crash trivially with a "remove_useless_nodes
+ *          missed this node" message when UseLoopSafepoints is disabled.
+ * @run main/othervm -Xcomp -XX:-TieredCompilation
+        -XX:CompileOnly=TestDisableUseLoopSafepoints -XX:-UseLoopSafepoints
+ *      compiler.arguments.TestDisableUseLoopSafepoints
+ */
 
-// Implementation of the platform-specific part of StubRoutines - for
-// a description of how to extend it, see the stubRoutines.hpp file.
+package compiler.arguments;
 
-address StubRoutines::x86::_get_previous_sp_entry = NULL;
-
-address StubRoutines::x86::_f2i_fixup = NULL;
-address StubRoutines::x86::_f2l_fixup = NULL;
-address StubRoutines::x86::_d2i_fixup = NULL;
-address StubRoutines::x86::_d2l_fixup = NULL;
-address StubRoutines::x86::_float_sign_mask = NULL;
-address StubRoutines::x86::_float_sign_flip = NULL;
-address StubRoutines::x86::_double_sign_mask = NULL;
-address StubRoutines::x86::_double_sign_flip = NULL;
-address StubRoutines::x86::_method_entry_barrier = NULL;
+public class TestDisableUseLoopSafepoints {
+    public static void main(String[] args) {
+        System.out.println("Passed");
+    }
+}
