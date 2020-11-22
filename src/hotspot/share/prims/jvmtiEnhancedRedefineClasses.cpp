@@ -1380,7 +1380,9 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
 // Rollback all changes - clear new classes from the system dictionary, return old classes to directory, free memory.
 void VM_EnhancedRedefineClasses::rollback() {
   log_info(redefine, class, load)("Rolling back redefinition, result=%d", _res);
+  ClassLoaderDataGraph_lock->lock();
   ClassLoaderDataGraph::rollback_redefinition();
+  ClassLoaderDataGraph_lock->unlock();
 
   for (int i = 0; i < _new_classes->length(); i++) {
     SystemDictionary::remove_from_hierarchy(_new_classes->at(i));
@@ -2063,7 +2065,10 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
   AffectedKlassClosure closure(_affected_klasses);
   // Updated in j10, from original SystemDictionary::classes_do
 
-  ClassLoaderDataGraph::classes_do(&closure);
+  {
+    MutexLocker mcld(ClassLoaderDataGraph_lock);
+    ClassLoaderDataGraph::classes_do(&closure);
+  }
   //ClassLoaderDataGraph::dictionary_classes_do(&closure);
 
   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
