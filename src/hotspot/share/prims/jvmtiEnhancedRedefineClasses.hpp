@@ -78,7 +78,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // have any entries.
   bool _any_class_has_resolved_methods;
 
-  // Enhanced class redefinition, affected klasses contain all classes which should be redefined
+  // (DCEVM) Enhanced class redefinition, affected klasses contain all classes which should be redefined
   // either because of redefine, class hierarchy or interface change
   GrowableArray<Klass*>*      _affected_klasses;
 
