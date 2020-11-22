@@ -842,6 +842,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
       k->class_loader_data()->exchange_holders(the_class->class_loader_data());
 
       if (the_class->is_hidden()) {
+      // TODO: (DCEVM) review if is correct
       // from jvm_lookup_define_class() (jvm.cpp):
       // The hidden class loader data has been artificially been kept alive to
       // this point. The mirror and any instances of this class have to keep
