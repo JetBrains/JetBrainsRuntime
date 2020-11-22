@@ -105,7 +105,7 @@ class ClassLoaderDataGraph : public AllStatic {
 
   static void dictionary_classes_do(KlassClosure* klass_closure);
 
-  // Enhanced class redefinition
+  // (DCEVM) Enhanced class redefinition
   static void rollback_redefinition();
 
   // VM_CounterDecay iteration support
