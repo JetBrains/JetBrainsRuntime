@@ -4053,11 +4053,6 @@ void java_lang_invoke_ResolvedMethodName::set_vmholder(oop resolved_method, oop 
   resolved_method->obj_field_put(_vmholder_offset, holder);
 }
 
-void java_lang_invoke_ResolvedMethodName::set_vmholder_offset(oop resolved_method, Method* m) {
-  assert(is_instance(resolved_method), "wrong type");
-  resolved_method->obj_field_put(_vmholder_offset, m->method_holder()->java_mirror());
-}
-
 oop java_lang_invoke_ResolvedMethodName::find_resolved_method(const methodHandle& m, TRAPS) {
   const Method* method = m();
 
