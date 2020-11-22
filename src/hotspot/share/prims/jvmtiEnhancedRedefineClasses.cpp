@@ -2063,7 +2063,10 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
   AffectedKlassClosure closure(_affected_klasses);
   // Updated in j10, from original SystemDictionary::classes_do
 
-  ClassLoaderDataGraph::classes_do(&closure);
+  {
+    MutexLocker mcld(ClassLoaderDataGraph_lock);
+    ClassLoaderDataGraph::classes_do(&closure);
+  }
   //ClassLoaderDataGraph::dictionary_classes_do(&closure);
 
   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
