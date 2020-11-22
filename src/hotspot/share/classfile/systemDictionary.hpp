@@ -455,7 +455,7 @@ public:
   static bool is_well_known_klass(Symbol* class_name);
 #endif
 
-  // Enhanced class redefinition
+  // (DCEVM) Enhanced class redefinition
   static void remove_from_hierarchy(InstanceKlass* k);
   static void update_constraints_after_redefinition();
 
