@@ -472,7 +472,7 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
 }
 
 //Provide info from unhandled ObjectiveC exceptions
-- (void)_crashOnException:(NSException *)exception {
++ (void)logException:(NSException *)exception forProcess:(NSProcessInfo*)processInfo {
     NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
     [info appendString:
             [NSString stringWithFormat:
@@ -488,16 +488,30 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
 
     NSLog(@"%@", info);
 
-    NSProcessInfo *processInfo = [NSProcessInfo processInfo];
     int processID = [processInfo processIdentifier];
-    NSString* fileName = [NSString stringWithFormat:@"jbr_err_pid%d.log", processID];
+    NSDictionary *env = [[NSProcessInfo processInfo] environment];
+    NSString *currentPath = env[@"PWD"];
+    NSString* fileName =
+            [NSString stringWithFormat:@"%@/jbr_err_pid%d.log",
+             currentPath, processID];
 
     [info writeToFile:fileName
            atomically:YES
              encoding:NSUTF8StringEncoding
                 error:NULL];
+}
+
+- (void)reportException:(NSException *)exception {
+    [NSApplicationAWT logException:exception
+                        forProcess:[NSProcessInfo processInfo]];
+}
+
+- (void)_crashOnException:(NSException *)exception {
+    NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+    [NSApplicationAWT logException:exception
+                        forProcess:processInfo];
     // Use SIGILL to generate hs_err_ file as well
-    kill(processID, SIGILL);
+    kill([processInfo processIdentifier], SIGILL);
 }
 
 @end
