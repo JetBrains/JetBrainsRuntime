@@ -1030,6 +1030,16 @@ public:
 private:
   void compare_eq(Register rn, Register rm, enum operand_size size);
 
+#ifdef ASSERT
+  // Macro short-hand support to clean-up after a failed call to trampoline
+  // call generation (see trampoline_call() below), when a set of Labels must
+  // be reset (before returning).
+#define reset_labels1(L1) L1.reset()
+#define reset_labels2(L1, L2) L1.reset(); L2.reset()
+#define reset_labels3(L1, L2, L3) L1.reset(); reset_labels2(L2, L3)
+#define reset_labels5(L1, L2, L3, L4, L5) reset_labels2(L1, L2); reset_labels3(L3, L4, L5)
+#endif
+
 public:
   // Calls
 
@@ -1211,24 +1221,24 @@ public:
                       Register tmp1, Register tmp2, FloatRegister vtmp1,
                       FloatRegister vtmp2, FloatRegister vtmp3, int ae);
 
-  void has_negatives(Register ary1, Register len, Register result);
+  address has_negatives(Register ary1, Register len, Register result);
 
-  void arrays_equals(Register a1, Register a2, Register result, Register cnt1,
-                     Register tmp1, Register tmp2, Register tmp3, int elem_size);
+  address arrays_equals(Register a1, Register a2, Register result, Register cnt1,
+                        Register tmp1, Register tmp2, Register tmp3, int elem_size);
 
   void string_equals(Register a1, Register a2, Register result, Register cnt1,
                      int elem_size);
 
   void fill_words(Register base, Register cnt, Register value);
   void zero_words(Register base, u_int64_t cnt);
-  void zero_words(Register ptr, Register cnt);
+  address zero_words(Register ptr, Register cnt);
   void zero_dcache_blocks(Register base, Register cnt);
 
   static const int zero_words_block_size;
 
-  void byte_array_inflate(Register src, Register dst, Register len,
-                          FloatRegister vtmp1, FloatRegister vtmp2,
-                          FloatRegister vtmp3, Register tmp4);
+  address byte_array_inflate(Register src, Register dst, Register len,
+                             FloatRegister vtmp1, FloatRegister vtmp2,
+                             FloatRegister vtmp3, Register tmp4);
 
   void char_array_compress(Register src, Register dst, Register len,
                            FloatRegister tmp1Reg, FloatRegister tmp2Reg,

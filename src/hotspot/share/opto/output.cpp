@@ -1131,10 +1131,8 @@ void Compile::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
     blk_labels[i].init();
   }
 
-  // ------------------
   // Now fill in the code buffer
   Node *delay_slot = NULL;
-
   for (uint i = 0; i < nblocks; i++) {
     Block* block = _cfg->get_block(i);
     Node* head = block->head();
@@ -1389,9 +1387,10 @@ void Compile::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
       if (node_offsets && n->_idx < node_offset_limit)
         node_offsets[n->_idx] = cb->insts_size();
 #endif
+      assert(!failing(), "Should not reach here if failing.");
 
       // "Normal" instruction case
-      DEBUG_ONLY( uint instr_offset = cb->insts_size(); )
+      DEBUG_ONLY(uint instr_offset = cb->insts_size());
       n->emit(*cb, _regalloc);
       current_offset  = cb->insts_size();
 
@@ -1564,8 +1563,7 @@ void Compile::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
       // be sure to tag this tty output with the compile ID.
       if (xtty != NULL) {
         xtty->head("opto_assembly compile_id='%d'%s", compile_id(),
-                   is_osr_compilation()    ? " compile_kind='osr'" :
-                   "");
+                   is_osr_compilation() ? " compile_kind='osr'" : "");
       }
       if (method() != NULL) {
         method()->print_metadata();
