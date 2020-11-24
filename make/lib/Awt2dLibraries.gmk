@@ -547,6 +547,16 @@ else
     HARFBUZZ_CFLAGS += -DHB_EXTERN=__declspec\(dllexport\)
   endif
 
+  LIBHARFBUZZ_LDFLAGS := $(LDFLAGS_JDKLIB) \
+                         $(call SET_SHARED_LIBRARY_ORIGIN)
+  ifeq ($(TOOLCHAIN_TYPE), gcc)
+    ifeq ($(CC_VERSION_NUMBER), 4.4.7)
+      LIBHARFBUZZ_LDFLAGS := $(subst -Xlinker -z -Xlinker defs,, \
+        $(subst -Wl$(COMMA)-z$(COMMA)defs,,$(LDFLAGS_JDKLIB))) \
+        $(call SET_SHARED_LIBRARY_ORIGIN)
+    endif
+  endif
+
   ifneq ($(OPENJDK_TARGET_OS), windows)
     HARFBUZZ_CFLAGS += -DGETPAGESIZE -DHAVE_MPROTECT -DHAVE_PTHREAD \
                        -DHAVE_SYSCONF -DHAVE_SYS_MMAN_H -DHAVE_UNISTD_H \
@@ -608,8 +618,7 @@ else
           truncwarn wvarhidenmem wvarhidemem wbadlkginit identexpected \
           hidevf w_novirtualdescr arrowrtn2 unknownpragma, \
       DISABLED_WARNINGS_microsoft := 4267 4244 4090 4146 4334 4819 4101 4068 4805 4138, \
-      LDFLAGS := $(LDFLAGS_JDKLIB) \
-          $(call SET_SHARED_LIBRARY_ORIGIN), \
+      LDFLAGS := $(LIBHARFBUZZ_LDFLAGS), \
       LDFLAGS_unix := -L$(INSTALL_LIBRARIES_HERE), \
       LDFLAGS_aix := -Wl$(COMMA)-berok, \
       LIBS := $(BUILD_LIBHARFBUZZ), \
