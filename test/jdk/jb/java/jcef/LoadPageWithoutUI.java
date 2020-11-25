@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @test
  * @key headful
+ * @requires (os.arch != "x86" & os.arch != "i386" & os.arch != "aarch64")
  * @summary Regression test for JBR-2259. The test checks that website is loaded with and without showing Browser UI.
  * @run main LoadPageWithoutUI
  */
