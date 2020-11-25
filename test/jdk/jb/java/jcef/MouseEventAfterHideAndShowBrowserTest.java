@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @test
  * @key headful
+ * @requires (os.arch != "x86" & os.arch != "i386" & os.arch != "aarch64")
  * @summary Regression test for JBR-2412. The test checks that mouse actions are handled on jcef browser after hide and show it.
  * @run main/othervm MouseEventAfterHideAndShowBrowserTest
  */
