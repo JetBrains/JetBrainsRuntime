@@ -473,37 +473,38 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
 
 //Provide info from unhandled ObjectiveC exceptions
 + (void)logException:(NSException *)exception forProcess:(NSProcessInfo*)processInfo {
-    NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
-    [info appendString:
-            [NSString stringWithFormat:
-                    @"Exception in NSApplicationAWT:\n %@\n",
-                    exception]];
+    @autoreleasepool {
+        NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
+        [info appendString:
+                [NSString stringWithFormat:
+                        @"Exception in NSApplicationAWT:\n %@\n",
+                        exception]];
 
-    NSArray<NSString *> *stack = [exception callStackSymbols];
+        NSArray<NSString *> *stack = [exception callStackSymbols];
 
-    for (int i = 0; i < stack.count; i++) {
-        [info appendString:stack[i]];
-        [info appendString:@"\n"];
+        for (int i = 0; i < stack.count; i++) {
+            [info appendString:stack[i]];
+            [info appendString:@"\n"];
+        }
+
+        NSLog(@"%@", info);
+
+        int processID = [processInfo processIdentifier];
+        NSDictionary *env = [[NSProcessInfo processInfo] environment];
+        NSString *homePath = env[@"HOME"];
+        if (homePath != nil) {
+            NSString *fileName =
+                    [NSString stringWithFormat:@"%@/jbr_err_pid%d.log",
+                                               homePath, processID];
+
+            if (![[NSFileManager defaultManager] fileExistsAtPath:fileName]) {
+                [info writeToFile:fileName
+                       atomically:YES
+                         encoding:NSUTF8StringEncoding
+                            error:NULL];
+            }
+        }
     }
-
-    NSLog(@"%@", info);
-
-    int processID = [processInfo processIdentifier];
-    NSDictionary *env = [[NSProcessInfo processInfo] environment];
-    NSString *currentPath = env[@"PWD"];
-    NSString* fileName =
-            [NSString stringWithFormat:@"%@/jbr_err_pid%d.log",
-             currentPath, processID];
-
-    [info writeToFile:fileName
-           atomically:YES
-             encoding:NSUTF8StringEncoding
-                error:NULL];
-}
-
-- (void)reportException:(NSException *)exception {
-    [NSApplicationAWT logException:exception
-                        forProcess:[NSProcessInfo processInfo]];
 }
 
 - (void)_crashOnException:(NSException *)exception {
