@@ -33,7 +33,7 @@ import java.util.function.Consumer;
 /**
  * @test
  * @key headful
- * @requires (os.family == "windows")
+ * @requires (os.family == "windows") & (os.arch != "x86" & os.arch != "i386" & os.arch != "aarch64")
  * @summary JBR-2866 - Tests that HwFacade window used in IDEA does not bring to front when shown.
  * @author Anton Tarasov
  * @run main/othervm HwFacadeWindowNoFrontTest
