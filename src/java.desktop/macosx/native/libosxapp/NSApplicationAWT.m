@@ -444,6 +444,50 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
     seenDummyEventLock = nil;
 }
 
+//Provide info from unhandled ObjectiveC exceptions
++ (void)logException:(NSException *)exception forProcess:(NSProcessInfo*)processInfo {
+    @autoreleasepool {
+        NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
+        [info appendString:
+                [NSString stringWithFormat:
+                        @"Exception in NSApplicationAWT:\n %@\n",
+                        exception]];
+
+        NSArray<NSString *> *stack = [exception callStackSymbols];
+
+        for (NSUInteger i = 0; i < stack.count; i++) {
+            [info appendString:stack[i]];
+            [info appendString:@"\n"];
+        }
+
+        NSLog(@"%@", info);
+
+        int processID = [processInfo processIdentifier];
+        NSDictionary *env = [[NSProcessInfo processInfo] environment];
+        NSString *homePath = env[@"HOME"];
+        if (homePath != nil) {
+            NSString *fileName =
+                    [NSString stringWithFormat:@"%@/jbr_err_pid%d.log",
+                                               homePath, processID];
+
+            if (![[NSFileManager defaultManager] fileExistsAtPath:fileName]) {
+                [info writeToFile:fileName
+                       atomically:YES
+                         encoding:NSUTF8StringEncoding
+                            error:NULL];
+            }
+        }
+    }
+}
+
+- (void)_crashOnException:(NSException *)exception {
+    NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+    [NSApplicationAWT logException:exception
+                        forProcess:processInfo];
+    // Use SIGILL to generate hs_err_ file as well
+    kill([processInfo processIdentifier], SIGILL);
+}
+
 @end
 
 
