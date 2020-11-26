@@ -679,6 +679,27 @@ kernel void bgr_to_rgba(const device uchar *imageBuffer [[buffer(0)]],
     outputBuffer[4 * gid + 3] = 255;                      // a
 }
 
+kernel void xrgb_to_rgba(const device uchar *imageBuffer [[buffer(0)]],
+                         device uchar *outputBuffer [[buffer(1)]],
+                         uint gid [[thread_position_in_grid]])
+{
+    outputBuffer[4 * gid]     = imageBuffer[4 * gid + 1]; // r
+    outputBuffer[4 * gid + 1] = imageBuffer[4 * gid + 2]; // g
+    outputBuffer[4 * gid + 2] = imageBuffer[4 * gid + 3]; // b
+    outputBuffer[4 * gid + 3] = imageBuffer[4 * gid];     // a
+}
+
+
+kernel void xbgr_to_rgba(const device uchar *imageBuffer [[buffer(0)]],
+                         device uchar *outputBuffer [[buffer(1)]],
+                         uint gid [[thread_position_in_grid]])
+{
+    outputBuffer[4 * gid]     = imageBuffer[4 * gid + 3]; // r
+    outputBuffer[4 * gid + 1] = imageBuffer[4 * gid + 2]; // g
+    outputBuffer[4 * gid + 2] = imageBuffer[4 * gid + 1]; // b
+    outputBuffer[4 * gid + 3] = imageBuffer[4 * gid];     // a
+}
+
 // ----------------------------------------------------------------------------
 // Shaders for rendering in XOR Mode
 // ----------------------------------------------------------------------------
