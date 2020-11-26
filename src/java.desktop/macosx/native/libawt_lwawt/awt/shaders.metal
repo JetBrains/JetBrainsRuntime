@@ -667,6 +667,18 @@ kernel void stencil2tex(const device uchar *imageBuffer [[buffer(0)]],
     outputBuffer[gid] = uchar4(p, p, p, p);
 }
 
+// work item deals with 4 byte pixel
+// assuming that data is aligned
+kernel void bgr_to_rgba(const device uchar *imageBuffer [[buffer(0)]],
+                        device uchar *outputBuffer [[buffer(1)]],
+                        uint gid [[thread_position_in_grid]])
+{
+    outputBuffer[4 * gid]     = imageBuffer[4 * gid + 2]; // r
+    outputBuffer[4 * gid + 1] = imageBuffer[4 * gid + 1]; // g
+    outputBuffer[4 * gid + 2] = imageBuffer[4 * gid];     // b
+    outputBuffer[4 * gid + 3] = 255;                      // a
+}
+
 // ----------------------------------------------------------------------------
 // Shaders for rendering in XOR Mode
 // ----------------------------------------------------------------------------
