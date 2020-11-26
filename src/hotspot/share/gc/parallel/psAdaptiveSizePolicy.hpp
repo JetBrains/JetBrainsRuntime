@@ -107,10 +107,6 @@ class PSAdaptiveSizePolicy : public AdaptiveSizePolicy {
   // increase/decrease the young generation for major pause time
   int _change_young_gen_for_maj_pauses;
 
-
-  // Flag indicating that the adaptive policy is ready to use
-  bool _old_gen_policy_is_ready;
-
   // Changing the generation sizing depends on the data that is
   // gathered about the effects of changes on the pause times and
   // throughput.  These variable count the number of data points
@@ -327,8 +323,6 @@ class PSAdaptiveSizePolicy : public AdaptiveSizePolicy {
     return _major_pause_young_estimator->slope();
   }
   float major_collection_slope() { return _major_collection_estimator->slope();}
-
-  bool old_gen_policy_is_ready() { return _old_gen_policy_is_ready; }
 
   // Given the amount of live data in the heap, should we
   // perform a Full GC?
