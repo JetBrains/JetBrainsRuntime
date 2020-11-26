@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2015, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -233,6 +233,13 @@ void VM_Version::get_processor_features() {
     // A73 is faster with short-and-easy-for-speculative-execution-loop
     if (FLAG_IS_DEFAULT(UseSimpleArrayEquals)) {
       FLAG_SET_DEFAULT(UseSimpleArrayEquals, true);
+    }
+  }
+
+  // Neoverse N1
+  if (_cpu == CPU_ARM && (_model == 0xd0c || _model2 == 0xd0c)) {
+    if (FLAG_IS_DEFAULT(UseSIMDForMemoryOps)) {
+      FLAG_SET_DEFAULT(UseSIMDForMemoryOps, true);
     }
   }
 
