@@ -115,8 +115,36 @@ static NSPoint lastTopLeftPoint;
     return NSWindowTabbingModeDisallowed;                       \
 }
 
+NSString * javaSystemPropertyForKey(NSString * key, JNIEnv *env) {
+    static JNF_CLASS_CACHE(jc_System, "java/lang/System");
+    static JNF_STATIC_MEMBER_CACHE(jm_getProperty, jc_System, "getProperty", "(Ljava/lang/String;)Ljava/lang/String;");
+
+    jstring jKey = JNFNSToJavaString(env, key);
+    jstring jValue = JNFCallStaticObjectMethod(env, jm_getProperty, jKey);
+    (*env)->DeleteLocalRef(env, jKey);
+
+    NSString *value = JNFJavaToNSString(env, jValue);
+    (*env)->DeleteLocalRef(env, jValue);
+    return value;
+}
+
 @implementation AWTWindow_Normal
 AWT_NS_WINDOW_IMPLEMENTATION
+
+- (void)_changeJustMain {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    NSString * use_Intercept_changeJustMainExceptions = javaSystemPropertyForKey(@"debug.use.intercept.changeJustMain.exceptions", env);
+    if ([@"true" isCaseInsensitiveLike:use_Intercept_changeJustMainExceptions]) {
+        NSLog(@"_changeJustMain: %@", self);
+        @try {
+            [super _changeJustMain];
+        } @catch (NSException *ex) {
+            NSLog(@"WARNING: _changeJustMain suppress exception %@", ex);
+        }
+    } else {
+        [super _changeJustMain];
+    }
+}
 
 // Gesture support
 - (void)postGesture:(NSEvent *)event as:(jint)type a:(jdouble)a b:(jdouble)b {
@@ -574,7 +602,9 @@ AWT_ASSERT_APPKIT_THREAD;
         }
     }
 
-    return self.isEnabled && IS(self.styleBits, SHOULD_BECOME_MAIN);
+    const BOOL result = self.isEnabled && IS(self.styleBits, SHOULD_BECOME_MAIN);
+    NSLog(@"canBecomeMainWindow=%d, src: %@", result, self);
+    return result;
 }
 
 - (BOOL) worksWhenModal {

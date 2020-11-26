@@ -97,7 +97,22 @@ canChooseDirectories:(BOOL)inChooseDirectories
     [super dealloc];
 }
 
++ (NSString *) javaSystemPropertyForKey:(NSString *)key withEnv:(JNIEnv *)env {
+    static JNF_CLASS_CACHE(jc_System, "java/lang/System");
+    static JNF_STATIC_MEMBER_CACHE(jm_getProperty, jc_System, "getProperty", "(Ljava/lang/String;)Ljava/lang/String;");
+
+    jstring jKey = JNFNSToJavaString(env, key);
+    jstring jValue = JNFCallStaticObjectMethod(env, jm_getProperty, jKey);
+    (*env)->DeleteLocalRef(env, jKey);
+
+    NSString *value = JNFJavaToNSString(env, jValue);
+    (*env)->DeleteLocalRef(env, jValue);
+    return value;
+}
+
 - (void)safeSaveOrLoad {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+
     NSSavePanel *thePanel = nil;
 
     /*
@@ -192,7 +207,27 @@ canChooseDirectories:(BOOL)inChooseDirectories
                 onComplete(result == NSFileHandlingPanelOKButton, YES);
             }];
 
-            [NSApp runModalForWindow:thePanel];
+            NSString * use_NSSavePanel_runModal = [CFileDialog javaSystemPropertyForKey:@"debug.use.NSSavePanel.runModal" withEnv:env];
+            if ([@"true" isCaseInsensitiveLike:use_NSSavePanel_runModal]) {
+                NSLog(@"open panel with: NSSavePanel::runModal");
+                NSModalResponse response = [thePanel runModal];
+                NSLog(@"perform onComplete");
+                onComplete(response == NSModalResponseOK, NO);
+            } else {
+                NSLog(@"open panel with: NSApp::runModalForWindow");
+                // NOTE: can produce warning (observed on Catalina)
+                // WARNING: <NSOpenPanel: 0x7ff11952a840> running implicitly; please run panels using NSSavePanel rather than NSApplication.
+                NSString * use_InterceptDlgExceptions = [CFileDialog javaSystemPropertyForKey:@"debug.use.intercept.dialog.exceptions" withEnv:env];
+                if ([@"true" isCaseInsensitiveLike:use_InterceptDlgExceptions]) {
+                    @try {
+                        [NSApp runModalForWindow:thePanel];
+                    } @catch (NSException *ex) {
+                        NSLog(@"WARNING: safeSaveOrLoad suppress dialog exception %@", ex);
+                    }
+                } else {
+                    [NSApp runModalForWindow:thePanel];
+                }
+            }
         }
         else
         {
