@@ -49,25 +49,11 @@
 //#define DEBUG_BLIT
 
 typedef struct {
-    MTLPixelFormat   format;
+    MTLPixelFormat format; // Consider deleting this field, since it's always MTLPixelFormatBGRA8Unorm
     jboolean hasAlpha;
     jboolean isPremult;
-    const uint8_t * permuteMap;
+    NSString* swizzleKernel;
 } MTLRasterFormatInfo;
-
-// 0 denotes the alpha channel, 1 the red channel, 2 the green channel, and 3 the blue channel.
-const uint8_t permuteMap_rgbx[4] = { 1, 2, 3, 0 };
-const uint8_t permuteMap_bgrx[4] = { 3, 2, 1, 0 };
-
-static uint8_t revertPerm(const uint8_t * perm, uint8_t pos) {
-    for (int c = 0; c < 4; ++c) {
-        if (perm[c] == pos)
-            return c;
-    }
-    return -1;
-}
-
-#define uint2swizzle(channel) (channel == 0 ? MTLTextureSwizzleAlpha : (channel == 1 ? MTLTextureSwizzleRed : (channel == 2 ? MTLTextureSwizzleGreen : (channel == 3 ? MTLTextureSwizzleBlue : MTLTextureSwizzleZero))))
 
 /**
  * This table contains the "pixel formats" for all system memory surfaces
@@ -77,12 +63,12 @@ static uint8_t revertPerm(const uint8_t * perm, uint8_t pos) {
  * an Metal surface
  */
 MTLRasterFormatInfo RasterFormatInfos[] = {
-        { MTLPixelFormatBGRA8Unorm, 1, 0, NULL }, /* 0 - IntArgb      */ // Argb (in java notation)
-        { MTLPixelFormatBGRA8Unorm, 1, 1, NULL }, /* 1 - IntArgbPre   */
-        { MTLPixelFormatBGRA8Unorm, 0, 1, NULL }, /* 2 - IntRgb       */ // xrgb
-        { MTLPixelFormatBGRA8Unorm, 0, 1, permuteMap_rgbx }, /* 3 - IntRgbx      */
-        { MTLPixelFormatRGBA8Unorm, 0, 1, NULL }, /* 4 - IntBgr       */ // xbgr
-        { MTLPixelFormatBGRA8Unorm, 0, 1, permuteMap_bgrx }, /* 5 - IntBgrx      */
+        { MTLPixelFormatBGRA8Unorm, 1, 0, nil }, /* 0 - IntArgb      */ // Argb (in java notation)
+        { MTLPixelFormatBGRA8Unorm, 1, 1, nil }, /* 1 - IntArgbPre   */
+        { MTLPixelFormatBGRA8Unorm, 0, 1, nil }, /* 2 - IntRgb       */
+        { MTLPixelFormatBGRA8Unorm, 0, 1, @"xrgb_to_rgba" }, /* 3 - IntRgbx      */
+        { MTLPixelFormatBGRA8Unorm, 0, 1, @"bgr_to_rgba"  }, /* 4 - IntBgr       */
+        { MTLPixelFormatBGRA8Unorm, 0, 1, @"xbgr_to_rgba" }, /* 5 - IntBgrx      */
 
 //        TODO: support 2-byte formats
 //        { GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV,
@@ -169,94 +155,55 @@ void drawTex2Tex(MTLContext *mtlc,
     [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
 }
 
-static
-id<MTLTexture> replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRasInfo * srcInfo, const MTLRasterFormatInfo * rfi, int dx1, int dy1, int dx2, int dy2) {
+static void
+replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRasInfo *srcInfo,
+                     const MTLRasterFormatInfo *rfi,
+                     int dx1, int dy1, int dx2, int dy2) {
     const int dw = dx2 - dx1;
     const int dh = dy2 - dy1;
 
-    const void * raster = srcInfo->rasBase;
+    const void *raster = srcInfo->rasBase;
     raster += srcInfo->bounds.y1*srcInfo->scanStride + srcInfo->bounds.x1*srcInfo->pixelStride;
 
-    id<MTLTexture> result = nil;
-    if (rfi->permuteMap != NULL) {
-#if defined(__MAC_10_15) && __MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_15
-        if (@available(macOS 10.15, *)) {
-            @autoreleasepool {
-                const uint8_t swzRed = revertPerm(rfi->permuteMap, 1);
-                const uint8_t swzGreen = revertPerm(rfi->permuteMap, 2);
-                const uint8_t swzBlue = revertPerm(rfi->permuteMap, 3);
-                const uint8_t swzAlpha = revertPerm(rfi->permuteMap, 0);
-                MTLTextureSwizzleChannels swizzle = MTLTextureSwizzleChannelsMake(
-                        uint2swizzle(swzRed),
-                        uint2swizzle(swzGreen),
-                        uint2swizzle(swzBlue),
-                        rfi->hasAlpha ? uint2swizzle(swzAlpha) : MTLTextureSwizzleOne
-                );
-                result = [dest
-                        newTextureViewWithPixelFormat:MTLPixelFormatBGRA8Unorm
-                        textureType:MTLTextureType2D
-                        levels:NSMakeRange(0, 1) slices:NSMakeRange(0, 1)
-                        swizzle:swizzle];
-                J2dTraceLn5(J2D_TRACE_VERBOSE, "replaceTextureRegion [use swizzle for pooled]: %d, %d, %d, %d, hasA=%d",
-                            swizzle.red, swizzle.green, swizzle.blue, swizzle.alpha, rfi->hasAlpha);
-            }
-        } else
-#endif // __MAC_10_15 && __MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_15
-        {
-            // perform raster conversion
-            // invoked only from rq-thread, so use static buffers
-            // but it's better to use thread-local buffers (or special buffer manager)
-            const int destRasterSize = dw*dh*4;
-
-            static int bufferSize = 0;
-            static void * buffer = NULL;
-            if (buffer == NULL || bufferSize < destRasterSize) {
-                bufferSize = destRasterSize;
-                buffer = realloc(buffer, bufferSize);
-            }
-            if (buffer == NULL) {
-                J2dTraceLn1(J2D_TRACE_ERROR, "replaceTextureRegion: can't alloc buffer for raster conversion, size=%d", bufferSize);
-                bufferSize = 0;
-                return nil;
-            }
-            vImage_Buffer srcBuf;
-            srcBuf.height = dh;
-            srcBuf.width = dw;
-            srcBuf.rowBytes = srcInfo->scanStride;
-            srcBuf.data = raster;
-
-            vImage_Buffer destBuf;
-            destBuf.height = dh;
-            destBuf.width = dw;
-            destBuf.rowBytes = dw*4;
-            destBuf.data = buffer;
-
-            vImagePermuteChannels_ARGB8888(&srcBuf, &destBuf, rfi->permuteMap, kvImageNoFlags);
-            raster = buffer;
-
-            J2dTraceLn5(J2D_TRACE_VERBOSE, "replaceTextureRegion [use conversion]: %d, %d, %d, %d, hasA=%d",
-                        rfi->permuteMap[0], rfi->permuteMap[1], rfi->permuteMap[2], rfi->permuteMap[3], rfi->hasAlpha);
-        }
-    }
-
-    MTLRegion region = MTLRegionMake2D(dx1, dy1, dw, dh);
-    if (result != nil)
-        dest = result;
-
     @autoreleasepool {
-        id <MTLBlitCommandEncoder> blitEncoder = [mtlc.encoderManager createBlitEncoder];
-
         J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
                     dw, dh, dx1, dy1);
+        // NOTE: we might want to fill alpha channel when !rfi->hasAlpha
+        id<MTLBuffer> buff = [mtlc.device newBufferWithBytes:raster length:srcInfo->scanStride * dh options:MTLResourceStorageModeManaged];
+        if (rfi->swizzleKernel != nil) {
+            id <MTLBuffer> swizzled = [mtlc.device newBufferWithLength:srcInfo->scanStride * dh options:MTLResourceStorageModeManaged];
 
-        id <MTLBuffer> buff = [[mtlc.device newBufferWithBytes:raster length:srcInfo->scanStride * dh options:MTLResourceStorageModeManaged] autorelease];
+            // this should be cheap, since data is already on GPU
+            id<MTLCommandBuffer> cb = [mtlc createCommandBuffer];
+            id<MTLComputeCommandEncoder> computeEncoder = [cb computeCommandEncoder];
+            id<MTLComputePipelineState> computePipelineState = [mtlc.pipelineStateStorage
+                                                                getComputePipelineState:rfi->swizzleKernel];
+            [computeEncoder setComputePipelineState:computePipelineState];
+
+            [computeEncoder setBuffer:buff offset:0 atIndex:0];
+            [computeEncoder setBuffer:swizzled offset:0 atIndex:1];
+
+            NSUInteger threadGroupSize = computePipelineState.maxTotalThreadsPerThreadgroup;
+            NSUInteger pixelCount = buff.length / srcInfo->pixelStride;
+            MTLSize threadsPerGroup = MTLSizeMake(threadGroupSize, 1, 1);
+            MTLSize threadGroups = MTLSizeMake((pixelCount + threadGroupSize - 1) / threadGroupSize,
+                                               1, 1);
+            [computeEncoder dispatchThreadgroups:threadGroups
+                           threadsPerThreadgroup:threadsPerGroup];
+            [computeEncoder endEncoding];
+            [cb commit];
+
+            buff = swizzled;
+        }
+
+        id<MTLBlitCommandEncoder> blitEncoder = [mtlc.encoderManager createBlitEncoder];
         [blitEncoder copyFromBuffer:buff
-                sourceOffset:0 sourceBytesPerRow:srcInfo->scanStride sourceBytesPerImage:srcInfo->scanStride * dh sourceSize:MTLSizeMake(dw, dh, 1)
-                toTexture:dest destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
+                       sourceOffset:0 sourceBytesPerRow:srcInfo->scanStride
+                sourceBytesPerImage:srcInfo->scanStride * dh sourceSize:MTLSizeMake(dw, dh, 1)
+                          toTexture:dest
+                   destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
         [blitEncoder endEncoding];
     }
-
-    return result;
 }
 
 /**
@@ -283,10 +230,11 @@ MTLBlitSwToTextureViaPooledTexture(
     [[mtlc getCommandBufferWrapper] registerPooledTexture:texHandle];
 
     id<MTLTexture> texBuff = texHandle.texture;
-    id<MTLTexture> swizzledTexture = replaceTextureRegion(mtlc, texBuff, srcInfo, rfi, 0, 0, sw, sh);
+    replaceTextureRegion(mtlc, texBuff, srcInfo, rfi, 0, 0, sw, sh);
+    // TODO: useBlitEncoder is always false, remove dead code
     if (useBlitEncoder) {
         id <MTLBlitCommandEncoder> blitEncoder = [mtlc.encoderManager createBlitEncoder];
-        [blitEncoder copyFromTexture:swizzledTexture != nil ? swizzledTexture : texBuff
+        [blitEncoder copyFromTexture:texBuff
                          sourceSlice:0
                          sourceLevel:0
                         sourceOrigin:MTLOriginMake(0, 0, 0)
@@ -297,12 +245,8 @@ MTLBlitSwToTextureViaPooledTexture(
                    destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
         [blitEncoder endEncoding];
     } else {
-        drawTex2Tex(mtlc, swizzledTexture != nil ? swizzledTexture : texBuff, dest, !rfi->hasAlpha, bmtlsdOps->isOpaque, hint,
+        drawTex2Tex(mtlc, texBuff, dest, !rfi->hasAlpha, bmtlsdOps->isOpaque, hint,
                     0, 0, sw, sh, dx1, dy1, dx2, dy2);
-    }
-
-    if (swizzledTexture != nil) {
-        [swizzledTexture release];
     }
 }
 
@@ -737,25 +681,20 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
             const int byteLength = width * height * 4; // NOTE: assume that src format is MTLPixelFormatBGRA8Unorm
 
             // Create MTLBuffer (or use static)
-            MTLRasterFormatInfo rfi = RasterFormatInfos[dsttype];
-            const jboolean directCopy = rfi.permuteMap == NULL;
-
             id<MTLBuffer> mtlbuf;
 #ifdef USE_STATIC_BUFFER
-            if (directCopy) {
-                // NOTE: theoretically we can use newBufferWithBytesNoCopy, but pDst must be allocated with special API
-                // mtlbuf = [mtlc.device
-                //          newBufferWithBytesNoCopy:pDst
-                //                            length:(NSUInteger) srcLength
-                //                           options:MTLResourceCPUCacheModeDefaultCache
-                //                       deallocator:nil];
-                //
-                // see https://developer.apple.com/documentation/metal/mtldevice/1433382-newbufferwithbytesnocopy?language=objc
-                //
-                // The storage allocation of the returned new MTLBuffer object is the same as the pointer input value.
-                // The existing memory allocation must be covered by a single VM region, typically allocated with vm_allocate or mmap.
-                // Memory allocated by malloc is specifically disallowed.
-            }
+            // NOTE: theoretically we can use newBufferWithBytesNoCopy, but pDst must be allocated with special API
+            // mtlbuf = [mtlc.device
+            //          newBufferWithBytesNoCopy:pDst
+            //                            length:(NSUInteger) srcLength
+            //                           options:MTLResourceCPUCacheModeDefaultCache
+            //                       deallocator:nil];
+            //
+            // see https://developer.apple.com/documentation/metal/mtldevice/1433382-newbufferwithbytesnocopy?language=objc
+            //
+            // The storage allocation of the returned new MTLBuffer object is the same as the pointer input value.
+            // The existing memory allocation must be covered by a single VM region, typically allocated with vm_allocate or mmap.
+            // Memory allocated by malloc is specifically disallowed.
 
             static id<MTLBuffer> mtlIntermediateBuffer = nil; // need to reimplement with MTLBufferManager
             if (mtlIntermediateBuffer == nil || mtlIntermediateBuffer.length < srcLength) {
@@ -795,43 +734,23 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
 
             // Perform conversion if necessary
             BOOL convertFromPre = !RasterFormatInfos[dsttype].isPremult && !srcOps->isOpaque;
-            if (directCopy) {
-                if ((dstInfo.scanStride == width * dstInfo.pixelStride) &&
-                    (height == (dstInfo.bounds.y2 - dstInfo.bounds.y1))) {
-                    // mtlbuf.contents have same dimensions as of pDst
-                    copyFromMTLBuffer(pDst, mtlbuf, 0, byteLength, convertFromPre);
-                } else {
-                    // mtlbuf.contents have smaller dimensions than pDst
-                    // copy each row from mtlbuf.contents at appropriate position in pDst
-                    // Note : pDst is already addjusted for offsets using PtrAddBytes above
 
-                    int rowSize = width * dstInfo.pixelStride;
-                    for (int y = 0; y < height; y++) {
-                        copyFromMTLBuffer(pDst, mtlbuf, y * rowSize, rowSize, convertFromPre);
-                        pDst = PtrAddBytes(pDst, dstInfo.scanStride);
-                    }
-                }
+            if ((dstInfo.scanStride == width * dstInfo.pixelStride) &&
+                (height == (dstInfo.bounds.y2 - dstInfo.bounds.y1))) {
+                // mtlbuf.contents have same dimensions as of pDst
+                copyFromMTLBuffer(pDst, mtlbuf, 0, byteLength, convertFromPre);
             } else {
-                J2dTraceLn6(J2D_TRACE_VERBOSE,"MTLBlitLoops_SurfaceToSwBlit: dsttype=%d, raster conversion will be performed, dest rfi: %d, %d, %d, %d, hasA=%d",
-                            dsttype, rfi.permuteMap[0], rfi.permuteMap[1], rfi.permuteMap[2], rfi.permuteMap[3], rfi.hasAlpha);
+                // mtlbuf.contents have smaller dimensions than pDst
+                // copy each row from mtlbuf.contents at appropriate position in pDst
+                // Note : pDst is already addjusted for offsets using PtrAddBytes above
 
-                // perform raster conversion: mtlIntermediateBuffer(8888) -> pDst(rfi)
-                // invoked only from rq-thread, so use static buffers
-                // but it's better to use thread-local buffers (or special buffer manager)
-                vImage_Buffer srcBuf;
-                srcBuf.height = height;
-                srcBuf.width = width;
-                srcBuf.rowBytes = 4*width;
-                srcBuf.data = mtlbuf.contents;
-
-                vImage_Buffer destBuf;
-                destBuf.height = height;
-                destBuf.width = width;
-                destBuf.rowBytes = dstInfo.scanStride;
-                destBuf.data = pDst;
-
-                vImagePermuteChannels_ARGB8888(&srcBuf, &destBuf, rfi.permuteMap, kvImageNoFlags);
+                int rowSize = width * dstInfo.pixelStride;
+                for (int y = 0; y < height; y++) {
+                    copyFromMTLBuffer(pDst, mtlbuf, y * rowSize, rowSize, convertFromPre);
+                    pDst = PtrAddBytes(pDst, dstInfo.scanStride);
+                }
             }
+
 #ifndef USE_STATIC_BUFFER
             [mtlbuf release];
 #endif // USE_STATIC_BUFFER
