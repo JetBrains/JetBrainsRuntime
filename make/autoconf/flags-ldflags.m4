@@ -77,7 +77,7 @@ AC_DEFUN([FLAGS_SETUP_LDFLAGS_HELPER],
     BASIC_LDFLAGS="$BASIC_LDFLAGS -Wl,-z,defs -Wl,-z,relro -Wl,-z,now"
     # s390x : remove unused code+data in link step
     if test "x$OPENJDK_TARGET_CPU" = xs390x; then
-      BASIC_LDFLAGS="$BASIC_LDFLAGS -Wl,--gc-sections -Wl,--print-gc-sections"
+      BASIC_LDFLAGS="$BASIC_LDFLAGS -Wl,--gc-sections"
     fi
 
     BASIC_LDFLAGS_JVM_ONLY="-Wl,-O1"
