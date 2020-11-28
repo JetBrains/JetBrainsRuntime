@@ -490,7 +490,6 @@
   template(static_offset_name,                        "staticOffset")                             \
   template(static_base_name,                          "staticBase")                               \
   template(field_offset_name,                         "fieldOffset")                              \
-  template(field_type_name,                           "fieldType")                                \
                                                                                                   \
    /* name symbols needed by intrinsics */                                                         \
                                                                                                   \
