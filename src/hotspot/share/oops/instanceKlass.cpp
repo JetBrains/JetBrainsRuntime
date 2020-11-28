@@ -443,6 +443,11 @@ bool InstanceKlass::has_nestmate_access_to(InstanceKlass* k, TRAPS) {
     return false;
   }
 
+  if (AllowEnhancedClassRedefinition) {
+    // TODO: (DCEVM) check if it correct. It fix problems with lambdas (hidden)
+    cur_host = InstanceKlass::cast(cur_host->newest_version());
+  }
+
   Klass* k_nest_host = k->nest_host(CHECK_false);
   if (k_nest_host == NULL) {
     return false;
