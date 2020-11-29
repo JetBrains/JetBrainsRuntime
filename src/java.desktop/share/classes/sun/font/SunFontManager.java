@@ -193,8 +193,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     String[] jreOtherFontFiles;
     boolean noOtherJREFontFiles = false; // initial assumption.
 
-    public static final String lucidaFontName = "Lucida Sans Regular";
-    public static final String droidFontName = "Droid Sans";
     public static String jreLibDirName;
     public static String jreFontDirName;
     private static HashSet<String> missingFontFiles = null;
@@ -3077,16 +3075,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
      */
     public synchronized String getDefaultFontFile() {
         return defaultFontFileName;
-    }
-
-    private void initDefaultFonts() {
-        defaultFontName = droidFontName;
-        if (useAbsoluteFontFileNames()) {
-            defaultFontFileName =
-                    jreFontDirName + File.separator + FontUtilities.DROID_FILE_NAME;
-        } else {
-            defaultFontFileName = FontUtilities.DROID_FILE_NAME;
-        }
     }
 
     /**
