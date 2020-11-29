@@ -2247,6 +2247,9 @@ class G1IterateObjectClosureTask : public AbstractGangTask {
     _cl(cl), _g1h(g1h),  _hrclaimer(g1h->workers()->active_workers()) { }
 
   virtual void work(uint worker_id) {
+    Thread *thread = Thread::current();
+    HandleMark hm(thread);   // make sure any handles created are deleted
+    ResourceMark rm(thread);
     IterateObjectClosureRegionClosure blk(_cl);
     _g1h->heap_region_par_iterate_from_worker_offset(&blk, &_hrclaimer, worker_id);
   }
