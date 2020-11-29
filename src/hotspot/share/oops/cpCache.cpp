@@ -654,7 +654,7 @@ void ConstantPoolCacheEntry::clear_entry() {
 
   if (clearData) {
     if (!is_resolved_reference()) {
-      _f2 = 0;
+      // _f2 = 0;
     }
     // FIXME: (DCEVM) we want to clear flags, but parameter size is actually used
     // after we return from the method, before entry is re-initialized. So let's
