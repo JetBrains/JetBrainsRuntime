@@ -223,19 +223,21 @@ class FieldCopier : public FieldClosure {
 
 // TODO: review...
 void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
-  ScavengableNMethods::register_nmethod(nm);
+  if (nm->is_alive()) {
+    ScavengableNMethods::register_nmethod(nm);
+  }
 }
 
 void VM_EnhancedRedefineClasses::unregister_nmethod_g1(nmethod* nm) {
   // It should work not only for G1 but also for another GCs, but this way is safer now
-  if (!nm->is_zombie() && !nm->is_unloaded()) {
+  if (nm->is_alive()) {
     Universe::heap()->unregister_nmethod(nm);
   }
 }
 
 void VM_EnhancedRedefineClasses::register_nmethod_g1(nmethod* nm) {
   // It should work not only for G1 but also for another GCs, but this way is safer now
-  if (!nm->is_zombie() && !nm->is_unloaded()) {
+  if (nm->is_alive()) {
     Universe::heap()->register_nmethod(nm);
   }
 }
@@ -511,9 +513,9 @@ void VM_EnhancedRedefineClasses::doit() {
     flush_dependent_code(thread);
   // }
 
-    // Adjust constantpool caches for all classes that reference methods of the evolved class.
-    ClearCpoolCacheAndUnpatch clear_cpool_cache(thread);
-    ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
+  // Adjust constantpool caches for all classes that reference methods of the evolved class.
+  ClearCpoolCacheAndUnpatch clear_cpool_cache(thread);
+  ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
 
   // JSR-292 support
   if (_any_class_has_resolved_methods) {
