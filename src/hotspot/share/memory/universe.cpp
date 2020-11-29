@@ -219,21 +219,26 @@ void Universe::root_oops_do(OopClosure *oopClosure) {
   // (DCEVM) TODO: Check if this is correct?
   Management::oops_do(oopClosure);
   OopStorageSet::vm_global()->oops_do(oopClosure);
-  CLDToOopClosure cld_closure(oopClosure, ClassLoaderData::_claim_none);
-  ClassLoaderDataGraph::cld_do(&cld_closure);
+  // CLDToOopClosure cld_closure(oopClosure, ClassLoaderData::_claim_none);
+  // ClassLoaderDataGraph::cld_do(&cld_closure);
 
   // Now adjust pointers in remaining weak roots.  (All of which should
   // have been cleared if they pointed to non-surviving objects.)
   // Global (weak) JNI handles
   WeakProcessor::oops_do(oopClosure);
 
+  JvmtiExport::oops_do(oopClosure);
+
   CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
   CodeCache::blobs_do(&blobClosure);
+  
   AOT_ONLY(AOTLoader::oops_do(oopClosure);)
+  
   // StringTable::oops_do was removed in j15
   // StringTable::oops_do(oopClosure);
 
-  // PSScavenge::reference_processor()->weak_oops_do(oopClosure);
+  // OopStorageSet::vm_global()->oops_do(oopClosure);
+
 }
 
 void Universe::oops_do(OopClosure* f) {
