@@ -218,8 +218,12 @@ MTLBlitSwToTextureViaPooledTexture(
         MTLRasterFormatInfo * rfi, jboolean useBlitEncoder, jint hint,
         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
-    const int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
-    const int sh = srcInfo->bounds.y2 - srcInfo->bounds.y1;
+    int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
+    int sh = srcInfo->bounds.y2 - srcInfo->bounds.y1;
+
+    sw = MIN(sw, mtlc.maxTextureSize);
+    sh = MIN(sh, mtlc.maxTextureSize);
+
     id<MTLTexture> dest = bmtlsdOps->pTexture;
 
     MTLPooledTextureHandle * texHandle = [mtlc.texturePool getTexture:sw height:sh format:rfi->format];
