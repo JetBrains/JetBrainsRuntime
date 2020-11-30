@@ -35,7 +35,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.QuadCurve2D;
-import java.awt.image.BufferedImage;
+import java.awt.image.*;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -519,6 +519,66 @@ public class RenderPerfTest {
         }
     }
 
+    static class BlitImageParticleRenderer extends FlatParticleRenderer {
+        BufferedImage image;
+
+        BlitImageParticleRenderer(int n, float r, BufferedImage img) {
+            super(n, r);
+            image = img;
+            fill(image);
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            g2d.drawImage(image, (int)(x[id] - r), (int)(y[id] - r), (int)(2*r), (int)(2*r), null);
+        }
+
+        private static void fill(final Image image) {
+            final Graphics2D graphics = (Graphics2D) image.getGraphics();
+            graphics.setComposite(AlphaComposite.Src);
+            for (int i = 0; i < image.getHeight(null); ++i) {
+                graphics.setColor(new Color(i, 0, 0));
+                graphics.fillRect(0, i, image.getWidth(null), 1);
+            }
+            graphics.dispose();
+        }
+
+    }
+
+    static class SwBlitImageParticleRenderer extends BlitImageParticleRenderer {
+
+        SwBlitImageParticleRenderer(int n, float r, final int type) {
+            super(n, r, makeUnmanagedBI(type));
+        }
+
+        private static BufferedImage makeUnmanagedBI(final int type) {
+            final BufferedImage bi = new BufferedImage(17, 33, type);
+            final DataBuffer db = bi.getRaster().getDataBuffer();
+            if (db instanceof DataBufferInt) {
+                ((DataBufferInt) db).getData();
+            } else if (db instanceof DataBufferShort) {
+                ((DataBufferShort) db).getData();
+            } else if (db instanceof DataBufferByte) {
+                ((DataBufferByte) db).getData();
+            }
+            bi.setAccelerationPriority(0.0f);
+            return bi;
+        }
+    }
+
+    static class SurfaceBlitImageParticleRenderer extends BlitImageParticleRenderer {
+
+        SurfaceBlitImageParticleRenderer(int n, float r, final int type) {
+            super(n, r, makeManagedBI(type));
+        }
+
+        private static BufferedImage makeManagedBI(final int type) {
+            final BufferedImage bi = new BufferedImage(17, 33, type);
+            bi.setAccelerationPriority(1.0f);
+            return bi;
+        }
+    }
+
     static class PerfMeter {
         private String name;
         private int frame = 0;
@@ -665,6 +725,10 @@ public class RenderPerfTest {
     private static final ParticleRenderer textRenderer = new TextParticleRenderer(N, R);
     private static final ParticleRenderer largeTextRenderer = new LargeTextParticleRenderer(N, R);
     private static final ParticleRenderer whiteTextRenderer = new WhiteTextParticleRenderer(R);
+    private static final ParticleRenderer argbSwBlitImageRenderer = new SwBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_ARGB);
+    private static final ParticleRenderer bgrSwBlitImageRenderer = new SwBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_BGR);
+    private static final ParticleRenderer argbSurfaceBlitImageRenderer = new SurfaceBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_ARGB);
+    private static final ParticleRenderer bgrSurfaceBlitImageRenderer = new SurfaceBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_BGR);
 
     private static final Configurable AA = (Graphics2D g2d) ->
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
@@ -831,6 +895,22 @@ public class RenderPerfTest {
 
     public void testWhiteTextGray() throws Exception {
         (new PerfMeter("WhiteTextGray")).exec(createPR(whiteTextRenderer).configure(TextAA)).report();
+    }
+
+    public void testArgbSwBlitImage() throws Exception {
+        (new PerfMeter("ArgbSwBlitImage")).exec(createPR(argbSwBlitImageRenderer)).report();
+    }
+
+    public void testBgrSwBlitImage() throws Exception {
+        (new PerfMeter("BgrSwBlitImage")).exec(createPR(bgrSwBlitImageRenderer)).report();
+    }
+
+    public void testArgbSurfaceBlitImage() throws Exception {
+        (new PerfMeter("ArgbSurfaceBlitImageRenderer")).exec(createPR(argbSurfaceBlitImageRenderer)).report();
+    }
+
+    public void testBgrSurfaceBlitImage() throws Exception {
+        (new PerfMeter("BgrSurfaceBlitImage")).exec(createPR(bgrSurfaceBlitImageRenderer)).report();
     }
 
     public static void main(String[] args)
