@@ -41,6 +41,7 @@ JNIEXPORT @interface NSApplicationAWT : NSApplication {
 - (void) waitForDummyEvent:(double) timeout;
 
 + (void) runAWTLoopWithApp:(NSApplication*)app;
++ (void)logException:(NSException *)exception forProcess:(NSProcessInfo*)processInfo;
 
 @end
 
