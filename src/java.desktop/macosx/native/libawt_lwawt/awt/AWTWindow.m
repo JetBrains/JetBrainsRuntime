@@ -23,6 +23,7 @@
  * questions.
  */
 
+#include <objc/objc-runtime.h>
 #import <Cocoa/Cocoa.h>
 
 #import "sun_lwawt_macosx_CPlatformWindow.h"
@@ -34,6 +35,7 @@
 #import "AWTView.h"
 #import "GeomUtilities.h"
 #import "ThreadUtilities.h"
+#import "NSApplicationAWT.h"
 #import "JNIUtilities.h"
 #import "NSApplicationAWT.h"
 
@@ -130,7 +132,18 @@ AWT_NS_WINDOW_IMPLEMENTATION
 // workaround for https://youtrack.jetbrains.com/issue/JBR-2562
 - (void)_changeJustMain {
     @try {
-        [super _changeJustMain];
+        // NOTE: we can't use [super _changeJustMain] directly because of the warning ('may not perform to selector')
+        // And [super performSelector:@selector(_changeJustMain)] will invoke this method (not a base method).
+        // So do it with objc-runtime.h (see stackoverflow.com/questions/14635024/using-objc-msgsendsuper-to-invoke-a-class-method)
+        Class superClass = [self superclass];
+        struct objc_super mySuper = {
+            self,
+            class_isMetaClass(object_getClass(self))        //check if we are an instance or Class
+                            ? object_getClass(superClass)   //if we are a Class, we need to send our metaclass (our Class's Class)
+                            : superClass                    //if we are an instance, we need to send our Class (which we already have)
+        };
+        void (*_objc_msgSendSuper)(struct objc_super *, SEL) = (void *)&objc_msgSendSuper; //cast our pointer so the compiler can sort out the ABI
+        (*_objc_msgSendSuper)(&mySuper, @selector(_changeJustMain));
     } @catch (NSException *ex) {
         NSLog(@"WARNING: suppressed exception from _changeJustMain (workaround for JBR-2562)");
         NSProcessInfo *processInfo = [NSProcessInfo processInfo];
