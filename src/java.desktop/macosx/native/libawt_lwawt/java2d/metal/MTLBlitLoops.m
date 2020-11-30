@@ -159,19 +159,30 @@ static void
 replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRasInfo *srcInfo,
                      const MTLRasterFormatInfo *rfi,
                      int dx1, int dy1, int dx2, int dy2) {
+    const int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
+    const int sh = srcInfo->bounds.y2 - srcInfo->bounds.y1;
     const int dw = dx2 - dx1;
     const int dh = dy2 - dy1;
 
     const void *raster = srcInfo->rasBase;
-    raster += srcInfo->bounds.y1*srcInfo->scanStride + srcInfo->bounds.x1*srcInfo->pixelStride;
+    raster += (NSUInteger)srcInfo->bounds.y1 * (NSUInteger)srcInfo->scanStride + (NSUInteger)srcInfo->bounds.x1 * (NSUInteger)srcInfo->pixelStride;
 
     @autoreleasepool {
         J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
                     dw, dh, dx1, dy1);
         // NOTE: we might want to fill alpha channel when !rfi->hasAlpha
-        id<MTLBuffer> buff = [mtlc.device newBufferWithBytes:raster length:srcInfo->scanStride * dh options:MTLResourceStorageModeManaged];
+
+        id<MTLBuffer> buff = [mtlc.device newBufferWithLength:(sw * sh * srcInfo->pixelStride) options:MTLResourceStorageModeManaged];
+
+        // copy src pixels inside src bounds to buff
+        for (int row = 0; row < sh; row++) {
+            memcpy(buff.contents + (row * sw * srcInfo->pixelStride), raster, sw * srcInfo->pixelStride);
+            raster += (NSUInteger)srcInfo->scanStride;
+        }
+        [buff didModifyRange:NSMakeRange(0, buff.length)];
+
         if (rfi->swizzleKernel != nil) {
-            id <MTLBuffer> swizzled = [mtlc.device newBufferWithLength:srcInfo->scanStride * dh options:MTLResourceStorageModeManaged];
+            id <MTLBuffer> swizzled = [mtlc.device newBufferWithLength:(sw * sh * srcInfo->pixelStride) options:MTLResourceStorageModeManaged];
 
             // this should be cheap, since data is already on GPU
             id<MTLCommandBuffer> cb = [mtlc createCommandBuffer];
@@ -198,8 +209,8 @@ replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRas
 
         id<MTLBlitCommandEncoder> blitEncoder = [mtlc.encoderManager createBlitEncoder];
         [blitEncoder copyFromBuffer:buff
-                       sourceOffset:0 sourceBytesPerRow:srcInfo->scanStride
-                sourceBytesPerImage:srcInfo->scanStride * dh sourceSize:MTLSizeMake(dw, dh, 1)
+                       sourceOffset:0 sourceBytesPerRow:(sw * srcInfo->pixelStride)
+                sourceBytesPerImage:(sw * sh * srcInfo->pixelStride) sourceSize:MTLSizeMake(sw, sh, 1)
                           toTexture:dest
                    destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
         [blitEncoder endEncoding];
