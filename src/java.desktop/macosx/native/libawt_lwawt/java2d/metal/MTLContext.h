@@ -40,7 +40,10 @@
 #include "MTLClip.h"
 #include "EncoderManager.h"
 
-#define MTLC_BLIT_TILE_SIZE 128
+// Constants from
+// https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
+#define MTL_GPU_FAMILY_APPLE_1_TXT_SIZE 8192
+#define MTL_GPU_FAMILY_APPLE_3_TXT_SIZE 16384
 
 /**
  * The MTLCommandBufferWrapper class contains command buffer and
@@ -68,6 +71,7 @@
 @property jboolean      aaEnabled;
 
 @property (readonly, strong)   id<MTLDevice>   device;
+@property (readonly) jint                      maxTextureSize;
 @property (strong) id<MTLLibrary>              library;
 @property (strong) id<MTLCommandQueue>         commandQueue;
 @property (strong) id<MTLCommandQueue>         blitCommandQueue;

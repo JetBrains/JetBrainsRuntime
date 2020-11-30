@@ -115,7 +115,7 @@ MTLTransform* tempTransform = nil;
 @synthesize textureFunction,
             vertexCacheEnabled, aaEnabled, device, library, pipelineStateStorage,
             commandQueue, blitCommandQueue, vertexBuffer,
-            texturePool, paint=_paint;
+            texturePool, paint=_paint, maxTextureSize;
 
 extern void initSamplers(id<MTLDevice> device);
 
@@ -124,6 +124,12 @@ extern void initSamplers(id<MTLDevice> device);
     if (self) {
         // Initialization code here.
         device = d;
+        if (@available(macOS 10.15, *)) {
+            maxTextureSize = [d supportsFamily:MTLGPUFamilyApple3] ?
+                    MTL_GPU_FAMILY_APPLE_3_TXT_SIZE : MTL_GPU_FAMILY_APPLE_1_TXT_SIZE;
+        } else {
+            maxTextureSize = MTL_GPU_FAMILY_APPLE_1_TXT_SIZE;
+        }
 
         texturePool = [[MTLTexturePool alloc] initWithDevice:device];
         pipelineStateStorage = [[MTLPipelineStatesStorage alloc] initWithDevice:device shaderLibPath:shadersLib];
