@@ -118,6 +118,17 @@ static NSPoint lastTopLeftPoint;
 @implementation AWTWindow_Normal
 AWT_NS_WINDOW_IMPLEMENTATION
 
+// suppress exception (actually assertion) from [NSWindow _changeJustMain]
+// workaround for https://youtrack.jetbrains.com/issue/JBR-2562
+- (void)_changeJustMain {
+    @try {
+        [super performSelector:@selector(_changeJustMain)];
+    } @catch (NSException *ex) {
+        // TODO: make logging into jbrerr
+        NSLog(@"WARNING: suppressed exception from _changeJustMain: %@", ex);
+    }
+}
+
 // Gesture support
 - (void)postGesture:(NSEvent *)event as:(jint)type a:(jdouble)a b:(jdouble)b {
     AWT_ASSERT_APPKIT_THREAD;
