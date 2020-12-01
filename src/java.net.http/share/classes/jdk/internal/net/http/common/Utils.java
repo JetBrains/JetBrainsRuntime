@@ -157,6 +157,7 @@ public final class Utils {
                 return true;
             };
 
+    private static final Predicate<String> IS_HOST = "host"::equalsIgnoreCase;
     private static final Predicate<String> IS_PROXY_HEADER = (k) ->
             k != null && k.length() > 6 && "proxy-".equalsIgnoreCase(k.substring(0,6));
     private static final Predicate<String> NO_PROXY_HEADER =
@@ -228,7 +229,8 @@ public final class Utils {
 
     public static final BiPredicate<String, String> PROXY_TUNNEL_FILTER =
             (s,v) -> isAllowedForProxy(s, v, PROXY_AUTH_TUNNEL_DISABLED_SCHEMES,
-                    IS_PROXY_HEADER);
+                    // Allows Proxy-* and Host headers when establishing the tunnel.
+                    IS_PROXY_HEADER.or(IS_HOST));
     public static final BiPredicate<String, String> PROXY_FILTER =
             (s,v) -> isAllowedForProxy(s, v, PROXY_AUTH_DISABLED_SCHEMES,
                     ALL_HEADERS);
