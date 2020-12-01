@@ -70,7 +70,7 @@ public class KAKeyDerivation implements SSLKeyDerivation {
     private SecretKey t12DeriveKey(String algorithm,
             AlgorithmParameterSpec params) throws IOException {
         try {
-            KeyAgreement ka = KeyAgreement.getInstance(algorithmName);
+            KeyAgreement ka = JsseJce.getKeyAgreement(algorithmName);
             ka.init(localPrivateKey);
             ka.doPhase(peerPublicKey, true);
             SecretKey preMasterSecret
@@ -99,7 +99,7 @@ public class KAKeyDerivation implements SSLKeyDerivation {
     private SecretKey t13DeriveKey(String algorithm,
             AlgorithmParameterSpec params) throws IOException {
         try {
-            KeyAgreement ka = KeyAgreement.getInstance(algorithmName);
+            KeyAgreement ka = JsseJce.getKeyAgreement(algorithmName);
             ka.init(localPrivateKey);
             ka.doPhase(peerPublicKey, true);
             SecretKey sharedSecret
