@@ -37,6 +37,9 @@
 #import <Carbon/Carbon.h>
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
+// keyboard layout
+static NSString *kbdLayout;
+
 @interface AWTView()
 @property (retain) CDropTarget *_dropTarget;
 @property (retain) CDragSource *_dragSource;
@@ -1019,7 +1022,7 @@ JNF_CLASS_CACHE(jc_CInputMethod, "sun/lwawt/macosx/CInputMethod");
     [self abandonInput];
 }
 
-- (void)keyboardInputSourceChanged:(NSNotification *)notification
++ (void)keyboardInputSourceChanged:(NSNotification *)notification
 {
 #ifdef IM_DEBUG
     NSLog(@"keyboardInputSourceChangeNotification received");
@@ -1316,7 +1319,7 @@ JNF_CLASS_CACHE(jc_CInputMethod, "sun/lwawt/macosx/CInputMethod");
     jint index = JNFCallIntMethod(env, fInputMethodLOCKABLE, jm_characterIndexForPoint, (jint)flippedLocation.x, (jint)flippedLocation.y); // AWT_THREADING Safe (AWTRunLoopMode)
 
 #ifdef IM_DEBUG
-    fprintf(stderr, "characterIndexForPoint returning %ld\n", index);
+    fprintf(stderr, "characterIndexForPoint returning %d\n", index);
 #endif // IM_DEBUG
 
     if (index == -1) {
