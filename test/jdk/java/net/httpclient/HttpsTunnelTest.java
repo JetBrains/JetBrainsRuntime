@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,8 +47,9 @@ import static java.lang.System.out;
  *          proxy P is downgraded to HTTP/1.1, then a new h2 request
  *          going to a different host through the same proxy will not
  *          be preemptively downgraded. That, is the stack should attempt
- *          a new h2 connection to the new host.
- * @bug 8196967
+ *          a new h2 connection to the new host. It also verifies that
+ *          the stack sends the appropriate "host" header to the proxy.
+ * @bug 8196967 8222527
  * @library /lib/testlibrary http2/server
  * @build jdk.testlibrary.SimpleSSLContext HttpServerAdapters DigestEchoServer HttpsTunnelTest
  * @modules java.net.http/jdk.internal.net.http.common
@@ -58,7 +59,10 @@ import static java.lang.System.out;
  *          java.base/sun.net.www.http
  *          java.base/sun.net.www
  *          java.base/sun.net
- * @run main/othervm -Djdk.internal.httpclient.debug=true HttpsTunnelTest
+ * @run main/othervm -Dtest.requiresHost=true
+ *                   -Djdk.httpclient.HttpClient.log=headers
+ *                   -Djdk.internal.httpclient.debug=true HttpsTunnelTest
+ *
  */
 
 public class HttpsTunnelTest implements HttpServerAdapters {
@@ -145,6 +149,7 @@ public class HttpsTunnelTest implements HttpServerAdapters {
             if (!lines.equals(respLines)) {
                 throw new RuntimeException("Unexpected response 1: " + respLines);
             }
+
             HttpRequest.BodyPublisher reqBody2 = HttpRequest.BodyPublishers.ofString(body);
             HttpRequest req2 = HttpRequest
                     .newBuilder(uri2)
