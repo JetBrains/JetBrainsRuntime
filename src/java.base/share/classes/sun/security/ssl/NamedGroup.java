@@ -245,7 +245,7 @@ enum NamedGroup {
     }
 
     static NamedGroup valueOf(ECParameterSpec params) {
-        String oid = ECUtil.getCurveName(null, params);
+        String oid = JsseJce.getNamedCurveOid(params);
         if ((oid != null) && (!oid.isEmpty())) {
             for (NamedGroup group : NamedGroup.values()) {
                 if ((group.type == NamedGroupType.NAMED_GROUP_ECDHE)
@@ -267,6 +267,8 @@ enum NamedGroup {
             DHParameterSpec ngParams = null;
             // functions is non-null for FFDHE type
             AlgorithmParameters aps = ng.functions.getParameters(ng);
+            if (aps == null)
+                continue;
             try {
                 ngParams = aps.getParameterSpec(DHParameterSpec.class);
             } catch (InvalidParameterSpecException ipse) {
@@ -627,7 +629,7 @@ enum NamedGroup {
                 NamedGroup ng) {
             try {
                 AlgorithmParameters params
-                        = AlgorithmParameters.getInstance("DiffieHellman");
+                        = JsseJce.getAlgorithmParameters("DiffieHellman");
                 AlgorithmParameterSpec spec
                         = getFFDHEDHParameterSpec(ng);
                 params.init(spec);
@@ -703,7 +705,7 @@ enum NamedGroup {
                 NamedGroup ng) {
             try {
                 AlgorithmParameters params
-                        = AlgorithmParameters.getInstance("EC");
+                        = JsseJce.getAlgorithmParameters("EC");
                 AlgorithmParameterSpec spec
                         = new ECGenParameterSpec(ng.oid);
                 params.init(spec);
@@ -767,7 +769,7 @@ enum NamedGroup {
         public boolean isAvailable(NamedGroup ng) {
 
             try {
-                KeyAgreement.getInstance(ng.algorithm);
+                JsseJce.getKeyAgreement(ng.algorithm);
                 return true;
             } catch (NoSuchAlgorithmException ex) {
                 return false;

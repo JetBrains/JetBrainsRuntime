@@ -83,7 +83,7 @@ final class XDHKeyExchange {
 
             XECPublicKeySpec xecPublicKeySpec = new XECPublicKeySpec(
                     new NamedParameterSpec(namedGroup.name), u);
-            KeyFactory factory = KeyFactory.getInstance(namedGroup.algorithm);
+            KeyFactory factory = JsseJce.getKeyFactory(namedGroup.algorithm);
             XECPublicKey publicKey = (XECPublicKey) factory.generatePublic(
                     xecPublicKeySpec);
 
@@ -100,7 +100,7 @@ final class XDHKeyExchange {
         XDHEPossession(NamedGroup namedGroup, SecureRandom random) {
             try {
                 KeyPairGenerator kpg
-                        = KeyPairGenerator.getInstance(namedGroup.algorithm);
+                        = JsseJce.getKeyPairGenerator(namedGroup.algorithm);
                 AlgorithmParameterSpec params = namedGroup.getParameterSpec();
                 kpg.initialize(params, random);
                 KeyPair kp = kpg.generateKeyPair();
