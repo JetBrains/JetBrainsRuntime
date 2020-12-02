@@ -51,6 +51,12 @@ case "$bundle_type" in
   "jcef")
     do_reset_changes=1
     ;;
+  "dcevm")
+    HEAD_REVISION=$(git rev-parse HEAD)
+    git am jb/project/tools/patches/dcevm/*.patch || do_exit $?
+    do_reset_dcevm=1
+    do_reset_changes=1
+    ;;
   "nomod" | "")
     bundle_type=""
     ;;
@@ -85,7 +91,7 @@ JSDK=$IMAGES_DIR/jdk
 JSDK_MODS_DIR=$IMAGES_DIR/jmods
 JBRSDK_BUNDLE=jbrsdk
 
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ]; then
   git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
   update_jsdk_mods "$JSDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
   cp $JCEF_PATH/jmods/* ${JSDK_MODS_DIR} # $JSDK/jmods is not unchanged
