@@ -61,7 +61,7 @@ JSDK=$IMAGES_DIR/jdk
 JBSDK=$JBRSDK_BASE_NAME-windows-x64-b$build_number
 BASE_DIR=.
 
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ]; then
   JBRSDK_BUNDLE=jbrsdk
   echo Creating $JBSDK.tar.gz ...
   [ -f "$JBSDK.tar.gz" ] && rm "$JBSDK.tar.gz"
