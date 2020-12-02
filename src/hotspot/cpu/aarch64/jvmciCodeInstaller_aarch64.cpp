@@ -21,6 +21,7 @@
  * questions.
  */
 
+#include "asm/macroAssembler.hpp"
 #include "jvmci/jvmciCodeInstaller.hpp"
 #include "jvmci/jvmciRuntime.hpp"
 #include "jvmci/jvmciCompilerToVM.hpp"
