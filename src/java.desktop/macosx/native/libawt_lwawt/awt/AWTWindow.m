@@ -122,7 +122,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
 // workaround for https://youtrack.jetbrains.com/issue/JBR-2562
 - (void)_changeJustMain {
     @try {
-        [super performSelector:@selector(_changeJustMain)];
+        [super _changeJustMain];
     } @catch (NSException *ex) {
         // TODO: make logging into jbrerr
         NSLog(@"WARNING: suppressed exception from _changeJustMain: %@", ex);
