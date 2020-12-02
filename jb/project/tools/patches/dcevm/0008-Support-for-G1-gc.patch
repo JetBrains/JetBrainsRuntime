@@ -1,0 +1,1310 @@
+From a597c7248c92aad292e681564300dc98eb72e216 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Fri, 12 Jun 2020 17:43:52 +0200
+Subject: [PATCH 08/34] Support for G1 gc
+
+---
+ src/hotspot/share/gc/g1/g1CollectedHeap.cpp   |  20 +++
+ src/hotspot/share/gc/g1/g1CollectedHeap.hpp   |   3 +
+ src/hotspot/share/gc/g1/g1FullCollector.cpp   |  16 +-
+ .../share/gc/g1/g1FullGCCompactTask.cpp       |  92 +++++++++-
+ .../share/gc/g1/g1FullGCCompactTask.hpp       |  19 +++
+ .../share/gc/g1/g1FullGCCompactionPoint.cpp   |  85 +++++++++-
+ .../share/gc/g1/g1FullGCCompactionPoint.hpp   |  11 ++
+ .../share/gc/g1/g1FullGCPrepareTask.cpp       |  90 +++++++++-
+ .../share/gc/g1/g1FullGCPrepareTask.hpp       |  13 ++
+ src/hotspot/share/gc/g1/heapRegion.hpp        |  10 ++
+ src/hotspot/share/gc/serial/genMarkSweep.cpp  |   4 +-
+ src/hotspot/share/gc/serial/markSweep.cpp     |  97 -----------
+ src/hotspot/share/gc/serial/markSweep.hpp     |   3 -
+ src/hotspot/share/gc/shared/dcevmSharedGC.cpp | 159 ++++++++++++++++++
+ src/hotspot/share/gc/shared/dcevmSharedGC.hpp |  49 ++++++
+ src/hotspot/share/gc/shared/gcConfig.cpp      |   2 +-
+ src/hotspot/share/gc/shared/space.inline.hpp  |   3 +-
+ src/hotspot/share/memory/universe.cpp         |   5 +
+ .../prims/jvmtiEnhancedRedefineClasses.cpp    |  80 ++++++---
+ .../prims/jvmtiEnhancedRedefineClasses.hpp    |   6 +-
+ src/hotspot/share/runtime/arguments.cpp       |   4 +-
+ src/hotspot/share/utilities/growableArray.hpp |   4 +
+ 22 files changed, 628 insertions(+), 147 deletions(-)
+ create mode 100644 src/hotspot/share/gc/shared/dcevmSharedGC.cpp
+ create mode 100644 src/hotspot/share/gc/shared/dcevmSharedGC.hpp
+
+diff --git a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
+index e8cdd861cbb..a29d2dddc2d 100644
+--- a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
++++ b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
+@@ -2352,6 +2352,21 @@ public:
+   }
+ };
+ 
++class G1IterateObjectClosureTask : public AbstractGangTask {
++ private:
++  ObjectClosure* _cl;
++  G1CollectedHeap* _g1h;
++  HeapRegionClaimer _hrclaimer;
++ public:
++  G1IterateObjectClosureTask(ObjectClosure* cl, G1CollectedHeap* g1h) : AbstractGangTask("IterateObject Closure"),
++    _cl(cl), _g1h(g1h),  _hrclaimer(g1h->workers()->active_workers()) { }
++
++  virtual void work(uint worker_id) {
++    IterateObjectClosureRegionClosure blk(_cl);
++    _g1h->heap_region_par_iterate_from_worker_offset(&blk, &_hrclaimer, worker_id);
++  }
++};
++
+ void G1CollectedHeap::object_iterate(ObjectClosure* cl) {
+   IterateObjectClosureRegionClosure blk(cl);
+   heap_region_iterate(&blk);
+@@ -2365,6 +2380,11 @@ void G1CollectedHeap::heap_region_iterate(HeapRegionClosure* cl) const {
+   _hrm->iterate(cl);
+ }
+ 
++void G1CollectedHeap::object_par_iterate(ObjectClosure* cl) {
++  G1IterateObjectClosureTask iocl_task(cl, this);
++  workers()->run_task(&iocl_task);
++}
++
+ void G1CollectedHeap::heap_region_par_iterate_from_worker_offset(HeapRegionClosure* cl,
+                                                                  HeapRegionClaimer *hrclaimer,
+                                                                  uint worker_id) const {
+diff --git a/src/hotspot/share/gc/g1/g1CollectedHeap.hpp b/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
+index 71f89d09184..adb97ee260a 100644
+--- a/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
++++ b/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
+@@ -146,6 +146,7 @@ class G1CollectedHeap : public CollectedHeap {
+   friend class G1ParScanThreadStateSet;
+   friend class G1EvacuateRegionsTask;
+   friend class G1PLABAllocator;
++  friend class G1FullGCPrepareTask;
+ 
+   // Other related classes.
+   friend class HeapRegionClaimer;
+@@ -1168,6 +1169,8 @@ public:
+ 
+   // Iteration functions.
+ 
++  void object_par_iterate(ObjectClosure* cl);
++
+   // Iterate over all objects, calling "cl.do_object" on each.
+   virtual void object_iterate(ObjectClosure* cl);
+ 
+diff --git a/src/hotspot/share/gc/g1/g1FullCollector.cpp b/src/hotspot/share/gc/g1/g1FullCollector.cpp
+index 0242e45eef5..707fe8844d0 100644
+--- a/src/hotspot/share/gc/g1/g1FullCollector.cpp
++++ b/src/hotspot/share/gc/g1/g1FullCollector.cpp
+@@ -237,8 +237,12 @@ void G1FullCollector::phase2_prepare_compaction() {
+   run_task(&task);
+ 
+   // To avoid OOM when there is memory left.
+-  if (!task.has_freed_regions()) {
+-    task.prepare_serial_compaction();
++  if (!Universe::is_redefining_gc_run()) {
++    if (!task.has_freed_regions()) {
++      task.prepare_serial_compaction();
++    }
++  } else {
++    task.prepare_serial_compaction_dcevm();
+   }
+ }
+ 
+@@ -257,8 +261,12 @@ void G1FullCollector::phase4_do_compaction() {
+   run_task(&task);
+ 
+   // Serial compact to avoid OOM when very few free regions.
+-  if (serial_compaction_point()->has_regions()) {
+-    task.serial_compaction();
++  if (!Universe::is_redefining_gc_run()) {
++    if (serial_compaction_point()->has_regions()) {
++      task.serial_compaction();
++    }
++  } else {
++    task.serial_compaction_dcevm();
+   }
+ }
+ 
+diff --git a/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp b/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp
+index 97742d26ee9..f70f4606dc8 100644
+--- a/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp
++++ b/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp
+@@ -30,6 +30,7 @@
+ #include "gc/g1/g1FullGCCompactTask.hpp"
+ #include "gc/g1/heapRegion.inline.hpp"
+ #include "gc/shared/gcTraceTime.inline.hpp"
++#include "gc/shared/dcevmSharedGC.hpp"
+ #include "logging/log.hpp"
+ #include "oops/oop.inline.hpp"
+ #include "utilities/ticks.hpp"
+@@ -90,12 +91,30 @@ void G1FullGCCompactTask::compact_region(HeapRegion* hr) {
+ void G1FullGCCompactTask::work(uint worker_id) {
+   Ticks start = Ticks::now();
+   GrowableArray<HeapRegion*>* compaction_queue = collector()->compaction_point(worker_id)->regions();
+-  for (GrowableArrayIterator<HeapRegion*> it = compaction_queue->begin();
+-       it != compaction_queue->end();
+-       ++it) {
+-    compact_region(*it);
++
++  if (!Universe::is_redefining_gc_run()) {
++    for (GrowableArrayIterator<HeapRegion*> it = compaction_queue->begin();
++         it != compaction_queue->end();
++         ++it) {
++      compact_region(*it);
++    }
++  } else {
++    GrowableArrayIterator<HeapWord*> rescue_oops_it = collector()->compaction_point(worker_id)->rescued_oops()->begin();
++    GrowableArray<HeapWord*>* rescued_oops_values = collector()->compaction_point(worker_id)->rescued_oops_values();
++
++    for (GrowableArrayIterator<HeapRegion*> it = compaction_queue->begin();
++         it != compaction_queue->end();
++         ++it) {
++      compact_region_dcevm(*it, rescued_oops_values, &rescue_oops_it);
++    }
++    assert(rescue_oops_it.at_end(), "Must be at end");
++    G1FullGCCompactionPoint* cp = collector()->compaction_point(worker_id);
++    if (cp->last_rescued_oop() > 0) {
++      DcevmSharedGC::copy_rescued_objects_back(rescued_oops_values, 0, cp->last_rescued_oop(), false);
++    }
+   }
+ 
++  // TODO: (DCEV) check it
+   G1ResetHumongousClosure hc(collector()->mark_bitmap());
+   G1CollectedHeap::heap()->heap_region_par_iterate_from_worker_offset(&hc, &_claimer, worker_id);
+   log_task("Compaction task", worker_id, start);
+@@ -110,3 +129,68 @@ void G1FullGCCompactTask::serial_compaction() {
+     compact_region(*it);
+   }
+ }
++
++void G1FullGCCompactTask::compact_region_dcevm(HeapRegion* hr, GrowableArray<HeapWord*>* rescued_oops_values,
++    GrowableArrayIterator<HeapWord*>* rescue_oops_it) {
++  assert(!hr->is_humongous(), "Should be no humongous regions in compaction queue");
++  ResourceMark rm; //
++
++  G1CompactRegionClosureDcevm compact(collector()->mark_bitmap(), rescued_oops_values, rescue_oops_it);
++  hr->apply_to_marked_objects(collector()->mark_bitmap(), &compact);
++  // Once all objects have been moved the liveness information
++  // needs be cleared.
++  collector()->mark_bitmap()->clear_region(hr);
++  hr->complete_compaction();
++}
++
++void G1FullGCCompactTask::serial_compaction_dcevm() {
++  GCTraceTime(Debug, gc, phases) tm("Phase 4: Serial Compaction", collector()->scope()->timer());
++
++  // compact remaining, not parallel compacted rescued oops using serial compact point
++
++  for (uint i = 0; i < collector()->workers(); i++) {
++    G1FullGCCompactionPoint* cp = collector()->compaction_point(i);
++    DcevmSharedGC::clear_rescued_objects_heap(cp->rescued_oops_values());
++  }
++
++}
++
++size_t G1FullGCCompactTask::G1CompactRegionClosureDcevm::apply(oop obj) {
++  size_t size = obj->size();
++  HeapWord* destination = (HeapWord*)obj->forwardee();
++  if (destination == NULL) {
++    // Object not moving
++    return size;
++  }
++
++  // copy object and reinit its mark
++  HeapWord* obj_addr = (HeapWord*) obj;
++
++  if (!_rescue_oops_it->at_end() && **_rescue_oops_it == obj_addr) {
++    ++(*_rescue_oops_it);
++    HeapWord* rescued_obj = NEW_C_HEAP_ARRAY(HeapWord, size, mtInternal);
++    Copy::aligned_disjoint_words(obj_addr, rescued_obj, size);
++    _rescued_oops_values->append(rescued_obj);
++    debug_only(Copy::fill_to_words(obj_addr, size, 0));
++    return size;
++  }
++
++  if (obj->klass()->new_version() != NULL) {
++    Klass* new_version = obj->klass()->new_version();
++    if (new_version->update_information() == NULL) {
++      Copy::aligned_conjoint_words(obj_addr, destination, size);
++      oop(destination)->set_klass(new_version);
++    } else {
++      DcevmSharedGC::update_fields(obj, oop(destination));
++    }
++    oop(destination)->init_mark_raw();
++    assert(oop(destination)->klass() != NULL, "should have a class");
++    return size;
++  }
++
++  Copy::aligned_conjoint_words(obj_addr, destination, size);
++  oop(destination)->init_mark_raw();
++  assert(oop(destination)->klass() != NULL, "should have a class");
++
++  return size;
++}
+diff --git a/src/hotspot/share/gc/g1/g1FullGCCompactTask.hpp b/src/hotspot/share/gc/g1/g1FullGCCompactTask.hpp
+index 6c8eaf5967e..ea52a2db8cc 100644
+--- a/src/hotspot/share/gc/g1/g1FullGCCompactTask.hpp
++++ b/src/hotspot/share/gc/g1/g1FullGCCompactTask.hpp
+@@ -41,6 +41,8 @@ protected:
+ 
+ private:
+   void compact_region(HeapRegion* hr);
++  void compact_region_dcevm(HeapRegion* hr, GrowableArray<HeapWord*>* rescued_oops_values, 
++    GrowableArrayIterator<HeapWord*>* rescue_oops_it);
+ 
+ public:
+   G1FullGCCompactTask(G1FullCollector* collector) :
+@@ -48,6 +50,7 @@ public:
+     _claimer(collector->workers()) { }
+   void work(uint worker_id);
+   void serial_compaction();
++  void serial_compaction_dcevm();
+ 
+   class G1CompactRegionClosure : public StackObj {
+     G1CMBitMap* _bitmap;
+@@ -56,6 +59,22 @@ public:
+     G1CompactRegionClosure(G1CMBitMap* bitmap) : _bitmap(bitmap) { }
+     size_t apply(oop object);
+   };
++
++  class G1CompactRegionClosureDcevm : public StackObj {
++    G1CMBitMap* _bitmap;
++    GrowableArray<HeapWord*>* _rescued_oops_values;
++    GrowableArrayIterator<HeapWord*>* _rescue_oops_it;
++
++  public:
++    G1CompactRegionClosureDcevm(G1CMBitMap* bitmap,
++                           GrowableArray<HeapWord*>* rescued_oops_values,
++                           GrowableArrayIterator<HeapWord*>* rescue_oops_it) :
++      _bitmap(bitmap),
++      _rescued_oops_values(rescued_oops_values),
++      _rescue_oops_it(rescue_oops_it)
++      { }
++    size_t apply(oop object);
++  };
+ };
+ 
+ #endif // SHARE_GC_G1_G1FULLGCCOMPACTTASK_HPP
+diff --git a/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.cpp b/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.cpp
+index 269d14d8b73..1e49571c999 100644
+--- a/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.cpp
++++ b/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.cpp
+@@ -31,13 +31,19 @@
+ G1FullGCCompactionPoint::G1FullGCCompactionPoint() :
+     _current_region(NULL),
+     _threshold(NULL),
+-    _compaction_top(NULL) {
++    _compaction_top(NULL),
++    _last_rescued_oop(0)
++{
+   _compaction_regions = new (ResourceObj::C_HEAP, mtGC) GrowableArray<HeapRegion*>(32, true, mtGC);
+   _compaction_region_iterator = _compaction_regions->begin();
++  _rescued_oops = new (ResourceObj::C_HEAP, mtGC) GrowableArray<HeapWord*>(128, true, mtGC);
++  _rescued_oops_values = new (ResourceObj::C_HEAP, mtGC) GrowableArray<HeapWord*>(128, true, mtGC);
+ }
+ 
+ G1FullGCCompactionPoint::~G1FullGCCompactionPoint() {
+   delete _compaction_regions;
++  delete _rescued_oops;
++  delete _rescued_oops_values;
+ }
+ 
+ void G1FullGCCompactionPoint::update() {
+@@ -80,6 +86,14 @@ GrowableArray<HeapRegion*>* G1FullGCCompactionPoint::regions() {
+   return _compaction_regions;
+ }
+ 
++GrowableArray<HeapWord*>* G1FullGCCompactionPoint::rescued_oops() {
++  return _rescued_oops;
++}
++
++GrowableArray<HeapWord*>* G1FullGCCompactionPoint::rescued_oops_values() {
++  return _rescued_oops_values;
++}
++
+ bool G1FullGCCompactionPoint::object_will_fit(size_t size) {
+   size_t space_left = pointer_delta(_current_region->end(), _compaction_top);
+   return size <= space_left;
+@@ -143,3 +157,72 @@ void G1FullGCCompactionPoint::merge(G1FullGCCompactionPoint* other) {
+ HeapRegion* G1FullGCCompactionPoint::remove_last() {
+   return _compaction_regions->pop();
+ }
++
++HeapWord* G1FullGCCompactionPoint::forward_compact_top(size_t size) {
++  assert(_current_region != NULL, "Must have been initialized");
++  // Ensure the object fit in the current region.
++  while (!object_will_fit(size)) {
++    if (!_compaction_region_iterator.has_next()) {
++      return NULL;
++    }
++    switch_region();
++  }
++  return _compaction_top;
++}
++
++void G1FullGCCompactionPoint::forward_dcevm(oop object, size_t size, bool force_forward) {
++  assert(_current_region != NULL, "Must have been initialized");
++
++  // Store a forwarding pointer if the object should be moved.
++  if ((HeapWord*)object != _compaction_top || force_forward) {
++    object->forward_to(oop(_compaction_top));
++  } else {
++    if (object->forwardee() != NULL) {
++      // Object should not move but mark-word is used so it looks like the
++      // object is forwarded. Need to clear the mark and it's no problem
++      // since it will be restored by preserved marks. There is an exception
++      // with BiasedLocking, in this case forwardee() will return NULL
++      // even if the mark-word is used. This is no problem since
++      // forwardee() will return NULL in the compaction phase as well.
++      object->init_mark_raw();
++    } else {
++      // Make sure object has the correct mark-word set or that it will be
++      // fixed when restoring the preserved marks.
++      assert(object->mark_raw() == markOopDesc::prototype_for_object(object) || // Correct mark
++             object->mark_raw()->must_be_preserved(object) || // Will be restored by PreservedMarksSet
++             (UseBiasedLocking && object->has_bias_pattern_raw()), // Will be restored by BiasedLocking
++             "should have correct prototype obj: " PTR_FORMAT " mark: " PTR_FORMAT " prototype: " PTR_FORMAT,
++             p2i(object), p2i(object->mark_raw()), p2i(markOopDesc::prototype_for_object(object)));
++    }
++    assert(object->forwardee() == NULL, "should be forwarded to NULL");
++  }
++
++  // Update compaction values.
++  _compaction_top += size;
++  if (_compaction_top > _threshold) {
++    _threshold = _current_region->cross_threshold(_compaction_top - size, _compaction_top);
++  }
++}
++
++void G1FullGCCompactionPoint::forward_rescued() {
++  int i;
++
++  i = _last_rescued_oop;
++
++  for (;i<rescued_oops()->length(); i++) {
++    HeapWord* q = rescued_oops()->at(i);
++
++    size_t size = oop(q)->size();
++
++    // (DCEVM) There is a new version of the class of q => different size
++    if (oop(q)->klass()->new_version() != NULL) {
++      // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
++      size = oop(q)->size_given_klass(oop(q)->klass()->new_version());
++    }
++    if (forward_compact_top(size) == NULL) {
++      break;
++    }
++    forward_dcevm(oop(q), size, true);
++  }
++  _last_rescued_oop = i;
++}
+diff --git a/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.hpp b/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.hpp
+index 0ec0b324aab..a55a37f96c0 100644
+--- a/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.hpp
++++ b/src/hotspot/share/gc/g1/g1FullGCCompactionPoint.hpp
+@@ -37,6 +37,9 @@ class G1FullGCCompactionPoint : public CHeapObj<mtGC> {
+   HeapWord*   _compaction_top;
+   GrowableArray<HeapRegion*>* _compaction_regions;
+   GrowableArrayIterator<HeapRegion*> _compaction_region_iterator;
++  GrowableArray<HeapWord*>* _rescued_oops;
++  GrowableArray<HeapWord*>* _rescued_oops_values;
++  int _last_rescued_oop;
+ 
+   bool object_will_fit(size_t size);
+   void initialize_values(bool init_threshold);
+@@ -52,6 +55,8 @@ public:
+   void initialize(HeapRegion* hr, bool init_threshold);
+   void update();
+   void forward(oop object, size_t size);
++  HeapWord* forward_compact_top(size_t size);
++  void forward_dcevm(oop object, size_t size, bool force_forward);
+   void add(HeapRegion* hr);
+   void merge(G1FullGCCompactionPoint* other);
+ 
+@@ -59,6 +64,12 @@ public:
+   HeapRegion* current_region();
+ 
+   GrowableArray<HeapRegion*>* regions();
++
++  GrowableArray<HeapWord*>* rescued_oops();
++  GrowableArray<HeapWord*>* rescued_oops_values();
++
++  void forward_rescued();
++  int last_rescued_oop() { return _last_rescued_oop; }
+ };
+ 
+ #endif // SHARE_GC_G1_G1FULLGCCOMPACTIONPOINT_HPP
+diff --git a/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp b/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp
+index 3658ae200d9..a45681b60cf 100644
+--- a/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp
++++ b/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp
+@@ -40,6 +40,7 @@
+ #include "utilities/ticks.hpp"
+ 
+ bool G1FullGCPrepareTask::G1CalculatePointersClosure::do_heap_region(HeapRegion* hr) {
++  hr->set_processing_order(_region_processing_order++);
+   if (hr->is_humongous()) {
+     oop obj = oop(hr->humongous_start_region()->bottom());
+     if (_bitmap->is_marked(obj)) {
+@@ -49,7 +50,7 @@ bool G1FullGCPrepareTask::G1CalculatePointersClosure::do_heap_region(HeapRegion*
+     } else {
+       free_humongous_region(hr);
+     }
+-  } else if (!hr->is_pinned()) {
++  } else if (!hr->is_pinned()) { // TODO: (DCEVM) review pinned
+     prepare_for_compaction(hr);
+   }
+ 
+@@ -81,6 +82,10 @@ void G1FullGCPrepareTask::work(uint worker_id) {
+   G1CalculatePointersClosure closure(collector()->mark_bitmap(), compaction_point);
+   G1CollectedHeap::heap()->heap_region_par_iterate_from_start(&closure, &_hrclaimer);
+ 
++  if (Universe::is_redefining_gc_run()) {
++    compaction_point->forward_rescued();
++  }
++
+   // Update humongous region sets
+   closure.update_sets();
+   compaction_point->update();
+@@ -97,7 +102,8 @@ G1FullGCPrepareTask::G1CalculatePointersClosure::G1CalculatePointersClosure(G1CM
+     _g1h(G1CollectedHeap::heap()),
+     _bitmap(bitmap),
+     _cp(cp),
+-    _humongous_regions_removed(0) { }
++    _humongous_regions_removed(0),
++    _region_processing_order(0) { }
+ 
+ void G1FullGCPrepareTask::G1CalculatePointersClosure::free_humongous_region(HeapRegion* hr) {
+   FreeRegionList dummy_free_list("Dummy Free List for G1MarkSweep");
+@@ -146,9 +152,15 @@ size_t G1FullGCPrepareTask::G1RePrepareClosure::apply(oop obj) {
+ 
+ void G1FullGCPrepareTask::G1CalculatePointersClosure::prepare_for_compaction_work(G1FullGCCompactionPoint* cp,
+                                                                                   HeapRegion* hr) {
+-  G1PrepareCompactLiveClosure prepare_compact(cp);
+-  hr->set_compaction_top(hr->bottom());
+-  hr->apply_to_marked_objects(_bitmap, &prepare_compact);
++  if (!Universe::is_redefining_gc_run()) {
++    G1PrepareCompactLiveClosure prepare_compact(cp);
++    hr->set_compaction_top(hr->bottom());
++    hr->apply_to_marked_objects(_bitmap, &prepare_compact);
++  } else {
++    G1PrepareCompactLiveClosureDcevm prepare_compact(cp, hr->processing_order());
++    hr->set_compaction_top(hr->bottom());
++    hr->apply_to_marked_objects(_bitmap, &prepare_compact);
++  }
+ }
+ 
+ void G1FullGCPrepareTask::G1CalculatePointersClosure::prepare_for_compaction(HeapRegion* hr) {
+@@ -219,3 +231,71 @@ bool G1FullGCPrepareTask::G1CalculatePointersClosure::freed_regions() {
+   // No free regions in the queue.
+   return false;
+ }
++
++void G1FullGCPrepareTask::prepare_serial_compaction_dcevm() {
++  GCTraceTime(Debug, gc, phases) debug("Phase 2: Prepare Serial Compaction", collector()->scope()->timer());
++
++  for (uint i = 0; i < collector()->workers(); i++) {
++    G1FullGCCompactionPoint* cp = collector()->compaction_point(i);
++
++    // collect remaining, not forwarded rescued oops using serial compact point
++    while (cp->last_rescued_oop() < cp->rescued_oops()->length()) {
++      HeapRegion* hr = G1CollectedHeap::heap()->new_region(HeapRegion::GrainBytes / HeapWordSize, false, true);
++      if (hr == NULL) {
++        vm_exit_out_of_memory(0, OOM_MMAP_ERROR, "G1 - not enough of free regions after redefinition.");
++      }
++      hr->set_compaction_top(hr->bottom());
++      cp->add(hr);
++      cp->forward_rescued();
++      cp->update();
++    }
++  }
++}
++
++G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::G1PrepareCompactLiveClosureDcevm(G1FullGCCompactionPoint* cp,
++                                                                                        uint region_processing_order) :
++    _cp(cp),
++    _region_processing_order(region_processing_order) { }
++
++size_t G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::apply(oop object) {
++  size_t size = object->size();
++  size_t forward_size = size;
++
++  // (DCEVM) There is a new version of the class of q => different size
++  if (object->klass()->new_version() != NULL) {
++    forward_size = object->size_given_klass(object->klass()->new_version());
++  }
++
++  HeapWord* compact_top = _cp->forward_compact_top(forward_size);
++
++  if (compact_top == NULL || must_rescue(object, oop(compact_top))) {
++    _cp->rescued_oops()->append((HeapWord*)object);
++  } else {
++    _cp->forward_dcevm(object, forward_size, (size != forward_size));
++  }
++
++  return size;
++}
++
++bool G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::must_rescue(oop old_obj, oop new_obj) {
++  // Only redefined objects can have the need to be rescued.
++  if (oop(old_obj)->klass()->new_version() == NULL) {
++    return false;
++  }
++
++  if (_region_processing_order > _cp->current_region()->processing_order()) {
++    return false;
++  }
++
++  if (_region_processing_order < _cp->current_region()->processing_order()) {
++    return true;
++  }
++
++  // old obj and new obj are within same region
++  int new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
++  int original_size = old_obj->size();
++
++  bool overlap = ((HeapWord*)old_obj + original_size < (HeapWord*)new_obj + new_size);
++
++  return overlap;
++}
+diff --git a/src/hotspot/share/gc/g1/g1FullGCPrepareTask.hpp b/src/hotspot/share/gc/g1/g1FullGCPrepareTask.hpp
+index fcaf797a12f..98a8fa58bbc 100644
+--- a/src/hotspot/share/gc/g1/g1FullGCPrepareTask.hpp
++++ b/src/hotspot/share/gc/g1/g1FullGCPrepareTask.hpp
+@@ -46,6 +46,7 @@ public:
+   G1FullGCPrepareTask(G1FullCollector* collector);
+   void work(uint worker_id);
+   void prepare_serial_compaction();
++  void prepare_serial_compaction_dcevm();
+   bool has_freed_regions();
+ 
+ protected:
+@@ -55,6 +56,7 @@ protected:
+     G1CMBitMap* _bitmap;
+     G1FullGCCompactionPoint* _cp;
+     uint _humongous_regions_removed;
++    uint _region_processing_order;
+ 
+     virtual void prepare_for_compaction(HeapRegion* hr);
+     void prepare_for_compaction_work(G1FullGCCompactionPoint* cp, HeapRegion* hr);
+@@ -78,6 +80,16 @@ protected:
+     size_t apply(oop object);
+   };
+ 
++  class G1PrepareCompactLiveClosureDcevm : public StackObj {
++    G1FullGCCompactionPoint* _cp;
++    uint _region_processing_order;
++
++    bool must_rescue(oop old_obj, oop new_obj);
++  public:
++    G1PrepareCompactLiveClosureDcevm(G1FullGCCompactionPoint* cp, uint region_processing_order);
++    size_t apply(oop object);
++  };
++
+   class G1RePrepareClosure : public StackObj {
+     G1FullGCCompactionPoint* _cp;
+     HeapRegion* _current;
+@@ -90,6 +102,7 @@ protected:
+ 
+     size_t apply(oop object);
+   };
++
+ };
+ 
+ #endif // SHARE_GC_G1_G1FULLGCPREPARETASK_HPP
+diff --git a/src/hotspot/share/gc/g1/heapRegion.hpp b/src/hotspot/share/gc/g1/heapRegion.hpp
+index 5bf94460540..ec6c5cf8751 100644
+--- a/src/hotspot/share/gc/g1/heapRegion.hpp
++++ b/src/hotspot/share/gc/g1/heapRegion.hpp
+@@ -199,6 +199,8 @@ private:
+   // The remembered set for this region.
+   HeapRegionRemSet* _rem_set;
+ 
++  uint _processing_order;
++
+   // Cached index of this region in the heap region sequence.
+   const uint _hrm_index;
+ 
+@@ -452,6 +454,14 @@ public:
+     return _rem_set;
+   }
+ 
++  uint processing_order() {
++    return _processing_order;
++  }
++
++  void set_processing_order(uint processing_order) {
++    _processing_order = processing_order;
++  }
++
+   inline bool in_collection_set() const;
+ 
+   // Methods used by the HeapRegionSetBase class and subclasses.
+diff --git a/src/hotspot/share/gc/serial/genMarkSweep.cpp b/src/hotspot/share/gc/serial/genMarkSweep.cpp
+index 72f571645a5..1d13c647452 100644
+--- a/src/hotspot/share/gc/serial/genMarkSweep.cpp
++++ b/src/hotspot/share/gc/serial/genMarkSweep.cpp
+@@ -334,5 +334,7 @@ void GenMarkSweep::mark_sweep_phase4() {
+ 
+   GenCompactClosure blk;
+   gch->generation_iterate(&blk, true);
+-  MarkSweep::copy_rescued_objects_back();
++  DcevmSharedGC::copy_rescued_objects_back(MarkSweep::_rescued_oops, true);
++  DcevmSharedGC::clear_rescued_objects_resource(MarkSweep::_rescued_oops);
++  MarkSweep::_rescued_oops = NULL;
+ }
+diff --git a/src/hotspot/share/gc/serial/markSweep.cpp b/src/hotspot/share/gc/serial/markSweep.cpp
+index c7befd2f63d..c0108bad092 100644
+--- a/src/hotspot/share/gc/serial/markSweep.cpp
++++ b/src/hotspot/share/gc/serial/markSweep.cpp
+@@ -224,100 +224,3 @@ void MarkSweep::initialize() {
+   MarkSweep::_gc_timer = new (ResourceObj::C_HEAP, mtGC) STWGCTimer();
+   MarkSweep::_gc_tracer = new (ResourceObj::C_HEAP, mtGC) SerialOldTracer();
+ }
+-
+-// (DCEVM) Copy the rescued objects to their destination address after compaction.
+-void MarkSweep::copy_rescued_objects_back() {
+-
+-  if (_rescued_oops != NULL) {
+-
+-    for (int i=0; i<_rescued_oops->length(); i++) {
+-      HeapWord* rescued_ptr = _rescued_oops->at(i);
+-      oop rescued_obj = (oop) rescued_ptr;
+-
+-      int size = rescued_obj->size();
+-      oop new_obj = rescued_obj->forwardee();
+-
+-      assert(rescued_obj->klass()->new_version() != NULL, "just checking");
+-
+-      if (rescued_obj->klass()->new_version()->update_information() != NULL) {
+-        MarkSweep::update_fields(rescued_obj, new_obj);
+-      } else {
+-        rescued_obj->set_klass(rescued_obj->klass()->new_version());
+-        Copy::aligned_disjoint_words((HeapWord*)rescued_obj, (HeapWord*)new_obj, size);
+-      }
+-
+-      FREE_RESOURCE_ARRAY(HeapWord, rescued_ptr, size);
+-
+-      new_obj->init_mark();
+-      assert(oopDesc::is_oop(new_obj), "must be a valid oop");
+-    }
+-    _rescued_oops->clear();
+-    _rescued_oops = NULL;
+-  }
+-}
+-
+-// (DCEVM) Update instances of a class whose fields changed.
+-void MarkSweep::update_fields(oop q, oop new_location) {
+-
+-  assert(q->klass()->new_version() != NULL, "class of old object must have new version");
+-
+-  Klass* old_klass_oop = q->klass();
+-  Klass* new_klass_oop = q->klass()->new_version();
+-
+-  InstanceKlass *old_klass = InstanceKlass::cast(old_klass_oop);
+-  InstanceKlass *new_klass = InstanceKlass::cast(new_klass_oop);
+-
+-  int size = q->size_given_klass(old_klass);
+-  int new_size = q->size_given_klass(new_klass);
+-
+-  HeapWord* tmp = NULL;
+-  oop tmp_obj = q;
+-
+-  // Save object somewhere, there is an overlap in fields
+-  if (new_klass_oop->is_copying_backwards()) {
+-    if (((HeapWord *)q >= (HeapWord *)new_location && (HeapWord *)q < (HeapWord *)new_location + new_size) ||
+-        ((HeapWord *)new_location >= (HeapWord *)q && (HeapWord *)new_location < (HeapWord *)q + size)) {
+-       tmp = NEW_RESOURCE_ARRAY(HeapWord, size);
+-       q = (oop) tmp;
+-       Copy::aligned_disjoint_words((HeapWord*)tmp_obj, (HeapWord*)q, size);
+-    }
+-  }
+-
+-  q->set_klass(new_klass_oop);
+-  int *cur = new_klass_oop->update_information();
+-  assert(cur != NULL, "just checking");
+-  MarkSweep::update_fields(new_location, q, cur);
+-
+-  if (tmp != NULL) {
+-    FREE_RESOURCE_ARRAY(HeapWord, tmp, size);
+-  }
+-}
+-
+-void MarkSweep::update_fields(oop new_location, oop tmp_obj, int *cur) {
+-  assert(cur != NULL, "just checking");
+-  char* to = (char*)(HeapWord*)new_location;
+-  while (*cur != 0) {
+-    int size = *cur;
+-    if (size > 0) {
+-      cur++;
+-      int offset = *cur;
+-      HeapWord* from = (HeapWord*)(((char *)(HeapWord*)tmp_obj) + offset);
+-      if (size == HeapWordSize) {
+-        *((HeapWord*)to) = *from;
+-      } else if (size == HeapWordSize * 2) {
+-        *((HeapWord*)to) = *from;
+-        *(((HeapWord*)to) + 1) = *(from + 1);
+-      } else {
+-        Copy::conjoint_jbytes(from, to, size);
+-      }
+-      to += size;
+-      cur++;
+-    } else {
+-      assert(size < 0, "");
+-      int skip = -*cur;
+-      Copy::fill_to_bytes(to, skip, 0);
+-      to += skip;
+-      cur++;
+-    }
+-  }
+-}
+diff --git a/src/hotspot/share/gc/serial/markSweep.hpp b/src/hotspot/share/gc/serial/markSweep.hpp
+index e12ac327d90..92af0e36a1c 100644
+--- a/src/hotspot/share/gc/serial/markSweep.hpp
++++ b/src/hotspot/share/gc/serial/markSweep.hpp
+@@ -148,9 +148,6 @@ class MarkSweep : AllStatic {
+ 
+   static int adjust_pointers(oop obj);
+ 
+-  static void copy_rescued_objects_back();
+-  static void update_fields(oop q, oop new_location);
+-  static void update_fields(oop new_location, oop tmp_obj, int *cur);
+   static void follow_stack();   // Empty marking stack.
+ 
+   static void follow_klass(Klass* klass);
+diff --git a/src/hotspot/share/gc/shared/dcevmSharedGC.cpp b/src/hotspot/share/gc/shared/dcevmSharedGC.cpp
+new file mode 100644
+index 00000000000..803e645f843
+--- /dev/null
++++ b/src/hotspot/share/gc/shared/dcevmSharedGC.cpp
+@@ -0,0 +1,159 @@
++/*
++ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ *
++ */
++
++#include "precompiled.hpp"
++#include "gc/shared/dcevmSharedGC.hpp"
++#include "memory/iterator.inline.hpp"
++#include "oops/access.inline.hpp"
++#include "oops/compressedOops.inline.hpp"
++#include "oops/instanceClassLoaderKlass.inline.hpp"
++#include "oops/instanceKlass.inline.hpp"
++#include "oops/instanceMirrorKlass.inline.hpp"
++#include "oops/instanceRefKlass.inline.hpp"
++#include "oops/oop.inline.hpp"
++#include "utilities/macros.hpp"
++
++void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, bool must_be_new) {
++  if (rescued_oops != NULL) {
++    copy_rescued_objects_back(rescued_oops, 0, rescued_oops->length(), must_be_new);
++  }
++}
++
++// (DCEVM) Copy the rescued objects to their destination address after compaction.
++void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, int from, int to, bool must_be_new) {
++
++  if (rescued_oops != NULL) {
++    for (int i=from; i < to; i++) {
++      HeapWord* rescued_ptr = rescued_oops->at(i);
++      oop rescued_obj = (oop) rescued_ptr;
++
++      int size = rescued_obj->size();
++      oop new_obj = rescued_obj->forwardee();
++
++      assert(!must_be_new || rescued_obj->klass()->new_version() != NULL, "Just checking");
++      Klass* new_klass = rescued_obj->klass()->new_version();
++      if (new_klass!= NULL) {
++        if (new_klass->update_information() != NULL) {
++          DcevmSharedGC::update_fields(rescued_obj, new_obj);
++        } else {
++          rescued_obj->set_klass(new_klass);
++          Copy::aligned_disjoint_words((HeapWord*)rescued_obj, (HeapWord*)new_obj, size);
++        }
++      } else {
++        Copy::aligned_disjoint_words((HeapWord*)rescued_obj, (HeapWord*)new_obj, size);
++      }
++
++      new_obj->init_mark_raw();
++      assert(oopDesc::is_oop(new_obj), "must be a valid oop");
++    }
++  }
++
++}
++
++void DcevmSharedGC::clear_rescued_objects_resource(GrowableArray<HeapWord*>* rescued_oops) {
++  if (rescued_oops != NULL) {
++    for (int i=0; i < rescued_oops->length(); i++) {
++      HeapWord* rescued_ptr = rescued_oops->at(i);
++      int size = ((oop) rescued_ptr)->size();
++      FREE_RESOURCE_ARRAY(HeapWord, rescued_ptr, size);
++    }
++    rescued_oops->clear();
++  }
++}
++
++void DcevmSharedGC::clear_rescued_objects_heap(GrowableArray<HeapWord*>* rescued_oops) {
++  if (rescued_oops != NULL) {
++    for (int i=0; i < rescued_oops->length(); i++) {
++      HeapWord* rescued_ptr = rescued_oops->at(i);
++      FREE_C_HEAP_ARRAY(HeapWord, rescued_ptr);
++    }
++    rescued_oops->clear();
++  }
++}
++
++// (DCEVM) Update instances of a class whose fields changed.
++void DcevmSharedGC::update_fields(oop q, oop new_location) {
++
++  assert(q->klass()->new_version() != NULL, "class of old object must have new version");
++
++  Klass* old_klass_oop = q->klass();
++  Klass* new_klass_oop = q->klass()->new_version();
++
++  InstanceKlass *old_klass = InstanceKlass::cast(old_klass_oop);
++  InstanceKlass *new_klass = InstanceKlass::cast(new_klass_oop);
++
++  int size = q->size_given_klass(old_klass);
++  int new_size = q->size_given_klass(new_klass);
++
++  HeapWord* tmp = NULL;
++  oop tmp_obj = q;
++
++  // Save object somewhere, there is an overlap in fields
++  if (new_klass_oop->is_copying_backwards()) {
++    if (((HeapWord *)q >= (HeapWord *)new_location && (HeapWord *)q < (HeapWord *)new_location + new_size) ||
++        ((HeapWord *)new_location >= (HeapWord *)q && (HeapWord *)new_location < (HeapWord *)q + size)) {
++       tmp = NEW_RESOURCE_ARRAY(HeapWord, size);
++       q = (oop) tmp;
++       Copy::aligned_disjoint_words((HeapWord*)tmp_obj, (HeapWord*)q, size);
++    }
++  }
++
++  q->set_klass(new_klass_oop);
++  int *cur = new_klass_oop->update_information();
++  assert(cur != NULL, "just checking");
++  DcevmSharedGC::update_fields(new_location, q, cur);
++
++  if (tmp != NULL) {
++    FREE_RESOURCE_ARRAY(HeapWord, tmp, size);
++  }
++}
++
++void DcevmSharedGC::update_fields(oop new_location, oop tmp_obj, int *cur) {
++  assert(cur != NULL, "just checking");
++  char* to = (char*)(HeapWord*)new_location;
++  while (*cur != 0) {
++    int size = *cur;
++    if (size > 0) {
++      cur++;
++      int offset = *cur;
++      HeapWord* from = (HeapWord*)(((char *)(HeapWord*)tmp_obj) + offset);
++      if (size == HeapWordSize) {
++        *((HeapWord*)to) = *from;
++      } else if (size == HeapWordSize * 2) {
++        *((HeapWord*)to) = *from;
++        *(((HeapWord*)to) + 1) = *(from + 1);
++      } else {
++        Copy::conjoint_jbytes(from, to, size);
++      }
++      to += size;
++      cur++;
++    } else {
++      assert(size < 0, "");
++      int skip = -*cur;
++      Copy::fill_to_bytes(to, skip, 0);
++      to += skip;
++      cur++;
++    }
++  }
++}
+diff --git a/src/hotspot/share/gc/shared/dcevmSharedGC.hpp b/src/hotspot/share/gc/shared/dcevmSharedGC.hpp
+new file mode 100644
+index 00000000000..e2ef0171fb2
+--- /dev/null
++++ b/src/hotspot/share/gc/shared/dcevmSharedGC.hpp
+@@ -0,0 +1,49 @@
++/*
++ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ *
++ */
++
++#ifndef SHARE_GC_DCEVM_SHARED_GC_HPP
++#define SHARE_GC_DCEVM_SHARED_GC_HPP
++
++#include "gc/shared/collectedHeap.hpp"
++#include "gc/shared/genOopClosures.hpp"
++#include "gc/shared/taskqueue.hpp"
++#include "memory/iterator.hpp"
++#include "oops/markOop.hpp"
++#include "oops/oop.hpp"
++#include "runtime/timer.hpp"
++#include "utilities/growableArray.hpp"
++#include "utilities/stack.hpp"
++
++// Shared GC code used from different GC (Serial, CMS, G1) on enhanced redefinition
++class DcevmSharedGC : AllStatic {
++ public:
++  static void copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, bool must_be_new);
++  static void copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, int from, int to, bool must_be_new);
++  static void clear_rescued_objects_resource(GrowableArray<HeapWord*>* rescued_oops);
++  static void clear_rescued_objects_heap(GrowableArray<HeapWord*>* rescued_oops);
++  static void update_fields(oop q, oop new_location);
++  static void update_fields(oop new_location, oop tmp_obj, int *cur);
++};
++
++#endif
+diff --git a/src/hotspot/share/gc/shared/gcConfig.cpp b/src/hotspot/share/gc/shared/gcConfig.cpp
+index fdb1c806559..f01d64d1434 100644
+--- a/src/hotspot/share/gc/shared/gcConfig.cpp
++++ b/src/hotspot/share/gc/shared/gcConfig.cpp
+@@ -98,7 +98,7 @@ void GCConfig::fail_if_non_included_gc_is_selected() {
+ }
+ 
+ void GCConfig::select_gc_ergonomically() {
+-  if (AllowEnhancedClassRedefinition) {
++  if (AllowEnhancedClassRedefinition && !UseG1GC) {
+     // Enhanced class redefinition only supports serial GC at the moment
+     FLAG_SET_ERGO(bool, UseSerialGC, true);
+   } else if (os::is_server_class_machine()) {
+diff --git a/src/hotspot/share/gc/shared/space.inline.hpp b/src/hotspot/share/gc/shared/space.inline.hpp
+index 875c3fdf319..5a93e93471b 100644
+--- a/src/hotspot/share/gc/shared/space.inline.hpp
++++ b/src/hotspot/share/gc/shared/space.inline.hpp
+@@ -37,6 +37,7 @@
+ #if INCLUDE_SERIALGC
+ #include "gc/serial/markSweep.inline.hpp"
+ #endif
++#include "gc/shared/dcevmSharedGC.hpp"
+ 
+ inline HeapWord* Space::block_start(const void* p) {
+   return block_start_const(p);
+@@ -369,7 +370,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
+           Copy::aligned_conjoint_words(cur_obj, compaction_top, size);
+           oop(compaction_top)->set_klass(new_version);
+         } else {
+-          MarkSweep::update_fields(oop(cur_obj), oop(compaction_top));
++          DcevmSharedGC::update_fields(oop(cur_obj), oop(compaction_top));
+         }
+         oop(compaction_top)->init_mark_raw();
+         assert(oop(compaction_top)->klass() != NULL, "should have a class");
+diff --git a/src/hotspot/share/memory/universe.cpp b/src/hotspot/share/memory/universe.cpp
+index d38cd348e1b..f6e4253b5a5 100644
+--- a/src/hotspot/share/memory/universe.cpp
++++ b/src/hotspot/share/memory/universe.cpp
+@@ -212,6 +212,11 @@ void Universe::root_oops_do(OopClosure *oopClosure) {
+   //ref_processor()->weak_oops_do(&oopClosure);
+   //PSScavenge::reference_processor()->weak_oops_do(&oopClosure);
+ 
++#if INCLUDE_AOT
++  if (UseAOT) {
++    AOTLoader::oops_do(oopClosure);
++  }
++#endif
+   // SO_AllClasses
+   SystemDictionary::oops_do(oopClosure);
+ }
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index a859b8e1162..6c9eb40ecf5 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -36,7 +36,6 @@
+ #include "memory/metaspaceShared.hpp"
+ #include "memory/resourceArea.hpp"
+ #include "memory/iterator.inline.hpp"
+-#include "gc/serial/markSweep.hpp"
+ #include "oops/fieldStreams.hpp"
+ #include "oops/klassVtable.hpp"
+ #include "oops/oop.inline.hpp"
+@@ -54,6 +53,8 @@
+ #include "prims/jvmtiThreadState.inline.hpp"
+ #include "utilities/events.hpp"
+ #include "oops/constantPool.inline.hpp"
++#include "gc/g1/g1CollectedHeap.hpp"
++#include "gc/shared/dcevmSharedGC.hpp"
+ 
+ Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
+ Array<Method*>* VM_EnhancedRedefineClasses::_new_methods = NULL;
+@@ -77,7 +78,7 @@ Klass*      VM_EnhancedRedefineClasses::_the_class_oop = NULL;
+ //  - class_defs class definition - either new class or redefined class
+ //               note that this is not the final array of classes to be redefined
+ //               we need to scan for all affected classes (e.g. subclasses) and
+-//               caculcate redefinition for them as well.
++//               calculate redefinition for them as well.
+ // @param class_load_kind always jvmti_class_load_kind_redefine
+ VM_EnhancedRedefineClasses::VM_EnhancedRedefineClasses(jint class_count, const jvmtiClassDefinition *class_defs, JvmtiClassLoadKind class_load_kind) :
+         VM_GC_Operation(Universe::heap()->total_collections(), GCCause::_heap_inspection, Universe::heap()->total_full_collections(), true) {
+@@ -215,6 +216,13 @@ void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
+   }
+ }
+ 
++void VM_EnhancedRedefineClasses::mark_as_scavengable_g1(nmethod* nm) {
++  // It should work not only for G1 but also for another GCs, but this way is safer now
++  if (!nm->is_zombie() && !nm->is_unloaded()) {
++    Universe::heap()->register_nmethod(nm);
++  }
++}
++
+ // TODO comment
+ struct StoreBarrier {
+   // TODO: j10 review change ::oop_store -> HeapAccess<>::oop_store
+@@ -431,12 +439,7 @@ public:
+           src->set_klass(obj->klass()->new_version());
+           //  FIXME: instance updates...
+           //guarantee(false, "instance updates!");
+-          MarkSweep::update_fields(obj, src, new_klass->update_information());
+-
+-          if (size_diff > 0) {
+-            HeapWord* dead_space = ((HeapWord *)obj) + obj->size();
+-            CollectedHeap::fill_with_object(dead_space, size_diff);
+-          }
++          DcevmSharedGC::update_fields(obj, src, new_klass->update_information());
+         }
+       } else {
+         obj->set_klass(obj->klass()->new_version());
+@@ -458,6 +461,10 @@ public:
+ void VM_EnhancedRedefineClasses::doit() {
+   Thread *thread = Thread::current();
+ 
++  if (log_is_enabled(Info, redefine, class, timer)) {
++    _timer_vm_op_doit.start();
++  }
++
+ #if INCLUDE_CDS
+   if (UseSharedSpaces) {
+     // Sharing is enabled so we remap the shared readonly space to
+@@ -513,12 +520,31 @@ void VM_EnhancedRedefineClasses::doit() {
+     // mark such nmethod's as "scavengable".
+     // For now, mark all nmethod's as scavengable that are not scavengable already
+     if (ScavengeRootsInCode) {
+-      CodeCache::nmethods_do(mark_as_scavengable);
++      if (UseG1GC) {
++        // this should work also for other GCs
++        CodeCache::nmethods_do(mark_as_scavengable_g1);
++      } else {
++        CodeCache::nmethods_do(mark_as_scavengable);
++      }
+     }
+ 
+     Universe::heap()->ensure_parsability(false);
+-    Universe::heap()->object_iterate(&objectClosure);
++    if (UseG1GC) {
++      if (log_is_enabled(Info, redefine, class, timer)) {
++        _timer_heap_iterate.start();
++      }
++      G1CollectedHeap::heap()->object_par_iterate(&objectClosure);
++      _timer_heap_iterate.stop();
++    } else {
++      if (log_is_enabled(Info, redefine, class, timer)) {
++        _timer_heap_iterate.start();
++      }
++      Universe::heap()->object_iterate(&objectClosure);
++      _timer_heap_iterate.stop();
++    }
++
+     Universe::root_oops_do(&oopClosureNoBarrier);
++
+   }
+   log_trace(redefine, class, obsolete, metadata)("After updating instances");
+ 
+@@ -571,11 +597,19 @@ void VM_EnhancedRedefineClasses::doit() {
+ 
+   if (objectClosure.needs_instance_update()) {
+     // Do a full garbage collection to update the instance sizes accordingly
++
++    if (log_is_enabled(Info, redefine, class, timer)) {
++      _timer_heap_full_gc.start();
++    }
++
+     Universe::set_redefining_gc_run(true);
+     notify_gc_begin(true);
++    // TODO: check _metadata_GC_clear_soft_refs with ScavengeRootsInCode
+     Universe::heap()->collect_as_vm_thread(GCCause::_heap_inspection);
+     notify_gc_end();
+     Universe::set_redefining_gc_run(false);
++
++    _timer_heap_full_gc.stop();
+   }
+ 
+   // Unmark Klass*s as "redefining"
+@@ -623,6 +657,7 @@ void VM_EnhancedRedefineClasses::doit() {
+   }
+ #endif
+ 
++  _timer_vm_op_doit.stop();
+ }
+ 
+ // Cleanup - runs in JVM thread
+@@ -646,16 +681,14 @@ void VM_EnhancedRedefineClasses::doit_epilogue() {
+   if (log_is_enabled(Info, redefine, class, timer)) {
+     // Used to have separate timers for "doit" and "all", but the timer
+     // overhead skewed the measurements.
+-    jlong doit_time = _timer_rsc_phase1.milliseconds() +
+-                      _timer_rsc_phase2.milliseconds();
+-    jlong all_time = _timer_vm_op_prologue.milliseconds() + doit_time;
++    jlong all_time = _timer_vm_op_prologue.milliseconds() + _timer_vm_op_doit.milliseconds();
+ 
+     log_info(redefine, class, timer)
+       ("vm_op: all=" JLONG_FORMAT "  prologue=" JLONG_FORMAT "  doit=" JLONG_FORMAT,
+-       all_time, _timer_vm_op_prologue.milliseconds(), doit_time);
++       all_time, _timer_vm_op_prologue.milliseconds(), _timer_vm_op_doit.milliseconds());
+     log_info(redefine, class, timer)
+-      ("redefine_single_class: phase1=" JLONG_FORMAT "  phase2=" JLONG_FORMAT,
+-       _timer_rsc_phase1.milliseconds(), _timer_rsc_phase2.milliseconds());
++      ("doit: heap iterate=" JLONG_FORMAT "  fullgc=" JLONG_FORMAT,
++       _timer_heap_iterate.milliseconds(), _timer_heap_full_gc.milliseconds());
+   }
+ }
+ 
+@@ -1404,7 +1437,7 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
+ // arrayKlassOops. See Open Issues in jvmtiRedefineClasses.hpp.
+ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
+   if (!k->is_instance_klass()) {
+-	return;
++    return;
+   }
+ 
+   HandleMark hm(_thread);
+@@ -1590,7 +1623,7 @@ class TransferNativeFunctionRegistration {
+ 
+   // Recursively search the binary tree of possibly prefixed method names.
+   // Iteration could be used if all agents were well behaved. Full tree walk is
+-  // more resilent to agents not cleaning up intermediate methods.
++  // more resilient to agents not cleaning up intermediate methods.
+   // Branch at each depth in the binary tree is:
+   //    (1) without the prefix.
+   //    (2) with the prefix.
+@@ -1695,7 +1728,7 @@ void VM_EnhancedRedefineClasses::transfer_old_native_function_registrations(Inst
+   transfer.transfer_registrations(_matching_old_methods, _matching_methods_length);
+ }
+ 
+-// DCEVM - it always deoptimases everything! (because it is very difficult to find only correct dependencies)
++// DCEVM - it always deoptimizes everything! (because it is very difficult to find only correct dependencies)
+ // Deoptimize all compiled code that depends on this class.
+ //
+ // If the can_redefine_classes capability is obtained in the onload
+@@ -1822,10 +1855,6 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
+ 
+   HandleMark hm(THREAD);   // make sure handles from this call are freed
+ 
+-  if (log_is_enabled(Info, redefine, class, timer)) {
+-    _timer_rsc_phase1.start();
+-  }
+-
+   InstanceKlass* new_class = new_class_oop;
+   InstanceKlass* the_class = InstanceKlass::cast(new_class_oop->old_version());
+   assert(the_class != NULL, "must have old version");
+@@ -1880,7 +1909,6 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
+                              new_class->external_name(),
+                              java_lang_Class::classRedefinedCount(new_class->java_mirror()));
+   }
+-  _timer_rsc_phase2.stop();
+ } // end redefine_single_class()
+ 
+ 
+@@ -2063,8 +2091,8 @@ static bool match_second(void* value, KlassPair elem) {
+ // For each class to be redefined parse the bytecode and figure out the superclass and all interfaces.
+ // First newly introduced classes (_class_defs) are scanned and then affected classed (_affected_klasses).
+ // Affected flag is cleared (clear_redefinition_flag(Klass::MarkedAsAffected))
+-// For each dependency create a KlassPair instance. Finnaly, affected classes (_affected_klasses) are sorted according to pairs.
+-// TODO - the class file is potentionally parsed multiple times - introduce a cache?
++// For each dependency create a KlassPair instance. Finally, affected classes (_affected_klasses) are sorted according to pairs.
++// TODO - the class file is potentially parsed multiple times - introduce a cache?
+ jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(TRAPS) {
+   ResourceMark mark(THREAD);
+ 
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+index d8a11b51fe9..9755944d70b 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+@@ -86,9 +86,10 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
+   // Performance measurement support. These timers do not cover all
+   // the work done for JVM/TI RedefineClasses() but they do cover
+   // the heavy lifting.
+-  elapsedTimer  _timer_rsc_phase1;
+-  elapsedTimer  _timer_rsc_phase2;
++  elapsedTimer  _timer_vm_op_doit;
+   elapsedTimer  _timer_vm_op_prologue;
++  elapsedTimer  _timer_heap_iterate;
++  elapsedTimer  _timer_heap_full_gc;
+ 
+   // These routines are roughly in call order unless otherwise noted.
+ 
+@@ -115,6 +116,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
+ 
+   void rollback();
+   static void mark_as_scavengable(nmethod* nm);
++  static void mark_as_scavengable_g1(nmethod* nm);
+   static void unpatch_bytecode(Method* method);
+   static void fix_invoke_method(Method* method);
+ 
+diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
+index 2803a3c46eb..d05a2893498 100644
+--- a/src/hotspot/share/runtime/arguments.cpp
++++ b/src/hotspot/share/runtime/arguments.cpp
+@@ -2134,9 +2134,9 @@ bool Arguments::check_gc_consistency() {
+   if (AllowEnhancedClassRedefinition) {
+     // Must use serial GC. This limitation applies because the instance size changing GC modifications
+     // are only built into the mark and compact algorithm.
+-    if (!UseSerialGC && i >= 1) {
++    if ((!UseSerialGC && !UseG1GC) && i >= 1) {
+       jio_fprintf(defaultStream::error_stream(),
+-                  "Must use the serial GC with enhanced class redefinition\n");
++                  "Must use the Serial or G1 GC with enhanced class redefinition.\n");
+       return false;
+     }
+   }
+diff --git a/src/hotspot/share/utilities/growableArray.hpp b/src/hotspot/share/utilities/growableArray.hpp
+index 972b702b4cb..548440e06b6 100644
+--- a/src/hotspot/share/utilities/growableArray.hpp
++++ b/src/hotspot/share/utilities/growableArray.hpp
+@@ -560,6 +560,10 @@ template<class E> class GrowableArrayIterator : public StackObj {
+     assert(_array == rhs._array, "iterator belongs to different array");
+     return _position != rhs._position;
+   }
++
++  bool at_end() { return _position >= _array->length(); }
++
++  bool has_next() { return _position < _array->length() - 1; }
+ };
+ 
+ // Custom STL-style iterator to iterate over elements of a GrowableArray that satisfy a given predicate
+-- 
+2.23.0
+
