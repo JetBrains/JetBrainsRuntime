@@ -1279,7 +1279,6 @@ jdk.io.permissionsUseCanonicalPath=false
 #
 #jdk.security.allowNonCaAnchor=true
 
-#
 # JNDI Object Factories Filter
 #
 # This filter is used by the JNDI runtime to control the set of object factory classes
@@ -1301,3 +1300,13 @@ jdk.io.permissionsUseCanonicalPath=false
 # The default pattern value allows any object factory class specified by the reference
 # instance to recreate the referenced object.
 #jdk.jndi.object.factoriesFilter=*
+
+#
+# The default Character set name (java.nio.charset.Charset.forName())
+# for converting TLS ALPN values between byte arrays and Strings.
+# Prior versions of the JDK may use UTF-8 as the default charset. If
+# you experience interoperability issues, setting this property to UTF-8
+# may help.
+#
+# jdk.tls.alpnCharset=UTF-8
+jdk.tls.alpnCharset=ISO_8859_1
