@@ -282,6 +282,9 @@ fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
         } else {
             a = a - fa;
         }
+    } else {
+        if (a > 1.0) a = 1.0;
+        if (a < 0.0) a = 0.0;
     }
     float4 c = mix(uniforms.color1, uniforms.color2, a);
     return half4(c.r*renderColor.a,
@@ -513,6 +516,9 @@ fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
         } else {
             a = a - fa;
         }
+    } else {
+        if (a > 1.0) a = 1.0;
+        if (a < 0.0) a = 0.0;
     }
     float4 c = mix(uniforms.color1, uniforms.color2, a);
     return half4(c) * uniforms.extraAlpha;
