@@ -649,6 +649,30 @@ class CAccessibility implements PropertyChangeListener {
         }, c);
     }
 
+    // This method is called from the native
+    // Each child takes up three entries in the array: one for itself, one for its role, and one for the recursion level
+    public static Object[] getChildrenAndRolesRecursive(final Accessible a, final Component c, final int whichChildren, final boolean allowIgnored, final int level) {
+        if (a == null) return null;
+        ArrayList<Object> currentLevelChildren = new ArrayList<Object>();
+        currentLevelChildren.addAll(Arrays.asList(getChildrenAndRoles(a, c, whichChildren, allowIgnored)));
+        boolean isEmpty = currentLevelChildren.isEmpty();
+        if (isEmpty && (whichChildren == JAVA_AX_SELECTED_CHILDREN)) {
+            currentLevelChildren.addAll(Arrays.asList(getChildrenAndRoles(a, c, JAVA_AX_ALL_CHILDREN, allowIgnored)));
+        }
+        ArrayList<Object> allChildren = new ArrayList<Object>();
+        for (int i = 0; i < currentLevelChildren.size(); i += 2) {
+            if (!isEmpty) {
+                allChildren.add(currentLevelChildren.get(i));
+                allChildren.add(currentLevelChildren.get(i + 1));
+                allChildren.add(String.valueOf(level));
+            }
+            if (getAccessibleStateSet(((Accessible) currentLevelChildren.get(i)).getAccessibleContext(), c).contains(AccessibleState.EXPANDED)) {
+                allChildren.addAll(Arrays.asList(getChildrenAndRolesRecursive(((Accessible) currentLevelChildren.get(i)), c, whichChildren, allowIgnored, level + 1)));
+            }
+        }
+        return allChildren.toArray();
+    }
+
     private static AccessibleRole getAccessibleRoleForLabel(JLabel l, AccessibleRole fallback) {
         String text = l.getText();
         if (text != null && text.length() > 0) {

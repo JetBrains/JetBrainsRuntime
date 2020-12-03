@@ -163,6 +163,42 @@ BOOL isSelectable(JNIEnv *env, jobject axContext, jobject component)
     return selectable;
 }
 
+BOOL isExpanded(JNIEnv *env, jobject axContext, jobject component)
+{
+    static JNF_STATIC_MEMBER_CACHE( jm_EXPANDED,
+                                    sjc_AccessibleState,
+                                    "EXPANDED",
+                                    "Ljavax/accessibility/AccessibleState;" );
+    jobject axExpandedState = JNFGetStaticObjectField(env,  jm_EXPANDED);
+    BOOL expanded = containsAxState(env, axContext, axExpandedState, component);
+    (*env)->DeleteLocalRef(env, axExpandedState);
+    return expanded;
+}
+
+BOOL isExpandable(JNIEnv *env, jobject axContext, jobject component)
+{
+    static JNF_STATIC_MEMBER_CACHE( jm_EXPANDABLE,
+                                    sjc_AccessibleState,
+                                    "EXPANDABLE",
+                                    "Ljavax/accessibility/AccessibleState;" );
+    jobject axExpandableState = JNFGetStaticObjectField(env, jm_EXPANDABLE);
+    BOOL expandable = containsAxState(env, axContext, axExpandableState, component);
+    (*env)->DeleteLocalRef(env, axExpandableState);
+    return expandable;
+}
+
+BOOL isCollapsed(JNIEnv *env, jobject axContext, jobject component)
+{
+    static JNF_STATIC_MEMBER_CACHE( jm_COLLAPSED,
+                                    sjc_AccessibleState,
+                                    "COLLAPSED",
+                                    "Ljavax/accessibility/AccessibleState;" );
+    jobject axCollapsedState = JNFGetStaticObjectField(env, jm_COLLAPSED);
+    BOOL collapsed = containsAxState(env, axContext, axCollapsedState, component);
+    (*env)->DeleteLocalRef(env, axCollapsedState);
+    return collapsed;
+}
+
 NSPoint getAxComponentLocationOnScreen(JNIEnv *env, jobject axComponent, jobject component)
 {
     static JNF_STATIC_MEMBER_CACHE(jm_getLocationOnScreen, sjc_CAccessibility, "getLocationOnScreen", "(Ljavax/accessibility/AccessibleComponent;Ljava/awt/Component;)Ljava/awt/Point;");
@@ -374,7 +410,7 @@ void initializeRoles()
     [sRoles setObject:NSAccessibilityCheckBoxRole forKey:@"togglebutton"];
     [sRoles setObject:NSAccessibilityToolbarRole forKey:@"toolbar"];
     [sRoles setObject:JavaAccessibilityIgnore forKey:@"tooltip"];
-    [sRoles setObject:NSAccessibilityBrowserRole forKey:@"tree"];
+    [sRoles setObject:NSAccessibilityOutlineRole forKey:@"tree"];
     [sRoles setObject:NSAccessibilityUnknownRole forKey:@"unknown"];
     [sRoles setObject:JavaAccessibilityIgnore forKey:@"viewport"];
     [sRoles setObject:JavaAccessibilityIgnore forKey:@"window"];

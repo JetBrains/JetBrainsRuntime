@@ -53,11 +53,20 @@
 
 + (void)postFocusChanged:(id)message;
 
-+ (NSArray*)childrenOfParent:(JavaBaseAccessibility*)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored;
-+ (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped;
++ (NSArray *)childrenOfParent:(JavaBaseAccessibility *) parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored;
++ (NSArray *)childrenOfParent:(JavaBaseAccessibility *) parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored recursive:(BOOL)recursive;
 + (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
 + (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible role:(NSString *)role index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
 + (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view;
+
+// If the isWraped parameter is true, then the object passed as a parent was created based on the same java component,
+// but performs a different NSAccessibilityRole of a table cell, or a list row, or tree row,
+// and we need to create an element whose role corresponds to the role in Java.
++ (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped;
+
+// The current parameter is used to bypass the check for an item's index on the parent so that the item is created. This is necessary,
+// for example, for AccessibleJTreeNode, whose currentComponent has index -1
++ (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isCurrent:(BOOL)current;
 
 @property(readonly) jobject accessible;
 @property(readonly) jobject component;
