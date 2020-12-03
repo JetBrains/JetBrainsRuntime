@@ -172,7 +172,7 @@ replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRas
                     dw, dh, dx1, dy1);
         // NOTE: we might want to fill alpha channel when !rfi->hasAlpha
 
-        id<MTLBuffer> buff = [mtlc.device newBufferWithLength:(sw * sh * srcInfo->pixelStride) options:MTLResourceStorageModeManaged];
+        id<MTLBuffer> buff = [[mtlc.device newBufferWithLength:(sw * sh * srcInfo->pixelStride) options:MTLResourceStorageModeManaged] autorelease];
 
         // copy src pixels inside src bounds to buff
         for (int row = 0; row < sh; row++) {
@@ -182,7 +182,7 @@ replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRas
         [buff didModifyRange:NSMakeRange(0, buff.length)];
 
         if (rfi->swizzleKernel != nil) {
-            id <MTLBuffer> swizzled = [mtlc.device newBufferWithLength:(sw * sh * srcInfo->pixelStride) options:MTLResourceStorageModeManaged];
+            id <MTLBuffer> swizzled = [[mtlc.device newBufferWithLength:(sw * sh * srcInfo->pixelStride) options:MTLResourceStorageModeManaged] autorelease];
 
             // this should be cheap, since data is already on GPU
             id<MTLCommandBuffer> cb = [mtlc createCommandBuffer];
