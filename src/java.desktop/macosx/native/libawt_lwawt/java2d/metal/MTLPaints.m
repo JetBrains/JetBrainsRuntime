@@ -226,6 +226,8 @@ jint _color;
 
 @implementation MTLBaseGradPaint {
     jboolean      _useMask;
+@protected
+    jint          _cyclic;
 }
 
 - (id)initWithState:(jint)state mask:(jboolean)useMask cyclic:(jboolean)cyclic {
@@ -384,8 +386,8 @@ jint _color;
 @end
 
 @implementation MTLBaseMultiGradPaint {
-    jboolean _linear;
     @protected
+    jboolean _linear;
     jint _numFracts;
     jfloat _fract[GRAD_MAX_FRACTIONS];
     jint _pixel[GRAD_MAX_FRACTIONS];
@@ -468,6 +470,7 @@ jint _color;
             {},
             {},
             _numFracts,
+            _linear,
             _cyclic,
             [mtlc.composite getExtraAlpha]
     };
@@ -629,6 +632,7 @@ jint _color;
             {},
             {},
             _numFracts,
+            _linear,
             _cyclic,
             {_m00, _m01, _m02},
             {_m10, _m11, _m12},

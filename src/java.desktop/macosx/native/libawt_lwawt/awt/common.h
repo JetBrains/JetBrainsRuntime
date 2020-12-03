@@ -70,6 +70,7 @@ struct LinGradFrameUniforms {
     float fract[GRAD_MAX_FRACTIONS];
     vector_float4 color[GRAD_MAX_FRACTIONS];
     int numFracts;
+    int isLinear;
     int cycleMethod;
     float extraAlpha;
 };
@@ -78,6 +79,7 @@ struct RadGradFrameUniforms {
     float fract[GRAD_MAX_FRACTIONS];
     vector_float4 color[GRAD_MAX_FRACTIONS];
     int numFracts;
+    int isLinear;
     int cycleMethod;
     vector_float3 m0;
     vector_float3 m1;
