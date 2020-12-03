@@ -56,7 +56,8 @@ static void RaiseMustOverrideException(NSString *method)
     NSArray *children = [JavaBaseAccessibility childrenOfParent:self.javaBase
                                                         withEnv:env
                                                withChildrenCode:JAVA_AX_ALL_CHILDREN
-                                                   allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole])];
+                                                   allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole])
+                         recursive:[[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole]];
     if ([children count] > 0) {
         return children;
     }
@@ -69,7 +70,8 @@ static void RaiseMustOverrideException(NSString *method)
     NSArray *selectedChildren = [JavaBaseAccessibility childrenOfParent:self.javaBase
                                                                 withEnv:env
                                                        withChildrenCode:JAVA_AX_SELECTED_CHILDREN
-                                                           allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole])];
+                                                           allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole])
+                                                              recursive:[[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole]];
     if ([selectedChildren count] > 0) {
         return selectedChildren;
     }

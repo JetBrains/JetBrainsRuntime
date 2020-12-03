@@ -649,6 +649,30 @@ class CAccessibility implements PropertyChangeListener {
         }, c);
     }
 
+    public static Object[] getChildrenAndRolesRecursive(final Accessible a, final Component c, final int whichChildren, final boolean allowIgnored, final int level) {
+        if (a == null) return null;
+        ArrayList<Object> currentLavelChildren = new ArrayList<Object>();
+        currentLavelChildren.addAll(Arrays.asList(getChildrenAndRoles(a, c, whichChildren, allowIgnored)));
+        boolean isEmpty = currentLavelChildren.isEmpty();
+        if (isEmpty && (whichChildren == JAVA_AX_SELECTED_CHILDREN)) {
+            currentLavelChildren.addAll(Arrays.asList(getChildrenAndRoles(a, c, JAVA_AX_ALL_CHILDREN, allowIgnored)));
+        }
+        ArrayList<Object> newArray = new ArrayList<Object>();
+        for (int i = 0; i < currentLavelChildren.size(); i += 2) {
+            if (!isEmpty) {
+                newArray.add(currentLavelChildren.get(i));
+                newArray.add(currentLavelChildren.get(i + 1));
+                newArray.add(String.valueOf(level));
+            }
+            if (getAccessibleStateSet(((Accessible) currentLavelChildren.get(i)).getAccessibleContext(), c).contains(AccessibleState.EXPANDED)) {
+                newArray.addAll(Arrays.asList(getChildrenAndRolesRecursive(((Accessible) currentLavelChildren.get(i)), c, whichChildren, allowIgnored, level + 1)));
+                ;
+            }
+        }
+        return newArray.toArray();
+    }
+
+
     private static AccessibleRole getAccessibleRoleForLabel(JLabel l, AccessibleRole fallback) {
         String text = l.getText();
         if (text != null && text.length() > 0) {
