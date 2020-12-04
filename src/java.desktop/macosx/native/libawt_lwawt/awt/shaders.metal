@@ -240,8 +240,10 @@ fragment half4 frag_txt(
     float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
     float srcA = uniforms.isSrcOpaque ? 1 : pixelColor.a;
     if (uniforms.mode) {
-        float4 c = mix(pixelColor, uniforms.color, srcA);
-        return half4(c.r, c.g, c.b , c.a);
+        float3 c = mix(pixelColor.rgb, uniforms.color.rgb, srcA);
+        return half4(c.r, c.g, c.b ,
+                     (uniforms.isSrcOpaque) ?
+                      uniforms.color.a : pixelColor.a*uniforms.color.a);
     }
 
     return half4(pixelColor.r,
