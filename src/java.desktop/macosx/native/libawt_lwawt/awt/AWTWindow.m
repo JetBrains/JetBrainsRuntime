@@ -35,6 +35,7 @@
 #import "AWTView.h"
 #import "GeomUtilities.h"
 #import "ThreadUtilities.h"
+#import "NSApplicationAWT.h"
 
 #define MASK(KEY) \
     (sun_lwawt_macosx_CPlatformWindow_ ## KEY)
@@ -124,8 +125,9 @@ AWT_NS_WINDOW_IMPLEMENTATION
     @try {
         [super _changeJustMain];
     } @catch (NSException *ex) {
-        // TODO: make logging into jbrerr
-        NSLog(@"WARNING: suppressed exception from _changeJustMain: %@", ex);
+        NSLog(@"WARNING: suppressed exception from _changeJustMain (workaround for JBR-2562)");
+        NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+        [NSApplicationAWT logException:ex forProcess:processInfo];
     }
 }
 
