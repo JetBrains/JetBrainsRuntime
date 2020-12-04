@@ -282,6 +282,8 @@ fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
         } else {
             a = a - fa;
         }
+    } else {
+        a = saturate(a);
     }
     float4 c = mix(uniforms.color1, uniforms.color2, a);
     return half4(c.r*renderColor.a,
@@ -309,6 +311,8 @@ fragment half4 frag_txt_lin_grad(GradShaderInOut in [[stage_in]],
         if (uniforms.cycleMethod == GradReflect && fa%2) {
             a = 1.0 - a;
         }
+    }  else {
+        a = saturate(a);
     }
 
     int n = floor(a/lf);
@@ -320,6 +324,11 @@ fragment half4 frag_txt_lin_grad(GradShaderInOut in [[stage_in]],
     }
     a = (a - n*lf)/lf;
     float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
+
+    if (uniforms.isLinear) {
+        c.rgb = 1.055 * pow(c.rgb, float3(0.416667)) - 0.055;
+    }
+
     return half4(c.r*renderColor.a,
                  c.g*renderColor.a,
                  c.b*renderColor.a,
@@ -349,6 +358,8 @@ fragment half4 frag_txt_rad_grad(GradShaderInOut in [[stage_in]],
         if (uniforms.cycleMethod == GradReflect && fa%2) {
             a = 1.0 - a;
         }
+    } else {
+        a = saturate(a);
     }
 
     int n = floor(a/lf);
@@ -360,6 +371,11 @@ fragment half4 frag_txt_rad_grad(GradShaderInOut in [[stage_in]],
     }
     a = (a - n*lf)/lf;
     float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
+
+    if (uniforms.isLinear) {
+        c.rgb = 1.055 * pow(c.rgb, float3(0.416667)) - 0.055;
+    }
+
     return half4(c.r*renderColor.a,
                      c.g*renderColor.a,
                      c.b*renderColor.a,
@@ -513,6 +529,8 @@ fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
         } else {
             a = a - fa;
         }
+    } else {
+        a = saturate(a);
     }
     float4 c = mix(uniforms.color1, uniforms.color2, a);
     return half4(c) * uniforms.extraAlpha;
@@ -531,6 +549,8 @@ fragment half4 frag_lin_grad(GradShaderInOut in [[stage_in]],
         if (uniforms.cycleMethod == GradReflect && fa%2) {
             a = 1.0 - a;
         }
+    } else {
+        a = saturate(a);
     }
 
     int n = floor(a/lf);
@@ -542,6 +562,9 @@ fragment half4 frag_lin_grad(GradShaderInOut in [[stage_in]],
     }
     a = (a - n*lf)/lf;
     float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
+    if (uniforms.isLinear) {
+        c.rgb = 1.055 * pow(c.rgb, float3(0.416667)) - 0.055;
+    }
     return half4(c) * uniforms.extraAlpha;
 }
 
@@ -561,6 +584,8 @@ fragment half4 frag_rad_grad(GradShaderInOut in [[stage_in]],
         if (uniforms.cycleMethod == GradReflect && fa%2) {
             a = 1.0 - a;
         }
+    } else {
+        a = saturate(a);
     }
 
     int n = floor(a/lf);
@@ -572,6 +597,10 @@ fragment half4 frag_rad_grad(GradShaderInOut in [[stage_in]],
     }
     a = (a - n*lf)/lf;
     float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
+
+    if (uniforms.isLinear) {
+            c.rgb = 1.055 * pow(c.rgb, float3(0.416667)) - 0.055;
+    }
     return half4(c) * uniforms.extraAlpha;
 }
 

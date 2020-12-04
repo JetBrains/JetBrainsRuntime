@@ -68,10 +68,7 @@
 @property (nonatomic, readonly) jint color;
 @end
 
-@interface MTLBaseGradPaint : MTLPaint {
-@public
-    jint _cyclic;
-}
+@interface MTLBaseGradPaint : MTLPaint
 - (id)initWithState:(jint)state
                mask:(jboolean)useMask
              cyclic:(jboolean)cyclic;
