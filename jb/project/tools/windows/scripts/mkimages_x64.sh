@@ -42,6 +42,12 @@ function create_image_bundle {
   ${JSDK}/bin/jlink \
     --module-path $__modules_path --no-man-pages --compress=2 \
     --add-modules $__modules --output $__bundle_name || do_exit $?
+
+  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__bundle_name/release
+  if [ "$__bundle_name" == "$JBRSDK_BUNDLE" ]; then
+    sed 's/JBR/JBRSDK/g' $__bundle_name/release > release
+    mv release $__bundle_name/release
+  fi
 }
 
 WITH_DEBUG_LEVEL="--with-debug-level=release"
@@ -105,7 +111,7 @@ create_image_bundle "jbr${jbr_name_postfix}" $JSDK_MODS_DIR "$modules" || do_exi
 
 # create sdk image bundle
 modules=$(cat ${JSDK}/release | grep MODULES | sed s/MODULES=//g | sed s/' '/,/g | sed s/\"//g | sed s/\\r//g | sed s/\\n//g)
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
   modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
 fi
 create_image_bundle "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
