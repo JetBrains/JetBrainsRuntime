@@ -50,6 +50,5 @@ function update_jsdk_mods() {
 
 function get_mods_list() {
   __mods=$1
-
-  return `ls "$__mods"` | sed s/\.jmod/,/g | sed s/,$//g | sed s/' '//g
+  echo $(ls $__mods) | sed s/\.jmod/,/g | sed s/,$//g | sed s/' '//g
 }
