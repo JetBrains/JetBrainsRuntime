@@ -105,7 +105,7 @@ create_image_bundle "jbr${jbr_name_postfix}" $JSDK_MODS_DIR "$modules" || do_exi
 
 # create sdk image bundle
 modules=$(cat ${JSDK}/release | grep MODULES | sed s/MODULES=//g | sed s/' '/,/g | sed s/\"//g | sed s/\\r//g | sed s/\\n//g)
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
   modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
 fi
 create_image_bundle "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
