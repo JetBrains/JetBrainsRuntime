@@ -34,16 +34,17 @@ source jb/project/tools/common/scripts/common.sh
 
 function create_image_bundle {
   __bundle_name=$1
-  __modules_path=$2
-  __modules=$3
+  __arch_name=$2
+  __modules_path=$3
+  __modules=$4
 
   tmp=.bundle.$$.tmp
   mkdir "$tmp" || do_exit $?
 
-  [ "$bundle_type" == "fd" ] && fastdebug_infix="fastdebug-"
+  [ "$bundle_type" == "fd" ] && [ "$__bundle_name" == "$JBRSDK_BUNDLE" ] && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-osx-x64-${fastdebug_infix}b${build_number}
 
-  JRE_CONTENTS=$tmp/$__bundle_name/Contents
+  JRE_CONTENTS=$tmp/$__arch_name/Contents
   mkdir -p "$JRE_CONTENTS" || do_exit $?
 
   echo Running jlink...
@@ -51,12 +52,18 @@ function create_image_bundle {
     --module-path "$__modules_path" --no-man-pages --compress=2 \
     --add-modules "$__modules" --output "$JRE_CONTENTS/Home" || do_exit $?
 
+  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$JRE_CONTENTS/Home/release"
+  if [ "$__bundle_name" == "$JBRSDK_BUNDLE" ]; then
+    sed 's/JBR/JBRSDK/g' $JRE_CONTENTS/Home/release > release
+    mv release $JRE_CONTENTS/Home/release
+  fi
+
   cp -R "$JSDK"/../MacOS "$JRE_CONTENTS"
   cp "$JSDK"/../Info.plist "$JRE_CONTENTS"
   [ -n "$bundle_type" ] && (cp -a $JCEF_PATH/Frameworks "$JRE_CONTENTS" || do_exit $?)
 
   echo Creating "$JBR".tar.gz ...
-  COPYFILE_DISABLE=1 tar -pczf "$JBR".tar.gz --exclude='*.dSYM' --exclude='man' -C "$tmp" "$__bundle_name" || do_exit $?
+  COPYFILE_DISABLE=1 tar -pczf "$JBR".tar.gz --exclude='*.dSYM' --exclude='man' -C "$tmp" "$__arch_name" || do_exit $?
   rm -rf "$tmp"
 }
 
@@ -112,14 +119,14 @@ fi
 
 # create runtime image bundle
 modules=$(xargs < modules.list | sed s/" "//g) || do_exit $?
-create_image_bundle "jbr${jbr_name_postfix}" $JSDK_MODS_DIR "$modules" || do_exit $?
+create_image_bundle "jbr${jbr_name_postfix}" "jbr" $JSDK_MODS_DIR "$modules" || do_exit $?
 
 # create sdk image bundle
-modules=$(cat "$JSDK"/release | grep MODULES | sed s/MODULES=//g | sed s/' '/,/g | sed s/\"//g | sed s/\\n//g) || do_exit $?
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ]; then
+modules=$(cat "$JSDK"/release | grep MODULES | sed s/MODULES=//g | sed s/' '/','/g | sed s/\"//g | sed s/\\n//g) || do_exit $?
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
   modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
 fi
-create_image_bundle "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
+create_image_bundle "$JBRSDK_BUNDLE" "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
 
 if [ -z "$bundle_type" ]; then
     JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-osx-test-x64-b${build_number}

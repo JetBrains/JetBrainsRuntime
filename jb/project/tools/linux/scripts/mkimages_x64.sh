@@ -36,7 +36,7 @@ function create_image_bundle {
   __modules_path=$3
   __modules=$4
 
-  [ "$bundle_type" == "fd" ] && fastdebug_infix="fastdebug-"
+  [ "$bundle_type" == "fd" ] && [ "$__bundle_name" == "$JBRSDK_BUNDLE" ] && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-linux-x64-${fastdebug_infix}b${build_number}
 
   echo Running jlink....
@@ -44,6 +44,12 @@ function create_image_bundle {
   $JSDK/bin/jlink \
     --module-path "$__modules_path" --no-man-pages --compress=2 \
     --add-modules "$__modules" --output "$IMAGES_DIR"/"$__arch_name"
+
+  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$IMAGES_DIR"/"$__arch_name"/release
+  if [ "$__bundle_name" == "$JBRSDK_BUNDLE" ]; then
+    sed 's/JBR/JBRSDK/g' "$IMAGES_DIR"/"$__arch_name"/release > release
+    mv release "$IMAGES_DIR"/"$__arch_name"/release
+  fi
 
   # jmod does not preserve file permissions (JDK-8173610)
   [ -f "$IMAGES_DIR"/"$__arch_name"/lib/jcef_helper ] && chmod a+x "$IMAGES_DIR"/"$__arch_name"/lib/jcef_helper
@@ -113,8 +119,8 @@ modules=$(xargs < modules.list | sed s/" "//g) || do_exit $?
 create_image_bundle "jbr${jbr_name_postfix}" "jbr" $JSDK_MODS_DIR "$modules" || do_exit $?
 
 # create sdk image bundle
-modules=$(cat $JSDK/release | grep MODULES | sed s/MODULES=//g | sed s/' '/,/g | sed s/\"//g | sed s/\\n//g) || do_exit $?
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ]; then
+modules=$(cat $JSDK/release | grep MODULES | sed s/MODULES=//g | sed s/' '/','/g | sed s/\"//g | sed s/\\n//g) || do_exit $?
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
   modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
 fi
 create_image_bundle $JBRSDK_BUNDLE $JBRSDK_BUNDLE $JSDK_MODS_DIR "$modules" || do_exit $?
