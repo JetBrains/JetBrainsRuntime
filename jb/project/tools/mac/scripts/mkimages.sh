@@ -51,6 +51,12 @@ function create_image_bundle {
     --module-path "$__modules_path" --no-man-pages --compress=2 \
     --add-modules "$__modules" --output "$JRE_CONTENTS/Home" || do_exit $?
 
+  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$JRE_CONTENTS/Home/release"
+  if [ "$__bundle_name" == "$JBRSDK_BUNDLE" ]; then
+    sed 's/JBR/JBRSDK/g' $JRE_CONTENTS/Home/release > release
+    mv release $JRE_CONTENTS/Home/release
+  fi
+
   cp -R "$JSDK"/../MacOS "$JRE_CONTENTS"
   cp "$JSDK"/../Info.plist "$JRE_CONTENTS"
   [ -n "$bundle_type" ] && (cp -a $JCEF_PATH/Frameworks "$JRE_CONTENTS" || do_exit $?)

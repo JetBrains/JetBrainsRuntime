@@ -45,6 +45,12 @@ function create_image_bundle {
     --module-path "$__modules_path" --no-man-pages --compress=2 \
     --add-modules "$__modules" --output "$IMAGES_DIR"/"$__arch_name"
 
+  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$IMAGES_DIR"/"$__arch_name"/release
+  if [ "$__bundle_name" == "$JBRSDK_BUNDLE" ]; then
+    sed 's/JBR/JBRSDK/g' "$IMAGES_DIR"/"$__arch_name"/release > release
+    mv release "$IMAGES_DIR"/"$__arch_name"/release
+  fi
+
   # jmod does not preserve file permissions (JDK-8173610)
   [ -f "$IMAGES_DIR"/"$__arch_name"/lib/jcef_helper ] && chmod a+x "$IMAGES_DIR"/"$__arch_name"/lib/jcef_helper
 
