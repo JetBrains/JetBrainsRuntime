@@ -45,7 +45,7 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
     if (currentAccessible == NULL) {
         return nil;
     }
-    JavaBaseAccessibility *currentElement = [JavaBaseAccessibility createWithAccessible:currentAccessible withEnv:env withView:[[self javaBase] view] isWrapped:YES];
+    JavaBaseAccessibility *currentElement = [JavaBaseAccessibility createWithAccessible:currentAccessible withEnv:env withView:[[self javaBase] view] isCurrent:YES];
     NSArray *children = [JavaBaseAccessibility childrenOfParent:currentElement withEnv:env withChildrenCode:JAVA_AX_ALL_CHILDREN allowIgnored:YES];
     if ([children count] == 0) {
         return [NSArray arrayWithObject:[JavaBaseAccessibility createWithParent:[self javaBase] accessible:[[self javaBase] accessible] role:[[self javaBase] javaRole] index:[[self javaBase] index] withEnv:env withView:[[self javaBase] view] isWrapped:YES].platformAxElement];

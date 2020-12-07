@@ -323,16 +323,16 @@ static jobject sAccessibilityClass = NULL;
 
 + (JavaBaseAccessibility *)createWithAccessible:(id)jaccessible withEnv:(id)env withView:(NSView *)view
 {
-    return [JavaBaseAccessibility createWithAccessible:jaccessible withEnv:env withView:view isWrapped:NO];
+    return [JavaBaseAccessibility createWithAccessible:jaccessible withEnv:env withView:view isCurrent:NO];
 }
 
-+ (JavaBaseAccessibility *)createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped
++ (JavaBaseAccessibility *)createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isCurrent:(BOOL)current
 {
     JavaBaseAccessibility *ret = nil;
     jobject jcomponent = [(AWTView *)view awtComponent:env];
     jint index = JNFCallStaticIntMethod(env, sjm_getAccessibleIndexInParent, jaccessible, jcomponent);
     NSString *javaRole = getJavaRole(env, jaccessible, jcomponent);
-    if ((index >= 0) || wrapped) {
+    if ((index >= 0) || current) {
         ret = [self createWithAccessible:jaccessible role:javaRole index:index withEnv:env withView:view];
     }
     (*env)->DeleteLocalRef(env, jcomponent);
@@ -402,7 +402,7 @@ static jobject sAccessibilityClass = NULL;
     [newChild retain];
     JNFSetLongField(env, jCAX, jf_ptr, ptr_to_jlong(newChild));
 
-    // If wrapped is true, then the ptr does not need to be deleted
+    // the link is removed in the wrapper
     if (!wrapped) {
         (*env)->DeleteLocalRef(env, jCAX);
     }
