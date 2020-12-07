@@ -2,7 +2,7 @@
 
 #import "JavaListAccessibility.h"
 
-// This is a tree representation.. Look This: https://developer.apple.com/documentation/appkit/nsoutlineview
+// This is a tree representation. See: https://developer.apple.com/documentation/appkit/nsoutlineview
 
 @interface JavaOutlineAccessibility : JavaListAccessibility
 @end
