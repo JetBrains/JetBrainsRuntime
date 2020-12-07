@@ -57,7 +57,7 @@ static void RaiseMustOverrideException(NSString *method)
                                                         withEnv:env
                                                withChildrenCode:JAVA_AX_ALL_CHILDREN
                                                    allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole])
-                         recursive:[[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole]];
+                                                      recursive:[[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole]];
     if ([children count] > 0) {
         return children;
     }

@@ -55,11 +55,13 @@
 
 + (NSArray*)childrenOfParent:(JavaBaseAccessibility*)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored;
 + (NSArray*)childrenOfParent:(JavaBaseAccessibility*)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored recursive:(BOOL)recursive;
-+ (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped;
 + (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
 + (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible role:(NSString *)role index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
-+ (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped;
 + (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view;
++ (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped; // The wrapped parameter is used when a new element is wrapped in a string or cell, so that a new instans is always created to avoid recursion
+// The wrapped parameter is used to bypass the check for an item's index on the parent so that the item is created. This is necessary,
+// for example, for AccessibleJTreeNode, whose currentComponent has index -1
++ (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped;
 
 @property(readonly) jobject accessible;
 @property(readonly) jobject component;

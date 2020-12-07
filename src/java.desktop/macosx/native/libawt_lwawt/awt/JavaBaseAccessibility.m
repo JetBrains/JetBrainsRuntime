@@ -275,13 +275,13 @@ static jobject sAccessibilityClass = NULL;
     if (recursive) {
         jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRolesRecursive, parent->fAccessible, parent->fComponent, whichChildren, allowIgnored, 1);
     } else {
-            jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, whichChildren, allowIgnored);
+        jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, whichChildren, allowIgnored); // AWT_THREADING Safe (AWTRunLoop)
     }
     if (jchildrenAndRoles == NULL) return nil;
-    
+
     jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
     NSMutableArray *children = [NSMutableArray arrayWithCapacity:arrayLen/2]; //childrenAndRoles array contains two elements (child, role) for each child
-    
+
     NSInteger i;
     NSUInteger childIndex = (whichChildren >= 0) ? whichChildren : 0; // if we're getting one particular child, make sure to set its index correctly
     int inc = recursive ? 3 : 2;
@@ -289,14 +289,14 @@ static jobject sAccessibilityClass = NULL;
     {
         jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
         jobject /* String */ jchildJavaRole = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+1);
-        
+
         NSString *childJavaRole = nil;
         if (jchildJavaRole != NULL) {
             jobject jkey = JNFGetObjectField(env, jchildJavaRole, sjf_key);
             childJavaRole = JNFJavaToNSString(env, jkey);
             (*env)->DeleteLocalRef(env, jkey);
         }
-        
+
         JavaBaseAccessibility *child = [self createWithParent:parent accessible:jchild role:childJavaRole index:childIndex withEnv:env withView:parent->fView];
         if ([child isKindOfClass:[JavaOutlineRowAccessibility class]]) {
             jobject jLevel = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+2);
@@ -304,23 +304,25 @@ static jobject sAccessibilityClass = NULL;
             if (jLevel != NULL) {
                 sLevel = JNFJavaToNSString(env, jLevel);
                 (*env)->DeleteLocalRef(env, jLevel);
-            }            int level = sLevel.intValue;
-            [(JavaOutlineRowAccessibility *)child setAccessibleLevel:level];
+                int level = sLevel.intValue;
+                [(JavaOutlineRowAccessibility *)child setAccessibleLevel:level];
+            }
         }
-        
+
         [children addObject:child.platformAxElement];
-        
+
         (*env)->DeleteLocalRef(env, jchild);
         (*env)->DeleteLocalRef(env, jchildJavaRole);
-        
+
         childIndex++;
     }
     (*env)->DeleteLocalRef(env, jchildrenAndRoles);
-    
+
     return children;
 }
 
-+ (JavaBaseAccessibility *)createWithAccessible:(id)jaccessible withEnv:(id)env withView:(NSView *)view {
++ (JavaBaseAccessibility *)createWithAccessible:(id)jaccessible withEnv:(id)env withView:(NSView *)view
+{
     return [JavaBaseAccessibility createWithAccessible:jaccessible withEnv:env withView:view isWrapped:NO];
 }
 
@@ -342,7 +344,8 @@ static jobject sAccessibilityClass = NULL;
     return [self createWithParent:nil accessible:jaccessible role:javaRole index:index withEnv:env withView:view];
 }
 
-+ (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view {
++ (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view
+{
     return [JavaBaseAccessibility createWithParent:parent accessible:jaccessible role:javaRole index:index withEnv:env withView:view isWrapped:NO];
 }
 
@@ -351,7 +354,7 @@ static jobject sAccessibilityClass = NULL;
     // try to fetch the jCAX from Java, and return autoreleased
     jobject jCAX = [JavaBaseAccessibility getCAccessible:jaccessible withEnv:env];
     if (jCAX == NULL) return nil;
-    if (!wrapped) {
+    if (!wrapped) { // If wrapped is true, then you don't need to get an existing instance, you need to create a new one
     JavaBaseAccessibility *value = (JavaBaseAccessibility *) jlong_to_ptr(JNFGetLongField(env, jCAX, jf_ptr));
     if (value != nil) {
         (*env)->DeleteLocalRef(env, jCAX);
@@ -379,7 +382,7 @@ static jobject sAccessibilityClass = NULL;
             newChild = [JavaTableAccessibility alloc];
         } else if ([nsRole isEqualToString:NSAccessibilityOutlineRole]) {
             newChild = [JavaOutlineAccessibility alloc];
-        } else  {
+        } else {
             newChild = [JavaComponentAccessibility alloc];
         }
     }
@@ -398,6 +401,8 @@ static jobject sAccessibilityClass = NULL;
     // must hard retain pointer poked into Java object
     [newChild retain];
     JNFSetLongField(env, jCAX, jf_ptr, ptr_to_jlong(newChild));
+
+    // If wrapped is true, then the ptr does not need to be deleted
     if (!wrapped) {
         (*env)->DeleteLocalRef(env, jCAX);
     }

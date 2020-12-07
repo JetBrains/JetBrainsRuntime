@@ -22,17 +22,17 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
     clsInfo.name = [JNFObjectClassName(env, getAxContext(env, fAccessible, fComponent)) UTF8String];
     clsInfo.cls = (*env)->GetObjectClass(env, getAxContext(env, fAccessible, fComponent));
     JNF_MEMBER_CACHE(jm_getCurrentComponent, clsInfo, "getCurrentComponent", "()Ljava/awt/Component;");
-   jobject newComponent = JNFCallObjectMethod(env, getAxContext(env, fAccessible, fComponent), jm_getCurrentComponent);
-   if (newComponent != NULL) {
-       jobject newAccessible = JNFCallStaticObjectMethod(env, sjm_getCAccessible, newComponent);
-       if (newAccessible != NULL) {
-           return newAccessible;
-       } else {
-           return NULL;
-       }
-   } else {
-       return NULL;
-   }
+    jobject newComponent = JNFCallObjectMethod(env, getAxContext(env, fAccessible, fComponent), jm_getCurrentComponent);
+    if (newComponent != NULL) {
+        jobject newAccessible = JNFCallStaticObjectMethod(env, sjm_getCAccessible, newComponent);
+        if (newAccessible != NULL) {
+            return newAccessible;
+        } else {
+            return NULL;
+        }
+    } else {
+        return NULL;
+    }
 }
 
 @end
