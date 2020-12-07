@@ -245,12 +245,6 @@ AC_DEFUN_ONCE([HOTSPOT_ENABLE_DISABLE_AOT],
     fi
   fi
 
-  if test "x$ENABLE_AOT" = "xtrue"; then
-    # Disable aot on macos-aarch64 as it's not supported yet
-    if test "x$OPENJDK_TARGET_OS" = "xmacosx" && test "x$OPENJDK_TARGET_CPU" = "xaarch64" ; then
-      ENABLE_AOT="false"
-    fi
-  fi
   AC_SUBST(ENABLE_AOT)
 ])
 
