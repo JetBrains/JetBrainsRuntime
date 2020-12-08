@@ -55,6 +55,7 @@ import sun.java2d.pipe.hw.AccelSurface;
 import sun.java2d.pipe.hw.AccelTypedVolatileImage;
 import sun.java2d.pipe.hw.ContextCapabilities;
 import sun.lwawt.LWComponentPeer;
+import sun.lwawt.macosx.CFRetainedResource;
 
 import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_DOUBLEBUFFERED;
 import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_EXT_FBOBJECT;
@@ -62,7 +63,7 @@ import static sun.java2d.opengl.OGLSurfaceData.FBOBJECT;
 import static sun.java2d.opengl.OGLSurfaceData.TEXTURE;
 
 public final class CGLGraphicsConfig extends CGraphicsConfig
-    implements OGLGraphicsConfig
+        implements OGLGraphicsConfig
 {
     private static boolean cglAvailable;
     private static ImageCapabilities imageCaps = new CGLImageCaps();
@@ -101,7 +102,7 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         // add a record to the Disposer so that we destroy the native
         // CGLGraphicsConfigInfo data when this object goes away
         Disposer.addRecord(disposerReferent,
-                           new CGLGCDisposerRecord(pConfigInfo));
+                new CGLGCDisposerRecord(pConfigInfo));
     }
 
     @Override
@@ -112,9 +113,9 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     @Override
     public SurfaceData createManagedSurface(int w, int h, int transparency) {
         return CGLSurfaceData.createData(this, w, h,
-                                         getColorModel(transparency),
-                                         null,
-                                         OGLSurfaceData.TEXTURE);
+                getColorModel(transparency),
+                null,
+                OGLSurfaceData.TEXTURE);
     }
 
     public static CGLGraphicsConfig getConfig(CGraphicsDevice device)
@@ -184,27 +185,27 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     public BufferedImage createCompatibleImage(int width, int height) {
         ColorModel model = new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
         WritableRaster
-            raster = model.createCompatibleWritableRaster(width, height);
+                raster = model.createCompatibleWritableRaster(width, height);
         return new BufferedImage(model, raster, model.isAlphaPremultiplied(),
-                                 null);
+                null);
     }
 
     @Override
     public ColorModel getColorModel(int transparency) {
         switch (transparency) {
-        case Transparency.OPAQUE:
-            // REMIND: once the ColorModel spec is changed, this should be
-            //         an opaque premultiplied DCM...
-            return new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
-        case Transparency.BITMASK:
-            return new DirectColorModel(25, 0xff0000, 0xff00, 0xff, 0x1000000);
-        case Transparency.TRANSLUCENT:
-            ColorSpace cs = ColorSpace.getInstance(ColorSpace.CS_sRGB);
-            return new DirectColorModel(cs, 32,
-                                        0xff0000, 0xff00, 0xff, 0xff000000,
-                                        true, DataBuffer.TYPE_INT);
-        default:
-            return null;
+            case Transparency.OPAQUE:
+                // REMIND: once the ColorModel spec is changed, this should be
+                //         an opaque premultiplied DCM...
+                return new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
+            case Transparency.BITMASK:
+                return new DirectColorModel(25, 0xff0000, 0xff00, 0xff, 0x1000000);
+            case Transparency.TRANSLUCENT:
+                ColorSpace cs = ColorSpace.getInstance(ColorSpace.CS_sRGB);
+                return new DirectColorModel(cs, 32,
+                        0xff0000, 0xff00, 0xff, 0xff000000,
+                        true, DataBuffer.TYPE_INT);
+            default:
+                return null;
         }
     }
 
@@ -248,8 +249,8 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     }
 
     @Override
-    public SurfaceData createSurfaceData(CGLLayer layer) {
-        return CGLSurfaceData.createData(layer);
+    public SurfaceData createSurfaceData(CFRetainedResource layer) {
+        return CGLSurfaceData.createData((CGLLayer) layer);
     }
 
     @Override
@@ -259,7 +260,7 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         ColorModel model = getColorModel(Transparency.OPAQUE);
         WritableRaster wr = model.createCompatibleWritableRaster(width, height);
         return new OffScreenImage(target, model, wr,
-                                  model.isAlphaPremultiplied());
+                model.isAlphaPremultiplied());
     }
 
     @Override
@@ -290,7 +291,7 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         final int w = Math.max(1, r.width);
         final int h = Math.max(1, r.height);
         final int transparency = peer.isTranslucent() ? Transparency.TRANSLUCENT
-                                                      : Transparency.OPAQUE;
+                : Transparency.OPAQUE;
         return new SunVolatileImage(this, w, h, transparency, null);
     }
 
@@ -316,7 +317,7 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
             try {
                 bg.setBackground(peer.getBackground());
                 bg.clearRect(0, 0, backBuffer.getWidth(null),
-                             backBuffer.getHeight(null));
+                        backBuffer.getHeight(null));
             } finally {
                 bg.dispose();
             }
@@ -326,7 +327,7 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     private static class CGLBufferCaps extends BufferCapabilities {
         public CGLBufferCaps(boolean dblBuf) {
             super(imageCaps, imageCaps,
-                  dblBuf ? FlipContents.UNDEFINED : null);
+                    dblBuf ? FlipContents.UNDEFINED : null);
         }
     }
 
@@ -362,10 +363,10 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
             return null;
         }
         SunVolatileImage vi = new AccelTypedVolatileImage(this, width, height,
-                                                          transparency, type);
+                transparency, type);
         Surface sd = vi.getDestSurface();
         if (!(sd instanceof AccelSurface) ||
-            ((AccelSurface)sd).getType() != type)
+                ((AccelSurface)sd).getType() != type)
         {
             vi.flush();
             vi = null;
@@ -382,12 +383,12 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     @Override
     public int getMaxTextureWidth() {
         return Math.max(maxTextureSize / getDevice().getScaleFactor(),
-                        getBounds().width);
+                getBounds().width);
     }
 
     @Override
     public int getMaxTextureHeight() {
         return Math.max(maxTextureSize / getDevice().getScaleFactor(),
-                        getBounds().height);
+                getBounds().height);
     }
 }

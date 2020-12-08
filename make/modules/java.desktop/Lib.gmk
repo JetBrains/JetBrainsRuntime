@@ -24,6 +24,7 @@
 #
 
 include LibCommon.gmk
+include Execute.gmk
 
 # Hook to include the corresponding custom file, if present.
 $(eval $(call IncludeCustomExtension, modules/java.desktop/Lib.gmk))

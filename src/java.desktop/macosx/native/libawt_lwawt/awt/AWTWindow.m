@@ -1171,6 +1171,8 @@ JNF_COCOA_ENTER(env);
 JNF_COCOA_EXIT(env);
 }
 
+extern jboolean metalEnabled;
+
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
  * Method:    nativeGetNSWindowInsets

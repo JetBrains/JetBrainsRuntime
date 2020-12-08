@@ -31,11 +31,14 @@
 #import "JavaTextAccessibility.h"
 #import "JavaAccessibilityUtilities.h"
 #import "GeomUtilities.h"
-#import "OSVersion.h"
 #import "ThreadUtilities.h"
 
 #import <Carbon/Carbon.h>
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
+
+// keyboard layout
+static NSString *kbdLayout;
+jboolean metalEnabled = JNI_FALSE;
 
 @interface AWTView()
 @property (retain) CDropTarget *_dropTarget;
@@ -52,11 +55,11 @@
 //#define IM_DEBUG TRUE
 //#define EXTRA_DEBUG
 
+// Uncomment this line to see Metal specific fprintfs
+//#define METAL_DEBUG
+
 static BOOL shouldUsePressAndHold() {
-    static int shouldUsePressAndHold = -1;
-    if (shouldUsePressAndHold != -1) return shouldUsePressAndHold;
-    shouldUsePressAndHold = !isSnowLeopardOrLower();
-    return shouldUsePressAndHold;
+    return YES;
 }
 
 @implementation AWTView
@@ -545,11 +548,11 @@ static BOOL shouldUsePressAndHold() {
     if ((codePoint == 0x0024) || (codePoint == 0x00A3) ||
         (codePoint == 0x00A5) ||
         ((codePoint >= 0x20A3) && (codePoint <= 0x20BF)) ||
-	((codePoint >= 0x3000) && (codePoint <= 0x303F)) ||
+        ((codePoint >= 0x3000) && (codePoint <= 0x303F)) ||
         ((codePoint >= 0xFF00) && (codePoint <= 0xFFEF))) {
         // Code point is in 'CJK Symbols and Punctuation' or
         // 'Halfwidth and Fullwidth Forms' Unicode block or
-	// currency symbols unicode
+        // currency symbols unicode
         return YES;
     }
     return NO;
@@ -998,7 +1001,7 @@ JNF_CLASS_CACHE(jc_CInputMethod, "sun/lwawt/macosx/CInputMethod");
     [self abandonInput];
 }
 
-- (void)keyboardInputSourceChanged:(NSNotification *)notification
++ (void)keyboardInputSourceChanged:(NSNotification *)notification
 {
 #ifdef IM_DEBUG
     NSLog(@"keyboardInputSourceChangeNotification received");
@@ -1295,7 +1298,7 @@ JNF_CLASS_CACHE(jc_CInputMethod, "sun/lwawt/macosx/CInputMethod");
     jint index = JNFCallIntMethod(env, fInputMethodLOCKABLE, jm_characterIndexForPoint, (jint)flippedLocation.x, (jint)flippedLocation.y); // AWT_THREADING Safe (AWTRunLoopMode)
 
 #ifdef IM_DEBUG
-    fprintf(stderr, "characterIndexForPoint returning %ld\n", index);
+    fprintf(stderr, "characterIndexForPoint returning %d\n", index);
 #endif // IM_DEBUG
 
     if (index == -1) {
@@ -1335,7 +1338,7 @@ JNF_CLASS_CACHE(jc_CInputMethod, "sun/lwawt/macosx/CInputMethod");
 
     NSTextInputContext *curContxt = [NSTextInputContext currentInputContext];
     kbdLayout = curContxt.selectedKeyboardInputSource;
-    [[NSNotificationCenter defaultCenter] addObserver:self
+    [[NSNotificationCenter defaultCenter] addObserver:[AWTView class]
                                            selector:@selector(keyboardInputSourceChanged:)
                                                name:NSTextInputContextKeyboardSelectionDidChangeNotification
                                              object:nil];
@@ -1498,4 +1501,20 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CPlatformView_nativeIsViewUnder
     JNF_COCOA_EXIT(env);
 
     return underMouse;
+}
+
+jboolean GetStaticBoolean(JNIEnv *env, jclass fClass, const char *fieldName)
+{
+    jfieldID fieldID = (*env)->GetStaticFieldID(env, fClass, fieldName, "Z");
+    return (*env)->GetStaticBooleanField(env, fClass, fieldID);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_macos_MacOSFlags_initNativeFlags(JNIEnv *env,
+                                                     jclass flagsClass)
+{
+  metalEnabled = GetStaticBoolean(env, flagsClass, "metalEnabled");
+#ifdef METAL_DEBUG
+  fprintf(stderr, "metalEnabled=%d\n", metalEnabled);
+#endif
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,8 @@ package sun.java2d;
 
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
+import sun.java2d.macos.MacOSFlags;
+import sun.java2d.metal.MTLVolatileSurfaceManager;
 import sun.java2d.opengl.CGLVolatileSurfaceManager;
 
 /**
@@ -49,6 +51,7 @@ public class MacosxSurfaceManagerFactory extends SurfaceManagerFactory {
     public VolatileSurfaceManager createVolatileManager(SunVolatileImage vImg,
                                                         Object context)
     {
-        return new CGLVolatileSurfaceManager(vImg, context);
+        return MacOSFlags.isMetalEnabled() ? new MTLVolatileSurfaceManager(vImg, context) :
+                new CGLVolatileSurfaceManager(vImg, context);
     }
 }

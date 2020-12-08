@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <QuartzCore/CATransaction.h>
+#import <QuartzCore/CAMetalLayer.h>
 
 @implementation AWTSurfaceLayers
 
@@ -67,10 +68,11 @@
     }
 }
 
-// Updates back buffer size of the layer if it's an OpenGL layer
-// including all OpenGL sublayers
+// Updates back buffer size of the layer if it's an OpenGL/Metal layer
+// including all OpenGL/Metal sublayers
 + (void) repaintLayersRecursively:(CALayer*)aLayer {
-    if ([aLayer isKindOfClass:[CAOpenGLLayer class]]) {
+    if ([aLayer isKindOfClass:[CAOpenGLLayer class]] ||
+        [aLayer isKindOfClass:[CAMetalLayer class]]) {
         [aLayer setNeedsDisplay];
     }
     for(CALayer *child in aLayer.sublayers) {
@@ -92,7 +94,7 @@
 
 /*
  * Class:     sun_lwawt_macosx_CPlatformComponent
- * Method:    nativeCreateLayer
+ * Method:    nativeCreateComponent
  * Signature: ()J
  */
 JNIEXPORT jlong JNICALL
@@ -108,7 +110,7 @@ JNF_COCOA_ENTER(env);
         CALayer *windowLayer = jlong_to_ptr(windowLayerPtr);
         surfaceLayers = [[AWTSurfaceLayers alloc] initWithWindowLayer: windowLayer];
     }];
-    
+
 JNF_COCOA_EXIT(env);
 
   return ptr_to_jlong(surfaceLayers);
@@ -125,7 +127,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformComponent_nativeSetBounds
 JNF_COCOA_ENTER(env);
 
   AWTSurfaceLayers *surfaceLayers = OBJC(surfaceLayersPtr);
-    
+
   [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
 
       CGRect rect = CGRectMake(x, y, width, height);
