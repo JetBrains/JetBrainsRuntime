@@ -649,6 +649,7 @@ class CAccessibility implements PropertyChangeListener {
         }, c);
     }
 
+    // This method is called from the native
     // Each child takes up three entries in the array: one for itself, one for its role, and one for the recursion level
     public static Object[] getChildrenAndRolesRecursive(final Accessible a, final Component c, final int whichChildren, final boolean allowIgnored, final int level) {
         if (a == null) return null;
