@@ -230,12 +230,12 @@ static jobject sAccessibilityClass = NULL;
     return NULL;
 }
 
-+ (NSArray*)childrenOfParent:(JavaBaseAccessibility*)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored
++ (NSArray *) childrenOfParent:(JavaBaseAccessibility *)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored
 {
     return [JavaBaseAccessibility childrenOfParent:parent withEnv:env withChildrenCode:whichChildren allowIgnored:allowIgnored recursive:NO];
 }
 
-+ (NSArray *)childrenOfParent:(JavaBaseAccessibility *)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored recursive:(BOOL)recursive
++ (NSArray *) childrenOfParent:(JavaBaseAccessibility *)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored recursive:(BOOL)recursive
 {
     if ([parent isKindOfClass:[JavaTableAccessibility class]]) {
         if (whichChildren == JAVA_AX_SELECTED_CHILDREN) {
@@ -322,12 +322,12 @@ static jobject sAccessibilityClass = NULL;
     return children;
 }
 
-+ (JavaBaseAccessibility *)createWithAccessible:(id)jaccessible withEnv:(id)env withView:(NSView *)view
++ (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view
 {
     return [JavaBaseAccessibility createWithAccessible:jaccessible withEnv:env withView:view isCurrent:NO];
 }
 
-+ (JavaBaseAccessibility *)createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isCurrent:(BOOL)current
++ (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isCurrent:(BOOL)current
 {
     JavaBaseAccessibility *ret = nil;
     jobject jcomponent = [(AWTView *)view awtComponent:env];
