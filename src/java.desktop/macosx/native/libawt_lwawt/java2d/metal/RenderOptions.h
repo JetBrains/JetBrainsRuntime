@@ -11,6 +11,7 @@ typedef struct {
     int interpolation;
     SurfaceRasterFlags srcFlags;
     SurfaceRasterFlags dstFlags;
+    jboolean isText;
 } RenderOptions;
 
 

@@ -54,6 +54,9 @@
                                             interpolation:(int)interpolation
                                                      isAA:(jboolean)isAA;
 
+- (id<MTLRenderCommandEncoder> _Nonnull)getTextEncoder:(const BMTLSDOps * _Nonnull)dstOps
+                                      isSrcOpaque:(bool)isSrcOpaque;
+
 // Base method to obtain any MTLRenderCommandEncoder
 - (id<MTLRenderCommandEncoder> _Nonnull) getEncoder:(id<MTLTexture> _Nonnull)dest
                                        isDestOpaque:(jboolean)isDestOpaque

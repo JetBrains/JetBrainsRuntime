@@ -251,6 +251,16 @@ fragment half4 frag_txt(
                  pixelColor.b, srcA)*uniforms.extraAlpha;
 }
 
+fragment half4 frag_text(
+        TxtShaderInOut vert [[stage_in]],
+        texture2d<float, access::sample> renderTexture [[texture(0)]],
+        constant TxtFrameUniforms& uniforms [[buffer(1)]],
+        sampler textureSampler [[sampler(0)]]
+) {
+    float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
+    return half4(uniforms.color * pixelColor.a);
+}
+
 fragment half4 frag_txt_tp(TxtShaderInOut vert [[stage_in]],
                        texture2d<float, access::sample> renderTexture [[texture(0)]],
                        texture2d<float, access::sample> paintTexture [[texture(1)]],

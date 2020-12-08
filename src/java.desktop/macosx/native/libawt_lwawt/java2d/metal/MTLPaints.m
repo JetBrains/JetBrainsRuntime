@@ -161,6 +161,9 @@ jint _color;
             fragShader = @"aa_frag_txt";
             rpDesc = [[templateAATexturePipelineDesc copy] autorelease];
         }
+        if (renderOptions->isText) {
+            fragShader = @"frag_text";
+        }
         setTxtUniforms(encoder, _color, 1,
                        renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha], &renderOptions->srcFlags,
                        &renderOptions->dstFlags);
