@@ -59,7 +59,7 @@
 + (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible role:(NSString *)role index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
 + (JavaBaseAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view;
 
-//If the isWraped parameter is true, then the object passed as a parent was created based on the same java component,
+// If the isWraped parameter is true, then the object passed as a parent was created based on the same java component,
 // but performs a different NSAccessibilityRole of a table cell, or a list row, or tree row,
 // and we need to create an element whose role corresponds to the role in Java.
 + (JavaBaseAccessibility *) createWithParent:(JavaBaseAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped;
