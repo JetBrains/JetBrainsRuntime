@@ -26,6 +26,7 @@ import javax.swing.WindowConstants;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.FocusTraversalPolicy;
+import java.awt.GraphicsEnvironment;
 import java.awt.KeyboardFocusManager;
 import java.awt.Point;
 import java.awt.Robot;
@@ -34,6 +35,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
 /**
@@ -67,7 +69,16 @@ public class ChainOfPopupsFocusTest implements Runnable, ActionListener {
 
         ChainOfPopupsFocusTest test = new ChainOfPopupsFocusTest();
         SwingUtilities.invokeAndWait(test);
-        robot.delay(3000);
+        robot.delay(1000);
+
+        // Workaroud for JBR-2657 on Windows
+        // Click on the main test frame, so it gets focus when running from background process,
+        // otherwise it just flashes on the taskbar
+        Point center = GraphicsEnvironment.getLocalGraphicsEnvironment().getCenterPoint();
+        robot.mouseMove((int) center.getX(), (int) center.getY());
+        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        robot.delay(1000);
 
         try {
             SwingUtilities.invokeAndWait(() ->
@@ -77,7 +88,7 @@ public class ChainOfPopupsFocusTest implements Runnable, ActionListener {
             }
 
             for (int count = 1; count <= DEPTH; count++) {
-                pressCtrlKey(KeyEvent.VK_N);
+                pressCtrlKey(KeyEvent.VK_M);
                 robot.delay(1000);
             }
 
@@ -119,15 +130,14 @@ public class ChainOfPopupsFocusTest implements Runnable, ActionListener {
         frame.pack();
         frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         frame.setLocationRelativeTo(null);
+        frame.setAlwaysOnTop(true);
         frame.setVisible(true);
-        frame.toFront();
-        area.requestFocusInWindow();
     }
 
     private JTextArea createTextArea(String locatedOn) {
         JTextArea area = new JTextArea(20, 40);
         area.setName(locatedOn);
-        area.registerKeyboardAction(this, "show", KeyStroke.getKeyStroke("control N"), JComponent.WHEN_FOCUSED);
+        area.registerKeyboardAction(this, "show", KeyStroke.getKeyStroke("control M"), JComponent.WHEN_FOCUSED);
         area.registerKeyboardAction(event -> SwingUtilities.getWindowAncestor((Component) event.getSource()).setVisible(false), KeyStroke.getKeyStroke("control X"), JComponent.WHEN_FOCUSED);
         area.addComponentListener(new ComponentAdapter() {
             @Override
