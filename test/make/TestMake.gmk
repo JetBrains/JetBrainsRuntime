@@ -36,6 +36,9 @@ java-compilation:
 copy-files:
 	+$(MAKE) -f TestCopyFiles.gmk $(TEST_SUBTARGET)
 
+fix-deps-file:
+	+$(MAKE) -f TestFixDepsFile.gmk $(TEST_SUBTARGET)
+
 test-idea:
 	+$(MAKE) -f TestIdea.gmk $(TEST_SUBTARGET)
 
@@ -43,6 +46,6 @@ test-compile-commands:
 	+$(MAKE) -f TestCompileCommands.gmk $(TEST_SUBTARGET)
 
 
-all: make-base java-compilation copy-files test-idea
+all: make-base java-compilation copy-files fix-deps-file test-idea
 
-.PHONY: default all make-base java-compilation copy-files test-idea test-compile-commands
+.PHONY: default all make-base java-compilation copy-files fix-deps-file test-idea test-compile-commands
