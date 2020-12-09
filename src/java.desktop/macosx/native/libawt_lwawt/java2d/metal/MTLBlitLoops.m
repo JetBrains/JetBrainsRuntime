@@ -232,8 +232,8 @@ MTLBlitSwToTextureViaPooledTexture(
     int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
     int sh = srcInfo->bounds.y2 - srcInfo->bounds.y1;
 
-    sw = MIN(sw, mtlc.maxTextureSize);
-    sh = MIN(sh, mtlc.maxTextureSize);
+    sw = MIN(sw, MTL_GPU_FAMILY_MAC_TXT_SIZE);
+    sh = MIN(sh, MTL_GPU_FAMILY_MAC_TXT_SIZE);
 
     id<MTLTexture> dest = bmtlsdOps->pTexture;
 
