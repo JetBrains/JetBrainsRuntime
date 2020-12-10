@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,8 +90,8 @@ extern "C" void JNICALL jfr_on_class_file_load_hook(jvmtiEnv *jvmti_env,
   }
   JavaThread* jt = JavaThread::thread_from_jni_environment(jni_env);
   DEBUG_ONLY(JfrJavaSupport::check_java_thread_in_native(jt));;
-  ThreadInVMfromNative tvmfn(jt);
   Thread::WXWriteFromExecSetter wx_write;
+  ThreadInVMfromNative tvmfn(jt);
   JfrUpcalls::on_retransform(JfrTraceId::load_raw(class_being_redefined),
                              class_being_redefined,
                              class_data_len,
