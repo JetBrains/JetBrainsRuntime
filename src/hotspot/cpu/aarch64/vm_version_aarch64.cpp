@@ -105,8 +105,10 @@ class VM_Version_StubGenerator: public StubCodeGenerator {
     __ get_dczid_el0(rscratch1);
     __ strw(rscratch1, Address(c_rarg0, in_bytes(VM_Version::dczid_el0_offset())));
 
+#ifndef BSD
     __ get_ctr_el0(rscratch1);
     __ strw(rscratch1, Address(c_rarg0, in_bytes(VM_Version::ctr_el0_offset())));
+#endif
 
     __ leave();
     __ ret(lr);
@@ -167,6 +169,7 @@ void VM_Version::get_processor_features() {
     SoftwarePrefetchHintDistance &= ~7;
   }
 
+#ifdef LINUX
   uint64_t auxv = getauxval(AT_HWCAP);
 
   char buf[512];
@@ -374,6 +377,11 @@ void VM_Version::get_processor_features() {
     warning("GHASH intrinsics are not available on this CPU");
     FLAG_SET_DEFAULT(UseGHASHIntrinsics, false);
   }
+
+#else
+  warning("vm_version is stubbed %s:%d", __FILE__, __LINE__);
+  _features_string = "UNIMPLEMENTED";
+#endif
 
   if (is_zva_enabled()) {
     if (FLAG_IS_DEFAULT(UseBlockZeroing)) {
