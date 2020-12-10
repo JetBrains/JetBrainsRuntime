@@ -837,6 +837,7 @@ JVM_ENTRY_NO_ENV(void, JVM_RegisterJVMCINatives(JNIEnv *env, jclass c2vmClass))
     // Ensure _non_oop_bits is initialized
     Universe::non_oop_word();
 
+    Thread::WXExecFromWriteSetter wx_exec;
     if (JNI_OK != env->RegisterNatives(c2vmClass, CompilerToVM::methods, CompilerToVM::methods_count())) {
       if (!env->ExceptionCheck()) {
         for (int i = 0; i < CompilerToVM::methods_count(); i++) {

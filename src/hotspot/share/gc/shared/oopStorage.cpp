@@ -37,7 +37,7 @@
 #include "runtime/orderAccess.hpp"
 #include "runtime/os.hpp"
 #include "runtime/safepoint.hpp"
-#include "runtime/stubRoutines.hpp"
+#include "runtime/stubRoutines.inline.hpp"
 #include "runtime/thread.hpp"
 #include "utilities/align.hpp"
 #include "utilities/count_trailing_zeros.hpp"

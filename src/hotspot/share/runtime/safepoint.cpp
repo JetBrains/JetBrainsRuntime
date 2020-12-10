@@ -850,6 +850,7 @@ void SafepointSynchronize::handle_polling_page_exception(JavaThread *thread) {
   assert(thread->is_Java_thread(), "polling reference encountered by VM thread");
   assert(thread->thread_state() == _thread_in_Java, "should come from Java code");
 
+  Thread::WXWriteFromExecSetter wx_write;
   if (log_is_enabled(Info, safepoint, stats)) {
     Atomic::inc(&_nof_threads_hit_polling_page);
   }
