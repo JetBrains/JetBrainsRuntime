@@ -27,3 +27,6 @@
 #include "runtime/os.hpp"
 #include "runtime/vm_version.hpp"
 
+void VM_Version::get_os_cpu_info() {
+}
+
