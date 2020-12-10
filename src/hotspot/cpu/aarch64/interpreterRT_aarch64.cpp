@@ -38,6 +38,29 @@
 
 #define __ _masm->
 
+//describe amount of space in bytes occupied by type on native stack
+#ifdef __APPLE__
+    const int nativeByteSpace        = sizeof(jbyte);
+    const int nativeShortSpace       = sizeof(jshort);
+    const int nativeIntSpace         = sizeof(jint);
+    const int nativeLongSpace        = wordSize;
+    const int nativeFloatSpace       = nativeIntSpace;
+    const int nativeDoubleSpace      = nativeLongSpace;
+#else
+    const int nativeByteSpace        = wordSize;
+    const int nativeShortSpace       = wordSize;
+    const int nativeIntSpace         = wordSize;
+    const int nativeLongSpace        = wordSize;
+    const int nativeFloatSpace       = nativeIntSpace;
+    const int nativeDoubleSpace      = nativeLongSpace;
+#endif
+
+template <typename T>
+static inline void store_and_inc(char* &to, T value, int inc_size) {
+  *(T *)to = value;
+  to = to + inc_size;
+}
+
 // Implementation of SignatureHandlerGenerator
 Register InterpreterRuntime::SignatureHandlerGenerator::from() { return rlocals; }
 Register InterpreterRuntime::SignatureHandlerGenerator::to()   { return sp; }
@@ -90,7 +113,7 @@ void InterpreterRuntime::SignatureHandlerGenerator::pass_byte() {
   default:
     __ ldrb(r0, src);
     __ strb(r0, Address(to(), _stack_offset));
-    _stack_offset += sizeof(jbyte);
+    _stack_offset += nativeByteSpace;
 
     _num_int_args++;
     break;
@@ -130,10 +153,10 @@ void InterpreterRuntime::SignatureHandlerGenerator::pass_short() {
     _num_int_args++;
     break;
   default:
-    _stack_offset = align_up(_stack_offset, sizeof(jshort));
+    _stack_offset = align_up(_stack_offset, nativeShortSpace);
     __ ldrh(r0, src);
     __ strh(r0, Address(to(), _stack_offset));
-    _stack_offset += sizeof(jshort);
+    _stack_offset += nativeShortSpace;
 
     _num_int_args++;
     break;
@@ -173,14 +196,10 @@ void InterpreterRuntime::SignatureHandlerGenerator::pass_int() {
     _num_int_args++;
     break;
   default:
-    _stack_offset = align_up(_stack_offset, sizeof(int));
+    _stack_offset = align_up(_stack_offset, nativeIntSpace);
     __ ldr(r0, src);
     __ str(r0, Address(to(), _stack_offset));
-#ifdef __APPLE__
-    _stack_offset += sizeof(int);
-#else
-    _stack_offset += wordSize;
-#endif
+    _stack_offset += nativeIntSpace;
     _num_int_args++;
     break;
   }
@@ -219,10 +238,10 @@ void InterpreterRuntime::SignatureHandlerGenerator::pass_long() {
     _num_int_args++;
     break;
   default:
-    _stack_offset = align_up(_stack_offset, wordSize);
+    _stack_offset = align_up(_stack_offset, nativeLongSpace);
     __ ldr(r0, src);
     __ str(r0, Address(to(), _stack_offset));
-    _stack_offset += wordSize;
+    _stack_offset += nativeLongSpace;
     _num_int_args++;
     break;
   }
@@ -234,14 +253,10 @@ void InterpreterRuntime::SignatureHandlerGenerator::pass_float() {
   if (_num_fp_args < Argument::n_float_register_parameters_c) {
     __ ldrs(as_FloatRegister(_num_fp_args++), src);
   } else {
-      _stack_offset = align_up(_stack_offset, sizeof(float));
+      _stack_offset = align_up(_stack_offset, nativeFloatSpace);
     __ ldrw(r0, src);
     __ strw(r0, Address(to(), _stack_offset));
-#ifdef __APPLE__
-    _stack_offset += sizeof(float);
-#else
-    _stack_offset += wordSize;
-#endif
+    _stack_offset += nativeFloatSpace;
     _num_fp_args++;
   }
 }
@@ -252,10 +267,10 @@ void InterpreterRuntime::SignatureHandlerGenerator::pass_double() {
   if (_num_fp_args < Argument::n_float_register_parameters_c) {
     __ ldrd(as_FloatRegister(_num_fp_args++), src);
   } else {
-    _stack_offset = align_up(_stack_offset, wordSize);
+    _stack_offset = align_up(_stack_offset, nativeDoubleSpace);
     __ ldr(r0, src);
     __ str(r0, Address(to(), _stack_offset));
-    _stack_offset += wordSize;
+    _stack_offset += nativeDoubleSpace;
     _num_fp_args++;
   }
 }
@@ -378,7 +393,7 @@ class SlowSignatureHandler
   : public NativeSignatureIterator {
  private:
   address   _from;
-  intptr_t* _to;
+  char*     _to;
   intptr_t* _int_args;
   intptr_t* _fp_args;
   intptr_t* _fp_identifiers;
@@ -388,6 +403,7 @@ class SlowSignatureHandler
 
   virtual void pass_byte()
   {
+    NOT_BSD(return pass_int();)
     jbyte from_obj = *(jbyte *)(_from+Interpreter::local_offset_in_bytes(0));
     _from -= Interpreter::stackElementSize;
 
@@ -395,8 +411,7 @@ class SlowSignatureHandler
       *_int_args++ = from_obj;
       _num_int_args++;
     } else {
-      *(jbyte*)_to = from_obj;
-      _to = (intptr_t *)((char*) _to + sizeof (jbyte));
+      store_and_inc(_to, from_obj, nativeByteSpace);
 
       _num_int_args++;
     }
@@ -404,6 +419,7 @@ class SlowSignatureHandler
 
   virtual void pass_short()
   {
+    NOT_BSD(return pass_int();)
     jshort from_obj = *(jshort *)(_from+Interpreter::local_offset_in_bytes(0));
     _from -= Interpreter::stackElementSize;
 
@@ -411,9 +427,8 @@ class SlowSignatureHandler
       *_int_args++ = from_obj;
       _num_int_args++;
     } else {
-      _to = align_up(_to, sizeof(jshort));
-      *(jshort*)_to = from_obj;
-      _to = (intptr_t *)((char*) _to + sizeof (jshort));
+      _to = align_up(_to, nativeShortSpace);
+      store_and_inc(_to, from_obj, nativeShortSpace);
 
       _num_int_args++;
     }
@@ -427,13 +442,9 @@ class SlowSignatureHandler
       *_int_args++ = from_obj;
       _num_int_args++;
     } else {
-      _to = align_up(_to, sizeof(jint));
-#ifdef __APPLE__
-      *_to = from_obj;
-       _to = (intptr_t *)((char*) _to + sizeof (jint));
-#else
-      *_to++ = from_obj;
-#endif
+      _to = align_up(_to, nativeIntSpace);
+      store_and_inc(_to, from_obj, nativeIntSpace);
+
       _num_int_args++;
     }
   }
@@ -447,8 +458,8 @@ class SlowSignatureHandler
       *_int_args++ = from_obj;
       _num_int_args++;
     } else {
-      _to = align_up(_to, wordSize);
-      *_to++ = from_obj;
+      _to = align_up(_to, nativeLongSpace);
+      store_and_inc(_to, from_obj, nativeLongSpace);
       _num_int_args++;
     }
   }
@@ -463,7 +474,7 @@ class SlowSignatureHandler
       _num_int_args++;
     } else {
       _to = align_up(_to, wordSize);
-      *_to++ = (*from_addr == 0) ? NULL : (intptr_t) from_addr;
+      store_and_inc(_to, (*from_addr == 0) ? (intptr_t)NULL : (intptr_t) from_addr, wordSize);
       _num_int_args++;
     }
   }
@@ -477,13 +488,9 @@ class SlowSignatureHandler
       *_fp_args++ = from_obj;
       _num_fp_args++;
     } else {
-      _to = align_up(_to, sizeof(jint));
-#ifdef __APPLE__
-      *_to = from_obj;
-      _to = (intptr_t *)((char*) _to + sizeof(jint));
-#else
-      *_to++ = from_obj;
-#endif
+      _to = align_up(_to, nativeFloatSpace);
+      store_and_inc(_to, from_obj, nativeFloatSpace);
+
       _num_fp_args++;
     }
   }
@@ -498,8 +505,8 @@ class SlowSignatureHandler
       *_fp_identifiers |= (1ull << _num_fp_args); // mark as double
       _num_fp_args++;
     } else {
-      _to = align_up(_to, wordSize);
-      *_to++ = from_obj;
+      _to = align_up(_to, nativeDoubleSpace);
+      store_and_inc(_to, from_obj, nativeDoubleSpace);
       _num_fp_args++;
     }
   }
@@ -509,7 +516,7 @@ class SlowSignatureHandler
     : NativeSignatureIterator(method)
   {
     _from = from;
-    _to   = to; //FIXME, should I allign_up here ?
+    _to   = (char *)to;
 
     _int_args = to - (method->is_static() ? 16 : 17);
     _fp_args =  to - 8;
