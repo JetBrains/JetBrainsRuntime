@@ -127,7 +127,9 @@ void VM_Version::get_processor_features() {
   _supports_atomic_getset8 = true;
   _supports_atomic_getadd8 = true;
 
+  os::current_thread_enable_wx(WXExec);
   getPsrInfo_stub(&_psr_info);
+  os::current_thread_enable_wx(WXWrite);
 
   int dcache_line = VM_Version::dcache_line_size();
 

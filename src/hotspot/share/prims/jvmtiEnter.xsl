@@ -434,6 +434,8 @@ struct jvmtiInterface_1_ jvmti</xsl:text>
     <xsl:value-of select="$space"/>
     <xsl:text>ThreadInVMfromNative __tiv(current_thread);</xsl:text>
     <xsl:value-of select="$space"/>
+    <xsl:text>Thread::WXWriteFromExecSetter __wx_write;</xsl:text>
+    <xsl:value-of select="$space"/>
     <xsl:text>VM_ENTRY_BASE(jvmtiError, </xsl:text>
     <xsl:apply-templates select="." mode="functionid"/>
     <xsl:text> , current_thread)</xsl:text>
