@@ -34,8 +34,16 @@
 
 #include OS_HEADER_INLINE(os)
 
+#ifdef __APPLE__
+#define getauxval(hwcap) 0
+#else
 #include <sys/auxv.h>
 #include <asm/hwcap.h>
+#endif
+
+#ifndef HWCAP_ASIMD
+#define HWCAP_ASIMD (1<<1)
+#endif
 
 #ifndef HWCAP_AES
 #define HWCAP_AES   (1<<3)
