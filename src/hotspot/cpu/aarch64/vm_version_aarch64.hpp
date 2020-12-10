@@ -113,11 +113,17 @@ public:
     assert(is_zva_enabled(), "ZVA not available");
     return 4 << (_psr_info.dczid_el0 & 0xf);
   }
-  static int icache_line_size() {
-    return (1 << (_psr_info.ctr_el0 & 0x0f)) * 4;
-  }
+
   static int dcache_line_size() {
+#ifndef BSD
     return (1 << ((_psr_info.ctr_el0 >> 16) & 0x0f)) * 4;
+#else
+    // CTR_EL0 is not accessible on the MacOS, use minimal possible
+    // cache line size.
+    // FIXME I cannot find a proof that is a real minimum
+    // FIXME Please resolve with ZULU-17241
+    return 64;
+#endif
   }
 };
 
