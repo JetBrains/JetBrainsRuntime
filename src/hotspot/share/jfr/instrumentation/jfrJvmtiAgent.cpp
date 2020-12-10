@@ -90,8 +90,8 @@ extern "C" void JNICALL jfr_on_class_file_load_hook(jvmtiEnv *jvmti_env,
   }
   JavaThread* jt = JavaThread::thread_from_jni_environment(jni_env);
   DEBUG_ONLY(JfrJavaSupport::check_java_thread_in_native(jt));;
-  ThreadInVMfromNative tvmfn(jt);
   Thread::WXWriteFromExecSetter wx_write;
+  ThreadInVMfromNative tvmfn(jt);
   JfrUpcalls::on_retransform(JfrTraceId::get(class_being_redefined),
                              class_being_redefined,
                              class_data_len,
