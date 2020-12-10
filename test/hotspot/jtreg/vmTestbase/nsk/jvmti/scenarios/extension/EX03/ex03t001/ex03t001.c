@@ -43,13 +43,22 @@ static jrawMonitorID eventMon;
 /* ============================================================================= */
 
 static void JNICALL
-ClassUnload(jvmtiEnv* jvmti_env, JNIEnv *jni_env, jthread thread, jclass class, ...) {
+ClassUnload(jvmtiEnv* jvmti_env, ...) {
     /*
      * With the CMS GC the event can be posted on
      * a ConcurrentGC thread that is not a JavaThread.
      * In this case the thread argument can be NULL, so that,
      * we should not expect the thread argument to be non-NULL.
      */
+    JNIEnv *jni_env = NULL;
+    va_list ap;
+
+    va_start(ap, jvmti_env);
+    jni_env = va_arg(ap, JNIEnv *);
+    jthread thread = va_arg(ap, jthread);
+    jclass class = va_arg(ap, jclass);
+    va_end(ap);
+
     if (class == NULL) {
         nsk_jvmti_setFailStatus();
         NSK_COMPLAIN0("ClassUnload: 'class' input parameter is NULL.\n");
