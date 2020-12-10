@@ -37,6 +37,8 @@
 #include "runtime/frame.inline.hpp"
 #include "runtime/init.hpp"
 #include "runtime/os.hpp"
+#include "runtime/safepointMechanism.hpp"
+#include "runtime/stubRoutines.inline.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/threadSMR.hpp"
 #include "runtime/vmThread.hpp"
