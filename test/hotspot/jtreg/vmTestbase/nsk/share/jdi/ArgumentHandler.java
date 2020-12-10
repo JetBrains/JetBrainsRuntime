@@ -557,7 +557,7 @@ class CheckedFeatures {
         {"macosx-amd64",    "com.sun.jdi.SharedMemoryListen"},
         {"mac-x64",         "com.sun.jdi.SharedMemoryListen"},
         {"macosx-aarch64",  "com.sun.jdi.SharedMemoryListen"},
-        {"mac-aarch64"      "com.sun.jdi.SharedMemoryListen"},
+        {"mac-aarch64",     "com.sun.jdi.SharedMemoryListen"},
         {"aix-ppc64",       "com.sun.jdi.SharedMemoryListen"},
 
             // launching connectors
