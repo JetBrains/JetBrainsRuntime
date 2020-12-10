@@ -654,14 +654,12 @@ class CAccessibility implements PropertyChangeListener {
     public static Object[] getChildrenAndRolesRecursive(final Accessible a, final Component c, final int whichChildren, final boolean allowIgnored, final int level) {
         if (a == null) return null;
         ArrayList<Object> currentLevelChildren = new ArrayList<Object>();
-        currentLevelChildren.addAll(Arrays.asList(getChildrenAndRoles(a, c, whichChildren, allowIgnored)));
-        boolean isEmpty = currentLevelChildren.isEmpty();
-        if (isEmpty && (whichChildren == JAVA_AX_SELECTED_CHILDREN)) {
-            currentLevelChildren.addAll(Arrays.asList(getChildrenAndRoles(a, c, JAVA_AX_ALL_CHILDREN, allowIgnored)));
-        }
+        currentLevelChildren.addAll(Arrays.asList(getChildrenAndRoles(a, c, JAVA_AX_ALL_CHILDREN, allowIgnored)));
         ArrayList<Object> allChildren = new ArrayList<Object>();
         for (int i = 0; i < currentLevelChildren.size(); i += 2) {
-            if (!isEmpty) {
+            if ((((Accessible) currentLevelChildren.get(i)).getAccessibleContext().getAccessibleStateSet().contains(AccessibleState.SELECTED) && (whichChildren == JAVA_AX_SELECTED_CHILDREN)) ||
+                    (((Accessible) currentLevelChildren.get(i)).getAccessibleContext().getAccessibleStateSet().contains(AccessibleState.VISIBLE) && (whichChildren == JAVA_AX_VISIBLE_CHILDREN)) ||
+                    (whichChildren == JAVA_AX_ALL_CHILDREN)) {
                 allChildren.add(currentLevelChildren.get(i));
                 allChildren.add(currentLevelChildren.get(i + 1));
                 allChildren.add(String.valueOf(level));
