@@ -415,7 +415,6 @@ void VM_Version::get_processor_features() {
   }
 
 #else
-  warning("vm_version is stubbed %s:%d", __FILE__, __LINE__);
   _features_string = "UNIMPLEMENTED";
 #endif
 
