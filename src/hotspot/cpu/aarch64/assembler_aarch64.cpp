@@ -1265,7 +1265,7 @@ void Address::lea(MacroAssembler *as, Register r) const {
   }
 }
 
-void Assembler::adrp(Register reg1, const Address &dest, uintptr_t &byte_offset) {
+void Assembler::adrp(Register reg1, const Address &dest, uint64_t &byte_offset) {
   ShouldNotReachHere();
 }
 
@@ -1435,7 +1435,7 @@ void Assembler::add_sub_immediate(Register Rd, Register Rn, unsigned uimm, int o
 }
 
 bool Assembler::operand_valid_for_add_sub_immediate(int64_t imm) {
-  uint64_t uimm = (uint64_t)uabs(imm);
+  uint64_t uimm = (uint64_t)uabs((jlong)imm);
   if (uimm < (1 << 12))
     return true;
   if (uimm < (1 << 24)

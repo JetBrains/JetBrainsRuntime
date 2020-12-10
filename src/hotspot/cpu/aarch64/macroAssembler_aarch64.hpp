@@ -88,7 +88,7 @@ class MacroAssembler: public Assembler {
       = (operand_valid_for_logical_immediate(false /*is32*/,
                                              (uint64_t)Universe::narrow_klass_base())
          && ((uint64_t)Universe::narrow_klass_base()
-             > (1UL << log2_intptr(Universe::narrow_klass_range()))));
+             > (1UL << log2_intptr((uintptr_t)Universe::narrow_klass_range()))));
   }
 
  // These routines should emit JVMTI PopFrame and ForceEarlyReturn handling code.
@@ -456,29 +456,18 @@ public:
   // now mov instructions for loading absolute addresses and 32 or
   // 64 bit integers
 
-  inline void mov(Register dst, address addr)
-  {
-    mov_immediate64(dst, (u_int64_t)addr);
-  }
+  inline void mov(Register dst, address addr)             { mov_immediate64(dst, (uint64_t)addr); }
 
-  inline void mov(Register dst, u_int64_t imm64)
-  {
-    mov_immediate64(dst, imm64);
-  }
+  inline void mov(Register dst, int imm64)                { mov_immediate64(dst, (uint64_t)imm64); }
+  inline void mov(Register dst, long imm64)               { mov_immediate64(dst, (uint64_t)imm64); }
+  inline void mov(Register dst, long long imm64)          { mov_immediate64(dst, (uint64_t)imm64); }
+  inline void mov(Register dst, unsigned int imm64)       { mov_immediate64(dst, (uint64_t)imm64); }
+  inline void mov(Register dst, unsigned long imm64)      { mov_immediate64(dst, (uint64_t)imm64); }
+  inline void mov(Register dst, unsigned long long imm64) { mov_immediate64(dst, (uint64_t)imm64); }
 
   inline void movw(Register dst, u_int32_t imm32)
   {
     mov_immediate32(dst, imm32);
-  }
-
-  inline void mov(Register dst, int64_t l)
-  {
-    mov(dst, (u_int64_t)l);
-  }
-
-  inline void mov(Register dst, int i)
-  {
-    mov(dst, (int64_t)i);
   }
 
   void mov(Register dst, RegisterOrConstant src) {
