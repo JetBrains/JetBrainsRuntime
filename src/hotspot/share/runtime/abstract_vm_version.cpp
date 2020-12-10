@@ -22,10 +22,17 @@
  *
  */
 
+/*
+ * This file has been modified by Azul Systems, Inc. in 2018. These
+ * modifications are Copyright (c) 2018 Azul Systems, Inc., and are made
+ * available on the same license terms set forth above.
+ */
+
 #include "precompiled.hpp"
-#include "logging/log.hpp"
-#include "logging/logStream.hpp"
+#include "compiler/compilerDefinitions.hpp"
+#include "runtime/arguments.hpp"
 #include "runtime/vm_version.hpp"
+#include "utilities/globalDefinitions.hpp"
 
 const char* Abstract_VM_Version::_s_vm_release = Abstract_VM_Version::vm_release();
 const char* Abstract_VM_Version::_s_internal_vm_info_string = Abstract_VM_Version::internal_vm_info_string();
@@ -116,7 +123,7 @@ const char* Abstract_VM_Version::vm_vendor() {
 #ifdef VENDOR
   return VENDOR;
 #else
-  return "JetBrains s.r.o";
+  return "Oracle Corporation";
 #endif
 }
 
@@ -310,13 +317,78 @@ unsigned int Abstract_VM_Version::jvm_version() {
          (Abstract_VM_Version::vm_build_number() & 0xFF);
 }
 
-void VM_Version_init() {
-  VM_Version::initialize();
-
-  if (log_is_enabled(Info, os, cpu)) {
-    char buf[1024];
-    ResourceMark rm;
-    LogStream ls(Log(os, cpu)::info());
-    os::print_cpu_info(&ls, buf, sizeof(buf));
+bool Abstract_VM_Version::print_matching_lines_from_file(const char* filename, outputStream* st, const char* keywords_to_match[]) {
+  char line[500];
+  FILE* fp = fopen(filename, "r");
+  if (fp == NULL) {
+    return false;
   }
+
+  st->print_cr("Virtualization information:");
+  while (fgets(line, sizeof(line), fp) != NULL) {
+    int i = 0;
+    while (keywords_to_match[i] != NULL) {
+      if (strncmp(line, keywords_to_match[i], strlen(keywords_to_match[i])) == 0) {
+        st->print("%s", line);
+        break;
+      }
+      i++;
+    }
+  }
+  fclose(fp);
+  return true;
+}
+
+
+
+unsigned int Abstract_VM_Version::nof_parallel_worker_threads(
+                                                      unsigned int num,
+                                                      unsigned int den,
+                                                      unsigned int switch_pt) {
+  if (FLAG_IS_DEFAULT(ParallelGCThreads)) {
+    assert(ParallelGCThreads == 0, "Default ParallelGCThreads is not 0");
+    unsigned int threads;
+    // For very large machines, there are diminishing returns
+    // for large numbers of worker threads.  Instead of
+    // hogging the whole system, use a fraction of the workers for every
+    // processor after the first 8.  For example, on a 72 cpu machine
+    // and a chosen fraction of 5/8
+    // use 8 + (72 - 8) * (5/8) == 48 worker threads.
+    unsigned int ncpus = (unsigned int) os::initial_active_processor_count();
+    threads = (ncpus <= switch_pt) ?
+             ncpus :
+             (switch_pt + ((ncpus - switch_pt) * num) / den);
+#ifndef _LP64
+    // On 32-bit binaries the virtual address space available to the JVM
+    // is usually limited to 2-3 GB (depends on the platform).
+    // Do not use up address space with too many threads (stacks and per-thread
+    // data). Note that x86 apps running on Win64 have 2 stacks per thread.
+    // GC may more generally scale down threads by max heap size (etc), but the
+    // consequences of over-provisioning threads are higher on 32-bit JVMS,
+    // so add hard limit here:
+    threads = MIN2(threads, (2*switch_pt));
+#endif
+    return threads;
+  } else {
+    return ParallelGCThreads;
+  }
+}
+
+unsigned int Abstract_VM_Version::calc_parallel_worker_threads() {
+  return nof_parallel_worker_threads(5, 8, 8);
+}
+
+
+// Does not set the _initialized flag since it is
+// a global flag.
+unsigned int Abstract_VM_Version::parallel_worker_threads() {
+  if (!_parallel_worker_threads_initialized) {
+    if (FLAG_IS_DEFAULT(ParallelGCThreads)) {
+      _parallel_worker_threads = VM_Version::calc_parallel_worker_threads();
+    } else {
+      _parallel_worker_threads = ParallelGCThreads;
+    }
+    _parallel_worker_threads_initialized = true;
+  }
+  return _parallel_worker_threads;
 }
