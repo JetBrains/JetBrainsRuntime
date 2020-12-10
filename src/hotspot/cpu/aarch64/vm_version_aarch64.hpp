@@ -91,6 +91,7 @@ public:
     CPU_QUALCOM   = 'Q',
     CPU_MARVELL   = 'V',
     CPU_INTEL     = 'i',
+    CPU_APPLE     = 'a',
   };
 
   enum Feature_Flag {
