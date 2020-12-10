@@ -2530,7 +2530,7 @@ char *os::scan_pages(char *start, char* end, page_info* page_expected,
   return end;
 }
 
-bool os::pd_uncommit_memory(char* addr, size_t bytes) {
+bool os::pd_uncommit_memory(char* addr, size_t bytes, bool exec) {
   size_t size = bytes;
   // Map uncommitted pages PROT_NONE so we fail early if we touch an
   // uncommitted page. Otherwise, the read/write might succeed if we
@@ -2572,7 +2572,7 @@ char* os::Solaris::anon_mmap(char* requested_addr, size_t bytes,
 }
 
 char* os::pd_reserve_memory(size_t bytes, char* requested_addr,
-                            size_t alignment_hint) {
+                            size_t alignment_hint, bool executable) {
   char* addr = Solaris::anon_mmap(requested_addr, bytes, alignment_hint,
                                   (requested_addr != NULL));
 
