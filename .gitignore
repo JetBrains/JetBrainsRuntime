@@ -24,3 +24,4 @@ test/nashorn/lib
 NashornProfile.txt
 **/JTreport/**
 **/JTwork/**
+/jb/project/java-gradle/.idea/workspace.xml

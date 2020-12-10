@@ -2997,7 +2997,7 @@ encode %{
         if (con < (address)(uintptr_t)os::vm_page_size()) {
           __ mov(dst_reg, con);
         } else {
-          uintptr_t offset;
+          uint64_t offset;
           __ adrp(dst_reg, con, offset);
           __ add(dst_reg, dst_reg, offset);
         }
@@ -3021,7 +3021,7 @@ encode %{
     MacroAssembler _masm(&cbuf);
     address page = (address)$src$$constant;
     Register dst_reg = as_Register($dst$$reg);
-    unsigned long off;
+    uint64_t off;
     __ adrp(dst_reg, Address(page, relocInfo::poll_type), off);
     assert(off == 0, "assumed offset == 0");
   %}

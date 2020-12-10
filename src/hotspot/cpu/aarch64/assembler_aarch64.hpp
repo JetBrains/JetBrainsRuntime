@@ -378,9 +378,15 @@ class Address {
     : _mode(base_plus_offset), _base(r), _offset(0), _index(noreg), _target(0) { }
   Address(Register r, int o)
     : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
-  Address(Register r, int64_t o)
+  Address(Register r, long o)
     : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
-  Address(Register r, uint64_t o)
+  Address(Register r, long long o)
+    : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
+  Address(Register r, unsigned int o)
+    : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
+  Address(Register r, unsigned long o)
+    : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
+  Address(Register r, unsigned long long o)
     : _mode(base_plus_offset), _base(r), _offset(o), _index(noreg), _target(0) { }
 #ifdef ASSERT
   Address(Register r, ByteSize disp)
@@ -556,7 +562,7 @@ class Address {
   static bool offset_ok_for_immed(int64_t offset, int shift = 0) {
     unsigned mask = (1 << shift) - 1;
     if (offset < 0 || offset & mask) {
-      return (uabs(offset) < (1 << (20 - 12))); // Unscaled offset
+      return (uabs((julong)offset) < (1 << (20 - 12))); // Unscaled offset
     } else {
       return ((offset >> shift) < (1 << (21 - 10 + 1))); // Scaled, unsigned offset
     }
