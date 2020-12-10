@@ -252,16 +252,16 @@ void CardTable::resize_covered_region(MemRegion new_region) {
       MemRegion const uncommit_region =
         committed_unique_to_self(ind, MemRegion(new_end_aligned,
                                                 cur_committed.end()));
-      if (!uncommit_region.is_empty()) {
-        if (!os::uncommit_memory((char*)uncommit_region.start(),
-                                 uncommit_region.byte_size())) {
-          assert(false, "Card table contraction failed");
-          // The call failed so don't change the end of the
-          // committed region.  This is better than taking the
-          // VM down.
-          new_end_aligned = _committed[ind].end();
+        if (!uncommit_region.is_empty()) {
+            if (!os::uncommit_memory((char*)uncommit_region.start(),
+                                     uncommit_region.byte_size(), !ExecMem)) {
+                assert(false, "Card table contraction failed");
+                // The call failed so don't change the end of the
+                // committed region.  This is better than taking the
+                // VM down.
+                new_end_aligned = _committed[ind].end();
+            }
         }
-      }
     }
     // In any case, we can reset the end of the current committed entry.
     _committed[ind].set_end(new_end_aligned);
