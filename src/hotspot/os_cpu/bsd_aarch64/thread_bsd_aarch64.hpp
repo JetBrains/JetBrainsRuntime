@@ -60,8 +60,7 @@ private:
 public:
 
   static Thread *aarch64_get_thread_helper() {
-    Unimplemented();
-    return NULL;
+    return Thread::current();
   }
 
   // These routines are only used on cpu architectures that
