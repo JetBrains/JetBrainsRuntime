@@ -30,8 +30,9 @@ sh configure \
   --with-debug-level=release \
   --with-vendor-name="${VENDOR_NAME}" \
   --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
+  --with-jvm-features=shenandoahgc \
   --with-version-pre= \
-  --with-version-build=${JDK_BUILD_NUMBER} \
+  --with-version-build="${JDK_BUILD_NUMBER}" \
   --with-version-opt=b${build_number} \
   --with-boot-jdk=${BOOT_JDK} \
   --enable-cds=yes || exit $?
@@ -67,7 +68,7 @@ grep -v javafx modules.list | grep -v "jdk.internal.vm\|jdk.aot\|jcef" > modules
 echo Running jlink....
 ${JSDK}/bin/jlink \
   --module-path ${JSDK}/jmods --no-man-pages --compress=2 \
-  --add-modules $(xargs < modules.list.aarch64 | sed s/" "//g | sed s/,$//g) \
+  --add-modules $(xargs < modules.list.aarch64 | sed s/" "//g | sed s/',$'//g) \
   --output ${BASE_DIR}/${JBR_BUNDLE} || exit $?
 
 echo Modifying release info ...
