@@ -77,6 +77,7 @@ sh ./configure \
   $WITH_DEBUG_LEVEL \
   --with-vendor-name="$VENDOR_NAME" \
   --with-vendor-version-string="$VENDOR_VERSION_STRING" \
+  --with-jvm-features=shenandoahgc \
   --with-version-pre= \
   --with-version-build=$JDK_BUILD_NUMBER \
   --with-version-opt=b${build_number} \
@@ -109,7 +110,7 @@ modules=$(xargs < modules.list | sed s/" "//g) || do_exit $?
 create_image_bundle "jbr${jbr_name_postfix}" $JSDK_MODS_DIR "$modules" || do_exit $?
 
 # create sdk image bundle
-modules=$(cat ${JSDK}/release | grep MODULES | sed s/MODULES=//g | sed s/' '/,/g | sed s/\"//g | sed s/\\r//g | sed s/\\n//g)
+modules=$(cat ${JSDK}/release | grep MODULES | sed s/MODULES=//g | sed s/' '/','/g | sed s/\"//g | sed s/\\r//g | sed s/\\n//g)
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
   modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
 fi
