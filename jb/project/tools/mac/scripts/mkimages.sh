@@ -117,6 +117,7 @@ if [[ "${architecture}" == *aarch64* ]]; then
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="${VENDOR_NAME}" \
     --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
+    --with-jvm-features=shenandoahgc \
     --with-version-pre= \
     --with-version-build="${JDK_BUILD_NUMBER}" \
     --with-version-opt=b"${build_number}" \
@@ -131,6 +132,7 @@ else
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="$VENDOR_NAME" \
     --with-vendor-version-string="$VENDOR_VERSION_STRING" \
+    --with-jvm-features=shenandoahgc \
     --with-version-pre= \
     --with-version-build="$JDK_BUILD_NUMBER" \
     --with-version-opt=b"$build_number" \
