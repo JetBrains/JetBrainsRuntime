@@ -35,6 +35,7 @@ enable_aot=$6 # temporary param for building test jre with aot under aarch64
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=./modular-sdk}"
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
+architecture=${architecture:=x64}
 
 source jb/project/tools/common.sh
 
