@@ -31,7 +31,7 @@ for f in \
   if [ -d "$APP_DIRECTORY/$f" ]; then
     find "$APP_DIRECTORY/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -perm +111 \) \
-      -exec codesign --timestamp \
+      -exec codesign --timestamp --force \
       -v -s "$JB_CERT" --options=runtime \
       --entitlements entitlements.xml {} \;
   fi
@@ -55,7 +55,7 @@ find "$APP_DIRECTORY" -name '*.jar' \
 
     find jarfolder \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "jattach" \) \
-      -exec codesign --timestamp \
+      -exec codesign --timestamp --force \
       -v -s "$JB_CERT" --options=runtime \
       --entitlements entitlements.xml {} \;
 
@@ -71,7 +71,7 @@ for f in \
   if [ -d "$APP_DIRECTORY/$f" ]; then
     find "$APP_DIRECTORY/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -perm +111 \) \
-      -exec codesign --timestamp \
+      -exec codesign --timestamp --force \
       -v -s "$JB_CERT" --options=runtime \
       --entitlements entitlements.xml {} \;
   fi
