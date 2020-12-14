@@ -88,11 +88,12 @@ ReleaseCTStateDictionary(CFDictionaryRef ctStateDict)
     CFRelease(ctStateDict); // GC
 }
 
-void GetFontsAndGlyphsForCharacters(CTFontRef font, const UniChar unicodes[], CGGlyph glyphs[], jint glyphsAsInts[],
+void GetFontsAndGlyphsForCharacters(CTFontRef font, CTFontRef fallbackBase,
+                                    const UniChar unicodes[], CGGlyph glyphs[], jint glyphsAsInts[],
                                     CTFontRef actualFonts[], const size_t count)
 {
     CTFontGetGlyphsForCharacters(font, unicodes, glyphs, count);
-
+    if (!fallbackBase) fallbackBase = font;
     size_t i;
     for (i = 0; i < count; i++) {
         UniChar unicode = unicodes[i];
@@ -107,7 +108,7 @@ void GetFontsAndGlyphsForCharacters(CTFontRef font, const UniChar unicodes[], CG
             continue;
         }
 
-        const CTFontRef fallback = JRSFontCreateFallbackFontForCharacters(font, &unicodes[i], surrogatePair ? 2 : 1);
+        const CTFontRef fallback = JRSFontCreateFallbackFontForCharacters(fallbackBase, &unicodes[i], surrogatePair ? 2 : 1);
         if (fallback) {
             CTFontGetGlyphsForCharacters(fallback, &unicodes[i], &glyphs[i], surrogatePair ? 2 : 1);
             glyph = glyphs[i];
@@ -140,7 +141,8 @@ void GetFontsAndGlyphsForCharacters(CTFontRef font, const UniChar unicodes[], CG
 void CTS_GetGlyphsAsIntsForCharacters
 (const AWTFont *font, const UniChar unicodes[], CGGlyph glyphs[], jint glyphsAsInts[], const size_t count)
 {
-    GetFontsAndGlyphsForCharacters((CTFontRef)font->fFont, unicodes, glyphs, glyphsAsInts, NULL, count);
+    GetFontsAndGlyphsForCharacters((CTFontRef)font->fFont, (CTFontRef)font->fFallbackBase,
+                                   unicodes, glyphs, glyphsAsInts, NULL, count);
 }
 
 /*
@@ -151,6 +153,7 @@ CGGlyph CTS_CopyGlyphAndFontNamesForCodePoint
 (const AWTFont *font, const UnicodeScalarValue codePoint, CFStringRef fontNames[])
 {
     CTFontRef fontRef = (CTFontRef)font->fFont;
+    CTFontRef fallbackBase = (CTFontRef)font->fFallbackBase;
     int count = codePoint >= 0x10000 ? 2 : 1;
     UTF16Char unicodes[count];
     if (count == 1) {
@@ -161,7 +164,7 @@ CGGlyph CTS_CopyGlyphAndFontNamesForCodePoint
     CGGlyph glyphs[count];
     jint glyphsAsInts[count];
     CTFontRef actualFonts[count];
-    GetFontsAndGlyphsForCharacters(fontRef, unicodes, glyphs, glyphsAsInts, actualFonts, count);
+    GetFontsAndGlyphsForCharacters(fontRef, fallbackBase, unicodes, glyphs, glyphsAsInts, actualFonts, count);
     CGGlyph glyph = glyphs[0];
     bool substitutionHappened = glyphsAsInts[0] < 0;
     if (glyph > 0 && substitutionHappened) {
@@ -182,7 +185,18 @@ CGGlyph CTS_CopyGlyphAndFontNamesForCodePoint
  */
 CTFontRef CTS_CopyCTFallbackFontAndGlyphForUnicode
 (const AWTFont *font, const UTF16Char *charRef, CGGlyph *glyphRef, int count) {
-    CTFontRef fallback = JRSFontCreateFallbackFontForCharacters((CTFontRef)font->fFont, charRef, count);
+    CTFontRef primary = (CTFontRef)font->fFont;
+    CTFontRef fallbackBase = (CTFontRef)font->fFallbackBase;
+    if (fallbackBase) {
+        CTFontGetGlyphsForCharacters(primary, charRef, glyphRef, count);
+        if (glyphRef[0] > 0) {
+            CFRetain(primary);
+            return primary;
+        }
+    } else {
+        fallbackBase = primary;
+    }
+    CTFontRef fallback = JRSFontCreateFallbackFontForCharacters(fallbackBase, charRef, count);
     if (fallback == NULL)
     {
         // use the original font if we somehow got duped into trying to fallback something we can't
