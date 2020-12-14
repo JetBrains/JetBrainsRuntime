@@ -32,6 +32,7 @@
 @public
     NSFont    *fFont;
     CGFontRef  fNativeCGFont;
+    NSFont    *fFallbackBase; // used for system fonts
     BOOL       fIsFakeItalic;
 }
 
