@@ -38,11 +38,12 @@
 
 @implementation AWTFont
 
-- (id) initWithFont:(NSFont *)font {
+- (id) initWithFont:(NSFont *)font fallbackBase:(NSFont *)fallbackBaseFont {
     self = [super init];
     if (self) {
         fFont = [font retain];
         fNativeCGFont = CTFontCopyGraphicsFont((CTFontRef)font, NULL);
+        fFallbackBase = [fallbackBaseFont retain];
     }
     return self;
 }
@@ -75,6 +76,7 @@ static NSString* uiBoldName = nil;
 {
     // create font with family & size
     NSFont *nsFont = nil;
+    NSFont *nsFallbackBase = nil;
 
     if ((uiName != nil && [name isEqualTo:uiName]) ||
         (uiBoldName != nil && [name isEqualTo:uiBoldName])) {
@@ -83,6 +85,7 @@ static NSString* uiBoldName = nil;
         } else {
             nsFont = [NSFont systemFontOfSize:1.0];
         }
+        nsFallbackBase = [NSFont fontWithName:@"Lucida Grande" size:1.0];
 #ifdef DEBUG
         NSLog(@"nsFont-name is : %@", nsFont.familyName);
         NSLog(@"nsFont-family is : %@", nsFont.fontName);
@@ -112,7 +115,7 @@ static NSString* uiBoldName = nil;
         nsFont = [[NSFontManager sharedFontManager] convertFont:nsFont toHaveTrait:NSBoldFontMask];
     }
 
-    return [[[AWTFont alloc] initWithFont:nsFont] autorelease];
+    return [[[AWTFont alloc] initWithFont:nsFont fallbackBase:nsFallbackBase] autorelease];
 }
 
 + (NSFont *) nsFontForJavaFont:(jobject)javaFont env:(JNIEnv *)env {
