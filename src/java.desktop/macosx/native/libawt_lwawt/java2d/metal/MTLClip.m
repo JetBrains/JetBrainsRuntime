@@ -152,26 +152,17 @@ static id<MTLDepthStencilState> getStencilState(id<MTLDevice> device) {
         NSUInteger width = (NSUInteger)dstOps->width;
         NSUInteger height = (NSUInteger)dstOps->height;
         NSUInteger size = width * height;
-        id <MTLBuffer> buff = [mtlc.device newBufferWithLength:size options:MTLResourceStorageModePrivate];
+
+        MTLRenderPassDescriptor* clearPassDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
+        // set color buffer properties
+        clearPassDescriptor.colorAttachments[0].texture = dstOps->pStencilData;
+        clearPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+        clearPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0.0f, 0.0f,0.0f, 0.0f);
+
         id<MTLCommandBuffer> commandBuf = [mtlc createCommandBuffer];
-        id<MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
-        [blitEncoder fillBuffer:buff range:NSMakeRange(0, size) value:0];
-
-        MTLOrigin origin = MTLOriginMake(0, 0, 0);
-        MTLSize sourceSize = MTLSizeMake(width, height, 1);
-        [blitEncoder copyFromBuffer:buff
-                       sourceOffset:0
-                  sourceBytesPerRow:width
-                sourceBytesPerImage:size
-                         sourceSize:sourceSize
-                          toTexture:dstOps->pStencilData
-                   destinationSlice:0
-                   destinationLevel:0
-                  destinationOrigin:origin];
-        [blitEncoder endEncoding];
+        id <MTLRenderCommandEncoder> clearEncoder = [commandBuf renderCommandEncoderWithDescriptor:clearPassDescriptor];
+        [clearEncoder endEncoding];
         [commandBuf commit];
-
-        [buff release];
     }
 }
 

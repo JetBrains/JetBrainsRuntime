@@ -355,6 +355,14 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
         [MTLRenderPassDescriptor renderPassDescriptor];
     MTLRenderPassColorAttachmentDescriptor *ca = rpd.colorAttachments[0];
     ca.texture = dest;
+
+    // TODO: Find out why we cannot use
+    // if (_mtlc.clip.stencilMaskGenerationInProgress == YES) {
+    //     ca.loadAction = MTLLoadActionClear;
+    //     ca.clearColor = MTLClearColorMake(0.0f, 0.0f,0.0f, 0.0f);
+    // }
+    // here to avoid creation of clearEncoder in beginShapeClip
+
     ca.loadAction = MTLLoadActionLoad;
     ca.storeAction = MTLStoreActionStore;
 
