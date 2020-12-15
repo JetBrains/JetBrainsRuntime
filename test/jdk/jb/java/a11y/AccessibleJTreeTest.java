@@ -51,14 +51,13 @@ public class AccessibleJTreeTest extends AccessibleComponentTest {
         super.createUI(panel, "AccessibleJTreeTest");
     }
 
-    public void createSampleTreeUnvisableRoot() {
+    public void createSampleTreeInvisableRoot() {
         INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Check a11y of JTree with unvisable root in a simple Window.\n\n"
+                + "Check a11y of JTree with invisable root in a simple Window.\n\n"
                 + "Turn screen reader on, and Tab to the tree.\n"
                 + "Press the arrow buttons to move through the tree.\n\n"
                 + "If you can hear tree components tab further and press PASS, otherwise press FAIL.\n";
 
-        String root = "Root";
         String[] nodes = new String[] {"One node", "Two node"};
         String[][] leafs = new String[][]{{"leaf 1.1", "leaf 1.2", "leaf 1.3", "leaf 1.4"},
                 {"leaf 2.1", "leaf 2.2", "leaf 2.3", "leaf 2.4"}};
@@ -119,7 +118,7 @@ public class AccessibleJTreeTest extends AccessibleComponentTest {
         }
 
         countDownLatch = test.createCountDownLatch();
-        SwingUtilities.invokeAndWait(test::createSampleTreeUnvisableRoot);
+        SwingUtilities.invokeAndWait(test::createSampleTreeInvisableRoot);
         AccessibleComponentTest.countDownLatch.await(15, TimeUnit.MINUTES);
         if (!testResult) {
             throw new RuntimeException(exceptionString);
