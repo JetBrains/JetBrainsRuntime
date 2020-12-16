@@ -22,9 +22,12 @@ enum Clip {
  * */
 
 @interface MTLClip : NSObject
-@property (readonly) id<MTLTexture> stencilAADataRef;
 @property (readonly) id<MTLTexture> stencilTextureRef;
 @property (readonly) BOOL stencilMaskGenerationInProgress;
+@property NSUInteger shapeX;
+@property NSUInteger shapeY;
+@property NSUInteger shapeWidth;
+@property NSUInteger shapeHeight;
 
 - (id)init;
 - (BOOL)isEqual:(MTLClip *)other; // used to compare requested with cached

@@ -418,13 +418,24 @@ void MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount,
     const int TOTAL_VERTICES_IN_BLOCK = 510;
     struct Vertex vertexList[TOTAL_VERTICES_IN_BLOCK]; // a total of 170 triangles ==> 85 spans
 
+    jfloat shapeX1 = mtlc.clip.shapeX;
+    jfloat shapeY1 = mtlc.clip.shapeY;
+    jfloat shapeX2 = shapeX1 + mtlc.clip.shapeWidth;
+    jfloat shapeY2 = shapeY1 + mtlc.clip.shapeHeight;
+
     int counter = 0;
-    jint *aaspans = spans;
     for (int i = 0; i < spanCount; i++) {
         jfloat x1 = *(spans++);
         jfloat y1 = *(spans++);
         jfloat x2 = *(spans++);
         jfloat y2 = *(spans++);
+
+        if (mtlc.clip.stencilMaskGenerationInProgress == JNI_TRUE) {
+            if (shapeX1 > x1) shapeX1 = x1;
+            if (shapeY1 > y1) shapeY1 = y1;
+            if (shapeX2 < x2) shapeX2 = x2;
+            if (shapeY2 < y2) shapeY2 = y2;
+        }
 
         struct Vertex verts[6] = {
             {{x1, y1}},
@@ -451,6 +462,22 @@ void MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount,
     if (counter != 0) {
         [mtlEncoder setVertexBytes:vertexList length:sizeof(vertexList) atIndex:MeshVertexBuffer];
         [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:counter];
+    }
+
+    if (mtlc.clip.stencilMaskGenerationInProgress == JNI_TRUE) {
+        if (shapeX1 < 0) shapeX1 = 0;
+        if (shapeY1 < 0) shapeY1 = 0;
+        if (shapeX1 > dest.width) shapeX1 = dest.width;
+        if (shapeY1 > dest.height) shapeY1 = dest.height;
+        if (shapeX2 < 0) shapeX2 = 0;
+        if (shapeY2 < 0) shapeY2 = 0;
+        if (shapeX2 > dest.width) shapeX2 = dest.width;
+        if (shapeY2 > dest.height) shapeY2 = dest.height;
+
+        mtlc.clip.shapeX = (NSUInteger) shapeX1;
+        mtlc.clip.shapeY = (NSUInteger) shapeY1;
+        mtlc.clip.shapeWidth = (NSUInteger) (shapeX2 - shapeX1);
+        mtlc.clip.shapeHeight = (NSUInteger) (shapeY2 - shapeY1);
     }
 }
 
