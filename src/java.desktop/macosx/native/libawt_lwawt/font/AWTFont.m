@@ -24,6 +24,7 @@
  */
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
+#include "TargetConditionals.h"
 
 #import "java_awt_Font.h"
 #import "sun_awt_PlatformFont.h"
@@ -87,7 +88,9 @@ static NSString* uiBoldName = nil;
         } else {
             nsFont = [NSFont systemFontOfSize:1.0];
         }
+#if TARGET_CPU_ARM64
         nsFallbackBase = [NSFont fontWithName:@"Lucida Grande" size:1.0];
+#endif
 #ifdef DEBUG
         NSLog(@"nsFont-name is : %@", nsFont.familyName);
         NSLog(@"nsFont-family is : %@", nsFont.fontName);
