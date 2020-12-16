@@ -427,7 +427,7 @@ public class Font implements java.io.Serializable
      * If the origin of a Font is a created font then this attribute
      * must be set on all derived fonts too.
      */
-    private transient boolean createdFont = false;
+    private boolean createdFont = false;
 
     /*
      * This is true if the font transform is not identity.  It
