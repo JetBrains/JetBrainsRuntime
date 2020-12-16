@@ -217,7 +217,7 @@ fi
 if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
   echo Creating $JBSDK.tar.gz ...
   if [[ "${architecture}" == *aarch64* ]]; then
-    copyJNF $BASE_DIR/$JBRSDK_BUNDLE
+    copyJNF $BASE_DIR/$JBRSDK_BUNDLE/Contents/
   fi
   sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
