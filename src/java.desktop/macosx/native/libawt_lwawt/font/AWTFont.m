@@ -49,8 +49,8 @@
 }
 
 - (void) dealloc {
-    [fallbackBaseFont release];
-    fallbackBaseFont = nil;
+    [fFallbackBase release];
+    fFallbackBase = nil;
 
     [fFont release];
     fFont = nil;
