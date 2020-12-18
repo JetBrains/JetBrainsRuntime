@@ -1159,17 +1159,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 [cbwrapper release];
             }];
             [commandbuf commit];
-            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
-            if (dstOps != NULL) {
-                MTLSDOps *dstMTLOps = (MTLSDOps *)dstOps->privOps;
-                MTLLayer *layer = (MTLLayer*)dstMTLOps->layer;
-                if (layer != NULL) {
-                    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                        AWT_ASSERT_APPKIT_THREAD;
-                        [layer setNeedsDisplay];
-                    }];
-                }
-            }
         }
         RESET_PREVIOUS_OP();
     }

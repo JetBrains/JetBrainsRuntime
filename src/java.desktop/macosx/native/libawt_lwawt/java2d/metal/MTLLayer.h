@@ -27,6 +27,7 @@
 #define MTLLayer_h_Included
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
+#include <CoreVideo/CVDisplayLink.h>
 #import "common.h"
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
@@ -44,6 +45,7 @@
     int nextDrawableCount;
     int topInset;
     int leftInset;
+    CVDisplayLinkRef displayLink;
 }
 
 @property (nonatomic, retain) JNFWeakJObjectWrapper *javaLayer;
@@ -54,6 +56,7 @@
 @property (readwrite, assign) int nextDrawableCount;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
+@property (readwrite, assign) CVDisplayLinkRef displayLink;
 
 - (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer;
 
@@ -66,6 +69,7 @@
                            DY2:(jfloat)dy2;
 - (void) blitCallback;
 - (void) display;
+- (void) redraw;
 @end
 
 #endif /* CGLLayer_h_Included */

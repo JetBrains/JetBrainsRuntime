@@ -40,6 +40,7 @@
 @synthesize topInset;
 @synthesize leftInset;
 @synthesize nextDrawableCount;
+@synthesize displayLink;
 
 - (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer
 {
@@ -70,6 +71,8 @@
     self.framebufferOnly = NO;
     self.nextDrawableCount = 0;
     self.opaque = FALSE;
+    CVDisplayLinkCreateWithActiveCGDisplays(&displayLink);
+    CVDisplayLinkSetOutputCallback(displayLink, &displayLinkCallback, (__bridge void*)self);
     return self;
 }
 
@@ -79,8 +82,9 @@
         return;
     }
 
-    if (self.nextDrawableCount != 0)
+    if (self.nextDrawableCount != 0) {
         return;
+    }
     @autoreleasepool {
         if ((self.buffer.width == 0) || (self.buffer.height == 0)) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
@@ -117,6 +121,10 @@
 
 - (void) dealloc {
     self.javaLayer = nil;
+    if (CVDisplayLinkIsRunning(self.displayLink))
+        CVDisplayLinkStop(self.displayLink);
+    CVDisplayLinkRelease(self.displayLink);
+    self.displayLink = nil;
     [super dealloc];
 }
 
@@ -140,6 +148,21 @@
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_display() called");
     [self blitCallback];
     [super display];
+}
+
+- (void) redraw {
+    AWT_ASSERT_APPKIT_THREAD;
+    [self setNeedsDisplay];
+}
+
+CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext)
+{
+    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_displayLinkCallback() called");
+    @autoreleasepool {
+        MTLLayer *layer = (__bridge MTLLayer *)displayLinkContext;
+        [layer performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
+    }
+    return kCVReturnSuccess;
 }
 @end
 
@@ -187,8 +210,12 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.drawableSize =
             CGSizeMake(layer.buffer.width,
                        layer.buffer.height);
+        if (!CVDisplayLinkIsRunning(layer.displayLink))
+            CVDisplayLinkStart(layer.displayLink);
     } else {
         layer.ctx = NULL;
+        if (CVDisplayLinkIsRunning(layer.displayLink))
+            CVDisplayLinkStop(layer.displayLink);
     }
 }
 
