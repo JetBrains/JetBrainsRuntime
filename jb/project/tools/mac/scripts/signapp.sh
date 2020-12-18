@@ -125,7 +125,7 @@ log "Zipping $BUILD_NAME to $INPUT_FILE ..."
     mv $BACKUP_JMODS/jmods $EXPLODED/$BUILD_NAME/Contents/Home
   fi
 
-  COPYFILE_DISABLE=1 tar -pczf $INPUT_FILE --exclude='*.dSYM' --exclude='man' -C $EXPLODED $BUILD_NAME
+  tar -pczvf $INPUT_FILE --exclude='*.dSYM' --exclude='man' -C $EXPLODED $BUILD_NAME
   log "Finished zipping"
 )
 rm -rf "$EXPLODED"
