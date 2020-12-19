@@ -22,9 +22,10 @@
  */
 
 import java.awt.Toolkit;
+import java.io.Closeable;
 import java.io.IOException;
 
-public class LinuxTouchScreenDevice implements AutoCloseable {
+public class LinuxTouchScreenDevice implements Closeable {
     // TODO add product id
     private int width;
     private int height;
@@ -47,7 +48,7 @@ public class LinuxTouchScreenDevice implements AutoCloseable {
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() throws IOException {
         checkCompletion(destroy(fileDescriptor),
                 "Failed to close touchscreen device");
     }
