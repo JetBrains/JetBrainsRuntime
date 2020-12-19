@@ -24,7 +24,10 @@
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import java.awt.AWTException;
+import java.awt.MouseInfo;
 import java.awt.Rectangle;
+import java.awt.Robot;
+import java.awt.event.InputEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseWheelEvent;
@@ -33,10 +36,13 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import sun.awt.event.TouchEvent;
+
 /**
  * @test
  * @summary Regression test for JBR-2041: Touchscreen devices support
  * @requires (jdk.version.major >= 11) & (os.family == "windows")
+ * @modules java.desktop/sun.awt.event
  * @build WindowsTouchRobot TouchScreenEventsTest
  * @run main/othervm/native TouchScreenEventsTest
  */
@@ -46,10 +52,9 @@ public class TouchScreenEventsTest {
     static final int TIMEOUT = 2;
     static final int PAUSE = 1000;
 
-    // TODO make this constants accessible within jdk
-    static final int TOUCH_BEGIN = 2;
-    static final int TOUCH_UPDATE = 3;
-    static final int TOUCH_END = 4;
+    static final int TRACKING_ID = 42;
+
+    static final String OS_NAME = System.getProperty("os.name").toLowerCase();
 
     public static void main(String[] args) throws Exception {
         if(runTest(new TouchClickSuite())
@@ -64,9 +69,9 @@ public class TouchScreenEventsTest {
     }
 
     private static boolean runTest(TouchTestSuite suite) throws Exception {
+        TouchRobot robot = getTouchRobot();
         GUI gui = new GUI();
         try {
-            TouchRobot robot = getTouchRobot();
             SwingUtilities.invokeAndWait(gui::createAndShow);
             suite.addListener(gui.frame);
             robot.waitForIdle();
@@ -75,7 +80,15 @@ public class TouchScreenEventsTest {
             robot.waitForIdle();
             return suite.passed();
         } finally {
-            SwingUtilities.invokeLater(() -> {
+            if (OS_NAME.contains("linux")) {
+                // Workaround for JBR-2585
+                robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+                robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+                robot.waitForIdle();
+                // Close LinuxTouchScreenDevice
+                ((LinuxTouchRobot) robot).closeDevice();
+            }
+            SwingUtilities.invokeAndWait(() -> {
                 if (gui.frame != null) {
                     gui.frame.dispose();
                 }
@@ -85,10 +98,9 @@ public class TouchScreenEventsTest {
     }
 
     private static TouchRobot getTouchRobot() throws IOException, AWTException {
-        String osName = System.getProperty("os.name").toLowerCase();
-        if (osName.contains("linux"))  {
+        if (OS_NAME.contains("linux"))  {
             return new LinuxTouchRobot();
-        } else if (osName.contains("windows")) {
+        } else if (OS_NAME.contains("windows")) {
             return new WindowsTouchRobot();
         }
         throw new RuntimeException("Touch robot for this platform isn't implemented");
@@ -103,6 +115,7 @@ class GUI {
         frame = new JFrame();
         frame.setSize(640, 480);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setAlwaysOnTop(true);
         frame.setVisible(true);
         frameBounds = frame.getBounds();
     }
@@ -162,7 +175,7 @@ class TouchClickSuite implements MouseListener, TouchTestSuite {
     public void perform(GUI gui, TouchRobot robot) throws IOException {
         int x = gui.frameBounds.x + gui.frameBounds.width / 2;
         int y = gui.frameBounds.y + gui.frameBounds.height / 2;
-        robot.touchClick(42, x, y);
+        robot.touchClick(TouchScreenEventsTest.TRACKING_ID, x, y);
     }
 
     @Override
@@ -194,17 +207,17 @@ class TouchMoveSuite implements MouseWheelListener, TouchTestSuite {
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
-        if (e.getScrollType() == TouchScreenEventsTest.TOUCH_BEGIN) {
+        if (e.getScrollType() == TouchEvent.TOUCH_BEGIN) {
             if (!begin) {
                 begin = true;
                 latch.countDown();
             }
-        } else if (e.getScrollType() == TouchScreenEventsTest.TOUCH_UPDATE) {
+        } else if (e.getScrollType() == TouchEvent.TOUCH_UPDATE) {
             if (!update) {
                 update = true;
                 latch.countDown();
             }
-        } else if (e.getScrollType() == TouchScreenEventsTest.TOUCH_END) {
+        } else if (e.getScrollType() == TouchEvent.TOUCH_END) {
             if (!end) {
                 end = true;
                 latch.countDown();
@@ -218,7 +231,7 @@ class TouchMoveSuite implements MouseWheelListener, TouchTestSuite {
         int y1 = gui.frameBounds.y + gui.frameBounds.height / 4;
         int x2 = gui.frameBounds.x + gui.frameBounds.width / 2;
         int y2 = gui.frameBounds.y + gui.frameBounds.height / 2;
-        robot.touchMove(42, x1, y1, x2, y2);
+        robot.touchMove(TouchScreenEventsTest.TRACKING_ID, x1, y1, x2, y2);
     }
 
     @Override
@@ -249,7 +262,7 @@ class TouchTinyMoveSuite implements MouseWheelListener, MouseListener, TouchTest
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
-        if (e.getScrollType() == TouchScreenEventsTest.TOUCH_UPDATE) {
+        if (e.getScrollType() == TouchEvent.TOUCH_UPDATE) {
             scroll = true;
             latch.countDown();
         }
@@ -262,7 +275,7 @@ class TouchTinyMoveSuite implements MouseWheelListener, MouseListener, TouchTest
         // move inside tiny area
         int x2 = x1 + 1;
         int y2 = y1 + 1;
-        robot.touchMove(42, x1, y1, x2, y2);
+        robot.touchMove(TouchScreenEventsTest.TRACKING_ID, x1, y1, x2, y2);
     }
 
     @Override
@@ -321,7 +334,7 @@ class TouchAxesScrollSuite implements MouseWheelListener, TouchTestSuite {
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
-        if (e.getScrollType() == TouchScreenEventsTest.TOUCH_UPDATE) {
+        if (e.getScrollType() == TouchEvent.TOUCH_UPDATE) {
             if (e.isShiftDown()) {
                 horizontal = true;
             } else {
@@ -338,11 +351,11 @@ class TouchAxesScrollSuite implements MouseWheelListener, TouchTestSuite {
         switch (axis) {
             case X:
                 int x2 = gui.frameBounds.x + gui.frameBounds.width / 2;
-                robot.touchMove(42, x1, y1, x2, y1);
+                robot.touchMove(TouchScreenEventsTest.TRACKING_ID, x1, y1, x2, y1);
                 break;
             case Y:
                 int y2 = gui.frameBounds.y + gui.frameBounds.height / 2;
-                robot.touchMove(42, x1, y1, x1, y2);
+                robot.touchMove(TouchScreenEventsTest.TRACKING_ID, x1, y1, x1, y2);
                 break;
         }
     }
