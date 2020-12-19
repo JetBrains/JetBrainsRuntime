@@ -19,26 +19,37 @@
 # @test
 # @summary Regression test for JBR-2041: Touchscreen devices support
 # @requires (jdk.version.major >= 11) & (os.family == "linux")
+# @modules java.desktop/sun.awt.event
 # @build TouchRobot LinuxTouchRobot LinuxTouchScreenDevice TouchScreenEventsTest
 # @run shell TouchScreenEventsTestLinux.sh
 
 # password for sudo
 PASSWORD=${BUPWD}
 
+if [ "${PASSWORD}" = "" ]
+then
+  echo "Error: Root password is empty"; exit 1
+fi
+
 echo "Allow current user write to /dev/uinput:"
 echo "> sudo chown `whoami` /dev/uinput"
 echo ${PASSWORD} | sudo -S chown `whoami` /dev/uinput
-echo "result=$?"
+if [ $? != 0 ] ; then
+  echo "Error: Cannot change owner of /dev/uinput"; exit 1
+fi
+
 
 echo "Launching TouchScreenEventsTest.java:"
 echo "> $TESTJAVA/bin/java $TESTVMOPTS -cp $TESTCLASSES TouchScreenEventsTest"
 $TESTJAVA/bin/java $TESTVMOPTS -cp $TESTCLASSES TouchScreenEventsTest
 result=$?
-echo "result=$result"
+echo "Test run result=$result"
 
-echo "Restore permissions for /dev/uinput:"
+echo "Restore permissions on /dev/uinput:"
 echo "> sudo chown root /dev/uinput"
 echo ${PASSWORD} | sudo -S chown root /dev/uinput
-echo "result=$?"
+if [ $? != 0 ] ; then
+  echo "Error: Cannot restore permissions on /dev/uinput"
+fi
 
 exit $result
