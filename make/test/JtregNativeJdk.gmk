@@ -123,6 +123,17 @@ else
   BUILD_JDK_JTREG_EXCLUDE += exeLibraryCache.c
 endif
 
+ifeq ($(OPENJDK_TARGET_OS), windows)
+  BUILD_JDK_JTREG_LIBRARIES_LIBS_libwindows_touch_robot := user32.lib
+  BUILD_JDK_JTREG_EXCLUDE += libtouchscreen_device.c
+else
+  ifeq ($(OPENJDK_TARGET_OS), linux)
+    BUILD_JDK_JTREG_EXCLUDE += libwindows_touch_robot.c
+  else
+    BUILD_JDK_JTREG_EXCLUDE += libtouchscreen_device.c libwindows_touch_robot.c
+  endif
+endif
+
 ifeq ($(call isTargetOs, linux), true)
   # Unconditionally compile with debug symbols and don't ever perform
   # stripping during the test libraries' build.
