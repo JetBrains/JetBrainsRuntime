@@ -45,4 +45,8 @@ public class LinuxTouchRobot extends TouchRobot {
     public void touchMove(int fingerId, int fromX, int fromY, int toX, int toY) throws IOException {
         device.move(fingerId, fromX, fromY, toX, toY);
     }
+
+    public void closeDevice() throws IOException {
+        device.close();
+    }
 }
