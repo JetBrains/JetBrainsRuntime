@@ -98,13 +98,7 @@ function create_jbr {
   if [[ "${architecture}" == *aarch64* ]]; then
     # we can't notarize this library as usual framework (with headers and tbd-file)
     # but single library notarizes correctly
-    mkdir -p ${JRE_CONTENTS}/Frameworks/JavaNativeFoundation.framework/Resources
-    cp -p Frameworks/JavaNativeFoundation.framework/JavaNativeFoundation \
-      ${JRE_CONTENTS}/Frameworks/JavaNativeFoundation.framework || do_exit $?
-    cp -p Frameworks/JavaNativeFoundation.framework/Resources/Info.plist \
-      ${JRE_CONTENTS}/Frameworks/JavaNativeFoundation.framework/Resources || do_exit $?
-    # unsign JavaNativeFoundation binary (otherwise notarization will fail)
-    codesign --remove-signature ${JRE_CONTENTS}/Frameworks/JavaNativeFoundation.framework/JavaNativeFoundation || do_exit $?
+    copyJNF ${JRE_CONTENTS}
   fi
   if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
     cp -a ${JCEF_PATH}/Frameworks ${JRE_CONTENTS} || do_exit $?
@@ -217,13 +211,13 @@ fi
 if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
   echo Creating $JBSDK.tar.gz ...
   if [[ "${architecture}" == *aarch64* ]]; then
-    copyJNF $BASE_DIR/$JBRSDK_BUNDLE/Contents/
+    copyJNF $BASE_DIR/$JBRSDK_BUNDLE/Contents
   fi
   sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
   [ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
   COPYFILE_DISABLE=1 tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
-    --exclude='._*' --exclude='.DS_Store' --exclude='*~' \
+    --exclude='.DS_Store' --exclude='*~' \
     --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
     ${JBRSDK_BUNDLE} || do_exit $?
 fi
