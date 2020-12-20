@@ -58,7 +58,7 @@ file="$APP_NAME.zip"
 
 log "Zipping $file..."
 rm -rf "$file"
-ditto -c -k --sequesterRsrc --keepParent "$APP_DIRECTORY/Contents" "$file"
+ditto -c -k --sequesterRsrc --keepParent "$APP_DIRECTORY" "$file"
 
 log "Notarizing $file..."
 rm -rf "altool.init.out" "altool.check.out"
