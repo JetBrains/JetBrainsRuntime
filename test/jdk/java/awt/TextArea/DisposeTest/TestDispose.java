@@ -38,11 +38,14 @@ import java.awt.Frame;
 import java.awt.TextArea;
 import java.awt.Robot;
 import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 public class TestDispose {
+
+    public static final int TIMEOUT = 30;
 
     public static Frame frame = null;
     public static TextArea textArea = null;
@@ -57,33 +60,33 @@ public class TestDispose {
             ex.printStackTrace();
             throw new RuntimeException("Unexpected failure");
         }
+        try {
+            SwingUtilities.invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    frame = new JFrame("Test");
 
+                    textArea = new TextArea("editable textArea");
+                    textArea.setEditable(true);
+                    // textArea.setEditable(false); // this testcase passes if textArea is non-editable
 
-        SwingUtilities.invokeAndWait(new Runnable() {
-            @Override
-            public void run() {
-                frame = new JFrame("Test");
+                    frame.setLayout(new FlowLayout());
+                    frame.add(textArea);
 
-                textArea = new TextArea("editable textArea");
-                textArea.setEditable(true);
-                // textArea.setEditable(false); // this testcase passes if textArea is non-editable
-
-                frame.setLayout(new FlowLayout());
-                frame.add(textArea);
-
-                frame.pack();
-                frame.setVisible(true);
-            }
-        });
-        robot.waitForIdle();
-
-        SwingUtilities.invokeAndWait(new Runnable() {
-            @Override
-            public void run() {
-                frame.dispose();
-            }
-        });
-        robot.waitForIdle();
+                    frame.pack();
+                    frame.setVisible(true);
+                }
+            });
+            robot.waitForIdle();
+        } finally {
+            SwingUtilities.invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    frame.dispose();
+                }
+            });
+            robot.waitForIdle();
+        }
     }
 
     public static void main(String[] args) throws Exception{
@@ -94,10 +97,21 @@ public class TestDispose {
                 }
             });
 
-            System.out.println(System.getProperty("java.home")+"/bin/java TestDispose workprocess");
-            worker = Runtime.getRuntime().exec(System.getProperty("java.home")+"/bin/java TestDispose workprocess");
-            worker.waitFor();
-            return;
+            System.out.println(System.getProperty("java.home") + "/bin/java -cp "
+                    + System.getProperty("java.class.path") + " " + TestDispose.class.getName() + " workprocess");
+            worker = new ProcessBuilder(System.getProperty("java.home")+"/bin/java",
+                    "-cp", System.getProperty("java.class.path"), TestDispose.class.getName(), "workprocess")
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .start();
+            if(worker.waitFor(TIMEOUT, TimeUnit.SECONDS)) {
+                if(worker.exitValue() != 0) {
+                    throw new RuntimeException("TEST ERROR: subprocess has finished abnormally");
+                }
+                System.out.println("TEST PASSED");
+                return;
+            } else {
+                throw new RuntimeException("TEST FAILED: subprocess has not finished for " + TIMEOUT + " sec");
+            }
         }
 
         TestDispose app = new TestDispose();
