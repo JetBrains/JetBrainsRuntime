@@ -364,17 +364,32 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
                                 if (owner != null) {
                                     hasOwnerPtr = 0L != owner.executeGet(ownerPtr -> {
-                                        ref.set(nativeCreateNSWindow(viewPtr, ownerPtr, styleBits,
-                                                bounds.x, bounds.y,
-                                                bounds.width, bounds.height));
+                                        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                                            logger.fine("nativeCreateNSWindow: owner=" + Long.toHexString(ownerPtr)
+                                                            + ", styleBits=" + Integer.toHexString(styleBits)
+                                                            + ", bounds=" + bounds);
+                                        }
+                                        long windowPtr = nativeCreateNSWindow(viewPtr, ownerPtr, styleBits,
+                                                bounds.x, bounds.y, bounds.width, bounds.height);
+                                        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                                            logger.fine("window created: " + Long.toHexString(windowPtr));
+                                        }
+                                        ref.set(windowPtr);
                                         return 1;
                                     });
                                 }
 
                                 if (!hasOwnerPtr) {
-                                    ref.set(nativeCreateNSWindow(viewPtr, 0,
-                                            styleBits, bounds.x, bounds.y,
-                                            bounds.width, bounds.height));
+                                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                                        logger.fine("nativeCreateNSWindow: styleBits=" + Integer.toHexString(styleBits)
+                                                        + ", bounds=" + bounds);
+                                    }
+                                    long windowPtr = nativeCreateNSWindow(viewPtr, 0, styleBits,
+                                            bounds.x, bounds.y, bounds.width, bounds.height);
+                                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                                        logger.fine("window created: " + Long.toHexString(windowPtr));
+                                    }
+                                    ref.set(windowPtr);
                                 }
                             });
                             return ref.get();
@@ -558,7 +573,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     // this is the counter-point to -[CWindow _nativeSetStyleBit:]
     private void setStyleBits(final int mask, final int value) {
-        execute(ptr -> nativeSetNSWindowStyleBits(ptr, mask, value));
+        execute(ptr -> {
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("nativeSetNSWindowStyleBits: window=" + Long.toHexString(ptr)
+                        + ", mask=" + Integer.toHexString(mask) + ", value=" + Integer.toHexString(value));
+            }
+            nativeSetNSWindowStyleBits(ptr, mask, value);
+        });
     }
 
     private native void _toggleFullScreenMode(final long model);
@@ -746,6 +767,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
                     boolean isKeyWindow = CWrapper.NSWindow.isKeyWindow(ptr);
                     if (!isKeyWindow) {
+                        logger.fine("setVisible: makeKeyWindow");
                         CWrapper.NSWindow.makeKeyWindow(ptr);
                     }
 
@@ -1074,7 +1096,12 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             execute(ptr -> nativeSynthesizeMouseEnteredExitedEvents(ptr, CocoaConstants.NSEventTypeMouseExited));
         }
 
-        execute(ptr -> nativeSetEnabled(ptr, !blocked));
+        execute(ptr -> {
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("nativeSetEnabled: window=" + Long.toHexString(ptr) + ", enabled=" + !blocked);
+            }
+            nativeSetEnabled(ptr, !blocked);
+        });
 
         Window currFocus = LWKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow();
         if (!blocked && (target == currFocus)) {
@@ -1265,6 +1292,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         pWindow.orderAboveSiblings();
 
         pWindow.execute(ptr -> {
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("Focus blocker " + Long.toHexString(ptr));
+            }
             CWrapper.NSWindow.orderFrontRegardless(ptr);
             CWrapper.NSWindow.makeKeyAndOrderFront(ptr);
             CWrapper.NSWindow.makeMainWindow(ptr);
