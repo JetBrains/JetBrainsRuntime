@@ -686,6 +686,7 @@ class XDnDDropTargetProtocol extends XDropTargetProtocol {
         }
 
         if (targetXWindow != null) {
+            targetXWindow.setUserTime(xclient.get_data(2), true);
             notifyProtocolListener(targetXWindow, sourceX, sourceY, userAction,
                                    xclient, MouseEvent.MOUSE_RELEASED);
         }
