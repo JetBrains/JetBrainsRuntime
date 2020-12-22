@@ -143,21 +143,35 @@ AWT_NS_WINDOW_IMPLEMENTATION
     }
 }
 
-- (void)beginGestureWithEvent:(NSEvent *)event {
-    [self postGesture:event
-                   as:com_apple_eawt_event_GestureHandler_PHASE
-                    a:-1.0
-                    b:0.0];
-}
+- (BOOL)postPhaseEvent:(NSEvent *)event {
+    // Consider changing API to reflect MacOS api
+    // Gesture event should come with phase field
+    // PhaseEvent should be removed
+    const unsigned int NSEventPhaseBegan = 0x1 << 0;
+    const unsigned int NSEventPhaseEnded = 0x1 << 3;
+    const unsigned int NSEventPhaseCancelled = 0x1 << 4;
 
-- (void)endGestureWithEvent:(NSEvent *)event {
-    [self postGesture:event
-                   as:com_apple_eawt_event_GestureHandler_PHASE
-                    a:1.0
-                    b:0.0];
+    if (event.phase == NSEventPhaseBegan) {
+        [self postGesture:event
+                       as:com_apple_eawt_event_GestureHandler_PHASE
+                        a:-1.0
+                        b:0.0];
+        return true;
+    } else if (event.phase == NSEventPhaseEnded ||
+               event.phase == NSEventPhaseCancelled) {
+        [self postGesture:event
+                       as:com_apple_eawt_event_GestureHandler_PHASE
+                        a:1.0
+                        b:0.0];
+        return true;
+    }
+    return false;
 }
 
 - (void)magnifyWithEvent:(NSEvent *)event {
+    if ([self postPhaseEvent:event]) {
+        return;
+    }
     [self postGesture:event
                    as:com_apple_eawt_event_GestureHandler_MAGNIFY
                     a:[event magnification]
@@ -165,6 +179,9 @@ AWT_NS_WINDOW_IMPLEMENTATION
 }
 
 - (void)rotateWithEvent:(NSEvent *)event {
+    if ([self postPhaseEvent:event]) {
+        return;
+    }
     [self postGesture:event
                    as:com_apple_eawt_event_GestureHandler_ROTATE
                     a:[event rotation]
