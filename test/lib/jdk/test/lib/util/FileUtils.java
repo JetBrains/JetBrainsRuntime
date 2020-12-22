@@ -23,12 +23,11 @@
 
 package jdk.test.lib.util;
 
-import jdk.test.lib.Platform;
-
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.lang.management.ManagementFactory;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -38,13 +37,15 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
-import java.time.Duration;
 import java.util.ArrayList;
-import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+
+import jdk.test.lib.Platform;
+
+import com.sun.management.UnixOperatingSystemMXBean;
 
 /**
  * Common library for various test file utility functions.
@@ -53,6 +54,7 @@ public final class FileUtils {
     private static final boolean IS_WINDOWS = Platform.isWindows();
     private static final int RETRY_DELETE_MILLIS = IS_WINDOWS ? 500 : 0;
     private static final int MAX_RETRY_DELETE_TIMES = IS_WINDOWS ? 15 : 0;
+    private static volatile boolean nativeLibLoaded;
 
     /**
      * Deletes a file, retrying if necessary.
@@ -273,4 +275,19 @@ public final class FileUtils {
             }
         });
     }
+
+    // Return the current process handle count
+    public static long getProcessHandleCount() {
+        if (IS_WINDOWS) {
+            if (!nativeLibLoaded) {
+                System.loadLibrary("FileUtils");
+                nativeLibLoaded = true;
+            }
+            return getWinProcessHandleCount();
+        } else {
+            return ((UnixOperatingSystemMXBean)ManagementFactory.getOperatingSystemMXBean()).getOpenFileDescriptorCount();
+        }
+    }
+
+    private static native long getWinProcessHandleCount();
 }
