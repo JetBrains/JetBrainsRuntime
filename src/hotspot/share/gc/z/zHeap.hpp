@@ -44,6 +44,8 @@
 #include "gc/z/zWorkers.hpp"
 #include "memory/allocation.hpp"
 
+class ThreadClosure;
+
 class ZHeap {
   friend class VMStructs;
 

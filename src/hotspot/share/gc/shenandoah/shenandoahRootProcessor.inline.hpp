@@ -190,9 +190,7 @@ void ShenandoahRootUpdater::roots_do(uint worker_id, IsAlive* is_alive, KeepAliv
   _cld_roots.cld_do(&clds, worker_id);
 
   // Process heavy-weight/fully parallel roots the last
-  if(_update_code_cache) {
-    _code_roots.code_blobs_do(&update_blobs, worker_id);
-  }
+  _code_roots.code_blobs_do(&update_blobs, worker_id);
   _thread_roots.oops_do(keep_alive, NULL, worker_id);
 }
 

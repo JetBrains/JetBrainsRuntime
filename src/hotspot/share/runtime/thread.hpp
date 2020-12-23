@@ -1280,8 +1280,8 @@ class JavaThread: public Thread {
     _handshake.process_by_self(this);
   }
 
-  void handshake_process_by_vmthread() {
-    _handshake.process_by_vmthread(this);
+  HandshakeState::ProcessResult handshake_process_by_vmthread() {
+    return _handshake.process_by_vmthread(this);
   }
 
   // Suspend/resume support for JavaThread
@@ -2255,13 +2255,6 @@ class Threads: AllStatic {
 
   // Deoptimizes all frames tied to marked nmethods
   static void deoptimized_wrt_marked_nmethods();
-};
-
-
-// Thread iterator
-class ThreadClosure: public StackObj {
- public:
-  virtual void do_thread(Thread* thread) = 0;
 };
 
 class SignalHandlerMark: public StackObj {
