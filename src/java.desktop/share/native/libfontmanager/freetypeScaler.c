@@ -1641,9 +1641,13 @@ static jlong
         FT_GlyphSlot_Embolden(ftglyph);
     }
 
+    /* After call to FT_Render_Glyph, glyph format will be changed from
+     * FT_GLYPH_FORMAT_OUTLINE to FT_GLYPH_FORMAT_BITMAP, so save this value */
+    int outlineGlyph = ftglyph->format == FT_GLYPH_FORMAT_OUTLINE;
+
     /* generate bitmap if it is not done yet
      e.g. if algorithmic styling is performed and style was added to outline */
-    if (renderImage && (ftglyph->format == FT_GLYPH_FORMAT_OUTLINE)) {
+    if (renderImage && outlineGlyph) {
         FT_BBox bbox;
         FT_Outline_Get_CBox(&(ftglyph->outline), &bbox);
         int w = (int)((bbox.xMax>>6)-(bbox.xMin>>6));
@@ -1732,8 +1736,7 @@ static jlong
         }
     }
 
-    if (context->fmType == TEXT_FM_ON &&
-        ftglyph->format == FT_GLYPH_FORMAT_OUTLINE) {
+    if (context->fmType == TEXT_FM_ON && outlineGlyph) {
         float advh = FTFixedToFloat(ftglyph->linearHoriAdvance);
         glyphInfo->advanceX =
             (float) (advh * FTFixedToFloat(context->transform.xx));
