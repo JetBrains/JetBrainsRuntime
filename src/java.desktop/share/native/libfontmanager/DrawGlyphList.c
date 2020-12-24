@@ -35,6 +35,25 @@
 #include "sun_java2d_loops_DrawGlyphListAA.h"
 
 
+static UInt8* getSubpixelGlyphImage(GlyphInfo *glyph, float x, float y) {
+    int rx = glyph->subpixelResolutionX;
+    int ry = glyph->subpixelResolutionY;
+    if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
+        return glyph->image;
+    }
+    int xOffset;
+    int yOffset;
+    if (x >= 0 && y >= 0) {
+        xOffset = ((int) (x * (float) rx)) % rx;
+        yOffset = ((int) (y * (float) ry)) % ry;
+    } else {
+        xOffset = (int) ((x - (float) floor(x)) * (float) rx);
+        yOffset = (int) ((y - (float) floor(y)) * (float) ry);
+    }
+    return glyph->image + (glyph->rowBytes * glyph->height) *
+                          (xOffset + yOffset * rx);
+}
+
 /*
  * Need to account for the rare case when (eg) repainting damaged
  * areas results in the drawing location being negative, in which
@@ -49,6 +68,9 @@
  */
 #define FLOOR_ASSIGN(l, r)\
  if ((r)<0) (l) = ((int)floor(r)); else (l) = ((int)(r))
+
+#define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
+ if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f;
 
 GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
                                  jint fromGlyph, jint toGlyph) {
@@ -102,8 +124,12 @@ GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
             jfloat py = y + positions[++n];
 
             ginfo = (GlyphInfo*)((uintptr_t)imagePtrs[g + fromGlyph]);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(px, ginfo->subpixelResolutionX);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(py, ginfo->subpixelResolutionY);
             gbv->glyphs[g].glyphInfo = ginfo;
-            gbv->glyphs[g].pixels = ginfo->image;
+            gbv->glyphs[g].pixels = getSubpixelGlyphImage(ginfo,
+                                                          px + ginfo->topLeftX,
+                                                          py + ginfo->topLeftY);
             gbv->glyphs[g].width = ginfo->width;
             gbv->glyphs[g].rowBytes = ginfo->rowBytes;
             gbv->glyphs[g].height = ginfo->height;
@@ -114,14 +140,21 @@ GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
                                               positions, JNI_ABORT);
     } else {
         for (g=0; g<len; g++) {
+            jfloat px = x;
+            jfloat py = y;
+
             ginfo = (GlyphInfo*)((uintptr_t)imagePtrs[g + fromGlyph]);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(px, ginfo->subpixelResolutionX);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(py, ginfo->subpixelResolutionY);
             gbv->glyphs[g].glyphInfo = ginfo;
-            gbv->glyphs[g].pixels = ginfo->image;
+            gbv->glyphs[g].pixels = getSubpixelGlyphImage(ginfo,
+                                                          px + ginfo->topLeftX,
+                                                          py + ginfo->topLeftY);
             gbv->glyphs[g].width = ginfo->width;
             gbv->glyphs[g].rowBytes = ginfo->rowBytes;
             gbv->glyphs[g].height = ginfo->height;
-            FLOOR_ASSIGN(gbv->glyphs[g].x, x + ginfo->topLeftX);
-            FLOOR_ASSIGN(gbv->glyphs[g].y, y + ginfo->topLeftY);
+            FLOOR_ASSIGN(gbv->glyphs[g].x, px + ginfo->topLeftX);
+            FLOOR_ASSIGN(gbv->glyphs[g].y, py + ginfo->topLeftY);
 
             /* copy image data into this array at x/y locations */
             x += ginfo->advanceX;
