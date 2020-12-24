@@ -50,6 +50,7 @@ public final class FontUtilities {
 
     public static boolean isMacOSX;
     public static boolean isMacOSX14;
+    public static boolean isMacOSX_aarch64;
 
     public static boolean useJDKScaler;
 
@@ -96,6 +97,8 @@ public final class FontUtilities {
                         } catch (NumberFormatException e) {
                         }
                      }
+                     String architecture = System.getProperty("os.arch");
+                     isMacOSX_aarch64 = "aarch64".equals(architecture);
                  }
                 /* If set to "jdk", use the JDK's scaler rather than
                  * the platform one. This may be a no-op on platforms where
