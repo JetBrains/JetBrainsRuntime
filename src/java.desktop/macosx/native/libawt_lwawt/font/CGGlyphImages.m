@@ -589,6 +589,8 @@ CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
     glyphInfo->height = height;
     glyphInfo->rowBytes = width * pixelSize;
     glyphInfo->cellInfo = NULL;
+    glyphInfo->subpixelResolutionX = 1;
+    glyphInfo->subpixelResolutionY = 1;
 
 #ifdef USE_IMAGE_ALIGNED_MEMORY
     glyphInfo->image = image;
