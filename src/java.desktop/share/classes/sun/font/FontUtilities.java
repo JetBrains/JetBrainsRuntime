@@ -25,7 +25,7 @@
 
 package sun.font;
 
-import java.awt.Font;
+import java.awt.*;
 import java.lang.ref.SoftReference;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -47,6 +47,8 @@ public final class FontUtilities {
     public static boolean useJDKScaler;
 
     public static boolean isWindows;
+
+    public static Dimension subpixelResolution;
 
     private static boolean debugFonts = false;
     private static PlatformLogger logger = null;
@@ -107,6 +109,20 @@ public final class FontUtilities {
                 logger.setLevel(PlatformLogger.Level.SEVERE);
             }
             logging = logger.isEnabled();
+        }
+
+        try {
+            String property = System.getProperty("java2d.font.subpixelResolution", "");
+            int separatorIndex = property.indexOf('x');
+            final int MAX_RESOLUTION = 16;
+            subpixelResolution = new Dimension(
+                    Math.max(Math.min(Integer.parseUnsignedInt(
+                            property.substring(0, separatorIndex)), MAX_RESOLUTION), 1),
+                    Math.max(Math.min(Integer.parseUnsignedInt(
+                            property.substring(separatorIndex + 1)), MAX_RESOLUTION), 1)
+            );
+        } catch (Exception ignore) {
+            subpixelResolution = new Dimension(4, 1);
         }
     }
 
