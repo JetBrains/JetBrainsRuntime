@@ -40,6 +40,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import sun.util.logging.PlatformLogger;
 
 
@@ -111,7 +113,8 @@ final class XWM
         UNITY_COMPIZ_WM = 16,
         XMONAD_WM = 17,
         AWESOME_WM = 18,
-        I3_WM = 19;
+        I3_WM = 19,
+        DWM_WM = 20;
 
     public String toString() {
         switch  (WMID) {
@@ -149,6 +152,8 @@ final class XWM
               return "XMonad";
           case AWESOME_WM:
               return "Awesome";
+          case DWM_WM:
+              return "DWM";
           case UNDETERMINED_WM:
           default:
               return "Undetermined WM";
@@ -159,6 +164,13 @@ final class XWM
     int WMID;
     static final Insets zeroInsets = new Insets(0, 0, 0, 0);
     static final Insets defaultInsets = new Insets(25, 5, 5, 5);
+
+    private static String gdmSession;
+
+    static {
+        gdmSession = AccessController.doPrivileged(
+            (PrivilegedAction<String>) () -> System.getenv("GDMSESSION"));
+    }
 
     XWM(int WMID) {
         this.WMID = WMID;
@@ -626,6 +638,10 @@ final class XWM
         return isNetWMName("i3");
     }
 
+    static boolean isDWM() {
+        return "dwm".equals(gdmSession);
+    }
+
     static int awtWMNonReparenting = -1;
     static boolean isNonReparentingWM() {
         if (awtWMNonReparenting == -1) {
@@ -633,7 +649,7 @@ final class XWM
         }
         return (awtWMNonReparenting == 1 || XWM.getWMID() == XWM.COMPIZ_WM
                 || XWM.getWMID() == XWM.LG3D_WM || XWM.getWMID() == XWM.CWM_WM  ||
-                XWM.getWMID() == XWM.XMONAD_WM
+                XWM.getWMID() == XWM.XMONAD_WM || XWM.getWMID() == XWM.DWM_WM
                );
     }
 
@@ -831,6 +847,8 @@ final class XWM
                 awt_wmgr = XWM.AWESOME_WM;
             } else if (isI3()) {
                 awt_wmgr = XWM.I3_WM;
+            } else if (isDWM()) {
+                awt_wmgr = XWM.DWM_WM;
             }
             /*
              * We don't check for legacy WM when we already know that WM
