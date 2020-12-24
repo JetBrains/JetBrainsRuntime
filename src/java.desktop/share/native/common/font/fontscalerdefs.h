@@ -75,6 +75,8 @@ typedef struct GlyphInfo {
     UInt16       height;
     UInt16       rowBytes;
     UInt8         managed;
+    UInt8        subpixelResolutionX;
+    UInt8        subpixelResolutionY;
     float        topLeftX;
     float        topLeftY;
     void         *cellInfo;
