@@ -74,11 +74,14 @@ class FreetypeFontScaler extends FontScaler {
                 });
 
         initIDs(FreetypeFontScaler.class, Toolkit.class, PhysicalFont.class,
-                fontConfName);
+                fontConfName,
+                FontUtilities.supplementarySubpixelGlyphResolution.width,
+                FontUtilities.supplementarySubpixelGlyphResolution.height);
     }
 
     private static native void initIDs(Class<?> FFS, Class<?> toolkitClass, Class<?> pfClass,
-                                       String jreFontDirName);
+                                       String jreFontDirName,
+                                       int subpixelResolutionX, int subpixelResolutionY);
 
     private void invalidateScaler() throws FontScalerException {
         nativeScaler = 0;
