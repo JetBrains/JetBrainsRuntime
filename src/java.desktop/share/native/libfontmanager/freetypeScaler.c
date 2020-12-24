@@ -92,6 +92,7 @@
 #define  DEFAULT_DPI 72
 #define  MAX_DPI 1024
 #define  ADJUST_FONT_SIZE(X, DPI) (((X)*DEFAULT_DPI + ((DPI)>>1))/(DPI))
+#define  FLOOR_DIV(X, Y) ((X) >= 0 ? (X) / (Y) : ((X) - (Y) + 1) / (Y))
 
 #ifndef DISABLE_FONTCONFIG
 #define FONTCONFIG_DLL JNI_LIB_NAME("fontconfig")
@@ -211,6 +212,8 @@ static FcInitLoadConfigAndFontsPtrType FcInitLoadConfigAndFontsPtr;
 static FcGetVersionPtrType FcGetVersionPtr;
 #endif
 
+static FT_UnitVector subpixelGlyphResolution;
+
 static void* openFontConfig() {
     void* libfontconfig = NULL;
 #ifndef DISABLE_FONTCONFIG
@@ -241,7 +244,9 @@ static void* openFontConfig() {
 JNIEXPORT void JNICALL
 Java_sun_font_FreetypeFontScaler_initIDs(
         JNIEnv *env, jobject scaler, jclass FFSClass, jclass TKClass,
-        jclass PFClass, jstring jreFontConfName)
+        jclass PFClass, jstring jreFontConfName,
+        jint subpixelResolutionX,
+        jint subpixelResolutionY)
 {
     const char *fssLogEnabled = getenv("OPENJDK_LOG_FFS");
     const char *fontConf = (jreFontConfName == NULL) ?
@@ -250,6 +255,9 @@ Java_sun_font_FreetypeFontScaler_initIDs(
     if (fssLogEnabled != NULL && !strcmp(fssLogEnabled, "yes")) {
         logFFS = JNI_TRUE;
     }
+
+    subpixelGlyphResolution.x = subpixelResolutionX;
+    subpixelGlyphResolution.y = subpixelResolutionY;
 
     invalidateScalerMID =
         (*env)->GetMethodID(env, FFSClass, "invalidateScaler", "()V");
@@ -1622,7 +1630,6 @@ static void transformBGRABitmapGlyph(FT_GlyphSlot ftglyph, GlyphInfo* glyphInfo,
     freeSampledBGRABitmap(&sampledBitmap);
 }
 
-
 /* JDK does not use glyph images for fonts with a
  * pixel size > 100 (see THRESHOLD in OutlineTextRenderer.java)
  * so if the glyph bitmap image dimension is > 1024 pixels,
@@ -1764,7 +1771,23 @@ static jlong
 
     /* generate bitmap if it is not done yet
      e.g. if algorithmic styling is performed and style was added to outline */
+    int subpixelGlyph = FALSE;
+    int subpixelResolutionX = 1;
+    int subpixelResolutionY = 1;
     if (renderImage && outlineGlyph) {
+        /* We can create an extended glyph when rendering with grayscale AA thus
+         * increasing subpixel resolution & reducing glyph spacing issues.
+         * We do this by rendering the glyph multiple times with
+         * different subpixel offsets, which results in
+         * subpixelResolutionX * subpixelResolutionY images per glyph. */
+        if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_GRAY &&
+            context->aaType == TEXT_AA_ON && context->fmType == TEXT_FM_ON) {
+            subpixelResolutionX = subpixelGlyphResolution.x;
+            subpixelResolutionY = subpixelGlyphResolution.y;
+            if (subpixelResolutionX > 1 || subpixelResolutionY > 1) {
+                subpixelGlyph = TRUE;
+            }
+        }
         FT_BBox bbox;
         FT_Outline_Get_CBox(&(ftglyph->outline), &bbox);
         int w = (int)((bbox.xMax>>6)-(bbox.xMin>>6));
@@ -1783,10 +1806,13 @@ static jlong
             context->ptsz, scalerInfo->face->available_sizes[context->fixedSizeIndex].size);
     FT_Matrix manualTransform;
     FT_BBox manualTransformBoundingBox;
+    int topLeftX, topLeftY;
     if (renderImage) {
         if (context->fixedSizeIndex == -1) {
-            width  = (UInt16) ftglyph->bitmap.width;
-            height = (UInt16) ftglyph->bitmap.rows;
+            width  = (UInt16) ftglyph->bitmap.width + subpixelGlyph;
+            height = (UInt16) ftglyph->bitmap.rows + subpixelGlyph;
+            topLeftX = ftglyph->bitmap_left;
+            topLeftY = -ftglyph->bitmap_top;
         } else {
             /* Fixed size glyph, prepare matrix and
              * bounding box for manual transformation */
@@ -1800,6 +1826,8 @@ static jlong
                                manualTransformBoundingBox.xMin);
             height = (UInt16) (manualTransformBoundingBox.yMax -
                                manualTransformBoundingBox.yMin);
+            topLeftX  = manualTransformBoundingBox.xMin;
+            topLeftY  = -manualTransformBoundingBox.yMax;
         }
         if (width > MAX_GLYPH_DIM || height > MAX_GLYPH_DIM) {
             glyphInfo = getNullGlyphImage();
@@ -1816,11 +1844,14 @@ static jlong
         width = 0;
         rowBytes = 0;
         height = 0;
+        topLeftX = 0;
+        topLeftY = 0;
      }
 
 
     imageSize = rowBytes*height;
-    glyphInfo = (GlyphInfo*) calloc(sizeof(GlyphInfo) + imageSize, 1);
+    glyphInfo = (GlyphInfo*) calloc(sizeof(GlyphInfo) +
+            imageSize * subpixelResolutionX * subpixelResolutionY, 1);
     if (glyphInfo == NULL) {
         glyphInfo = getNullGlyphImage();
         return ptr_to_jlong(glyphInfo);
@@ -1830,16 +1861,12 @@ static jlong
     glyphInfo->rowBytes  = rowBytes;
     glyphInfo->width     = width;
     glyphInfo->height    = height;
+    glyphInfo->topLeftX  = (float) topLeftX;
+    glyphInfo->topLeftY  = (float) topLeftY;
+    glyphInfo->subpixelResolutionX = subpixelResolutionX;
+    glyphInfo->subpixelResolutionY = subpixelResolutionY;
 
     if (renderImage) {
-        if (context->fixedSizeIndex == -1) {
-            glyphInfo->topLeftX = (float)  ftglyph->bitmap_left;
-            glyphInfo->topLeftY = (float) -ftglyph->bitmap_top;
-        } else {
-            glyphInfo->topLeftX =  manualTransformBoundingBox.xMin;
-            glyphInfo->topLeftY = -manualTransformBoundingBox.yMax;
-        }
-
         if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_LCD && width > 0) {
             glyphInfo->width = width/3;
             glyphInfo->topLeftX -= 1;
@@ -1880,8 +1907,37 @@ static jlong
         //output format is either 3 bytes per pixel (for subpixel modes)
         //4 bytes per pixel for BGRA glyphs
         // or 1 byte per pixel for AA and B&W
-        if (context->fixedSizeIndex == -1) {
-            // Standard format convertation without image transformation
+        if (subpixelGlyph) {
+            // Copy first image with zero subpixel offset
+            unsigned int i;
+            for (i = 0; i < (unsigned int) ftglyph->bitmap.rows; i++) {
+                const UInt8* src = ftglyph->bitmap.buffer + i * ftglyph->bitmap.pitch;
+                UInt8* dst = glyphInfo->image + i * rowBytes;
+                memcpy(dst, src, ftglyph->bitmap.width);
+            }
+            // Render remaining images
+            int sx = (1 << 6) / subpixelResolutionX, sy = (1 << 6) / subpixelResolutionY;
+            FT_Bitmap bitmap = ftglyph->bitmap;
+            bitmap.rows = height;
+            bitmap.pitch = bitmap.width = width;
+            int prevX = ftglyph->bitmap_left * (1 << 6), prevY = (ftglyph->bitmap_top - height) * (1 << 6);
+            int x, y;
+            for (y = 0; y < subpixelResolutionY; y++) {
+                for (x = (y == 0); x < subpixelResolutionX; x++) {
+                    bitmap.buffer = glyphInfo->image + imageSize * (subpixelResolutionX * y + x);
+                    int newX = sx * x, newY = -sy * y;
+                    FT_Outline_Translate(&ftglyph->outline, newX - prevX, newY - prevY);
+                    error = FT_Outline_Get_Bitmap(library, &ftglyph->outline, &bitmap);
+                    if (error) {
+                        // In case of error, copy first image
+                        memcpy(bitmap.buffer, glyphInfo->image, imageSize);
+                    }
+                    prevX = newX;
+                    prevY = newY;
+                }
+            }
+        } else if (context->fixedSizeIndex == -1) {
+            // Standard format conversion without image transformation
             if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_MONO) {
                 /* convert from 8 pixels per byte to 1 byte per pixel */
                 CopyBW2Grey8(ftglyph->bitmap.buffer,
