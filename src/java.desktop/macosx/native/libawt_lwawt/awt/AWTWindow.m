@@ -67,6 +67,8 @@ static AWTWindow* lastKeyWindow = nil;
 // It would be NSZeroPoint if 'Location by Platform' is not used.
 static NSPoint lastTopLeftPoint;
 
+static BOOL ignoreResizeWindowDuringAnotherWindowEnd = NO;
+
 // --------------------------------------------------------------
 // NSWindow/NSPanel descendants implementation
 #define AWT_NS_WINDOW_IMPLEMENTATION                            \
@@ -119,7 +121,7 @@ static NSPoint lastTopLeftPoint;
 }                                                               \
                                                                 \
 - (NSWindowTabbingMode)tabbingMode {                            \
-    return NSWindowTabbingModeDisallowed;                       \
+    return ((AWTWindow*)[self delegate]).javaWindowTabbingMode; \
 }
 
 @implementation AWTWindow_Normal
@@ -229,6 +231,67 @@ AWT_NS_WINDOW_IMPLEMENTATION
                     b:[event deltaY]];
 }
 
+- (void)moveTabToNewWindow:(id)sender {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    [super moveTabToNewWindow:sender];
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject platformWindow = [((AWTWindow *)self.delegate).javaPlatformWindow jObjectWithEnv:env];
+    if (platformWindow != NULL) {
+        // extract the target AWT Window object out of the CPlatformWindow
+        static JNF_MEMBER_CACHE(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;");
+        jobject awtWindow = JNFGetObjectField(env, platformWindow, jf_target);
+        if (awtWindow != NULL) {
+            static JNF_CLASS_CACHE(jc_Window, "java/awt/Window");
+            static JNF_MEMBER_CACHE(jm_runMoveTabToNewWindowCallback, jc_Window, "runMoveTabToNewWindowCallback", "()V");
+            JNFCallVoidMethod(env, awtWindow, jm_runMoveTabToNewWindowCallback);
+            (*env)->DeleteLocalRef(env, awtWindow);
+        }
+        (*env)->DeleteLocalRef(env, platformWindow);
+    }
+
+#ifdef DEBUG
+    NSLog(@"=== Move Tab to new Window ===");
+#endif
+}
+
+// Call over Foundation from Java
+- (CGFloat) getTabBarVisibleAndHeight {
+    if ([self respondsToSelector:@selector(tabGroup)]) { // API_AVAILABLE(macos(10.13))
+        id tabGroup = [self tabGroup];
+#ifdef DEBUG
+        NSLog(@"=== Window tabBar: %@ ===", tabGroup);
+#endif
+        if ([tabGroup isTabBarVisible]) {
+            if ([tabGroup respondsToSelector:@selector(_tabBar)]) { // private member
+                CGFloat height = [[tabGroup _tabBar] frame].size.height;
+#ifdef DEBUG
+                NSLog(@"=== Window tabBar visible: %f ===", height);
+#endif
+                return height;
+            }
+#ifdef DEBUG
+            NSLog(@"=== NsWindow.tabGroup._tabBar not found ===");
+#endif
+            return -1; // if we don't get height return -1 and use default value in java without change native code
+        }
+#ifdef DEBUG
+        NSLog(@"=== Window tabBar not visible ===");
+#endif
+    } else {
+#ifdef DEBUG
+        NSLog(@"=== Window tabBar not found ===");
+#endif
+    }
+    return 0;
+}
+
+- (void)orderOut:(id)sender {
+    ignoreResizeWindowDuringAnotherWindowEnd = YES;
+    [super orderOut:sender];
+}
+
 @end
 @implementation AWTWindow_Panel
 AWT_NS_WINDOW_IMPLEMENTATION
@@ -251,6 +314,8 @@ AWT_NS_WINDOW_IMPLEMENTATION
 @synthesize standardFrame;
 @synthesize isMinimizing;
 @synthesize isJustCreated;
+@synthesize javaWindowTabbingMode;
+@synthesize isEnterFullScreen;
 
 - (void) updateMinMaxSize:(BOOL)resizable {
     if (resizable) {
@@ -401,6 +466,9 @@ AWT_ASSERT_APPKIT_THREAD;
 
     self.isJustCreated = YES;
 
+    self.javaWindowTabbingMode = [self getJavaWindowTabbingMode];
+    self.isEnterFullScreen = NO;
+
     return self;
 }
 
@@ -416,6 +484,33 @@ AWT_ASSERT_APPKIT_THREAD;
 // checks that this window is under the mouse cursor and this point is not overlapped by others windows
 - (BOOL) isTopmostWindowUnderMouse {
     return [self.nsWindow windowNumber] == [AWTWindow getTopmostWindowUnderMouseID];
+}
+
+- (NSWindowTabbingMode) getJavaWindowTabbingMode {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    BOOL result = NO;
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    if (platformWindow != NULL) {
+        // extract the target AWT Window object out of the CPlatformWindow
+        static JNF_MEMBER_CACHE(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;");
+        jobject awtWindow = JNFGetObjectField(env, platformWindow, jf_target);
+        if (awtWindow != NULL) {
+            static JNF_CLASS_CACHE(jc_Window, "java/awt/Window");
+            static JNF_MEMBER_CACHE(jm_hasTabbingMode, jc_Window, "hasTabbingMode", "()Z");
+            result = JNFCallBooleanMethod(env, awtWindow, jm_hasTabbingMode) == JNI_TRUE ? YES : NO;
+            (*env)->DeleteLocalRef(env, awtWindow);
+        }
+        (*env)->DeleteLocalRef(env, platformWindow);
+    }
+
+#ifdef DEBUG
+    NSLog(@"=== getJavaWindowTabbingMode: %d ===", result);
+#endif
+
+    return result ? NSWindowTabbingModeAutomatic : NSWindowTabbingModeDisallowed;
 }
 
 + (AWTWindow *) getTopmostWindowUnderMouse {
@@ -697,6 +792,12 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)windowDidResize:(NSNotification *)notification {
 AWT_ASSERT_APPKIT_THREAD;
+    if (self.isEnterFullScreen && ignoreResizeWindowDuringAnotherWindowEnd) {
+#ifdef DEBUG
+        NSLog(@"=== Native.windowDidResize: %@ | ignored in transition to fullscreen ===", self.nsWindow.title);
+#endif
+        return;
+    }
 
     [self _deliverMoveResizeEvent];
 }
@@ -975,6 +1076,9 @@ AWT_ASSERT_APPKIT_THREAD;
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
     [self allowMovingChildrenBetweenSpaces:YES];
 
+    self.isEnterFullScreen = YES;
+
+    static JNF_MEMBER_CACHE(jm_windowWillEnterFullScreen, jc_CPlatformWindow, "windowWillEnterFullScreen", "()V");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowWillEnterFullScreen, jc_CPlatformWindow, "windowWillEnterFullScreen", "()V");
@@ -990,6 +1094,9 @@ AWT_ASSERT_APPKIT_THREAD;
 - (void)windowDidEnterFullScreen:(NSNotification *)notification {
     [self allowMovingChildrenBetweenSpaces:NO];
 
+    self.isEnterFullScreen = YES;
+
+    static JNF_MEMBER_CACHE(jm_windowDidEnterFullScreen, jc_CPlatformWindow, "windowDidEnterFullScreen", "()V");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowDidEnterFullScreen, jc_CPlatformWindow, "windowDidEnterFullScreen", "()V");
@@ -1004,6 +1111,9 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 - (void)windowWillExitFullScreen:(NSNotification *)notification {
+    self.isEnterFullScreen = NO;
+
+    static JNF_MEMBER_CACHE(jm_windowWillExitFullScreen, jc_CPlatformWindow, "windowWillExitFullScreen", "()V");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowWillExitFullScreen, jc_CPlatformWindow, "windowWillExitFullScreen", "()V");
@@ -1022,6 +1132,9 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 - (void)windowDidExitFullScreen:(NSNotification *)notification {
+    self.isEnterFullScreen = NO;
+
+    static JNF_MEMBER_CACHE(jm_windowDidExitFullScreen, jc_CPlatformWindow, "windowDidExitFullScreen", "()V");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
@@ -1797,6 +1910,8 @@ JNI_COCOA_ENTER(env);
         [nsWindow setDelegate: nil];
 
         [window release];
+
+        ignoreResizeWindowDuringAnotherWindowEnd = NO;
     }];
 
 JNI_COCOA_EXIT(env);
