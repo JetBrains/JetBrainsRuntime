@@ -936,3 +936,6 @@ com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                          
 
 java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java            JBR-4207 windows-all
 jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                    JBR-4207 windows-all
+
+java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.java JBR-4250 windows-all
+java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                 JBR-4250 windows-all
