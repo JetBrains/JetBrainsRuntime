@@ -257,7 +257,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
 
 // Call over Foundation from Java
 - (CGFloat) getTabBarVisibleAndHeight {
-    if ([self respondsToSelector:@selector(tabGroup)]) { // API_AVAILABLE(macos(10.13))
+    if (@available(macOS 10.13, *)) {
         id tabGroup = [self tabGroup];
 #ifdef DEBUG
         NSLog(@"=== Window tabBar: %@ ===", tabGroup);
@@ -280,7 +280,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
 #endif
     } else {
 #ifdef DEBUG
-        NSLog(@"=== Window tabBar not found ===");
+        NSLog(@"=== Window tabGroup not supported before macOS 10.13 ===");
 #endif
     }
     return 0;
@@ -456,7 +456,7 @@ AWT_ASSERT_APPKIT_THREAD;
     self.javaWindowTabbingMode = [self getJavaWindowTabbingMode];
     self.isEnterFullScreen = NO;
     self.isJustCreated = YES;
-    
+
     return self;
 }
 
@@ -478,7 +478,7 @@ AWT_ASSERT_APPKIT_THREAD;
     AWT_ASSERT_APPKIT_THREAD;
 
     BOOL result = NO;
-    
+
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
@@ -499,7 +499,7 @@ AWT_ASSERT_APPKIT_THREAD;
 #ifdef DEBUG
     NSLog(@"=== getJavaWindowTabbingMode: %d ===", result);
 #endif
-    
+
     return result ? NSWindowTabbingModeAutomatic : NSWindowTabbingModeDisallowed;
 }
 
@@ -787,7 +787,7 @@ AWT_ASSERT_APPKIT_THREAD;
 #endif
         return;
     }
-    
+
     [self _deliverMoveResizeEvent];
 }
 
@@ -1886,7 +1886,7 @@ JNI_COCOA_ENTER(env);
         [nsWindow setDelegate: nil];
 
         [window release];
-        
+
         ignoreResizeWindowDuringAnotherWindowEnd = NO;
     }];
 
