@@ -40,6 +40,65 @@
 
 # :hotspot_compiler
 
+compiler/aot/DeoptimizationTest.java JBR-2365 windows-all
+compiler/aot/RecompilationTest.java JBR-2365 windows-all
+compiler/aot/cli/jaotc/AtFileTest.java JBR-2365 windows-all
+compiler/aot/SharedUsageTest.java JBR-2365 windows-all
+compiler/aot/TestHeapBase.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeDynamic2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeDynamic2CompiledTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeDynamic2InterpretedTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeDynamic2NativeTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeInterface2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeInterface2CompiledTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeInterface2InterpretedTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeInterface2NativeTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeSpecial2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeSpecial2CompiledTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeSpecial2InterpretedTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeSpecial2NativeTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeStatic2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeStatic2CompiledTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeStatic2InterpretedTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeStatic2NativeTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeVirtual2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeVirtual2CompiledTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeVirtual2InterpretedTest.java JBR-2365 windows-all
+compiler/aot/calls/fromAot/AotInvokeVirtual2NativeTest.java JBR-2365 windows-all
+compiler/aot/calls/fromCompiled/CompiledInvokeDynamic2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromCompiled/CompiledInvokeInterface2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromCompiled/CompiledInvokeSpecial2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromCompiled/CompiledInvokeStatic2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromCompiled/CompiledInvokeVirtual2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromInterpreted/InterpretedInvokeDynamic2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromInterpreted/InterpretedInvokeInterface2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromInterpreted/InterpretedInvokeSpecial2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromInterpreted/InterpretedInvokeStatic2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromInterpreted/InterpretedInvokeVirtual2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromNative/NativeInvokeSpecial2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromNative/NativeInvokeStatic2AotTest.java JBR-2365 windows-all
+compiler/aot/calls/fromNative/NativeInvokeVirtual2AotTest.java JBR-2365 windows-all
+compiler/aot/cli/DisabledAOTWithLibraryTest.java JBR-2365 windows-all
+compiler/aot/cli/MultipleAOTLibraryTest.java JBR-2365 windows-all
+compiler/aot/cli/SingleAOTLibraryTest.java JBR-2365 windows-all
+compiler/aot/cli/SingleAOTOptionTest.java JBR-2365 windows-all
+compiler/aot/cli/jaotc/AtFileTest.java JBR-2365 windows-all
+compiler/aot/cli/jaotc/CompileAbsoluteDirectoryTest.java JBR-2365 windows-all
+compiler/aot/cli/jaotc/CompileClassTest.java JBR-2365 windows-all
+compiler/aot/cli/jaotc/CompileClassWithDebugTest.java JBR-2365 windows-all
+compiler/aot/cli/jaotc/CompileDirectoryTest.java JBR-2365 windows-all
+compiler/aot/cli/jaotc/CompileJarTest.java JBR-2365 windows-all
+compiler/aot/cli/jaotc/CompileModuleTest.java JBR-2365 windows-all
+compiler/aot/cli/jaotc/IgnoreErrorsTest.java JBR-2365 windows-all
+compiler/aot/cli/jaotc/ListOptionTest.java JBR-2365 windows-all
+compiler/aot/cli/jaotc/ListOptionWrongFileTest.java JBR-2365 windows-all
+compiler/aot/fingerprint/SelfChanged.java JBR-2365 windows-all
+compiler/aot/fingerprint/SelfChangedCDS.java JBR-2365 windows-all
+compiler/aot/fingerprint/SuperChanged.java JBR-2365 windows-all
+compiler/aot/verification/ClassAndLibraryNotMatchTest.java JBR-2365 windows-all
+compiler/aot/verification/vmflags/NotTrackedFlagTest.java JBR-2365 windows-all
+compiler/aot/verification/vmflags/TrackedFlagTest.java JBR-2365 windows-all
+
 compiler/ciReplay/TestSAServer.java 8029528 generic-all
 compiler/codecache/jmx/PoolsIndependenceTest.java 8167015 generic-all
 compiler/codecache/stress/OverloadCompileQueueTest.java 8166554 generic-all
@@ -71,6 +130,7 @@ compiler/rtm/locking/TestUseRTMDeopt.java 8183263 generic-x64
 compiler/rtm/locking/TestUseRTMXendForLockBusy.java 8183263 generic-x64
 compiler/rtm/print/TestPrintPreciseRTMLockingStatistics.java 8183263 generic-x64
 
+compiler/c2/Test8004741.java 8235801 generic-all
 compiler/jsr292/ContinuousCallSiteTargetChange.java 8234146 solaris-sparcv9
 
 #############################################################################
@@ -206,3 +266,49 @@ vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manySame_b/TestDescription.java 
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
 
 #############################################################################
+
+
+compiler/graalunit/ApiDirectivesTest.java JBR-2415 generic-all
+compiler/graalunit/ApiTest.java JBR-2415 generic-all
+compiler/graalunit/AsmAarch64Test.java JBR-2415 generic-all
+compiler/graalunit/AsmAmd64Test.java JBR-2415 generic-all
+compiler/graalunit/CollectionsTest.java JBR-2415 generic-all
+compiler/graalunit/Core01Test.java JBR-2415 generic-all
+compiler/graalunit/Core02Test.java JBR-2415 generic-all
+compiler/graalunit/CoreAarch64Test.java JBR-2415 generic-all
+compiler/graalunit/CoreAmd64Test.java JBR-2415 generic-all
+compiler/graalunit/CoreJdk9Test.java JBR-2415 generic-all
+compiler/graalunit/DebugTest.java JBR-2415 generic-all
+compiler/graalunit/EATest.java JBR-2415 generic-all
+compiler/graalunit/GraphTest.java JBR-2415 generic-all
+compiler/graalunit/HotspotAarch64Test.java JBR-2415 generic-all
+compiler/graalunit/HotspotAmd64Test.java JBR-2415 generic-all
+compiler/graalunit/HotspotJdk15Test.java JBR-2415 generic-all
+compiler/graalunit/HotspotJdk9Test.java JBR-2415 generic-all
+compiler/graalunit/HotspotLirTest.java JBR-2415 generic-all
+compiler/graalunit/HotspotTest.java JBR-2415 generic-all
+compiler/graalunit/JttBackendTest.java JBR-2415 generic-all
+compiler/graalunit/JttBytecodeTest.java JBR-2415 generic-all
+compiler/graalunit/JttExceptTest.java JBR-2415 generic-all
+compiler/graalunit/JttHotpathTest.java JBR-2415 generic-all
+compiler/graalunit/JttHotspotTest.java JBR-2415 generic-all
+compiler/graalunit/JttJdkTest.java JBR-2415 generic-all
+compiler/graalunit/JttLangALTest.java JBR-2415 generic-all
+compiler/graalunit/JttLangMathALTest.java JBR-2415 generic-all
+compiler/graalunit/JttLangMathMZTest.java JBR-2415 generic-all
+compiler/graalunit/JttLangNZTest.java JBR-2415 generic-all
+compiler/graalunit/JttLoopTest.java JBR-2415 generic-all
+compiler/graalunit/JttOptimizeTest.java JBR-2415 generic-all
+compiler/graalunit/JttReflectAETest.java JBR-2415 generic-all
+compiler/graalunit/JttReflectFieldGetTest.java JBR-2415 generic-all
+compiler/graalunit/JttReflectFieldSetTest.java JBR-2415 generic-all
+compiler/graalunit/JttReflectGZTest.java JBR-2415 generic-all
+compiler/graalunit/JttThreadsTest.java JBR-2415 generic-all
+compiler/graalunit/LirJttTest.java JBR-2415 generic-all
+compiler/graalunit/LirTest.java JBR-2415 generic-all
+compiler/graalunit/LoopTest.java JBR-2415 generic-all
+compiler/graalunit/NodesTest.java JBR-2415 generic-all
+compiler/graalunit/OptionsTest.java JBR-2415 generic-all
+compiler/graalunit/PhasesCommonTest.java JBR-2415 generic-all
+compiler/graalunit/Replacements12Test.java JBR-2415 generic-all
+compiler/graalunit/Replacements9Test.java JBR-2415 generic-all
