@@ -4098,6 +4098,39 @@ public class Window extends Container implements Accessible {
         ignoreMouseEvents = ignore;
     }
 
+    private volatile boolean hasTabbingMode;
+
+    boolean hasTabbingMode() {
+        return hasTabbingMode;
+    }
+
+    /**
+     * Set via reflection (JB JdkEx API).
+     */
+    void setTabbingMode() {
+        hasTabbingMode = true;
+    }
+
+    private volatile Runnable moveTabToNewWindowCallback;
+
+    void runMoveTabToNewWindowCallback() {
+        if (moveTabToNewWindowCallback != null) {
+            Runnable callback = moveTabToNewWindowCallback;
+            SunToolkit.executeOnEventHandlerThread(this, new Runnable() {
+                public void run() {
+                    callback.run();
+                }
+            });
+        }
+    }
+
+    /**
+     * Set via reflection (JB JdkEx API).
+     */
+    void setMoveTabToNewWindowCallback(Runnable moveTabToNewWindowCallback) {
+        this.moveTabToNewWindowCallback = moveTabToNewWindowCallback;
+    }
+
     // ************************** MIXING CODE *******************************
 
     // A window has an owner, but it does NOT have a container
