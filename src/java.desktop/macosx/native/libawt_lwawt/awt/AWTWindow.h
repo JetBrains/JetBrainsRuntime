@@ -47,6 +47,8 @@
     NSRect standardFrame;
     BOOL isMinimizing;
     BOOL isJustCreated;
+    NSWindowTabbingMode javaWindowTabbingMode;
+    BOOL isEnterFullScreen;
 }
 
 // An instance of either AWTWindow_Normal or AWTWindow_Panel
@@ -63,6 +65,8 @@
 @property (nonatomic) NSRect standardFrame;
 @property (nonatomic) BOOL isMinimizing;
 @property (nonatomic) BOOL isJustCreated;
+@property (nonatomic) NSWindowTabbingMode javaWindowTabbingMode;
+@property (nonatomic) BOOL isEnterFullScreen;
 
 - (id) initWithPlatformWindow:(jobject)javaPlatformWindow
                   ownerWindow:owner
@@ -71,6 +75,8 @@
                   contentView:(NSView *)contentView;
 
 - (BOOL) isTopmostWindowUnderMouse;
+
+- (NSWindowTabbingMode) getJavaWindowTabbingMode;
 
 // NSWindow overrides delegate methods
 - (BOOL) canBecomeKeyWindow;
