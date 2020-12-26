@@ -123,7 +123,7 @@ if [[ "${architecture}" == *aarch64* ]]; then
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
   $WITH_IMPORT_MODULES \
-  --with-boot-jdk=`/usr/libexec/java_home -v 11` \
+  --with-boot-jdk="$BOOT_JDK" \
   --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
   --enable-cds=no \
   $WITH_JVM_FEATURES \
