@@ -1101,26 +1101,29 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         }
     }
 
+    /*
+     * This decides on a mechanism to suppress newly created window from getting
+     * focus, if 'autoRequestFocus' is set to 'false'. The 'old' (historically
+     * used) way is to suppress WM_TAKE_FOCUS protocol temporarily, until the
+     * window is mapped. This approach doesn't work for i3 window manager
+     * though, as the latter doesn't track updates to WM_TAKE_FOCUS property
+     * (it's not required as per ICCCM specification). So another approach is
+     * used - setting _NET_WM_USER_TIME to 0, as specified in EWMH spec (see
+     * 'setUserTimeBeforeShowing' method). The same method is used currently for
+     * KDE (KWin) to solve a specific problem in 'focus follows mouse' mode
+     * (JBR-2934). Ideally, the new approach should be used for all supporting
+     * window managers, as it doesn't require additional calls to X server.
+     */
+    private boolean shouldSuppressWmTakeFocus() {
+        int wmId = XWM.getWMID();
+        return wmId != XWM.I3_WM && wmId != XWM.KDE2_WM;
+    }
+
     public void setVisible(boolean vis) {
         if (!isVisible() && vis) {
             isBeforeFirstMapNotify = true;
             winAttr.initialFocus = isAutoRequestFocus();
-            if (!winAttr.initialFocus && XWM.getWMID() != XWM.I3_WM) {
-                /*
-                 * It's easier and safer to temporary suppress WM_TAKE_FOCUS
-                 * protocol itself than to ignore WM_TAKE_FOCUS client message.
-                 * Because we will have to make the difference between
-                 * the message come after showing and the message come after
-                 * activation. Also, on Metacity, for some reason, we have _two_
-                 * WM_TAKE_FOCUS client messages when showing a frame/dialog.
-                 *
-                 * i3 window manager doesn't track updates to WM_TAKE_FOCUS
-                 * property, so this approach won't work for it, breaking
-                 * focus behaviour completely. So another way is used to
-                 * suppress focus take over - via setting _NET_WM_USER_TIME
-                 * to 0, as specified in EWMH spec (see
-                 * 'setUserTimeBeforeShowing' method).
-                 */
+            if (!winAttr.initialFocus && shouldSuppressWmTakeFocus()) {
                 suppressWmTakeFocus(true);
             }
         }
@@ -1186,7 +1189,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     @Override
     void setUserTimeBeforeShowing() {
-        if (winAttr.initialFocus || XWM.getWMID() != XWM.I3_WM) {
+        if (winAttr.initialFocus || shouldSuppressWmTakeFocus()) {
             super.setUserTimeBeforeShowing();
         }
         else {
@@ -1416,7 +1419,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         isUnhiding |= isWMStateNetHidden();
 
         super.handleMapNotifyEvent(xev);
-        if (!winAttr.initialFocus && XWM.getWMID() != XWM.I3_WM) {
+        if (!winAttr.initialFocus && shouldSuppressWmTakeFocus()) {
             suppressWmTakeFocus(false); // restore the protocol.
             /*
              * For some reason, on Metacity, a frame/dialog being shown
