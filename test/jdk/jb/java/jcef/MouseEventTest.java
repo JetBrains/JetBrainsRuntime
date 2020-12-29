@@ -6,7 +6,7 @@ import java.lang.reflect.InvocationTargetException;
 /**
  * @test
  * @key headful
- * @requires (os.arch != "x86" & os.arch != "i386" & os.arch != "aarch64")
+ * @requires (os.arch == "amd64" | os.arch == "x86_64" | (os.arch == "aarch64" & os.family == "mac"))
  * @summary Regression test for JBR-2639. The test checks that mouse actions are handled on jcef browser.
  * @run main/othervm MouseEventTest
  */
