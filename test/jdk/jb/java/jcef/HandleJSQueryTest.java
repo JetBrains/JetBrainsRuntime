@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @test
  * @key headful
- * @requires (os.arch != "x86" & os.arch != "i386" & os.arch != "aarch64")
+ * @requires (os.arch == "amd64" | os.arch == "x86_64" | (os.arch == "aarch64" & os.family == "mac"))
  * @summary Regression test for JBR-2430. The test checks that JS Query is handled in 2nd opened browser.
  * @run main/othervm HandleJSQueryTest
  */
