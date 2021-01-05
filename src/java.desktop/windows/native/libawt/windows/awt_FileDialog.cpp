@@ -376,6 +376,7 @@ struct FileDialogData {
     SmartHolder<TCHAR[]> result;
     UINT resultSize;
     jobject peer;
+    BOOL forceUseContainerFolder;
 };
 
 HRESULT GetSelectedResults(FileDialogData *data) {
@@ -436,13 +437,24 @@ FileDialogSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_
     switch (uMsg) {
         case WM_COMMAND: {
             if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDOK) {
+                FileDialogData *data = (FileDialogData*) dwRefData;
+
                 OLE_TRY
-                OLE_HRT(GetSelectedResults((FileDialogData*) dwRefData));
+                OLE_HRT(GetSelectedResults(data));
                 OLE_CATCH
+
+                // Force to close the dialog even if there's no item selected, but we're in the forceUseContainerFolder
+                // mode.
+                if (data->forceUseContainerFolder) {
+                    DestroyWindow(hWnd);
+                }
             }
             if (LOWORD(wParam) == IDCANCEL) {
                 jobject peer = (jobject) (::GetProp(hWnd, ModalDialogPeerProp));
                 env->CallVoidMethod(peer, AwtFileDialog::setHWndMID, (jlong) 0);
+
+                FileDialogData *data = (FileDialogData*) dwRefData;
+                data->forceUseContainerFolder = FALSE; // disable mode on cancel
             }
             break;
         }
@@ -498,21 +510,45 @@ public:
             InitDialog(fileDialog);
             m_activated = true;
         }
+
+        OLE_TRY
+            IShellItemPtr folder = nullptr;
+            OLE_HRT(fileDialog->GetFolder(&folder));
+            CoTaskStringHolder filePath;
+            OLE_HRT(folder->GetDisplayName(SIGDN_FILESYSPATH, &filePath));
+            size_t filePathLength = _tcslen(filePath);
+            data->result.Attach(new TCHAR[filePathLength + 1]);
+            _tcscpy_s(data->result, filePathLength + 1, filePath);
+            data->resultSize = filePathLength + 1;
+
+            OLE_HRT(fileDialog->SetOkButtonLabel(L"Select Folder"));
+            data->forceUseContainerFolder = TRUE;
+        OLE_CATCH
+
         return S_OK;
     };
 
     IFACEMETHODIMP OnFileOk(IFileDialog *) {
-        if (!data->result) {
-            OLE_TRY
-            OLE_HRT(GetSelectedResults(data));
-            OLE_CATCH
-        }
         return S_OK;
     };
 
     IFACEMETHODIMP OnFolderChanging(IFileDialog *, IShellItem *) { return S_OK; };
     IFACEMETHODIMP OnHelp(IFileDialog *) { return S_OK; };
-    IFACEMETHODIMP OnSelectionChange(IFileDialog *) { return S_OK; };
+    IFACEMETHODIMP OnSelectionChange(IFileDialog *fileDialog) {
+        OLE_TRY
+            IShellItemPtr currentSelection = NULL;
+            OLE_HRT(fileDialog->GetCurrentSelection(&currentSelection));
+            SFGAOF att = 0;
+            OLE_HRT(currentSelection->GetAttributes(SFGAO_FOLDER, &att));
+            BOOL isFolder = att & SFGAO_FOLDER;
+
+            // Since we have an item selected, we're no more in the forceUseContainerFolder mode.
+            OLE_HRT(fileDialog->SetOkButtonLabel(isFolder ? L"Select Folder" : L"Open"));
+            data->forceUseContainerFolder = FALSE;
+        OLE_CATCH
+
+        return S_OK;
+    };
     IFACEMETHODIMP OnShareViolation(IFileDialog *, IShellItem *, FDE_SHAREVIOLATION_RESPONSE *) { return S_OK; };
     IFACEMETHODIMP OnTypeChange(IFileDialog *pfd) { return S_OK; };
     IFACEMETHODIMP OnOverwrite(IFileDialog *, IShellItem *, FDE_OVERWRITE_RESPONSE *) { return S_OK; };
@@ -778,18 +814,8 @@ AwtFileDialog::Show(void *p)
 
         if (useCommonItemDialog && SUCCEEDED(OLE_HR)) {
             if (mode == java_awt_FileDialog_LOAD) {
-                result = SUCCEEDED(pfd->Show(hwndOwner)) && data.result;
-                if (!result) {
-                    OLE_NEXT_TRY
-                    OLE_HRT(pfd->GetResult(&psiResult));
-                    CoTaskStringHolder filePath;
-                    OLE_HRT(psiResult->GetDisplayName(SIGDN_FILESYSPATH, &filePath));
-                    size_t filePathLength = _tcslen(filePath);
-                    data.result.Attach(new TCHAR[filePathLength + 1]);
-                    _tcscpy_s(data.result, filePathLength + 1, filePath);
-                    OLE_CATCH
-                    result = SUCCEEDED(OLE_HR);
-                }
+                // Force to signal success if we're in the forceUseContainerFolder mode.
+                result = (SUCCEEDED(pfd->Show(hwndOwner)) && data.result) || data.forceUseContainerFolder;
             } else {
                 result = SUCCEEDED(pfd->Show(hwndOwner));
                 if (result) {
