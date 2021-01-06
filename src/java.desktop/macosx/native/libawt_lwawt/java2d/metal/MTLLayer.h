@@ -70,6 +70,8 @@
 - (void) blitCallback;
 - (void) display;
 - (void) redraw;
+- (void) startDisplayLink;
+- (void) stopDisplayLink;
 @end
 
 #endif /* CGLLayer_h_Included */

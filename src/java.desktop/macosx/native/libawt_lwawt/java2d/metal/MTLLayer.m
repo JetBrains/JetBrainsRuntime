@@ -116,13 +116,13 @@
         }];
 
         [commandBuf commit];
+        [self stopDisplayLink];
     }
 }
 
 - (void) dealloc {
     self.javaLayer = nil;
-    if (CVDisplayLinkIsRunning(self.displayLink))
-        CVDisplayLinkStop(self.displayLink);
+    [self stopDisplayLink];
     CVDisplayLinkRelease(self.displayLink);
     self.displayLink = nil;
     [super dealloc];
@@ -153,6 +153,16 @@
 - (void) redraw {
     AWT_ASSERT_APPKIT_THREAD;
     [self setNeedsDisplay];
+}
+
+- (void) startDisplayLink {
+    if (!CVDisplayLinkIsRunning(self.displayLink))
+        CVDisplayLinkStart(self.displayLink);
+}
+
+- (void) stopDisplayLink {
+    if (CVDisplayLinkIsRunning(self.displayLink))
+        CVDisplayLinkStop(self.displayLink);
 }
 
 CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext)
@@ -210,12 +220,10 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.drawableSize =
             CGSizeMake(layer.buffer.width,
                        layer.buffer.height);
-        if (!CVDisplayLinkIsRunning(layer.displayLink))
-            CVDisplayLinkStart(layer.displayLink);
+        [layer startDisplayLink];
     } else {
         layer.ctx = NULL;
-        if (CVDisplayLinkIsRunning(layer.displayLink))
-            CVDisplayLinkStop(layer.displayLink);
+        [layer stopDisplayLink];
     }
 }
 
