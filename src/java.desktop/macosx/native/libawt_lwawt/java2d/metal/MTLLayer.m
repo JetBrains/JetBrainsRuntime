@@ -28,6 +28,7 @@
 #import "ThreadUtilities.h"
 #import "LWCToolkit.h"
 #import "MTLSurfaceData.h"
+#import "JNIUtilities.h"
 
 @implementation MTLLayer
 
@@ -131,15 +132,16 @@
 - (void) blitCallback {
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    static JNF_CLASS_CACHE(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
-    static JNF_MEMBER_CACHE(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
+    DECLARE_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
+    DECLARE_METHOD(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
 
     jobject javaLayerLocalRef = [self.javaLayer jObjectWithEnv:env];
     if ((*env)->IsSameObject(env, javaLayerLocalRef, NULL)) {
         return;
     }
 
-    JNFCallVoidMethod(env, javaLayerLocalRef, jm_drawInMTLContext);
+    (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_drawInMTLContext);
+    CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, javaLayerLocalRef);
 }
 
