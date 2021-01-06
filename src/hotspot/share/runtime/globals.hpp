@@ -26,7 +26,6 @@
 #define SHARE_RUNTIME_GLOBALS_HPP
 
 #include "compiler/compiler_globals_pd.hpp"
-#include "gc/shared/gc_globals.hpp"
 #include "runtime/globals_shared.hpp"
 #include "utilities/align.hpp"
 #include "utilities/globalDefinitions.hpp"
@@ -462,9 +461,6 @@ const intx ObjectAlignmentInBytes = 8;
   product(bool, BytecodeVerificationLocal, false, DIAGNOSTIC,               \
           "Enable the Java bytecode verifier for local classes")            \
                                                                             \
-  develop(bool, ForceFloatExceptions, trueInDebug,                          \
-          "Force exceptions on FP stack under/overflow")                    \
-                                                                            \
   develop(bool, VerifyStackAtCalls, false,                                  \
           "Verify that the stack pointer is unchanged after calls")         \
                                                                             \
@@ -677,10 +673,6 @@ const intx ObjectAlignmentInBytes = 8;
   develop(bool, RegisterReferences, true,                                   \
           "Tell whether the VM should register soft/weak/final/phantom "    \
           "references")                                                     \
-                                                                            \
-  develop(bool, IgnoreRewrites, false,                                      \
-          "Suppress rewrites of bytecodes in the oopmap generator. "        \
-          "This is unsafe!")                                                \
                                                                             \
   develop(bool, PrintCodeCacheExtension, false,                             \
           "Print extension of code cache")                                  \
