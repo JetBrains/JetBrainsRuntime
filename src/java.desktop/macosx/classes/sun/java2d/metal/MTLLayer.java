@@ -83,7 +83,7 @@ public class MTLLayer extends CFRetainedResource {
         }
 
         // the layer redirects all painting to the buffer's graphics
-        // and blits the buffer to the layer surface (in drawInCGLContext callback)
+        // and blits the buffer to the layer surface (in display callback)
         MTLGraphicsConfig gc = (MTLGraphicsConfig)getGraphicsConfiguration();
         surfaceData = gc.createSurfaceData(this);
         setScale(gc.getDevice().getScaleFactor());

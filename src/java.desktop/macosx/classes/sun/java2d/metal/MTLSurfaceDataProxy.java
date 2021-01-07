@@ -33,7 +33,7 @@ import java.awt.*;
 
 /**
  * The proxy class contains the logic for when to replace a
- * SurfaceData with a cached OGL Texture and the code to create
+ * SurfaceData with a cached MTL Texture and the code to create
  * the accelerated surfaces.
  */
 public class MTLSurfaceDataProxy extends SurfaceDataProxy {

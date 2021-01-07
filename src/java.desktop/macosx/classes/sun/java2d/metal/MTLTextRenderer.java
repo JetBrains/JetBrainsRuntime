@@ -49,8 +49,8 @@ class MTLTextRenderer extends BufferedTextPipe {
     @Override
     protected void validateContext(SunGraphics2D sg2d, Composite comp) {
         // assert rq.lock.isHeldByCurrentThread();
-        MTLSurfaceData oglDst = (MTLSurfaceData)sg2d.surfaceData;
-        MTLContext.validateContext(oglDst, oglDst,
+        MTLSurfaceData mtlDst = (MTLSurfaceData)sg2d.surfaceData;
+        MTLContext.validateContext(mtlDst, mtlDst,
                 sg2d.getCompClip(), comp,
                 null, sg2d.paint, sg2d,
                 MTLContext.NO_CONTEXT_FLAGS);

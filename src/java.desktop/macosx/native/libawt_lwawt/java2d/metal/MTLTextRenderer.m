@@ -125,13 +125,13 @@ static id<MTLRenderCommandEncoder> lcdCacheEncoder = nil;
  * Initializes the one glyph cache (texture and data structure).
  * If lcdCache is JNI_TRUE, the texture will contain RGB data,
  * otherwise we will simply store the grayscale/monochrome glyph images
- * as intensity values (which work well with the GL_MODULATE function).
+ * as intensity values.
  */
 static jboolean
 MTLTR_InitGlyphCache(MTLContext *mtlc, jboolean lcdCache)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_InitGlyphCache");
-    // TODO : Need to fix RGB order in case of LCD
+    // TODO : Need to verify RGB order in case of LCD
     MTLPixelFormat pixelFormat =
         lcdCache ? MTLPixelFormatBGRA8Unorm : MTLPixelFormatA8Unorm;
 
@@ -420,7 +420,6 @@ MTLTR_DisableGlyphVertexCache(MTLContext *mtlc)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DisableGlyphVertexCache");
     MTLVertexCache_FlushGlyphVertexCache();
-    MTLVertexCache_RestoreColorState(mtlc);
     MTLVertexCache_FreeVertexCache();
 }
 

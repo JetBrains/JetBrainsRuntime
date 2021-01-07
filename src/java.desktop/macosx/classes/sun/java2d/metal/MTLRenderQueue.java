@@ -36,7 +36,7 @@ import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_CONFIG;
 import static sun.java2d.pipe.BufferedOpCodes.SYNC;
 
 /**
- * OGL-specific implementation of RenderQueue.  This class provides a
+ * MTL-specific implementation of RenderQueue.  This class provides a
  * single (daemon) thread that is responsible for periodically flushing
  * the queue, thus ensuring that only one thread communicates with the native
  * OpenGL libraries for the entire process.
@@ -70,10 +70,10 @@ public class MTLRenderQueue extends RenderQueue {
      * Flushes the single MTLRenderQueue instance synchronously.  If an
      * MTLRenderQueue has not yet been instantiated, this method is a no-op.
      * This method is useful in the case of Toolkit.sync(), in which we want
-     * to flush the OGL pipeline, but only if the OGL pipeline is currently
+     * to flush the MTL pipeline, but only if the MTL pipeline is currently
      * enabled.  Since this class has few external dependencies, callers need
      * not be concerned that calling this method will trigger initialization
-     * of the OGL pipeline and related classes.
+     * of the MTL pipeline and related classes.
      */
     public static void sync() {
         if (theInstance != null) {
@@ -113,7 +113,7 @@ public class MTLRenderQueue extends RenderQueue {
     }
 
     /**
-     * Returns true if the current thread is the OGL QueueFlusher thread.
+     * Returns true if the current thread is the MTL QueueFlusher thread.
      */
     public static boolean isQueueFlusherThread() {
         return (Thread.currentThread() == getInstance().flusher.thread);

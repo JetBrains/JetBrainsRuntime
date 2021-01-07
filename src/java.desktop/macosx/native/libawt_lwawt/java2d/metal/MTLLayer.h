@@ -74,4 +74,4 @@
 - (void) stopDisplayLink;
 @end
 
-#endif /* CGLLayer_h_Included */
+#endif /* MTLLayer_h_Included */

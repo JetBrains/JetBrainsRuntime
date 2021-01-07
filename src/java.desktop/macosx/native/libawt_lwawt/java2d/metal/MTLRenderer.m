@@ -39,15 +39,10 @@
 
 /**
  * Note: Some of the methods in this file apply a "magic number"
- * translation to line segments.  The OpenGL specification lays out the
- * "diamond exit rule" for line rasterization, but it is loose enough to
- * allow for a wide range of line rendering hardware.  (It appears that
- * some hardware, such as the Nvidia GeForce2 series, does not even meet
- * the spec in all cases.)  As such it is difficult to find a mapping
- * between the Java2D and OpenGL line specs that works consistently across
- * all hardware combinations.
+ * translation to line segments. It is same as what we have in
+ * OGLrenderer.
  *
- * Therefore the "magic numbers" you see here have been empirically derived
+ * The "magic numbers" you see here have been empirically derived
  * after testing on a variety of graphics hardware in order to find some
  * reasonable middle ground between the two specifications.  The general
  * approach is to apply a fractional translation to vertices so that they

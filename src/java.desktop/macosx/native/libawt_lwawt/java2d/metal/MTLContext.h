@@ -126,22 +126,13 @@
 - (void)endShapeClip:(BMTLSDOps *)dstOps;
 
 /**
- * Initializes the OpenGL state responsible for applying extra alpha.  This
- * step is only necessary for any operation that uses glDrawPixels() or
- * glCopyPixels() with a non-1.0f extra alpha value.  Since the source is
- * always premultiplied, we apply the extra alpha value to both alpha and
- * color components using GL_*_SCALE.
- */
-- (void)setExtraAlpha:(jfloat)ea;
-
-/**
- * Resets all OpenGL compositing state (disables blending and logic
+ * Resets all Metal compositing state (disables blending and logic
  * operations).
  */
 - (void)resetComposite;
 
 /**
- * Initializes the OpenGL blending state.  XOR mode is disabled and the
+ * Initializes the Metal blending state.  XOR mode is disabled and the
  * appropriate blend functions are setup based on the AlphaComposite rule
  * constant.
  */
@@ -159,7 +150,7 @@
 - (NSString*)getPaintDescription;
 
 /**
- * Initializes the OpenGL logic op state to XOR mode.  Blending is disabled
+ * Initializes the Metal logic op state to XOR mode.  Blending is disabled
  * before enabling logic op mode.  The XOR pixel value will be applied
  * later in the MTLContext_SetColor() method.
  */
@@ -167,12 +158,12 @@
 - (jboolean)useXORComposite;
 
 /**
- * Resets the OpenGL transform state back to the identity matrix.
+ * Resets the Metal transform state back to the identity matrix.
  */
 - (void)resetTransform;
 
 /**
- * Initializes the OpenGL transform state by setting the modelview transform
+ * Initializes the Metal transform state by setting the modelview transform
  * using the given matrix parameters.
  *
  * REMIND: it may be worthwhile to add serial id to AffineTransform, so we
@@ -183,29 +174,6 @@
                     M01:(jdouble) m01 M11:(jdouble) m11
                     M02:(jdouble) m02 M12:(jdouble) m12;
 
-/**
- * Initializes a small texture tile for use with tiled blit operations (see
- * MTLBlitLoops.c and MTLMaskBlit.c for usage examples).  The texture ID for
- * the tile is stored in the given MTLContext.  The tile is initially filled
- * with garbage values, but the tile is updated as needed (via
- * glTexSubImage2D()) with real RGBA values used in tiled blit situations.
- * The internal format for the texture is GL_RGBA8, which should be sufficient
- * for storing system memory surfaces of any known format (see PixelFormats
- * for a list of compatible surface formats).
- */
-- (jboolean)initBlitTileTexture;
-
-
-/**
- * Creates a 2D texture of the given format and dimensions and returns the
- * texture object identifier.  This method is typically used to create a
- * temporary texture for intermediate work, such as in the
- * MTLContext_InitBlitTileTexture() method below.
- */
-- (jint)createBlitTextureFormat:(jint)internalFormat pixelFormat:(jint)pixelFormat
-                          width:(jint)width height:(jint)height;
-
-- (void)destroyContextResources;
 
 - (void)resetPaint;
 - (void)setColorPaint:(int)pixel;

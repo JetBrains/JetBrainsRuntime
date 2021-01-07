@@ -60,7 +60,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
 {
     //private static final int kOpenGLSwapInterval =
     // RuntimeOptions.getCurrentOptions().OpenGLSwapInterval;
-    private static final int kOpenGLSwapInterval = 0; // TODO
+    private static final int kMetalSwapInterval = 0; // TODO
     private static boolean mtlAvailable;
     private static ImageCapabilities imageCaps = new MTLImageCaps();
 
@@ -82,10 +82,8 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     private static native long getMTLConfigInfo(int displayID, String mtlShadersLib);
 
     /**
-     * Returns GL_MAX_TEXTURE_SIZE from the shared opengl context. Must be
-     * called under OGLRQ lock, because this method change current context.
-     *
-     * @return GL_MAX_TEXTURE_SIZE
+     * Returns maximum texture size supported by Metal. Must be
+     * called under MTLRQ lock.
      */
     private static native int nativeGetMaxTextureSize();
 
@@ -134,7 +132,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
-            // getCGLConfigInfo() creates and destroys temporary
+            // getMTLConfigInfo() creates and destroys temporary
             // surfaces/contexts, so we should first invalidate the current
             // Java-level context and flush the queue...
             MTLContext.invalidateCurrentContext();

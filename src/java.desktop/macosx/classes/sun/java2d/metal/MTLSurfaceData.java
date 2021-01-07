@@ -157,11 +157,11 @@ public abstract class MTLSurfaceData extends SurfaceData
     private int nativeHeight;
 
     /**
-     * Returns the appropriate SurfaceType corresponding to the given OpenGL
+     * Returns the appropriate SurfaceType corresponding to the given Metal
      * surface type constant (e.g. TEXTURE -> MTLTexture).
      */
-    private static SurfaceType getCustomSurfaceType(int oglType) {
-        switch (oglType) {
+    private static SurfaceType getCustomSurfaceType(int mtlType) {
+        switch (mtlType) {
             case TEXTURE:
                 return MTLTexture;
             case RT_TEXTURE:
@@ -296,7 +296,7 @@ public abstract class MTLSurfaceData extends SurfaceData
     }
 
     /**
-     * Initializes the appropriate OpenGL offscreen surface based on the value
+     * Initializes the appropriate Metal offscreen surface based on the value
      * of the type parameter.  If the surface creation fails for any reason,
      * an OutOfMemoryError will be thrown.
      */
@@ -353,7 +353,7 @@ public abstract class MTLSurfaceData extends SurfaceData
      *   - blending is SrcOverNoEa or disabled
      *   - and the destination is opaque
      *
-     * Eventually, we could enhance the native OGL text rendering code
+     * Eventually, we could enhance the native MTL text rendering code
      * and remove the above restrictions, but that would require significantly
      * more code just to support a few uncommon cases.
      */
@@ -476,7 +476,7 @@ public abstract class MTLSurfaceData extends SurfaceData
         // install the text pipe based on our earlier decision
         sg2d.textpipe = textpipe;
 
-        // always override the image pipe with the specialized OGL pipe
+        // always override the image pipe with the specialized MTL pipe
         sg2d.imagepipe = mtlImagePipe;
     }
 

@@ -130,52 +130,9 @@ void MTLVertexCache_FreeVertexCache()
     vertexCache = NULL;
 }
 
-/**
- * This method is somewhat hacky, but necessary for the foreseeable future.
- * The problem is the way OpenGL handles color values in vertex arrays.  When
- * a vertex in a vertex array contains a color, and then the vertex array
- * is rendered via glDrawArrays(), the global OpenGL color state is actually
- * modified each time a vertex is rendered.  This means that after all
- * vertices have been flushed, the global OpenGL color state will be set to
- * the color of the most recently rendered element in the vertex array.
- *
- * The reason this is a problem for us is that we do not want to flush the
- * vertex array (in the case of mask/glyph operations) or issue a glEnd()
- * (in the case of non-antialiased primitives) everytime the current color
- * changes, which would defeat any benefit from batching in the first place.
- * We handle this in practice by not calling CHECK/RESET_PREVIOUS_OP() when
- * the simple color state is changing in MTLPaints_SetColor().  This is
- * problematic for vertex caching because we may end up with the following
- * situation, for example:
- *   SET_COLOR (orange)
- *   MASK_FILL
- *   MASK_FILL
- *   SET_COLOR (blue; remember, this won't cause a flush)
- *   FILL_RECT (this will cause the vertex array to be flushed)
- *
- * In this case, we would actually end up rendering an orange FILL_RECT,
- * not a blue one as intended, because flushing the vertex cache flush would
- * override the color state from the most recent SET_COLOR call.
- *
- * Long story short, the easiest way to resolve this problem is to call
- * this method just after disabling the mask/glyph cache, which will ensure
- * that the appropriate color state is restored.
- */
-void
-MTLVertexCache_RestoreColorState(MTLContext *mtlc)
-{
-//    TODO
-//    if (mtlc.paint.paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-//        //mtlc.paint.color = mtlc.paint.pixel;
-//    }
-}
-
 static jboolean
 MTLVertexCache_InitMaskCache(MTLContext *mtlc) {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_InitMaskCache");
-    // TODO : We are creating mask cache only of type MTLPixelFormatA8Unorm
-    // when we need more than 1 byte to store a pixel(LCD) we need to update
-    // below code.
     if (maskCacheTex == NULL) {
         maskCacheTex = [mtlc.texturePool getTexture:MTLVC_MASK_CACHE_WIDTH_IN_TEXELS
                                              height:MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS
@@ -235,10 +192,9 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 {
     // TODO : Once we enable check_previous_op
     // we will start using DisableMaskCache until then
-    // we are force flusging vertexcache.
+    // we are force flushing vertexcache.
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_DisableMaskCache");
     MTLVertexCache_FlushVertexCache(mtlc);
-    MTLVertexCache_RestoreColorState(mtlc);
     maskCacheIndex = 0;
     free(vertexCache);
     vertexCache = NULL;
@@ -247,7 +203,6 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 void
 MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps) {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_CreateSamplingEncoder");
-    //encoder = [mtlc.encoderManager getTextureEncoder:dstOps isSrcOpaque:NO];
     encoder = [mtlc.encoderManager getTextEncoder:dstOps
                                          isSrcOpaque:NO];
 }
@@ -270,10 +225,6 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
     {
         J2dTraceLn2(J2D_TRACE_INFO, "maskCacheIndex = %d, vertexCacheIndex = %d", maskCacheIndex, vertexCacheIndex);
         MTLVertexCache_FlushVertexCache(mtlc);
-        // TODO : Since we are not committing command buffer
-        // in FlushVertexCache we need to create new maskcache
-        // after present cache is full. Check whether we can
-        // avoid multiple cache creation.
         MTLVertexCache_EnableMaskCache(mtlc, dstOps);
         maskCacheIndex = 0;
     }

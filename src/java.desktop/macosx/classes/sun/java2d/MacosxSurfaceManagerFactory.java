@@ -44,7 +44,7 @@ public class MacosxSurfaceManagerFactory extends SurfaceManagerFactory {
      * as a way for the caller to pass pipeline-specific context data to
      * the VolatileSurfaceManager (such as a backbuffer handle, for example).
      *
-     * For Mac OS X, this method returns either an CGL-specific
+     * For Mac OS X, this method returns either an CGL/MTL-specific
      * VolatileSurfaceManager based on the GraphicsConfiguration
      * under which the SunVolatileImage was created.
      */

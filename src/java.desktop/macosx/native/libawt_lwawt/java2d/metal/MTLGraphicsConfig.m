@@ -43,7 +43,7 @@
 
 /**
  * Disposes all memory and resources associated with the given
- * CGLGraphicsConfigInfo (including its native MTLContext data).
+ * MTLGraphicsConfigInfo (including its native MTLContext data).
  */
 void
 MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
@@ -71,7 +71,7 @@ MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
 
 
 /**
- * Attempts to initialize CGL and the core OpenGL library.
+ * Attempts to initialize MTL and the core Metal library.
  */
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
@@ -121,12 +121,12 @@ Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
 
 
 /**
- * Determines whether the CGL pipeline can be used for a given GraphicsConfig
+ * Determines whether the MTL pipeline can be used for a given GraphicsConfig
  * provided its screen number and visual ID.  If the minimum requirements are
- * met, the native CGLGraphicsConfigInfo structure is initialized for this
+ * met, the native MTLGraphicsConfigInfo structure is initialized for this
  * GraphicsConfig with the necessary information (pixel format, etc.)
  * and a pointer to this structure is returned as a jlong.  If
- * initialization fails at any point, zero is returned, indicating that CGL
+ * initialization fails at any point, zero is returned, indicating that MTL
  * cannot be used for this GraphicsConfig (we should fallback on an existing
  * 2D pipeline).
  */

@@ -32,7 +32,7 @@
 #import "MTLLayer.h"
 
 /**
- * The CGLSDOps structure contains the CGL-specific information for a given
+ * The MTLSDOps structure contains the MTL-specific information for a given
  * MTLSurfaceData.  It is referenced by the native MTLSDOps structure.
  */
 typedef struct _MTLSDOps {

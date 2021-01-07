@@ -40,7 +40,7 @@ import java.awt.*;
 class MTLUtilities {
 
     /**
-     * These OGL-specific surface type constants are the same as those
+     * These MTL-specific surface type constants are the same as those
      * defined in the MTLSurfaceData class and are duplicated here so that
      * clients of this API can access them more easily via reflection.
      */
@@ -54,7 +54,7 @@ class MTLUtilities {
     }
 
     /**
-     * Returns true if the current thread is the OGL QueueFlusher thread.
+     * Returns true if the current thread is the MTL QueueFlusher thread.
      */
     public static boolean isQueueFlusherThread() {
         return MTLRenderQueue.isQueueFlusherThread();
@@ -117,7 +117,7 @@ class MTLUtilities {
      * used when the Runnable needs a current context to complete its
      * operation, but does not require that the context be made current to
      * a particular surface.  For example, an application may call this
-     * method so that the given Runnable can query the OpenGL capabilities
+     * method so that the given Runnable can query the Metal capabilities
      * of the given GraphicsConfiguration, without making a context current
      * to a dummy surface (or similar hacky techniques).
      *
@@ -199,7 +199,7 @@ class MTLUtilities {
 
         // this is the lower-left origin of the region to be painted,
         // relative to the lower-left origin of the surface
-        // (in OpenGL coordinates)
+        // (in Metal coordinates)
         Rectangle surfaceBounds = sData.getBounds();
         int x1 = x0;
         int y1 = surfaceBounds.height - (y0 + componentHeight);
@@ -249,7 +249,7 @@ class MTLUtilities {
         int h = r.getHeight();
 
         // this is the lower-left origin of the scissor box relative to the
-        // lower-left origin of the surface (in OpenGL coordinates)
+        // lower-left origin of the surface (in Metal coordinates)
         Rectangle surfaceBounds = sData.getBounds();
         int x1 = x0;
         int y1 = surfaceBounds.height - (y0 + h);

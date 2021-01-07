@@ -97,9 +97,8 @@ abstract class MTLPaints {
          * Returns true if the given TexturePaint instance can be used by the
          * accelerated MTLPaints.Texture implementation.  A TexturePaint is
          * considered valid if the following conditions are met:
-         *   - the texture image dimensions are power-of-two (or the
-         *     GL_ARB_texture_non_power_of_two extension is present)
-         *   - the texture image can be (or is already) cached in an OpenGL
+         *   - the texture image dimensions are power-of-two
+         *   - the texture image can be (or is already) cached in an Metal
          *     texture object
          */
         @Override
@@ -115,7 +114,7 @@ abstract class MTLPaints {
             if (!(srcData instanceof MTLSurfaceData)) {
                 // REMIND: this is a hack that attempts to cache the system
                 //         memory image from the TexturePaint instance into an
-                //         OpenGL texture...
+                //         Metal texture...
                 srcData =
                         dstData.getSourceSurfaceData(bi,
                                 SunGraphics2D.TRANSFORM_ISIDENT,
@@ -126,8 +125,8 @@ abstract class MTLPaints {
             }
 
             // verify that the source surface is actually a texture
-            MTLSurfaceData oglData = (MTLSurfaceData)srcData;
-            if (oglData.getType() != MTLSurfaceData.TEXTURE) {
+            MTLSurfaceData mtlData = (MTLSurfaceData)srcData;
+            if (mtlData.getType() != MTLSurfaceData.TEXTURE) {
                 return false;
             }
 

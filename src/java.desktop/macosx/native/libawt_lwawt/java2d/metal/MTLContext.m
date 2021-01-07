@@ -221,8 +221,8 @@ extern void initSamplers(id<MTLDevice> device);
     }
 
     // make the context current
-    MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
-    mtlc = dstCGLOps->configInfo->context;
+    MTLSDOps *dstMTLOps = (MTLSDOps *)dstOps->privOps;
+    mtlc = dstMTLOps->configInfo->context;
 
     if (mtlc == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
@@ -312,21 +312,6 @@ extern void initSamplers(id<MTLDevice> device);
                     M02:(jdouble) m02 M12:(jdouble) m12 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_SetTransform");
     [_transform setTransformM00:m00 M10:m10 M01:m01 M11:m11 M02:m02 M12:m12];
-}
-
-- (jboolean)initBlitTileTexture {
-    //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_InitBlitTileTexture -- :TODO");
-
-    return JNI_TRUE;
-}
-
-- (jint)createBlitTextureFormat:(jint)internalFormat pixelFormat:(jint)pixelFormat
-                          width:(jint)width height:(jint)height {
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_InitBlitTileTexture -- :TODO");
-
-    //TODO
-    return 0;
 }
 
 - (void)resetPaint {

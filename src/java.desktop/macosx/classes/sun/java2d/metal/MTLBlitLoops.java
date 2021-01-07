@@ -273,14 +273,14 @@ final class MTLBlitLoops {
             // disposed while the operation is processed on the QFT
             rq.addReference(srcData);
 
-            MTLSurfaceData oglDst = (MTLSurfaceData)dstData;
+            MTLSurfaceData mtlDst = (MTLSurfaceData)dstData;
             if (texture) {
                 // make sure we have a current context before uploading
                 // the sysmem data to the texture object
-                MTLGraphicsConfig gc = oglDst.getMTLGraphicsConfig();
+                MTLGraphicsConfig gc = mtlDst.getMTLGraphicsConfig();
                 MTLContext.setScratchSurface(gc);
             } else {
-                MTLContext.validateContext(oglDst, oglDst,
+                MTLContext.validateContext(mtlDst, mtlDst,
                         clip, comp, xform, null, null,
                         ctxflags);
             }
@@ -325,9 +325,9 @@ final class MTLBlitLoops {
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
-            MTLSurfaceData oglSrc = (MTLSurfaceData)srcData;
-            MTLSurfaceData oglDst = (MTLSurfaceData)dstData;
-            int srctype = oglSrc.getType();
+            MTLSurfaceData mtlSrc = (MTLSurfaceData)srcData;
+            MTLSurfaceData mtlDst = (MTLSurfaceData)dstData;
+            int srctype = mtlSrc.getType();
             boolean rtt;
             MTLSurfaceData srcCtxData;
             if (srctype == MTLSurfaceData.TEXTURE) {
@@ -335,25 +335,25 @@ final class MTLBlitLoops {
                 // the destination surface for the purposes of making a
                 // context current
                 rtt = false;
-                srcCtxData = oglDst;
+                srcCtxData = mtlDst;
             } else {
                 // the source is a pbuffer, backbuffer, or render-to-texture
                 // surface; we set rtt to true to differentiate this kind
                 // of surface from a regular texture object
                 rtt = true;
                 if (srctype == AccelSurface.RT_TEXTURE) {
-                    srcCtxData = oglDst;
+                    srcCtxData = mtlDst;
                 } else {
-                    srcCtxData = oglSrc;
+                    srcCtxData = mtlSrc;
                 }
             }
 
-            MTLContext.validateContext(srcCtxData, oglDst,
+            MTLContext.validateContext(srcCtxData, mtlDst,
                     clip, comp, xform, null, null,
                     ctxflags);
 
             if (biop != null) {
-                MTLBufImgOps.enableBufImgOp(rq, oglSrc, srcImg, biop);
+                MTLBufImgOps.enableBufImgOp(rq, mtlSrc, srcImg, biop);
             }
 
             int packedParams = createPackedParams(true, texture,
@@ -368,7 +368,7 @@ final class MTLBlitLoops {
                 MTLBufImgOps.disableBufImgOp(rq, biop);
             }
 
-            if (rtt && oglDst.isOnScreen()) {
+            if (rtt && mtlDst.isOnScreen()) {
                 // we only have to flush immediately when copying from a
                 // (non-texture) surface to the screen; otherwise Swing apps
                 // might appear unresponsive until the auto-flush completes
@@ -793,7 +793,7 @@ class MTLTextureToSurfaceTransform extends TransformBlit {
  * This general Blit implementation converts any source surface to an
  * intermediate IntArgbPre surface, and then uses the more specific
  * IntArgbPre->MTLSurface/Texture loop to get the intermediate
- * (premultiplied) surface down to OpenGL using simple blit.
+ * (premultiplied) surface down to Metal using simple blit.
  */
 class MTLGeneralBlit extends Blit {
 
@@ -827,7 +827,7 @@ class MTLGeneralBlit extends Blit {
         src = convertFrom(convertsrc, src, sx, sy, w, h,
                 cachedSrc, BufferedImage.TYPE_INT_ARGB_PRE);
 
-        // copy IntArgbPre intermediate surface to OpenGL surface
+        // copy IntArgbPre intermediate surface to Metal surface
         performop.Blit(src, dst, comp, clip,
                 0, 0, dx, dy, w, h);
 
@@ -842,7 +842,7 @@ class MTLGeneralBlit extends Blit {
  * This general TransformedBlit implementation converts any source surface to an
  * intermediate IntArgbPre surface, and then uses the more specific
  * IntArgbPre->MTLSurface/Texture loop to get the intermediate
- * (premultiplied) surface down to OpenGL using simple transformBlit.
+ * (premultiplied) surface down to Metal using simple transformBlit.
  */
 final class MTLGeneralTransformedBlit extends TransformBlit {
 
@@ -870,7 +870,7 @@ final class MTLGeneralTransformedBlit extends TransformBlit {
         src = convertFrom(convertsrc, src, srcx, srcy, width, height, cachedSrc,
                 BufferedImage.TYPE_INT_ARGB_PRE);
 
-        // transform IntArgbPre intermediate surface to OpenGL surface
+        // transform IntArgbPre intermediate surface to Metal surface
         performop.Transform(src, dst, comp, clip, at, hint, 0, 0, dstx, dsty,
                 width, height);
 
@@ -885,7 +885,7 @@ final class MTLGeneralTransformedBlit extends TransformBlit {
  * This general MTLAnyCompositeBlit implementation can convert any source/target
  * surface to an intermediate surface using convertsrc/convertdst loops, applies
  * necessary composite operation, and then uses convertresult loop to get the
- * intermediate surface down to OpenGL.
+ * intermediate surface down to Metal.
  */
 final class MTLAnyCompositeBlit extends Blit {
 

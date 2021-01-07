@@ -109,7 +109,6 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
         bmtlsdo->height = height;
         bmtlsdo->textureWidth = width;
         bmtlsdo->textureHeight = height;
-        bmtlsdo->textureTarget = -1;
         bmtlsdo->drawableType = rtt ? MTLSD_RT_TEXTURE : MTLSD_TEXTURE;
 
         J2dTraceLn6(J2D_TRACE_VERBOSE, "MTLSurfaceData_initTexture: w=%d h=%d bp=%p [tex=%p] opaque=%d rtt=%d", width, height, bmtlsdo, bmtlsdo->pTexture, isOpaque, rtt);
@@ -199,7 +198,7 @@ MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *mtlsdo,
 }
 
 /**
- * Deletes native OpenGL resources associated with this surface.
+ * Deletes native Metal resources associated with this surface.
  */
 void
 MTLSD_Delete(JNIEnv *env, BMTLSDOps *bmtlsdo)
@@ -226,7 +225,7 @@ MTLSD_Delete(JNIEnv *env, BMTLSDOps *bmtlsdo)
 /**
  * This is the implementation of the general DisposeFunc defined in
  * SurfaceData.h and used by the Disposer mechanism.  It first flushes all
- * native OpenGL resources and then frees any memory allocated within the
+ * native Metal resources and then frees any memory allocated within the
  * native MTLSDOps structure.
  */
 void
@@ -338,11 +337,11 @@ MTLSD_InitMTLWindow(JNIEnv *env, BMTLSDOps *bmtlsdo)
 void
 MTLSD_SwapBuffers(JNIEnv *env, jlong pPeerData)
 {
-    J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_SwapBuffers -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLSD_SwapBuffers -- :TODO");
 }
 
 #pragma mark -
-#pragma mark "--- CGLSurfaceData methods ---"
+#pragma mark "--- MTLSurfaceData methods ---"
 
 extern LockFunc        MTLSD_Lock;
 extern GetRasInfoFunc  MTLSD_GetRasInfo;
@@ -404,13 +403,13 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLSurfaceData_clearWindow
 (JNIEnv *env, jobject cglsd)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "CGLSurfaceData_clearWindow");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLSurfaceData_clearWindow");
 
-    BMTLSDOps *mtlsdo = (MTLSDOps*) SurfaceData_GetOps(env, cglsd);
-    MTLSDOps *cglsdo = (MTLSDOps*) mtlsdo->privOps;
+    BMTLSDOps *bmtlsdo = (MTLSDOps*) SurfaceData_GetOps(env, cglsd);
+    MTLSDOps *mtlsdo = (MTLSDOps*) bmtlsdo->privOps;
 
-    cglsdo->peerData = NULL;
-    cglsdo->layer = NULL;
+    mtlsdo->peerData = NULL;
+    mtlsdo->layer = NULL;
 }
 
 NSString * getSurfaceDescription(const BMTLSDOps * bmtlsdOps) {

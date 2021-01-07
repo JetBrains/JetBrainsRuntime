@@ -502,7 +502,7 @@ public final class LWCToolkit extends LWToolkit {
 
     @Override
     public void sync() {
-        // flush the OGL pipeline (this is a no-op if OGL is not enabled)
+        // flush the OGL/MTL pipeline (this is a no-op if OGL/MTL is not enabled)
         if (MacOSFlags.isMetalEnabled()) {
             MTLRenderQueue.sync();
         } else {
