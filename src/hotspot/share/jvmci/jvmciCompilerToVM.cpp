@@ -367,6 +367,10 @@ C2V_VMENTRY(jobject, findUniqueConcreteMethod, (JNIEnv *, jobject, jobject jvmci
     THROW_MSG_0(vmSymbols::java_lang_InternalError(), err_msg("Interface %s should be handled in Java code", holder->external_name()));
   }
 
+  if (method->is_abstract()) {
+    return NULL;
+  }
+
   methodHandle ucm;
   {
     MutexLocker locker(Compile_lock);
