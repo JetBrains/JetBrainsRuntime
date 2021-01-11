@@ -44,10 +44,9 @@ typedef JfrMemorySpace<JfrStringPoolBuffer, JfrMspaceSequentialRetrieval, JfrStr
 //
 class JfrStringPool : public JfrCHeapObj {
  public:
-  static bool add(bool epoch, jlong id, jstring string, JavaThread* jt);
   size_t write();
-  size_t write_at_safepoint();
   size_t clear();
+  static jboolean add(jlong id, jstring string, JavaThread* jt);
 
   typedef JfrStringPoolMspace::Type Buffer;
  private:
