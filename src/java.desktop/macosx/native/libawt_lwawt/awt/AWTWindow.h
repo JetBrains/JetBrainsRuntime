@@ -47,7 +47,6 @@
     jint preFullScreenLevel;
     NSRect standardFrame;
     BOOL isMinimizing;
-    NSWindowTabbingMode javaWindowTabbingMode;
 }
 
 // An instance of either AWTWindow_Normal or AWTWindow_Panel
@@ -63,7 +62,6 @@
 @property (nonatomic) jint preFullScreenLevel;
 @property (nonatomic) NSRect standardFrame;
 @property (nonatomic) BOOL isMinimizing;
-@property (nonatomic) NSWindowTabbingMode javaWindowTabbingMode;
 
 - (id) initWithPlatformWindow:(JNFWeakJObjectWrapper *)javaPlatformWindow
                   ownerWindow:owner
@@ -72,8 +70,6 @@
                   contentView:(NSView *)contentView;
 
 - (BOOL) isTopmostWindowUnderMouse;
-
-- (NSWindowTabbingMode) getJavaWindowTabbingMode;
 
 // NSWindow overrides delegate methods
 - (BOOL) canBecomeKeyWindow;
