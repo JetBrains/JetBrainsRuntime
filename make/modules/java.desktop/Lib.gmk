@@ -94,6 +94,7 @@ ifeq ($(call isTargetOs, macosx), true)
       LDFLAGS := $(LDFLAGS_JDKLIB) \
           $(call SET_SHARED_LIBRARY_ORIGIN), \
       LIBS := \
+          -ljava \
           -framework Accelerate \
           -framework ApplicationServices \
           -framework AudioToolbox \
@@ -107,6 +108,8 @@ ifeq ($(call isTargetOs, macosx), true)
           -framework IOSurface \
           -framework QuartzCore, \
   ))
+
+  $(BUILD_LIBOSXAPP): $(call FindLib, java.base, java)
 
   TARGETS += $(BUILD_LIBOSXAPP)
 

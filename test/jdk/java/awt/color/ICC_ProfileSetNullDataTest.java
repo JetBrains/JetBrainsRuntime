@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2009 Red Hat, Inc.
+ * Copyright (c) 2004, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +19,33 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#include "precompiled.hpp"
-#include "assembler_zero.inline.hpp"
-#include "memory/resourceArea.hpp"
-#include "runtime/arguments.hpp"
-#include "runtime/globals_extension.hpp"
-#include "runtime/java.hpp"
-#include "runtime/stubCodeGenerator.hpp"
-#include "runtime/vm_version.hpp"
+import java.awt.color.ColorSpace;
+import java.awt.color.ICC_Profile;
 
+/**
+ * @test
+ * @bug 4823896 7042594
+ * @summary Test checks behavior of the ICC_Profile.setData(int, byte[])
+ */
+public final class ICC_ProfileSetNullDataTest {
 
-void VM_Version::initialize() {
-  // This machine does not allow unaligned memory accesses
-  if (! FLAG_IS_DEFAULT(UseUnalignedAccesses)) {
-    warning("Unaligned memory access is not available on this CPU");
-    FLAG_SET_DEFAULT(UseUnalignedAccesses, false);
-  }
-  // Disable prefetching for Zero
-  if (! FLAG_IS_DEFAULT(AllocatePrefetchDistance)) {
-    warning("Prefetching is not available for a Zero VM");
-  }
-  FLAG_SET_DEFAULT(AllocatePrefetchDistance, 0);
+    public static void main(String[] args) {
+        test(ICC_Profile.getInstance(ColorSpace.CS_sRGB));
+        test(ICC_Profile.getInstance(ColorSpace.CS_LINEAR_RGB));
+        test(ICC_Profile.getInstance(ColorSpace.CS_CIEXYZ));
+        test(ICC_Profile.getInstance(ColorSpace.CS_PYCC));
+        test(ICC_Profile.getInstance(ColorSpace.CS_GRAY));
+    }
 
-  // Not implemented
-  UNSUPPORTED_OPTION(CriticalJNINatives);
+    private static void test(ICC_Profile profile) {
+        byte[] tagData = null;
+        try {
+            profile.setData(ICC_Profile.icSigCmykData, tagData);
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+        throw new RuntimeException("IllegalArgumentException expected");
+    }
 }

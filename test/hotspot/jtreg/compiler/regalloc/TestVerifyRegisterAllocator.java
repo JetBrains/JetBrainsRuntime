@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2009 Red Hat, Inc.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +19,22 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#include "precompiled.hpp"
-#include "assembler_zero.inline.hpp"
-#include "memory/resourceArea.hpp"
-#include "runtime/arguments.hpp"
-#include "runtime/globals_extension.hpp"
-#include "runtime/java.hpp"
-#include "runtime/stubCodeGenerator.hpp"
-#include "runtime/vm_version.hpp"
+/*
+ * @test
+ * @bug 8258243
+ * @requires vm.debug == true & vm.compiler2.enabled
+ * @summary Sanity check the -XX:+VerifyRegisterAllocator flag in a hello world program.
+ *
+ * @run main/othervm -Xcomp -XX:-TieredCompilation -XX:+VerifyRegisterAllocator
+ *                   compiler.regalloc.TestVerifyRegisterAllocator
+ */
+package compiler.regalloc;
 
-
-void VM_Version::initialize() {
-  // This machine does not allow unaligned memory accesses
-  if (! FLAG_IS_DEFAULT(UseUnalignedAccesses)) {
-    warning("Unaligned memory access is not available on this CPU");
-    FLAG_SET_DEFAULT(UseUnalignedAccesses, false);
-  }
-  // Disable prefetching for Zero
-  if (! FLAG_IS_DEFAULT(AllocatePrefetchDistance)) {
-    warning("Prefetching is not available for a Zero VM");
-  }
-  FLAG_SET_DEFAULT(AllocatePrefetchDistance, 0);
-
-  // Not implemented
-  UNSUPPORTED_OPTION(CriticalJNINatives);
+public class TestVerifyRegisterAllocator {
+    public static void main(String[] strArr) {
+        System.out.println("Hello world!");
+    }
 }
+
