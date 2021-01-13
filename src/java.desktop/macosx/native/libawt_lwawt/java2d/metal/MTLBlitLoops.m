@@ -65,7 +65,7 @@ typedef struct {
 MTLRasterFormatInfo RasterFormatInfos[] = {
         { MTLPixelFormatBGRA8Unorm, 1, 0, nil }, /* 0 - IntArgb      */ // Argb (in java notation)
         { MTLPixelFormatBGRA8Unorm, 1, 1, nil }, /* 1 - IntArgbPre   */
-        { MTLPixelFormatBGRA8Unorm, 0, 1, nil }, /* 2 - IntRgb       */
+        { MTLPixelFormatBGRA8Unorm, 0, 1, @"rgb_to_rgba" }, /* 2 - IntRgb       */
         { MTLPixelFormatBGRA8Unorm, 0, 1, @"xrgb_to_rgba" }, /* 3 - IntRgbx      */
         { MTLPixelFormatBGRA8Unorm, 0, 1, @"bgr_to_rgba"  }, /* 4 - IntBgr       */
         { MTLPixelFormatBGRA8Unorm, 0, 1, @"xbgr_to_rgba" }, /* 5 - IntBgrx      */
@@ -163,6 +163,9 @@ replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRas
     const int sh = srcInfo->bounds.y2 - srcInfo->bounds.y1;
     const int dw = dx2 - dx1;
     const int dh = dy2 - dy1;
+    if (dw < sw || dh < sh) {
+        J2dTraceLn4(J2D_TRACE_WARNING, "replaceTextureRegion: dest size: (%d, %d) less than source size: (%d, %d)", dw, dh, sw, sh);
+    }
 
     const void *raster = srcInfo->rasBase;
     raster += (NSUInteger)srcInfo->bounds.y1 * (NSUInteger)srcInfo->scanStride + (NSUInteger)srcInfo->bounds.x1 * (NSUInteger)srcInfo->pixelStride;
@@ -170,8 +173,6 @@ replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRas
     @autoreleasepool {
         J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
                     dw, dh, dx1, dy1);
-        // NOTE: we might want to fill alpha channel when !rfi->hasAlpha
-
         id<MTLBuffer> buff = [[mtlc.device newBufferWithLength:(sw * sh * srcInfo->pixelStride) options:MTLResourceStorageModeManaged] autorelease];
 
         // copy src pixels inside src bounds to buff
@@ -226,7 +227,7 @@ replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRas
 static void
 MTLBlitSwToTextureViaPooledTexture(
         MTLContext *mtlc, SurfaceDataRasInfo *srcInfo, BMTLSDOps * bmtlsdOps,
-        MTLRasterFormatInfo * rfi, jboolean useBlitEncoder, jint hint,
+        MTLRasterFormatInfo *rfi, jint hint,
         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
@@ -246,23 +247,9 @@ MTLBlitSwToTextureViaPooledTexture(
 
     id<MTLTexture> texBuff = texHandle.texture;
     replaceTextureRegion(mtlc, texBuff, srcInfo, rfi, 0, 0, sw, sh);
-    // TODO: useBlitEncoder is always false, remove dead code
-    if (useBlitEncoder) {
-        id <MTLBlitCommandEncoder> blitEncoder = [mtlc.encoderManager createBlitEncoder];
-        [blitEncoder copyFromTexture:texBuff
-                         sourceSlice:0
-                         sourceLevel:0
-                        sourceOrigin:MTLOriginMake(0, 0, 0)
-                          sourceSize:MTLSizeMake(sw, sh, 1)
-                           toTexture:dest
-                    destinationSlice:0
-                    destinationLevel:0
-                   destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
-        [blitEncoder endEncoding];
-    } else {
-        drawTex2Tex(mtlc, texBuff, dest, !rfi->hasAlpha, bmtlsdOps->isOpaque, hint,
-                    0, 0, sw, sh, dx1, dy1, dx2, dy2);
-    }
+
+    drawTex2Tex(mtlc, texBuff, dest, !rfi->hasAlpha, bmtlsdOps->isOpaque, hint,
+                0, 0, sw, sh, dx1, dy1, dx2, dy2);
 }
 
 static
@@ -582,28 +569,11 @@ MTLBlitLoops_Blit(JNIEnv *env,
 #endif //TRACE_BLIT
 
             MTLRasterFormatInfo rfi = RasterFormatInfos[srctype];
-            const jboolean useReplaceRegion = texture ||
-                    (!rfi.hasAlpha
-                     && !xform
-                     && isIntegerAndUnscaled(sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2));
 
-            if (useReplaceRegion) {
-                if (dstOps->isOpaque || rfi.hasAlpha) {
-#ifdef TRACE_BLIT
-                    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [replaceTextureRegion]");
-#endif //TRACE_BLIT
-                    replaceTextureRegion(mtlc, dest, &srcInfo, &rfi, (int) dx1, (int) dy1, (int) dx2, (int) dy2);
-                } else {
-#ifdef TRACE_BLIT
-                    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via pooled + blit]");
-#endif //TRACE_BLIT
-                    MTLBlitSwToTextureViaPooledTexture(mtlc, &srcInfo, dstOps, &rfi, false, hint, dx1, dy1, dx2, dy2);
-                }
-            } else { // !useReplaceRegion
-#ifdef TRACE_BLIT
-                J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via pooled texture]");
-#endif //TRACE_BLIT
-                MTLBlitSwToTextureViaPooledTexture(mtlc, &srcInfo, dstOps, &rfi, false, hint, dx1, dy1, dx2, dy2);
+            if (texture) {
+                replaceTextureRegion(mtlc, dest, &srcInfo, &rfi, (int) dx1, (int) dy1, (int) dx2, (int) dy2);
+            } else {
+                MTLBlitSwToTextureViaPooledTexture(mtlc, &srcInfo, dstOps, &rfi, hint, dx1, dy1, dx2, dy2);
             }
         }
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);
