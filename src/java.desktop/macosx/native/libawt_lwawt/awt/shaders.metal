@@ -92,6 +92,49 @@ struct TxtShaderInOut_XOR {
     float2 tpCoords;
 };
 
+template <typename Uniforms> inline
+float4 frag_single_grad(float a, Uniforms uniforms)
+{
+    int fa = floor(a);
+    if (uniforms.isCyclic) {
+        if (fa%2) {
+            a = 1.0 + fa - a;
+        } else {
+            a = a - fa;
+        }
+    } else {
+        a = saturate(a);
+    }
+    return mix(uniforms.color1, uniforms.color2, a);
+}
+
+template <typename Uniforms> inline
+float4 frag_multi_grad(float a, Uniforms uniforms)
+{
+      if (uniforms.cycleMethod > GradNoCycle) {
+          int fa = floor(a);
+          a = a - fa;
+          if (uniforms.cycleMethod == GradReflect && fa%2) {
+              a = 1.0 - a;
+          }
+      } else {
+          a = saturate(a);
+      }
+
+      int n = 0;
+      for (;n < GRAD_MAX_FRACTIONS - 1; n++) {
+          if (a <= uniforms.fract[n + 1]) break;
+      }
+
+      a = (a - uniforms.fract[n]) / (uniforms.fract[n + 1] - uniforms.fract[n]);
+
+      float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
+      if (uniforms.isLinear) {
+          c.rgb = 1.055 * pow(c.rgb, float3(0.416667)) - 0.055;
+      }
+      return c;
+}
+
 vertex ColShaderInOut vert_col(VertexInput in [[stage_in]],
        constant FrameUniforms& uniforms [[buffer(FrameUniformBuffer)]],
        constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
@@ -287,21 +330,7 @@ fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
 
     float3 v = float3(in.position.x, in.position.y, 1);
     float  a = (dot(v,uniforms.params)-0.25)*2.0;
-    int fa = floor(a);
-    if (uniforms.isCyclic) {
-        if (fa%2) {
-            a = 1.0 + fa - a;
-        } else {
-            a = a - fa;
-        }
-    } else {
-        a = saturate(a);
-    }
-    float4 c = mix(uniforms.color1, uniforms.color2, a);
-    return half4(c.r*renderColor.a,
-                 c.g*renderColor.a,
-                 c.b*renderColor.a,
-                 c.a*renderColor.a) * uniforms.extraAlpha;
+    return half4(frag_single_grad(a, uniforms)*renderColor.a)*uniforms.extraAlpha;
 }
 
 fragment half4 frag_txt_lin_grad(GradShaderInOut in [[stage_in]],
@@ -312,39 +341,9 @@ fragment half4 frag_txt_lin_grad(GradShaderInOut in [[stage_in]],
                                       min_filter::nearest);
 
     float4 renderColor = renderTexture.sample(textureSampler, in.texCoords);
-
     float3 v = float3(in.position.x, in.position.y, 1);
     float  a = dot(v,uniforms.params);
-    float lf = 1.0/(uniforms.numFracts - 1);
-
-    if (uniforms.cycleMethod > GradNoCycle) {
-        int fa = floor(a);
-        a = a - fa;
-        if (uniforms.cycleMethod == GradReflect && fa%2) {
-            a = 1.0 - a;
-        }
-    }  else {
-        a = saturate(a);
-    }
-
-    int n = floor(a/lf);
-    if (uniforms.cycleMethod > GradNoCycle) {
-        n = ((n % uniforms.numFracts) + uniforms.numFracts) % uniforms.numFracts;
-    } else {
-        if (n < 0) n = 0;
-        if (n > uniforms.numFracts - 2) n = uniforms.numFracts - 2;
-    }
-    a = (a - n*lf)/lf;
-    float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
-
-    if (uniforms.isLinear) {
-        c.rgb = 1.055 * pow(c.rgb, float3(0.416667)) - 0.055;
-    }
-
-    return half4(c.r*renderColor.a,
-                 c.g*renderColor.a,
-                 c.b*renderColor.a,
-                 c.a*renderColor.a) * uniforms.extraAlpha;
+    return half4(frag_multi_grad(a, uniforms)*renderColor.a)*uniforms.extraAlpha;
 }
 
 fragment half4 frag_txt_rad_grad(GradShaderInOut in [[stage_in]],
@@ -361,37 +360,7 @@ fragment half4 frag_txt_rad_grad(GradShaderInOut in [[stage_in]],
     float  y = dot(fragCoord, uniforms.m1);
     float  xfx = x - uniforms.precalc.x;
     float  a = (uniforms.precalc.x*xfx + sqrt(xfx*xfx + y*y*uniforms.precalc.y))*uniforms.precalc.z;
-
-    float lf = 1.0/(uniforms.numFracts - 1);
-
-    if (uniforms.cycleMethod > GradNoCycle) {
-        int fa = floor(a);
-        a = a - fa;
-        if (uniforms.cycleMethod == GradReflect && fa%2) {
-            a = 1.0 - a;
-        }
-    } else {
-        a = saturate(a);
-    }
-
-    int n = floor(a/lf);
-    if (uniforms.cycleMethod > GradNoCycle) {
-        n = ((n % uniforms.numFracts) + uniforms.numFracts) % uniforms.numFracts;
-    } else {
-        if (n < 0) n = 0;
-        if (n > uniforms.numFracts - 2) n = uniforms.numFracts - 2;
-    }
-    a = (a - n*lf)/lf;
-    float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
-
-    if (uniforms.isLinear) {
-        c.rgb = 1.055 * pow(c.rgb, float3(0.416667)) - 0.055;
-    }
-
-    return half4(c.r*renderColor.a,
-                     c.g*renderColor.a,
-                     c.b*renderColor.a,
-                     c.a*renderColor.a) * uniforms.extraAlpha;
+    return half4(frag_multi_grad(a, uniforms)*renderColor.a)*uniforms.extraAlpha;
 }
 
 
@@ -534,50 +503,15 @@ fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
                          constant GradFrameUniforms& uniforms [[buffer(0)]]) {
     float3 v = float3(in.position.x, in.position.y, 1);
     float  a = (dot(v,uniforms.params)-0.25)*2.0;
-    int fa = floor(a);
-    if (uniforms.isCyclic) {
-        if (fa%2) {
-            a = 1.0 + fa - a;
-        } else {
-            a = a - fa;
-        }
-    } else {
-        a = saturate(a);
-    }
-    float4 c = mix(uniforms.color1, uniforms.color2, a);
-    return half4(c) * uniforms.extraAlpha;
+    return half4(frag_single_grad(a, uniforms)) * uniforms.extraAlpha;
 }
 
 // LinGradFrameUniforms
 fragment half4 frag_lin_grad(GradShaderInOut in [[stage_in]],
                              constant LinGradFrameUniforms& uniforms [[buffer(0)]]) {
     float3 v = float3(in.position.x, in.position.y, 1);
-    float  a = dot(v,uniforms.params);
-    float lf = 1.0/(uniforms.numFracts - 1);
-
-    if (uniforms.cycleMethod > GradNoCycle) {
-        int fa = floor(a);
-        a = a - fa;
-        if (uniforms.cycleMethod == GradReflect && fa%2) {
-            a = 1.0 - a;
-        }
-    } else {
-        a = saturate(a);
-    }
-
-    int n = floor(a/lf);
-    if (uniforms.cycleMethod > GradNoCycle) {
-        n = ((n % uniforms.numFracts) + uniforms.numFracts) % uniforms.numFracts;
-    } else {
-        if (n < 0) n = 0;
-        if (n > uniforms.numFracts - 2) n = uniforms.numFracts - 2;
-    }
-    a = (a - n*lf)/lf;
-    float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
-    if (uniforms.isLinear) {
-        c.rgb = 1.055 * pow(c.rgb, float3(0.416667)) - 0.055;
-    }
-    return half4(c) * uniforms.extraAlpha;
+    float  a = dot(v, uniforms.params);
+    return half4(frag_multi_grad(a, uniforms))*uniforms.extraAlpha;
 }
 
 fragment half4 frag_rad_grad(GradShaderInOut in [[stage_in]],
@@ -587,35 +521,8 @@ fragment half4 frag_rad_grad(GradShaderInOut in [[stage_in]],
     float  y = dot(fragCoord, uniforms.m1);
     float  xfx = x - uniforms.precalc.x;
     float  a = (uniforms.precalc.x*xfx + sqrt(xfx*xfx + y*y*uniforms.precalc.y))*uniforms.precalc.z;
-
-    float lf = 1.0/(uniforms.numFracts - 1);
-
-    if (uniforms.cycleMethod > GradNoCycle) {
-        int fa = floor(a);
-        a = a - fa;
-        if (uniforms.cycleMethod == GradReflect && fa%2) {
-            a = 1.0 - a;
-        }
-    } else {
-        a = saturate(a);
-    }
-
-    int n = floor(a/lf);
-    if (uniforms.cycleMethod > GradNoCycle) {
-        n = ((n % uniforms.numFracts) + uniforms.numFracts) % uniforms.numFracts;
-    } else {
-        if (n < 0) n = 0;
-        if (n > uniforms.numFracts - 2) n = uniforms.numFracts - 2;
-    }
-    a = (a - n*lf)/lf;
-    float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
-
-    if (uniforms.isLinear) {
-            c.rgb = 1.055 * pow(c.rgb, float3(0.416667)) - 0.055;
-    }
-    return half4(c) * uniforms.extraAlpha;
+    return half4(frag_multi_grad(a, uniforms))*uniforms.extraAlpha;
 }
-
 
 vertex TxtShaderInOut vert_tp(VertexInput in [[stage_in]],
        constant AnchorData& anchorData [[buffer(FrameUniformBuffer)]],
