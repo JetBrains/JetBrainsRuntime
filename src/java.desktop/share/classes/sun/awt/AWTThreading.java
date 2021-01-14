@@ -5,6 +5,7 @@ import sun.font.FontUtilities;
 import java.awt.*;
 import java.awt.event.InvocationEvent;
 import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.Stack;
 import java.util.concurrent.*;
@@ -177,7 +178,7 @@ public class AWTThreading {
                         // - guarantees a single run either from dispatch or dispose
                         // - removes the invocation event from the tracking queue
                         new Runnable() {
-                            SoftReference<TrackingQueue> queueRef = new SoftReference<>(queue);
+                            WeakReference<TrackingQueue> queueRef = new WeakReference<>(queue);
 
                             @Override
                             public void run() {
@@ -188,7 +189,6 @@ public class AWTThreading {
                                     TrackingQueue q = queueRef.get();
                                     if (q != null) {
                                         q.remove(eventRef[0]);
-                                        q.clear();
                                     }
                                     queueRef = null;
                                 }
