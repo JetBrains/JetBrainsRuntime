@@ -354,44 +354,41 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         } else {
             bounds = _peer.constrainBounds(_target.getBounds());
         }
-        long nativeWindowPtr = AWTThreading.executeWaitToolkit(() -> {
-            AtomicLong ref = new AtomicLong();
-            contentView.execute(viewPtr -> {
-                boolean hasOwnerPtr = false;
+        AtomicLong ref = new AtomicLong();
+        contentView.execute(viewPtr -> {
+            boolean hasOwnerPtr = false;
 
-                if (owner != null) {
-                    hasOwnerPtr = 0L != owner.executeGet(ownerPtr -> {
-                        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                            logger.fine("nativeCreateNSWindow: owner=" + Long.toHexString(ownerPtr)
-                                    + ", styleBits=" + Integer.toHexString(styleBits)
-                                    + ", bounds=" + bounds);
-                        }
-                        long windowPtr = nativeCreateNSWindow(viewPtr, ownerPtr, styleBits,
-                                bounds.x, bounds.y, bounds.width, bounds.height);
-                        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                            logger.fine("window created: " + Long.toHexString(windowPtr));
-                        }
-                        ref.set(windowPtr);
-                        return 1;
-                    });
-                }
-
-                if (!hasOwnerPtr) {
+            if (owner != null) {
+                hasOwnerPtr = 0L != owner.executeGet(ownerPtr -> {
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                        logger.fine("nativeCreateNSWindow: styleBits=" + Integer.toHexString(styleBits)
+                        logger.fine("createNSWindow: owner=" + Long.toHexString(ownerPtr)
+                                + ", styleBits=" + Integer.toHexString(styleBits)
                                 + ", bounds=" + bounds);
                     }
-                    long windowPtr = nativeCreateNSWindow(viewPtr, 0, styleBits,
+                    long windowPtr = createNSWindow(viewPtr, ownerPtr, styleBits,
                             bounds.x, bounds.y, bounds.width, bounds.height);
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                         logger.fine("window created: " + Long.toHexString(windowPtr));
                     }
                     ref.set(windowPtr);
+                    return 1;
+                });
+            }
+
+            if (!hasOwnerPtr) {
+                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                    logger.fine("createNSWindow: styleBits=" + Integer.toHexString(styleBits)
+                            + ", bounds=" + bounds);
                 }
-            });
-            return ref.get();
+                long windowPtr = createNSWindow(viewPtr, 0, styleBits,
+                        bounds.x, bounds.y, bounds.width, bounds.height);
+                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                    logger.fine("window created: " + Long.toHexString(windowPtr));
+                }
+                ref.set(windowPtr);
+            }
         });
-        setPtr(nativeWindowPtr);
+        setPtr(ref.get());
         if (peer != null) { // Not applicable to CWarningWindow
             peer.setTextured(IS(TEXTURED, styleBits));
         }
@@ -1406,6 +1403,11 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         }
         return false;
     }
+
+    private long createNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h) {
+        return AWTThreading.executeWaitToolkit(() -> nativeCreateNSWindow(nsViewPtr, ownerPtr, styleBits, x, y, w, h));
+    }
+
     // ----------------------------------------------------------------------
     //                          NATIVE CALLBACKS
     // ----------------------------------------------------------------------
