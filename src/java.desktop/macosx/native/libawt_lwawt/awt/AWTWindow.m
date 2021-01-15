@@ -1341,7 +1341,7 @@ JNF_COCOA_ENTER(env);
 
     // TODO: not sure we need displayIfNeeded message in our view
     NSWindow *nsWindow = OBJC(windowPtr);
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
 
         AWTWindow *window = (AWTWindow*)[nsWindow delegate];
 

@@ -666,7 +666,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     @Override // PlatformWindow
     public void setBounds(int x, int y, int w, int h) {
-        execute(ptr -> nativeSetNSWindowBounds(ptr, x, y, w, h));
+        execute(ptr -> AWTThreading.executeWaitToolkit(() -> nativeSetNSWindowBounds(ptr, x, y, w, h)));
     }
 
     public void setMaximizedBounds(int x, int y, int w, int h) {
