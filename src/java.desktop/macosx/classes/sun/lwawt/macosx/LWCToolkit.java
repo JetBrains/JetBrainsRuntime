@@ -115,6 +115,7 @@ import sun.lwawt.PlatformDropTarget;
 import sun.lwawt.PlatformWindow;
 import sun.lwawt.SecurityWarningWindow;
 import sun.security.action.GetBooleanAction;
+import sun.util.logging.PlatformLogger;
 
 @SuppressWarnings("serial") // JDK implementation class
 final class NamedCursor extends Cursor {
@@ -185,6 +186,8 @@ public final class LWCToolkit extends LWToolkit {
      * If false we operate in singleThreaded FX/AWT interop mode and nested loop uses NSDefaultRunLoopMode
      */
     private static final boolean inAWT;
+
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.lwawt.macosx.LWCToolkit");
 
     public LWCToolkit() {
         areExtraMouseButtonsEnabled = Boolean.parseBoolean(System.getProperty("sun.awt.enableExtraMouseButtons", "true"));
@@ -668,6 +671,11 @@ public final class LWCToolkit extends LWToolkit {
             if (e != null) throw e;
             return object;
         }
+
+        @Override
+        public String toString() {
+            return "CallableWrapper{" + callable + "}";
+        }
     }
 
     private static final AtomicInteger blockingRunLoopCounter = new AtomicInteger(0);
@@ -715,6 +723,10 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents)
             throws InvocationTargetException
     {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("invokeAndWait started: " + runnable);
+        }
+
         boolean nonBlockingRunLoop;
 
         if (!processEvents) {
@@ -753,6 +765,10 @@ public final class LWCToolkit extends LWToolkit {
 
         doAWTRunLoop(mediator, nonBlockingRunLoop);
         if (!nonBlockingRunLoop) blockingRunLoopCounter.decrementAndGet();
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("invokeAndWait finished: " + runnable);
+        }
 
         checkException(invocationEvent);
     }
