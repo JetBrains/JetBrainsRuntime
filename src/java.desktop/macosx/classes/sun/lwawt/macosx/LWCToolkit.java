@@ -109,6 +109,7 @@ import sun.lwawt.LWWindowPeer.PeerType;
 import sun.lwawt.PlatformComponent;
 import sun.lwawt.PlatformDropTarget;
 import sun.lwawt.PlatformWindow;
+import sun.util.logging.PlatformLogger;
 
 @SuppressWarnings("serial") // JDK implementation class
 final class NamedCursor extends Cursor {
@@ -173,10 +174,11 @@ public final class LWCToolkit extends LWToolkit {
             = !Boolean.parseBoolean(
                     System.getProperty("javafx.embed.singleThread", "false"));
 
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.lwawt.macosx.LWCToolkit");
+
     public LWCToolkit() {
         final String extraButtons = "sun.awt.enableExtraMouseButtons";
-            areExtraMouseButtonsEnabled =
-                 Boolean.parseBoolean(System.getProperty(extraButtons, "true"));
+            areExtraMouseButtonsEnabled = Boolean.parseBoolean(System.getProperty(extraButtons, "true"));
             //set system property if not yet assigned
             System.setProperty(extraButtons, "" + areExtraMouseButtonsEnabled);
             initAppkit(ThreadGroupUtils.getRootThreadGroup(),
@@ -671,6 +673,11 @@ public final class LWCToolkit extends LWToolkit {
             if (e != null) throw e;
             return object;
         }
+
+        @Override
+        public String toString() {
+            return "CallableWrapper{" + callable + "}";
+        }
     }
 
     private static final AtomicInteger blockingRunLoopCounter = new AtomicInteger(0);
@@ -708,6 +715,10 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component)
             throws InvocationTargetException
     {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("invokeAndWait started: " + runnable);
+        }
+
         boolean nonBlockingRunLoop;
 
         synchronized (priorityInvocationPending) {
@@ -741,6 +752,10 @@ public final class LWCToolkit extends LWToolkit {
 
         doAWTRunLoop(mediator, nonBlockingRunLoop);
         if (!nonBlockingRunLoop) blockingRunLoopCounter.decrementAndGet();
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("invokeAndWait finished: " + runnable);
+        }
 
         checkException(invocationEvent);
     }
