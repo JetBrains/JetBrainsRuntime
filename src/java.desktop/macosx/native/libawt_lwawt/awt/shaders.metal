@@ -92,6 +92,29 @@ struct TxtShaderInOut_XOR {
     float2 tpCoords;
 };
 
+inline float fromLinear(float c)
+{
+    if (isnan(c)) c = 0.0;
+    if (c > 1.0)
+          c = 1.0;
+    else if (c < 0.0)
+          c = 0.0;
+    else if (c < 0.0031308)
+          c = 12.92 * c;
+    else
+    c = 1.055 * powr(c, 1.0/2.4) - 0.055;
+    return c;
+}
+
+inline float3 fromLinear3(float3 c) {
+    //c.r = fromLinear(c.r);
+    //c.g = fromLinear(c.g);
+    //c.b = fromLinear(c.b);
+    // Use approximated calculations to match software rendering
+    c.rgb = 1.055 * pow(c.rgb, float3(0.416667)) - 0.055;
+    return c;
+}
+
 template <typename Uniforms> inline
 float4 frag_single_grad(float a, Uniforms uniforms)
 {
@@ -130,7 +153,7 @@ float4 frag_multi_grad(float a, Uniforms uniforms)
 
       float4 c = mix(uniforms.color[n], uniforms.color[n + 1], a);
       if (uniforms.isLinear) {
-          c.rgb = 1.055 * pow(c.rgb, float3(0.416667)) - 0.055;
+          c.rgb = fromLinear3(c.rgb);
       }
       return c;
 }
@@ -328,7 +351,7 @@ fragment half4 frag_txt_grad(GradShaderInOut in [[stage_in]],
 
     float4 renderColor = renderTexture.sample(textureSampler, in.texCoords);
 
-    float3 v = float3(in.position.x, in.position.y, 1);
+    float3 v = float3(in.position.x-0.5, in.position.y-0.5, 1);
     float  a = (dot(v,uniforms.params)-0.25)*2.0;
     return half4(frag_single_grad(a, uniforms)*renderColor.a)*uniforms.extraAlpha;
 }
@@ -355,7 +378,7 @@ fragment half4 frag_txt_rad_grad(GradShaderInOut in [[stage_in]],
 
     float4 renderColor = renderTexture.sample(textureSampler, in.texCoords);
 
-    float3 fragCoord = float3(in.position.x+0.5, in.position.y-0.5, 1);
+    float3 fragCoord = float3(in.position.x-0.5, in.position.y-0.5, 1);
     float  x = dot(fragCoord, uniforms.m0);
     float  y = dot(fragCoord, uniforms.m1);
     float  xfx = x - uniforms.precalc.x;
@@ -501,7 +524,7 @@ fragment half4 frag_txt_op_lookup(
 
 fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
                          constant GradFrameUniforms& uniforms [[buffer(0)]]) {
-    float3 v = float3(in.position.x, in.position.y, 1);
+    float3 v = float3(in.position.x-0.5, in.position.y-0.5, 1);
     float  a = (dot(v,uniforms.params)-0.25)*2.0;
     return half4(frag_single_grad(a, uniforms)) * uniforms.extraAlpha;
 }
@@ -509,14 +532,14 @@ fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
 // LinGradFrameUniforms
 fragment half4 frag_lin_grad(GradShaderInOut in [[stage_in]],
                              constant LinGradFrameUniforms& uniforms [[buffer(0)]]) {
-    float3 v = float3(in.position.x, in.position.y, 1);
+    float3 v = float3(in.position.x-0.5, in.position.y-0.5, 1);
     float  a = dot(v, uniforms.params);
     return half4(frag_multi_grad(a, uniforms))*uniforms.extraAlpha;
 }
 
 fragment half4 frag_rad_grad(GradShaderInOut in [[stage_in]],
                              constant RadGradFrameUniforms& uniforms [[buffer(0)]]) {
-    float3 fragCoord = float3(in.position.x+0.5, in.position.y-0.5, 1);
+    float3 fragCoord = float3(in.position.x-0.5, in.position.y-0.5, 1);
     float  x = dot(fragCoord, uniforms.m0);
     float  y = dot(fragCoord, uniforms.m1);
     float  xfx = x - uniforms.precalc.x;
