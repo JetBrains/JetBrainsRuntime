@@ -26,6 +26,7 @@
 #import "AWTSurfaceLayers.h"
 #import "ThreadUtilities.h"
 #import "LWCToolkit.h"
+#import "JNIUtilities.h"
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <QuartzCore/CATransaction.h>
@@ -103,7 +104,7 @@ Java_sun_lwawt_macosx_CPlatformComponent_nativeCreateComponent
 {
   __block AWTSurfaceLayers *surfaceLayers = nil;
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
 
@@ -111,7 +112,7 @@ JNF_COCOA_ENTER(env);
         surfaceLayers = [[AWTSurfaceLayers alloc] initWithWindowLayer: windowLayer];
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 
   return ptr_to_jlong(surfaceLayers);
 }
@@ -124,7 +125,7 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformComponent_nativeSetBounds
 (JNIEnv *env, jclass clazz, jlong surfaceLayersPtr, jint x, jint y, jint width, jint height)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
   AWTSurfaceLayers *surfaceLayers = OBJC(surfaceLayersPtr);
 
@@ -134,5 +135,5 @@ JNF_COCOA_ENTER(env);
       [surfaceLayers setBounds: rect];
   }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
