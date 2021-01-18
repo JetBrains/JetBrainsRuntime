@@ -26,7 +26,7 @@
 #ifndef MTLGraphicsConfig_h_Included
 #define MTLGraphicsConfig_h_Included
 
-#import "jni.h"
+#import "JNIUtilities.h"
 #import "MTLSurfaceDataBase.h"
 #import "MTLContext.h"
 #import <Cocoa/Cocoa.h>

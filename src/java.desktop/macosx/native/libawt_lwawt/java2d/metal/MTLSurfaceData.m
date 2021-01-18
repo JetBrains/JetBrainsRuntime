@@ -288,13 +288,13 @@ void
 MTLSD_DestroyMTLSurface(JNIEnv *env, BMTLSDOps * bmtlsdo)
 {
     J2dTraceLn(J2D_TRACE_ERROR, "MTLSD_DestroyMTLSurface not implemented!");
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     if (bmtlsdo->drawableType == MTLSD_WINDOW) {
         // TODO: detach the NSView from the metal context
     }
 
     bmtlsdo->drawableType = MTLSD_UNDEFINED;
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /**
@@ -322,13 +322,13 @@ MTLSD_InitMTLWindow(JNIEnv *env, BMTLSDOps *bmtlsdo)
         return JNI_FALSE;
     }
 
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
             NSRect surfaceBounds = [v bounds];
             bmtlsdo->drawableType = MTLSD_WINDOW;
             bmtlsdo->isOpaque = JNI_TRUE;
             bmtlsdo->width = surfaceBounds.size.width;
             bmtlsdo->height = surfaceBounds.size.height;
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 
     J2dTraceLn2(J2D_TRACE_VERBOSE, "  created window: w=%d h=%d", bmtlsdo->width, bmtlsdo->height);
     return JNI_TRUE;

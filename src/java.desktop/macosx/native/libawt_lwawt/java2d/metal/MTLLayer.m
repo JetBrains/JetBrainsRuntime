@@ -189,7 +189,7 @@ Java_sun_java2d_metal_MTLLayer_nativeCreateLayer
 {
     __block MTLLayer *layer = nil;
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     JNFWeakJObjectWrapper *javaLayer = [JNFWeakJObjectWrapper wrapperWithJObject:obj withEnv:env];
 
@@ -199,7 +199,7 @@ JNF_COCOA_ENTER(env);
             layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer];
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 
     return ptr_to_jlong(layer);
 }
@@ -233,7 +233,7 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLLayer_nativeSetScale
 (JNIEnv *env, jclass cls, jlong layerPtr, jdouble scale)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     // We always call all setXX methods asynchronously, exception is only in
     // this method where we need to change native texture size and layer's scale
@@ -242,7 +242,7 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
     [ThreadUtilities performOnMainThreadWaiting:[NSThread isMainThread] block:^(){
         layer.contentsScale = scale;
     }];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 JNIEXPORT void JNICALL

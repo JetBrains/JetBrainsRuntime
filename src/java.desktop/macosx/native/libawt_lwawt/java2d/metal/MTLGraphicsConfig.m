@@ -135,7 +135,7 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
     (JNIEnv *env, jclass cglgc, jint displayID, jstring mtlShadersLib)
 {
   jlong ret = 0L;
-  JNF_COCOA_ENTER(env);
+  JNI_COCOA_ENTER(env);
   NSMutableArray * retArray = [NSMutableArray arrayWithCapacity:3];
   [retArray addObject: [NSNumber numberWithInt: (int)displayID]];
   [retArray addObject: [NSString stringWithUTF8String: JNU_GetStringPlatformChars(env, mtlShadersLib, 0)]];
@@ -146,7 +146,7 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
   }
   NSNumber * num = (NSNumber *)[retArray objectAtIndex: 0];
   ret = (jlong)[num longValue];
-  JNF_COCOA_EXIT(env);
+  JNI_COCOA_EXIT(env);
   return ret;
 }
 
