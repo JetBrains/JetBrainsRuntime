@@ -57,14 +57,14 @@ private:
 
   void load_reference_barrier_not_null(MacroAssembler* masm, Register dst, Address src);
 
-  void storeval_barrier_impl(MacroAssembler* masm, Register dst, Register tmp);
+  void iu_barrier_impl(MacroAssembler* masm, Register dst, Register tmp);
 
   address generate_shenandoah_lrb(StubCodeGenerator* cgen);
 
 public:
   static address shenandoah_lrb();
 
-  void storeval_barrier(MacroAssembler* masm, Register dst, Register tmp);
+  void iu_barrier(MacroAssembler* masm, Register dst, Register tmp);
 #ifdef COMPILER1
   void gen_pre_barrier_stub(LIR_Assembler* ce, ShenandoahPreBarrierStub* stub);
   void gen_load_reference_barrier_stub(LIR_Assembler* ce, ShenandoahLoadReferenceBarrierStub* stub);

@@ -64,7 +64,7 @@ private:
 public:
   static address shenandoah_lrb();
 
-  void storeval_barrier(MacroAssembler* masm, Register dst, Register tmp);
+  void iu_barrier(MacroAssembler* masm, Register dst, Register tmp);
 
 #ifdef COMPILER1
   void gen_pre_barrier_stub(LIR_Assembler* ce, ShenandoahPreBarrierStub* stub);
