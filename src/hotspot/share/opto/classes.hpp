@@ -274,7 +274,7 @@ macro(ShenandoahCompareAndSwapN)
 macro(ShenandoahCompareAndSwapP)
 macro(ShenandoahWeakCompareAndSwapN)
 macro(ShenandoahWeakCompareAndSwapP)
-macro(ShenandoahEnqueueBarrier)
+macro(ShenandoahIUBarrier)
 macro(ShenandoahLoadReferenceBarrier)
 #endif
 macro(SCMemProj)
