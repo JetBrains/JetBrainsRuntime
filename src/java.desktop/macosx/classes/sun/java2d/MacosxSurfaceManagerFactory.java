@@ -27,7 +27,7 @@ package sun.java2d;
 
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
-import sun.java2d.macos.MacOSFlags;
+import sun.awt.CGraphicsDevice;
 import sun.java2d.metal.MTLVolatileSurfaceManager;
 import sun.java2d.opengl.CGLVolatileSurfaceManager;
 
@@ -51,7 +51,7 @@ public class MacosxSurfaceManagerFactory extends SurfaceManagerFactory {
     public VolatileSurfaceManager createVolatileManager(SunVolatileImage vImg,
                                                         Object context)
     {
-        return MacOSFlags.isMetalEnabled() ? new MTLVolatileSurfaceManager(vImg, context) :
+        return CGraphicsDevice.usingMetalPipeline() ? new MTLVolatileSurfaceManager(vImg, context) :
                 new CGLVolatileSurfaceManager(vImg, context);
     }
 }

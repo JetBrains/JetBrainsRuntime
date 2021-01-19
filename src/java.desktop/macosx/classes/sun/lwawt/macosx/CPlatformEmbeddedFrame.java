@@ -28,8 +28,8 @@ package sun.lwawt.macosx;
 import java.awt.*;
 import java.awt.event.FocusEvent;
 
+import sun.awt.CGraphicsDevice;
 import sun.java2d.SurfaceData;
-import sun.java2d.macos.MacOSFlags;
 import sun.java2d.metal.MTLLayer;
 import sun.java2d.opengl.CGLLayer;
 import sun.lwawt.LWWindowPeer;
@@ -56,7 +56,7 @@ public class CPlatformEmbeddedFrame implements PlatformWindow {
     @Override // PlatformWindow
     public void initialize(Window target, final LWWindowPeer peer, PlatformWindow owner) {
         this.peer = peer;
-        if (MacOSFlags.isMetalEnabled()) {
+        if ( CGraphicsDevice.usingMetalPipeline()) {
             this.windowLayer = new MTLLayer(peer);
         } else {
             this.windowLayer = new CGLLayer(peer);
@@ -71,7 +71,7 @@ public class CPlatformEmbeddedFrame implements PlatformWindow {
 
     @Override
     public long getLayerPtr() {
-        if (MacOSFlags.isMetalEnabled()) {
+        if (CGraphicsDevice.usingMetalPipeline()) {
             return ((MTLLayer)windowLayer).getPointer();
         } else {
             return ((CGLLayer)windowLayer).getPointer();
@@ -80,7 +80,7 @@ public class CPlatformEmbeddedFrame implements PlatformWindow {
 
     @Override
     public void dispose() {
-        if (MacOSFlags.isMetalEnabled()) {
+        if ( CGraphicsDevice.usingMetalPipeline()) {
             ((MTLLayer)windowLayer).dispose();
         } else {
             ((CGLLayer)windowLayer).dispose();
@@ -115,7 +115,7 @@ public class CPlatformEmbeddedFrame implements PlatformWindow {
 
     @Override
     public SurfaceData getScreenSurface() {
-        if (MacOSFlags.isMetalEnabled()) {
+        if ( CGraphicsDevice.usingMetalPipeline()) {
             return ((MTLLayer)windowLayer).getSurfaceData();
         } else {
             return ((CGLLayer)windowLayer).getSurfaceData();
@@ -124,7 +124,7 @@ public class CPlatformEmbeddedFrame implements PlatformWindow {
 
     @Override
     public SurfaceData replaceSurfaceData() {
-        if (MacOSFlags.isMetalEnabled()) {
+        if ( CGraphicsDevice.usingMetalPipeline()) {
             return ((MTLLayer)windowLayer).replaceSurfaceData();
         } else {
             return ((CGLLayer)windowLayer).replaceSurfaceData();

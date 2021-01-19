@@ -32,7 +32,6 @@
 
 #include "SurfaceData.h"
 #include "Trace.h"
-#include "MTLFuncs.h"
 
 /**
  * The MTLSDOps structure describes a native OpenGL surface and contains all

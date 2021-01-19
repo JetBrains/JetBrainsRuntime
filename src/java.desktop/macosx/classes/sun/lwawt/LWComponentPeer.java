@@ -68,13 +68,13 @@ import javax.swing.SwingUtilities;
 
 import com.sun.java.swing.SwingUtilities3;
 import sun.awt.AWTAccessor;
+import sun.awt.CGraphicsDevice;
 import sun.awt.PaintEventDispatcher;
 import sun.awt.RepaintArea;
 import sun.awt.SunToolkit;
 import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
 import sun.java2d.SunGraphics2D;
-import sun.java2d.macos.MacOSFlags;
 import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.java2d.pipe.Region;
@@ -1417,7 +1417,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     protected static final void flushOnscreenGraphics(){
-        RenderQueue rq = MacOSFlags.isMetalEnabled() ?
+        RenderQueue rq =  CGraphicsDevice.usingMetalPipeline() ?
                 MTLRenderQueue.getInstance() : OGLRenderQueue.getInstance();
         rq.lock();
         try {

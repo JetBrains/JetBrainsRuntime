@@ -28,8 +28,8 @@ static void setBlendingFactors(
     NSError *error = nil;
     self.library = [dev newLibraryWithFile:shadersLib error:&error];
     if (!self.library) {
-        NSLog(@"Failed to load library. error %@", error);
-        exit(0);
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLPipelineStatesStorage.initWithDevice() - Failed to load Metal shader library.");
+        return nil;
     }
     self.shaders = [NSMutableDictionary dictionaryWithCapacity:10];
     self.states = [NSMutableDictionary dictionaryWithCapacity:10];

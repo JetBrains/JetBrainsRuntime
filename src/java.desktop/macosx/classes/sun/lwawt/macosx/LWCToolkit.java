@@ -109,7 +109,6 @@ import sun.awt.SunToolkit;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.dnd.SunDragSourceContextPeer;
 import sun.awt.util.ThreadGroupUtils;
-import sun.java2d.macos.MacOSFlags;
 import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.lwawt.LWComponentPeer;
@@ -502,8 +501,8 @@ public final class LWCToolkit extends LWToolkit {
 
     @Override
     public void sync() {
-        // flush the OGL/MTL pipeline (this is a no-op if OGL/MTL is not enabled)
-        if (MacOSFlags.isMetalEnabled()) {
+        // flush the rendering pipeline
+        if (CGraphicsDevice.usingMetalPipeline()) {
             MTLRenderQueue.sync();
         } else {
             OGLRenderQueue.sync();

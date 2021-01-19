@@ -78,7 +78,8 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     private final Object disposerReferent = new Object();
     private final int maxTextureSize;
 
-    private static native boolean initMTL();
+    private static native boolean isMetalFrameworkAvailable();
+    private static native boolean tryLoadMetalLibrary(int displayID, String shaderLib);
     private static native long getMTLConfigInfo(int displayID, String mtlShadersLib);
 
     /**
@@ -88,7 +89,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     private static native int nativeGetMaxTextureSize();
 
     static {
-        mtlAvailable = initMTL();
+        mtlAvailable = isMetalFrameworkAvailable();
     }
 
     private MTLGraphicsConfig(CGraphicsDevice device, int pixfmt,
@@ -123,6 +124,10 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
                                               int displayID, int pixfmt)
     {
         if (!mtlAvailable) {
+            return null;
+        }
+
+        if (!tryLoadMetalLibrary(displayID, mtlShadersLib)) {
             return null;
         }
 
@@ -162,6 +167,10 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
                         CAPS_EXT_BIOP_SHADER | CAPS_EXT_GRAD_SHADER,
                 ids[0]);
         return new MTLGraphicsConfig(device, pixfmt, cfginfo, textureSize, caps);
+    }
+
+    public static boolean isMetalAvailable() {
+        return mtlAvailable;
     }
 
     /**

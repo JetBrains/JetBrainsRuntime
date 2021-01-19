@@ -29,6 +29,8 @@
 #import "MTLSurfaceData.h"
 #import "ThreadUtilities.h"
 #import "awt.h"
+#import "MTLUtils.h"
+
 
 #import <stdlib.h>
 #import <string.h>
@@ -36,7 +38,7 @@
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 #pragma mark -
-#pragma mark "--- Mac OS X specific methods for GL pipeline ---"
+#pragma mark "--- Mac OS X specific methods for Metal pipeline ---"
 
 // Uncomment this line to see Metal specific fprintfs
 //#define METAL_DEBUG
@@ -71,17 +73,14 @@ MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
 
 
 /**
- * Attempts to initialize MTL and the core Metal library.
+ * Probe Metal framework availability using system profiler
  */
 JNIEXPORT jboolean JNICALL
-Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
-    (JNIEnv *env, jclass cglgc)
+Java_sun_java2d_metal_MTLGraphicsConfig_isMetalFrameworkAvailable
+    (JNIEnv *env, jclass mtlgc)
 {
-    J2dRlsTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfig_initMTL");
-
-#ifdef METAL_DEBUG
     FILE *f = popen("/usr/sbin/system_profiler SPDisplaysDataType", "r");
-    bool metalSupport = FALSE;
+    bool metalSupported = JNI_FALSE;
     while (getc(f) != EOF)
     {
         char str[60];
@@ -90,33 +89,45 @@ Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
             // Check for string
             // "Metal:  Supported, feature set macOS GPUFamily1 v4"
             if (strstr(str, "Metal") != NULL) {
-                puts(str);
-                metalSupport = JNI_TRUE;
+                //puts(str);
+                metalSupported = JNI_TRUE;
                 break;
             }
         }
     }
     pclose(f);
-    if (!metalSupport) {
+
+#ifdef METAL_DEBUG
+    if (!metalSupported) {
         fprintf(stderr, "Metal support not present\n");
     } else {
         fprintf(stderr, "Metal support is present\n");
     }
 #endif
 
-    if (!MTLFuncs_OpenLibrary()) {
-        return JNI_FALSE;
-    }
+    J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLGraphicsConfig_isMetalFrameworkAvailable : %d", metalSupported);
 
-    if (!MTLFuncs_InitPlatformFuncs() ||
-        !MTLFuncs_InitBaseFuncs() ||
-        !MTLFuncs_InitExtFuncs())
-    {
-        MTLFuncs_CloseLibrary();
-        return JNI_FALSE;
-    }
+    return metalSupported;
+}
 
-    return JNI_TRUE;
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_metal_MTLGraphicsConfig_tryLoadMetalLibrary
+    (JNIEnv *env, jclass mtlgc, jint displayID, jstring shadersLibName)
+{
+  jboolean ret = JNI_FALSE;
+  JNF_COCOA_ENTER(env);
+  NSMutableArray * retArray = [NSMutableArray arrayWithCapacity:3];
+  [retArray addObject: [NSNumber numberWithInt: (int)displayID]];
+  [retArray addObject: [NSString stringWithUTF8String: JNU_GetStringPlatformChars(env, shadersLibName, 0)]];
+  if ([NSThread isMainThread]) {
+      [MTLGraphicsConfigUtil _tryLoadMetalLibrary: retArray];
+  } else {
+      [MTLGraphicsConfigUtil performSelectorOnMainThread: @selector(_tryLoadMetalLibrary:) withObject: retArray waitUntilDone: YES];
+  }
+  NSNumber * num = (NSNumber *)[retArray objectAtIndex: 0];
+  ret = (jboolean)[num boolValue];
+  JNF_COCOA_EXIT(env);
+  return ret;
 }
 
 
@@ -132,7 +143,7 @@ Java_sun_java2d_metal_MTLGraphicsConfig_initMTL
  */
 JNIEXPORT jlong JNICALL
 Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
-    (JNIEnv *env, jclass cglgc, jint displayID, jstring mtlShadersLib)
+    (JNIEnv *env, jclass mtlgc, jint displayID, jstring mtlShadersLib)
 {
   jlong ret = 0L;
   JNI_COCOA_ENTER(env);
@@ -193,7 +204,7 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
     MTLContext *mtlc = [[MTLContext alloc] initWithDevice:CGDirectDisplayCopyCurrentMetalDevice(displayID)
                         shadersLib:mtlShadersLib];
     if (mtlc == 0L) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGC_InitMTLContext: could not allocate memory for mtlc");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGC_InitMTLContext: could not initialze MTLContext.");
         [argValue addObject: [NSNumber numberWithLong: 0L]];
         return;
     }
@@ -214,6 +225,36 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
     [argValue addObject: [NSNumber numberWithLong:ptr_to_jlong(mtlinfo)]];
     [pool drain];
 }
+
++ (void) _tryLoadMetalLibrary: (NSMutableArray *)argValue {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    jint displayID = (jint)[(NSNumber *)[argValue objectAtIndex: 0] intValue];
+    NSString *mtlShadersLib = (NSString *)[argValue objectAtIndex: 1];
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    [argValue removeAllObjects];
+
+    J2dRlsTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfigUtil_tryLoadMTLLibrary");
+
+
+    BOOL ret = FALSE;;
+    id<MTLDevice> device = CGDirectDisplayCopyCurrentMetalDevice(displayID);
+    if (device != nil) {
+        NSError *error = nil;
+        id<MTLLibrary> lib = [device newLibraryWithFile:mtlShadersLib error:&error];
+        if (lib != nil) {
+            ret = TRUE;
+        } else {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGraphicsConfig_tryLoadMetalLibrary - Failed to load Metal shader library.");
+        }
+    } else {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGraphicsConfig_tryLoadMetalLibrary - Failed to create MTLDevice.");
+    }
+
+    [argValue addObject: [NSNumber numberWithBool: ret]];
+
+}
+
 @end //GraphicsConfigUtil
 
 

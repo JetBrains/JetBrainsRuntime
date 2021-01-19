@@ -56,7 +56,10 @@ public final class CGraphicsDevice extends GraphicsDevice
     private volatile Rectangle bounds;
     private volatile int scale;
 
-    private final GraphicsConfiguration config;
+    private GraphicsConfiguration config;
+    private static boolean metalPipelineEnabled = false;
+    private static boolean oglPipelineEnabled = false;
+
 
     private static AWTPermission fullScreenExclusivePermission;
 
@@ -65,9 +68,51 @@ public final class CGraphicsDevice extends GraphicsDevice
 
     public CGraphicsDevice(final int displayID) {
         this.displayID = displayID;
-        config = MacOSFlags.isMetalEnabled() ?
-                MTLGraphicsConfig.getConfig(this, displayID, 0) :
-                CGLGraphicsConfig.getConfig(this);
+
+        if (MacOSFlags.isMetalEnabled()) {
+            // Try to create MTLGraphicsConfig, if it fails, try to create CGLGraphicsConfig as a fallback
+            this.config = MTLGraphicsConfig.getConfig(this, displayID, 0);
+
+            if (this.config != null) {
+                metalPipelineEnabled = true;
+            } else {
+                // Try falling back to OpenGL pipeline
+                if (MacOSFlags.isMetalVerbose()) {
+                    System.out.println("Metal rendering pipeline initialization failed. Using OpenGL rendering pipeline.");
+                }
+
+                this.config = CGLGraphicsConfig.getConfig(this);
+
+                if (this.config != null) {
+                    oglPipelineEnabled = true;
+                }
+            }
+        } else {
+            // Try to create CGLGraphicsConfig, if it fails, try to create MTLGraphicsConfig as a fallback
+            this.config = CGLGraphicsConfig.getConfig(this);
+
+            if (this.config != null) {
+                oglPipelineEnabled = true;
+            } else {
+                // Try falling back to Metal pipeline
+                if (MacOSFlags.isOGLVerbose()) {
+                    System.out.println("OpenGL rendering pipeline initialization failed. Using Metal rendering pipeline.");
+                }
+
+                this.config = MTLGraphicsConfig.getConfig(this, displayID, 0);
+
+                if (this.config != null) {
+                    metalPipelineEnabled = true;
+                }
+            }
+        }
+
+        if (!metalPipelineEnabled && !oglPipelineEnabled) {
+            // This indicates fallback to other rendering pipeline also failed.
+            // Should never reach here
+            throw new InternalError("Error - unable to initialize any rendering pipeline.");
+        }
+
         // initializes default device state, might be redundant step since we
         // call "displayChanged()" later anyway, but we do not want to leave the
         // device in an inconsistent state after construction
@@ -267,6 +312,10 @@ public final class CGraphicsDevice extends GraphicsDevice
     @Override
     public DisplayMode[] getDisplayModes() {
         return nativeGetDisplayModes(displayID);
+    }
+
+    public static boolean usingMetalPipeline() {
+        return metalPipelineEnabled;
     }
 
     private void initScaleFactor() {

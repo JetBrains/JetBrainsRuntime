@@ -70,7 +70,6 @@
 @property jboolean      aaEnabled;
 
 @property (readonly, strong)   id<MTLDevice>   device;
-@property (strong) id<MTLLibrary>              library;
 @property (strong) id<MTLCommandQueue>         commandQueue;
 @property (strong) id<MTLCommandQueue>         blitCommandQueue;
 @property (strong) id<MTLBuffer>               vertexBuffer;

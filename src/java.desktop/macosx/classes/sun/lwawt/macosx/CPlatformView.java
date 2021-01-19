@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import sun.awt.CGraphicsEnvironment;
-import sun.java2d.macos.MacOSFlags;
+import sun.awt.CGraphicsDevice;
 import sun.java2d.metal.MTLLayer;
 import sun.lwawt.LWWindowPeer;
 
@@ -61,7 +61,7 @@ public class CPlatformView extends CFRetainedResource {
     public void initialize(LWWindowPeer peer, CPlatformResponder responder) {
         initializeBase(peer, responder);
 
-        this.windowLayer = MacOSFlags.isMetalEnabled()? createMTLLayer() : createCGLayer();
+        this.windowLayer = CGraphicsDevice.usingMetalPipeline()? createMTLLayer() : createCGLayer();
         setPtr(nativeCreateView(0, 0, 0, 0, getWindowLayerPtr()));
     }
 
@@ -104,7 +104,7 @@ public class CPlatformView extends CFRetainedResource {
     // PAINTING METHODS
     // ----------------------------------------------------------------------
     public SurfaceData replaceSurfaceData() {
-        surfaceData = (MacOSFlags.isMetalEnabled()) ?
+        surfaceData = (CGraphicsDevice.usingMetalPipeline()) ?
                     ((MTLLayer)windowLayer).replaceSurfaceData() :
                     ((CGLLayer)windowLayer).replaceSurfaceData()
         ;
@@ -122,7 +122,7 @@ public class CPlatformView extends CFRetainedResource {
     }
 
     public long getWindowLayerPtr() {
-        return MacOSFlags.isMetalEnabled() ?
+        return CGraphicsDevice.usingMetalPipeline() ?
                 ((MTLLayer)windowLayer).getPointer() :
                 ((CGLLayer)windowLayer).getPointer();
     }
