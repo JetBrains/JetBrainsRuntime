@@ -115,7 +115,7 @@ Java_sun_java2d_metal_MTLGraphicsConfig_tryLoadMetalLibrary
     (JNIEnv *env, jclass mtlgc, jint displayID, jstring shadersLibName)
 {
   jboolean ret = JNI_FALSE;
-  JNF_COCOA_ENTER(env);
+  JNI_COCOA_ENTER(env);
   NSMutableArray * retArray = [NSMutableArray arrayWithCapacity:3];
   [retArray addObject: [NSNumber numberWithInt: (int)displayID]];
   [retArray addObject: [NSString stringWithUTF8String: JNU_GetStringPlatformChars(env, shadersLibName, 0)]];
@@ -126,7 +126,7 @@ Java_sun_java2d_metal_MTLGraphicsConfig_tryLoadMetalLibrary
   }
   NSNumber * num = (NSNumber *)[retArray objectAtIndex: 0];
   ret = (jboolean)[num boolValue];
-  JNF_COCOA_EXIT(env);
+  JNI_COCOA_EXIT(env);
   return ret;
 }
 
