@@ -49,7 +49,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 
 import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_GRAD_SHADER;
-import static sun.java2d.opengl.OGLSurfaceData.TEXTURE;
+import static sun.java2d.pipe.hw.AccelSurface.TEXTURE;
 import static sun.java2d.pipe.hw.AccelSurface.RT_TEXTURE;
 import static sun.java2d.pipe.hw.ContextCapabilities.*;
 
@@ -372,7 +372,8 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     public VolatileImage createCompatibleVolatileImage(int width, int height,
                                                        int transparency,
                                                        int type) {
-        if (type != RT_TEXTURE && type != TEXTURE) {
+        if ((type != RT_TEXTURE && type != TEXTURE) ||
+            transparency == Transparency.BITMASK) {
             return null;
         }
 
