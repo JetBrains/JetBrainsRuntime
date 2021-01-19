@@ -1071,29 +1071,32 @@ abstract class XDecoratedPeer extends XWindowPeer {
         super.handleClientMessage(xev);
         XClientMessageEvent cl = xev.get_xclient();
         if ((wm_protocols != null) && (cl.get_message_type() == wm_protocols.getAtom())) {
+            long timestamp = getTimeStampFromClientMessage(cl);
+            // we should treat WM_TAKE_FOCUS and WM_DELETE_WINDOW messages as user interaction, as they can originate
+            // e.g. from user clicking on window title bar and window close button correspondingly
+            // (there will be no ButtonPress/ButtonRelease events in those cases)
+            setUserTime(timestamp, true);
+
             if (cl.get_data(0) == wm_delete_window.getAtom()) {
                 handleQuit();
             } else if (cl.get_data(0) == wm_take_focus.getAtom()) {
-                handleWmTakeFocus(cl);
+                handleWmTakeFocus(timestamp);
             }
         }
     }
 
-    private void handleWmTakeFocus(XClientMessageEvent cl) {
+    private static long getTimeStampFromClientMessage(XClientMessageEvent cl) {
+        long requestTimeStamp = cl.get_data(1);
+        // older versions of KDE window manager always send 0 ('CurrentTime') as timestamp,
+        // even though it seems to violate ICCCM specification
+        // (see https://bugs.kde.org/show_bug.cgi?id=347153 and https://bugs.kde.org/show_bug.cgi?id=421068)
+        return requestTimeStamp == 0 ? XToolkit.getCurrentServerTime() : requestTimeStamp;
+    }
+
+    private void handleWmTakeFocus(long requestTimeStamp) {
         if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
             focusLog.fine("WM_TAKE_FOCUS on {0}", this);
         }
-
-        long requestTimeStamp = cl.get_data(1);
-        if (requestTimeStamp == 0) {
-            // KDE window manager always sends 0 ('CurrentTime') as timestamp,
-            // even though it seems to violate ICCCM specification
-            // (https://bugs.kde.org/show_bug.cgi?id=347153)
-            requestTimeStamp = XToolkit.getCurrentServerTime();
-        }
-        // we should treat WM_TAKE_FOCUS message as user interaction, as it can originate e.g. from user clicking
-        // on window title bar (there will be no ButtonPress/ButtonRelease events in this case)
-        setUserTime(requestTimeStamp, true);
 
         if (XWM.getWMID() == XWM.UNITY_COMPIZ_WM) {
             // JDK-8159460
