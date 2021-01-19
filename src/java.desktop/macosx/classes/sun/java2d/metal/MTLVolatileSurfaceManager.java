@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,12 +28,10 @@ package sun.java2d.metal;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.SurfaceData;
-import sun.java2d.opengl.OGLSurfaceData;
 
 import java.awt.*;
 import java.awt.image.ColorModel;
-
-import static java.awt.BufferCapabilities.FlipContents.COPIED;
+import sun.java2d.pipe.hw.AccelSurface;
 
 public class MTLVolatileSurfaceManager extends VolatileSurfaceManager {
 
@@ -43,16 +41,11 @@ public class MTLVolatileSurfaceManager extends VolatileSurfaceManager {
         super(vImg, context);
 
         /*
-         * We will attempt to accelerate this image only under the
-         * following conditions:
-         *   - the image is not bitmask AND the GraphicsConfig supports the FBO
-         *     extension
+         * We will attempt to accelerate this image only
+         * if the image is not bitmask
          */
         int transparency = vImg.getTransparency();
-        MTLGraphicsConfig gc = (MTLGraphicsConfig) vImg.getGraphicsConfig();
-        accelerationEnabled = true;
-                //gc.isCapPresent(CAPS_EXT_FBOBJECT)
-                //&& transparency != Transparency.BITMASK;
+        accelerationEnabled = transparency != Transparency.BITMASK;
     }
 
     protected boolean isAccelerationEnabled() {
@@ -60,7 +53,7 @@ public class MTLVolatileSurfaceManager extends VolatileSurfaceManager {
     }
 
     /**
-     * Create a FBO-based SurfaceData object (or init the backbuffer
+     * Create a SurfaceData object (or init the backbuffer
      * of an existing window if this is a double buffered GraphicsConfig)
      */
     protected SurfaceData initAcceleratedSurface() {
@@ -71,8 +64,8 @@ public class MTLVolatileSurfaceManager extends VolatileSurfaceManager {
             int type = vImg.getForcedAccelSurfaceType();
             // if acceleration type is forced (type != UNDEFINED) then
             // use the forced type, otherwise choose RT_TEXTURE
-            if (type == OGLSurfaceData.UNDEFINED) {
-                type = OGLSurfaceData.FBOBJECT;
+            if (type == AccelSurface.UNDEFINED) {
+                type = AccelSurface.RT_TEXTURE;
             }
             return MTLSurfaceData.createData(gc,
                                              vImg.getWidth(),
@@ -90,7 +83,7 @@ public class MTLVolatileSurfaceManager extends VolatileSurfaceManager {
 
     @Override
     public void initContents() {
-        if (vImg.getForcedAccelSurfaceType() != OGLSurfaceData.TEXTURE) {
+        if (vImg.getForcedAccelSurfaceType() != AccelSurface.TEXTURE) {
             super.initContents();
         }
     }
