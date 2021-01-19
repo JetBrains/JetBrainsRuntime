@@ -113,6 +113,12 @@ public final class CGraphicsDevice extends GraphicsDevice
             throw new InternalError("Error - unable to initialize any rendering pipeline.");
         }
 
+        if (metalPipelineEnabled && MacOSFlags.isMetalVerbose()) {
+            System.out.println("Metal pipeline enabled on screen " + displayID);
+        } else if (oglPipelineEnabled && MacOSFlags.isOGLVerbose()) {
+            System.out.println("OpenGL pipeline enabled on screen " + displayID);
+        }
+
         // initializes default device state, might be redundant step since we
         // call "displayChanged()" later anyway, but we do not want to leave the
         // device in an inconsistent state after construction
