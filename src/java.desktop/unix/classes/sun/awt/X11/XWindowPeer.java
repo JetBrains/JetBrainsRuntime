@@ -1340,7 +1340,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         isUnhiding |= isWMStateNetHidden();
 
         super.handleMapNotifyEvent(xev);
-        if (!winAttr.initialFocus && shouldSuppressWmTakeFocus()) {
+        if (isBeforeFirstMapNotify && !winAttr.initialFocus && shouldSuppressWmTakeFocus()) {
             suppressWmTakeFocus(false); // restore the protocol.
             /*
              * For some reason, on Metacity, a frame/dialog being shown
