@@ -94,6 +94,9 @@ public class SwallowKeyEvents {
     }
 
     public static void test() {
+        r.keyPress(KeyEvent.VK_END);
+        r.keyRelease(KeyEvent.VK_END);
+
         r.keyPress(KeyEvent.VK_SHIFT);
         r.keyPress(KeyEvent.VK_META);
 
