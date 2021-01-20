@@ -614,9 +614,11 @@ void frame::print_C_frame(outputStream* st, char* buf, int buflen, address pc) {
   int offset;
   bool found;
 
+  if (buf == NULL || buflen < 1) return;
   // libname
+  buf[0] = '\0';
   found = os::dll_address_to_library_name(pc, buf, buflen, &offset);
-  if (found) {
+  if (found && buf[0] != '\0') {
     // skip directory names
     const char *p1, *p2;
     p1 = buf;

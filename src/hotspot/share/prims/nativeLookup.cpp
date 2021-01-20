@@ -419,8 +419,10 @@ void* NativeLookup::dll_load(const methodHandle& method) {
     address current_entry = method->native_function();
 
     char dll_name[JVM_MAXPATHLEN];
+    dll_name[0] = '\0';
     int offset;
-    if (os::dll_address_to_library_name(current_entry, dll_name, sizeof(dll_name), &offset)) {
+    bool ret = os::dll_address_to_library_name(current_entry, dll_name, sizeof(dll_name), &offset);
+    if (ret && dll_name[0] != '\0') {
       char ebuf[32];
       return os::dll_load(dll_name, ebuf, sizeof(ebuf));
     }
