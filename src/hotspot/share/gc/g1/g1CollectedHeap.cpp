@@ -2998,7 +2998,7 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
             size_t bytes_before = capacity();
             // No need for an ergo logging here,
             // expansion_amount() does this when it returns a value > 0.
-            double expand_ms;
+            double expand_ms = 0.0;
             if (!expand(expand_bytes, _workers, &expand_ms)) {
               // We failed to expand the heap. Cannot do anything about it.
             }
