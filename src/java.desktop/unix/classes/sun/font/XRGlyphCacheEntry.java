@@ -139,15 +139,19 @@ public final class XRGlyphCacheEntry {
 
         byte[] pixelBytes = StrikeCache.getGlyphPixelBytes(glyphInfoPtr);
         if (getType() == Type.GRAYSCALE) {
-            for (int line = 0; line < height; line++) {
-                for(int x = 0; x < paddedWidth; x++) {
-                    if(x < width) {
-                        os.write(pixelBytes[(line * rowBytes + x)]);
-                    }else {
-                         /*pad to multiple of 4 bytes per line*/
-                         os.write(0);
+            int subglyphs = getSubpixelResolutionX() * getSubpixelResolutionY();
+            for (int subglyph = 0; subglyph < subglyphs; subglyph++) {
+                for (int line = 0; line < height; line++) {
+                    for(int x = 0; x < paddedWidth; x++) {
+                        if(x < width) {
+                            os.write(pixelBytes[(line * rowBytes + x)]);
+                        }else {
+                            /*pad to multiple of 4 bytes per line*/
+                            os.write(0);
+                        }
                     }
                 }
+                pixelDataAddress += height * rowBytes;
             }
         } else {
             for (int line = 0; line < height; line++) {
@@ -171,6 +175,16 @@ public final class XRGlyphCacheEntry {
 
     public float getTopLeftYOffset() {
         return StrikeCache.getGlyphTopLeftY(glyphInfoPtr);
+    }
+
+    public byte getSubpixelResolutionX() {
+        byte rx = StrikeCache.getGlyphSubpixelResolutionX(glyphInfoPtr);
+        return rx < 1 ? 1 : rx;
+    }
+
+    public byte getSubpixelResolutionY() {
+        byte ry = StrikeCache.getGlyphSubpixelResolutionY(glyphInfoPtr);
+        return ry < 1 ? 1 : ry;
     }
 
     public long getGlyphInfoPtr() {
@@ -217,7 +231,7 @@ public final class XRGlyphCacheEntry {
     }
 
     public int getPixelCnt() {
-        return getWidth() * getHeight();
+        return getWidth() * getHeight() * getSubpixelResolutionX() * getSubpixelResolutionY();
     }
 
     public boolean isPinned() {
