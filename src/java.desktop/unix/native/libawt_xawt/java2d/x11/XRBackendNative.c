@@ -758,19 +758,20 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_xr_XRBackendNative_XRAddGlyphsNative
  (JNIEnv *env, jclass cls, jint glyphSet,
   jlongArray glyphInfoPtrsArray, jint glyphCnt,
-  jbyteArray pixelDataArray, int pixelDataLength) {
+  jbyteArray pixelDataArray, jint pixelDataLength,
+  jint subglyphs) {
     jlong *glyphInfoPtrs;
     unsigned char *pixelData;
-    int i;
+    int i, j;
 
     if (MAX_PAYLOAD / (sizeof(XGlyphInfo) + sizeof(Glyph))
-        < (unsigned)glyphCnt) {
-        /* glyphCnt too big, payload overflow */
+        < (unsigned)subglyphs) {
+        /* subglyphs too big, payload overflow */
         return;
     }
 
-    XGlyphInfo *xginfo = (XGlyphInfo *) malloc(sizeof(XGlyphInfo) * glyphCnt);
-    Glyph *gid = (Glyph *) malloc(sizeof(Glyph) * glyphCnt);
+    XGlyphInfo *xginfo = (XGlyphInfo *) malloc(sizeof(XGlyphInfo) * subglyphs);
+    Glyph *gid = (Glyph *) malloc(sizeof(Glyph) * subglyphs);
 
     if (xginfo == NULL || gid == NULL) {
         if (xginfo != NULL) {
@@ -800,24 +801,29 @@ Java_sun_java2d_xr_XRBackendNative_XRAddGlyphsNative
         return;
     }
 
+    int outputGlyph = 0;
     for (i=0; i < glyphCnt; i++) {
       GlyphInfo *jginfo = (GlyphInfo *) jlong_to_ptr(glyphInfoPtrs[i]);
 
-      // 'jginfo->cellInfo' is of type 'void*'
-      // (see definition of 'GlyphInfo' in fontscalerdefs.h)
-      // 'Glyph' is typedefed to 'unsigned long'
-      // (see http://www.x.org/releases/X11R7.7/doc/libXrender/libXrender.txt)
-      // Maybe we should assert that (sizeof(void*) == sizeof(Glyph)) ?
-      gid[i] = (Glyph) (jginfo->cellInfo);
-      xginfo[i].x = (-jginfo->topLeftX);
-      xginfo[i].y = (-jginfo->topLeftY);
-      xginfo[i].width = jginfo->width;
-      xginfo[i].height = jginfo->height;
-      xginfo[i].xOff = round(jginfo->advanceX);
-      xginfo[i].yOff = round(jginfo->advanceY);
+      int images = jginfo->subpixelResolutionX * jginfo->subpixelResolutionY;
+      for (j=0; j < images; j++) {
+        // 'jginfo->cellInfo' is of type 'void*'
+        // (see definition of 'GlyphInfo' in fontscalerdefs.h)
+        // 'Glyph' is typedefed to 'unsigned long'
+        // (see http://www.x.org/releases/X11R7.7/doc/libXrender/libXrender.txt)
+        // Maybe we should assert that (sizeof(void*) == sizeof(Glyph)) ?
+        gid[outputGlyph] = (Glyph) (jginfo->cellInfo) + j;
+        xginfo[outputGlyph].x = (-jginfo->topLeftX);
+        xginfo[outputGlyph].y = (-jginfo->topLeftY);
+        xginfo[outputGlyph].width = jginfo->width;
+        xginfo[outputGlyph].height = jginfo->height;
+        xginfo[outputGlyph].xOff = round(jginfo->advanceX);
+        xginfo[outputGlyph].yOff = round(jginfo->advanceY);
+        outputGlyph++;
+      }
     }
 
-    XRenderAddGlyphs(awt_display, glyphSet, &gid[0], &xginfo[0], glyphCnt,
+    XRenderAddGlyphs(awt_display, glyphSet, &gid[0], &xginfo[0], subglyphs,
                      (const char*)pixelData, pixelDataLength);
 
     (*env)->ReleasePrimitiveArrayCritical(env, glyphInfoPtrsArray, glyphInfoPtrs, JNI_ABORT);
