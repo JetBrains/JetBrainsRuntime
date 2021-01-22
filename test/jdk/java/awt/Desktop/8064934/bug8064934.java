@@ -34,12 +34,15 @@
  */
 
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 
 public class bug8064934 {
     private static final String NO_ASSOCIATION_ERROR_MESSAGE = "Error message: No application is associated with" +
             " the specified file for this operation.";
+
+    private static int SLEEP_TIME = 1000;
 
     public static void main(String[] args) {
 
@@ -63,6 +66,12 @@ public class bug8064934 {
                 throw new RuntimeException("Can not create temp file");
             }
             desktop.open(file);
+            try {
+                pressESC();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+
         } catch (IOException ioe) {
             String errorMessage = ioe.getMessage().trim();
             if (errorMessage != null && !errorMessage.endsWith(NO_ASSOCIATION_ERROR_MESSAGE)) {
@@ -77,5 +86,13 @@ public class bug8064934 {
         }
 
         System.out.println("Test PASSED!");
+    }
+
+    private static void pressESC() throws Exception {
+        Thread.sleep(SLEEP_TIME);
+
+        Robot robot = new Robot();
+        robot.keyPress(KeyEvent.VK_ESCAPE);
+        robot.keyRelease(KeyEvent.VK_ESCAPE);
     }
 }
