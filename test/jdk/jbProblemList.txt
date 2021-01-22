@@ -222,6 +222,7 @@ java/awt/Graphics/CopyScaledArea/CopyScaledAreaTest.java                        
 java/awt/Graphics/LineClipTest.java                                                 JRE-898 macosx-all
 java/awt/Graphics2D/CopyAreaOOB.java                                                7001973 windows-all,macosx-all,linux-all
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java               8197796 generic-all
+java/awt/Graphics2D/DrawString/LCDTextSrcEa.sh                                      JBR-3044 macosx-11.1,macosx-10.16 (BigSur)
 java/awt/Graphics2D/DrawString/RotTransText.java                                    8197797 generic-all
 java/awt/Graphics2D/DrawString/TextRenderingTest.java                               8169464 windows-all
 java/awt/Graphics2D/FillTexturePaint/FillTexturePaint.java                          8169463 windows-all
