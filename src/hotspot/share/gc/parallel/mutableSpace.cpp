@@ -195,7 +195,11 @@ HeapWord* MutableSpace::allocate(size_t size) {
 // This version is lock-free.
 HeapWord* MutableSpace::cas_allocate(size_t size) {
   do {
-    HeapWord* obj = top();
+    // Read top before end, else the range check may pass when it shouldn't.
+    // If end is read first, other threads may advance end and top such that
+    // current top > old end and current top + size > current end.  Then
+    // pointer_delta underflows, allowing installation of top > current end.
+    HeapWord* obj = OrderAccess::load_acquire(top_addr());
     if (pointer_delta(end(), obj) >= size) {
       HeapWord* new_top = obj + size;
       HeapWord* result = Atomic::cmpxchg(new_top, top_addr(), obj);
