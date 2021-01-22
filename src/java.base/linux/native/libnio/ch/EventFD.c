@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef _AWT_SYSTEMSCALE_H
-#define _AWT_SYSTEMSCALE_H
 
-#include <signal.h>
-#include <stdlib.h>
+ #include <sys/eventfd.h>
 
-double getNativeScaleFactor();
+#include "jni.h"
+#include "jni_util.h"
+#include "jvm.h"
+#include "jlong.h"
+#include "nio.h"
+#include "nio_util.h"
 
-#endif
+#include "sun_nio_ch_EventFD.h"
 
+JNIEXPORT jint JNICALL
+Java_sun_nio_ch_EventFD_eventfd0(JNIEnv *env, jclass klazz)
+{
+    int efd = eventfd((uint64_t)0, 0);
+    if (efd == -1) {
+        JNU_ThrowIOExceptionWithLastError(env, "eventfd failed");
+        return IOS_THROWN;
+    }
+    return efd;
+}
+
+JNIEXPORT jint JNICALL
+Java_sun_nio_ch_EventFD_set0(JNIEnv *env, jclass klazz, jint efd)
+{
+    long one = 1L;
+    return convertReturnVal(env, write(efd, (void*)&one, sizeof(long)),
+        JNI_FALSE);
+}
