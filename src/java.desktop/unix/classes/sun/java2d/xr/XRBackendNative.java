@@ -229,12 +229,22 @@ public class XRBackendNative implements XRBackend {
         return glyphInfoPtrs;
     }
 
+    private static int countTotalSubglyphs(List<XRGlyphCacheEntry> cacheEntries) {
+        int totalSubglyphs = 0;
+        for (int i = 0; i < cacheEntries.size(); i++) {
+            XRGlyphCacheEntry entry = cacheEntries.get(i);
+            totalSubglyphs += entry.getSubpixelResolutionX() *
+                              entry.getSubpixelResolutionY();
+        }
+        return totalSubglyphs;
+    }
+
     public void XRenderAddGlyphs(int glyphSet, GlyphList gl,
                                  List<XRGlyphCacheEntry> cacheEntries,
                                  byte[] pixelData) {
         long[] glyphInfoPtrs = getGlyphInfoPtrs(cacheEntries);
-        XRAddGlyphsNative(glyphSet, glyphInfoPtrs,
-                          glyphInfoPtrs.length, pixelData, pixelData.length);
+        XRAddGlyphsNative(glyphSet, glyphInfoPtrs, glyphInfoPtrs.length,
+                pixelData, pixelData.length, countTotalSubglyphs(cacheEntries));
     }
 
     public void XRenderFreeGlyphs(int glyphSet, int[] gids) {
@@ -245,7 +255,8 @@ public class XRBackendNative implements XRBackend {
                                                  long[] glyphInfoPtrs,
                                                  int glyphCnt,
                                                  byte[] pixelData,
-                                                 int pixelDataLength);
+                                                 int pixelDataLength,
+                                                 int totalSubglyphs);
 
     private static native void XRFreeGlyphsNative(int glyphSet,
                                                   int[] gids, int idCnt);
