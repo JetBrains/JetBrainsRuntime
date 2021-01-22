@@ -48,7 +48,6 @@ public class XRGlyphCache implements GlyphDisposedListener {
     XRCompositeManager maskBuffer;
     HashMap<MutableInteger, XRGlyphCacheEntry> cacheMap = new HashMap<MutableInteger, XRGlyphCacheEntry>(256);
 
-    int nextID = 1;
     MutableInteger tmp = new MutableInteger(0);
 
     int grayGlyphSet;
@@ -59,7 +58,7 @@ public class XRGlyphCache implements GlyphDisposedListener {
     int cachedPixels = 0;
     static final int MAX_CACHED_PIXELS = 100000;
 
-    ArrayList<Integer> freeGlyphIDs = new ArrayList<Integer>(255);
+    final GlyphIDAllocator glyphIDAllocator = new GlyphIDAllocator();
 
     static final boolean batchGlyphUpload = true; // Boolean.parseBoolean(System.getProperty("sun.java2d.xrender.batchGlyphUpload"));
 
@@ -97,14 +96,6 @@ public class XRGlyphCache implements GlyphDisposedListener {
         }
     }
 
-    protected int getFreeGlyphID() {
-        if (freeGlyphIDs.size() > 0) {
-            int newID = freeGlyphIDs.remove(freeGlyphIDs.size() - 1);
-            return newID;
-        }
-        return nextID++;
-    }
-
     protected XRGlyphCacheEntry getEntryForPointer(long imgPtr) {
         int id = XRGlyphCacheEntry.getGlyphID(imgPtr);
 
@@ -133,7 +124,9 @@ public class XRGlyphCache implements GlyphDisposedListener {
             // Find uncached glyphs and queue them for upload
             if ((glyph = getEntryForPointer(imgPtrs[i])) == null) {
                 glyph = new XRGlyphCacheEntry(imgPtrs[i], glyphList);
-                glyph.setGlyphID(getFreeGlyphID());
+                glyph.setGlyphID(glyphIDAllocator.allocateID(
+                        glyph.getSubpixelResolutionX() *
+                        glyph.getSubpixelResolutionY()));
                 cacheMap.put(new MutableInteger(glyph.getGlyphID()), glyph);
 
                 if (uncachedGlyphs == null) {
@@ -281,15 +274,18 @@ public class XRGlyphCache implements GlyphDisposedListener {
 
         for (int i=0; i < glyphIdList.getSize(); i++) {
             int glyphId = glyphIdList.getInt(i);
-            freeGlyphIDs.add(glyphId);
 
             tmp.setValue(glyphId);
             XRGlyphCacheEntry entry = cacheMap.get(tmp);
+            int subglyphs = entry.getSubpixelResolutionX() * entry.getSubpixelResolutionY();
+            glyphIDAllocator.freeID(glyphId, subglyphs);
             cachedPixels -= entry.getPixelCnt();
             cacheMap.remove(tmp);
 
             if (entry.getGlyphSet() == grayGlyphSet) {
-                removedGrayscaleGlyphs.addInt(glyphId);
+                for (int j = 0; j < subglyphs; j++) {
+                    removedGrayscaleGlyphs.addInt(glyphId + j);
+                }
             } else if (entry.getGlyphSet() == lcdGlyphSet) {
                 removedLCDGlyphs.addInt(glyphId);
             } else if (entry.getGlyphSet() == BGRA_GLYPH_SET) {
@@ -319,6 +315,49 @@ public class XRGlyphCache implements GlyphDisposedListener {
         if (removedBGRAGlyphPtrsCount > 0) {
             con.freeBGRAGlyphImages(removedBGRAGlyphPtrs,
                                     removedBGRAGlyphPtrsCount);
+        }
+    }
+
+    /**
+     * Each XR glyph image needs its own ID, which are allocated using
+     * this class. When using supplementary subpixel glyphs
+     * ({@code -Djava2d.font.subpixelResolution=4x2}), its XRGlyphCacheEntry
+     * may correspond to few images and therefore may need a range of IDs
+     * instead of a single one.
+     * @implNote This allocator uses a simple strategy for reusing IDs with
+     * a single pool per capacity (e.g. one pool containing only individual
+     * IDs and second pool containing ranges each with 8 sequential IDs).
+     * When pool is empty, new range of IDs is allocated by incrementing
+     * {@code nextID} counter.
+     */
+    private static class GlyphIDAllocator {
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        private List<Integer>[] freeIDsByCapacity = new List[]{
+                new ArrayList<>(255)
+        };
+        private int nextID = 1;
+
+        private int allocateID(int count) {
+            if (count <= freeIDsByCapacity.length) {
+                List<Integer> pool = freeIDsByCapacity[count - 1];
+                if (pool != null && !pool.isEmpty()) {
+                    return pool.remove(pool.size() - 1);
+                }
+            }
+            int id = nextID;
+            nextID += count;
+            return id;
+        }
+
+        private void freeID(int id, int count) {
+            if (count > freeIDsByCapacity.length) {
+                freeIDsByCapacity = Arrays.copyOf(freeIDsByCapacity, count);
+            }
+            if (freeIDsByCapacity[count - 1] == null) {
+                freeIDsByCapacity[count - 1] = new ArrayList<>(255);
+            }
+            freeIDsByCapacity[count - 1].add(id);
         }
     }
 }
