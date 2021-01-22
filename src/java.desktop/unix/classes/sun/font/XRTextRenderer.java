@@ -106,6 +106,10 @@ public class XRTextRenderer extends GlyphListPipe {
 
                 int glyphSet = cacheEntry.getGlyphSet();
 
+                int subpixelResolutionX = cacheEntry.getSubpixelResolutionX();
+                int subpixelResolutionY = cacheEntry.getSubpixelResolutionY();
+                float glyphX = advX;
+                float glyphY = advY;
                 if (glyphSet == XRGlyphCache.BGRA_GLYPH_SET) {
                     /* BGRA glyphs store pointers to BGRAGlyphInfo
                      * struct instead of glyph index */
@@ -113,8 +117,19 @@ public class XRTextRenderer extends GlyphListPipe {
                             (int) (cacheEntry.getBgraGlyphInfoPtr() >> 32));
                     eltList.getGlyphs().addInt(
                             (int) cacheEntry.getBgraGlyphInfoPtr());
-                } else {
+                } else if (subpixelResolutionX == 1 && subpixelResolutionY == 1) {
                     eltList.getGlyphs().addInt(cacheEntry.getGlyphID());
+                } else {
+                    glyphX += 0.5f / subpixelResolutionX - 0.5f;
+                    glyphY += 0.5f / subpixelResolutionY - 0.5f;
+                    int x = ((int) Math.floor(glyphX *
+                            (float) subpixelResolutionX)) % subpixelResolutionX;
+                    if (x < 0) x += subpixelResolutionX;
+                    int y = ((int) Math.floor(glyphY *
+                            (float) subpixelResolutionY)) % subpixelResolutionY;
+                    if (y < 0) y += subpixelResolutionY;
+                    eltList.getGlyphs().addInt(cacheEntry.getGlyphID() +
+                            x + y * subpixelResolutionX);
                 }
 
                 containsLCDGlyphs |= (glyphSet == glyphCache.lcdGlyphSet);
@@ -138,8 +153,8 @@ public class XRTextRenderer extends GlyphListPipe {
 
                     if (gl.usePositions()) {
                         // In this case advX only stores rounding errors
-                        float x = positions[i * 2] + advX;
-                        float y = positions[i * 2 + 1] + advY;
+                        float x = positions[i * 2] + glyphX;
+                        float y = positions[i * 2 + 1] + glyphY;
                         posX = (int) Math.floor(x);
                         posY = (int) Math.floor(y);
                         advX -= cacheEntry.getXOff();
@@ -153,8 +168,8 @@ public class XRTextRenderer extends GlyphListPipe {
                          * later. This way rounding-error can be corrected, and
                          * is required to be consistent with the software loops.
                          */
-                        posX = (int) Math.floor(advX);
-                        posY = (int) Math.floor(advY);
+                        posX = (int) Math.floor(glyphX);
+                        posY = (int) Math.floor(glyphY);
 
                         // Advance of ELT = difference between stored relative
                         // positioning information and required float.
