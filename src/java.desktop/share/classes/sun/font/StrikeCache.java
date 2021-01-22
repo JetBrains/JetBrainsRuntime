@@ -115,17 +115,20 @@ public final class StrikeCache {
     static native long getInvisibleGlyphPtr();
 
     public static final StructLayout GlyphImageLayout = MemoryLayout.structLayout(
-        JAVA_FLOAT.withName("xAdvance"), // 0+4=4,
-        JAVA_FLOAT.withName("yAdvance"), // 4+4=8,
-        JAVA_CHAR.withName("width"),     // 8+2=10,
-        JAVA_CHAR.withName("height"),    // 10+2=12
-        JAVA_CHAR.withName("rowBytes"),  // 12+2=14
-        JAVA_BYTE.withName("managed"),   // 14+1=15
-        MemoryLayout.paddingLayout(1),   // 15+1=16
-        JAVA_FLOAT.withName("topLeftX"), // 16+4=20
-        JAVA_FLOAT.withName("topLeftY"), // 20+4=24
-        ADDRESS.withName("cellInfo"),    // 24+8=32
-        ADDRESS.withName("image")        // 32+8=40
+        JAVA_FLOAT.withName("xAdvance"),           // 0+4=4,
+        JAVA_FLOAT.withName("yAdvance"),           // 4+4=8,
+        JAVA_CHAR.withName("width"),               // 8+2=10,
+        JAVA_CHAR.withName("height"),              // 10+2=12
+        JAVA_CHAR.withName("rowBytes"),            // 12+2=14
+        JAVA_BYTE.withName("managed"),             // 14+1=15
+        JAVA_BYTE.withName("subpixelResolutionX"), // 15+1=16
+        JAVA_BYTE.withName("subpixelResolutionY"), // 16+1=17
+        MemoryLayout.paddingLayout(3),             // 17+3=20
+        JAVA_FLOAT.withName("topLeftX"),           // 20+4=24
+        JAVA_FLOAT.withName("topLeftY"),           // 24+4=28
+        MemoryLayout.paddingLayout(4),             // 28+4=32
+        ADDRESS.withName("cellInfo"),              // 32+8=40
+        ADDRESS.withName("image")                  // 40+8=48
      );
 
    private static final long GLYPHIMAGESIZE = GlyphImageLayout.byteSize();
@@ -136,16 +139,18 @@ public final class StrikeCache {
         return MethodHandles.insertCoordinates(h, 1, 0L).withInvokeExactBehavior();
     }
 
-    private static final VarHandle xAdvanceHandle = getVarHandle(GlyphImageLayout, "xAdvance");
-    private static final VarHandle yAdvanceHandle = getVarHandle(GlyphImageLayout, "yAdvance");
-    private static final VarHandle widthHandle    = getVarHandle(GlyphImageLayout, "width");
-    private static final VarHandle heightHandle   = getVarHandle(GlyphImageLayout, "height");
-    private static final VarHandle rowBytesHandle = getVarHandle(GlyphImageLayout, "rowBytes");
-    private static final VarHandle managedHandle  = getVarHandle(GlyphImageLayout, "managed");
-    private static final VarHandle topLeftXHandle = getVarHandle(GlyphImageLayout, "topLeftX");
-    private static final VarHandle topLeftYHandle = getVarHandle(GlyphImageLayout, "topLeftY");
-    private static final VarHandle cellInfoHandle = getVarHandle(GlyphImageLayout, "cellInfo");
-    private static final VarHandle imageHandle    = getVarHandle(GlyphImageLayout, "image");
+    private static final VarHandle xAdvanceHandle            = getVarHandle(GlyphImageLayout, "xAdvance");
+    private static final VarHandle yAdvanceHandle            = getVarHandle(GlyphImageLayout, "yAdvance");
+    private static final VarHandle widthHandle               = getVarHandle(GlyphImageLayout, "width");
+    private static final VarHandle heightHandle              = getVarHandle(GlyphImageLayout, "height");
+    private static final VarHandle rowBytesHandle            = getVarHandle(GlyphImageLayout, "rowBytes");
+    private static final VarHandle managedHandle             = getVarHandle(GlyphImageLayout, "managed");
+    private static final VarHandle subpixelResolutionXHandle = getVarHandle(GlyphImageLayout, "subpixelResolutionX");
+    private static final VarHandle subpixelResolutionYHandle = getVarHandle(GlyphImageLayout, "subpixelResolutionY");
+    private static final VarHandle topLeftXHandle            = getVarHandle(GlyphImageLayout, "topLeftX");
+    private static final VarHandle topLeftYHandle            = getVarHandle(GlyphImageLayout, "topLeftY");
+    private static final VarHandle cellInfoHandle            = getVarHandle(GlyphImageLayout, "cellInfo");
+    private static final VarHandle imageHandle               = getVarHandle(GlyphImageLayout, "image");
 
     @SuppressWarnings("restricted")
     static final float getGlyphXAdvance(long ptr) {
@@ -201,6 +206,20 @@ public final class StrikeCache {
         MemorySegment seg = MemorySegment.ofAddress(ptr);
         seg = seg.reinterpret(GLYPHIMAGESIZE);
         return (byte)managedHandle.get(seg);
+    }
+
+    @SuppressWarnings("restricted")
+    static final byte getGlyphSubpixelResolutionX(long ptr) {
+        MemorySegment seg = MemorySegment.ofAddress(ptr);
+        seg = seg.reinterpret(GLYPHIMAGESIZE);
+        return (byte)subpixelResolutionXHandle.get(seg);
+    }
+
+    @SuppressWarnings("restricted")
+    static final byte getGlyphSubpixelResolutionY(long ptr) {
+        MemorySegment seg = MemorySegment.ofAddress(ptr);
+        seg = seg.reinterpret(GLYPHIMAGESIZE);
+        return (byte)subpixelResolutionYHandle.get(seg);
     }
 
     @SuppressWarnings("restricted")
