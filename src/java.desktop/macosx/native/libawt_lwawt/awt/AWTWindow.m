@@ -383,7 +383,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
 AWT_ASSERT_APPKIT_THREAD;
 
     NSUInteger styleMask = [AWTWindow styleMaskForStyleBits:bits];
-    NSRect contentRect = [NSWindow contentRectForFrameRect:rect styleMask:styleMask];
+    NSRect contentRect = rect; //[NSWindow contentRectForFrameRect:rect styleMask:styleMask];
     if (contentRect.size.width <= 0.0) {
         contentRect.size.width = 1.0;
     }
