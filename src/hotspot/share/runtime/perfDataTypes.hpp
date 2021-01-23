@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,24 @@
  *
  */
 
-#ifndef SHARE_GC_G1_G1FULLGCADJUSTTASK_HPP
-#define SHARE_GC_G1_G1FULLGCADJUSTTASK_HPP
+#ifndef SHARE_RUNTIME_PERFDATATYPES_HPP
+#define SHARE_RUNTIME_PERFDATATYPES_HPP
 
-#include "gc/g1/g1FullGCOopClosures.hpp"
-#include "gc/g1/g1FullGCTask.hpp"
-#include "gc/g1/g1RootProcessor.hpp"
-#include "gc/g1/g1StringDedup.hpp"
-#include "gc/g1/heapRegionManager.hpp"
-#include "gc/shared/parallelCleaning.hpp"
-#include "gc/shared/weakProcessor.hpp"
-#include "utilities/ticks.hpp"
+// Forward declaration of the types used by the performance counters. The
+// actual class declarations are in perfData.hpp.
+//
+// To reduce HotSpot build time, if you just need to declare a pointer to the
+// following types, include this file instead of perfData.hpp.
 
-class G1CollectedHeap;
+class PerfLongSampleHelper;
+class PerfLongConstant;
+class PerfLongCounter;
+class PerfLongVariable;
+class PerfStringVariable;
 
-class G1FullGCAdjustTask : public G1FullGCTask {
-  G1RootProcessor          _root_processor;
-  volatile uint            _references_done; // Atomic counter / bool
-  WeakProcessor::Task      _weak_proc_task;
-  HeapRegionClaimer        _hrclaimer;
-  G1AdjustClosure          _adjust;
-  StringDedupCleaningTask  _string_dedup_cleaning_task;
+typedef PerfLongSampleHelper PerfSampleHelper;
+typedef PerfLongConstant PerfConstant;
+typedef PerfLongCounter PerfCounter;
+typedef PerfLongVariable PerfVariable;
 
-public:
-  G1FullGCAdjustTask(G1FullCollector* collector);
-  void work(uint worker_id);
-};
-
-#endif // SHARE_GC_G1_G1FULLGCADJUSTTASK_HPP
+#endif // SHARE_RUNTIME_PERFDATATYPES_HPP
