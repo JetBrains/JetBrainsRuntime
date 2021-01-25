@@ -221,10 +221,19 @@ static BOOL shouldUsePressAndHold() {
     NSPoint localPoint = [self convertPoint: eventLocation fromView: nil];
 
     if  ([self mouse: localPoint inRect: [self bounds]]) {
-        [self deliverJavaMouseEvent: event];
-    } else {
-        [[self nextResponder] mouseDown:event];
+        NSWindow* eventWindow = [event window];
+        NSPoint screenPoint = (eventWindow == nil)
+            ? eventLocation
+            // SDK we build against is too old - it doesn't have convertPointToScreen
+            : [eventWindow convertRectToScreen:NSMakeRect(eventLocation.x, eventLocation.y, 0, 0)].origin;
+        // macOS can report mouseMoved events to a window even if it's not showing currently (see JBR-2702)
+        // so we're performing an additional check here
+        if (self.window.windowNumber == [NSWindow windowNumberAtPoint:screenPoint belowWindowWithWindowNumber:0]) {
+            [self deliverJavaMouseEvent: event];
+            return;
+        }
     }
+    [[self nextResponder] mouseMoved:event];
 }
 
 - (void) mouseDragged: (NSEvent *)event {
