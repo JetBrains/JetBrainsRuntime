@@ -1244,18 +1244,20 @@ MsgRouting AwtWindow::WmShowWindow(BOOL show, UINT status)
     /*
      * Original fix for 4810575. Modified for 6386592.
      * If a simple window gets disposed we should synthesize
-     * WM_ACTIVATE for its nearest owner. This is not performed by default because
+     * WM_ACTIVATE for its nearest focusable owner. This is not performed by default because
      * the owner frame/dialog is natively active.
      */
     HWND hwndSelf = GetHWnd();
     HWND hwndOwner = ::GetParent(hwndSelf);
 
-    if (!show && IsSimpleWindow() && hwndSelf == AwtComponent::GetFocusedWindow() &&
-        hwndOwner != NULL && ::IsWindowVisible(hwndOwner))
-    {
-        AwtFrame *owner = (AwtFrame*)AwtComponent::GetComponent(hwndOwner);
-        if (owner != NULL) {
-            owner->AwtSetActiveWindow();
+    if (!show && IsSimpleWindow() && hwndSelf == AwtComponent::GetFocusedWindow()) {
+        while (hwndOwner != NULL && ::IsWindowVisible(hwndOwner)) {
+            AwtWindow *owner = (AwtWindow*)AwtComponent::GetComponent(hwndOwner);
+            if (owner != NULL && owner->IsFocusableWindow()) {
+                owner->AwtSetActiveWindow();
+                break;
+            }
+            hwndOwner = ::GetParent(hwndOwner);
         }
     }
 
