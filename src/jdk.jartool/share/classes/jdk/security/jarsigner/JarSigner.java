@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,11 @@ package jdk.security.jarsigner;
 
 import com.sun.jarsigner.ContentSigner;
 import com.sun.jarsigner.ContentSignerParameters;
+import jdk.internal.misc.JavaUtilZipFileAccess;
+import jdk.internal.misc.SharedSecrets;
 import sun.security.tools.PathList;
 import sun.security.tools.jarsigner.TimestampedSigner;
+import sun.security.util.Event;
 import sun.security.util.ManifestDigester;
 import sun.security.util.SignatureFileVerifier;
 import sun.security.x509.AlgorithmId;
@@ -80,6 +83,8 @@ import java.util.zip.ZipOutputStream;
  * @since 9
  */
 public final class JarSigner {
+
+    static final JavaUtilZipFileAccess JUZFA = SharedSecrets.getJavaUtilZipFileAccess();
 
     /**
      * A mutable builder class that can create an immutable {@code JarSigner}
@@ -499,6 +504,7 @@ public final class JarSigner {
     private final boolean externalSF; // leave the .SF out of the PKCS7 block
     private final String altSignerPath;
     private final String altSigner;
+    private boolean extraAttrsDetected;
 
     private JarSigner(JarSigner.Builder builder) {
 
@@ -927,6 +933,12 @@ public final class JarSigner {
         ze2.setTime(ze.getTime());
         ze2.setComment(ze.getComment());
         ze2.setExtra(ze.getExtra());
+        int extraAttrs = JUZFA.getExtraAttributes(ze);
+        if (!extraAttrsDetected && extraAttrs != -1) {
+            extraAttrsDetected = true;
+            Event.report(Event.ReporterCategory.ZIPFILEATTRS, "detected");
+        }
+        JUZFA.setExtraAttributes(ze2, extraAttrs);
         if (ze.getMethod() == ZipEntry.STORED) {
             ze2.setSize(ze.getSize());
             ze2.setCrc(ze.getCrc());

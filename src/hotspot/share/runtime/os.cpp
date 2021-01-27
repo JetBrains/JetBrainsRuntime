@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,18 +94,6 @@ void os_init_globals() {
   os::init_globals();
 }
 
-static time_t get_timezone(const struct tm* time_struct) {
-#if defined(_ALLBSD_SOURCE)
-  return time_struct->tm_gmtoff;
-#elif defined(_WINDOWS)
-  long zone;
-  _get_timezone(&zone);
-  return static_cast<time_t>(zone);
-#else
-  return timezone;
-#endif
-}
-
 int os::snprintf(char* buf, size_t len, const char* fmt, ...) {
   va_list args;
   va_start(args, fmt);
@@ -158,21 +146,32 @@ char* os::iso8601_time(char* buffer, size_t buffer_length, bool utc) {
       return NULL;
     }
   }
-  const time_t zone = get_timezone(&time_struct);
 
-  // If daylight savings time is in effect,
-  // we are 1 hour East of our time zone
   const time_t seconds_per_minute = 60;
   const time_t minutes_per_hour = 60;
   const time_t seconds_per_hour = seconds_per_minute * minutes_per_hour;
-  time_t UTC_to_local = zone;
-  if (time_struct.tm_isdst > 0) {
-    UTC_to_local = UTC_to_local - seconds_per_hour;
-  }
 
   // No offset when dealing with UTC
-  if (utc) {
-    UTC_to_local = 0;
+  time_t UTC_to_local = 0;
+  if (!utc) {
+#if defined(_ALLBSD_SOURCE) || defined(_GNU_SOURCE)
+    UTC_to_local = -(time_struct.tm_gmtoff);
+#elif defined(_WINDOWS)
+    long zone;
+    _get_timezone(&zone);
+    UTC_to_local = static_cast<time_t>(zone);
+#else
+    UTC_to_local = timezone;
+#endif
+
+    // tm_gmtoff already includes adjustment for daylight saving
+#if !defined(_ALLBSD_SOURCE) && !defined(_GNU_SOURCE)
+    // If daylight savings time is in effect,
+    // we are 1 hour East of our time zone
+    if (time_struct.tm_isdst > 0) {
+      UTC_to_local = UTC_to_local - seconds_per_hour;
+    }
+#endif
   }
 
   // Compute the time zone offset.
@@ -1174,6 +1173,9 @@ void os::print_location(outputStream* st, intptr_t x, bool verbose) {
 
   if (accessible) {
     st->print(INTPTR_FORMAT " points into unknown readable memory:", p2i(addr));
+    if (is_aligned(addr, sizeof(intptr_t))) {
+      st->print(" " PTR_FORMAT " |", *(intptr_t*)addr);
+    }
     for (address p = addr; p < align_up(addr + 1, sizeof(intptr_t)); ++p) {
       st->print(" %02x", *(u1*)p);
     }
@@ -1381,7 +1383,8 @@ char** os::split_path(const char* path, int* n) {
 }
 
 void os::set_memory_serialize_page(address page) {
-  int count = log2_intptr(sizeof(class JavaThread)) - log2_int(64);
+  // S/390: Cast to (uintptr_t) to remove ambiguity; see JDK-8222286
+  int count = log2_intptr((uintptr_t) sizeof(class JavaThread)) - log2_int(64);
   _mem_serialize_page = (volatile int32_t *)page;
   // We initialize the serialization page shift count here
   // We assume a cache line size of 64 bytes

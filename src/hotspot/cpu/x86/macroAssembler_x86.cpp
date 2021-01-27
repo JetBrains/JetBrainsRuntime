@@ -1185,7 +1185,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // the prototype header is no longer biased and we have to revoke
   // the bias on this object.
   testptr(header_reg, markOopDesc::biased_lock_mask_in_place);
-  jccb(Assembler::notZero, try_revoke_bias);
+  jcc(Assembler::notZero, try_revoke_bias);
 
   // Biasing is still enabled for this data type. See whether the
   // epoch of the current bias is still valid, meaning that the epoch
@@ -6588,7 +6588,7 @@ void MacroAssembler::string_indexof_char(Register str1, Register cnt1, Register 
     pmovmskb(tmp, vec3);
   }
   bsfl(ch, tmp);
-  addl(result, ch);
+  addptr(result, ch);
 
   bind(FOUND_SEQ_CHAR);
   subptr(result, str1);

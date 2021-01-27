@@ -100,7 +100,9 @@ intptr_t narrow(BasicType type, intptr_t result) {
     case T_DOUBLE:
     case T_VOID:
       return result;
-    default  : ShouldNotReachHere();
+    default:
+      ShouldNotReachHere();
+      return result; // silence compiler warnings
   }
 }
 
@@ -558,6 +560,9 @@ int CppInterpreter::accessor_entry(Method* method, intptr_t UNUSED, TRAPS) {
     break;
   }
   if (entry->is_volatile()) {
+    if (support_IRIW_for_not_multiple_copy_atomic_cpu) {
+      OrderAccess::fence();
+    }
     switch (entry->flag_state()) {
     case ctos:
       SET_LOCALS_INT(object->char_field_acquire(entry->f2_as_index()), 0);

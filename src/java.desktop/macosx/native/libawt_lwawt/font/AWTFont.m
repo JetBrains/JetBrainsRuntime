@@ -3040,7 +3040,6 @@ GetFilteredFonts()
          */
         addFont(kCTFontUIFontSystem, allFonts, fontFamilyTable, fontFacesTable);
         addFont(kCTFontUIFontEmphasizedSystem, allFonts, fontFamilyTable, fontFacesTable);
-        addFont(kCTFontUIFontUserFixedPitch, allFonts, fontFamilyTable, fontFacesTable);
 
         sFilteredFonts = allFonts;
         sFontFamilyTable = fontFamilyTable;

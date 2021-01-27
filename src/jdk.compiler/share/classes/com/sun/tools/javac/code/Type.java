@@ -2027,6 +2027,7 @@ public abstract class Type extends AnnoConstruct implements TypeMirror {
             for (IncorporationAction action : incorporationActions) {
                 uv2.incorporationActions.add(action.dup(uv2));
             }
+            uv2.kind = kind;
         }
 
         @Override

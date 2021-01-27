@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -666,11 +666,11 @@ void G1Policy::record_collection_pause_end(double pause_time_ms, size_t cards_sc
     _analytics->report_rs_length_diff((double) rs_length_diff);
 
     size_t freed_bytes = heap_used_bytes_before_gc - cur_used_bytes;
-    size_t copied_bytes = _collection_set->bytes_used_before() - freed_bytes;
-    double cost_per_byte_ms = 0.0;
 
-    if (copied_bytes > 0) {
-      cost_per_byte_ms = average_time_ms(G1GCPhaseTimes::ObjCopy) / (double) copied_bytes;
+    if (_collection_set->bytes_used_before() > freed_bytes) {
+      size_t copied_bytes = _collection_set->bytes_used_before() - freed_bytes;
+      double average_copy_time = average_time_ms(G1GCPhaseTimes::ObjCopy);
+      double cost_per_byte_ms = average_copy_time / (double) copied_bytes;
       _analytics->report_cost_per_byte_ms(cost_per_byte_ms, collector_state()->mark_or_rebuild_in_progress());
     }
 

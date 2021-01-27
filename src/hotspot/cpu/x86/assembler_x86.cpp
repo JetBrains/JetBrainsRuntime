@@ -8588,7 +8588,7 @@ void Assembler::cmpq(Register dst, int32_t imm32) {
 void Assembler::cmpq(Address dst, Register src) {
   InstructionMark im(this);
   prefixq(dst, src);
-  emit_int8(0x3B);
+  emit_int8(0x39);
   emit_operand(src, dst);
 }
 

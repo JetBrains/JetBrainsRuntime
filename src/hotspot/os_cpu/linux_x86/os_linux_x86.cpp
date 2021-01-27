@@ -303,8 +303,9 @@ JVM_handle_linux_signal(int sig,
 
 #ifdef CAN_SHOW_REGISTERS_ON_ASSERT
   if ((sig == SIGSEGV || sig == SIGBUS) && info != NULL && info->si_addr == g_assert_poison) {
-    handle_assert_poison_fault(ucVoid, info->si_addr);
-    return 1;
+    if (handle_assert_poison_fault(ucVoid, info->si_addr)) {
+      return 1;
+    }
   }
 #endif
 
@@ -658,6 +659,26 @@ bool os::supports_sse() {
                major,minor, result ? "DOES" : "does NOT");
   return result;
 #endif // AMD64
+}
+
+juint os::cpu_microcode_revision() {
+  juint result = 0;
+  char data[2048] = {0}; // lines should fit in 2K buf
+  size_t len = sizeof(data);
+  FILE *fp = fopen("/proc/cpuinfo", "r");
+  if (fp) {
+    while (!feof(fp)) {
+      if (fgets(data, len, fp)) {
+        if (strstr(data, "microcode") != NULL) {
+          char* rev = strchr(data, ':');
+          if (rev != NULL) sscanf(rev + 1, "%x", &result);
+          break;
+        }
+      }
+    }
+    fclose(fp);
+  }
+  return result;
 }
 
 bool os::is_allocatable(size_t bytes) {
