@@ -30,6 +30,7 @@ import java.util.Enumeration;
 import java.util.function.Function;
 import java.util.jar.JarEntry;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public interface JavaUtilZipFileAccess {
@@ -39,5 +40,7 @@ public interface JavaUtilZipFileAccess {
     public Enumeration<JarEntry> entries(ZipFile zip, Function<String, JarEntry> func);
     public Stream<JarEntry> stream(ZipFile zip, Function<String, JarEntry> func);
     public Stream<String> entryNameStream(ZipFile zip);
+    public void setExtraAttributes(ZipEntry ze, int extraAttrs);
+    public int getExtraAttributes(ZipEntry ze);
 }
 

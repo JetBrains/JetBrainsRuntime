@@ -50,6 +50,8 @@ import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.TrustAnchor;
 import java.util.Map.Entry;
 
+import jdk.internal.misc.JavaUtilZipFileAccess;
+import jdk.internal.misc.SharedSecrets;
 import jdk.security.jarsigner.JarSigner;
 import jdk.security.jarsigner.JarSignerException;
 import sun.security.pkcs.PKCS7;
@@ -108,12 +110,16 @@ public class Main {
     private static final Set<CryptoPrimitive> SIG_PRIMITIVE_SET = Collections
             .unmodifiableSet(EnumSet.of(CryptoPrimitive.SIGNATURE));
 
+    private static boolean extraAttrsDetected;
+
     static final String VERSION = "1.0";
 
     static final int IN_KEYSTORE = 0x01;        // signer is in keystore
     static final int NOT_ALIAS = 0x04;          // alias list is NOT empty and
     // signer is not in alias list
     static final int SIGNED_BY_ALIAS = 0x08;    // signer is in alias list
+
+    static final JavaUtilZipFileAccess JUZFA = SharedSecrets.getJavaUtilZipFileAccess();
 
     // Attention:
     // This is the entry that get launched by the security tool jarsigner.
@@ -757,6 +763,9 @@ public class Main {
                     JarEntry je = e.nextElement();
                     String name = je.getName();
 
+                    if (!extraAttrsDetected && JUZFA.getExtraAttributes(je) != -1) {
+                        extraAttrsDetected = true;
+                    }
                     hasSignature = hasSignature
                             || SignatureFileVerifier.isBlockOrSF(name);
 
@@ -1198,7 +1207,8 @@ public class Main {
         if (hasExpiringCert ||
                 (hasExpiringTsaCert  && expireDate != null) ||
                 (noTimestamp && expireDate != null) ||
-                (hasExpiredTsaCert && signerNotExpired)) {
+                (hasExpiredTsaCert && signerNotExpired) ||
+                extraAttrsDetected) {
 
             if (hasExpiredTsaCert && signerNotExpired) {
                 if (expireDate != null) {
@@ -1234,6 +1244,9 @@ public class Main {
                             ? "no.timestamp.signing"
                             : "no.timestamp.verifying"), expireDate));
                 }
+            }
+            if (extraAttrsDetected) {
+                warnings.add(rb.getString("extra.attributes.detected"));
             }
         }
 
@@ -1733,6 +1746,8 @@ public class Main {
         String failedMessage = null;
 
         try {
+            Event.setReportListener(Event.ReporterCategory.ZIPFILEATTRS,
+                    (t, o) -> extraAttrsDetected = true);
             builder.build().sign(zipFile, fos);
         } catch (JarSignerException e) {
             failedCause = e.getCause();
@@ -1767,6 +1782,7 @@ public class Main {
                 fos.close();
             }
 
+            Event.clearReportListener(Event.ReporterCategory.ZIPFILEATTRS);
         }
 
         if (failedCause != null) {

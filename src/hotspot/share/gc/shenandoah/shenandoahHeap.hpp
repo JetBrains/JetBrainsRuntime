@@ -115,6 +115,7 @@ class ShenandoahHeap : public CollectedHeap {
   friend class VMStructs;
   friend class ShenandoahGCSession;
   friend class ShenandoahGCStateResetter;
+  friend class ShenandoahSafepoint;
 
 // ---------- Locks that guard important data structures in Heap
 //
@@ -160,6 +161,7 @@ public:
 private:
            size_t _initial_size;
            size_t _minimum_size;
+  volatile size_t _soft_max_size;
   shenandoah_padding(0);
   volatile size_t _used;
   volatile size_t _committed;
@@ -178,12 +180,15 @@ public:
   size_t bytes_allocated_since_gc_start();
   void reset_bytes_allocated_since_gc_start();
 
-  size_t min_capacity()     const;
-  size_t max_capacity()     const;
-  size_t initial_capacity() const;
-  size_t capacity()         const;
-  size_t used()             const;
-  size_t committed()        const;
+  size_t min_capacity()      const;
+  size_t max_capacity()      const;
+  size_t soft_max_capacity() const;
+  size_t initial_capacity()  const;
+  size_t capacity()          const;
+  size_t used()              const;
+  size_t committed()         const;
+
+  void set_soft_max_capacity(size_t v);
 
 // ---------- Workers handling
 //
@@ -378,7 +383,7 @@ public:
   void entry_evac();
   void entry_updaterefs();
   void entry_cleanup_complete();
-  void entry_uncommit(double shrink_before);
+  void entry_uncommit(double shrink_before, size_t shrink_until);
 
 private:
   // Actual work for the phases
@@ -399,7 +404,7 @@ private:
   void op_stw_evac();
   void op_updaterefs();
   void op_cleanup_complete();
-  void op_uncommit(double shrink_before);
+  void op_uncommit(double shrink_before, size_t shrink_until);
 
   // Messages for GC trace events, they have to be immortal for
   // passing around the logging/tracing systems

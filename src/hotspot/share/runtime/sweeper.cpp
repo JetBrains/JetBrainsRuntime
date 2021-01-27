@@ -285,7 +285,7 @@ void NMethodSweeper::sweeper_loop() {
 void NMethodSweeper::notify(int code_blob_type) {
   // Makes sure that we do not invoke the sweeper too often during startup.
   double start_threshold = 100.0 / (double)StartAggressiveSweepingAt;
-  double aggressive_sweep_threshold = MIN2(start_threshold, 1.1);
+  double aggressive_sweep_threshold = MAX2(start_threshold, 1.1);
   if (CodeCache::reverse_free_ratio(code_blob_type) >= aggressive_sweep_threshold) {
     assert_locked_or_safepoint(CodeCache_lock);
     CodeCache_lock->notify();
@@ -384,11 +384,12 @@ void NMethodSweeper::possibly_sweep() {
   if (_should_sweep || forced) {
     init_sweeper_log();
     sweep_code_cache();
+
+    // We are done with sweeping the code cache once.
+    _total_nof_code_cache_sweeps++;
+    _last_sweep = _time_counter;
   }
 
-  // We are done with sweeping the code cache once.
-  _total_nof_code_cache_sweeps++;
-  _last_sweep = _time_counter;
   // Reset flag; temporarily disables sweeper
   _should_sweep = false;
   // If there was enough state change, 'possibly_enable_sweeper()'
@@ -570,6 +571,8 @@ void NMethodSweeper::possibly_enable_sweeper() {
   double percent_changed = ((double)_bytes_changed / (double)ReservedCodeCacheSize) * 100;
   if (percent_changed > 1.0) {
     _should_sweep = true;
+    MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+    CodeCache_lock->notify();
   }
 }
 

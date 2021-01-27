@@ -29,6 +29,7 @@
 
 class DepChange;
 class DirectiveSet;
+class JvmtiThreadState;
 
 // nmethods (native methods) are the compiled code versions of Java methods.
 //
@@ -60,7 +61,6 @@ class nmethod : public CompiledMethod {
 
   // Shared fields for all nmethod's
   int       _entry_bci;        // != InvocationEntryBci if this nmethod is an on-stack replacement method
-  jmethodID _jmethod_id;       // Cache of method()->jmethod_id()
 
 #if INCLUDE_JVMCI
   // A weak reference to an InstalledCode object associated with
@@ -120,8 +120,9 @@ class nmethod : public CompiledMethod {
   // protected by CodeCache_lock
   bool _has_flushed_dependencies;            // Used for maintenance of dependencies (CodeCache_lock)
 
-  // used by jvmti to track if an unload event has been posted for this nmethod.
+  // used by jvmti to track if an event has been posted for this nmethod.
   bool _unload_reported;
+  bool _load_reported;
 
   // Protected by Patching_lock
   volatile signed char _state;               // {not_installed, in_use, not_entrant, zombie, unloaded}
@@ -341,10 +342,6 @@ class nmethod : public CompiledMethod {
   bool  make_not_used()    { return make_not_entrant(); }
   bool  make_zombie()      { return make_not_entrant_or_zombie(zombie); }
 
-  // used by jvmti to track if the unload event has been reported
-  bool  unload_reported()                         { return _unload_reported; }
-  void  set_unload_reported()                     { _unload_reported = true; }
-
   int get_state() const {
     return _state;
   }
@@ -514,6 +511,12 @@ public:
 
   address* orig_pc_addr(const frame* fr);
 
+  // used by jvmti to track if the load and unload events has been reported
+  bool  unload_reported() const                   { return _unload_reported; }
+  void  set_unload_reported()                     { _unload_reported = true; }
+  bool  load_reported() const                     { return _load_reported; }
+  void  set_load_reported()                       { _load_reported = true; }
+
  public:
   // copying of debugging information
   void copy_scopes_pcs(PcDesc* pcs, int count);
@@ -524,8 +527,7 @@ public:
   void    set_original_pc(const frame* fr, address pc) { *orig_pc_addr(fr) = pc; }
 
   // jvmti support:
-  void post_compiled_method_load_event();
-  jmethodID get_and_cache_jmethod_id();
+  void post_compiled_method_load_event(JvmtiThreadState* state = NULL);
 
   // verify operations
   void verify();

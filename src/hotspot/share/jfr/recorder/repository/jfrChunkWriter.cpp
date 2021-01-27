@@ -56,7 +56,7 @@ bool JfrChunkWriter::open() {
   JfrChunkWriterBase::reset(open_chunk(_chunkstate->path()));
   const bool is_open = this->has_valid_fd();
   if (is_open) {
-    this->bytes("FLR", MAGIC_LEN);
+    this->write_bytes("FLR", MAGIC_LEN);
     this->be_write((u2)JFR_VERSION_MAJOR);
     this->be_write((u2)JFR_VERSION_MINOR);
     this->reserve(6 * FILEHEADER_SLOT_SIZE);

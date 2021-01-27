@@ -875,6 +875,64 @@ If all you want to do is to compile a 32-bit version, for the same OS, on a
 full-blown cross-compilation. (While this surely is possible, it's a lot more
 work and will take much longer to build.)
 
+### Cross compiling the easy way with OpenJDK devkits
+
+The OpenJDK build system provides out-of-the box support for creating and using
+so called devkits. A `devkit` is basically a collection of a cross-compiling
+toolchain and a sysroot environment which can easily be used together with the
+`--with-devkit` configure option to cross compile the OpenJDK. On Linux/x86_64,
+the following command:
+```
+bash configure --with-devkit=<devkit-path> --openjdk-target=ppc64-linux-gnu && make
+```
+
+will configure and build OpenJDK for Linux/ppc64 assuming that `<devkit-path>`
+points to a Linux/x86_64 to Linux/ppc64 devkit.
+
+Devkits can be created from the `make/devkit` directory by executing:
+```
+make [ TARGETS="<TARGET_TRIPLET>+" ] [ BASE_OS=<OS> ] [ BASE_OS_VERSION=<VER> ]
+```
+
+where `TARGETS` contains one or more `TARGET_TRIPLET`s of the form
+described in [section 3.4 of the GNU Autobook](
+https://sourceware.org/autobook/autobook/autobook_17.html). If no
+targets are given, a native toolchain for the current platform will be
+created. Currently, at least the following targets are known to work:
+
+ Supported devkit targets
+ ------------------------
+ x86_64-linux-gnu
+ aarch64-linux-gnu
+ arm-linux-gnueabihf
+ ppc64-linux-gnu
+ ppc64le-linux-gnu
+ s390x-linux-gnu
+
+`BASE_OS` must be one of "OEL6" for Oracle Enterprise Linux 6 or
+"Fedora" (if not specified "OEL6" will be the default). If the base OS
+is "Fedora" the corresponding Fedora release can be specified with the
+help of the `BASE_OS_VERSION` option (with "27" as default version).
+If the build is successful, the new devkits can be found in the
+`build/devkit/result` subdirectory:
+```
+cd make/devkit
+make TARGETS="ppc64le-linux-gnu aarch64-linux-gnu" BASE_OS=Fedora BASE_OS_VERSION=21
+ls -1 ../../build/devkit/result/
+x86_64-linux-gnu-to-aarch64-linux-gnu
+x86_64-linux-gnu-to-ppc64le-linux-gnu
+```
+
+Notice that devkits are not only useful for targeting different build
+platforms. Because they contain the full build dependencies for a
+system (i.e. compiler and root file system), they can easily be used
+to build well-known, reliable and reproducible build environments. You
+can for example create and use a devkit with GCC 7.3 and a Fedora 12
+sysroot environment (with glibc 2.11) on Ubuntu 14.04 (which doesn't
+have GCC 7.3 by default) to produce OpenJDK binaries which will run on
+all Linux systems with runtime libraries newer than the ones from
+Fedora 12 (e.g. Ubuntu 16.04, SLES 11 or RHEL 6).
+
 ### Boot JDK and Build JDK
 
 When cross-compiling, make sure you use a boot JDK that runs on the *build*
@@ -1017,6 +1075,51 @@ Note that X11 is needed even if you only want to build a headless JDK.
 
   * If the X11 libraries are not properly detected by `configure`, you can
     point them out by `--with-x`.
+
+### Creating And Using Sysroots With qemu-deboostrap
+
+Fortunately, you can create sysroots for foreign architectures with tools
+provided by your OS. On Debian/Ubuntu systems, one could use `qemu-deboostrap` to
+create the *target* system chroot, which would have the native libraries and headers
+specific to that *target* system. After that, we can use the cross-compiler on the *build*
+system, pointing into chroot to get the build dependencies right. This allows building
+for foreign architectures with native compilation speed.
+
+For example, cross-compiling to AArch64 from x86_64 could be done like this:
+
+  * Install cross-compiler on the *build* system:
+```
+apt install g++-aarch64-linux-gnu gcc-aarch64-linux-gnu
+```
+
+  * Create chroot on the *build* system, configuring it for *target* system:
+```
+sudo qemu-debootstrap --arch=arm64 --verbose \
+       --include=fakeroot,build-essential,libx11-dev,libxext-dev,libxrender-dev,libxtst-dev,libxt-dev,libcups2-dev,libfontconfig1-dev,libasound2-dev,libfreetype6-dev,libpng12-dev \
+       --resolve-deps jessie /chroots/arm64 http://httpredir.debian.org/debian/
+```
+
+  * Configure and build with newly created chroot as sysroot/toolchain-path:
+```
+CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ sh ./configure --openjdk-target=aarch64-linux-gnu --with-sysroot=/chroots/arm64/ --with-toolchain-path=/chroots/arm64/
+make images
+ls build/linux-aarch64-normal-server-release/
+```
+
+The build does not create new files in that chroot, so it can be reused for multiple builds
+without additional cleanup.
+
+Architectures that are known to successfully cross-compile like this are:
+
+  Target        `CC`                      `CXX`                       `--arch=...` `--openjdk-target=...`
+  ------------  ------------------------- --------------------------- ------------ ----------------------
+  x86           default                   default                     i386         i386-linux-gnu
+  armhf         gcc-arm-linux-gnueabihf   g++-arm-linux-gnueabihf     armhf        arm-linux-gnueabihf
+  aarch64       gcc-aarch64-linux-gnu     g++-aarch64-linux-gnu       arm64        aarch64-linux-gnu
+  ppc64el       gcc-powerpc64le-linux-gnu g++-powerpc64le-linux-gnu   ppc64el      powerpc64le-linux-gnu
+  s390x         gcc-s390x-linux-gnu       g++-s390x-linux-gnu         s390x        s390x-linux-gnu
+
+Additional architectures might be supported by Debian/Ubuntu Ports.
 
 ### Building for ARM/aarch64
 

@@ -370,4 +370,9 @@ public class WebSocketProxyTest {
             }
         }
     }
+
+    @BeforeMethod
+    public void breakBetweenTests() {
+        System.out.println("\n-------\n");
+    }
 }
