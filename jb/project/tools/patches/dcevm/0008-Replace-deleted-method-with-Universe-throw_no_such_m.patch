@@ -1,7 +1,7 @@
-From 102b7a0ba69c1411ec926985c79a36a2fc1978dd Mon Sep 17 00:00:00 2001
+From c022124c6e0680d2dfc174f66fc858b0eb2591dc Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 24 May 2020 12:07:42 +0200
-Subject: [PATCH 08/17] Replace deleted method with
+Subject: [PATCH 08/18] Replace deleted method with
  Universe::throw_no_such_method_error
 
 ---

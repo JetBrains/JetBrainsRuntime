@@ -1,7 +1,7 @@
-From 5504812403a0673c428fc5589cd94f2c3fea7616 Mon Sep 17 00:00:00 2001
+From 81ba8f1d120e158a7b0cfa09b5dd51295d51901f Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 23 Oct 2020 10:20:26 +0200
-Subject: [PATCH 16/17] Clear dcevm code separation
+Subject: [PATCH 16/18] Clear dcevm code separation
 
 ---
  src/hotspot/share/classfile/systemDictionary.cpp   |  4 ++--
@@ -15,7 +15,7 @@ Subject: [PATCH 16/17] Clear dcevm code separation
  8 files changed, 27 insertions(+), 17 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index 791b49c68ad..011a14eab32 100644
+index a6a03d3c0e9..9e0f4dd3c96 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
 @@ -1152,7 +1152,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
@@ -93,7 +93,7 @@ index 9dc184d02f5..bff1c3627b0 100644
                   is_static ? "static" : "non-static", resolved_klass->external_name(), fd.name()->as_C_string(),
                  current_klass->external_name());
 diff --git a/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp b/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
-index 8afe8985026..4e7b39406fa 100644
+index 84891b48c2a..6f19e2939a2 100644
 --- a/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
 +++ b/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
 @@ -1467,7 +1467,7 @@ static InstanceKlass* create_new_instance_klass(InstanceKlass* ik, ClassFileStre
@@ -106,7 +106,7 @@ index 8afe8985026..4e7b39406fa 100644
    if (HAS_PENDING_EXCEPTION) {
      log_pending_exception(PENDING_EXCEPTION);
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index 4312c2c4ca9..7335f0cffc9 100644
+index 7eb1b01c785..710e0ddc930 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -178,7 +178,9 @@ bool InstanceKlass::has_nest_member(InstanceKlass* k, TRAPS) const {

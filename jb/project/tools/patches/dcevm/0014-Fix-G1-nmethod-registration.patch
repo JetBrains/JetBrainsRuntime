@@ -1,7 +1,7 @@
-From 5b1408b47bd86a5bd2a4aa1f39705687efc73223 Mon Sep 17 00:00:00 2001
+From 122562d31005edd3573a645c3a02c1d8fe843c5e Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 11 Oct 2020 10:43:28 +0200
-Subject: [PATCH 14/17] Fix G1 nmethod registration
+Subject: [PATCH 14/18] Fix G1 nmethod registration
 
 ---
  .../prims/jvmtiEnhancedRedefineClasses.cpp    | 19 ++++++++++++++++---

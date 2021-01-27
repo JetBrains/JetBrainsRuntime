@@ -1,4 +1,4 @@
-From dbce1c2db6bcb28327fd715d389c824805174690 Mon Sep 17 00:00:00 2001
+From 46795cd6c086e2008b270f89971bb07ad34ac355 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Wed, 11 Nov 2020 18:45:15 +0100
 Subject: [PATCH 18/18] Fix LoadedClassesClosure - fixes problems with remote

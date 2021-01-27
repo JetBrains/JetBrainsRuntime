@@ -1,7 +1,7 @@
-From 3b6c7d2f807857712df6fd51a36a5a906b705f57 Mon Sep 17 00:00:00 2001
+From 4b445e7a7f77f82f757c12010e3c88b2eb4698f9 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 23 May 2020 10:02:15 +0200
-Subject: [PATCH 07/17] Fix "no original bytecode found" error if method with
+Subject: [PATCH 07/18] Fix "no original bytecode found" error if method with
  bkp is missing
 
 Sometimes IDE can deploy class with erroneous method, such method has
@@ -28,10 +28,10 @@ index e377e36b88c..262ecc021b2 100644
  
  int Bytecodes::special_length_at(Bytecodes::Code code, address bcp, address end) {
 diff --git a/src/hotspot/share/interpreter/interpreterRuntime.cpp b/src/hotspot/share/interpreter/interpreterRuntime.cpp
-index f367e658879..71bbd15a4f5 100644
+index c25e13d83e8..2a66419908c 100644
 --- a/src/hotspot/share/interpreter/interpreterRuntime.cpp
 +++ b/src/hotspot/share/interpreter/interpreterRuntime.cpp
-@@ -834,7 +834,7 @@ IRT_END
+@@ -819,7 +819,7 @@ IRT_END
  // Invokes
  
  IRT_ENTRY(Bytecodes::Code, InterpreterRuntime::get_original_bytecode_at(JavaThread* thread, Method* method, address bcp))
