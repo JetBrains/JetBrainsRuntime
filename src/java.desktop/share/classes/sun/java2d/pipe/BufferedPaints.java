@@ -263,13 +263,13 @@ public class BufferedPaints {
 
         double xp0, xp1, xp3, yp0, yp1, yp3;
         try {
-                at.invert();
-                xp0 = at.getScaleX();
-                xp1 = at.getShearX();
-                xp3 = at.getTranslateX();
-                yp0 = at.getShearY();
-                yp1 = at.getScaleY();
-                yp3 = at.getTranslateY();
+            at.invert();
+            xp0 = at.getScaleX();
+            xp1 = at.getShearX();
+            xp3 = at.getTranslateX();
+            yp0 = at.getShearY();
+            yp1 = at.getScaleY();
+            yp3 = at.getTranslateY();
         } catch (java.awt.geom.NoninvertibleTransformException e) {
             xp0 = xp1 = xp3 = yp0 = yp1 = yp3 = 0.0;
         }
