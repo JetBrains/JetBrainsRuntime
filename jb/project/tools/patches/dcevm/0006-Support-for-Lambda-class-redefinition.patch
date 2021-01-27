@@ -1,7 +1,7 @@
-From 28d352b4b7cda96a37f95d75cf576570271157e3 Mon Sep 17 00:00:00 2001
+From 62f3578e0a73913c1262a1612a464d19abfeb626 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 4 Oct 2020 21:12:12 +0200
-Subject: [PATCH 06/17] Support for Lambda class redefinition
+Subject: [PATCH 06/18] Support for Lambda class redefinition
 
 ---
  .../share/classfile/classLoaderData.cpp       |  9 +++
@@ -47,7 +47,7 @@ index 7e357929971..00a84610b43 100644
  
    void unload();
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index e464b94b420..791b49c68ad 100644
+index 19bc8d9899a..a6a03d3c0e9 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
 @@ -971,12 +971,16 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
@@ -242,10 +242,10 @@ index af2ec48c2e1..7741328979f 100644
          assert(newer_method != NULL, "method_with_idnum() should not be NULL");
          assert(old_method != newer_method, "sanity check");
 diff --git a/src/hotspot/share/prims/unsafe.cpp b/src/hotspot/share/prims/unsafe.cpp
-index 2f14e01ce0d..d0e0367d8eb 100644
+index c071f8b7cc6..e484b8991d1 100644
 --- a/src/hotspot/share/prims/unsafe.cpp
 +++ b/src/hotspot/share/prims/unsafe.cpp
-@@ -818,6 +818,7 @@ Unsafe_DefineAnonymousClass_impl(JNIEnv *env,
+@@ -820,6 +820,7 @@ Unsafe_DefineAnonymousClass_impl(JNIEnv *env,
                                                  host_domain,
                                                  &st,
                                                  InstanceKlass::cast(host_klass),

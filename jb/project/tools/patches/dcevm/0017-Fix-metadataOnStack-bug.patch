@@ -1,7 +1,7 @@
-From a9bc3c0b7acfe8432f4f50362df3d8f95d7b5d9d Mon Sep 17 00:00:00 2001
+From a022248d12e37084c8f8987a44d567ba0e02fb6d Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 23 Oct 2020 11:07:40 +0200
-Subject: [PATCH 17/17] Fix metadataOnStack bug
+Subject: [PATCH 17/18] Fix metadataOnStack bug
 
 ---
  .../share/classfile/classLoaderData.cpp       |  7 +-
@@ -143,7 +143,7 @@ index 8da4ac6f92b..6d327ab98f2 100644
  
    static void record(Metadata* m);
 diff --git a/src/hotspot/share/prims/jvmtiRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiRedefineClasses.cpp
-index 1b2070d686f..1178c863c30 100644
+index fb81189d9c2..18bc7f4eea4 100644
 --- a/src/hotspot/share/prims/jvmtiRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiRedefineClasses.cpp
 @@ -199,7 +199,7 @@ void VM_RedefineClasses::doit() {

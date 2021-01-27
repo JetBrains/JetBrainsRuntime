@@ -1,7 +1,7 @@
-From b36887fca0b0b251c914567d0ee2871c6d786c09 Mon Sep 17 00:00:00 2001
+From d75ca6d0d1799ffde4199f6ef5047699b98d3ff2 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:09:39 +0100
-Subject: [PATCH 01/17] Apply basic dcevm11 patch
+Subject: [PATCH 01/18] Apply basic dcevm11 patch
 
 ---
  src/hotspot/share/ci/ciObjectFactory.cpp      |   25 +
@@ -236,10 +236,10 @@ index 3bdfd34e39f..d792ab4bb3f 100644
    ReferenceType reference_type() const { return _rt; }
    AccessFlags access_flags() const { return _access_flags; }
 diff --git a/src/hotspot/share/classfile/classLoader.cpp b/src/hotspot/share/classfile/classLoader.cpp
-index f0cf1fb7cb1..5713bb9e98c 100644
+index 78eb096458a..368c59e2cbf 100644
 --- a/src/hotspot/share/classfile/classLoader.cpp
 +++ b/src/hotspot/share/classfile/classLoader.cpp
-@@ -1501,6 +1501,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
+@@ -1505,6 +1505,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
                                                             protection_domain,
                                                             NULL, // host_klass
                                                             NULL, // cp_patches
@@ -449,10 +449,10 @@ index d26f1f11fb4..fd4b134d7a7 100644
  
  // An entry in the class loader data dictionaries, this describes a class as
 diff --git a/src/hotspot/share/classfile/javaClasses.cpp b/src/hotspot/share/classfile/javaClasses.cpp
-index 6d320fb0d30..1004f41b277 100644
+index fc4efecc6e7..903979c9ef2 100644
 --- a/src/hotspot/share/classfile/javaClasses.cpp
 +++ b/src/hotspot/share/classfile/javaClasses.cpp
-@@ -2444,6 +2444,8 @@ void java_lang_Throwable::fill_in_stack_trace(Handle throwable, const methodHand
+@@ -2446,6 +2446,8 @@ void java_lang_Throwable::fill_in_stack_trace(Handle throwable, const methodHand
          skip_throwableInit_check = true;
        }
      }
@@ -461,7 +461,7 @@ index 6d320fb0d30..1004f41b277 100644
      if (method->is_hidden()) {
        if (skip_hidden)  continue;
      }
-@@ -3626,6 +3628,62 @@ void java_lang_invoke_DirectMethodHandle::serialize_offsets(SerializeClosure* f)
+@@ -3628,6 +3630,62 @@ void java_lang_invoke_DirectMethodHandle::serialize_offsets(SerializeClosure* f)
  }
  #endif
  
@@ -524,7 +524,7 @@ index 6d320fb0d30..1004f41b277 100644
  // Support for java_lang_invoke_MethodHandle
  
  int java_lang_invoke_MethodHandle::_type_offset;
-@@ -3812,6 +3870,11 @@ void java_lang_invoke_ResolvedMethodName::set_vmtarget(oop resolved_method, Meth
+@@ -3814,6 +3872,11 @@ void java_lang_invoke_ResolvedMethodName::set_vmtarget(oop resolved_method, Meth
    resolved_method->address_field_put(_vmtarget_offset, (address)m);
  }
  
@@ -685,10 +685,10 @@ index c08f8b9a119..b7b96c5cfdc 100644
   public:
    static InstanceKlass* check_shared_class_file_load_hook(
 diff --git a/src/hotspot/share/classfile/loaderConstraints.cpp b/src/hotspot/share/classfile/loaderConstraints.cpp
-index 9cd141bbfa2..e4a23e8a27c 100644
+index 7cccf23efb7..a26b9d1cb55 100644
 --- a/src/hotspot/share/classfile/loaderConstraints.cpp
 +++ b/src/hotspot/share/classfile/loaderConstraints.cpp
-@@ -87,6 +87,19 @@ LoaderConstraintEntry** LoaderConstraintTable::find_loader_constraint(
+@@ -90,6 +90,19 @@ LoaderConstraintEntry** LoaderConstraintTable::find_loader_constraint(
    return pp;
  }
  
@@ -708,7 +708,7 @@ index 9cd141bbfa2..e4a23e8a27c 100644
  
  void LoaderConstraintTable::purge_loader_constraints() {
    assert(SafepointSynchronize::is_at_safepoint(), "must be at safepoint");
-@@ -442,7 +455,7 @@ void LoaderConstraintTable::verify(PlaceholderTable* placeholders) {
+@@ -445,7 +458,7 @@ void LoaderConstraintTable::verify(PlaceholderTable* placeholders) {
          if (k != NULL) {
            // We found the class in the dictionary, so we should
            // make sure that the Klass* matches what we already have.
@@ -732,7 +732,7 @@ index 8a7a1248e62..611e18aaf85 100644
    bool add_entry(Symbol* name, InstanceKlass* klass1, Handle loader1,
                                      InstanceKlass* klass2, Handle loader2);
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index 5c8ff453823..669de5e56a5 100644
+index bfd67334f82..5a745b6fca6 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
 @@ -201,6 +201,7 @@ Klass* SystemDictionary::resolve_or_fail(Symbol* class_name, Handle class_loader
@@ -952,10 +952,10 @@ index ad638e26579..32de261588a 100644
      }
    }
 diff --git a/src/hotspot/share/classfile/verifier.cpp b/src/hotspot/share/classfile/verifier.cpp
-index ea4f74fc783..472216b6a40 100644
+index 9402f628b03..f55ececb086 100644
 --- a/src/hotspot/share/classfile/verifier.cpp
 +++ b/src/hotspot/share/classfile/verifier.cpp
-@@ -237,7 +237,7 @@ bool Verifier::is_eligible_for_verification(InstanceKlass* klass, bool should_ve
+@@ -244,7 +244,7 @@ bool Verifier::is_eligible_for_verification(InstanceKlass* klass, bool should_ve
    Symbol* name = klass->name();
    Klass* refl_magic_klass = SystemDictionary::reflect_MagicAccessorImpl_klass();
  
@@ -1684,7 +1684,7 @@ index 81998728f66..b9ccdee8cca 100644
      }
    }
 diff --git a/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp b/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
-index b532101c9b5..8afe8985026 100644
+index 77c28924b0d..84891b48c2a 100644
 --- a/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
 +++ b/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
 @@ -1467,6 +1467,7 @@ static InstanceKlass* create_new_instance_klass(InstanceKlass* ik, ClassFileStre
@@ -1919,7 +1919,7 @@ index 2a93500b794..2a9eb978b43 100644
  
    // RedefineClasses support
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index c6752eb373f..e9c1d4e5226 100644
+index 645a63e71be..f059a05ebe7 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -832,7 +832,8 @@ bool InstanceKlass::link_class_impl(bool throw_verifyerror, TRAPS) {
@@ -2248,7 +2248,7 @@ index 18c706187df..4533476ff8f 100644
    Symbol* signature() const                      { return constants()->symbol_at(signature_index()); }
    int signature_index() const                    { return constMethod()->signature_index();         }
 diff --git a/src/hotspot/share/prims/jni.cpp b/src/hotspot/share/prims/jni.cpp
-index f9a69ef0c8b..231ada3f0ab 100644
+index 21e7f652652..e9cc3de9652 100644
 --- a/src/hotspot/share/prims/jni.cpp
 +++ b/src/hotspot/share/prims/jni.cpp
 @@ -353,6 +353,7 @@ JNI_ENTRY(jclass, jni_DefineClass(JNIEnv *env, const char *name, jobject loaderR
@@ -2260,10 +2260,10 @@ index f9a69ef0c8b..231ada3f0ab 100644
  
    if (log_is_enabled(Debug, class, resolve) && k != NULL) {
 diff --git a/src/hotspot/share/prims/jvm.cpp b/src/hotspot/share/prims/jvm.cpp
-index 24c66ab3918..82b359ee9a3 100644
+index 378dcce8cf5..f92d2697e0e 100644
 --- a/src/hotspot/share/prims/jvm.cpp
 +++ b/src/hotspot/share/prims/jvm.cpp
-@@ -935,6 +935,7 @@ static jclass jvm_define_class_common(JNIEnv *env, const char *name,
+@@ -936,6 +936,7 @@ static jclass jvm_define_class_common(JNIEnv *env, const char *name,
                                                     class_loader,
                                                     protection_domain,
                                                     &st,
@@ -4741,7 +4741,7 @@ index 00000000000..3f95cf42645
 +};
 +#endif // SHARE_VM_PRIMS_JVMTIREDEFINECLASSES2_HPP
 diff --git a/src/hotspot/share/prims/jvmtiEnv.cpp b/src/hotspot/share/prims/jvmtiEnv.cpp
-index 1dd911fd8d8..bc6ebb2d4af 100644
+index f54c9b713be..54617f05b5a 100644
 --- a/src/hotspot/share/prims/jvmtiEnv.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnv.cpp
 @@ -50,6 +50,7 @@
@@ -4752,7 +4752,7 @@ index 1dd911fd8d8..bc6ebb2d4af 100644
  #include "prims/jvmtiTagMap.hpp"
  #include "prims/jvmtiThreadState.inline.hpp"
  #include "prims/jvmtiUtil.hpp"
-@@ -381,8 +382,13 @@ JvmtiEnv::GetClassLoaderClasses(jobject initiating_loader, jint* class_count_ptr
+@@ -382,8 +383,13 @@ JvmtiEnv::GetClassLoaderClasses(jobject initiating_loader, jint* class_count_ptr
  // is_modifiable_class_ptr - pre-checked for NULL
  jvmtiError
  JvmtiEnv::IsModifiableClass(oop k_mirror, jboolean* is_modifiable_class_ptr) {
@@ -4768,7 +4768,7 @@ index 1dd911fd8d8..bc6ebb2d4af 100644
    return JVMTI_ERROR_NONE;
  } /* end IsModifiableClass */
  
-@@ -412,7 +418,8 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
+@@ -413,7 +419,8 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
        return JVMTI_ERROR_INVALID_CLASS;
      }
  
@@ -4778,7 +4778,7 @@ index 1dd911fd8d8..bc6ebb2d4af 100644
        return JVMTI_ERROR_UNMODIFIABLE_CLASS;
      }
  
-@@ -444,6 +451,12 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
+@@ -445,6 +452,12 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
      }
      class_definitions[index].klass              = jcls;
    }
@@ -4791,7 +4791,7 @@ index 1dd911fd8d8..bc6ebb2d4af 100644
    VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
    VMThread::execute(&op);
    return (op.check_error());
-@@ -454,7 +467,12 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
+@@ -455,7 +468,12 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
  // class_definitions - pre-checked for NULL
  jvmtiError
  JvmtiEnv::RedefineClasses(jint class_count, const jvmtiClassDefinition* class_definitions) {
@@ -4806,10 +4806,10 @@ index 1dd911fd8d8..bc6ebb2d4af 100644
    VMThread::execute(&op);
    return (op.check_error());
 diff --git a/src/hotspot/share/prims/jvmtiExport.cpp b/src/hotspot/share/prims/jvmtiExport.cpp
-index 375aa5f54f8..08f910bd2ac 100644
+index 6600848e2d3..9337b6ab585 100644
 --- a/src/hotspot/share/prims/jvmtiExport.cpp
 +++ b/src/hotspot/share/prims/jvmtiExport.cpp
-@@ -2813,7 +2813,7 @@ JvmtiDynamicCodeEventCollector::JvmtiDynamicCodeEventCollector() : _code_blobs(N
+@@ -2780,7 +2780,7 @@ JvmtiDynamicCodeEventCollector::JvmtiDynamicCodeEventCollector() : _code_blobs(N
  // iterate over any code blob descriptors collected and post a
  // DYNAMIC_CODE_GENERATED event to the profiler.
  JvmtiDynamicCodeEventCollector::~JvmtiDynamicCodeEventCollector() {
@@ -4819,10 +4819,10 @@ index 375aa5f54f8..08f910bd2ac 100644
   if (_code_blobs != NULL) {
     for (int i=0; i<_code_blobs->length(); i++) {
 diff --git a/src/hotspot/share/prims/jvmtiExport.hpp b/src/hotspot/share/prims/jvmtiExport.hpp
-index 557d10543c6..ef8c266bc6e 100644
+index cc5868f1e93..a6cbac03bb2 100644
 --- a/src/hotspot/share/prims/jvmtiExport.hpp
 +++ b/src/hotspot/share/prims/jvmtiExport.hpp
-@@ -178,6 +178,7 @@ class JvmtiExport : public AllStatic {
+@@ -176,6 +176,7 @@ class JvmtiExport : public AllStatic {
    // systems as needed to relax invariant checks.
    static bool _has_redefined_a_class;
    friend class VM_RedefineClasses;
@@ -4850,10 +4850,10 @@ index 61a616271f6..60604c645ff 100644
  
    int extract(jclass* result_list) {
 diff --git a/src/hotspot/share/prims/jvmtiImpl.cpp b/src/hotspot/share/prims/jvmtiImpl.cpp
-index 001c592807a..2a92ece916e 100644
+index a0a6a6cbd18..39953a71244 100644
 --- a/src/hotspot/share/prims/jvmtiImpl.cpp
 +++ b/src/hotspot/share/prims/jvmtiImpl.cpp
-@@ -293,6 +293,11 @@ void JvmtiBreakpoint::each_method_version_do(method_action meth_act) {
+@@ -295,6 +295,11 @@ void JvmtiBreakpoint::each_method_version_do(method_action meth_act) {
    Symbol* m_name = _method->name();
    Symbol* m_signature = _method->signature();
  
@@ -4997,7 +4997,7 @@ index bd439aab073..cc7f71a4404 100644
    static size_t max_heap_for_compressed_oops();
  
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index 3cd51a1ac95..7b061359c1d 100644
+index 4a53ecb37a8..a6c33744760 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
 @@ -2674,7 +2674,11 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
@@ -5014,7 +5014,7 @@ index 3cd51a1ac95..7b061359c1d 100644
  #define VM_FLAGS(develop,                                                   \
                   develop_pd,                                                \
 diff --git a/src/hotspot/share/runtime/interfaceSupport.inline.hpp b/src/hotspot/share/runtime/interfaceSupport.inline.hpp
-index 0267345b535..bcdd8e5d3e6 100644
+index f39687a25bc..7b1aa3cc58e 100644
 --- a/src/hotspot/share/runtime/interfaceSupport.inline.hpp
 +++ b/src/hotspot/share/runtime/interfaceSupport.inline.hpp
 @@ -276,8 +276,8 @@ class ThreadToNativeFromVM : public ThreadStateTransition {
@@ -5029,7 +5029,7 @@ index 0267345b535..bcdd8e5d3e6 100644
      trans_and_fence(_thread_in_vm, _thread_in_native);
      // Check for pending. async. exceptions or suspends.
 diff --git a/src/hotspot/share/runtime/javaCalls.cpp b/src/hotspot/share/runtime/javaCalls.cpp
-index 32040586b36..0eb2fc1ec6b 100644
+index 563ffdbd446..55f06eadcc2 100644
 --- a/src/hotspot/share/runtime/javaCalls.cpp
 +++ b/src/hotspot/share/runtime/javaCalls.cpp
 @@ -57,7 +57,8 @@ JavaCallWrapper::JavaCallWrapper(const methodHandle& callee_method, Handle recei
@@ -5043,7 +5043,7 @@ index 32040586b36..0eb2fc1ec6b 100644
    _result   = result;
  
 diff --git a/src/hotspot/share/runtime/mutexLocker.cpp b/src/hotspot/share/runtime/mutexLocker.cpp
-index b56b44eab69..2e1514cf750 100644
+index d504ef00f90..982ba1b69d5 100644
 --- a/src/hotspot/share/runtime/mutexLocker.cpp
 +++ b/src/hotspot/share/runtime/mutexLocker.cpp
 @@ -5,7 +5,7 @@

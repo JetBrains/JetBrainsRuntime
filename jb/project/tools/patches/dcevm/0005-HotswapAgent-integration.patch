@@ -1,7 +1,7 @@
-From 25cb9b5fa97749d3bc13dc6c848c7eb9cc1b66bb Mon Sep 17 00:00:00 2001
+From a00292280f4e3754bffc7a0c562dca1d7552eb39 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:20:08 +0100
-Subject: [PATCH 05/17] HotswapAgent integration
+Subject: [PATCH 05/18] HotswapAgent integration
 
 It include:
 
@@ -513,7 +513,7 @@ index cc7f71a4404..b2bab2e1f44 100644
    static size_t max_heap_for_compressed_oops();
  
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index 7b061359c1d..fc0405b5df2 100644
+index a6c33744760..b8dba232fc1 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
 @@ -32,6 +32,12 @@
