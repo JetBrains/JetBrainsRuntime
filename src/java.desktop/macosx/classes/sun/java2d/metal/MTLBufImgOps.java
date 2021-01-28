@@ -30,7 +30,12 @@ import sun.java2d.SurfaceData;
 import sun.java2d.loops.CompositeType;
 import sun.java2d.pipe.BufferedBufImgOps;
 
-import java.awt.image.*;
+import java.awt.image.AffineTransformOp;
+import java.awt.image.BufferedImage;
+import java.awt.image.BufferedImageOp;
+import java.awt.image.ConvolveOp;
+import java.awt.image.LookupOp;
+import java.awt.image.RescaleOp;
 
 import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_BIOP_SHADER;
 

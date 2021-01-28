@@ -29,7 +29,8 @@ import sun.java2d.SurfaceData;
 import sun.java2d.SurfaceDataProxy;
 import sun.java2d.loops.CompositeType;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Transparency;
 
 /**
  * The proxy class contains the logic for when to replace a

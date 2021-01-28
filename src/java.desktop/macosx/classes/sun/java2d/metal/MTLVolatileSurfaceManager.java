@@ -29,7 +29,8 @@ import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.SurfaceData;
 
-import java.awt.*;
+import java.awt.GraphicsConfiguration;
+import java.awt.Transparency;
 import java.awt.image.ColorModel;
 import sun.java2d.pipe.hw.AccelSurface;
 

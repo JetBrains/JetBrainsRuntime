@@ -41,9 +41,23 @@ import sun.java2d.pipe.hw.ContextCapabilities;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.macosx.CFRetainedResource;
 
-import java.awt.*;
+import java.awt.AWTException;
+import java.awt.BufferCapabilities;
+import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.ImageCapabilities;
+import java.awt.Rectangle;
+import java.awt.Transparency;
+
 import java.awt.color.ColorSpace;
-import java.awt.image.*;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.DataBuffer;
+import java.awt.image.DirectColorModel;
+import java.awt.image.VolatileImage;
+import java.awt.image.WritableRaster;
 import java.io.File;
 import java.security.AccessController;
 import java.security.PrivilegedAction;

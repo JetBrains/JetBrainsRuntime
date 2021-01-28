@@ -31,7 +31,7 @@ import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.pipe.BufferedTextPipe;
 import sun.java2d.pipe.RenderQueue;
 
-import java.awt.*;
+import java.awt.Composite;
 
 class MTLTextRenderer extends BufferedTextPipe {
 

@@ -40,14 +40,25 @@ import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.TextPipe;
 import sun.java2d.pipe.hw.AccelSurface;
 
-import java.awt.*;
+import java.awt.AlphaComposite;
+import java.awt.Composite;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
+import java.awt.Image;
+import java.awt.Rectangle;
+import java.awt.Transparency;
+
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
 
 import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_LCD_SHADER;
 import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_TEXRECT;
-import static sun.java2d.pipe.BufferedOpCodes.*;
-import static sun.java2d.pipe.hw.ContextCapabilities.*;
+import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_SURFACE;
+import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
+import static sun.java2d.pipe.BufferedOpCodes.SWAP_BUFFERS;
+import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_MULTITEXTURE;
+import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_PS30;
+
 
 public abstract class MTLSurfaceData extends SurfaceData
         implements AccelSurface {

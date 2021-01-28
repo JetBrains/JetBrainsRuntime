@@ -26,13 +26,21 @@
 package sun.java2d.metal;
 
 import sun.java2d.SurfaceData;
-import sun.java2d.loops.*;
+import sun.java2d.loops.Blit;
+import sun.java2d.loops.CompositeType;
+import sun.java2d.loops.GraphicsPrimitive;
+import sun.java2d.loops.GraphicsPrimitiveMgr;
+import sun.java2d.loops.ScaledBlit;
+import sun.java2d.loops.SurfaceType;
+import sun.java2d.loops.TransformBlit;
 import sun.java2d.pipe.Region;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
 import sun.java2d.pipe.hw.AccelSurface;
 
-import java.awt.*;
+import java.awt.AlphaComposite;
+import java.awt.Composite;
+import java.awt.Transparency;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;

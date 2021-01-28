@@ -30,7 +30,10 @@ import sun.java2d.SurfaceData;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.macosx.CFRetainedResource;
 
-import java.awt.*;
+import java.awt.GraphicsConfiguration;
+import java.awt.Insets;
+import java.awt.Rectangle;
+import java.awt.Transparency;
 
 public class MTLLayer extends CFRetainedResource {
 

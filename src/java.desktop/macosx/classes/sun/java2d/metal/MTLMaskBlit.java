@@ -33,7 +33,7 @@ import sun.java2d.loops.SurfaceType;
 import sun.java2d.pipe.BufferedMaskBlit;
 import sun.java2d.pipe.Region;
 
-import java.awt.*;
+import java.awt.Composite;
 
 import static sun.java2d.loops.CompositeType.SrcNoEa;
 import static sun.java2d.loops.CompositeType.SrcOver;

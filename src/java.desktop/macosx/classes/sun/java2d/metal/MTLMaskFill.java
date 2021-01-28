@@ -32,7 +32,7 @@ import sun.java2d.loops.GraphicsPrimitiveMgr;
 import sun.java2d.loops.SurfaceType;
 import sun.java2d.pipe.BufferedMaskFill;
 
-import java.awt.*;
+import java.awt.Composite;
 
 import static sun.java2d.loops.CompositeType.SrcNoEa;
 import static sun.java2d.loops.CompositeType.SrcOver;

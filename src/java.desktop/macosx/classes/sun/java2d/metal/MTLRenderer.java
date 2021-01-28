@@ -32,7 +32,7 @@ import sun.java2d.pipe.ParallelogramPipe;
 import sun.java2d.pipe.RenderQueue;
 import sun.java2d.pipe.SpanIterator;
 
-import java.awt.*;
+import java.awt.Transparency;
 import java.awt.geom.Path2D;
 
 import static sun.java2d.pipe.BufferedOpCodes.COPY_AREA;
