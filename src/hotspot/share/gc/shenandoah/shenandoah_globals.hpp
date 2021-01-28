@@ -314,9 +314,9 @@
           "Number of entries in an SATB log buffer.")                       \
           range(1, max_uintx)                                               \
                                                                             \
-  experimental(uintx, ShenandoahSATBBufferFlushInterval, 100,               \
-          "Forcefully flush non-empty SATB buffers at this interval. "      \
-          "Time is in milliseconds.")                                       \
+  experimental(uintx, ShenandoahMaxSATBBufferFlushes, 5,                    \
+          "How many times to maximum attempt to flush SATB buffers at the " \
+          "end of concurrent marking.")                                     \
                                                                             \
   diagnostic(bool, ShenandoahPreclean, true,                                \
           "Do concurrent preclean phase before final mark: process "        \
