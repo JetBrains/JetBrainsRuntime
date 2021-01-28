@@ -1831,20 +1831,6 @@ void ShenandoahHeap::op_degenerated_futile() {
   op_full(GCCause::_shenandoah_upgrade_to_full_gc);
 }
 
-void ShenandoahHeap::force_satb_flush_all_threads() {
-  if (!is_concurrent_mark_in_progress()) {
-    // No need to flush SATBs
-    return;
-  }
-
-  for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
-    ShenandoahThreadLocalData::set_force_satb_flush(t, true);
-  }
-  // The threads are not "acquiring" their thread-local data, but it does not
-  // hurt to "release" the updates here anyway.
-  OrderAccess::fence();
-}
-
 void ShenandoahHeap::set_gc_state_all_threads(char state) {
   for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
     ShenandoahThreadLocalData::set_gc_state(t, state);
