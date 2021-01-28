@@ -141,8 +141,9 @@ static void setBlendingFactors(
     int index = compositeRule*64 + subIndex;
 
     NSPointerArray * subStates = [self getSubStates:vertexShaderId fragmentShader:fragmentShaderId];
-    while (index >= [subStates count]) {
-        [subStates addPointer:NULL]; // obj-c collections haven't resize methods, so do that
+
+    if (index >= subStates.count) {
+        subStates.count = (NSUInteger) (index + 1);
     }
 
     id<MTLRenderPipelineState> result = [subStates pointerAtIndex:index];
