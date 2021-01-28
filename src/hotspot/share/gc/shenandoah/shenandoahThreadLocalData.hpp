@@ -42,7 +42,6 @@ private:
   PLAB* _gclab;
   size_t _gclab_size;
   uint  _worker_id;
-  bool _force_satb_flush;
   double _paced_time;
 
   ShenandoahThreadLocalData() :
@@ -52,7 +51,6 @@ private:
     _gclab(NULL),
     _gclab_size(0),
     _worker_id(INVALID_WORKER_ID),
-    _force_satb_flush(false),
     _paced_time(0) {
   }
 
@@ -112,14 +110,6 @@ public:
   static uint worker_id(Thread* thread) {
     assert(thread->is_Worker_thread(), "Must be a worker thread");
     return data(thread)->_worker_id;
-  }
-
-  static void set_force_satb_flush(Thread* thread, bool v) {
-    data(thread)->_force_satb_flush = v;
-  }
-
-  static bool is_force_satb_flush(Thread* thread) {
-    return data(thread)->_force_satb_flush;
   }
 
   static void initialize_gclab(Thread* thread) {
