@@ -532,6 +532,14 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                     styleBits = SET(styleBits, DARK, Boolean.parseBoolean(prop.toString()));
                 }
 
+                prop = rootpane.getClientProperty(WINDOW_TRANSPARENT_TITLEBAR_APPEARANCE);
+                if (prop != null) {
+                    boolean val = Boolean.parseBoolean(prop.toString());
+                    styleBits = SET(styleBits, TRANSPARENT_TITLE_BAR, val);
+                    styleBits = SET(styleBits, FULL_WINDOW_CONTENT, val);
+                    styleBits = SET(styleBits, TITLE_VISIBLE, !val);
+                }
+
                 prop = rootpane.getClientProperty(WINDOW_LIGHT_APPEARANCE);
                 if (prop != null) {
                     styleBits = SET(styleBits, LIGHT, Boolean.parseBoolean(prop.toString()));
