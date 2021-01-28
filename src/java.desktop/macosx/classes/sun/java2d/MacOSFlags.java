@@ -23,7 +23,7 @@
  * questions.
  */
 
-package sun.java2d.macos;
+package sun.java2d;
 
 import java.security.PrivilegedAction;
 import sun.java2d.metal.MTLGraphicsConfig;
@@ -47,10 +47,7 @@ public class MacOSFlags {
 
     static {
         initJavaFlags();
-        initNativeFlags();
     }
-
-    private static native boolean initNativeFlags();
 
     private static PropertyState getBooleanProp(String p, PropertyState defaultVal) {
         String propString = System.getProperty(p);
