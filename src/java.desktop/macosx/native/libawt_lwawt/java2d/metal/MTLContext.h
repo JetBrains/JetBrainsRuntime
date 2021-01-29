@@ -27,7 +27,6 @@
 #define MTLContext_h_Included
 
 #include "sun_java2d_pipe_BufferedContext.h"
-#include "sun_java2d_metal_MTLContext.h"
 #include "sun_java2d_metal_MTLContext_MTLContextCaps.h"
 
 #import <Metal/Metal.h>
