@@ -493,23 +493,6 @@ AWT_ASSERT_APPKIT_THREAD;
     [super dealloc];
 }
 
-// Tests whether window is blocked by modal dialog/window
-- (BOOL) isBlocked {
-    BOOL isBlocked = NO;
-
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
-    if (platformWindow != NULL) {
-        GET_CPLATFORM_WINDOW_CLASS_RETURN(isBlocked);
-        DECLARE_METHOD_RETURN(jm_isBlocked, jc_CPlatformWindow, "isBlocked", "()Z", isBlocked);
-        isBlocked = (*env)->CallBooleanMethod(env, platformWindow, jm_isBlocked) == JNI_TRUE ? YES : NO;
-        CHECK_EXCEPTION();
-        (*env)->DeleteLocalRef(env, platformWindow);
-    }
-
-    return isBlocked;
-}
-
 // Test whether window is simple window and owned by embedded frame
 - (BOOL) isSimpleWindowOwnedByEmbeddedFrame {
     BOOL isSimpleWindowOwnedByEmbeddedFrame = NO;
@@ -553,9 +536,8 @@ AWT_ASSERT_APPKIT_THREAD;
 - (void) orderChildWindows:(BOOL)focus {
 AWT_ASSERT_APPKIT_THREAD;
 
-    if (self.isMinimizing || [self isBlocked]) {
+    if (self.isMinimizing) {
         // Do not perform any ordering, if iconify is in progress
-        // or the window is blocked by a modal window
         return;
     }
 
@@ -1000,23 +982,6 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)sendEvent:(NSEvent *)event {
         if ([event type] == NSLeftMouseDown || [event type] == NSRightMouseDown || [event type] == NSOtherMouseDown) {
-            if ([self isBlocked]) {
-                // Move parent windows to front and make sure that a child window is displayed
-                // in front of its nearest parent.
-                if (self.ownerWindow != nil) {
-                    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-                    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
-                    if (platformWindow != NULL) {
-                        GET_CPLATFORM_WINDOW_CLASS();
-                        DECLARE_METHOD(jm_orderAboveSiblings, jc_CPlatformWindow, "orderAboveSiblings", "()V");
-                        (*env)->CallVoidMethod(env,platformWindow, jm_orderAboveSiblings);
-                        CHECK_EXCEPTION();
-                        (*env)->DeleteLocalRef(env, platformWindow);
-                    }
-                }
-                [self orderChildWindows:YES];
-            }
-
             NSPoint p = [NSEvent mouseLocation];
             NSRect frame = [self.nsWindow frame];
             NSRect contentRect = [self.nsWindow contentRectForFrameRect:frame];
