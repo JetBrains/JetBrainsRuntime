@@ -71,7 +71,7 @@ public final class CGraphicsDevice extends GraphicsDevice
 
         if (MacOSFlags.isMetalEnabled()) {
             // Try to create MTLGraphicsConfig, if it fails, try to create CGLGraphicsConfig as a fallback
-            this.config = MTLGraphicsConfig.getConfig(this, displayID, 0);
+            this.config = MTLGraphicsConfig.getConfig(this, displayID);
 
             if (this.config != null) {
                 metalPipelineEnabled = true;
@@ -99,7 +99,7 @@ public final class CGraphicsDevice extends GraphicsDevice
                     System.out.println("OpenGL rendering pipeline initialization failed. Using Metal rendering pipeline.");
                 }
 
-                this.config = MTLGraphicsConfig.getConfig(this, displayID, 0);
+                this.config = MTLGraphicsConfig.getConfig(this, displayID);
 
                 if (this.config != null) {
                     metalPipelineEnabled = true;

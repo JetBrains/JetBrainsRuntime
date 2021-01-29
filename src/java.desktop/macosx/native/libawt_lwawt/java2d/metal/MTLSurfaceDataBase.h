@@ -98,7 +98,6 @@ typedef struct {
     void                         *privOps;
     jobject                      graphicsConfig;
     jint                         drawableType;
-    jint                       activeBuffer;
     jboolean                     isOpaque;
     jboolean                     needsInit;
     jint                         xOffset;

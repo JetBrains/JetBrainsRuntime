@@ -105,14 +105,6 @@ final class MTLContext extends BufferedContext {
         rq.flushNow();
     }
 
-    /**
-     * Returns a string representing adapter id (vendor, renderer, version).
-     * Must be called on the rendering thread.
-     *
-     * @return an id string for the adapter
-     */
-    public static final native String getMTLIdString();
-
     public static class MTLContextCaps extends ContextCapabilities {
         /**
          * This cap will only be set if the fbobject system property has been

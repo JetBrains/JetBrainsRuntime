@@ -451,20 +451,4 @@ extern void initSamplers(id<MTLDevice> device);
 
 @end
 
-/*
- * Class:     sun_java2d_metal_MTLContext
- * Method:    getMTLIdString
- * Signature: ()Ljava/lang/String;
- */
-JNIEXPORT jstring JNICALL Java_sun_java2d_metal_MTLContext_getMTLIdString
-  (JNIEnv *env, jclass mtlcc)
-{
-    char *vendor, *renderer, *version;
-    char *pAdapterId;
-    jobject ret = NULL;
-    int len;
-
-    return NULL;
-}
-
 #endif /* !HEADLESS */

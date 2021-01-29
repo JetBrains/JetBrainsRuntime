@@ -72,9 +72,6 @@ import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_BIOP_SHADER;
 public final class MTLGraphicsConfig extends CGraphicsConfig
         implements AccelGraphicsConfig, SurfaceManager.ProxiedGraphicsConfig
 {
-    //private static final int kOpenGLSwapInterval =
-    // RuntimeOptions.getCurrentOptions().OpenGLSwapInterval;
-    private static final int kMetalSwapInterval = 0; // TODO
     private static boolean mtlAvailable;
     private static ImageCapabilities imageCaps = new MTLImageCaps();
 
@@ -84,7 +81,6 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
                             "lib" + File.separator + "shaders.metallib");
 
 
-    private int pixfmt;
     private BufferCapabilities bufferCaps;
     private long pConfigInfo;
     private ContextCapabilities mtlCaps;
@@ -106,12 +102,11 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         mtlAvailable = isMetalFrameworkAvailable();
     }
 
-    private MTLGraphicsConfig(CGraphicsDevice device, int pixfmt,
+    private MTLGraphicsConfig(CGraphicsDevice device,
                               long configInfo, int maxTextureSize,
                               ContextCapabilities mtlCaps) {
         super(device);
 
-        this.pixfmt = pixfmt;
         this.pConfigInfo = configInfo;
         this.mtlCaps = mtlCaps;
         this.maxTextureSize = maxTextureSize;
@@ -135,7 +130,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     }
 
     public static MTLGraphicsConfig getConfig(CGraphicsDevice device,
-                                              int displayID, int pixfmt)
+                                              int displayID)
     {
         if (!mtlAvailable) {
             return null;
@@ -147,7 +142,6 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
 
         long cfginfo = 0;
         int textureSize = 0;
-        final String[] ids = new String[1];
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
@@ -163,9 +157,6 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
                 // Explicitly not support a texture more than 2^14, see 8010999.
                 textureSize = textureSize <= 16384 ? textureSize / 2 : 8192;
                 MTLContext.setScratchSurface(cfginfo);
-                rq.flushAndInvokeNow(() -> {
-                    ids[0] = MTLContext.getMTLIdString();
-                });
             }
         } finally {
             rq.unlock();
@@ -179,8 +170,8 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
                         CAPS_RT_TEXTURE_ALPHA | CAPS_RT_TEXTURE_OPAQUE |
                         CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE |
                         CAPS_EXT_BIOP_SHADER | CAPS_EXT_GRAD_SHADER,
-                ids[0]);
-        return new MTLGraphicsConfig(device, pixfmt, cfginfo, textureSize, caps);
+                null);
+        return new MTLGraphicsConfig(device, cfginfo, textureSize, caps);
     }
 
     public static boolean isMetalAvailable() {
@@ -273,8 +264,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
 
     @Override
     public String toString() {
-        return ("MTLGraphicsConfig[" + getDevice().getIDstring() +
-                ",pixfmt="+pixfmt+"]");
+        return ("MTLGraphicsConfig[" + getDevice().getIDstring() + "]");
     }
 
     @Override
