@@ -1265,11 +1265,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                     : SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN;
     }
 
-    private boolean isBlocked() {
-        LWWindowPeer blocker = (peer != null) ? peer.getBlocker() : null;
-        return (blocker != null);
-    }
-
     /*
      * An utility method for the support of the auto request focus.
      * Updates the focusable state of the window under certain
