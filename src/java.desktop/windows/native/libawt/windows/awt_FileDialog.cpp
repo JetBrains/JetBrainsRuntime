@@ -53,6 +53,8 @@ jfieldID AwtFileDialog::modeID;
 jfieldID AwtFileDialog::dirID;
 jfieldID AwtFileDialog::fileID;
 jfieldID AwtFileDialog::filterID;
+jfieldID AwtFileDialog::openButtonTextID;
+jfieldID AwtFileDialog::selectFolderButtonTextID;
 
 class CoTaskStringHolder {
 public:
@@ -377,6 +379,9 @@ struct FileDialogData {
     UINT resultSize;
     jobject peer;
     BOOL forceUseContainerFolder;
+
+    SmartHolder<WCHAR[]> openButtonText;
+    SmartHolder<WCHAR[]> selectFolderButtonText;
 };
 
 HRESULT GetSelectedResults(FileDialogData *data) {
@@ -521,7 +526,7 @@ public:
             _tcscpy_s(data->result, filePathLength + 1, filePath);
             data->resultSize = filePathLength + 1;
 
-            OLE_HRT(fileDialog->SetOkButtonLabel(L"Select Folder"));
+            OLE_HRT(fileDialog->SetOkButtonLabel(data->selectFolderButtonText));
             data->forceUseContainerFolder = TRUE;
         OLE_CATCH
 
@@ -542,8 +547,15 @@ public:
             OLE_HRT(currentSelection->GetAttributes(SFGAO_FOLDER, &att));
             BOOL isFolder = att & SFGAO_FOLDER;
 
+            LPCWSTR buttonLabel = nullptr;
+            if (isFolder) {
+                buttonLabel = data->selectFolderButtonText ? data->selectFolderButtonText : L"Select Folder";
+            } else {
+                buttonLabel = data->openButtonText ? data->openButtonText : L"Open";
+            }
+            OLE_HRT(fileDialog->SetOkButtonLabel(buttonLabel));
+
             // Since we have an item selected, we're no more in the forceUseContainerFolder mode.
-            OLE_HRT(fileDialog->SetOkButtonLabel(isFolder ? L"Select Folder" : L"Open"));
             data->forceUseContainerFolder = FALSE;
         OLE_CATCH
 
@@ -630,6 +642,33 @@ CoTaskStringHolder GetShortName(LPTSTR path) {
     OLE_HRT(shellItem->GetDisplayName(SIGDN_PARENTRELATIVE, &shortName));
     OLE_CATCH
     return SUCCEEDED(OLE_HR) ? shortName : CoTaskStringHolder();
+}
+
+void AttachString(JNIEnv *env, const jstring string, SmartHolder<WCHAR[]> &holder) {
+    if (JNU_IsNull(env, string)) {
+        holder.Attach(nullptr);
+    } else {
+        LPCWSTR text = JNU_GetStringPlatformChars(env, string, NULL);
+
+        size_t length = wcslen(text);
+        size_t lengthWithTerminatingNull = length + 1;
+        holder.Attach(new WCHAR[lengthWithTerminatingNull]);
+
+        wcscpy_s(holder, lengthWithTerminatingNull, text);
+
+        JNU_ReleaseStringPlatformChars(env, string, text);
+    }
+}
+
+void SaveCommonDialogLocalizationData(JNIEnv *env, const jobject fileDialog, FileDialogData &data) {
+    jstring openButtonText = static_cast<jstring>(env->GetObjectField(fileDialog, AwtFileDialog::openButtonTextID));
+    jstring selectFolderButtonText = static_cast<jstring>(env->GetObjectField(fileDialog, AwtFileDialog::selectFolderButtonTextID));
+
+    AttachString(env, openButtonText, data.openButtonText);
+    AttachString(env, selectFolderButtonText, data.selectFolderButtonText);
+
+    env->DeleteLocalRef(openButtonText);
+    env->DeleteLocalRef(selectFolderButtonText);
 }
 
 void
@@ -775,6 +814,7 @@ AwtFileDialog::Show(void *p)
 
             data.fileDialog = pfd;
             data.peer = peer;
+            SaveCommonDialogLocalizationData(env, target, data);
             OLE_HRT(CDialogEventHandler_CreateInstance(&data, IID_PPV_ARGS(&pfde)));
             OLE_HRT(pfd->Advise(pfde, &dwCookie));
 
@@ -1054,6 +1094,16 @@ Java_sun_awt_windows_WFileDialogPeer_initIDs(JNIEnv *env, jclass cls)
     AwtFileDialog::filterID =
         env->GetFieldID(cls, "filter", "Ljava/io/FilenameFilter;");
     DASSERT(AwtFileDialog::filterID != NULL);
+
+    AwtFileDialog::openButtonTextID =
+        env->GetFieldID(cls, "openButtonText", "Ljava/lang/String;");
+    DASSERT(AwtFileDialog::openButtonTextID != NULL);
+    CHECK_NULL(AwtFileDialog::openButtonTextID);
+
+    AwtFileDialog::selectFolderButtonTextID =
+        env->GetFieldID(cls, "selectFolderButtonText", "Ljava/lang/String;");
+    DASSERT(AwtFileDialog::selectFolderButtonTextID != NULL);
+    CHECK_NULL(AwtFileDialog::selectFolderButtonTextID);
 
     CATCH_BAD_ALLOC;
 }

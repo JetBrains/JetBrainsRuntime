@@ -632,4 +632,25 @@ public class FileDialog extends Dialog {
     boolean postsOldMouseEvents() {
         return false;
     }
+
+    /**
+     * Text for "Open" button (used when common file dialogs are enabled on
+     * Windows).
+     */
+    private String openButtonText;
+
+    /**
+     * Text for "Select Folder" button (used when common file dialogs are
+     * enabled on Windows).
+     */
+    private String selectFolderButtonText;
+
+    /**
+     * Called using reflection; sets localization strings used when common
+     * file dialogs are enabled on Windows.
+     */
+    private void setLocalizationStrings(String openButtonText, String selectFolderButtonText) {
+        this.openButtonText = openButtonText;
+        this.selectFolderButtonText = selectFolderButtonText;
+    }
 }
