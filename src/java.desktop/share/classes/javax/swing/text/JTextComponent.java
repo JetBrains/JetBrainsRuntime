@@ -4781,6 +4781,9 @@ public abstract class JTextComponent extends JComponent implements Scrollable, A
         AttributedCharacterIterator text = e.getText();
         int composedTextIndex;
 
+        boolean isCaretMoved = false;
+        int caretPositionToRestore = 0;
+
         // old composed text deletion
         Document doc = getDocument();
         if (composedTextExists()) {
@@ -4788,6 +4791,15 @@ public abstract class JTextComponent extends JComponent implements Scrollable, A
                 doc.remove(composedTextStart.getOffset(),
                            composedTextEnd.getOffset() -
                            composedTextStart.getOffset());
+                isCaretMoved = caret.getDot() != composedTextStart.getOffset();
+                if (isCaretMoved) {
+                    caretPositionToRestore = caret.getDot();
+                    // if caret set furter in the doc, we should add commitCount
+                    if (caretPositionToRestore > composedTextStart.getOffset()) {
+                        caretPositionToRestore += commitCount;
+                    }
+                    caret.setDot(composedTextStart.getOffset());
+                }
             } catch (BadLocationException ble) {}
             composedTextStart = composedTextEnd = null;
             composedTextAttribute = null;
@@ -4862,6 +4874,10 @@ public abstract class JTextComponent extends JComponent implements Scrollable, A
                 latestCommittedTextStart =
                     latestCommittedTextEnd = null;
             }
+        }
+
+        if (isCaretMoved) {
+            caret.setDot(caretPositionToRestore);
         }
     }
 
