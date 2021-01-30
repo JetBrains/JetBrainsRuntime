@@ -51,11 +51,8 @@ import java.awt.Transparency;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
 
-import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_LCD_SHADER;
-import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_TEXRECT;
 import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_SURFACE;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
-import static sun.java2d.pipe.BufferedOpCodes.SWAP_BUFFERS;
 import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_MULTITEXTURE;
 import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_PS30;
 
@@ -101,41 +98,9 @@ public abstract class MTLSurfaceData extends SurfaceData
     protected static ParallelogramPipe mtlAAPgramPipe;
     protected static MTLTextRenderer mtlTextPipe;
     protected static MTLDrawImage mtlImagePipe;
-    /** This will be true if the fbobject system property has been enabled. */
-    private static boolean isFBObjectEnabled;
-    /** This will be true if the lcdshader system property has been enabled.*/
-    private static boolean isLCDShaderEnabled;
-    /** This will be true if the biopshader system property has been enabled.*/
-    private static boolean isBIOpShaderEnabled;
-    /** This will be true if the gradshader system property has been enabled.*/
-    private static boolean isGradShaderEnabled;
 
     static {
         if (!GraphicsEnvironment.isHeadless()) {
-            // fbobject currently enabled by default; use "false" to disable
-            String fbo = java.security.AccessController.doPrivileged(
-                    new sun.security.action.GetPropertyAction(
-                            "java2d.metal.fbobject"));
-            isFBObjectEnabled = !"false".equals(fbo);
-
-            // lcdshader currently enabled by default; use "false" to disable
-            String lcd = java.security.AccessController.doPrivileged(
-                    new sun.security.action.GetPropertyAction(
-                            "java2d.metal.lcdshader"));
-            isLCDShaderEnabled = !"false".equals(lcd);
-
-            // biopshader currently enabled by default; use "false" to disable
-            String biop = java.security.AccessController.doPrivileged(
-                    new sun.security.action.GetPropertyAction(
-                            "java2d.metal.biopshader"));
-            isBIOpShaderEnabled = !"false".equals(biop);
-
-            // gradshader currently enabled by default; use "false" to disable
-            String grad = java.security.AccessController.doPrivileged(
-                    new sun.security.action.GetPropertyAction(
-                            "java2d.metal.gradshader"));
-            isGradShaderEnabled = !"false".equals(grad);
-
             MTLRenderQueue rq = MTLRenderQueue.getInstance();
             mtlImagePipe = new MTLDrawImage();
             mtlTextPipe = new MTLTextRenderer(rq);
@@ -182,20 +147,6 @@ public abstract class MTLSurfaceData extends SurfaceData
         }
     }
 
-    static void swapBuffers(long window) {
-        MTLRenderQueue rq = MTLRenderQueue.getInstance();
-        rq.lock();
-        try {
-            RenderBuffer buf = rq.getBuffer();
-            rq.ensureCapacityAndAlignment(12, 4);
-            buf.putInt(SWAP_BUFFERS);
-            buf.putLong(window);
-            rq.flushNow();
-        } finally {
-            rq.unlock();
-        }
-    }
-
     private native void initOps(MTLGraphicsConfig gc, long pConfigInfo, long pPeerData, long layerPtr,
                                 int xoff, int yoff, boolean isOpaque);
 
@@ -222,7 +173,7 @@ public abstract class MTLSurfaceData extends SurfaceData
         initOps(gc, pConfigInfo, 0, layerPtr, 0, 0, isOpaque);
     }
 
-    @Override //SurfaceData
+    @Override
     public GraphicsConfiguration getDeviceConfiguration() {
         return graphicsConfig;
     }
@@ -238,8 +189,7 @@ public abstract class MTLSurfaceData extends SurfaceData
     }
 
     /**
-     * Creates a SurfaceData object representing an off-screen buffer (either a
-     * FBO or Texture).
+     * Creates a SurfaceData object representing an off-screen buffer
      */
     public static MTLOffScreenSurfaceData createData(MTLGraphicsConfig gc,
                                                      int width, int height, ColorModel cm, Image image, int type) {
@@ -319,7 +269,7 @@ public abstract class MTLSurfaceData extends SurfaceData
                 case TEXTURE:
                 case RT_TEXTURE:
                     // need to make sure the context is current before
-                    // creating the texture or fbobject
+                    // creating the texture
                     MTLContext.setScratchSurface(graphicsConfig);
                     break;
                 default:
@@ -535,14 +485,8 @@ public abstract class MTLSurfaceData extends SurfaceData
         }
     }
 
-    /**
-     * Returns true if the surface is an on-screen window surface or
-     * a FBO texture attached to an on-screen CALayer.
-     *
-     * Needed by Mac OS X port.
-     */
     public boolean isOnScreen() {
-        return getType() == WINDOW;
+        return false;
     }
 
     private native long getMTLTexturePointer(long pData);

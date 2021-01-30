@@ -39,6 +39,8 @@ public class MTLLayer extends CFRetainedResource {
 
     private native long nativeCreateLayer();
     private static native void nativeSetScale(long layerPtr, double scale);
+
+    // Pass the insets to native code to make adjustments in blitTexture
     private static native void nativeSetInsets(long layerPtr, int top, int left);
     private static native void validate(long layerPtr, MTLSurfaceData cglsd);
     private static native void blitTexture(long layerPtr);
