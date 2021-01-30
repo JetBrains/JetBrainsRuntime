@@ -49,7 +49,7 @@
 //#define DEBUG_BLIT
 
 typedef struct {
-    MTLPixelFormat format; // Consider deleting this field, since it's always MTLPixelFormatBGRA8Unorm
+    // Consider deleting this field, since it's always MTLPixelFormatBGRA8Unorm
     jboolean hasAlpha;
     jboolean isPremult;
     NSString* swizzleKernel;
@@ -63,12 +63,12 @@ typedef struct {
  * an Metal surface
  */
 MTLRasterFormatInfo RasterFormatInfos[] = {
-        { MTLPixelFormatBGRA8Unorm, 1, 0, nil }, /* 0 - IntArgb      */ // Argb (in java notation)
-        { MTLPixelFormatBGRA8Unorm, 1, 1, nil }, /* 1 - IntArgbPre   */
-        { MTLPixelFormatBGRA8Unorm, 0, 1, @"rgb_to_rgba" }, /* 2 - IntRgb       */
-        { MTLPixelFormatBGRA8Unorm, 0, 1, @"xrgb_to_rgba" }, /* 3 - IntRgbx      */
-        { MTLPixelFormatBGRA8Unorm, 0, 1, @"bgr_to_rgba"  }, /* 4 - IntBgr       */
-        { MTLPixelFormatBGRA8Unorm, 0, 1, @"xbgr_to_rgba" }, /* 5 - IntBgrx      */
+        { 1, 0, nil }, /* 0 - IntArgb      */ // Argb (in java notation)
+        { 1, 1, nil }, /* 1 - IntArgbPre   */
+        { 0, 1, @"rgb_to_rgba" }, /* 2 - IntRgb       */
+        { 0, 1, @"xrgb_to_rgba" }, /* 3 - IntRgbx      */
+        { 0, 1, @"bgr_to_rgba"  }, /* 4 - IntBgr       */
+        { 0, 1, @"xbgr_to_rgba" }, /* 5 - IntBgrx      */
 
 //        TODO: support 2-byte formats
 //        { GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV,
@@ -238,7 +238,7 @@ MTLBlitSwToTextureViaPooledTexture(
 
     id<MTLTexture> dest = bmtlsdOps->pTexture;
 
-    MTLPooledTextureHandle * texHandle = [mtlc.texturePool getTexture:sw height:sh format:rfi->format];
+    MTLPooledTextureHandle * texHandle = [mtlc.texturePool getTexture:sw height:sh format:MTLPixelFormatBGRA8Unorm];
     if (texHandle == nil) {
         J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToTextureViaPooledTexture: can't obtain temporary texture object from pool");
         return;

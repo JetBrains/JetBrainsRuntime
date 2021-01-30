@@ -27,7 +27,6 @@
 #define MTLPaints_h_Included
 
 #import <Metal/Metal.h>
-#import <awt/common.h>
 #include "RenderOptions.h"
 
 #define sun_java2d_SunGraphics2D_PAINT_UNDEFINED -1

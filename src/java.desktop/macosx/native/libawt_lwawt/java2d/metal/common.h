@@ -26,7 +26,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <simd/SIMD.h>
+#include <simd/simd.h>
 
 #define PGRAM_VERTEX_COUNT 6
 #define QUAD_VERTEX_COUNT 4

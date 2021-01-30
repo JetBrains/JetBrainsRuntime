@@ -891,7 +891,7 @@ endif
 ################################################################################
 
 ifeq ($(call isTargetOs, macosx), true)
-  SHADERS_SRC := $(TOPDIR)/src/java.desktop/macosx/native/libawt_lwawt/awt/shaders.metal
+  SHADERS_SRC := $(TOPDIR)/src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/shaders.metal
   SHADERS_SUPPORT_DIR := $(SUPPORT_OUTPUTDIR)/native/java.desktop/libosxui
   SHADERS_AIR := $(SHADERS_SUPPORT_DIR)/shaders.air
   SHADERS_LIB := $(INSTALL_LIBRARIES_HERE)/shaders.metallib
