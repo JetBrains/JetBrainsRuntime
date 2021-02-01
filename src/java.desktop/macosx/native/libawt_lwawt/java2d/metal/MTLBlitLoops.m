@@ -757,35 +757,27 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
 #endif //DEBUG
 
     @autoreleasepool {
-    id<MTLCommandBuffer> cb = [mtlc createCommandBuffer];
-    id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
+        id<MTLCommandBuffer> cb = [mtlc createCommandBuffer];
+        id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
 
-    // Create an intrermediate buffer
-    int totalBuffsize = width * height * 4;
-    id <MTLBuffer> buff = [[mtlc.device newBufferWithLength:totalBuffsize options:MTLResourceStorageModePrivate] autorelease];
+        // Create an intrermediate buffer
+        int totalBuffsize = width * height * 4;
+        id <MTLBuffer> buff = [[mtlc.device newBufferWithLength:totalBuffsize options:MTLResourceStorageModePrivate] autorelease];
 
-    [blitEncoder copyFromTexture:dstOps->pTexture
-            sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(x, y, 0) sourceSize:MTLSizeMake(width, height, 1)
-             toBuffer:buff destinationOffset:0 destinationBytesPerRow:(width * 4) destinationBytesPerImage:totalBuffsize];
+        [blitEncoder copyFromTexture:dstOps->pTexture
+                sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(x, y, 0) sourceSize:MTLSizeMake(width, height, 1)
+                 toBuffer:buff destinationOffset:0 destinationBytesPerRow:(width * 4) destinationBytesPerImage:totalBuffsize];
 
-    [blitEncoder copyFromBuffer:buff
-            sourceOffset:0 sourceBytesPerRow:width*4 sourceBytesPerImage:totalBuffsize sourceSize:MTLSizeMake(width, height, 1)
-            toTexture:dstOps->pTexture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(x + dx, y + dy, 0)];
-    [blitEncoder endEncoding];
+        [blitEncoder copyFromBuffer:buff
+                sourceOffset:0 sourceBytesPerRow:width*4 sourceBytesPerImage:totalBuffsize sourceSize:MTLSizeMake(width, height, 1)
+                toTexture:dstOps->pTexture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(x + dx, y + dy, 0)];
+        [blitEncoder endEncoding];
 
-    [cb commit];
-    //[cb waitUntilCompleted];
-
-    /*[blitEncoder
-            copyFromTexture:dstOps->pTexture
-            sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(x, y, 0) sourceSize:MTLSizeMake(width, height, 1)
-            toTexture:dstOps->pTexture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(x + dx, y + dy, 0)];
-    [blitEncoder endEncoding];*/
-
+        [cb commit];
     }
+
     // TODO:
     //  1. check rect bounds
-    //  2. support CopyArea with extra-alpha (and with custom Composite if necessary)
 }
 
 #endif /* !HEADLESS */
