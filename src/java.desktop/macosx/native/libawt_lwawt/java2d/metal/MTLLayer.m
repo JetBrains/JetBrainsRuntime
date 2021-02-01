@@ -43,7 +43,7 @@
 @synthesize nextDrawableCount;
 @synthesize displayLink;
 
-- (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer
+- (id) initWithJavaLayer:(jobject)layer
 {
     AWT_ASSERT_APPKIT_THREAD;
     // Initialize ourselves
@@ -122,6 +122,8 @@
 }
 
 - (void) dealloc {
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    (*env)->DeleteWeakGlobalRef(env, self.javaLayer);
     self.javaLayer = nil;
     [self stopDisplayLink];
     CVDisplayLinkRelease(self.displayLink);
@@ -135,7 +137,7 @@
     DECLARE_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
     DECLARE_METHOD(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
 
-    jobject javaLayerLocalRef = [self.javaLayer jObjectWithEnv:env];
+    jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
     if ((*env)->IsSameObject(env, javaLayerLocalRef, NULL)) {
         return;
     }
@@ -191,7 +193,7 @@ Java_sun_java2d_metal_MTLLayer_nativeCreateLayer
 
 JNI_COCOA_ENTER(env);
 
-    JNFWeakJObjectWrapper *javaLayer = [JNFWeakJObjectWrapper wrapperWithJObject:obj withEnv:env];
+    jobject javaLayer = (*env)->NewWeakGlobalRef(env, obj);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
             AWT_ASSERT_APPKIT_THREAD;

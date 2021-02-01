@@ -35,7 +35,7 @@
 @interface MTLLayer : CAMetalLayer
 {
 @private
-    JNFWeakJObjectWrapper *javaLayer;
+    jobject javaLayer;
 
     // intermediate buffer, used the RQ lock to synchronize
     MTLContext* ctx;
@@ -48,7 +48,7 @@
     CVDisplayLinkRef displayLink;
 }
 
-@property (nonatomic, retain) JNFWeakJObjectWrapper *javaLayer;
+@property (nonatomic) jobject javaLayer;
 @property (readwrite, assign) MTLContext* ctx;
 @property (readwrite, assign) float bufferWidth;
 @property (readwrite, assign) float bufferHeight;
@@ -58,7 +58,7 @@
 @property (readwrite, assign) int leftInset;
 @property (readwrite, assign) CVDisplayLinkRef displayLink;
 
-- (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer;
+- (id) initWithJavaLayer:(jobject)layer;
 
 - (void) blitTexture;
 - (void) fillParallelogramCtxX:(jfloat)x
