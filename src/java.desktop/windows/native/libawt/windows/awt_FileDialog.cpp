@@ -55,6 +55,7 @@ jfieldID AwtFileDialog::fileID;
 jfieldID AwtFileDialog::filterID;
 jfieldID AwtFileDialog::openButtonTextID;
 jfieldID AwtFileDialog::selectFolderButtonTextID;
+jfieldID AwtFileDialog::folderPickerModeID;
 
 class CoTaskStringHolder {
 public:
@@ -378,6 +379,9 @@ struct FileDialogData {
     SmartHolder<TCHAR[]> result;
     UINT resultSize;
     jobject peer;
+    BOOL folderPickerMode;
+
+    // Whether the container folder of the current item should be used irregardless of the dialog result.
     BOOL forceUseContainerFolder;
 
     SmartHolder<WCHAR[]> openButtonText;
@@ -459,7 +463,9 @@ FileDialogSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_
                 env->CallVoidMethod(peer, AwtFileDialog::setHWndMID, (jlong) 0);
 
                 FileDialogData *data = (FileDialogData*) dwRefData;
-                data->forceUseContainerFolder = FALSE; // disable mode on cancel
+                if (!data->folderPickerMode) {
+                    data->forceUseContainerFolder = FALSE; // disable mode on cancel
+                }
             }
             break;
         }
@@ -526,8 +532,10 @@ public:
             _tcscpy_s(data->result, filePathLength + 1, filePath);
             data->resultSize = filePathLength + 1;
 
-            OLE_HRT(fileDialog->SetOkButtonLabel(data->selectFolderButtonText));
-            data->forceUseContainerFolder = TRUE;
+            if (!data->folderPickerMode) {
+                OLE_HRT(fileDialog->SetOkButtonLabel(data->selectFolderButtonText));
+                data->forceUseContainerFolder = TRUE;
+            }
         OLE_CATCH
 
         return S_OK;
@@ -541,22 +549,24 @@ public:
     IFACEMETHODIMP OnHelp(IFileDialog *) { return S_OK; };
     IFACEMETHODIMP OnSelectionChange(IFileDialog *fileDialog) {
         OLE_TRY
-            IShellItemPtr currentSelection = NULL;
-            OLE_HRT(fileDialog->GetCurrentSelection(&currentSelection));
-            SFGAOF att = 0;
-            OLE_HRT(currentSelection->GetAttributes(SFGAO_FOLDER, &att));
-            BOOL isFolder = att & SFGAO_FOLDER;
+            if (!data->folderPickerMode) {
+                IShellItemPtr currentSelection = NULL;
+                OLE_HRT(fileDialog->GetCurrentSelection(&currentSelection));
+                SFGAOF att = 0;
+                OLE_HRT(currentSelection->GetAttributes(SFGAO_FOLDER, &att));
+                BOOL isFolder = att & SFGAO_FOLDER;
 
-            LPCWSTR buttonLabel = nullptr;
-            if (isFolder) {
-                buttonLabel = data->selectFolderButtonText ? data->selectFolderButtonText : L"Select Folder";
-            } else {
-                buttonLabel = data->openButtonText ? data->openButtonText : L"Open";
+                LPCWSTR buttonLabel = nullptr;
+                if (isFolder) {
+                    buttonLabel = data->selectFolderButtonText ? data->selectFolderButtonText : L"Select Folder";
+                } else {
+                    buttonLabel = data->openButtonText ? data->openButtonText : L"Open";
+                }
+                OLE_HRT(fileDialog->SetOkButtonLabel(buttonLabel));
+
+                // Since we have an item selected, we're no more in the forceUseContainerFolder mode.
+                data->forceUseContainerFolder = FALSE;
             }
-            OLE_HRT(fileDialog->SetOkButtonLabel(buttonLabel));
-
-            // Since we have an item selected, we're no more in the forceUseContainerFolder mode.
-            data->forceUseContainerFolder = FALSE;
         OLE_CATCH
 
         return S_OK;
@@ -648,15 +658,13 @@ void AttachString(JNIEnv *env, const jstring string, SmartHolder<WCHAR[]> &holde
     if (JNU_IsNull(env, string)) {
         holder.Attach(nullptr);
     } else {
-        LPCWSTR text = JNU_GetStringPlatformChars(env, string, NULL);
+        JavaStringBuffer buffer(env, string);
 
-        size_t length = wcslen(text);
+        size_t length = buffer.GetSize();
         size_t lengthWithTerminatingNull = length + 1;
         holder.Attach(new WCHAR[lengthWithTerminatingNull]);
 
-        wcscpy_s(holder, lengthWithTerminatingNull, text);
-
-        JNU_ReleaseStringPlatformChars(env, string, text);
+        wcscpy_s(holder, lengthWithTerminatingNull, buffer);
     }
 }
 
@@ -812,6 +820,7 @@ AwtFileDialog::Show(void *p)
             GUID fileDialogMode = mode == java_awt_FileDialog_LOAD ? CLSID_FileOpenDialog : CLSID_FileSaveDialog;
             OLE_HRT(pfd.CreateInstance(fileDialogMode));
 
+            data.folderPickerMode = env->GetBooleanField(target, AwtFileDialog::folderPickerModeID);
             data.fileDialog = pfd;
             data.peer = peer;
             SaveCommonDialogLocalizationData(env, target, data);
@@ -824,12 +833,17 @@ AwtFileDialog::Show(void *p)
             if (multipleMode == JNI_TRUE) {
                 dwFlags |= FOS_ALLOWMULTISELECT;
             }
+            if (data.folderPickerMode) {
+                dwFlags |= FOS_PICKFOLDERS;
+            }
             OLE_HRT(pfd->SetOptions(dwFlags));
 
             OLE_HRT(pfd->SetTitle(titleBuffer));
 
-            OLE_HRT(pfd->SetFileTypes(s_fileFilterCount, s_fileFilterSpec));
-            OLE_HRT(pfd->SetFileTypeIndex(1));
+            if (!data.folderPickerMode) {
+                OLE_HRT(pfd->SetFileTypes(s_fileFilterCount, s_fileFilterSpec));
+                OLE_HRT(pfd->SetFileTypeIndex(1));
+            }
 
             {
                 IShellItemPtr directoryItem;
@@ -1104,6 +1118,10 @@ Java_sun_awt_windows_WFileDialogPeer_initIDs(JNIEnv *env, jclass cls)
         env->GetFieldID(cls, "selectFolderButtonText", "Ljava/lang/String;");
     DASSERT(AwtFileDialog::selectFolderButtonTextID != NULL);
     CHECK_NULL(AwtFileDialog::selectFolderButtonTextID);
+
+    AwtFileDialog::folderPickerModeID = env->GetFieldID(cls, "folderPickerMode", "Z");
+    DASSERT(AwtFileDialog::folderPickerModeID != NULL);
+    CHECK_NULL(AwtFileDialog::folderPickerModeID);
 
     CATCH_BAD_ALLOC;
 }

@@ -58,6 +58,7 @@ public:
     static jfieldID filterID;
     static jfieldID openButtonTextID;
     static jfieldID selectFolderButtonTextID;
+    static jfieldID folderPickerModeID;
 
     static void Initialize(JNIEnv *env, jstring filterDescription);
     static void Show(void *peer);

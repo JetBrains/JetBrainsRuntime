@@ -653,4 +653,14 @@ public class FileDialog extends Dialog {
         this.openButtonText = openButtonText;
         this.selectFolderButtonText = selectFolderButtonText;
     }
+
+    /**
+     * Whether to enable folder picker mode (used when common file dialogs are
+     * enabled on Windows).
+     */
+    private boolean folderPickerMode;
+
+    private void setFolderPickerMode(boolean folderPickerMode) {
+        this.folderPickerMode = folderPickerMode;
+    }
 }
