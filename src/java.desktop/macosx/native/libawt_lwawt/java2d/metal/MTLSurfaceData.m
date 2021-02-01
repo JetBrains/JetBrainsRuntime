@@ -271,10 +271,6 @@ MTLSD_DestroyMTLSurface(JNIEnv *env, BMTLSDOps * bmtlsdo)
 {
     J2dTraceLn(J2D_TRACE_ERROR, "MTLSD_DestroyMTLSurface not implemented!");
     JNI_COCOA_ENTER(env);
-    if (bmtlsdo->drawableType == MTLSD_WINDOW) {
-        // TODO: detach the NSView from the metal context
-    }
-
     bmtlsdo->drawableType = MTLSD_UNDEFINED;
     JNI_COCOA_EXIT(env);
 }
@@ -366,7 +362,6 @@ Java_sun_java2d_metal_MTLSurfaceData_initOps
     bmtlsdo->sdOps.Dispose            = MTLSD_Dispose;
 
     bmtlsdo->drawableType = MTLSD_UNDEFINED;
-    bmtlsdo->needsInit = JNI_TRUE;
     bmtlsdo->xOffset = xoff;
     bmtlsdo->yOffset = yoff;
     bmtlsdo->isOpaque = isOpaque;

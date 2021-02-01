@@ -40,15 +40,10 @@
 /**
  * The MTLGraphicsConfigInfo structure contains information specific to a
  * given MTLGraphicsConfig (pixel format).
- *
- *     jint screen;
- * The screen for the associated MTLGraphicsConfig.
- *
  *     MTLContext *context;
  * The context associated with this MTLGraphicsConfig.
  */
 typedef struct _MTLGraphicsConfigInfo {
-    jint                screen;
     MTLContext          *context;
 } MTLGraphicsConfigInfo;
 

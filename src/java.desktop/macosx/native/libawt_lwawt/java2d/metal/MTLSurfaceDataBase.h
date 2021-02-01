@@ -99,7 +99,6 @@ typedef struct {
     jobject                      graphicsConfig;
     jint                         drawableType;
     jboolean                     isOpaque;
-    jboolean                     needsInit;
     jint                         xOffset;
     jint                         yOffset;
     jint                         width;

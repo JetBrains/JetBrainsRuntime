@@ -106,13 +106,7 @@ final class MTLContext extends BufferedContext {
     }
 
     public static class MTLContextCaps extends ContextCapabilities {
-        /**
-         * This cap will only be set if the fbobject system property has been
-         * enabled and we are able to create an FBO with depth buffer.
-         */
-        @Native
-        public static final int CAPS_EXT_FBOBJECT     =
-                (CAPS_RT_TEXTURE_ALPHA | CAPS_RT_TEXTURE_OPAQUE);
+
         /** Indicates that the context is doublebuffered. */
         @Native
         public static final int CAPS_DOUBLEBUFFERED   = (FIRST_PRIVATE_CAP << 0);
@@ -149,9 +143,6 @@ final class MTLContext extends BufferedContext {
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder(super.toString());
-            if ((caps & CAPS_EXT_FBOBJECT) != 0) {
-                sb.append("CAPS_EXT_FBOBJECT|");
-            }
             if ((caps & CAPS_DOUBLEBUFFERED) != 0) {
                 sb.append("CAPS_DOUBLEBUFFERED|");
             }

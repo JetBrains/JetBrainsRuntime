@@ -219,7 +219,6 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
         return;
     }
     memset(mtlinfo, 0, sizeof(MTLGraphicsConfigInfo));
-    mtlinfo->screen = displayID;
     mtlinfo->context = mtlc;
 
     [argValue addObject: [NSNumber numberWithLong:ptr_to_jlong(mtlinfo)]];

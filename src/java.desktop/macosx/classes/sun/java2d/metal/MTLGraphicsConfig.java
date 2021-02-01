@@ -245,23 +245,6 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         }
     }
 
-    // TODO: CGraphicsConfig doesn't implement displayChanged() yet
-    //@Override
-    public synchronized void displayChanged() {
-        //super.displayChanged();
-
-        // the context could hold a reference to a MTLSurfaceData, which in
-        // turn has a reference back to this MTLGraphicsConfig, so in order
-        // for this instance to be disposed we need to break the connection
-        MTLRenderQueue rq = MTLRenderQueue.getInstance();
-        rq.lock();
-        try {
-            MTLContext.invalidateCurrentContext();
-        } finally {
-            rq.unlock();
-        }
-    }
-
     @Override
     public String toString() {
         return ("MTLGraphicsConfig[" + getDevice().getIDstring() + "]");

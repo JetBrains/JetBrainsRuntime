@@ -585,9 +585,8 @@ public abstract class MTLSurfaceData extends SurfaceData
     }
 
     /**
-     * SurfaceData object representing an off-screen buffer (either a FBO or
-     * Texture).
-+     */
+     * SurfaceData object representing an off-screen buffer
+     */
     public static class MTLOffScreenSurfaceData extends MTLSurfaceData {
         private final Image offscreenImage;
 

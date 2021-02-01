@@ -209,7 +209,7 @@ extern void initSamplers(id<MTLDevice> device);
     }
 
     if (dstOps->drawableType == MTLSD_UNDEFINED) {
-        // initialize the surface as an OGLSD_WINDOW
+        // initialize the surface as an MTLSD_WINDOW
         if (!MTLSD_InitMTLWindow(env, dstOps)) {
             J2dRlsTraceLn(J2D_TRACE_ERROR,
                           "MTLContext_SetSurfaces: could not init OGL window");
@@ -225,17 +225,6 @@ extern void initSamplers(id<MTLDevice> device);
         J2dRlsTraceLn(J2D_TRACE_ERROR,
                       "MTLContext_SetSurfaces: could not make context current");
         return NULL;
-    }
-
-    // perform additional one-time initialization, if necessary
-    if (dstOps->needsInit) {
-        if (dstOps->isOpaque) {
-            // in this case we are treating the destination as opaque, but
-            // to do so, first we need to ensure that the alpha channel
-            // is filled with fully opaque values (see 6319663)
-            //MTLContext_InitAlphaChannel();
-        }
-        dstOps->needsInit = JNI_FALSE;
     }
 
     return mtlc;
