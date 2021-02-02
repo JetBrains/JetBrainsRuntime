@@ -99,8 +99,6 @@ apt_help() {
       PKGHANDLER_COMMAND="sudo apt-get install libfontconfig1-dev" ;;
     freetype)
       PKGHANDLER_COMMAND="sudo apt-get install libfreetype6-dev" ;;
-    harfbuzz)
-      PKGHANDLER_COMMAND="sudo apt-get install libharfbuzz-dev" ;;
     ffi)
       PKGHANDLER_COMMAND="sudo apt-get install libffi-dev" ;;
     x11)
@@ -126,8 +124,6 @@ yum_help() {
       PKGHANDLER_COMMAND="sudo yum install fontconfig-devel" ;;
     freetype)
       PKGHANDLER_COMMAND="sudo yum install freetype-devel" ;;
-    harfbuzz)
-      PKGHANDLER_COMMAND="sudo yum install harfbuzz-devel" ;;
     x11)
       PKGHANDLER_COMMAND="sudo yum install libXtst-devel libXt-devel libXrender-devel libXrandr-devel libXi-devel" ;;
     ccache)
