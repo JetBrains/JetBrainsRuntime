@@ -36,6 +36,7 @@ interface ScreenMenuPropertyHandler {
     public void setLabel(String f);
     public void setIcon(Icon icon);
     public void setAccelerator(KeyStroke ks);
+    default void setAcceleratorText(String acceleratorText) {}
     public void setToolTipText(String tooltip);
     public void setChildVisible(javax.swing.JMenuItem child, boolean b);
     public void setIndeterminate(boolean indeterminate);
