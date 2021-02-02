@@ -125,6 +125,12 @@ final class ScreenMenuItemCheckbox extends CheckboxMenuItem
     @Override
     public void setAccelerator(final KeyStroke ks) {
         ScreenMenuItem.syncLabelAndKS(this, fMenuItem.getText(), ks);
+        ScreenMenuItem.syncAcceleratorText(this, fMenuItem);
+    }
+
+    @Override
+    public void setAcceleratorText(String acceleratorText) {
+        ScreenMenuItem.syncAcceleratorText(this, fMenuItem);
     }
 
     @Override
