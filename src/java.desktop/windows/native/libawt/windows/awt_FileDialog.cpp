@@ -434,6 +434,39 @@ HRESULT GetSelectedResults(FileDialogData *data) {
     OLE_RETURN_HR
 }
 
+bool ShouldForceCloseDialogOnApply(const FileDialogData *data) {
+    // We shouldn't force-close the dialog if we aren't in the force-close mode, or if we're in the folder picker mode:
+    if (!data->forceUseContainerFolder) return false;
+    if (data->folderPickerMode) return false;
+
+    IFileDialogPtr fileDialog = data->fileDialog;
+
+    OLE_TRY
+        // We should force-close the dialog on Enter, if there's nothing entered into the file name box:
+        CoTaskStringHolder currentFileName;
+        OLE_HRT(fileDialog->GetFileName(&currentFileName));
+        if (_tcslen(currentFileName) == 0) {
+            return true;
+        }
+
+        // If there's something entered into the file name box, then we should only force-close the dialog if it
+        // corresponds to a real file; otherwise, the user was probably looking for a file filter (e.g. entered
+        // "*.xml"), so we shouldn't close the dialog.
+        //
+        // To detect it, check the selected item list: if it's unavailable, it means that the item entered isn't an
+        // existing one.
+        IFileOpenDialogPtr fileOpenDialog;
+        IShellItemArrayPtr psia;
+        OLE_HRT(data->fileDialog->QueryInterface(IID_PPV_ARGS(&fileOpenDialog)))
+        if (FAILED(fileOpenDialog->GetSelectedItems(&psia))) {
+            return false;
+        }
+    OLE_CATCH
+
+    // Don't close the dialog: this will assume default behavior, as if no customization were applied.
+    return false;
+}
+
 LRESULT CALLBACK
 FileDialogSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
@@ -449,12 +482,12 @@ FileDialogSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_
                 FileDialogData *data = (FileDialogData*) dwRefData;
 
                 OLE_TRY
-                OLE_HRT(GetSelectedResults(data));
+                    OLE_HRT(GetSelectedResults(data));
                 OLE_CATCH
 
                 // Force to close the dialog even if there's no item selected, but we're in the forceUseContainerFolder
                 // mode.
-                if (data->forceUseContainerFolder) {
+                if (ShouldForceCloseDialogOnApply(data)) {
                     DestroyWindow(hWnd);
                 }
             }
@@ -542,6 +575,13 @@ public:
     };
 
     IFACEMETHODIMP OnFileOk(IFileDialog *) {
+        OLE_TRY
+        OLE_HRT(GetSelectedResults(data));
+        OLE_CATCH
+
+        // Since the user has chosen a file, reset the forceUseContainerFolder mode.
+        data->forceUseContainerFolder = FALSE;
+
         return S_OK;
     };
 
@@ -553,8 +593,7 @@ public:
                 IShellItemPtr currentSelection = NULL;
                 OLE_HRT(fileDialog->GetCurrentSelection(&currentSelection));
                 SFGAOF att = 0;
-                OLE_HRT(currentSelection->GetAttributes(SFGAO_FOLDER, &att));
-                BOOL isFolder = att & SFGAO_FOLDER;
+                bool isFolder = currentSelection->GetAttributes(SFGAO_FOLDER, &att) == S_OK;
 
                 LPCWSTR buttonLabel = nullptr;
                 if (isFolder) {
@@ -868,8 +907,12 @@ AwtFileDialog::Show(void *p)
 
         if (useCommonItemDialog && SUCCEEDED(OLE_HR)) {
             if (mode == java_awt_FileDialog_LOAD) {
-                // Force to signal success if we're in the forceUseContainerFolder mode.
-                result = (SUCCEEDED(pfd->Show(hwndOwner)) && data.result) || data.forceUseContainerFolder;
+                result = SUCCEEDED(pfd->Show(hwndOwner));
+                if (!result && data.forceUseContainerFolder && data.result) {
+                    // If the dialog has "failed", but we're in the forceUseContainerFolder mode, then we're supposed to
+                    // use the container set in data.result, so just proceed as if the dialog succeeded:
+                    result = S_OK;
+                }
             } else {
                 result = SUCCEEDED(pfd->Show(hwndOwner));
                 if (result) {
