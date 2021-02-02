@@ -1443,15 +1443,15 @@ JNI_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
  * Method:    nativePushNSWindowToFront
- * Signature: (J)V
+ * Signature: (JZ)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativePushNSWindowToFront
-(JNIEnv *env, jclass clazz, jlong windowPtr)
+(JNIEnv *env, jclass clazz, jlong windowPtr, jboolean wait)
 {
 JNI_COCOA_ENTER(env);
 
     NSWindow *nsWindow = OBJC(windowPtr);
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:(BOOL)wait block:^(){
 
         if (![nsWindow isKeyWindow]) {
             [nsWindow makeKeyAndOrderFront:nsWindow];
