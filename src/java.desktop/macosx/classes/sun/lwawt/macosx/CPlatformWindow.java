@@ -86,7 +86,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             double x, double y, double w, double h);
     private static native void nativeSetNSWindowMinMax(long nsWindowPtr, double minW, double minH, double maxW, double maxH);
     private static native void nativePushNSWindowToBack(long nsWindowPtr);
-    private static native void nativePushNSWindowToFront(long nsWindowPtr);
+    private static native void nativePushNSWindowToFront(long nsWindowPtr, boolean wait);
     private static native void nativeSetNSWindowTitle(long nsWindowPtr, String title);
     private static native void nativeRevalidateNSWindowShadow(long nsWindowPtr);
     private static native void nativeSetNSWindowMinimizedIcon(long nsWindowPtr, long nsImage);
@@ -872,7 +872,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             lwcToolkit.activateApplicationIgnoringOtherApps();
         }
         updateFocusabilityForAutoRequestFocus(false);
-        execute(CPlatformWindow::nativePushNSWindowToFront);
+        execute(ptr -> AWTThreading.executeWaitToolkit(wait -> nativePushNSWindowToFront(ptr, wait)));
         updateFocusabilityForAutoRequestFocus(true);
     }
 
