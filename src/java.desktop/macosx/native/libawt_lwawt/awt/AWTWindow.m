@@ -1292,10 +1292,10 @@ JNF_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
  * Method:    nativeSetNSWindowBounds
- * Signature: (JDDDD)V
+ * Signature: (JDDDDZ)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetNSWindowBounds
-(JNIEnv *env, jclass clazz, jlong windowPtr, jdouble originX, jdouble originY, jdouble width, jdouble height)
+(JNIEnv *env, jclass clazz, jlong windowPtr, jdouble originX, jdouble originY, jdouble width, jdouble height, jboolean wait)
 {
 JNF_COCOA_ENTER(env);
 
@@ -1303,7 +1303,7 @@ JNF_COCOA_ENTER(env);
 
     // TODO: not sure we need displayIfNeeded message in our view
     NSWindow *nsWindow = OBJC(windowPtr);
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:(BOOL)wait block:^(){
 
         AWTWindow *window = (AWTWindow*)[nsWindow delegate];
 
@@ -1448,15 +1448,15 @@ JNF_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
  * Method:    nativePushNSWindowToFront
- * Signature: (J)V
+ * Signature: (JZ)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativePushNSWindowToFront
-(JNIEnv *env, jclass clazz, jlong windowPtr)
+(JNIEnv *env, jclass clazz, jlong windowPtr, jboolean wait)
 {
 JNF_COCOA_ENTER(env);
 
     NSWindow *nsWindow = OBJC(windowPtr);
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:(BOOL)wait block:^(){
 
         if (![nsWindow isKeyWindow]) {
             [nsWindow makeKeyAndOrderFront:nsWindow];
