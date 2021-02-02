@@ -47,7 +47,9 @@ final class CWrapper {
         // 'level' is one of the keys defined above
         static native void setLevel(long window, int level);
 
-        static native void makeKeyAndOrderFront(long window);
+        static void makeKeyAndOrderFront(long window) {
+            AWTThreading.executeWaitToolkit(wait -> nativeMakeKeyAndOrderFront(window, wait));
+        }
         static native void makeKeyWindow(long window);
         static native void makeMainWindow(long window);
         static native boolean canBecomeMainWindow(long window);
@@ -63,10 +65,11 @@ final class CWrapper {
          * @param window the pointer of the NSWindow
          */
         static void orderOut(long window) {
-            AWTThreading.executeWaitToolkit(() -> nativeOrderOut(window));
+            AWTThreading.executeWaitToolkit(wait -> nativeOrderOut(window, wait));
         }
 
-        private static native void nativeOrderOut(long window);
+        private static native void nativeOrderOut(long window, boolean wait);
+        private static native void nativeMakeKeyAndOrderFront(long window, boolean wait);
 
         /**
          * Removes the window from the screen and releases it. According to
