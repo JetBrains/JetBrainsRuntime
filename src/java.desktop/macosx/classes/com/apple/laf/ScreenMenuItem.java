@@ -102,6 +102,17 @@ final class ScreenMenuItem extends MenuItem
         fMenuItem.removeComponentListener(this);
     }
 
+    static void syncAcceleratorText(MenuItem menuItem, JMenuItem fMenuItem) {
+        Object acceleratorText = fMenuItem.getClientProperty("accelerator.text");
+        if (acceleratorText instanceof String) {
+            Object peer = AWTAccessor.getMenuComponentAccessor().getPeer(menuItem);
+            if (peer instanceof CMenuItem) {
+                final CMenuItem cmi = (CMenuItem) peer;
+                cmi.setAcceleratorText((String)acceleratorText);
+            }
+        }
+    }
+
     static void syncLabelAndKS(MenuItem menuItem, String label, KeyStroke ks) {
         Object peer = AWTAccessor.getMenuComponentAccessor().getPeer(menuItem);
         if (!(peer instanceof CMenuItem)) {
@@ -125,6 +136,12 @@ final class ScreenMenuItem extends MenuItem
     @Override
     public void setAccelerator(final KeyStroke ks) {
         syncLabelAndKS(this, fMenuItem.getText(), ks);
+        syncAcceleratorText(this, fMenuItem);
+    }
+
+    @Override
+    public void setAcceleratorText(String acceleratorText) {
+        syncAcceleratorText(this, fMenuItem);
     }
 
     @Override
