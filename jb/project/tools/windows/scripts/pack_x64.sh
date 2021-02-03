@@ -6,8 +6,6 @@
 #   build_number     - specifies the number of JetBrainsRuntime build
 #   bundle_type      - specifies bundle to be built; possible values:
 #                        jcef - the release bundles with jcef
-#                        jfx - the release bundles with javafx
-#                        jcef_jfx - the release bundles with jcef and javafx
 #                        dcevm - the release bundles with dcevm patches
 #                        nomod - the release bundles without any additional modules (jcef)
 #                        fd - the fastdebug bundles which also include the jcef module
@@ -38,11 +36,8 @@ function pack_jbr {
   JBR_BUNDLE=jbr_${bundle_type}
 
   case "${bundle_type}" in
-  "jfx" | "jcef" | "dcevm" | "nomod" | "fd")
+  "jcef" | "dcevm" | "nomod" | "fd")
     JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
-    ;;
-  "jfx_jcef")
-    JBR_BASE_NAME=jbr-${JBSDK_VERSION}
     ;;
   *)
     echo "***ERR*** bundle was not specified" && do_exit 1

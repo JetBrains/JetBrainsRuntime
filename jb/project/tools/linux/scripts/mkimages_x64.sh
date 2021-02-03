@@ -6,8 +6,6 @@
 #   build_number     - specifies the number of JetBrainsRuntime build
 #   bundle_type      - specifies bundle to be built; possible values:
 #                        jcef - the release bundles with jcef
-#                        jfx - the release bundles with javafx
-#                        jcef_jfx - the release bundles with jcef and javafx
 #                        dcevm - the release bundles with dcevm patches
 #                        nomod - the release bundles without any additional modules (jcef)
 #                        fd - the fastdebug bundles which also include the jcef module
@@ -41,11 +39,8 @@ function create_jbr {
   JBR_BUNDLE=jbr_${bundle_type}
 
   case "${bundle_type}" in
-  "jfx" | "jcef" | "dcevm" | "nomod" | "fd")
+  "jcef" | "dcevm" | "nomod" | "fd")
     JBR_BASE_NAME=jbr_${bundle_type}-${JBSDK_VERSION}
-    ;;
-  "jfx_jcef")
-    JBR_BASE_NAME=jbr-${JBSDK_VERSION}
     ;;
   *)
     echo "***ERR*** bundle was not specified" && do_exit 1
@@ -80,16 +75,7 @@ WITH_DEBUG_LEVEL="--with-debug-level=release"
 RELEASE_NAME=linux-x86_64-normal-server-release
 JBSDK=${JBRSDK_BASE_NAME}-linux-x64-b${build_number}
 case "$bundle_type" in
-  "jfx")
-    git apply -p0 < jb/project/tools/patches/add_jfx_module.patch || do_exit $?
-    do_reset_changes=1
-    ;;
   "jcef")
-    git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
-    do_reset_changes=1
-    ;;
-  "jfx_jcef")
-    git apply -p0 < jb/project/tools/patches/add_jfx_module.patch || do_exit $?
     git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
     do_reset_changes=1
     ;;
