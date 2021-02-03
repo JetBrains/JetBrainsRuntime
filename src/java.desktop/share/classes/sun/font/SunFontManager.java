@@ -340,10 +340,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFontMap.put("FiraCode-Retina.ttf", new BundledFontInfo("FiraCode-Retina", 1, 206, 0));
         jreFontMap.put("FiraCode-Regular.ttf", new BundledFontInfo("FiraCode-Regular", 1, 206, 0));
 
-        jreFamilyMap.put("FiraCode-Medium", "Fira Code Medium");
-        jreFamilyMap.put("FiraCode-Retina", "Fira Code Retina");
-        jreFamilyMap.put("FiraCode-Light", "Fira Code Light");
-
         jreFontMap.put("SourceCodePro-BoldIt.ttf", new BundledFontInfo("SourceCodePro-BoldIt", 1, 30, 0));
         jreFontMap.put("SourceCodePro-Regular.ttf", new BundledFontInfo("SourceCodePro-Regular", 2, 10, 0));
         jreFontMap.put("SourceCodePro-Bold.ttf", new BundledFontInfo("SourceCodePro-Bold", 2, 10, 0));
