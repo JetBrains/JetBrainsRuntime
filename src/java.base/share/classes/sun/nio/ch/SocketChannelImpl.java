@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -295,8 +295,7 @@ class SocketChannelImpl
     /**
      * Marks the beginning of a read operation that might block.
      *
-     * @throws ClosedChannelException if the channel is closed
-     * @throws NotYetConnectedException if the channel is not yet connected
+     * @throws ClosedChannelException if blocking and the channel is closed
      */
     private void beginRead(boolean blocking) throws ClosedChannelException {
         if (blocking) {
@@ -304,12 +303,10 @@ class SocketChannelImpl
             begin();
 
             synchronized (stateLock) {
-                ensureOpenAndConnected();
+                ensureOpen();
                 // record thread so it can be signalled if needed
                 readerThread = NativeThread.current();
             }
-        } else {
-            ensureOpenAndConnected();
         }
     }
 
@@ -341,6 +338,7 @@ class SocketChannelImpl
 
         readLock.lock();
         try {
+            ensureOpenAndConnected();
             boolean blocking = isBlocking();
             int n = 0;
             try {
@@ -376,6 +374,7 @@ class SocketChannelImpl
 
         readLock.lock();
         try {
+            ensureOpenAndConnected();
             boolean blocking = isBlocking();
             long n = 0;
             try {
@@ -406,8 +405,7 @@ class SocketChannelImpl
     /**
      * Marks the beginning of a write operation that might block.
      *
-     * @throws ClosedChannelException if the channel is closed or output shutdown
-     * @throws NotYetConnectedException if the channel is not yet connected
+     * @throws ClosedChannelException if blocking and the channel is closed
      */
     private void beginWrite(boolean blocking) throws ClosedChannelException {
         if (blocking) {
@@ -415,14 +413,12 @@ class SocketChannelImpl
             begin();
 
             synchronized (stateLock) {
-                ensureOpenAndConnected();
+                ensureOpen();
                 if (isOutputClosed)
                     throw new ClosedChannelException();
                 // record thread so it can be signalled if needed
                 writerThread = NativeThread.current();
             }
-        } else {
-            ensureOpenAndConnected();
         }
     }
 
@@ -451,9 +447,9 @@ class SocketChannelImpl
     @Override
     public int write(ByteBuffer buf) throws IOException {
         Objects.requireNonNull(buf);
-
         writeLock.lock();
         try {
+            ensureOpenAndConnected();
             boolean blocking = isBlocking();
             int n = 0;
             try {
@@ -484,6 +480,7 @@ class SocketChannelImpl
 
         writeLock.lock();
         try {
+            ensureOpenAndConnected();
             boolean blocking = isBlocking();
             long n = 0;
             try {
@@ -512,6 +509,7 @@ class SocketChannelImpl
     int sendOutOfBandData(byte b) throws IOException {
         writeLock.lock();
         try {
+            ensureOpenAndConnected();
             boolean blocking = isBlocking();
             int n = 0;
             try {
