@@ -56,6 +56,7 @@ jfieldID AwtFileDialog::filterID;
 jfieldID AwtFileDialog::openButtonTextID;
 jfieldID AwtFileDialog::selectFolderButtonTextID;
 jfieldID AwtFileDialog::folderPickerModeID;
+jfieldID AwtFileDialog::fileExclusivePickerModeID;
 
 class CoTaskStringHolder {
 public:
@@ -631,14 +632,12 @@ public:
     };
 
     IFACEMETHODIMP OnFileOk(IFileDialog *) {
-        if (!data->ignoreCustomizations) {
-            OLE_TRY
-                OLE_HRT(GetSelectedResults(data));
-            OLE_CATCH
+        OLE_TRY
+            OLE_HRT(GetSelectedResults(data));
+        OLE_CATCH
 
-            // Since the user has chosen a file, reset the forceUseContainerFolder mode.
-            data->forceUseContainerFolder = FALSE;
-        }
+        // Since the user has chosen a file, reset the forceUseContainerFolder mode.
+        data->forceUseContainerFolder = FALSE;
 
         return S_OK;
     };
@@ -924,7 +923,8 @@ AwtFileDialog::Show(void *p)
             OLE_HRT(pfd.CreateInstance(fileDialogMode));
 
             bool folderPickerMode = env->GetBooleanField(target, AwtFileDialog::folderPickerModeID);
-            data.ignoreCustomizations = folderPickerMode || mode == java_awt_FileDialog_SAVE;
+            bool fileExclusivePickerMode = env->GetBooleanField(target, AwtFileDialog::fileExclusivePickerModeID);
+            data.ignoreCustomizations = folderPickerMode || fileExclusivePickerMode || mode == java_awt_FileDialog_SAVE;
             data.fileDialog = pfd;
             data.peer = peer;
             SaveCommonDialogLocalizationData(env, target, data);
@@ -1230,6 +1230,10 @@ Java_sun_awt_windows_WFileDialogPeer_initIDs(JNIEnv *env, jclass cls)
     AwtFileDialog::folderPickerModeID = env->GetFieldID(cls, "folderPickerMode", "Z");
     DASSERT(AwtFileDialog::folderPickerModeID != NULL);
     CHECK_NULL(AwtFileDialog::folderPickerModeID);
+
+    AwtFileDialog::fileExclusivePickerModeID = env->GetFieldID(cls, "fileExclusivePickerMode", "Z");
+    DASSERT(AwtFileDialog::fileExclusivePickerModeID != NULL);
+    CHECK_NULL(AwtFileDialog::fileExclusivePickerModeID);
 
     CATCH_BAD_ALLOC;
 }

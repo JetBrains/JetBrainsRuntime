@@ -663,4 +663,14 @@ public class FileDialog extends Dialog {
     private void setFolderPickerMode(boolean folderPickerMode) {
         this.folderPickerMode = folderPickerMode;
     }
+
+    /**
+     * Whether to enable exclusive file picker mode, with no folder picker
+     * available (used when common file dialogs are enabled on Windows).
+     */
+    private boolean fileExclusivePickerMode;
+
+    private void setFileExclusivePickerMode(boolean fileExclusivePickerMode) {
+        this.fileExclusivePickerMode = fileExclusivePickerMode;
+    }
 }
