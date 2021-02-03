@@ -386,7 +386,56 @@ struct FileDialogData {
 
     SmartHolder<WCHAR[]> openButtonText;
     SmartHolder<WCHAR[]> selectFolderButtonText;
+
+    // Last observed value of the "File name" text box before user entered or selected a directory; kept for checking in
+    // some of the routines which have to behave differently in case user never touched the file name box.
+    CoTaskStringHolder lastIgnoredFileName;
 };
+
+bool SkipSelectedResults(FileDialogData *data) {
+    // Usually, when the "Open" / "Select Folder" button is pressed, we should close the file dialog (sometimes do it
+    // forcibly, because IFileDialog doesn't always thinks it should accept currently selected items, even if the dialog
+    // logic advices it should).
+    //
+    // But there's one case when we shouldn't: when the user has pasted a directory path into the "File name" text box,
+    // we should navigate to the directory entered instead of closing the dialog. This check guarantees we won't close
+    // the dialog if a directory path is pasted.
+    OLE_TRY
+        IFileDialogPtr fileDialog = data->fileDialog;
+
+        CoTaskStringHolder currentFileName;
+        OLE_HRT(fileDialog->GetFileName(&currentFileName));
+        if (_tcslen(currentFileName) == 0 || wcscmp(currentFileName, data->lastIgnoredFileName) == 0) {
+            return false; // do not skip anything if there's no file name entered
+        }
+
+        IFileOpenDialogPtr fileOpenDialog = nullptr;
+        IShellItemArrayPtr psia = nullptr;
+        OLE_HRT(fileDialog->QueryInterface(IID_PPV_ARGS(&fileOpenDialog)))
+        if (FAILED(fileOpenDialog->GetSelectedItems(&psia))) {
+            return false; // not a real path entered (thus it couldn't be resolved): don't skip anything
+        }
+
+        DWORD itemsCount = 0;
+        OLE_HRT(psia->GetCount(&itemsCount));
+        if (itemsCount != 1) {
+            return false; // zero or multiple items selected for some reason: fall back to default flow
+        }
+
+        IShellItemPtr singleItem = nullptr;
+        OLE_HRT(psia->GetItemAt(0, &singleItem));
+
+        SFGAOF attributes = 0;
+        bool isFolder = singleItem->GetAttributes(SFGAO_FOLDER, &attributes) == S_OK;
+        if (isFolder) {
+            // There's a folder name or path written in the file name text box: skip result selection, then.
+            return true;
+        }
+    OLE_CATCH
+
+    // Skip selected results (and fall back to default dialog logic) in case of any error.
+    return true;
+}
 
 HRESULT GetSelectedResults(FileDialogData *data) {
     OLE_TRY
@@ -434,7 +483,7 @@ HRESULT GetSelectedResults(FileDialogData *data) {
     OLE_RETURN_HR
 }
 
-bool ShouldForceCloseDialogOnApply(const FileDialogData *data) {
+bool ShouldForceCloseDialogOnApply(FileDialogData *data) {
     // We shouldn't force-close the dialog if we aren't in the force-close mode, or if we're in the folder picker mode:
     if (!data->forceUseContainerFolder) return false;
     if (data->folderPickerMode) return false;
@@ -445,7 +494,7 @@ bool ShouldForceCloseDialogOnApply(const FileDialogData *data) {
         // We should force-close the dialog on Enter, if there's nothing entered into the file name box:
         CoTaskStringHolder currentFileName;
         OLE_HRT(fileDialog->GetFileName(&currentFileName));
-        if (_tcslen(currentFileName) == 0) {
+        if (_tcslen(currentFileName) == 0 || wcscmp(currentFileName, data->lastIgnoredFileName) == 0) {
             return true;
         }
 
@@ -457,7 +506,7 @@ bool ShouldForceCloseDialogOnApply(const FileDialogData *data) {
         // existing one.
         IFileOpenDialogPtr fileOpenDialog;
         IShellItemArrayPtr psia;
-        OLE_HRT(data->fileDialog->QueryInterface(IID_PPV_ARGS(&fileOpenDialog)))
+        OLE_HRT(fileDialog->QueryInterface(IID_PPV_ARGS(&fileOpenDialog)))
         if (FAILED(fileOpenDialog->GetSelectedItems(&psia))) {
             return false;
         }
@@ -482,7 +531,9 @@ FileDialogSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_
                 FileDialogData *data = (FileDialogData*) dwRefData;
 
                 OLE_TRY
-                    OLE_HRT(GetSelectedResults(data));
+                    if (!SkipSelectedResults(data)) {
+                        OLE_HRT(GetSelectedResults(data));
+                    }
                 OLE_CATCH
 
                 // Force to close the dialog even if there's no item selected, but we're in the forceUseContainerFolder
@@ -566,6 +617,10 @@ public:
             data->resultSize = filePathLength + 1;
 
             if (!data->folderPickerMode) {
+                CoTaskStringHolder fileName;
+                OLE_HRT(fileDialog->GetFileName(&fileName));
+                data->lastIgnoredFileName = fileName;
+
                 OLE_HRT(fileDialog->SetOkButtonLabel(data->selectFolderButtonText));
                 data->forceUseContainerFolder = TRUE;
             }
@@ -605,6 +660,12 @@ public:
 
                 // Since we have an item selected, we're no more in the forceUseContainerFolder mode.
                 data->forceUseContainerFolder = FALSE;
+
+                if (isFolder) {
+                    CoTaskStringHolder fileName;
+                    OLE_HRT(fileDialog->GetFileName(&fileName));
+                    data->lastIgnoredFileName = fileName;
+                }
             }
         OLE_CATCH
 
@@ -911,7 +972,7 @@ AwtFileDialog::Show(void *p)
                 if (!result && data.forceUseContainerFolder && data.result) {
                     // If the dialog has "failed", but we're in the forceUseContainerFolder mode, then we're supposed to
                     // use the container set in data.result, so just proceed as if the dialog succeeded:
-                    result = S_OK;
+                    result = TRUE;
                 }
             } else {
                 result = SUCCEEDED(pfd->Show(hwndOwner));
