@@ -379,7 +379,7 @@ struct FileDialogData {
     SmartHolder<TCHAR[]> result;
     UINT resultSize;
     jobject peer;
-    BOOL folderPickerMode;
+    BOOL ignoreCustomizations;
 
     // Whether the container folder of the current item should be used irregardless of the dialog result.
     BOOL forceUseContainerFolder;
@@ -486,7 +486,7 @@ HRESULT GetSelectedResults(FileDialogData *data) {
 bool ShouldForceCloseDialogOnApply(FileDialogData *data) {
     // We shouldn't force-close the dialog if we aren't in the force-close mode, or if we're in the folder picker mode:
     if (!data->forceUseContainerFolder) return false;
-    if (data->folderPickerMode) return false;
+    if (data->ignoreCustomizations) return false;
 
     IFileDialogPtr fileDialog = data->fileDialog;
 
@@ -529,17 +529,18 @@ FileDialogSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_
         case WM_COMMAND: {
             if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDOK) {
                 FileDialogData *data = (FileDialogData*) dwRefData;
+                if (!data->ignoreCustomizations) {
+                    OLE_TRY
+                        if (!SkipSelectedResults(data)) {
+                            OLE_HRT(GetSelectedResults(data));
+                        }
+                    OLE_CATCH
 
-                OLE_TRY
-                    if (!SkipSelectedResults(data)) {
-                        OLE_HRT(GetSelectedResults(data));
+                    // Force to close the dialog even if there's no item selected, but we're in the forceUseContainerFolder
+                    // mode.
+                    if (ShouldForceCloseDialogOnApply(data)) {
+                        DestroyWindow(hWnd);
                     }
-                OLE_CATCH
-
-                // Force to close the dialog even if there's no item selected, but we're in the forceUseContainerFolder
-                // mode.
-                if (ShouldForceCloseDialogOnApply(data)) {
-                    DestroyWindow(hWnd);
                 }
             }
             if (LOWORD(wParam) == IDCANCEL) {
@@ -547,7 +548,7 @@ FileDialogSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_
                 env->CallVoidMethod(peer, AwtFileDialog::setHWndMID, (jlong) 0);
 
                 FileDialogData *data = (FileDialogData*) dwRefData;
-                if (!data->folderPickerMode) {
+                if (!data->ignoreCustomizations) {
                     data->forceUseContainerFolder = FALSE; // disable mode on cancel
                 }
             }
@@ -607,16 +608,16 @@ public:
         }
 
         OLE_TRY
-            IShellItemPtr folder = nullptr;
-            OLE_HRT(fileDialog->GetFolder(&folder));
-            CoTaskStringHolder filePath;
-            OLE_HRT(folder->GetDisplayName(SIGDN_FILESYSPATH, &filePath));
-            size_t filePathLength = _tcslen(filePath);
-            data->result.Attach(new TCHAR[filePathLength + 1]);
-            _tcscpy_s(data->result, filePathLength + 1, filePath);
-            data->resultSize = filePathLength + 1;
+            if (!data->ignoreCustomizations) {
+                IShellItemPtr folder = nullptr;
+                OLE_HRT(fileDialog->GetFolder(&folder));
+                CoTaskStringHolder filePath;
+                OLE_HRT(folder->GetDisplayName(SIGDN_FILESYSPATH, &filePath));
+                size_t filePathLength = _tcslen(filePath);
+                data->result.Attach(new TCHAR[filePathLength + 1]);
+                _tcscpy_s(data->result, filePathLength + 1, filePath);
+                data->resultSize = filePathLength + 1;
 
-            if (!data->folderPickerMode) {
                 CoTaskStringHolder fileName;
                 OLE_HRT(fileDialog->GetFileName(&fileName));
                 data->lastIgnoredFileName = fileName;
@@ -630,12 +631,14 @@ public:
     };
 
     IFACEMETHODIMP OnFileOk(IFileDialog *) {
-        OLE_TRY
-        OLE_HRT(GetSelectedResults(data));
-        OLE_CATCH
+        if (!data->ignoreCustomizations) {
+            OLE_TRY
+                OLE_HRT(GetSelectedResults(data));
+            OLE_CATCH
 
-        // Since the user has chosen a file, reset the forceUseContainerFolder mode.
-        data->forceUseContainerFolder = FALSE;
+            // Since the user has chosen a file, reset the forceUseContainerFolder mode.
+            data->forceUseContainerFolder = FALSE;
+        }
 
         return S_OK;
     };
@@ -644,7 +647,7 @@ public:
     IFACEMETHODIMP OnHelp(IFileDialog *) { return S_OK; };
     IFACEMETHODIMP OnSelectionChange(IFileDialog *fileDialog) {
         OLE_TRY
-            if (!data->folderPickerMode) {
+            if (!data->ignoreCustomizations) {
                 IShellItemPtr currentSelection = NULL;
                 OLE_HRT(fileDialog->GetCurrentSelection(&currentSelection));
                 SFGAOF att = 0;
@@ -920,7 +923,8 @@ AwtFileDialog::Show(void *p)
             GUID fileDialogMode = mode == java_awt_FileDialog_LOAD ? CLSID_FileOpenDialog : CLSID_FileSaveDialog;
             OLE_HRT(pfd.CreateInstance(fileDialogMode));
 
-            data.folderPickerMode = env->GetBooleanField(target, AwtFileDialog::folderPickerModeID);
+            bool folderPickerMode = env->GetBooleanField(target, AwtFileDialog::folderPickerModeID);
+            data.ignoreCustomizations = folderPickerMode || mode == java_awt_FileDialog_SAVE;
             data.fileDialog = pfd;
             data.peer = peer;
             SaveCommonDialogLocalizationData(env, target, data);
@@ -933,14 +937,14 @@ AwtFileDialog::Show(void *p)
             if (multipleMode == JNI_TRUE) {
                 dwFlags |= FOS_ALLOWMULTISELECT;
             }
-            if (data.folderPickerMode) {
+            if (folderPickerMode) {
                 dwFlags |= FOS_PICKFOLDERS;
             }
             OLE_HRT(pfd->SetOptions(dwFlags));
 
             OLE_HRT(pfd->SetTitle(titleBuffer));
 
-            if (!data.folderPickerMode) {
+            if (!folderPickerMode) {
                 OLE_HRT(pfd->SetFileTypes(s_fileFilterCount, s_fileFilterSpec));
                 OLE_HRT(pfd->SetFileTypeIndex(1));
             }
