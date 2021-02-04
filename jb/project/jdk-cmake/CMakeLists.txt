@@ -79,7 +79,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     include_directories(
             ../../../build/linux-x86_64-normal-server-release/support/headers/java.desktop)
-elseif("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN")
+elseif("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN" OR "${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
     include_directories(
             ../../../build/windows-x86_64-normal-server-release/support/headers/java.desktop
             ../../../src/hotspot/os/windows/include
@@ -1367,8 +1367,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux"
             ../../../src/java.desktop/unix/native/libsplashscreen/splashscreen_config.h
             ../../../src/java.desktop/unix/native/libsplashscreen/splashscreen_sys.c
 )
-
-elseif("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN")
+elseif("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN" OR "${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
     set(SOURCE_FILES
             ${SOURCE_FILES}
             ../../../src/hotspot/os/windows/include/jvm_md.h
@@ -1599,7 +1598,13 @@ elseif("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN")
             ../../../src/java.desktop/windows/native/libsplashscreen/splashscreen_sys.c)
 endif()
 
+if ("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN" OR "${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
+    add_compile_definitions("UNICODE" "_UNICODE")
+endif()
+
 add_executable(jdk ${SOURCE_FILES})
+
+set_property(TARGET jdk PROPERTY CXX_STANDARD 11)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_libraries(jdk ${JAVA_NATIVE_FOUNDATION})
