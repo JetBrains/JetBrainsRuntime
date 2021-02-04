@@ -1122,14 +1122,18 @@ public class Window extends Container implements Accessible {
      * {@link #setVisible(boolean)}.
      */
     @Deprecated
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public void hide() {
+        WeakReference<Window>[] ownedWindowArray;
         synchronized(ownedWindowList) {
-            for (int i = 0; i < ownedWindowList.size(); i++) {
-                Window child = ownedWindowList.elementAt(i).get();
-                if ((child != null) && child.visible) {
-                    child.hide();
-                    child.showWithParent = true;
-                }
+            ownedWindowArray = new WeakReference[ownedWindowList.size()];
+            ownedWindowList.copyInto(ownedWindowArray);
+        }
+        for (WeakReference<Window> childRef : ownedWindowArray) {
+            Window child = childRef.get();
+            if ((child != null) && child.visible) {
+                child.hide();
+                child.showWithParent = true;
             }
         }
         if (isModalBlocked()) {
