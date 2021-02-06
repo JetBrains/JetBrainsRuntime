@@ -1,0 +1,31 @@
+From 62fc66fa74886bd8bb15cd3e2084175f7ad5d0c7 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Fri, 5 Feb 2021 23:30:49 +0100
+Subject: [PATCH 19/19] Disable AllowEnhancedClassRedefinition in flight
+ recorder
+
+---
+ src/hotspot/share/runtime/arguments.cpp | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
+index 5053ad7ee61..c5635bb8537 100644
+--- a/src/hotspot/share/runtime/arguments.cpp
++++ b/src/hotspot/share/runtime/arguments.cpp
+@@ -3962,6 +3962,13 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
+   // Set object alignment values.
+   set_object_alignment();
+ 
++  if (FlightRecorder) {
++    if (AllowEnhancedClassRedefinition) {
++      warning("EnhancedClassRedefinition was disabled, it is not allowed in FlightRecorder.");
++      AllowEnhancedClassRedefinition = false;
++    }
++  }
++
+   setup_hotswap_agent();
+ 
+ #if !INCLUDE_CDS
+-- 
+2.23.0
+
