@@ -613,13 +613,13 @@ else
 
   # For use by libfontmanager:
   ifeq ($(OPENJDK_TARGET_OS), windows)
-    LIBHARFBUZZ_LIBS := $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libjharfbuzz/jharfbuzz.lib
+    LIBHARFBUZZ_LIBS := $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libharfbuzz/harfbuzz.lib
   else
-    LIBHARFBUZZ_LIBS := -ljharfbuzz
+    LIBHARFBUZZ_LIBS := -lharfbuzz
   endif
 
   LIBHARFBUZZ_EXTRA_HEADER_DIRS := \
-    libjharfbuzz/hb-ucdn \
+    libharfbuzz/hb-ucdn \
     #
 
   LIBHARFBUZZ_OPTIMIZATION := HIGH
@@ -627,7 +627,7 @@ else
   LIBHARFBUZZ_CFLAGS += $(X_CFLAGS) -DLE_STANDALONE -DHEADLESS
 
   $(eval $(call SetupJdkLibrary, BUILD_LIBHARFBUZZ, \
-      NAME := jharfbuzz, \
+      NAME := harfbuzz, \
       EXCLUDE_FILES := $(LIBHARFBUZZ_EXCLUDE_FILES), \
       TOOLCHAIN := TOOLCHAIN_LINK_CXX, \
       CFLAGS := $(CFLAGS_JDKLIB) $(LIBHARFBUZZ_CFLAGS), \
@@ -670,7 +670,7 @@ endif
 ###########################################################################
 
 LIBFONTMANAGER_EXTRA_HEADER_DIRS := \
-    libjharfbuzz \
+    libharfbuzz \
     common/awt \
     common/font \
     libawt/java2d \
