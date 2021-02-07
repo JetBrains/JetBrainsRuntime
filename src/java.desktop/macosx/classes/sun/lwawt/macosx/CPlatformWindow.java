@@ -919,7 +919,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             lwcToolkit.activateApplicationIgnoringOtherApps();
         }
         updateFocusabilityForAutoRequestFocus(false);
-        execute(ptr -> AWTThreading.executeWaitToolkit(() -> nativePushNSWindowToFront(ptr)));
+        execute(CPlatformWindow::nativePushNSWindowToFront);
         updateFocusabilityForAutoRequestFocus(true);
     }
 

@@ -29,11 +29,11 @@
 
 /*
  * Class:     sun_lwawt_macosx_CWrapper$NSWindow
- * Method:    nativeMakeKeyAndOrderFront
+ * Method:    makeKeyAndOrderFront
  * Signature: (J)V
  */
 JNIEXPORT void JNICALL
-Java_sun_lwawt_macosx_CWrapper_00024NSWindow_nativeMakeKeyAndOrderFront
+Java_sun_lwawt_macosx_CWrapper_00024NSWindow_makeKeyAndOrderFront
 (JNIEnv *env, jclass cls, jlong windowPtr)
 {
 JNF_COCOA_ENTER(env);
@@ -42,7 +42,7 @@ JNF_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThread:@selector(makeKeyAndOrderFront:)
                                       on:window
                               withObject:nil
-                           waitUntilDone:YES];
+                           waitUntilDone:NO];
 
 JNF_COCOA_EXIT(env);
 }

@@ -47,9 +47,7 @@ final class CWrapper {
         // 'level' is one of the keys defined above
         static native void setLevel(long window, int level);
 
-        static void makeKeyAndOrderFront(long window) {
-            AWTThreading.executeWaitToolkit(() -> nativeMakeKeyAndOrderFront(window));
-        }
+        static native void makeKeyAndOrderFront(long window);
         static native void makeMainWindow(long window);
         static native boolean canBecomeMainWindow(long window);
         static native boolean isKeyWindow(long window);
@@ -68,7 +66,6 @@ final class CWrapper {
         }
 
         private static native void nativeOrderOut(long window);
-        private static native void nativeMakeKeyAndOrderFront(long window);
 
         /**
          * Removes the window from the screen and releases it. According to
