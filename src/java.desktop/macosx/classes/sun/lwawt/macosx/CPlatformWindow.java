@@ -89,13 +89,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private static native void nativeSetNSWindowStyleBits(long nsWindowPtr, int mask, int data);
     private static native void nativeSetNSWindowMenuBar(long nsWindowPtr, long menuBarPtr);
     private static native Insets nativeGetNSWindowInsets(long nsWindowPtr);
-    private static native void nativeSetNSWindowBounds(long nsWindowPtr, double x, double y, double w, double h, boolean wait);
+    private static native void nativeSetNSWindowBounds(long nsWindowPtr, double x, double y, double w, double h);
     private static native void nativeSetNSWindowLocationByPlatform(long nsWindowPtr);
     private static native void nativeSetNSWindowStandardFrame(long nsWindowPtr,
                                                               double x, double y, double w, double h);
     private static native void nativeSetNSWindowMinMax(long nsWindowPtr, double minW, double minH, double maxW, double maxH);
     private static native void nativePushNSWindowToBack(long nsWindowPtr);
-    private static native void nativePushNSWindowToFront(long nsWindowPtr, boolean wait);
+    private static native void nativePushNSWindowToFront(long nsWindowPtr);
     private static native void nativeSetNSWindowTitle(long nsWindowPtr, String title);
     private static native void nativeRevalidateNSWindowShadow(long nsWindowPtr);
     private static native void nativeSetNSWindowMinimizedIcon(long nsWindowPtr, long nsImage);
@@ -683,7 +683,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     @Override // PlatformWindow
     public void setBounds(int x, int y, int w, int h) {
-        execute(ptr -> AWTThreading.executeWaitToolkit(wait -> nativeSetNSWindowBounds(ptr, x, y, w, h, wait)));
+        execute(ptr -> AWTThreading.executeWaitToolkit(() -> nativeSetNSWindowBounds(ptr, x, y, w, h)));
     }
 
     public void setMaximizedBounds(int x, int y, int w, int h) {
@@ -919,7 +919,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             lwcToolkit.activateApplicationIgnoringOtherApps();
         }
         updateFocusabilityForAutoRequestFocus(false);
-        execute(ptr -> AWTThreading.executeWaitToolkit(wait -> nativePushNSWindowToFront(ptr, wait)));
+        execute(ptr -> AWTThreading.executeWaitToolkit(() -> nativePushNSWindowToFront(ptr)));
         updateFocusabilityForAutoRequestFocus(true);
     }
 

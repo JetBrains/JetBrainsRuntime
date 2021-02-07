@@ -30,11 +30,11 @@
 /*
  * Class:     sun_lwawt_macosx_CWrapper$NSWindow
  * Method:    nativeMakeKeyAndOrderFront
- * Signature: (JZ)V
+ * Signature: (J)V
  */
 JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_CWrapper_00024NSWindow_nativeMakeKeyAndOrderFront
-(JNIEnv *env, jclass cls, jlong windowPtr, jboolean wait)
+(JNIEnv *env, jclass cls, jlong windowPtr)
 {
 JNF_COCOA_ENTER(env);
 
@@ -42,7 +42,7 @@ JNF_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThread:@selector(makeKeyAndOrderFront:)
                                       on:window
                               withObject:nil
-                           waitUntilDone:(BOOL)wait];
+                           waitUntilDone:YES];
 
 JNF_COCOA_EXIT(env);
 }
@@ -136,11 +136,11 @@ JNF_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_CWrapper$NSWindow
  * Method:    nativeOrderOut
- * Signature: (JZ)V
+ * Signature: (J)V
  */
 JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_CWrapper_00024NSWindow_nativeOrderOut
-(JNIEnv *env, jclass cls, jlong windowPtr, jboolean wait)
+(JNIEnv *env, jclass cls, jlong windowPtr)
 {
 JNF_COCOA_ENTER(env);
 
@@ -148,7 +148,7 @@ JNF_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThread:@selector(orderOut:)
                                       on:window
                               withObject:window
-                           waitUntilDone:(BOOL)wait];
+                           waitUntilDone:YES];
 
 JNF_COCOA_EXIT(env);
 }
