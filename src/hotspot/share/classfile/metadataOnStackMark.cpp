@@ -49,10 +49,11 @@ NOT_PRODUCT(bool MetadataOnStackMark::_is_active = false;)
 MetadataOnStackMark::MetadataOnStackMark(bool redefinition_walk, bool ignore) : _ignore(ignore) {
   assert(SafepointSynchronize::is_at_safepoint(), "sanity check");
   assert(_used_buffers == NULL, "sanity check");
-  assert(!_is_active, "MetadataOnStackMarks do not nest");
-  NOT_PRODUCT(_is_active = true;)
 
   if (!ignore) {
+    assert(!_is_active, "MetadataOnStackMarks do not nest");
+    NOT_PRODUCT(_is_active = true;)
+
     Threads::metadata_handles_do(Metadata::mark_on_stack);
 
     if (redefinition_walk) {
