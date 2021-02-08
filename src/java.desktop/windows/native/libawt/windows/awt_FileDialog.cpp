@@ -53,6 +53,10 @@ jfieldID AwtFileDialog::modeID;
 jfieldID AwtFileDialog::dirID;
 jfieldID AwtFileDialog::fileID;
 jfieldID AwtFileDialog::filterID;
+jfieldID AwtFileDialog::openButtonTextID;
+jfieldID AwtFileDialog::selectFolderButtonTextID;
+jfieldID AwtFileDialog::folderPickerModeID;
+jfieldID AwtFileDialog::fileExclusivePickerModeID;
 
 class CoTaskStringHolder {
 public:
@@ -376,7 +380,63 @@ struct FileDialogData {
     SmartHolder<TCHAR[]> result;
     UINT resultSize;
     jobject peer;
+    BOOL ignoreCustomizations;
+
+    // Whether the container folder of the current item should be used irregardless of the dialog result.
+    BOOL forceUseContainerFolder;
+
+    SmartHolder<WCHAR[]> openButtonText;
+    SmartHolder<WCHAR[]> selectFolderButtonText;
+
+    // Last observed value of the "File name" text box before user entered or selected a directory; kept for checking in
+    // some of the routines which have to behave differently in case user never touched the file name box.
+    CoTaskStringHolder lastIgnoredFileName;
 };
+
+bool SkipSelectedResults(FileDialogData *data) {
+    // Usually, when the "Open" / "Select Folder" button is pressed, we should close the file dialog (sometimes do it
+    // forcibly, because IFileDialog doesn't always thinks it should accept currently selected items, even if the dialog
+    // logic advices it should).
+    //
+    // But there's one case when we shouldn't: when the user has pasted a directory path into the "File name" text box,
+    // we should navigate to the directory entered instead of closing the dialog. This check guarantees we won't close
+    // the dialog if a directory path is pasted.
+    OLE_TRY
+        IFileDialogPtr fileDialog = data->fileDialog;
+
+        CoTaskStringHolder currentFileName;
+        OLE_HRT(fileDialog->GetFileName(&currentFileName));
+        if (_tcslen(currentFileName) == 0 || wcscmp(currentFileName, data->lastIgnoredFileName) == 0) {
+            return false; // do not skip anything if there's no file name entered
+        }
+
+        IFileOpenDialogPtr fileOpenDialog = nullptr;
+        IShellItemArrayPtr psia = nullptr;
+        OLE_HRT(fileDialog->QueryInterface(IID_PPV_ARGS(&fileOpenDialog)))
+        if (FAILED(fileOpenDialog->GetSelectedItems(&psia))) {
+            return false; // not a real path entered (thus it couldn't be resolved): don't skip anything
+        }
+
+        DWORD itemsCount = 0;
+        OLE_HRT(psia->GetCount(&itemsCount));
+        if (itemsCount != 1) {
+            return false; // zero or multiple items selected for some reason: fall back to default flow
+        }
+
+        IShellItemPtr singleItem = nullptr;
+        OLE_HRT(psia->GetItemAt(0, &singleItem));
+
+        SFGAOF attributes = 0;
+        bool isFolder = singleItem->GetAttributes(SFGAO_FOLDER, &attributes) == S_OK;
+        if (isFolder) {
+            // There's a folder name or path written in the file name text box: skip result selection, then.
+            return true;
+        }
+    OLE_CATCH
+
+    // Skip selected results (and fall back to default dialog logic) in case of any error.
+    return true;
+}
 
 HRESULT GetSelectedResults(FileDialogData *data) {
     OLE_TRY
@@ -424,6 +484,39 @@ HRESULT GetSelectedResults(FileDialogData *data) {
     OLE_RETURN_HR
 }
 
+bool ShouldForceCloseDialogOnApply(FileDialogData *data) {
+    // We shouldn't force-close the dialog if we aren't in the force-close mode, or if we're in the folder picker mode:
+    if (!data->forceUseContainerFolder) return false;
+    if (data->ignoreCustomizations) return false;
+
+    IFileDialogPtr fileDialog = data->fileDialog;
+
+    OLE_TRY
+        // We should force-close the dialog on Enter, if there's nothing entered into the file name box:
+        CoTaskStringHolder currentFileName;
+        OLE_HRT(fileDialog->GetFileName(&currentFileName));
+        if (_tcslen(currentFileName) == 0 || wcscmp(currentFileName, data->lastIgnoredFileName) == 0) {
+            return true;
+        }
+
+        // If there's something entered into the file name box, then we should only force-close the dialog if it
+        // corresponds to a real file; otherwise, the user was probably looking for a file filter (e.g. entered
+        // "*.xml"), so we shouldn't close the dialog.
+        //
+        // To detect it, check the selected item list: if it's unavailable, it means that the item entered isn't an
+        // existing one.
+        IFileOpenDialogPtr fileOpenDialog;
+        IShellItemArrayPtr psia;
+        OLE_HRT(fileDialog->QueryInterface(IID_PPV_ARGS(&fileOpenDialog)))
+        if (FAILED(fileOpenDialog->GetSelectedItems(&psia))) {
+            return false;
+        }
+    OLE_CATCH
+
+    // Don't close the dialog: this will assume default behavior, as if no customization were applied.
+    return false;
+}
+
 LRESULT CALLBACK
 FileDialogSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
@@ -436,13 +529,29 @@ FileDialogSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_
     switch (uMsg) {
         case WM_COMMAND: {
             if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDOK) {
-                OLE_TRY
-                OLE_HRT(GetSelectedResults((FileDialogData*) dwRefData));
-                OLE_CATCH
+                FileDialogData *data = (FileDialogData*) dwRefData;
+                if (!data->ignoreCustomizations) {
+                    OLE_TRY
+                        if (!SkipSelectedResults(data)) {
+                            OLE_HRT(GetSelectedResults(data));
+                        }
+                    OLE_CATCH
+
+                    // Force to close the dialog even if there's no item selected, but we're in the forceUseContainerFolder
+                    // mode.
+                    if (ShouldForceCloseDialogOnApply(data)) {
+                        DestroyWindow(hWnd);
+                    }
+                }
             }
             if (LOWORD(wParam) == IDCANCEL) {
                 jobject peer = (jobject) (::GetProp(hWnd, ModalDialogPeerProp));
                 env->CallVoidMethod(peer, AwtFileDialog::setHWndMID, (jlong) 0);
+
+                FileDialogData *data = (FileDialogData*) dwRefData;
+                if (!data->ignoreCustomizations) {
+                    data->forceUseContainerFolder = FALSE; // disable mode on cancel
+                }
             }
             break;
         }
@@ -498,21 +607,72 @@ public:
             InitDialog(fileDialog);
             m_activated = true;
         }
+
+        OLE_TRY
+            if (!data->ignoreCustomizations) {
+                IShellItemPtr folder = nullptr;
+                OLE_HRT(fileDialog->GetFolder(&folder));
+                CoTaskStringHolder filePath;
+                OLE_HRT(folder->GetDisplayName(SIGDN_FILESYSPATH, &filePath));
+                size_t filePathLength = _tcslen(filePath);
+                data->result.Attach(new TCHAR[filePathLength + 1]);
+                _tcscpy_s(data->result, filePathLength + 1, filePath);
+                data->resultSize = filePathLength + 1;
+
+                CoTaskStringHolder fileName;
+                OLE_HRT(fileDialog->GetFileName(&fileName));
+                data->lastIgnoredFileName = fileName;
+
+                OLE_HRT(fileDialog->SetOkButtonLabel(data->selectFolderButtonText));
+                data->forceUseContainerFolder = TRUE;
+            }
+        OLE_CATCH
+
         return S_OK;
     };
 
     IFACEMETHODIMP OnFileOk(IFileDialog *) {
-        if (!data->result) {
-            OLE_TRY
+        OLE_TRY
             OLE_HRT(GetSelectedResults(data));
-            OLE_CATCH
-        }
+        OLE_CATCH
+
+        // Since the user has chosen a file, reset the forceUseContainerFolder mode.
+        data->forceUseContainerFolder = FALSE;
+
         return S_OK;
     };
 
     IFACEMETHODIMP OnFolderChanging(IFileDialog *, IShellItem *) { return S_OK; };
     IFACEMETHODIMP OnHelp(IFileDialog *) { return S_OK; };
-    IFACEMETHODIMP OnSelectionChange(IFileDialog *) { return S_OK; };
+    IFACEMETHODIMP OnSelectionChange(IFileDialog *fileDialog) {
+        OLE_TRY
+            if (!data->ignoreCustomizations) {
+                IShellItemPtr currentSelection = NULL;
+                OLE_HRT(fileDialog->GetCurrentSelection(&currentSelection));
+                SFGAOF att = 0;
+                bool isFolder = currentSelection->GetAttributes(SFGAO_FOLDER, &att) == S_OK;
+
+                LPCWSTR buttonLabel = nullptr;
+                if (isFolder) {
+                    buttonLabel = data->selectFolderButtonText ? data->selectFolderButtonText : L"Select Folder";
+                } else {
+                    buttonLabel = data->openButtonText ? data->openButtonText : L"Open";
+                }
+                OLE_HRT(fileDialog->SetOkButtonLabel(buttonLabel));
+
+                // Since we have an item selected, we're no more in the forceUseContainerFolder mode.
+                data->forceUseContainerFolder = FALSE;
+
+                if (isFolder) {
+                    CoTaskStringHolder fileName;
+                    OLE_HRT(fileDialog->GetFileName(&fileName));
+                    data->lastIgnoredFileName = fileName;
+                }
+            }
+        OLE_CATCH
+
+        return S_OK;
+    };
     IFACEMETHODIMP OnShareViolation(IFileDialog *, IShellItem *, FDE_SHAREVIOLATION_RESPONSE *) { return S_OK; };
     IFACEMETHODIMP OnTypeChange(IFileDialog *pfd) { return S_OK; };
     IFACEMETHODIMP OnOverwrite(IFileDialog *, IShellItem *, FDE_OVERWRITE_RESPONSE *) { return S_OK; };
@@ -594,6 +754,31 @@ CoTaskStringHolder GetShortName(LPTSTR path) {
     OLE_HRT(shellItem->GetDisplayName(SIGDN_PARENTRELATIVE, &shortName));
     OLE_CATCH
     return SUCCEEDED(OLE_HR) ? shortName : CoTaskStringHolder();
+}
+
+void AttachString(JNIEnv *env, const jstring string, SmartHolder<WCHAR[]> &holder) {
+    if (JNU_IsNull(env, string)) {
+        holder.Attach(nullptr);
+    } else {
+        JavaStringBuffer buffer(env, string);
+
+        size_t length = buffer.GetSize();
+        size_t lengthWithTerminatingNull = length + 1;
+        holder.Attach(new WCHAR[lengthWithTerminatingNull]);
+
+        wcscpy_s(holder, lengthWithTerminatingNull, buffer);
+    }
+}
+
+void SaveCommonDialogLocalizationData(JNIEnv *env, const jobject fileDialog, FileDialogData &data) {
+    jstring openButtonText = static_cast<jstring>(env->GetObjectField(fileDialog, AwtFileDialog::openButtonTextID));
+    jstring selectFolderButtonText = static_cast<jstring>(env->GetObjectField(fileDialog, AwtFileDialog::selectFolderButtonTextID));
+
+    AttachString(env, openButtonText, data.openButtonText);
+    AttachString(env, selectFolderButtonText, data.selectFolderButtonText);
+
+    env->DeleteLocalRef(openButtonText);
+    env->DeleteLocalRef(selectFolderButtonText);
 }
 
 void
@@ -737,8 +922,12 @@ AwtFileDialog::Show(void *p)
             GUID fileDialogMode = mode == java_awt_FileDialog_LOAD ? CLSID_FileOpenDialog : CLSID_FileSaveDialog;
             OLE_HRT(pfd.CreateInstance(fileDialogMode));
 
+            bool folderPickerMode = env->GetBooleanField(target, AwtFileDialog::folderPickerModeID);
+            bool fileExclusivePickerMode = env->GetBooleanField(target, AwtFileDialog::fileExclusivePickerModeID);
+            data.ignoreCustomizations = folderPickerMode || fileExclusivePickerMode || mode == java_awt_FileDialog_SAVE;
             data.fileDialog = pfd;
             data.peer = peer;
+            SaveCommonDialogLocalizationData(env, target, data);
             OLE_HRT(CDialogEventHandler_CreateInstance(&data, IID_PPV_ARGS(&pfde)));
             OLE_HRT(pfd->Advise(pfde, &dwCookie));
 
@@ -748,12 +937,17 @@ AwtFileDialog::Show(void *p)
             if (multipleMode == JNI_TRUE) {
                 dwFlags |= FOS_ALLOWMULTISELECT;
             }
+            if (folderPickerMode) {
+                dwFlags |= FOS_PICKFOLDERS;
+            }
             OLE_HRT(pfd->SetOptions(dwFlags));
 
             OLE_HRT(pfd->SetTitle(titleBuffer));
 
-            OLE_HRT(pfd->SetFileTypes(s_fileFilterCount, s_fileFilterSpec));
-            OLE_HRT(pfd->SetFileTypeIndex(1));
+            if (!folderPickerMode) {
+                OLE_HRT(pfd->SetFileTypes(s_fileFilterCount, s_fileFilterSpec));
+                OLE_HRT(pfd->SetFileTypeIndex(1));
+            }
 
             {
                 IShellItemPtr directoryItem;
@@ -777,17 +971,11 @@ AwtFileDialog::Show(void *p)
 
         if (useCommonItemDialog && SUCCEEDED(OLE_HR)) {
             if (mode == java_awt_FileDialog_LOAD) {
-                result = SUCCEEDED(pfd->Show(hwndOwner)) && data.result;
-                if (!result) {
-                    OLE_NEXT_TRY
-                    OLE_HRT(pfd->GetResult(&psiResult));
-                    CoTaskStringHolder filePath;
-                    OLE_HRT(psiResult->GetDisplayName(SIGDN_FILESYSPATH, &filePath));
-                    size_t filePathLength = _tcslen(filePath);
-                    data.result.Attach(new TCHAR[filePathLength + 1]);
-                    _tcscpy_s(data.result, filePathLength + 1, filePath);
-                    OLE_CATCH
-                    result = SUCCEEDED(OLE_HR);
+                result = SUCCEEDED(pfd->Show(hwndOwner));
+                if (!result && data.forceUseContainerFolder && data.result) {
+                    // If the dialog has "failed", but we're in the forceUseContainerFolder mode, then we're supposed to
+                    // use the container set in data.result, so just proceed as if the dialog succeeded:
+                    result = TRUE;
                 }
             } else {
                 result = SUCCEEDED(pfd->Show(hwndOwner));
@@ -1027,6 +1215,24 @@ Java_sun_awt_windows_WFileDialogPeer_initIDs(JNIEnv *env, jclass cls)
     AwtFileDialog::filterID =
         env->GetFieldID(cls, "filter", "Ljava/io/FilenameFilter;");
     DASSERT(AwtFileDialog::filterID != NULL);
+
+    AwtFileDialog::openButtonTextID =
+        env->GetFieldID(cls, "openButtonText", "Ljava/lang/String;");
+    DASSERT(AwtFileDialog::openButtonTextID != NULL);
+    CHECK_NULL(AwtFileDialog::openButtonTextID);
+
+    AwtFileDialog::selectFolderButtonTextID =
+        env->GetFieldID(cls, "selectFolderButtonText", "Ljava/lang/String;");
+    DASSERT(AwtFileDialog::selectFolderButtonTextID != NULL);
+    CHECK_NULL(AwtFileDialog::selectFolderButtonTextID);
+
+    AwtFileDialog::folderPickerModeID = env->GetFieldID(cls, "folderPickerMode", "Z");
+    DASSERT(AwtFileDialog::folderPickerModeID != NULL);
+    CHECK_NULL(AwtFileDialog::folderPickerModeID);
+
+    AwtFileDialog::fileExclusivePickerModeID = env->GetFieldID(cls, "fileExclusivePickerMode", "Z");
+    DASSERT(AwtFileDialog::fileExclusivePickerModeID != NULL);
+    CHECK_NULL(AwtFileDialog::fileExclusivePickerModeID);
 
     CATCH_BAD_ALLOC;
 }
