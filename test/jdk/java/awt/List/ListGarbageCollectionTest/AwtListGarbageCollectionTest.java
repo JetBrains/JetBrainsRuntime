@@ -30,9 +30,8 @@
  */
 
 import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.lang.ref.WeakReference;
+import java.util.concurrent.locks.LockSupport;
 
 public class AwtListGarbageCollectionTest {
     public static void main(String[] args) {
@@ -56,6 +55,8 @@ public class AwtListGarbageCollectionTest {
             frame.remove(strongListRef);
             weakListRef = new WeakReference<List>(strongListRef);
             strongListRef = null;
+
+            LockSupport.parkNanos(1_000_000_000);
 
             //make out of memory to force gc
             String veryLongString = new String(new char[100]);
