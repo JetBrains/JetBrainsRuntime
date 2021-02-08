@@ -1456,7 +1456,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativePushNSWindowT
 JNF_COCOA_ENTER(env);
 
     NSWindow *nsWindow = OBJC(windowPtr);
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
 
         if (![nsWindow isKeyWindow]) {
             [nsWindow makeKeyAndOrderFront:nsWindow];
