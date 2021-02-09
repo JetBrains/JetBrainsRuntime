@@ -26,9 +26,14 @@
 #include "jlong.h"
 #include "sun_font_SunLayoutEngine.h"
 
+#define JHARFBUZZ_DLL JNI_LIB_NAME("jharfbuzz")
+#define HARFBUZZ_DLL JNI_LIB_NAME("harfbuzz")
+
 #include "hb.h"
 #include "hb-jdk.h"
 #include <stdlib.h>
+#include <dlfcn.h>
+#include "jvm_md.h"
 
 #if defined(__GNUC__) &&  __GNUC__ >= 4
 #define HB_UNUSED       __attribute__((unused))
@@ -36,6 +41,158 @@
 #define HB_UNUSED
 #endif
 
+p_hb_buffer_create_type p_hb_buffer_create;
+p_hb_buffer_set_script_type p_hb_buffer_set_script;
+p_hb_buffer_set_language_type p_hb_buffer_set_language;
+p_hb_buffer_set_direction_type p_hb_buffer_set_direction;
+p_hb_buffer_set_cluster_level_type p_hb_buffer_set_cluster_level;
+p_hb_buffer_add_utf16_type p_hb_buffer_add_utf16;
+p_hb_feature_from_string_type p_hb_feature_from_string;
+p_hb_buffer_get_length_type p_hb_buffer_get_length;
+p_hb_buffer_get_glyph_infos_type p_hb_buffer_get_glyph_infos;
+p_hb_buffer_get_glyph_positions_type p_hb_buffer_get_glyph_positions;
+p_hb_buffer_destroy_type p_hb_buffer_destroy;
+p_hb_font_destroy_type p_hb_font_destroy;
+p_hb_font_funcs_create_type p_hb_font_funcs_create;
+p_hb_font_funcs_set_nominal_glyphs_func_type p_hb_font_funcs_set_nominal_glyphs_func;
+p_hb_font_funcs_set_variation_glyph_func_type p_hb_font_funcs_set_variation_glyph_func;
+p_hb_font_funcs_set_glyph_h_advance_func_type p_hb_font_funcs_set_glyph_h_advance_func;
+p_hb_font_funcs_set_glyph_v_advance_func_type p_hb_font_funcs_set_glyph_v_advance_func;
+p_hb_font_funcs_set_glyph_h_origin_func_type p_hb_font_funcs_set_glyph_h_origin_func;
+p_hb_font_funcs_set_glyph_v_origin_func_type p_hb_font_funcs_set_glyph_v_origin_func;
+p_hb_font_funcs_set_glyph_h_kerning_func_type p_hb_font_funcs_set_glyph_h_kerning_func;
+p_hb_font_funcs_set_glyph_v_kerning_func_type p_hb_font_funcs_set_glyph_v_kerning_func;
+p_hb_font_funcs_set_glyph_extents_func_type p_hb_font_funcs_set_glyph_extents_func;
+p_hb_font_funcs_set_glyph_contour_point_func_type p_hb_font_funcs_set_glyph_contour_point_func;
+p_hb_font_funcs_set_glyph_name_func_type p_hb_font_funcs_set_glyph_name_func;
+p_hb_font_funcs_set_glyph_from_name_func_type p_hb_font_funcs_set_glyph_from_name_func;
+p_hb_font_funcs_make_immutable_type p_hb_font_funcs_make_immutable;
+p_hb_blob_create_type p_hb_blob_create;
+p_hb_face_create_for_tables_type p_hb_face_create_for_tables;
+p_hb_font_create_type p_hb_font_create;
+p_hb_font_set_funcs_type p_hb_font_set_funcs;
+p_hb_font_set_scale_type p_hb_font_set_scale;
+p_hb_shape_full_type p_hb_shape_full;
+p_hb_font_funcs_set_nominal_glyph_func_type p_hb_font_funcs_set_nominal_glyph_func;
+p_hb_face_destroy_type p_hb_face_destroy;
+p_hb_ot_tag_to_language_type p_hb_ot_tag_to_language;
+
+static int initialisedHBAPI = 0;
+
+void initHBAPI() {
+    if (initialisedHBAPI) {
+        return;
+    }
+
+#if !defined(_WIN32) && !defined(__APPLE__)
+    void* libharfbuzz = NULL;
+    libharfbuzz = dlopen(JHARFBUZZ_DLL, RTLD_LOCAL | RTLD_LAZY);
+    if (libharfbuzz == NULL) {
+        CHECK_NULL(libharfbuzz = dlopen(HARFBUZZ_DLL, RTLD_LOCAL | RTLD_LAZY));
+    }
+
+    p_hb_buffer_create = (p_hb_buffer_create_type)dlsym(libharfbuzz, "hb_buffer_create");
+    p_hb_buffer_set_script = (p_hb_buffer_set_script_type)dlsym(libharfbuzz, "hb_buffer_set_script");
+    p_hb_buffer_set_language = (p_hb_buffer_set_language_type)dlsym(libharfbuzz, "hb_buffer_set_language");
+    p_hb_buffer_set_direction = (p_hb_buffer_set_direction_type)dlsym(libharfbuzz, "hb_buffer_set_direction");
+    p_hb_buffer_set_cluster_level = (p_hb_buffer_set_cluster_level_type)dlsym(libharfbuzz, "hb_buffer_set_cluster_level");
+    p_hb_buffer_add_utf16 = (p_hb_buffer_add_utf16_type)dlsym(libharfbuzz, "hb_buffer_add_utf16");
+    p_hb_feature_from_string = (p_hb_feature_from_string_type)dlsym(libharfbuzz, "hb_feature_from_string");
+    p_hb_buffer_get_length = (p_hb_buffer_get_length_type)dlsym(libharfbuzz, "hb_buffer_get_length");
+
+    p_hb_buffer_get_glyph_infos = (p_hb_buffer_get_glyph_infos_type)dlsym(libharfbuzz, "hb_buffer_get_glyph_infos");
+    p_hb_buffer_get_glyph_positions = (p_hb_buffer_get_glyph_positions_type)dlsym(libharfbuzz, "hb_buffer_get_glyph_positions");
+    p_hb_buffer_destroy = (p_hb_buffer_destroy_type)dlsym(libharfbuzz, "hb_buffer_destroy");
+    p_hb_font_destroy = (p_hb_font_destroy_type)dlsym(libharfbuzz, "hb_font_destroy");
+    p_hb_font_funcs_create = (p_hb_font_funcs_create_type)dlsym(libharfbuzz, "hb_font_funcs_create");
+    p_hb_font_funcs_set_nominal_glyphs_func =
+            (p_hb_font_funcs_set_nominal_glyphs_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_nominal_glyphs_func");
+    p_hb_font_funcs_set_variation_glyph_func =
+            (p_hb_font_funcs_set_variation_glyph_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_variation_glyph_func");
+    p_hb_font_funcs_set_glyph_h_advance_func =
+            (p_hb_font_funcs_set_glyph_h_advance_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_glyph_h_advance_func");
+    p_hb_font_funcs_set_glyph_v_advance_func =
+            (p_hb_font_funcs_set_glyph_v_advance_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_glyph_v_advance_func");
+    p_hb_font_funcs_set_glyph_h_origin_func =
+            (p_hb_font_funcs_set_glyph_h_origin_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_glyph_h_origin_func");
+    p_hb_font_funcs_set_glyph_v_origin_func =
+            (p_hb_font_funcs_set_glyph_v_origin_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_glyph_v_origin_func");
+    p_hb_font_funcs_set_glyph_h_kerning_func =
+            (p_hb_font_funcs_set_glyph_h_kerning_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_glyph_h_kerning_func");
+    p_hb_font_funcs_set_glyph_v_kerning_func =
+            (p_hb_font_funcs_set_glyph_v_kerning_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_glyph_v_kerning_func");
+    p_hb_font_funcs_set_glyph_extents_func =
+            (p_hb_font_funcs_set_glyph_extents_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_glyph_extents_func");
+    p_hb_font_funcs_set_glyph_contour_point_func =
+            (p_hb_font_funcs_set_glyph_contour_point_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_glyph_contour_point_func");
+    p_hb_font_funcs_set_glyph_name_func =
+            (p_hb_font_funcs_set_glyph_name_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_glyph_name_func");
+    p_hb_font_funcs_set_glyph_from_name_func =
+            (p_hb_font_funcs_set_glyph_from_name_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_glyph_from_name_func");
+    p_hb_font_funcs_make_immutable =
+            (p_hb_font_funcs_make_immutable_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_make_immutable");
+    p_hb_blob_create =
+            (p_hb_blob_create_type)dlsym(libharfbuzz, "hb_blob_create");
+    p_hb_face_create_for_tables =
+            (p_hb_face_create_for_tables_type)dlsym(libharfbuzz, "hb_face_create_for_tables");
+    p_hb_font_create =
+            (p_hb_font_create_type)dlsym(libharfbuzz, "hb_font_create");
+    p_hb_font_set_funcs =
+            (p_hb_font_set_funcs_type)dlsym(libharfbuzz, "hb_font_set_funcs");
+    p_hb_font_set_scale =
+            (p_hb_font_set_scale_type)dlsym(libharfbuzz, "hb_font_set_scale");
+    p_hb_shape_full = (p_hb_shape_full_type)dlsym(libharfbuzz, "hb_shape_full");
+#else
+    p_hb_buffer_create = hb_buffer_create;
+    p_hb_buffer_set_script = hb_buffer_set_script;
+    p_hb_buffer_set_language = hb_buffer_set_language;
+    p_hb_buffer_set_direction = hb_buffer_set_direction;
+    p_hb_buffer_set_cluster_level = hb_buffer_set_cluster_level;
+    p_hb_buffer_add_utf16 = hb_buffer_add_utf16;
+    p_hb_feature_from_string = hb_feature_from_string;
+    p_hb_buffer_get_length = hb_buffer_get_length;
+
+    p_hb_buffer_get_glyph_infos = hb_buffer_get_glyph_infos;
+    p_hb_buffer_get_glyph_positions = hb_buffer_get_glyph_positions;
+    p_hb_buffer_destroy = hb_buffer_destroy;
+    p_hb_font_destroy = hb_font_destroy;
+    p_hb_font_funcs_create = hb_font_funcs_create;
+    p_hb_font_funcs_set_nominal_glyphs_func = hb_font_funcs_set_nominal_glyphs_func;
+    p_hb_font_funcs_set_variation_glyph_func = hb_font_funcs_set_variation_glyph_func;
+    p_hb_font_funcs_set_glyph_h_advance_func = hb_font_funcs_set_glyph_h_advance_func;
+    p_hb_font_funcs_set_glyph_v_advance_func = hb_font_funcs_set_glyph_v_advance_func;
+    p_hb_font_funcs_set_glyph_h_origin_func = hb_font_funcs_set_glyph_h_origin_func;
+    p_hb_font_funcs_set_glyph_v_origin_func = hb_font_funcs_set_glyph_v_origin_func;
+    p_hb_font_funcs_set_glyph_h_kerning_func = hb_font_funcs_set_glyph_h_kerning_func;
+    p_hb_font_funcs_set_glyph_v_kerning_func = hb_font_funcs_set_glyph_v_kerning_func;
+    p_hb_font_funcs_set_glyph_extents_func = hb_font_funcs_set_glyph_extents_func;
+    p_hb_font_funcs_set_glyph_contour_point_func = hb_font_funcs_set_glyph_contour_point_func;
+    p_hb_font_funcs_set_glyph_name_func = hb_font_funcs_set_glyph_name_func;
+    p_hb_font_funcs_set_glyph_from_name_func = hb_font_funcs_set_glyph_from_name_func;
+    p_hb_font_funcs_make_immutable = hb_font_funcs_make_immutable;
+    p_hb_blob_create = hb_blob_create;
+    p_hb_face_create_for_tables = hb_face_create_for_tables;
+    p_hb_font_create = hb_font_create;
+    p_hb_font_set_funcs = hb_font_set_funcs;
+    p_hb_font_set_scale = hb_font_set_scale;
+    p_hb_shape_full = hb_shape_full;
+#endif
+
+    initialisedHBAPI = 1;
+}
 
 static hb_bool_t
 hb_jdk_get_nominal_glyph (hb_font_t *font HB_UNUSED,
@@ -268,31 +425,31 @@ _hb_jdk_get_font_funcs (void)
   hb_font_funcs_t *ff;
 
   if (!jdk_ffuncs) {
-      ff = hb_font_funcs_create();
+      ff = p_hb_font_funcs_create();
 
-      hb_font_funcs_set_nominal_glyph_func(ff, hb_jdk_get_nominal_glyph, NULL, NULL);
-      hb_font_funcs_set_variation_glyph_func(ff, hb_jdk_get_variation_glyph, NULL, NULL);
-      hb_font_funcs_set_glyph_h_advance_func(ff,
+      p_hb_font_funcs_set_nominal_glyph_func(ff, hb_jdk_get_nominal_glyph, NULL, NULL);
+      p_hb_font_funcs_set_variation_glyph_func(ff, hb_jdk_get_variation_glyph, NULL, NULL);
+      p_hb_font_funcs_set_glyph_h_advance_func(ff,
                     hb_jdk_get_glyph_h_advance, NULL, NULL);
-      hb_font_funcs_set_glyph_v_advance_func(ff,
+      p_hb_font_funcs_set_glyph_v_advance_func(ff,
                     hb_jdk_get_glyph_v_advance, NULL, NULL);
-      hb_font_funcs_set_glyph_h_origin_func(ff,
+      p_hb_font_funcs_set_glyph_h_origin_func(ff,
                     hb_jdk_get_glyph_h_origin, NULL, NULL);
-      hb_font_funcs_set_glyph_v_origin_func(ff,
+      p_hb_font_funcs_set_glyph_v_origin_func(ff,
                     hb_jdk_get_glyph_v_origin, NULL, NULL);
-      hb_font_funcs_set_glyph_h_kerning_func(ff,
+      p_hb_font_funcs_set_glyph_h_kerning_func(ff,
                     hb_jdk_get_glyph_h_kerning, NULL, NULL);
-      hb_font_funcs_set_glyph_v_kerning_func(ff,
+      p_hb_font_funcs_set_glyph_v_kerning_func(ff,
                     hb_jdk_get_glyph_v_kerning, NULL, NULL);
-      hb_font_funcs_set_glyph_extents_func(ff,
+      p_hb_font_funcs_set_glyph_extents_func(ff,
                     hb_jdk_get_glyph_extents, NULL, NULL);
-      hb_font_funcs_set_glyph_contour_point_func(ff,
+      p_hb_font_funcs_set_glyph_contour_point_func(ff,
                     hb_jdk_get_glyph_contour_point, NULL, NULL);
-      hb_font_funcs_set_glyph_name_func(ff,
+      p_hb_font_funcs_set_glyph_name_func(ff,
                     hb_jdk_get_glyph_name, NULL, NULL);
-      hb_font_funcs_set_glyph_from_name_func(ff,
+      p_hb_font_funcs_set_glyph_from_name_func(ff,
                     hb_jdk_get_glyph_from_name, NULL, NULL);
-      hb_font_funcs_make_immutable(ff); // done setting functions.
+      p_hb_font_funcs_make_immutable(ff); // done setting functions.
       jdk_ffuncs = ff;
   }
   return jdk_ffuncs;
@@ -353,7 +510,7 @@ reference_table(hb_face_t *face HB_UNUSED, hb_tag_t tag, void *user_data) {
   }
   env->GetByteArrayRegion(tableBytes, 0, length, (jbyte*)buffer);
 
-  return hb_blob_create((const char *)buffer, length,
+  return p_hb_blob_create((const char *)buffer, length,
                          HB_MEMORY_MODE_WRITABLE,
                          buffer, free);
 }
@@ -382,7 +539,7 @@ JNIEXPORT jlong JNICALL Java_sun_font_SunLayoutEngine_createFace(JNIEnv *env,
         free(fi);
         return 0;
     }
-    hb_face_t *face = hb_face_create_for_tables(reference_table, fi,
+    hb_face_t *face = p_hb_face_create_for_tables(reference_table, fi,
                                                 cleanupFontInfo);
     return ptr_to_jlong(face);
 }
@@ -396,7 +553,7 @@ JNIEXPORT void JNICALL Java_sun_font_SunLayoutEngine_disposeFace(JNIEnv *env,
                         jclass cls,
                         jlong ptr) {
     hb_face_t* face = (hb_face_t*) jlong_to_ptr(ptr);
-    hb_face_destroy(face);
+    p_hb_face_destroy(face);
 }
 
 } // extern "C"
@@ -407,11 +564,11 @@ static hb_font_t* _hb_jdk_font_create(hb_face_t* face,
 
     hb_font_t *font;
 
-    font = hb_font_create(face);
-    hb_font_set_funcs (font,
+    font = p_hb_font_create(face);
+    p_hb_font_set_funcs (font,
                        _hb_jdk_get_font_funcs (),
                        jdkFontInfo, (hb_destroy_func_t) _do_nothing);
-    hb_font_set_scale (font,
+    p_hb_font_set_scale (font,
                       HBFloatToFixed(jdkFontInfo->ptSize*jdkFontInfo->devScale),
                       HBFloatToFixed(jdkFontInfo->ptSize*jdkFontInfo->devScale));
   return font;
