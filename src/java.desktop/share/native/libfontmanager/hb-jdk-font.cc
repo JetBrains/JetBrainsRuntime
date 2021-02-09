@@ -26,14 +26,15 @@
 #include "jlong.h"
 #include "sun_font_SunLayoutEngine.h"
 
-#define JHARFBUZZ_DLL JNI_LIB_NAME("jharfbuzz")
-#define HARFBUZZ_DLL JNI_LIB_NAME("harfbuzz")
-
 #include "hb.h"
 #include "hb-jdk.h"
 #include <stdlib.h>
 #include <dlfcn.h>
 #include "jvm_md.h"
+#include "jni_util.h"
+
+#define JHARFBUZZ_DLL JNI_LIB_NAME("jharfbuzz")
+#define HARFBUZZ_DLL JNI_LIB_NAME("harfbuzz")
 
 #if defined(__GNUC__) &&  __GNUC__ >= 4
 #define HB_UNUSED       __attribute__((unused))
