@@ -280,45 +280,45 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      hbface = (hb_face_t*) jlong_to_ptr(pFace);
      hbfont = hb_jdk_font_create(hbface, jdkFontInfo, NULL);
 
-     buffer = hb_buffer_create();
-     hb_buffer_set_script(buffer, getHBScriptCode(script));
-     hb_buffer_set_language(buffer,
-                            hb_ot_tag_to_language(HB_OT_TAG_DEFAULT_LANGUAGE));
+     buffer = p_hb_buffer_create();
+     p_hb_buffer_set_script(buffer, getHBScriptCode(script));
+     p_hb_buffer_set_language(buffer,
+                            p_hb_ot_tag_to_language(HB_OT_TAG_DEFAULT_LANGUAGE));
      if ((flags & TYPO_RTL) != 0) {
          direction = HB_DIRECTION_RTL;
      }
-     hb_buffer_set_direction(buffer, direction);
-     hb_buffer_set_cluster_level(buffer,
+     p_hb_buffer_set_direction(buffer, direction);
+     p_hb_buffer_set_cluster_level(buffer,
                                  HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
 
      chars = (*env)->GetCharArrayElements(env, text, NULL);
      if ((*env)->ExceptionCheck(env)) {
-         hb_buffer_destroy(buffer);
-         hb_font_destroy(hbfont);
+         p_hb_buffer_destroy(buffer);
+         p_hb_font_destroy(hbfont);
          free((void*)jdkFontInfo);
          return JNI_FALSE;
      }
      len = (*env)->GetArrayLength(env, text);
 
-     hb_buffer_add_utf16(buffer, chars, len, offset, limit-offset);
+     p_hb_buffer_add_utf16(buffer, chars, len, offset, limit-offset);
 
      features = calloc(2, sizeof(hb_feature_t));
      if (features) {
-         hb_feature_from_string(kern, -1, &features[featureCount++]);
-         hb_feature_from_string(liga, -1, &features[featureCount++]);
+         p_hb_feature_from_string(kern, -1, &features[featureCount++]);
+         p_hb_feature_from_string(liga, -1, &features[featureCount++]);
      }
 
-     hb_shape_full(hbfont, buffer, features, featureCount, 0);
-     glyphCount = hb_buffer_get_length(buffer);
-     glyphInfo = hb_buffer_get_glyph_infos(buffer, 0);
-     glyphPos = hb_buffer_get_glyph_positions(buffer, &buflen);
+     p_hb_shape_full(hbfont, buffer, features, featureCount, 0);
+     glyphCount = p_hb_buffer_get_length(buffer);
+     glyphInfo = p_hb_buffer_get_glyph_infos(buffer, 0);
+     glyphPos = p_hb_buffer_get_glyph_positions(buffer, &buflen);
 
      ret = storeGVData(env, gvdata, slot, baseIndex, offset, startPt,
                        limit - offset, glyphCount, glyphInfo, glyphPos,
                        jdkFontInfo->devScale);
 
-     hb_buffer_destroy (buffer);
-     hb_font_destroy(hbfont);
+     p_hb_buffer_destroy (buffer);
+     p_hb_font_destroy(hbfont);
      free((void*)jdkFontInfo);
      if (features != NULL) free(features);
      (*env)->ReleaseCharArrayElements(env, text, chars, JNI_ABORT);

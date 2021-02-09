@@ -614,7 +614,7 @@ else
   # For use by libfontmanager:
   ifeq ($(OPENJDK_TARGET_OS), windows)
     LIBHARFBUZZ_LIBS := $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libjharfbuzz/jharfbuzz.lib
-  else
+  else ifeq ($(OPENJDK_TARGET_OS), macosx)
     LIBHARFBUZZ_LIBS := -ljharfbuzz
   endif
 
