@@ -112,7 +112,7 @@ int initHBAPI() {
             (p_hb_font_funcs_set_nominal_glyphs_func_type)dlsym(
                     libharfbuzz, "hb_font_funcs_set_nominal_glyphs_func");
     p_hb_font_funcs_set_nominal_glyph_func = (p_hb_font_funcs_set_nominal_glyph_func_type)dlsym(
-                    libharfbuzz, "hb_font_funcs_set_nominal_glyph_func_type");
+                    libharfbuzz, "hb_font_funcs_set_nominal_glyph_func");
     p_hb_font_funcs_set_variation_glyph_func =
             (p_hb_font_funcs_set_variation_glyph_func_type)dlsym(
                     libharfbuzz, "hb_font_funcs_set_variation_glyph_func");
