@@ -623,7 +623,7 @@ public:
                 OLE_HRT(fileDialog->GetFileName(&fileName));
                 data->lastIgnoredFileName = fileName;
 
-                OLE_HRT(fileDialog->SetOkButtonLabel(data->selectFolderButtonText));
+                OLE_HRT(fileDialog->SetOkButtonLabel(data->selectFolderButtonText ? data->selectFolderButtonText : L"Select Folder"));
                 data->forceUseContainerFolder = TRUE;
             }
         OLE_CATCH
