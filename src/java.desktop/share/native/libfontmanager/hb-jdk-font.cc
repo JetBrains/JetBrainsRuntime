@@ -29,7 +29,9 @@
 #include "hb.h"
 #include "hb-jdk.h"
 #include <stdlib.h>
+#if !defined(_WIN32) && !defined(__APPLE__)
 #include <dlfcn.h>
+#endif
 #include "jvm_md.h"
 #include "jni_util.h"
 
