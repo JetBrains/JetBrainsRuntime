@@ -27,6 +27,7 @@
 #include "sun_font_SunLayoutEngine.h"
 
 #include "hb.h"
+#include "hb-ot.h"
 #include "hb-jdk.h"
 #include <stdlib.h>
 #if !defined(_WIN32) && !defined(__APPLE__)
@@ -82,16 +83,16 @@ p_hb_ot_tag_to_language_type p_hb_ot_tag_to_language;
 
 static int initialisedHBAPI = 0;
 
-void initHBAPI() {
+int initHBAPI() {
     if (initialisedHBAPI) {
-        return;
+        return initialisedHBAPI;
     }
 
 #if !defined(_WIN32) && !defined(__APPLE__)
     void* libharfbuzz = NULL;
     libharfbuzz = dlopen(JHARFBUZZ_DLL, RTLD_LOCAL | RTLD_LAZY);
     if (libharfbuzz == NULL) {
-        CHECK_NULL(libharfbuzz = dlopen(HARFBUZZ_DLL, RTLD_LOCAL | RTLD_LAZY));
+        CHECK_NULL_RETURN(libharfbuzz = dlopen(HARFBUZZ_DLL, RTLD_LOCAL | RTLD_LAZY), 0);
     }
 
     p_hb_buffer_create = (p_hb_buffer_create_type)dlsym(libharfbuzz, "hb_buffer_create");
@@ -102,7 +103,6 @@ void initHBAPI() {
     p_hb_buffer_add_utf16 = (p_hb_buffer_add_utf16_type)dlsym(libharfbuzz, "hb_buffer_add_utf16");
     p_hb_feature_from_string = (p_hb_feature_from_string_type)dlsym(libharfbuzz, "hb_feature_from_string");
     p_hb_buffer_get_length = (p_hb_buffer_get_length_type)dlsym(libharfbuzz, "hb_buffer_get_length");
-
     p_hb_buffer_get_glyph_infos = (p_hb_buffer_get_glyph_infos_type)dlsym(libharfbuzz, "hb_buffer_get_glyph_infos");
     p_hb_buffer_get_glyph_positions = (p_hb_buffer_get_glyph_positions_type)dlsym(libharfbuzz, "hb_buffer_get_glyph_positions");
     p_hb_buffer_destroy = (p_hb_buffer_destroy_type)dlsym(libharfbuzz, "hb_buffer_destroy");
@@ -111,6 +111,8 @@ void initHBAPI() {
     p_hb_font_funcs_set_nominal_glyphs_func =
             (p_hb_font_funcs_set_nominal_glyphs_func_type)dlsym(
                     libharfbuzz, "hb_font_funcs_set_nominal_glyphs_func");
+    p_hb_font_funcs_set_nominal_glyph_func = (p_hb_font_funcs_set_nominal_glyph_func_type)dlsym(
+                    libharfbuzz, "hb_font_funcs_set_nominal_glyph_func_type");
     p_hb_font_funcs_set_variation_glyph_func =
             (p_hb_font_funcs_set_variation_glyph_func_type)dlsym(
                     libharfbuzz, "hb_font_funcs_set_variation_glyph_func");
@@ -158,6 +160,7 @@ void initHBAPI() {
     p_hb_font_set_scale =
             (p_hb_font_set_scale_type)dlsym(libharfbuzz, "hb_font_set_scale");
     p_hb_shape_full = (p_hb_shape_full_type)dlsym(libharfbuzz, "hb_shape_full");
+    p_hb_ot_tag_to_language = (p_hb_ot_tag_to_language_type)dlsym(libharfbuzz, "hb_ot_tag_to_language");
 #else
     p_hb_buffer_create = hb_buffer_create;
     p_hb_buffer_set_script = hb_buffer_set_script;
@@ -167,12 +170,12 @@ void initHBAPI() {
     p_hb_buffer_add_utf16 = hb_buffer_add_utf16;
     p_hb_feature_from_string = hb_feature_from_string;
     p_hb_buffer_get_length = hb_buffer_get_length;
-
     p_hb_buffer_get_glyph_infos = hb_buffer_get_glyph_infos;
     p_hb_buffer_get_glyph_positions = hb_buffer_get_glyph_positions;
     p_hb_buffer_destroy = hb_buffer_destroy;
     p_hb_font_destroy = hb_font_destroy;
     p_hb_font_funcs_create = hb_font_funcs_create;
+    p_hb_font_funcs_set_nominal_glyph_func = hb_font_funcs_set_nominal_glyph_func;
     p_hb_font_funcs_set_nominal_glyphs_func = hb_font_funcs_set_nominal_glyphs_func;
     p_hb_font_funcs_set_variation_glyph_func = hb_font_funcs_set_variation_glyph_func;
     p_hb_font_funcs_set_glyph_h_advance_func = hb_font_funcs_set_glyph_h_advance_func;
@@ -192,9 +195,11 @@ void initHBAPI() {
     p_hb_font_set_funcs = hb_font_set_funcs;
     p_hb_font_set_scale = hb_font_set_scale;
     p_hb_shape_full = hb_shape_full;
+    p_hb_ot_tag_to_language = hb_ot_tag_to_language;
 #endif
 
     initialisedHBAPI = 1;
+    return initialisedHBAPI;
 }
 
 static hb_bool_t

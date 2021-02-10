@@ -87,7 +87,7 @@ jboolean storeGVData(JNIEnv* env,
     unsigned int* indices;
     jarray glyphArray, posArray, inxArray;
 
-    if (!init_JNI_IDs(env)) {
+    if (!init_JNI_IDs(env) || !initHBAPI()) {
         return JNI_FALSE;
     }
 

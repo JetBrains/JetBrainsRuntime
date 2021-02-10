@@ -231,7 +231,7 @@ extern p_hb_font_funcs_set_nominal_glyph_func_type p_hb_font_funcs_set_nominal_g
 extern p_hb_face_destroy_type p_hb_face_destroy;
 extern p_hb_ot_tag_to_language_type p_hb_ot_tag_to_language;
 
-void initHBAPI();
+int initHBAPI();
 
 # ifdef __cplusplus
 }
