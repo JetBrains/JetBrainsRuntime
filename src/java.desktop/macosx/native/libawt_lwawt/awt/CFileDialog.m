@@ -169,44 +169,25 @@ canChooseDirectories:(BOOL)inChooseDirectories
                 [thePanel setAppearance:fOwner.appearance];
             }
 
-            void (^onComplete)(BOOL, BOOL) = ^(BOOL responseOK, BOOL doStopModal) {
-                if (responseOK) {
-                    NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
-                    fURLs = (fMode == java_awt_FileDialog_LOAD)
-                         ? [openPanel URLs]
-                         : [NSArray arrayWithObject:[openPanel URL]];
+            fPanelResult = [thePanel runModal];
 
-                    fPanelResult = NSFileHandlingPanelOKButton;
-                } else {
-                    fURLs = [NSArray array];
-                }
-                [fURLs retain];
-                if (doStopModal)
-                    [NSApp stopModal];
-                if (menuBar != nil) {
-                    [CMenuBar activate:menuBar modallyDisabled:NO];
-                }
-            };
-
-            [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {
-                onComplete(result == NSFileHandlingPanelOKButton, YES);
-            }];
-
-            [NSApp runModalForWindow:thePanel];
+            if (menuBar != nil) {
+                [CMenuBar activate:menuBar modallyDisabled:NO];
+            }
         }
         else
         {
             fPanelResult = [thePanel runModalForDirectory:fDirectory file:fFile];
+        }
 
-            if ([self userClickedOK]) {
-                if (fMode == java_awt_FileDialog_LOAD) {
-                    NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
-                    fURLs = [openPanel URLs];
-                } else {
-                    fURLs = [NSArray arrayWithObject:[thePanel URL]];
-                }
-                [fURLs retain];
+        if ([self userClickedOK]) {
+            if (fMode == java_awt_FileDialog_LOAD) {
+                NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
+                fURLs = [openPanel URLs];
+            } else {
+                fURLs = [NSArray arrayWithObject:[thePanel URL]];
             }
+            [fURLs retain];
         }
 
         [thePanel setDelegate:nil];
