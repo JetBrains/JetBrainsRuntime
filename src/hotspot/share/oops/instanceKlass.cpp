@@ -1286,7 +1286,7 @@ void InstanceKlass::init_implementor() {
 // (DCEVM) - init_implementor() for dcevm
 void InstanceKlass::init_implementor_from_redefine() {
   assert(is_interface(), "not interface");
-  Klass* volatile* addr = adr_implementor();
+  InstanceKlass* volatile* addr = adr_implementor();
   assert(addr != NULL, "null addr");
   if (addr != NULL) {
     *addr = NULL;
@@ -3828,7 +3828,7 @@ void InstanceKlass::verify_on(outputStream* st) {
 
     guarantee(sib->is_klass(), "should be klass");
     // TODO: (DCEVM) explain
-    guarantee(sib->super() == super || AllowEnhancedClassRedefinition && super->newest_version() == SystemDictionary::Object_klass(), "siblings should have same superklass");
+    guarantee(sib->super() == super || AllowEnhancedClassRedefinition && super->newest_version() == vmClasses::Object_klass(), "siblings should have same superklass");
   }
 
   // Verify local interfaces
