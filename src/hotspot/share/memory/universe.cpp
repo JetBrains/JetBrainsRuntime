@@ -41,8 +41,6 @@
 #include "gc/shared/gcTraceTime.inline.hpp"
 #include "gc/shared/oopStorageSet.hpp"
 #include "gc/shared/tlab_globals.hpp"
-#include "gc/shared/weakProcessor.hpp"
-#include "interpreter/interpreter.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/heapShared.hpp"
@@ -71,8 +69,6 @@
 #include "runtime/jniHandles.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/timerTrace.hpp"
-#include "runtime/vmOperations.hpp"
-#include "services/management.hpp"
 #include "services/memoryService.hpp"
 #include "utilities/align.hpp"
 #include "utilities/autoRestore.hpp"
@@ -204,73 +200,6 @@ void Universe::basic_type_classes_do(KlassClosure *closure) {
   for (int i = T_BOOLEAN; i < T_LONG+1; i++) {
     closure->do_klass(_typeArrayKlassObjs[i]);
   }
-}
-
-#define DO_PRIMITIVE_MIRROR(m) \
-  f->do_oop((oop*) &m);
-
-// FIXME: (DCEVM) This method should iterate all pointers that are not within heap objects.
-void Universe::root_oops_do(OopClosure *oopClosure) {
-  Universe::oops_do(oopClosure);
-//  ReferenceProcessor::oops_do(oopClosure); (tw) check why no longer there
-  JNIHandles::oops_do(oopClosure);   // Global (strong) JNI handles
-  Threads::oops_do(oopClosure, NULL);
-  ObjectSynchronizer::oops_do(oopClosure);
-  // (DCEVM) TODO: Check if this is correct?
-  Management::oops_do(oopClosure);
-  OopStorageSet::vm_global()->oops_do(oopClosure);
-  // CLDToOopClosure cld_closure(oopClosure, ClassLoaderData::_claim_none);
-  // ClassLoaderDataGraph::cld_do(&cld_closure);
-
-  // Now adjust pointers in remaining weak roots.  (All of which should
-  // have been cleared if they pointed to non-surviving objects.)
-  // Global (weak) JNI handles
-  WeakProcessor::oops_do(oopClosure);
-
-  JvmtiExport::oops_do(oopClosure);
-
-  CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
-  CodeCache::blobs_do(&blobClosure);
-  
-  AOT_ONLY(AOTLoader::oops_do(oopClosure);)
-  
-  // StringTable::oops_do was removed in j15
-  // StringTable::oops_do(oopClosure);
-
-  // OopStorageSet::vm_global()->oops_do(oopClosure);
-
-}
-
-void Universe::oops_do(OopClosure* f) {
-  PRIMITIVE_MIRRORS_DO(DO_PRIMITIVE_MIRROR);
-
-  for (int i = T_BOOLEAN; i < T_VOID+1; i++) {
-    f->do_oop((oop*) &_mirrors[i]);
-  }
-  assert(_mirrors[0] == NULL && _mirrors[T_BOOLEAN - 1] == NULL, "checking");
-
-  f->do_oop((oop*)&_the_empty_class_array);
-  f->do_oop((oop*)&_the_null_sentinel);
-  f->do_oop((oop*)&_the_null_string);
-  f->do_oop((oop*)&_the_min_jint_string);
-  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_java_heap));
-  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_c_heap));
-  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_metaspace));
-  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_class_metaspace));
-  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_array_size));
-  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_gc_overhead_limit));
-  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_realloc_objects));
-  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_retry));
-  f->do_oop((oop*)&_delayed_stack_overflow_error_message);
-  f->do_oop((oop*)&_preallocated_out_of_memory_error_array);
-  f->do_oop((oop*)&_null_ptr_exception_instance);
-  f->do_oop((oop*)&_arithmetic_exception_instance);
-  f->do_oop((oop*)&_virtual_machine_error_instance);
-  f->do_oop((oop*)&_main_thread_group);
-  f->do_oop((oop*)&_system_thread_group);
-  f->do_oop((oop*)&_reference_pending_list);
-  debug_only(f->do_oop((oop*)&_fullgc_alot_dummy_array);)
-  ThreadsSMRSupport::exiting_threads_oops_do(f);
 }
 
 void LatestMethodCache::metaspace_pointers_do(MetaspaceClosure* it) {

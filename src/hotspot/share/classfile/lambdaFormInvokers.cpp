@@ -136,6 +136,7 @@ void LambdaFormInvokers::reload_class(char* name, ClassFileStream& st, TRAPS) {
                                                    class_name,
                                                    cld,
                                                    cl_info,
+                                                   false,
                                                    CHECK);
 
   {

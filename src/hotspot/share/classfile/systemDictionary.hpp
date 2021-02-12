@@ -201,6 +201,10 @@ class SystemDictionary : AllStatic {
   // Initialization
   static void initialize(TRAPS);
 
+  // (DCEVM) Enhanced class redefinition
+  static void remove_from_hierarchy(InstanceKlass* k);
+  static void update_constraints_after_redefinition();
+
 protected:
   // Returns the class loader data to be used when looking up/updating the
   // system dictionary.

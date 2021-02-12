@@ -26,8 +26,10 @@
 #include "aot/aotLoader.hpp"
 #include "classfile/classFileParser.hpp"
 #include "classfile/classFileStream.hpp"
+#include "classfile/classLoadInfo.hpp"
 #include "classfile/metadataOnStackMark.hpp"
 #include "classfile/systemDictionary.hpp"
+#include "classfile/symbolTable.hpp"
 #include "classfile/verifier.hpp"
 #include "classfile/dictionary.hpp"
 #include "classfile/classLoaderDataGraph.hpp"
@@ -198,8 +200,8 @@ class FieldCopier : public FieldClosure {
     if (found && result.is_static()) {
       log_trace(redefine, class, obsolete, metadata)("Copying static field value for field %s old_offset=%d new_offset=%d",
                                                fd->name()->as_C_string(), result.offset(), fd->offset());
-      memcpy(cur_oop->obj_field_addr_raw<HeapWord>(fd->offset()),
-             old_oop->obj_field_addr_raw<HeapWord>(result.offset()),
+      memcpy(cur_oop->obj_field_addr<HeapWord>(fd->offset()),
+             old_oop->obj_field_addr<HeapWord>(result.offset()),
              type2aelembytes(fd->field_type()));
 
       // Static fields may have references to java.lang.Class
@@ -242,6 +244,17 @@ void VM_EnhancedRedefineClasses::register_nmethod_g1(nmethod* nm) {
   }
 }
 
+void VM_EnhancedRedefineClasses::root_oops_do(OopClosure *oopClosure) {
+  Universe::vm_global()->oops_do(oopClosure);
+
+  Threads::oops_do(oopClosure, NULL);
+  AOT_ONLY(AOTLoader::oops_do(oopClosure);)
+  OopStorageSet::strong_oops_do(oopClosure);
+
+  CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
+  CodeCache::blobs_do(&blobClosure);
+}
+
 // TODO comment
 struct StoreBarrier {
   // TODO: j10 review change ::oop_store -> HeapAccess<>::oop_store
@@ -280,7 +293,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
           Thread *thread = Thread::current();
           CallInfo info(new_method, newest, thread);
           Handle objHandle(thread, obj);
-          MethodHandles::init_method_MemberName(objHandle, info);
+          MethodHandles::init_method_MemberName(objHandle, info, thread);
         } else {
           java_lang_invoke_MemberName::set_method(obj, NULL);
         }
@@ -558,7 +571,7 @@ void VM_EnhancedRedefineClasses::doit() {
       _timer_heap_iterate.stop();
     }
 
-    Universe::root_oops_do(&oopClosureNoBarrier);
+    root_oops_do(&oopClosureNoBarrier);
 
     if (UseG1GC) {
       // this should work also for other GCs
@@ -737,8 +750,8 @@ bool VM_EnhancedRedefineClasses::is_modifiable_class(oop klass_mirror) {
 //  - link new classes
 jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
 
-  _affected_klasses = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<Klass*>(_class_count, true);
-  _new_classes = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<InstanceKlass*>(_class_count, true);
+  _affected_klasses = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<Klass*>(_class_count);
+  _new_classes = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<InstanceKlass*>(_class_count);
 
   ResourceMark rm(THREAD);
 

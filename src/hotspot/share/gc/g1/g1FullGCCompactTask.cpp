@@ -134,7 +134,10 @@ void G1FullGCCompactTask::compact_region_dcevm(HeapRegion* hr, GrowableArray<Hea
   // Once all objects have been moved the liveness information
   // needs be cleared.
   collector()->mark_bitmap()->clear_region(hr);
-  hr->complete_compaction();
+  if (G1VerifyBitmaps) {
+    collector()->mark_bitmap()->clear_region(hr);
+  }
+  hr->reset_compacted_after_full_gc();
 }
 
 void G1FullGCCompactTask::serial_compaction_dcevm() {
@@ -177,13 +180,13 @@ size_t G1FullGCCompactTask::G1CompactRegionClosureDcevm::apply(oop obj) {
     } else {
       DcevmSharedGC::update_fields(obj, oop(destination));
     }
-    oop(destination)->init_mark_raw();
+    oop(destination)->init_mark();
     assert(oop(destination)->klass() != NULL, "should have a class");
     return size;
   }
 
   Copy::aligned_conjoint_words(obj_addr, destination, size);
-  oop(destination)->init_mark_raw();
+  oop(destination)->init_mark();
   assert(oop(destination)->klass() != NULL, "should have a class");
 
   return size;

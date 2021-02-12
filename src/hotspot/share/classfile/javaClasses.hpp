@@ -1002,7 +1002,7 @@ class java_lang_invoke_DirectMethodHandle_StaticAccessor: AllStatic {
 
   // Testers
   static bool is_subclass(Klass* klass) {
-    return klass->is_subclass_of(SystemDictionary::DirectMethodHandle_StaticAccessor_klass());
+    return klass->is_subclass_of(vmClasses::DirectMethodHandle_StaticAccessor_klass());
   }
   static bool is_instance(oop obj);
 
@@ -1026,7 +1026,7 @@ class java_lang_invoke_DirectMethodHandle_Accessor: AllStatic {
 
   // Testers
   static bool is_subclass(Klass* klass) {
-    return klass->is_subclass_of(SystemDictionary::DirectMethodHandle_Accessor_klass());
+    return klass->is_subclass_of(vmClasses::DirectMethodHandle_Accessor_klass());
   }
   static bool is_instance(oop obj);
 

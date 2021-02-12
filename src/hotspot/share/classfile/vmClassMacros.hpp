@@ -109,6 +109,8 @@
                                                                                                                 \
   /* support for dynamic typing; it's OK if these are NULL in earlier JDKs */                                   \
   do_klass(DirectMethodHandle_klass,                    java_lang_invoke_DirectMethodHandle                   ) \
+  do_klass(DirectMethodHandle_StaticAccessor_klass,     java_lang_invoke_DirectMethodHandle_StaticAccessor    ) \
+  do_klass(DirectMethodHandle_Accessor_klass,           java_lang_invoke_DirectMethodHandle_Accessor          ) \
   do_klass(MethodHandle_klass,                          java_lang_invoke_MethodHandle                         ) \
   do_klass(VarHandle_klass,                             java_lang_invoke_VarHandle                            ) \
   do_klass(MemberName_klass,                            java_lang_invoke_MemberName                           ) \

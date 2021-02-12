@@ -3765,7 +3765,7 @@ void java_lang_invoke_DirectMethodHandle_StaticAccessor::set_static_offset(oop d
   macro(_static_offset_offset, k, vmSymbols::static_offset_name(), long_signature, false)
 
 void java_lang_invoke_DirectMethodHandle_StaticAccessor::compute_offsets() {
-  InstanceKlass* k = SystemDictionary::DirectMethodHandle_StaticAccessor_klass();
+  InstanceKlass* k = vmClasses::DirectMethodHandle_StaticAccessor_klass();
   DIRECTMETHODHANDLE_STATIC_ACCESSOR_FIELDS_DO(FIELD_COMPUTE_OFFSET);
 }
 
@@ -3793,7 +3793,7 @@ void java_lang_invoke_DirectMethodHandle_Accessor::set_field_offset(oop dmh, int
   macro(_field_offset_offset, k, vmSymbols::field_offset_name(), int_signature, false)
 
 void java_lang_invoke_DirectMethodHandle_Accessor::compute_offsets() {
-  InstanceKlass* k = SystemDictionary::DirectMethodHandle_Accessor_klass();
+  InstanceKlass* k = vmClasses::DirectMethodHandle_Accessor_klass();
   DIRECTMETHODHANDLE_ACCESSOR_FIELDS_DO(FIELD_COMPUTE_OFFSET);
 }
 

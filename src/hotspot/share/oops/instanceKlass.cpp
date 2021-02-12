@@ -3867,7 +3867,7 @@ void InstanceKlass::verify_on(outputStream* st) {
 
     guarantee(sib->is_klass(), "should be klass");
     // TODO: (DCEVM) explain
-    guarantee(sib->super() == super || AllowEnhancedClassRedefinition && super->newest_version() == SystemDictionary::Object_klass(), "siblings should have same superklass");
+    guarantee(sib->super() == super || AllowEnhancedClassRedefinition && super->newest_version() == vmClasses::Object_klass(), "siblings should have same superklass");
   }
 
   // Verify local interfaces
