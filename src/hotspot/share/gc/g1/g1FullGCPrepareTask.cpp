@@ -292,7 +292,7 @@ size_t G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::apply(oop object) 
   HeapWord* compact_top = _cp->forward_compact_top(forward_size);
 
   if (compact_top == NULL || must_rescue(object, oop(compact_top))) {
-    _cp->rescued_oops()->append((HeapWord*)object);
+    _cp->rescued_oops()->append(cast_from_oop<HeapWord*>(object));
   } else {
     _cp->forward_dcevm(object, forward_size, (size != forward_size));
   }
@@ -318,7 +318,7 @@ bool G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::must_rescue(oop old_
   int new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
   int original_size = old_obj->size();
 
-  bool overlap = ((HeapWord*)old_obj + original_size < (HeapWord*)new_obj + new_size);
+  bool overlap = (cast_from_oop<HeapWord*>(old_obj) + original_size < cast_from_oop<HeapWord*>(new_obj) + new_size);
 
   return overlap;
 }

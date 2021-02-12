@@ -82,6 +82,11 @@ public:
   void print_on(outputStream* st) const;
   void verify();
 
+  // (DCEVM) Enhanced class redefinition
+  bool update_klass(unsigned int hash, Symbol* name, ClassLoaderData* loader_data, InstanceKlass* k, InstanceKlass* old_klass);
+
+  void rollback_redefinition();
+
  private:
   DictionaryEntry* new_entry(unsigned int hash, InstanceKlass* klass);
 
@@ -103,11 +108,6 @@ public:
   }
 
   void free_entry(DictionaryEntry* entry);
-
-  // Enhanced class redefinition
-  bool update_klass(unsigned int hash, Symbol* name, ClassLoaderData* loader_data, InstanceKlass* k, InstanceKlass* old_klass);
-
-  void rollback_redefinition();
 
   // (DCEVM) return old class if redefining in AllowEnhancedClassRedefinition, otherwise return "k"
   static InstanceKlass* old_if_redefined(InstanceKlass* k) {

@@ -953,6 +953,7 @@ static jclass jvm_lookup_define_class(jclass lookup, const char *name,
                                                       class_loader,
                                                       protection_domain,
                                                       &st,
+                                                      NULL,
                                                       CHECK_NULL);
 
     if (log_is_enabled(Debug, class, resolve) && defined_k != NULL) {
@@ -973,6 +974,7 @@ static jclass jvm_lookup_define_class(jclass lookup, const char *name,
                                                class_loader,
                                                &st,
                                                cl_info,
+                                               NULL,
                                                CHECK_NULL);
     if (defined_k == NULL) {
       THROW_MSG_0(vmSymbols::java_lang_Error(), "Failure to define a hidden class");

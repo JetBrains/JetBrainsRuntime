@@ -291,7 +291,7 @@ void mutex_init() {
   def(InitCompleted_lock           , PaddedMonitor, leaf,        true,  _safepoint_check_never);
   def(VtableStubs_lock             , PaddedMutex  , nonleaf,     true,  _safepoint_check_never);
   def(Notify_lock                  , PaddedMonitor, nonleaf,     true,  _safepoint_check_always);
-  def(EnhancedRedefineClasses_lock , PaddedMutex  , nonleaf+7,   false, Monitor::_safepoint_check_always);     // for ensuring that class redefinition is not done in parallel
+  def(EnhancedRedefineClasses_lock , PaddedMutex  , nonleaf+7,   false, _safepoint_check_always);     // for ensuring that class redefinition is not done in parallel
   def(JNICritical_lock             , PaddedMonitor, nonleaf,     true,  _safepoint_check_always); // used for JNI critical regions
   def(AdapterHandlerLibrary_lock   , PaddedMutex  , nonleaf,     true,  _safepoint_check_always);
 

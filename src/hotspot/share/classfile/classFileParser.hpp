@@ -150,9 +150,6 @@ class ClassFileParser {
   const intArray* _method_ordering;
   GrowableArray<Method*>* _all_mirandas;
 
-  // Enhanced class redefinition
-  const bool _pick_newest;
-
   enum { fixed_buffer_size = 128 };
   u_char _linenumbertable_buffer[fixed_buffer_size];
 
@@ -205,6 +202,9 @@ class ClassFileParser {
   bool _has_empty_finalizer;
   bool _has_vanilla_constructor;
   int _max_bootstrap_specifier_index;  // detects BSS values
+
+  // (DCEVM) Enhanced class redefinition
+  const bool _pick_newest;
 
   void parse_stream(const ClassFileStream* const stream, TRAPS);
 
@@ -597,7 +597,7 @@ class ClassFileParser {
   ClassLoaderData* loader_data() const { return _loader_data; }
   const Symbol* class_name() const { return _class_name; }
   const InstanceKlass* super_klass() const { return _super_klass; }
-  Array<Klass*>* local_interfaces() const { return _local_interfaces; }
+  Array<InstanceKlass*>* local_interfaces() const { return _local_interfaces; }
 
   ReferenceType reference_type() const { return _rt; }
   AccessFlags access_flags() const { return _access_flags; }

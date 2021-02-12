@@ -260,7 +260,9 @@ class java_lang_Class : AllStatic {
   static void set_init_lock(oop java_class, oop init_lock);
   static void set_protection_domain(oop java_class, oop protection_domain);
   static void set_class_loader(oop java_class, oop class_loader);
+ public: // DCEVM
   static void set_component_mirror(oop java_class, oop comp_mirror);
+ private:
   static void initialize_mirror_fields(Klass* k, Handle mirror, Handle protection_domain,
                                        Handle classData, TRAPS);
   static void initialize_mirror_fields(Klass* k, Handle mirror, Handle protection_domain, TRAPS);

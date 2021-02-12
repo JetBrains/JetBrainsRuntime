@@ -1981,13 +1981,15 @@ bool Arguments::check_gc_consistency() {
   // of collectors.
   uint i = 0;
   if (UseSerialGC)                       i++;
-  if (UseConcMarkSweepGC)                i++;
-  if (UseParallelGC || UseParallelOldGC) i++;
+  if (UseParallelGC)                     i++;
   if (UseG1GC)                           i++;
+  if (UseEpsilonGC)                      i++;
+  if (UseZGC)                            i++;
+  if (UseShenandoahGC)                   i++;
   if (AllowEnhancedClassRedefinition) {
     // Must use serial GC. This limitation applies because the instance size changing GC modifications
     // are only built into the mark and compact algorithm.
-    if ((!UseSerialGC && !UseG1GC) && i >= 1) {
+    if (!UseSerialGC && !UseG1GC && i >= 1) {
       jio_fprintf(defaultStream::error_stream(),
                   "Must use the Serial or G1 GC with enhanced class redefinition.\n");
       return false;

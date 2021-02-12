@@ -1395,6 +1395,7 @@ jvmtiError VM_RedefineClasses::load_new_class_versions(TRAPS) {
                                                       the_class_loader,
                                                       &st,
                                                       cl_info,
+                                                      NULL,
                                                       THREAD);
     // Clear class_being_redefined just to be sure.
     state->clear_class_being_redefined();

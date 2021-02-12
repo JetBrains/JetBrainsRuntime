@@ -24,11 +24,14 @@
 
 #include "precompiled.hpp"
 #include "aot/aotLoader.hpp"
+#include "classfile/classFileParser.hpp"
 #include "classfile/classFileStream.hpp"
 #include "classfile/metadataOnStackMark.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/verifier.hpp"
 #include "classfile/dictionary.hpp"
+#include "classfile/classLoaderDataGraph.hpp"
+#include "interpreter/linkResolver.hpp"
 #include "interpreter/oopMapCache.hpp"
 #include "interpreter/rewriter.hpp"
 #include "logging/logStream.hpp"
@@ -37,17 +40,22 @@
 #include "memory/resourceArea.hpp"
 #include "memory/iterator.inline.hpp"
 #include "oops/fieldStreams.hpp"
+#include "oops/fieldStreams.inline.hpp"
 #include "oops/klassVtable.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/constantPool.inline.hpp"
+#include "oops/metadata.hpp"
+#include "oops/methodData.hpp"
 #include "prims/jvmtiImpl.hpp"
 #include "prims/jvmtiClassFileReconstituter.hpp"
 #include "prims/jvmtiEnhancedRedefineClasses.hpp"
 #include "prims/methodComparator.hpp"
 #include "prims/resolvedMethodTable.hpp"
+#include "prims/methodHandles.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/relocator.hpp"
+#include "runtime/fieldDescriptor.hpp"
 #include "runtime/fieldDescriptor.inline.hpp"
 #include "utilities/bitMap.inline.hpp"
 #include "prims/jvmtiThreadState.inline.hpp"
@@ -55,6 +63,8 @@
 #include "oops/constantPool.inline.hpp"
 #include "gc/g1/g1CollectedHeap.hpp"
 #include "gc/shared/dcevmSharedGC.hpp"
+#include "gc/shared/scavengableNMethods.hpp"
+#include "ci/ciObjectFactory.hpp"
 
 Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
 Array<Method*>* VM_EnhancedRedefineClasses::_new_methods = NULL;
@@ -66,6 +76,7 @@ int         VM_EnhancedRedefineClasses::_matching_methods_length = 0;
 int         VM_EnhancedRedefineClasses::_deleted_methods_length  = 0;
 int         VM_EnhancedRedefineClasses::_added_methods_length    = 0;
 Klass*      VM_EnhancedRedefineClasses::_the_class_oop = NULL;
+u8        VM_EnhancedRedefineClasses::_id_counter = 0;
 
 //
 // Create new instance of enhanced class redefiner.
@@ -88,6 +99,7 @@ VM_EnhancedRedefineClasses::VM_EnhancedRedefineClasses(jint class_count, const j
   _class_load_kind = class_load_kind;
   _res = JVMTI_ERROR_NONE;
   _any_class_has_resolved_methods = false;
+  _id = next_id();
 }
 
 static inline InstanceKlass* get_ik(jclass def) {
@@ -211,9 +223,7 @@ class FieldCopier : public FieldClosure {
 
 // TODO: review...
 void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
-  if (!nm->on_scavenge_root_list()) {
-    CodeCache::add_scavenge_root_nmethod(nm);
-  }
+  ScavengableNMethods::register_nmethod(nm);
 }
 
 void VM_EnhancedRedefineClasses::unregister_nmethod_g1(nmethod* nm) {
@@ -414,7 +424,7 @@ public:
       _tmp_obj_size = size;
       _tmp_obj = (oop)resource_allocate_bytes(size * HeapWordSize);
     }
-    Copy::aligned_disjoint_words((HeapWord*)o, (HeapWord*)_tmp_obj, size);
+    Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(o), cast_from_oop<HeapWord*>(_tmp_obj), size);
   }
 
   virtual void do_object(oop obj) {
@@ -505,9 +515,6 @@ void VM_EnhancedRedefineClasses::doit() {
     ClearCpoolCacheAndUnpatch clear_cpool_cache(thread);
     ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
 
-
-    // SystemDictionary::methods_do(fix_invoke_method);
-
   // JSR-292 support
   if (_any_class_has_resolved_methods) {
     bool trace_name_printed = false;
@@ -564,8 +571,8 @@ void VM_EnhancedRedefineClasses::doit() {
     InstanceKlass* old = InstanceKlass::cast(cur->old_version());
 
     // Swap marks to have same hashcodes
-    markOop cur_mark = cur->prototype_header();
-    markOop old_mark = old->prototype_header();
+    markWord cur_mark = cur->prototype_header();
+    markWord old_mark = old->prototype_header();
     cur->set_prototype_header(old_mark);
     old->set_prototype_header(cur_mark);
 
@@ -579,14 +586,14 @@ void VM_EnhancedRedefineClasses::doit() {
       // Revert pool holder for old version of klass (it was updated by one of ours closure!)
     old->constants()->set_pool_holder(old);
 
-    Klass* array_klasses = old->array_klasses();
+    ObjArrayKlass* array_klasses = old->array_klasses();
     if (array_klasses != NULL) {
       assert(cur->array_klasses() == NULL, "just checking");
 
       // Transfer the array classes, otherwise we might get cast exceptions when casting array types.
       // Also, set array klasses element klass.
       cur->set_array_klasses(array_klasses);
-      ObjArrayKlass::cast(array_klasses)->set_element_klass(cur);
+      array_klasses->set_element_klass(cur);
       java_lang_Class::release_set_array_klass(cur->java_mirror(), array_klasses);
       java_lang_Class::set_component_mirror(array_klasses->java_mirror(), cur->java_mirror());
     }
@@ -641,11 +648,15 @@ void VM_EnhancedRedefineClasses::doit() {
   //ClassLoaderDataGraph::classes_do(&clean_weak_method_links);
 
   // Disable any dependent concurrent compilations
-  SystemDictionary::notice_modification();
+  // SystemDictionary::notice_modification();
+
+  JvmtiExport::increment_redefinition_count();
 
   // Set flag indicating that some invariants are no longer true.
   // See jvmtiExport.hpp for detailed explanation.
-  JvmtiExport::set_has_redefined_a_class();
+
+  // dcevm15: handled by _redefinition_count
+  // JvmtiExport::set_has_redefined_a_class();
 
 #ifdef PRODUCT
   if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
@@ -718,7 +729,7 @@ bool VM_EnhancedRedefineClasses::is_modifiable_class(oop klass_mirror) {
   }
 
   // Cannot redefine or retransform an anonymous class.
-  if (InstanceKlass::cast(k)->is_anonymous()) {
+  if (InstanceKlass::cast(k)->is_unsafe_anonymous()) {
     return false;
   }
   return true;
@@ -804,22 +815,30 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
 
     InstanceKlass* k;
 
-    if (InstanceKlass::cast(the_class)->is_anonymous()) {
-      const InstanceKlass* host_class = the_class->host_klass();
+    if (InstanceKlass::cast(the_class)->is_unsafe_anonymous()) {
+      const InstanceKlass* host_class = the_class->unsafe_anonymous_host();
 
       // Make sure it's the real host class, not another anonymous class.
-      while (host_class != NULL && host_class->is_anonymous()) {
-        host_class = host_class->host_klass();
+      while (host_class != NULL && host_class->is_unsafe_anonymous()) {
+        host_class = host_class->unsafe_anonymous_host();
       }
+
+      ClassLoadInfo cl_info(protection_domain,
+                            host_class,
+                            NULL,     // dynamic_nest_host
+                            NULL,     // cp_patches
+                            Handle(), // classData
+                            false,    // is_hidden
+                            false,    // is_strong_hidden
+                            true);    // FIXME: check if correct. can_access_vm_annotations
 
       k = SystemDictionary::parse_stream(the_class_sym,
                                          the_class_loader,
-                                         protection_domain,
                                          &st,
-                                         host_class,
+                                         cl_info,
                                          the_class,
-                                         NULL,
                                          THREAD);
+
       k->class_loader_data()->exchange_holders(the_class->class_loader_data());
       the_class->class_loader_data()->inc_keep_alive();
     } else {
@@ -966,7 +985,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
   // Check interfaces
 
   // Interfaces removed?
-  Array<Klass*>* old_interfaces = the_class->transitive_interfaces();
+  Array<InstanceKlass*>* old_interfaces = the_class->transitive_interfaces();
   for (i = 0; i < old_interfaces->length(); i++) {
     InstanceKlass* old_interface = InstanceKlass::cast(old_interfaces->at(i));
     if (!new_class->implements_interface_any_version(old_interface)) {
@@ -976,7 +995,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
   }
 
   // Interfaces added?
-  Array<Klass*>* new_interfaces = new_class->transitive_interfaces();
+  Array<InstanceKlass*>* new_interfaces = new_class->transitive_interfaces();
   for (i = 0; i<new_interfaces->length(); i++) {
     if (!the_class->implements_interface_any_version(new_interfaces->at(i))) {
       result = result | Klass::ModifyClass;
@@ -1389,8 +1408,8 @@ void VM_EnhancedRedefineClasses::rollback() {
 // Rewrite faster byte-codes back to their slower equivalent. Undoes rewriting happening in templateTable_xxx.cpp
 // The reason is that once we zero cpool caches, we need to re-resolve all entries again. Faster bytecodes do not
 // do that, they assume that cache entry is resolved already.
-void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
-  RawBytecodeStream bcs(method);
+void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method, TRAPS) {
+  RawBytecodeStream bcs(methodHandle(THREAD, method));
   Bytecodes::Code code;
   Bytecodes::Code java_code;
   while (!bcs.is_last_bytecode()) {
@@ -1454,11 +1473,11 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
   HandleMark hm(_thread);
   InstanceKlass *ik = InstanceKlass::cast(k);
 
-  constantPoolHandle other_cp = constantPoolHandle(ik->constants());
+  constantPoolHandle other_cp = constantPoolHandle(_thread, ik->constants());
 
   // Update host klass of anonymous classes (for example, produced by lambdas) to newest version.
-  if (ik->is_anonymous() && ik->host_klass()->new_version() != NULL) {
-    ik->set_host_klass(InstanceKlass::cast(ik->host_klass()->newest_version()));
+  if (ik->is_unsafe_anonymous() && ik->unsafe_anonymous_host()->new_version() != NULL) {
+    ik->set_unsafe_anonymous_host(InstanceKlass::cast(ik->unsafe_anonymous_host()->newest_version()));
   }
 
   // Update implementor if there is only one, in this case implementor() can reference old class
@@ -1492,7 +1511,18 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
 
   // If bytecode rewriting is enabled, we also need to unpatch bytecode to force resolution of zeroed entries
   if (RewriteBytecodes) {
-    ik->methods_do(unpatch_bytecode);
+    ik->methods_do(unpatch_bytecode, _thread);
+  }
+}
+
+u8 VM_EnhancedRedefineClasses::next_id() {
+  while (true) {
+    u8 id = _id_counter;
+    u8 next_id = id + 1;
+    u8 result = Atomic::cmpxchg(&_id_counter, id, next_id);
+    if (result == id) {
+      return next_id;
+    }
   }
 }
 
@@ -1512,31 +1542,8 @@ void VM_EnhancedRedefineClasses::MethodDataCleaner::do_klass(Klass* k) {
   }
 }
 
-void VM_EnhancedRedefineClasses::fix_invoke_method(Method* method) {
 
-  constantPoolHandle other_cp = constantPoolHandle(method->constants());
-
-  for (int i = 0; i < other_cp->length(); i++) {
-    if (other_cp->tag_at(i).is_klass()) {
-      Klass* klass = other_cp->resolved_klass_at(i);
-      if (klass->new_version() != NULL) {
-        // Constant pool entry points to redefined class -- update to the new version
-        other_cp->klass_at_put(i, klass->newest_version());
-      }
-      assert(other_cp->resolved_klass_at(i)->new_version() == NULL, "Must be new klass!");
-    }
-  }
-
-  ConstantPoolCache* cp_cache = other_cp->cache();
-  if (cp_cache != NULL) {
-    cp_cache->clear_entries();
-  }
-
-}
-
-
-
-void VM_EnhancedRedefineClasses::update_jmethod_ids() {
+void VM_EnhancedRedefineClasses::update_jmethod_ids(TRAPS) {
   for (int j = 0; j < _matching_methods_length; ++j) {
     Method* old_method = _matching_old_methods[j];
     jmethodID jmid = old_method->find_jmethod_id_or_null();
@@ -1547,10 +1554,10 @@ void VM_EnhancedRedefineClasses::update_jmethod_ids() {
 
     if (jmid != NULL) {
       // There is a jmethodID, change it to point to the new method
-      methodHandle new_method_h(_matching_new_methods[j]);
+      methodHandle new_method_h(THREAD, _matching_new_methods[j]);
 
       if (old_method->new_version() == NULL) {
-        methodHandle old_method_h(_matching_old_methods[j]);
+        methodHandle old_method_h(THREAD, _matching_old_methods[j]);
         jmethodID new_jmethod_id = Method::make_jmethod_id(old_method_h->method_holder()->class_loader_data(), old_method_h());
         bool result = InstanceKlass::cast(old_method_h->method_holder())->update_jmethod_id(old_method_h(), new_jmethod_id);
       } else {
@@ -1887,7 +1894,7 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
 
   // track number of methods that are EMCP for add_previous_version() call below
   check_methods_and_mark_as_obsolete();
-  update_jmethod_ids();
+  update_jmethod_ids(THREAD);
 
   _any_class_has_resolved_methods = the_class->has_resolved_methods() || _any_class_has_resolved_methods;
 
@@ -2119,12 +2126,12 @@ jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(TRAPS) {
 
     Handle protection_domain(THREAD, klass->protection_domain());
 
+    ClassLoadInfo cl_info(protection_domain);
+
     ClassFileParser parser(&st,
                            klass->name(),
                            klass->class_loader_data(),
-                           protection_domain,
-                           NULL, // host_klass
-                           NULL, // cp_patches
+                           &cl_info,
                            ClassFileParser::INTERNAL, // publicity level
                            true,
                            THREAD);
@@ -2134,7 +2141,7 @@ jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(TRAPS) {
       links.append(KlassPair(super_klass, klass));
     }
 
-    Array<Klass*>* local_interfaces = parser.local_interfaces();
+    Array<InstanceKlass*>* local_interfaces = parser.local_interfaces();
     for (int j = 0; j < local_interfaces->length(); j++) {
       Klass* iface = local_interfaces->at(j);
       if (iface != NULL && _affected_klasses->contains(iface)) {
@@ -2157,7 +2164,7 @@ jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(TRAPS) {
         links.append(KlassPair(super_klass, klass));
       }
 
-      Array<Klass*>* local_interfaces = klass->local_interfaces();
+      Array<InstanceKlass*>* local_interfaces = klass->local_interfaces();
       for (int j = 0; j < local_interfaces->length(); j++) {
         Klass* interfaceKlass = local_interfaces->at(j);
         if (_affected_klasses->contains(interfaceKlass)) {

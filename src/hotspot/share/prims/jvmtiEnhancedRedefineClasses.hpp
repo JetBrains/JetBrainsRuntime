@@ -32,7 +32,7 @@
 #include "memory/resourceArea.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "oops/objArrayOop.hpp"
-#include "gc/shared/vmGCOperations.hpp"
+#include "gc/shared/gcVMOperations.hpp"
 #include "../../../java.base/unix/native/include/jni_md.h"
 
 //
@@ -59,6 +59,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   static int             _deleted_methods_length;
   static int             _added_methods_length;
   static Klass*          _the_class_oop;
+  static u8              _id_counter;
 
   // The instance fields are used to pass information from
   // doit_prologue() to doit() and doit_epilogue().
@@ -91,6 +92,9 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   elapsedTimer  _timer_heap_iterate;
   elapsedTimer  _timer_heap_full_gc;
 
+  // Redefinition id used by JFR
+  u8 _id;
+
   // These routines are roughly in call order unless otherwise noted.
 
   // Load and link new classes (either redefined or affected by redefinition - subclass, ...)
@@ -118,15 +122,14 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   static void mark_as_scavengable(nmethod* nm);
   static void unregister_nmethod_g1(nmethod* nm);
   static void register_nmethod_g1(nmethod* nm);
-  static void unpatch_bytecode(Method* method);
-  static void fix_invoke_method(Method* method);
+  static void unpatch_bytecode(Method* method, TRAPS);
 
   // Figure out which new methods match old methods in name and signature,
   // which methods have been added, and which are no longer present
   void compute_added_deleted_matching_methods();
 
   // Change jmethodIDs to point to the new methods
-  void update_jmethod_ids();
+  void update_jmethod_ids(TRAPS);
 
   // marking methods as old and/or obsolete
   void check_methods_and_mark_as_obsolete();
@@ -140,6 +143,8 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   void increment_class_counter(InstanceKlass *ik, TRAPS);
 
   void flush_dependent_code(InstanceKlass* k_h, TRAPS);
+
+  u8 next_id();
 
   static void check_class(InstanceKlass* k_oop, TRAPS);
 
@@ -181,6 +186,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
 
   bool allow_nested_vm_operations() const        { return true; }
   jvmtiError check_error()                       { return _res; }
+  u8 id()                                        { return _id; }
 
   // Modifiable test must be shared between IsModifiableClass query
   // and redefine implementation

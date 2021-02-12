@@ -459,20 +459,23 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
 
   EventRetransformClasses event;
   jvmtiError error;
+  u8 op_id;
 
   if (AllowEnhancedClassRedefinition) {
     MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
     VMThread::execute(&op);
+    op_id = op.id();
     error = (op.check_error());
   } else {
     VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
     VMThread::execute(&op);
+    op_id = op.id();
     error = op.check_error();
   }
   if (error == JVMTI_ERROR_NONE) {
     event.set_classCount(class_count);
-    event.set_redefinitionId(op.id());
+    event.set_redefinitionId(op_id);
     event.commit();
   }
   return error;
@@ -487,19 +490,23 @@ JvmtiEnv::RedefineClasses(jint class_count, const jvmtiClassDefinition* class_de
   EventRedefineClasses event;
   jvmtiError error;
 
+  u8 op_id;
+
   if (AllowEnhancedClassRedefinition) {
     MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
     VMThread::execute(&op);
+    op_id = op.id();
     error = (op.check_error());
   } else {
     VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
     VMThread::execute(&op);
+    op_id = op.id();
     error = op.check_error();
   }
   if (error == JVMTI_ERROR_NONE) {
     event.set_classCount(class_count);
-    event.set_redefinitionId(op.id());
+    event.set_redefinitionId(op_id);
     event.commit();
   }
   return error;

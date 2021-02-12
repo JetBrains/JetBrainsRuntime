@@ -205,13 +205,13 @@ void* Klass::operator new(size_t size, ClassLoaderData* loader_data, size_t word
 // which doesn't zero out the memory before calling the constructor.
 Klass::Klass(KlassID id) : _id(id),
                            _prototype_header(markWord::prototype()),
-                           _shared_class_path_index(-1),
-                           _new_version(NULL),
                            _old_version(NULL),
-                           _is_redefining(false),
-                           _is_copying_backwards(false),
+                           _new_version(NULL),
                            _redefinition_flags(Klass::NoRedefinition),
-                           _update_information(NULL) {
+                           _is_redefining(false),
+                           _update_information(NULL),
+                           _is_copying_backwards(false),
+                           _shared_class_path_index(-1) {
   CDS_ONLY(_shared_class_flags = 0;)
   CDS_JAVA_HEAP_ONLY(_archived_mirror_index = -1;)
   _primary_supers[0] = this;
