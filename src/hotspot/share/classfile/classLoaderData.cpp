@@ -605,7 +605,7 @@ void ClassLoaderData::exchange_holders(ClassLoaderData* cld) {
   oop holder_oop = _holder.peek();
   _holder.replace(cld->_holder.peek());
   cld->_holder.replace(holder_oop);
-  WeakHandle<vm_weak_data> exchange = _holder;
+  WeakHandle exchange = _holder;
   _holder = cld->_holder;
   cld->_holder = exchange;
 }

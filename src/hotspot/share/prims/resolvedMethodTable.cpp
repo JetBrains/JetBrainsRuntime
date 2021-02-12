@@ -33,6 +33,7 @@
 #include "oops/access.inline.hpp"
 #include "oops/method.hpp"
 #include "oops/oop.inline.hpp"
+#include "oops/klass.inline.hpp"
 #include "oops/weakHandle.inline.hpp"
 #include "prims/resolvedMethodTable.hpp"
 #include "runtime/atomic.hpp"
@@ -373,7 +374,7 @@ class AdjustMethodEntriesDcevm : public StackObj {
   GrowableArray<oop>* _oops_to_add;
 public:
   AdjustMethodEntriesDcevm(GrowableArray<oop>* oops_to_add, bool* trace_name_printed) : _trace_name_printed(trace_name_printed), _oops_to_add(oops_to_add) {};
-  bool operator()(WeakHandle<vm_resolved_method_table_data>* entry) {
+  bool operator()(WeakHandle* entry) {
     oop mem_name = entry->peek();
     if (mem_name == NULL) {
       // Removed
@@ -458,7 +459,7 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
       if (_local_table->get(thread, lookup, rmg)) {
         break;
       }
-      WeakHandle<vm_resolved_method_table_data> wh = WeakHandle<vm_resolved_method_table_data>::create(Handle(thread, mem_name));
+      WeakHandle wh(_oop_storage, mem_name);
       // The hash table takes ownership of the WeakHandle, even if it's not inserted.
       if (_local_table->insert(thread, lookup, wh)) {
         log_insert(method);
