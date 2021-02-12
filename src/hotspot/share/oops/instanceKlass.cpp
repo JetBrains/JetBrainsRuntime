@@ -327,9 +327,19 @@ bool InstanceKlass::has_nestmate_access_to(InstanceKlass* k, TRAPS) {
     return false;
   }
 
+  // (DCEVM) cur_host can be old, decide accessibility based on active version
+  if (AllowEnhancedClassRedefinition) {
+    cur_host = InstanceKlass::cast(cur_host->active_version());
+  }
+
   Klass* k_nest_host = k->nest_host(icce, CHECK_false);
   if (k_nest_host == NULL) {
     return false;
+  }
+
+  // (DCEVM) k_nest_host can be old, decide accessibility based on active version
+  if (AllowEnhancedClassRedefinition) {
+    k_nest_host = InstanceKlass::cast(k_nest_host->active_version());
   }
 
   bool access = (cur_host == k_nest_host);
