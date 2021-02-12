@@ -109,7 +109,7 @@ public:
                              Handle protection_domain);
 
   // (DCEVM) return old class if redefining in AllowEnhancedClassRedefinition, otherwise return "k"
-  static InstanceKlass* old_if_redefined(InstanceKlass* k) {
+  static InstanceKlass* old_if_redefining(InstanceKlass* k) {
     return (k != NULL && k->is_redefining()) ? ((InstanceKlass* )k->old_version()) : k;
   }
 };
