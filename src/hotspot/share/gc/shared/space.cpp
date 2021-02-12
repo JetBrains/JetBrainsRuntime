@@ -438,7 +438,7 @@ int CompactibleSpace::space_index(oop obj) {
     index++;
   }
 
-  tty->print_cr("could not compute space_index for %08xh", (HeapWord*)obj);
+  tty->print_cr("could not compute space_index for %08xh", cast_from_oop<HeapWord*>(obj));
   index = 0;
 
   Generation* gen = heap->old_gen();
@@ -483,7 +483,7 @@ bool CompactibleSpace::must_rescue(oop old_obj, oop new_obj) {
   bool new_in_tenured = tenured_gen->is_in_reserved(new_obj);
   if (old_in_tenured == new_in_tenured) {
     // Rescue if object may overlap with a higher memory address.
-    bool overlap = ((HeapWord*)old_obj + original_size < (HeapWord*)new_obj + new_size);
+    bool overlap = (cast_from_oop<HeapWord*>(old_obj) + original_size < cast_from_oop<HeapWord*>(new_obj) + new_size);
     if (old_in_tenured) {
       // Old and new address are in same space, so just compare the address.
       // Must rescue if object moves towards the top of the space.

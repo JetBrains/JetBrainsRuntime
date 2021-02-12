@@ -1323,7 +1323,7 @@ void InstanceKlass::init_implementor() {
 // (DCEVM) - init_implementor() for dcevm
 void InstanceKlass::init_implementor_from_redefine() {
   assert(is_interface(), "not interface");
-  Klass** addr = adr_implementor();
+  Klass* volatile* addr = adr_implementor();
   assert(addr != NULL, "null addr");
   if (addr != NULL) {
     *addr = NULL;
@@ -1663,6 +1663,21 @@ void InstanceKlass::methods_do(void f(Method* method)) {
     Method* m = methods()->at(index);
     assert(m->is_method(), "must be method");
     f(m);
+  }
+}
+
+void InstanceKlass::methods_do(void f(Method* method, TRAPS), TRAPS) {
+  // Methods aren't stable until they are loaded.  This can be read outside
+  // a lock through the ClassLoaderData for profiling
+  if (!is_loaded()) {
+    return;
+  }
+
+  int len = methods()->length();
+  for (int index = 0; index < len; index++) {
+    Method* m = methods()->at(index);
+    assert(m->is_method(), "must be method");
+    f(m, CHECK);
   }
 }
 
