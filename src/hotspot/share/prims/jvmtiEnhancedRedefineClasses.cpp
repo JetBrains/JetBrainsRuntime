@@ -750,8 +750,8 @@ bool VM_EnhancedRedefineClasses::is_modifiable_class(oop klass_mirror) {
 //  - link new classes
 jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
 
-  _affected_klasses = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<Klass*>(_class_count);
-  _new_classes = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<InstanceKlass*>(_class_count);
+  _affected_klasses = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<Klass*>(_class_count, mtInternal);
+  _new_classes = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<InstanceKlass*>(_class_count, mtInternal);
 
   ResourceMark rm(THREAD);
 
