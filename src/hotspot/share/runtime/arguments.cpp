@@ -4027,6 +4027,13 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
   // Set object alignment values.
   set_object_alignment();
 
+  if (FlightRecorder) {
+    if (AllowEnhancedClassRedefinition) {
+      warning("EnhancedClassRedefinition was disabled, it is not allowed in FlightRecorder.");
+      AllowEnhancedClassRedefinition = false;
+    }
+  }
+
 #if !INCLUDE_CDS
   if (DumpSharedSpaces || RequireSharedSpaces) {
     jio_fprintf(defaultStream::error_stream(),
