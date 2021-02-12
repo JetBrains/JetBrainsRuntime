@@ -124,6 +124,7 @@ class SystemDictionary : AllStatic {
                                                          Symbol* class_name,
                                                          Handle class_loader,
                                                          const ClassLoadInfo& cl_info,
+                                                         InstanceKlass* old_klass,
                                                          TRAPS);
 
   // Resolve a class from stream (called by jni_DefineClass and JVM_DefineClass)
@@ -132,6 +133,7 @@ class SystemDictionary : AllStatic {
                                                   Symbol* class_name,
                                                   Handle class_loader,
                                                   const ClassLoadInfo& cl_info,
+                                                  InstanceKlass* old_klass,
                                                   TRAPS);
 
  public:
@@ -202,6 +204,10 @@ class SystemDictionary : AllStatic {
 
   // Initialization
   static void initialize(TRAPS);
+
+  // (DCEVM) Enhanced class redefinition
+  static void remove_from_hierarchy(InstanceKlass* k);
+  static void update_constraints_after_redefinition();
 
 protected:
   // Returns the class loader data to be used when looking up/updating the

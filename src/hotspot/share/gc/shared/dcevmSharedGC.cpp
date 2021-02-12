@@ -64,7 +64,7 @@ void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_
         Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(rescued_obj), cast_from_oop<HeapWord*>(new_obj), size);
       }
 
-      new_obj->init_mark_raw();
+      new_obj->init_mark();
       assert(oopDesc::is_oop(new_obj), "must be a valid oop");
     }
   }

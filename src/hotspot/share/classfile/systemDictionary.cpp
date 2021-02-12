@@ -963,11 +963,12 @@ InstanceKlass* SystemDictionary::resolve_from_stream(ClassFileStream* st,
                                                      Symbol* class_name,
                                                      Handle class_loader,
                                                      const ClassLoadInfo& cl_info,
+                                                     InstanceKlass* old_klass,
                                                      TRAPS) {
   if (cl_info.is_hidden()) {
-    return resolve_hidden_class_from_stream(st, class_name, class_loader, cl_info, CHECK_NULL);
+    return resolve_hidden_class_from_stream(st, class_name, class_loader, cl_info, old_klass, CHECK_NULL);
   } else {
-    return resolve_class_from_stream(st, class_name, class_loader, cl_info, CHECK_NULL);
+    return resolve_class_from_stream(st, class_name, class_loader, cl_info, old_klass, CHECK_NULL);
   }
 }
 
