@@ -445,14 +445,19 @@ bool InstanceKlass::has_nestmate_access_to(InstanceKlass* k, TRAPS) {
     return false;
   }
 
+  // (DCEVM) cur_host can be old, decide accessibility based on active version
   if (AllowEnhancedClassRedefinition) {
-    // TODO: (DCEVM) check if it correct. It fix problems with lambdas (hidden)
-    cur_host = InstanceKlass::cast(cur_host->newest_version());
+    cur_host = InstanceKlass::cast(cur_host->active_version());
   }
 
   Klass* k_nest_host = k->nest_host(CHECK_false);
   if (k_nest_host == NULL) {
     return false;
+  }
+
+  // (DCEVM) k_nest_host can be old, decide accessibility based on active version
+  if (AllowEnhancedClassRedefinition) {
+    k_nest_host = InstanceKlass::cast(k_nest_host->active_version());
   }
 
   bool access = (cur_host == k_nest_host);
@@ -1090,7 +1095,7 @@ void InstanceKlass::initialize_impl(TRAPS) {
     // If we were to use wait() instead of waitInterruptibly() then
     // we might end up throwing IE from link/symbol resolution sites
     // that aren't expected to throw.  This would wreak havoc.  See 6320309.
-    while ((is_being_initialized() && !is_reentrant_initialization(jt)) 
+    while ((is_being_initialized() && !is_reentrant_initialization(jt))
             || (AllowEnhancedClassRedefinition && old_version() != NULL && InstanceKlass::cast(old_version())->is_being_initialized())) {
       wait = true;
       jt->set_class_to_be_initialized(this);
