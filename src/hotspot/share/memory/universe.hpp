@@ -52,12 +52,7 @@ class LatestMethodCache : public CHeapObj<mtClass> {
   Klass*                _klass;
   int                   _method_idnum;
 
-  static bool _is_redefining_gc_run;
-
  public:
-
-   static bool is_redefining_gc_run()               { return _is_redefining_gc_run; }
-   static void set_redefining_gc_run(bool b)        { _is_redefining_gc_run = b;    }
 
   LatestMethodCache()   { _klass = NULL; _method_idnum = -1; }
   ~LatestMethodCache()  { _klass = NULL; _method_idnum = -1; }
