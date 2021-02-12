@@ -349,7 +349,7 @@ InstanceKlass* Dictionary::find(unsigned int hash, Symbol* name,
   int index = hash_to_index(hash);
   DictionaryEntry* entry = get_entry(index, hash, name);
   if (entry != NULL && entry->is_valid_protection_domain(protection_domain)) {
-    return old_if_redefined(entry->instance_klass());
+    return old_if_redefining(entry->instance_klass());
   } else {
     return NULL;
   }
@@ -361,7 +361,7 @@ InstanceKlass* Dictionary::find_class(int index, unsigned int hash,
   assert (index == index_for(name), "incorrect index?");
 
   DictionaryEntry* entry = get_entry(index, hash, name);
-  return old_if_redefined((entry != NULL) ? entry->instance_klass() : NULL);
+  return old_if_redefining((entry != NULL) ? entry->instance_klass() : NULL);
 }
 
 
