@@ -58,10 +58,10 @@ void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_
           DcevmSharedGC::update_fields(rescued_obj, new_obj);
         } else {
           rescued_obj->set_klass(new_klass);
-          Copy::aligned_disjoint_words((HeapWord*)rescued_obj, (HeapWord*)new_obj, size);
+          Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(rescued_obj), cast_from_oop<HeapWord*>(new_obj), size);
         }
       } else {
-        Copy::aligned_disjoint_words((HeapWord*)rescued_obj, (HeapWord*)new_obj, size);
+        Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(rescued_obj), cast_from_oop<HeapWord*>(new_obj), size);
       }
 
       new_obj->init_mark_raw();
@@ -111,11 +111,11 @@ void DcevmSharedGC::update_fields(oop q, oop new_location) {
 
   // Save object somewhere, there is an overlap in fields
   if (new_klass_oop->is_copying_backwards()) {
-    if (((HeapWord *)q >= (HeapWord *)new_location && (HeapWord *)q < (HeapWord *)new_location + new_size) ||
-        ((HeapWord *)new_location >= (HeapWord *)q && (HeapWord *)new_location < (HeapWord *)q + size)) {
+    if ((cast_from_oop<HeapWord*>(q) >= cast_from_oop<HeapWord*>(new_location) && cast_from_oop<HeapWord*>(q) < cast_from_oop<HeapWord*>(new_location) + new_size) ||
+        (cast_from_oop<HeapWord*>(new_location) >= cast_from_oop<HeapWord*>(q) && cast_from_oop<HeapWord*>(new_location) < cast_from_oop<HeapWord*>(q) + size)) {
        tmp = NEW_RESOURCE_ARRAY(HeapWord, size);
        q = (oop) tmp;
-       Copy::aligned_disjoint_words((HeapWord*)tmp_obj, (HeapWord*)q, size);
+       Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(tmp_obj), cast_from_oop<HeapWord*>(q), size);
     }
   }
 
@@ -131,13 +131,13 @@ void DcevmSharedGC::update_fields(oop q, oop new_location) {
 
 void DcevmSharedGC::update_fields(oop new_location, oop tmp_obj, int *cur) {
   assert(cur != NULL, "just checking");
-  char* to = (char*)(HeapWord*)new_location;
+  char* to = (char*)cast_from_oop<HeapWord*>(new_location);
   while (*cur != 0) {
     int size = *cur;
     if (size > 0) {
       cur++;
       int offset = *cur;
-      HeapWord* from = (HeapWord*)(((char *)(HeapWord*)tmp_obj) + offset);
+      HeapWord* from = (HeapWord*)(((char *)cast_from_oop<HeapWord*>(tmp_obj)) + offset);
       if (size == HeapWordSize) {
         *((HeapWord*)to) = *from;
       } else if (size == HeapWordSize * 2) {
