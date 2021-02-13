@@ -43,6 +43,7 @@ BackendGlobalData *gdata = NULL;
 static jboolean isInterface(jclass clazz);
 static jboolean isArrayClass(jclass clazz);
 static char * getPropertyUTF8(JNIEnv *env, char *propertyName);
+static jboolean isEnhancedClassRedefinitionEnabled(JNIEnv *env);
 
 /* Save an object reference for use later (create a NewGlobalRef) */
 void
@@ -282,6 +283,8 @@ util_initialize(JNIEnv *env)
             }
             saveGlobalRef(env, localAgentProperties, &(gdata->agent_properties));
         }
+
+        gdata->isEnhancedClassRedefinitionEnabled = isEnhancedClassRedefinitionEnabled(env);
 
     } END_WITH_LOCAL_REFS(env);
 
@@ -1705,6 +1708,36 @@ getPropertyUTF8(JNIEnv *env, char *propertyName)
     }
     return value;
 }
+
+static jboolean
+isEnhancedClassRedefinitionEnabled(JNIEnv *env)
+{
+    jvmtiError error;
+    jint count, i;
+    jvmtiExtensionFunctionInfo* ext_funcs;
+
+    error = JVMTI_FUNC_PTR(gdata->jvmti,GetExtensionFunctions)
+                (gdata->jvmti, &count, &ext_funcs);
+    if (error != JVMTI_ERROR_NONE) {
+        return JNI_FALSE;
+    }
+
+    for (i=0; i<count; i++) {
+        if (strcmp(ext_funcs[i].id, (char*)"com.sun.hotspot.functions.IsEnhancedClassRedefinitionEnabled") == 0) {
+            jboolean enabled;
+            error = (*ext_funcs[i].func)(gdata->jvmti, &enabled);
+
+            if (error != JVMTI_ERROR_NONE) {
+                return JNI_FALSE;
+            } else {
+                return enabled;
+            }
+        }
+    }
+
+    return JNI_FALSE;
+}
+
 
 jboolean
 isMethodObsolete(jmethodID method)

@@ -372,10 +372,12 @@ public:
 };
 
 class AdjustMethodEntriesDcevm : public StackObj {
-  bool* _trace_name_printed;
-  GrowableArray<oop>* _oops_to_add;
+  GrowableArray<oop>* _oops_to_update;
+  GrowableArray<Method*>* _old_methods;
 public:
-  AdjustMethodEntriesDcevm(GrowableArray<oop>* oops_to_add, bool* trace_name_printed) : _trace_name_printed(trace_name_printed), _oops_to_add(oops_to_add) {};
+  AdjustMethodEntriesDcevm(GrowableArray<oop>* oops_to_update, GrowableArray<Method*>* old_methods) :
+    _oops_to_update(oops_to_update), _old_methods(old_methods) {};
+
   bool operator()(WeakHandle* entry) {
     oop mem_name = entry->peek();
     if (mem_name == NULL) {
@@ -386,46 +388,8 @@ public:
     Method* old_method = (Method*)java_lang_invoke_ResolvedMethodName::vmtarget(mem_name);
 
     if (old_method->is_old()) {
-
-      InstanceKlass* newer_klass = InstanceKlass::cast(old_method->method_holder()->new_version());
-      Method* newer_method;
-
-      // Method* new_method;
-      if (old_method->is_deleted()) {
-        newer_method = Universe::throw_no_such_method_error();
-      } else {
-        newer_method = newer_klass->method_with_idnum(old_method->orig_method_idnum());
-
-        log_debug(redefine, class, update)("Adjusting method: '%s' of new class %s", newer_method->name_and_sig_as_C_string(), newer_klass->name()->as_C_string());
-
-        assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
-        assert(newer_method != NULL, "method_with_idnum() should not be NULL");
-        assert(old_method != newer_method, "sanity check");
-
-        Thread* thread = Thread::current();
-        ResolvedMethodTableLookup lookup(thread, method_hash(newer_method), newer_method);
-        ResolvedMethodGet rmg(thread, newer_method);
-
-        if (_local_table->get(thread, lookup, rmg)) {
-          // old method was already adjusted if new method exists in _the_table
-            return true;
-        }
-      }
-
-      java_lang_invoke_ResolvedMethodName::set_vmtarget(mem_name, newer_method);
-      java_lang_invoke_ResolvedMethodName::set_vmholder(mem_name, newer_method->method_holder()->java_mirror());
-
-      newer_klass->set_has_resolved_methods();
-      _oops_to_add->append(mem_name);
-
-      ResourceMark rm;
-      if (!(*_trace_name_printed)) {
-        log_debug(redefine, class, update)("adjust: name=%s", old_method->method_holder()->external_name());
-         *_trace_name_printed = true;
-      }
-      log_debug(redefine, class, update, constantpool)
-        ("ResolvedMethod method update: %s(%s)",
-         newer_method->name()->as_C_string(), newer_method->signature()->as_C_string());
+      _oops_to_update->append(mem_name);
+      _old_methods->append(old_method);
     }
 
     return true;
@@ -440,36 +404,70 @@ void ResolvedMethodTable::adjust_method_entries(bool * trace_name_printed) {
   _local_table->do_safepoint_scan(adjust);
 }
 
-// It is called at safepoint only for RedefineClasses
+// It is called at safepoint only for EnhancedRedefineClasses
 void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed) {
   assert(SafepointSynchronize::is_at_safepoint(), "only called at safepoint");
-  // For each entry in RMT, change to new method
-  GrowableArray<oop> oops_to_add(0);
-  AdjustMethodEntriesDcevm adjust(&oops_to_add, trace_name_printed);
+
+  GrowableArray<oop> oops_to_update(0);
+  GrowableArray<Method*> old_methods(0);
+
+  AdjustMethodEntriesDcevm adjust(&oops_to_update, &old_methods);
   _local_table->do_safepoint_scan(adjust);
+
   Thread* thread = Thread::current();
-  for (int i = 0; i < oops_to_add.length(); i++) {
-    oop mem_name = oops_to_add.at(i);
-    Method* method = (Method*)java_lang_invoke_ResolvedMethodName::vmtarget(mem_name);
 
-    // The hash table takes ownership of the WeakHandle, even if it's not inserted.
+  for (int i = 0; i < oops_to_update.length(); i++) {
+    oop mem_name = oops_to_update.at(i);
+    Method *old_method = old_methods.at(i);
 
-    ResolvedMethodTableLookup lookup(thread, method_hash(method), method);
-    ResolvedMethodGet rmg(thread, method);
+    // 1. Remove old method, since we are going to update class that could be used for hash evaluation in parallel running ServiceThread
+    ResolvedMethodTableLookup lookup(thread, method_hash(old_method), old_method);
+    _local_table->remove(thread, lookup);
 
-    while (true) {
+    InstanceKlass* newer_klass = InstanceKlass::cast(old_method->method_holder()->new_version());
+    Method* newer_method;
+
+    // Method* new_method;
+    if (old_method->is_deleted()) {
+      newer_method = Universe::throw_no_such_method_error();
+    } else {
+      newer_method = newer_klass->method_with_idnum(old_method->orig_method_idnum());
+
+      assert(newer_method != NULL, "method_with_idnum() should not be NULL");
+      assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
+      assert(old_method != newer_method, "sanity check");
+
+      Thread* thread = Thread::current();
+      ResolvedMethodTableLookup lookup(thread, method_hash(newer_method), newer_method);
+      ResolvedMethodGet rmg(thread, newer_method);
+
       if (_local_table->get(thread, lookup, rmg)) {
-        break;
-      }
-      WeakHandle wh(_oop_storage, mem_name);
-      // The hash table takes ownership of the WeakHandle, even if it's not inserted.
-      if (_local_table->insert(thread, lookup, wh)) {
-        log_insert(method);
-        wh.resolve();
-        break;
+        // old method was already adjusted if new method exists in _the_table
+          continue;
       }
     }
+
+    log_debug(redefine, class, update)("Adjusting method: '%s' of new class %s", newer_method->name_and_sig_as_C_string(), newer_klass->name()->as_C_string());
+
+    // 2. Update method
+    java_lang_invoke_ResolvedMethodName::set_vmtarget(mem_name, newer_method);
+    java_lang_invoke_ResolvedMethodName::set_vmholder(mem_name, newer_method->method_holder()->java_mirror());
+
+    newer_klass->set_has_resolved_methods();
+
+    ResourceMark rm;
+    if (!(*trace_name_printed)) {
+      log_debug(redefine, class, update)("adjust: name=%s", old_method->method_holder()->external_name());
+       *trace_name_printed = true;
+    }
+    log_debug(redefine, class, update, constantpool)
+      ("ResolvedMethod method update: %s(%s)",
+       newer_method->name()->as_C_string(), newer_method->signature()->as_C_string());
+
+    // 3. add updated method to table again
+    add_method(newer_method, Handle(thread, mem_name));
   }
+
 }
 
 #endif // INCLUDE_JVMTI

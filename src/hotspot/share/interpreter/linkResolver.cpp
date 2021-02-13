@@ -558,8 +558,8 @@ void LinkResolver::check_method_accessability(Klass* ref_klass,
   // We'll check for the method name first, as that's most likely
   // to be false (so we'll short-circuit out of these tests).
   if (sel_method->name() == vmSymbols::clone_name() &&
-      ( !AllowEnhancedClassRedefinition && sel_klass == vmClasses::Object_klass() ||
-      AllowEnhancedClassRedefinition && sel_klass->newest_version() == vmClasses::Object_klass()->newest_version()) &&
+      ( (!AllowEnhancedClassRedefinition && sel_klass == vmClasses::Object_klass()) ||
+        (AllowEnhancedClassRedefinition && sel_klass->newest_version() == vmClasses::Object_klass()->newest_version()) ) &&
       resolved_klass->is_array_klass()) {
     // We need to change "protected" to "public".
     assert(flags.is_protected(), "clone not protected?");

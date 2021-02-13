@@ -404,6 +404,8 @@
   template(interrupt_method_name,                     "interrupt")                                \
   template(exit_method_name,                          "exit")                                     \
   template(remove_method_name,                        "remove")                                   \
+  template(registerNatives_method_name,               "registerNatives")                          \
+  template(initIDs_method_name,                       "initIDs")                                  \
   template(parent_name,                               "parent")                                   \
   template(maxPriority_name,                          "maxPriority")                              \
   template(shutdown_name,                             "shutdown")                                 \

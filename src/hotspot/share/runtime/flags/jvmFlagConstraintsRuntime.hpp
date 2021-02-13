@@ -38,7 +38,8 @@
   f(intx,   ContendedPaddingWidthConstraintFunc)      \
   f(intx,   PerfDataSamplingIntervalFunc)             \
   f(uintx,  VMPageSizeConstraintFunc)                 \
-  f(size_t, NUMAInterleaveGranularityConstraintFunc)
+  f(size_t, NUMAInterleaveGranularityConstraintFunc)  \
+  f(ccstr, HotswapAgentConstraintFunc)
 
 RUNTIME_CONSTRAINTS(DECLARE_CONSTRAINT)
 

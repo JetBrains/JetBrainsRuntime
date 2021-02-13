@@ -81,6 +81,7 @@ class ClassLoaderDataGraph : public AllStatic {
   // for redefinition.  These classes are removed during the next class unloading.
   // Walking the ClassLoaderDataGraph also includes hidden classes.
   static void classes_do(KlassClosure* klass_closure);
+
   static void classes_do(void f(Klass* const));
   static void methods_do(void f(Method*));
   static void modules_do(void f(ModuleEntry*));
@@ -97,11 +98,10 @@ class ClassLoaderDataGraph : public AllStatic {
   // Called from VMOperation
   static void walk_metadata_and_clean_metaspaces();
 
-  // (DCEVM)
-  static void dictionary_classes_do(KlassClosure* klass_closure);
-
   // (DCEVM) Enhanced class redefinition
+  static void dictionary_classes_do(KlassClosure* klass_closure);
   static void rollback_redefinition();
+  static bool dictionary_classes_do_update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass);
 
   // VM_CounterDecay iteration support
   static InstanceKlass* try_get_next_class();

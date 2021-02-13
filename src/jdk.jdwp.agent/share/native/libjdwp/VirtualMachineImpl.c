@@ -477,6 +477,19 @@ redefineClasses(PacketInputStream *in, PacketOutputStream *out)
     if (ok == JNI_TRUE) {
         jvmtiError error;
 
+        jlong* classIds = NULL;
+
+        if (gdata->isEnhancedClassRedefinitionEnabled) {
+            classIds = jvmtiAllocate(classCount*(int)sizeof(jlong));
+            if (classIds == NULL) {
+                outStream_setError(out, JDWP_ERROR(OUT_OF_MEMORY));
+                return JNI_TRUE;
+            }
+            for (i = 0; i < classCount; i++) {
+                classIds[i] = commonRef_refToID(env, classDefs[i].klass);
+            }
+        }
+
         error = JVMTI_FUNC_PTR(gdata->jvmti,RedefineClasses)
                         (gdata->jvmti, classCount, classDefs);
         if (error != JVMTI_ERROR_NONE) {
@@ -486,6 +499,19 @@ redefineClasses(PacketInputStream *in, PacketOutputStream *out)
             for ( i = 0 ; i < classCount; i++ ) {
                 eventHandler_freeClassBreakpoints(classDefs[i].klass);
             }
+
+            if (gdata->isEnhancedClassRedefinitionEnabled && classIds != NULL) {
+                /* Update tags in jvmti to use new classes */
+                for ( i = 0 ; i < classCount; i++ ) {
+                    /* pointer in classIds[i] is updated by advanced redefinition to a new class */
+                    error = commonRef_updateTags(env, classIds[i]);
+                    if (error != JVMTI_ERROR_NONE) {
+                        break;
+                    }
+                }
+                jvmtiDeallocate((void*) classIds);
+            }
+
         }
     }
 

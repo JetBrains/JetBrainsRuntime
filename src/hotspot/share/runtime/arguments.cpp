@@ -3989,11 +3989,19 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
   // Set object alignment values.
   set_object_alignment();
 
+#if INCLUDE_JFR
   if (FlightRecorder) {
-    if (AllowEnhancedClassRedefinition) {
+    if (AllowEnhancedClassRedefinition || StartFlightRecording != NULL) {
       warning("EnhancedClassRedefinition was disabled, it is not allowed in FlightRecorder.");
       AllowEnhancedClassRedefinition = false;
     }
+  }
+#endif
+
+  setup_hotswap_agent();
+
+  if (AllowEnhancedClassRedefinition) {
+    UseEmptySlotsInSupers = false;
   }
 
 #if !INCLUDE_CDS
@@ -4384,4 +4392,78 @@ void Arguments::add_virtualization_information_property()
   const char *virt_name = "undetected";
   JFR_ONLY(virt_name = JfrOSInterface::virtualization_name();)
   PropertyList_add(&_system_properties, new SystemProperty("jbr.virtualization.information", virt_name, false));
+}
+
+void Arguments::setup_hotswap_agent() {
+
+  if (DumpSharedSpaces)
+    return;
+
+  if (HotswapAgent == NULL || strcmp(HotswapAgent, "disabled") == 0)
+    return;
+
+  // Force AllowEnhancedClassRedefinition if HA is enabled
+  AllowEnhancedClassRedefinition = true;
+
+  bool ha_fatjar = strcmp(HotswapAgent, "fatjar") == 0;
+  bool ha_core = strcmp(HotswapAgent, "core") == 0;
+
+  // Set HotswapAgent
+  if (ha_fatjar || ha_core) {
+
+    char ext_path_str[JVM_MAXPATHLEN];
+
+    os::jvm_path(ext_path_str, sizeof(ext_path_str));
+    for (int i = 0; i < 3; i++) {
+      char *end = strrchr(ext_path_str, *os::file_separator());
+      if (end != NULL) *end = '\0';
+    }
+    size_t ext_path_length = strlen(ext_path_str);
+    if (ext_path_length >= 3) {
+      if (strcmp(ext_path_str + ext_path_length - 3, "lib") != 0) {
+        if (ext_path_length < JVM_MAXPATHLEN - 4) {
+          jio_snprintf(ext_path_str + ext_path_length, sizeof(ext_path_str) - ext_path_length, "%slib", os::file_separator());
+          ext_path_length += 4;
+        }
+      }
+    }
+    if (ext_path_length < JVM_MAXPATHLEN - 10) {
+      if (ha_fatjar) {
+        jio_snprintf(ext_path_str + ext_path_length, sizeof(ext_path_str) - ext_path_length,
+                     "%shotswap%shotswap-agent.jar", os::file_separator(), os::file_separator());
+      } else {
+        jio_snprintf(ext_path_str + ext_path_length, sizeof(ext_path_str) - ext_path_length,
+                     "%shotswap%shotswap-agent-core.jar", os::file_separator(), os::file_separator());
+      }
+      int fd = ::open(ext_path_str, O_RDONLY);
+      if (fd >= 0) {
+        ::close(fd);
+        size_t length = strlen(ext_path_str) + 1;
+        char *options = NEW_C_HEAP_ARRAY(char,  length, mtArguments);
+        jio_snprintf(options, length, "%s", ext_path_str);
+        add_init_agent("instrument", ext_path_str, false);
+        jio_fprintf(defaultStream::output_stream(), "Starting HotswapAgent '%s'\n", ext_path_str);
+      }
+      else
+      {
+        jio_fprintf(defaultStream::error_stream(), "HotswapAgent not found on path:'%s'!\n", ext_path_str);
+      }
+    }
+  }
+
+  // TODO: open it only for org.hotswap.agent module
+  // Use to access java.lang.reflect.Proxy/proxyCache
+  create_numbered_module_property("jdk.module.addopens", "java.base/java.lang=ALL-UNNAMED", addopens_count++);
+  // Class of  field java.lang.reflect.Proxy/proxyCache
+  create_numbered_module_property("jdk.module.addopens", "java.base/jdk.internal.loader=ALL-UNNAMED", addopens_count++);
+  // Use to access java.io.Reader, java.io.InputStream, java.io.FileInputStream
+  create_numbered_module_property("jdk.module.addopens", "java.base/java.io=ALL-UNNAMED", addopens_count++);
+  // java.beans.Introspector access
+  create_numbered_module_property("jdk.module.addopens", "java.desktop/java.beans=ALL-UNNAMED", addopens_count++);
+  // java.beans.Introspector access
+  create_numbered_module_property("jdk.module.addopens", "java.desktop/com.sun.beans=ALL-UNNAMED", addopens_count++);
+  // com.sun.beans.introspect.ClassInfo access
+  create_numbered_module_property("jdk.module.addopens", "java.desktop/com.sun.beans.introspect=ALL-UNNAMED", addopens_count++);
+  // com.sun.beans.introspect.util.Cache access
+  create_numbered_module_property("jdk.module.addopens", "java.desktop/com.sun.beans.util=ALL-UNNAMED", addopens_count++);
 }

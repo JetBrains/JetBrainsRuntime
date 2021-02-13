@@ -131,22 +131,24 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   void compute_added_deleted_matching_methods();
 
   // Change jmethodIDs to point to the new methods
-  void update_jmethod_ids(Thread *current);
+  void update_jmethod_ids(Thread* current);
 
   // marking methods as old and/or obsolete
   void check_methods_and_mark_as_obsolete();
   void transfer_old_native_function_registrations(InstanceKlass* the_class);
 
-  // Install the redefinition of a class
-  void redefine_single_class(Thread *current, InstanceKlass* new_class_oop);
+  void redefine_single_class(Thread* current, InstanceKlass* new_class_oop);
 
   // Increment the classRedefinedCount field in the specific InstanceKlass
   // and in all direct and indirect subclasses.
-  void increment_class_counter(Thread *current, InstanceKlass *ik);
+  void increment_class_counter(Thread* current, InstanceKlass *ik);
+
 
   void flush_dependent_code();
 
   u8 next_id();
+
+  void reinitializeJDKClasses();
 
   static void check_class(InstanceKlass* k_oop);
 

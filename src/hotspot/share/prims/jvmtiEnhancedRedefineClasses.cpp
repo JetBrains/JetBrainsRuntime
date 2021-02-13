@@ -55,6 +55,7 @@
 #include "prims/resolvedMethodTable.hpp"
 #include "prims/methodHandles.hpp"
 #include "runtime/deoptimization.hpp"
+#include "runtime/javaCalls.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/relocator.hpp"
 #include "runtime/fieldDescriptor.hpp"
@@ -63,10 +64,14 @@
 #include "prims/jvmtiThreadState.inline.hpp"
 #include "utilities/events.hpp"
 #include "oops/constantPool.inline.hpp"
+#if INCLUDE_G1GC
 #include "gc/g1/g1CollectedHeap.hpp"
+#endif
 #include "gc/shared/dcevmSharedGC.hpp"
 #include "gc/shared/scavengableNMethods.hpp"
 #include "gc/shared/oopStorageSet.hpp"
+#include "gc/shared/oopStorageSet.inline.hpp"
+#include "gc/shared/weakProcessor.hpp"
 #include "ci/ciObjectFactory.hpp"
 
 Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
@@ -244,6 +249,7 @@ void VM_EnhancedRedefineClasses::root_oops_do(OopClosure *oopClosure) {
 
   Threads::oops_do(oopClosure, NULL);
   OopStorageSet::strong_oops_do(oopClosure);
+  WeakProcessor::oops_do(oopClosure);
 
   CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
   CodeCache::blobs_do(&blobClosure);
@@ -379,7 +385,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
     bool oop_updated  = false;
     if (obj->is_instance() && InstanceKlass::cast(obj->klass())->is_mirror_instance_klass()) {
       Klass* klass = java_lang_Class::as_Klass(obj);
-      if (klass != NULL && klass->is_instance_klass()) {
+      if (klass != NULL && klass->is_instance_klass() && klass->new_version() != NULL) {
         assert(obj == InstanceKlass::cast(klass)->java_mirror(), "just checking");
         if (klass->new_version() != NULL) {
           obj = InstanceKlass::cast(klass->new_version())->java_mirror();
@@ -522,6 +528,16 @@ void VM_EnhancedRedefineClasses::doit() {
     redefine_single_class(current, _new_classes->at(i));
   }
 
+  // Update possible redefinition of vm classes (like ClassLoader)
+  for (int i = 0; i < _new_classes->length(); i++) {
+    InstanceKlass* cur = _new_classes->at(i);
+    if (cur->old_version() != NULL && vmClasses::update_vm_klass(InstanceKlass::cast(cur->old_version()), cur))
+    {
+      log_trace(redefine, class, obsolete, metadata)("Well known class updated %s", cur->external_name());
+      ciObjectFactory::set_reinitialize_vm_klasses();
+    }
+  }
+
   // Deoptimize all compiled code that depends on this class (do only once, because it clears whole cache)
   // if (_max_redefinition_flags > Klass::ModifyClass) {
     flush_dependent_code();
@@ -548,36 +564,47 @@ void VM_EnhancedRedefineClasses::doit() {
     // mark such nmethod's as "scavengable".
     // For now, mark all nmethod's as scavengable that are not scavengable already
     if (ScavengeRootsInCode) {
+#if INCLUDE_G1GC
       if (UseG1GC) {
         // G1 holds references to nmethods in regions based on oops values. Since oops in nmethod can be changed in ChangePointers* closures
         // we unregister nmethods from G1 heap, then closures are processed (oops are changed) and finally we register nmethod to G1 again
         CodeCache::nmethods_do(unregister_nmethod_g1);
       } else {
+#endif
         CodeCache::nmethods_do(mark_as_scavengable);
+#if INCLUDE_G1GC
       }
+#endif
     }
 
     Universe::heap()->ensure_parsability(false);
+#if INCLUDE_G1GC
     if (UseG1GC) {
       if (log_is_enabled(Info, redefine, class, timer)) {
         _timer_heap_iterate.start();
       }
+      // returns after the iteration is finished
       G1CollectedHeap::heap()->object_par_iterate(&objectClosure);
       _timer_heap_iterate.stop();
     } else {
+#endif
       if (log_is_enabled(Info, redefine, class, timer)) {
         _timer_heap_iterate.start();
       }
       Universe::heap()->object_iterate(&objectClosure);
       _timer_heap_iterate.stop();
+#if INCLUDE_G1GC
     }
+#endif
 
     root_oops_do(&oopClosureNoBarrier);
 
+#if INCLUDE_G1GC
     if (UseG1GC) {
       // this should work also for other GCs
       CodeCache::nmethods_do(register_nmethod_g1);
     }
+#endif
 
   }
   log_trace(redefine, class, obsolete, metadata)("After updating instances");
@@ -683,11 +710,56 @@ void VM_EnhancedRedefineClasses::doit() {
   _timer_vm_op_doit.stop();
 }
 
+void VM_EnhancedRedefineClasses::reinitializeJDKClasses() {
+  if (!_new_classes->is_empty()) {
+    ResourceMark rm(JavaThread::current());
+
+    for (int i = 0; i < _new_classes->length(); i++) {
+      InstanceKlass* cur = _new_classes->at(i);
+
+      if ((cur->name()->starts_with("java/") || cur->name()->starts_with("jdk/") || cur->name()->starts_with("sun/"))
+          && cur->name()->index_of_at(0, "$$", (int) strlen("$$")) == -1) { // skip dynamic proxies
+
+        if (cur == vmClasses::ClassLoader_klass()) {
+          // ClassLoader.addClass method is cached in Universe, we must redefine
+          Universe::reinitialize_loader_addClass_method(JavaThread::current());
+          log_trace(redefine, class, obsolete, metadata)("Reinitialize ClassLoade addClass method cache.");
+        }
+
+        // naive assumptions that only JDK classes has native static "registerNative" and "initIDs" methods
+        int end;
+        Symbol* signature = vmSymbols::registerNatives_method_name();
+        int midx = cur->find_method_by_name(signature, &end);
+        if (midx == -1) {
+          signature = vmSymbols::initIDs_method_name();
+          midx = cur->find_method_by_name(signature, &end);
+        }
+        Method* m = NULL;
+        if (midx != -1) {
+          m = cur->methods()->at(midx);
+        }
+        if (m != NULL && m->is_static() && m->is_native()) {
+          // call static registerNative if present
+          JavaValue result(T_VOID);
+          JavaCalls::call_static(&result,
+                                  cur,
+                                  signature,
+                                  vmSymbols::void_method_signature(),
+                                  JavaThread::current());
+          log_trace(redefine, class, obsolete, metadata)("Reregister natives of JDK class %s", cur->external_name());
+        }
+      }
+    }
+  }
+}
+
 // Cleanup - runs in JVM thread
 //  - free used memory
 //  - end GC
 void VM_EnhancedRedefineClasses::doit_epilogue() {
   VM_GC_Operation::doit_epilogue();
+
+  reinitializeJDKClasses();
 
   if (_new_classes != NULL) {
     delete _new_classes;
@@ -853,10 +925,16 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
       }
 
     } else {
+      ClassLoadInfo cl_info(protection_domain,
+                            NULL,     // dynamic_nest_host
+                            Handle(), // classData
+                            false,    // is_hidden
+                            !the_class->is_non_strong_hidden(),    // is_strong_hidden
+                            true);    // FIXME: check if correct. can_access_vm_annotations
       k = SystemDictionary::resolve_from_stream(&st,
                                                 the_class_sym,
                                                 the_class_loader,
-                                                protection_domain,
+                                                cl_info,
                                                 the_class,
                                                 THREAD);
     }
@@ -985,7 +1063,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
 
     cur_klass = new_class->super();
     while (cur_klass != NULL) {
-      if (!the_class->is_subclass_of(cur_klass->old_version())) {
+      if (!the_class->is_subclass_of(cur_klass->is_redefining() ? cur_klass->old_version() : cur_klass)) {
         log_info(redefine, class, load)("added super class %s", cur_klass->name()->as_C_string());
         result = result | Klass::ModifyClass | Klass::ModifyInstances;
       }
@@ -1488,6 +1566,13 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
 
   constantPoolHandle other_cp = constantPoolHandle(_thread, ik->constants());
 
+  // Update host klass of anonymous classes (for example, produced by lambdas) to newest version.
+  /*
+  if (ik->is_unsafe_anonymous() && ik->unsafe_anonymous_host()->new_version() != NULL) {
+    ik->set_unsafe_anonymous_host(InstanceKlass::cast(ik->unsafe_anonymous_host()->newest_version()));
+  }
+  */
+
   // FIXME: check new nest_host for hidden
 
   // Update implementor if there is only one, in this case implementor() can reference old class
@@ -1605,7 +1690,12 @@ void VM_EnhancedRedefineClasses::check_methods_and_mark_as_obsolete() {
 
       // obsolete methods need a unique idnum so they become new entries in
       // the jmethodID cache in InstanceKlass
-      assert(old_method->method_idnum() == new_method->method_idnum(), "must match");
+      if (old_method->method_idnum() != new_method->method_idnum()) {
+        log_error(redefine, class, normalize)
+          ("Method not matched: %d != %d  old: %s = new: %s",  old_method->method_idnum(), new_method->method_idnum(),
+              old_method->name_and_sig_as_C_string(), new_method->name_and_sig_as_C_string());
+        // assert(old_method->method_idnum() == new_method->method_idnum(), "must match");
+      }
 //      u2 num = InstanceKlass::cast(_the_class_oop)->next_method_idnum();
 //      if (num != ConstMethod::UNSET_IDNUM) {
 //        old_method->set_method_idnum(num);
@@ -2015,6 +2105,11 @@ class AffectedKlassClosure : public KlassClosure {
   void do_klass(Klass* klass) {
     assert(!_affected_klasses->contains(klass), "must not occur more than once!");
 
+    // allow only loaded classes
+    if (!klass->is_instance_klass() || !InstanceKlass::cast(klass)->is_loaded()) {
+      return;
+    }
+
     if (klass->new_version() != NULL) {
       return;
     }
@@ -2070,9 +2165,10 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
 
   {
     MutexLocker mcld(ClassLoaderDataGraph_lock);
+
+    // Hidden classes are not in SystemDictionary, so we have to iterate ClassLoaderDataGraph
     ClassLoaderDataGraph::classes_do(&closure);
   }
-  //ClassLoaderDataGraph::dictionary_classes_do(&closure);
 
   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
 
