@@ -1606,7 +1606,9 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
   Dictionary* dictionary = loader_data->dictionary();
   unsigned int d_hash = dictionary->compute_hash(name_h);
   if (is_redefining) {
-    bool ok = dictionary->update_klass(d_hash, name_h, loader_data, k, old_klass);
+    // Update all dictionaries containing old_class to new_class
+    // outcome must be same as result of standard redefinition, that does not create a new Klass
+    bool ok = ClassLoaderDataGraph::dictionary_classes_do_update_klass(name_h, k, old_klass);
     assert (ok, "must have found old class and updated!");
   }
   check_constraints(d_hash, k, class_loader_h, !is_redefining, CHECK);
