@@ -1274,6 +1274,15 @@ void ClassLoaderDataGraph::rollback_redefinition() {
   }
 }
 
+// (DCEVM) - iterate over all classes in all dictionaries
+bool ClassLoaderDataGraph::dictionary_classes_do_update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass) {
+  bool ok = false;
+  FOR_ALL_DICTIONARY(cld) {
+    ok = cld->dictionary()->update_klass(name, k, old_klass) || ok;
+  }
+  return ok;
+}
+
 // Walks all entries in the dictionary including entries initiated by this class loader.
 void ClassLoaderDataGraph::dictionary_all_entries_do(void f(InstanceKlass*, ClassLoaderData*)) {
   Thread* thread = Thread::current();
