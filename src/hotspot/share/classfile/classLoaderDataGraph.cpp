@@ -455,6 +455,15 @@ void ClassLoaderDataGraph::rollback_redefinition() {
   }
 }
 
+// (DCEVM) - iterate over all classes in all dictionaries
+bool ClassLoaderDataGraph::dictionary_classes_do_update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass) {
+  bool ok = false;
+  FOR_ALL_DICTIONARY(cld) {
+    ok = cld->dictionary()->update_klass(name, k, old_klass) || ok;
+  }
+  return ok;
+}
+
 void ClassLoaderDataGraph::verify_dictionary() {
   FOR_ALL_DICTIONARY(cld) {
     cld->dictionary()->verify();
