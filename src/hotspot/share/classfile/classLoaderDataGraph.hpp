@@ -108,6 +108,9 @@ class ClassLoaderDataGraph : public AllStatic {
   // (DCEVM) Enhanced class redefinition
   static void rollback_redefinition();
 
+  // Enhanced class redefinition
+  static bool dictionary_classes_do_update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass);
+
   // VM_CounterDecay iteration support
   static InstanceKlass* try_get_next_class();
   static void adjust_saved_class(ClassLoaderData* cld);
