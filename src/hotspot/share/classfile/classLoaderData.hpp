@@ -130,6 +130,9 @@ class ClassLoaderDataGraph : public AllStatic {
   // Enhanced class redefinition
   static void rollback_redefinition();
 
+  // Enhanced class redefinition
+  static bool dictionary_classes_do_update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass);
+
   // Iterate all classes and their class loaders, including initiating class loaders.
   static void dictionary_all_entries_do(void f(InstanceKlass*, ClassLoaderData*));
 

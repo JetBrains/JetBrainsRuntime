@@ -115,7 +115,7 @@ public:
   void free_entry(DictionaryEntry* entry);
 
   // Enhanced class redefinition
-  bool update_klass(unsigned int hash, Symbol* name, ClassLoaderData* loader_data, InstanceKlass* k, InstanceKlass* old_klass);
+  bool update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass);
 
   void rollback_redefinition();
 
