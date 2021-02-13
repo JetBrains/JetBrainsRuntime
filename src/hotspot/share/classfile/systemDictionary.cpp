@@ -1495,8 +1495,11 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
   // which will require a token to perform the define class
 
   if (is_redefining) {
-    Dictionary* dictionary = loader_data->dictionary();
-    bool ok = dictionary->update_klass(THREAD, k->name(), k, old_klass);
+    // Update all dictionaries containing old_class to new_class
+    // outcome must be same as result of standard redefinition, that does not create a new Klass
+    ClassLoaderDataGraph_lock->lock();
+    bool ok = ClassLoaderDataGraph::dictionary_classes_do_update_klass(name_h, k, old_klass);
+    ClassLoaderDataGraph_lock->unlock();
     assert (ok, "must have found old class and updated!");
   }
   check_constraints(k, loader_data, true, CHECK);

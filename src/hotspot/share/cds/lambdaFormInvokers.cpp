@@ -204,7 +204,7 @@ void LambdaFormInvokers::regenerate_class(char* class_name, ClassFileStream& st,
                                                    class_name_sym,
                                                    cld,
                                                    cl_info,
-                                                   false,
+                                                   false, // pick_newest
                                                    CHECK);
 
   assert(result->java_mirror() != nullptr, "must be");

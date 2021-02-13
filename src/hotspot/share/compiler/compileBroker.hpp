@@ -175,6 +175,9 @@ class CompileBroker: AllStatic {
   static volatile jint _osr_compilation_id;
   static volatile jint _native_compilation_id;
 
+  static volatile bool _compilation_stopped;
+  static volatile int _active_compilations;
+
   static CompileQueue* _c2_compile_queue;
   static CompileQueue* _c1_compile_queue;
 
@@ -418,6 +421,9 @@ public:
   // CodeHeap State Analytics.
   static void print_info(outputStream *out);
   static void print_heapinfo(outputStream *out, const char* function, size_t granularity);
+
+  static void stopCompilationBeforeEnhancedRedefinition();
+  static void releaseCompilationAfterEnhancedRedefinition();
 };
 
 #endif // SHARE_COMPILER_COMPILEBROKER_HPP

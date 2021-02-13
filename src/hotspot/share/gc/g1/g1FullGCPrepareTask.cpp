@@ -223,7 +223,7 @@ size_t G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::apply(oop object) 
 
 bool G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::must_rescue(oop old_obj, oop new_obj) {
   // Only redefined objects can have the need to be rescued.
-  if (oop(old_obj)->klass()->new_version() == NULL) {
+  if (old_obj->klass()->new_version() == NULL) {
     return false;
   }
 
@@ -239,6 +239,7 @@ bool G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::must_rescue(oop old_
   int new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
   int original_size = old_obj->size();
 
+  // what if old_obj > new_obj ?
   bool overlap = (cast_from_oop<HeapWord*>(old_obj) + original_size < cast_from_oop<HeapWord*>(new_obj) + new_size);
 
   return overlap;
