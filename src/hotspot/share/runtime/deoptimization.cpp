@@ -2070,6 +2070,7 @@ Deoptimization::UnrollBlock* Deoptimization::uncommon_trap(JavaThread* thread, j
     uncommon_trap_inner(thread, trap_request);
   }
   Thread::WXWriteFromExecSetter wx_write;
+  HandleMark hm(thread);
   return fetch_unroll_info_helper(thread, exec_mode);
 }
 
