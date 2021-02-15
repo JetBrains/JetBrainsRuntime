@@ -1779,7 +1779,7 @@ void VMError::controlled_crash(int how) {
   char * const dataPtr = NULL;  // bad data pointer
   const void (*funcPtr)(void);  // bad function pointer
 
-#if defined(PPC64) && !defined(ABI_ELFv2)
+#if defined(PPC64) && !defined(ABI_ELFv2) && !defined(ZERO)
   struct FunctionDescriptor functionDescriptor;
 
   functionDescriptor.set_entry((address) 0xF);
