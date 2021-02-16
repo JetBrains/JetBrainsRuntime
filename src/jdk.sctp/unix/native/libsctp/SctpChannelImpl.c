@@ -478,6 +478,7 @@ JNIEXPORT jint JNICALL Java_sun_nio_ch_sctp_SctpChannelImpl_receive0
                 iov->iov_len = SCTP_NOTIFICATION_SIZE - rv;
                 if ((rv = recvmsg(fd, msg, flags)) < 0) {
                     handleSocketError(env, errno);
+                    free(newBuf);
                     return 0;
                 }
                 bufp = newBuf;
