@@ -32,6 +32,11 @@
 #include "logging/logTag.hpp"
 
 void ShenandoahIUMode::initialize_flags() const {
+  if (FLAG_IS_CMDLINE(ClassUnloadingWithConcurrentMark) && ClassUnloading) {
+    log_warning(gc)("Shenandoah I-U mode sets -XX:-ClassUnloadingWithConcurrentMark; see JDK-8261341 for details");
+  }
+  FLAG_SET_DEFAULT(ClassUnloadingWithConcurrentMark, false);
+
   if (FLAG_IS_DEFAULT(ShenandoahIUBarrier)) {
     FLAG_SET_DEFAULT(ShenandoahIUBarrier, true);
   }
