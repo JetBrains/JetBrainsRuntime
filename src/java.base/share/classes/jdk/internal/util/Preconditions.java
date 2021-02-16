@@ -185,13 +185,13 @@ public class Preconditions {
         // Switch to default if fewer or more arguments than required are supplied
         switch ((args.size() != argSize) ? "" : checkKind) {
             case "checkIndex":
-                return String.format("Index %d out of bounds for length %d",
+                return String.format("Index %s out of bounds for length %s",
                                      args.get(0), args.get(1));
             case "checkFromToIndex":
-                return String.format("Range [%d, %d) out of bounds for length %d",
+                return String.format("Range [%s, %s) out of bounds for length %s",
                                      args.get(0), args.get(1), args.get(2));
             case "checkFromIndexSize":
-                return String.format("Range [%d, %<d + %d) out of bounds for length %d",
+                return String.format("Range [%s, %<s + %s) out of bounds for length %s",
                                      args.get(0), args.get(1), args.get(2));
             default:
                 return String.format("Range check failed: %s %s", checkKind, args);
