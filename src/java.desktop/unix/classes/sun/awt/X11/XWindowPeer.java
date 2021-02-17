@@ -1109,14 +1109,11 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
      * though, as the latter doesn't track updates to WM_TAKE_FOCUS property
      * (it's not required as per ICCCM specification). So another approach is
      * used - setting _NET_WM_USER_TIME to 0, as specified in EWMH spec (see
-     * 'setUserTimeBeforeShowing' method). The same method is used currently for
-     * KDE (KWin) to solve a specific problem in 'focus follows mouse' mode
-     * (JBR-2934). Ideally, the new approach should be used for all supporting
-     * window managers, as it doesn't require additional calls to X server.
+     * 'setUserTimeBeforeShowing' method).
      */
     private boolean shouldSuppressWmTakeFocus() {
         int wmId = XWM.getWMID();
-        return wmId != XWM.I3_WM && wmId != XWM.KDE2_WM;
+        return wmId != XWM.I3_WM;
     }
 
     public void setVisible(boolean vis) {
@@ -1421,16 +1418,21 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         super.handleMapNotifyEvent(xev);
         if (isBeforeFirstMapNotify && !winAttr.initialFocus && shouldSuppressWmTakeFocus()) {
             suppressWmTakeFocus(false); // restore the protocol.
-            /*
-             * For some reason, on Metacity, a frame/dialog being shown
-             * without WM_TAKE_FOCUS protocol doesn't get moved to the front.
-             * So, we do it evidently.
-             */
-            XToolkit.awtLock();
-            try {
-                XlibWrapper.XRaiseWindow(XToolkit.getDisplay(), getWindow());
-            } finally {
-                XToolkit.awtUnlock();
+            if (!XWM.isKDE2()) {
+                /*
+                 * For some reason, on Metacity, a frame/dialog being shown
+                 * without WM_TAKE_FOCUS protocol doesn't get moved to the front.
+                 * So, we do it evidently.
+                 *
+                 * We don't do it on KDE, as raising a child window will also raise the parent one there,
+                 * and we don't want that.
+                 */
+                XToolkit.awtLock();
+                try {
+                    XlibWrapper.XRaiseWindow(XToolkit.getDisplay(), getWindow());
+                } finally {
+                    XToolkit.awtUnlock();
+                }
             }
         }
         if (shouldFocusOnMapNotify()) {
