@@ -156,6 +156,28 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 
     [super finishLaunching];
+
+    // fix for JBR-3127 Modal dialogs invoked from modal or floating dialogs are opened in full screen
+    [defs setBool:NO forKey:@"NSWindowAllowsImplicitFullScreen"];
+
+    // temporary possibility to load deprecated NSJavaVirtualMachine (just for testing)
+    // todo: remove when completely tested on BigSur
+    // see https://youtrack.jetbrains.com/issue/JBR-3127#focus=Comments-27-4684465.0-0
+    NSString * loadNSJVMProp = [PropertiesUtilities
+            javaSystemPropertyForKey:@"apple.awt.application.instantiate.NSJavaVirtualMachine"
+                             withEnv:env];
+    if ([@"true" isCaseInsensitiveLike:loadNSJVMProp]) {
+        if (objc_lookUpClass("NSJavaVirtualMachine") != nil) {
+            NSLog(@"objc class NSJavaVirtualMachine is already registered");
+        } else {
+            Class nsjvm =  objc_allocateClassPair([NSObject class], "NSJavaVirtualMachine", 0);
+            objc_registerClassPair(nsjvm);
+            NSLog(@"registered class NSJavaVirtualMachine: %@", nsjvm);
+
+            id nsjvmInst = [[nsjvm alloc] init];
+            NSLog(@"instantiated dummy NSJavaVirtualMachine: %@", nsjvmInst);
+        }
+    }
 }
 
 
