@@ -163,6 +163,9 @@ AWT_ASSERT_APPKIT_THREAD;
 
     // inform any interested parties that the AWT has arrived and is pumping
     [[NSNotificationCenter defaultCenter] postNotificationName:JNFRunLoopDidStartNotification object:self];
+
+    // fix for JBR-3127 Modal dialogs invoked from modal or floating dialogs are opened in full screen
+    [defs setBool:NO forKey:@"NSWindowAllowsImplicitFullScreen"];
 }
 
 - (BOOL)userNotificationCenter:(NSUserNotificationCenter *)center
