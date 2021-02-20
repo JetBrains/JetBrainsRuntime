@@ -36,17 +36,19 @@ for f in \
   fi
 done
 
-log "Signing frameworks..."
-for f in $APP_DIRECTORY/Contents/Frameworks/*; do
-  find "$f" \
-    -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" \) \
-    -exec codesign --timestamp --force \
-    -v -s "$JB_CERT" \
-    --entitlements entitlements.xml {} \;
-  codesign --timestamp --force \
-    -v -s "$JB_CERT" --options=runtime \
-    --entitlements entitlements.xml "$f"
-done
+if [ -d "$APP_DIRECTORY/Contents/Frameworks" ]; then
+  log "Signing frameworks..."
+  for f in $APP_DIRECTORY/Contents/Frameworks/*; do
+    find "$f" \
+      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" \) \
+      -exec codesign --timestamp --force \
+      -v -s "$JB_CERT" \
+      --entitlements entitlements.xml {} \;
+    codesign --timestamp --force \
+      -v -s "$JB_CERT" --options=runtime \
+      --entitlements entitlements.xml "$f"
+  done
+fi
 
 log "Signing libraries in jars in $PWD"
 
