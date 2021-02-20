@@ -82,16 +82,22 @@ p_hb_face_destroy_type p_hb_face_destroy;
 p_hb_ot_tag_to_language_type p_hb_ot_tag_to_language;
 
 static int initialisedHBAPI = 0;
+static int initialisationFailed = 0;
 
 int initHBAPI() {
     if (initialisedHBAPI) {
         return initialisedHBAPI;
     }
 
+    if (initialisationFailed) {
+        return 0;
+    }
+
 #if !defined(_WIN32) && !defined(__APPLE__)
     void* libharfbuzz = NULL;
     libharfbuzz = dlopen(JHARFBUZZ_DLL, RTLD_LOCAL | RTLD_LAZY);
     if (libharfbuzz == NULL) {
+        initialisationFailed = 1;
         CHECK_NULL_RETURN(libharfbuzz = dlopen(HARFBUZZ_DLL, RTLD_LOCAL | RTLD_LAZY), 0);
     }
 
