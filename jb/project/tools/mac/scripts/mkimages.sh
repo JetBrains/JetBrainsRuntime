@@ -39,15 +39,8 @@ source jb/project/tools/common.sh
 
 function copyJNF {
   __contents_dir=$1
-    # we can't notarize this library as usual framework (with headers and tbd-file)
-    # but single library notarizes correctly
-    mkdir -p ${__contents_dir}/Frameworks/JavaNativeFoundation.framework/Resources
-    cp -p Frameworks/JavaNativeFoundation.framework/JavaNativeFoundation \
-      ${__contents_dir}/Frameworks/JavaNativeFoundation.framework || do_exit $?
-    cp -p Frameworks/JavaNativeFoundation.framework/Resources/Info.plist \
-      ${__contents_dir}/Frameworks/JavaNativeFoundation.framework/Resources || do_exit $?
-    # unsign JavaNativeFoundation binary (otherwise notarization will fail)
-    codesign --remove-signature ${__contents_dir}/Frameworks/JavaNativeFoundation.framework/JavaNativeFoundation || do_exit $?
+    mkdir -p ${__contents_dir}/Frameworks
+    cp -Rp Frameworks/JavaNativeFoundation.framework ${__contents_dir}/Frameworks
 }
 function create_jbr {
 
