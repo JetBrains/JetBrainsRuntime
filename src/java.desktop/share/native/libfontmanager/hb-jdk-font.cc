@@ -99,6 +99,7 @@ int initHBAPI() {
     if (libharfbuzz == NULL) {
         initialisationFailed = 1;
         CHECK_NULL_RETURN(libharfbuzz = dlopen(HARFBUZZ_DLL, RTLD_LOCAL | RTLD_LAZY), 0);
+        initialisationFailed = 0;
     }
 
     p_hb_buffer_create = (p_hb_buffer_create_type)dlsym(libharfbuzz, "hb_buffer_create");
