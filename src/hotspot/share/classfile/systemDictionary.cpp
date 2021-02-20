@@ -1067,9 +1067,9 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
 
   EventClassLoad class_load_start_event;
   ClassLoaderData* loader_data;
-  
+
   bool is_redefining = (old_klass != NULL);
-  
+
   bool is_unsafe_anon_class = cl_info.unsafe_anonymous_host() != NULL;
 
   // - for unsafe anonymous class: create a new CLD whith a class holder that uses
@@ -1755,7 +1755,9 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
   if (is_redefining) {
     // Update all dictionaries containing old_class to new_class
     // outcome must be same as result of standard redefinition, that does not create a new Klass
+    ClassLoaderDataGraph_lock->lock();
     bool ok = ClassLoaderDataGraph::dictionary_classes_do_update_klass(name_h, k, old_klass);
+    ClassLoaderDataGraph_lock->unlock();
     assert (ok, "must have found old class and updated!");
   }
   check_constraints(d_hash, k, class_loader_h, !is_redefining, CHECK);
