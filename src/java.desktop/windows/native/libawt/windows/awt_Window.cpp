@@ -1405,19 +1405,7 @@ void AwtWindow::Show()
             if (nCmdShow == SW_SHOWNA || m_isIgnoringMouseEvents) {
                 flags |= SWP_NOACTIVATE;
             }
-            // This flag allows the toplevel to be bellow other process toplevels.
-            // This behaviour is preferable for popups, but it is not appropriate
-            // for menus
-            BOOL isLightweightDialog = TRUE;
-            jclass windowPeerClass = env->FindClass("java/awt/peer/WindowPeer");
-            if (windowPeerClass != NULL) {
-                jmethodID isLightweightDialogMID = env->GetStaticMethodID(windowPeerClass, "isLightweightDialog", "(Ljava/awt/Window;)Z");
-                if (isLightweightDialogMID != NULL) {
-                    isLightweightDialog = env->CallStaticBooleanMethod(windowPeerClass, isLightweightDialogMID, target);
-                }
-            }
-
-            HWND hInsertAfter = isLightweightDialog ? HWND_TOP : HWND_TOPMOST;
+            HWND hInsertAfter = HWND_TOP;
             if (m_isIgnoringMouseEvents) {
                 HWND hFgWindow = ::GetForegroundWindow();
                 HWND hOwner = ::GetWindow(GetHWnd(), GW_OWNER);
