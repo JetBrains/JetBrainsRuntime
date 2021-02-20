@@ -26,8 +26,7 @@ log "Signing libraries and executables..."
 # -perm +111 searches for executables
 for f in \
    "Contents/Home/bin" \
-   "Contents/Home/lib" \
-   "Contents/Frameworks"; do
+   "Contents/Home/lib"; do
   if [ -d "$APP_DIRECTORY/$f" ]; then
     find "$APP_DIRECTORY/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -perm +111 \) \
@@ -35,6 +34,18 @@ for f in \
       -v -s "$JB_CERT" --options=runtime \
       --entitlements entitlements.xml {} \;
   fi
+done
+
+log "Signing frameworks..."
+for f in $APP_DIRECTORY/Contents/Frameworks/*; do
+  find "$f" \
+    -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" \) \
+    -exec codesign --timestamp --force \
+    -v -s "$JB_CERT" \
+    --entitlements entitlements.xml {} \;
+  codesign --timestamp --force \
+    -v -s "$JB_CERT" --options=runtime \
+    --entitlements entitlements.xml "$f"
 done
 
 log "Signing libraries in jars in $PWD"
