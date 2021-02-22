@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,6 +73,16 @@ import jdk.internal.misc.SharedSecrets;
  */
 public final class SSLSocketImpl
         extends BaseSSLSocketImpl implements SSLTransport {
+
+    /**
+     * ERROR HANDLING GUIDELINES
+     * (which exceptions to throw and catch and which not to throw and catch)
+     *
+     * - if there is an IOException (SocketException) when accessing the
+     *   underlying Socket, pass it through
+     *
+     * - do not throw IOExceptions, throw SSLExceptions (or a subclass)
+     */
 
     final SSLContextImpl            sslContext;
     final TransportContext          conContext;
@@ -446,6 +456,8 @@ public final class SSLSocketImpl
                     throw conContext.fatal(Alert.HANDSHAKE_FAILURE,
                             "Couldn't kickstart handshaking", iioe);
                 }
+            } catch (SocketException se) {
+                handleException(se);
             } catch (IOException ioe) {
                 throw conContext.fatal(Alert.HANDSHAKE_FAILURE,
                     "Couldn't kickstart handshaking", ioe);
@@ -1326,11 +1338,9 @@ public final class SSLSocketImpl
                         conContext.isNegotiated) {
                     return 0;
                 }
-            } catch (SSLException ssle) {
-                throw ssle;
-            } catch (InterruptedIOException iioe) {
-                // don't change exception in case of timeouts or interrupts
-                throw iioe;
+            } catch (SSLException | InterruptedIOException | SocketException se) {
+                // don't change exception in case of timeouts or interrupts or SocketException
+                throw se;
             } catch (IOException ioe) {
                 throw new SSLException("readHandshakeRecord", ioe);
             }
@@ -1391,11 +1401,9 @@ public final class SSLSocketImpl
                         buffer.position() > 0) {
                     return buffer;
                 }
-            } catch (SSLException ssle) {
-                throw ssle;
-            } catch (InterruptedIOException iioe) {
-                // don't change exception in case of timeouts or interrupts
-                throw iioe;
+            } catch (SSLException | InterruptedIOException | SocketException se) {
+                // don't change exception in case of timeouts or interrupts or SocketException.
+                throw se;
             } catch (IOException ioe) {
                 if (!(ioe instanceof SSLException)) {
                     throw new SSLException("readApplicationRecord", ioe);
@@ -1586,6 +1594,16 @@ public final class SSLSocketImpl
                 // RuntimeException
                 alert = Alert.INTERNAL_ERROR;
             }
+        }
+
+        if (cause instanceof SocketException) {
+            try {
+                conContext.fatal(alert, cause);
+            } catch (Exception e) {
+                // Just delivering the fatal alert, re-throw the socket exception instead.
+            }
+
+            throw (SocketException)cause;
         }
 
         throw conContext.fatal(alert, cause);
