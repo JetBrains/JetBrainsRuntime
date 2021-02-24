@@ -238,7 +238,7 @@ public class AccessibleJListTest extends AccessibleComponentTest {
                         }
                     });
                     popup = factory.getPopup(frame, winList, bounds.x + bounds.width + 20, bounds.y);
-                    JWindow c = AccessibleComponentTest.Utils.getComponentWindow(winList);
+                    Window c = SwingUtilities.getWindowAncestor(winList);
                     if (c != null) {
                         c.setAutoRequestFocus(true);
                         c.setFocusableWindowState(true);

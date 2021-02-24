@@ -90,16 +90,4 @@ public abstract class AccessibleComponentTest {
         });
         mainFrame.setVisible(true);
     }
-
-    public static class Utils {
-
-        public static JWindow getComponentWindow(Component c) {
-            Component parent = c.getParent();
-            while ((parent != null) && !(c instanceof JWindow)) {
-                c= parent;
-                parent = parent.getParent();
-            }
-            return c instanceof JWindow ? (JWindow)c : null;
-        }
-    }
 }
