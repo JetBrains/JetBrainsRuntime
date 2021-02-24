@@ -1,11 +1,10 @@
 // Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
+import java.awt.*;
+import java.security.PublicKey;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CountDownLatch;
 
-import java.awt.Color;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
@@ -90,5 +89,17 @@ public abstract class AccessibleComponentTest {
             }
         });
         mainFrame.setVisible(true);
+    }
+
+    public static class Utils {
+
+        public static JWindow getComponentWindow(Component c) {
+            Component parent = c.getParent();
+            while ((parent != null) && !(c instanceof JWindow)) {
+                c= parent;
+                parent = parent.getParent();
+            }
+            return c instanceof JWindow ? (JWindow)c : null;
+        }
     }
 }
