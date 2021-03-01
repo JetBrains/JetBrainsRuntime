@@ -1,18 +1,18 @@
 diff --git modules.list modules.list
-index e23d793..368d022 100644
+index 33375b527c4..76539cbc0e0 100644
 --- modules.list
 +++ modules.list
-@@ -54,4 +54,7 @@ jdk.security.jgss,
- jdk.unsupported,
+@@ -55,4 +55,7 @@ jdk.unsupported,
  jdk.xml.dom,
  jdk.zipfs,
--jdk.hotspot.agent
-+jdk.hotspot.agent,
+ jdk.hotspot.agent,
+-jdk.jcmd
++jdk.jcmd,
 +jcef,
 +gluegen.rt,
 +jogl.all
 diff --git src/java.desktop/share/classes/module-info.java src/java.desktop/share/classes/module-info.java
-index b663b38..3e9acdc 100644
+index b663b382f52..3e9acdc0c27 100644
 --- src/java.desktop/share/classes/module-info.java
 +++ src/java.desktop/share/classes/module-info.java
 @@ -109,7 +109,11 @@ module java.desktop {
