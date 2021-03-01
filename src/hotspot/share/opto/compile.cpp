@@ -1104,7 +1104,7 @@ void Compile::Init(int aliaslevel) {
 
   _fixed_slots = 0;
   set_has_split_ifs(false);
-  set_has_loops(has_method() && method()->has_loops()); // first approximation
+  set_has_loops(false); // first approximation
   set_has_stringbuilder(false);
   set_has_boxed_value(false);
   _trap_can_recompile = false;  // no traps emitted yet
@@ -1200,6 +1200,7 @@ void Compile::Init(int aliaslevel) {
   register_library_intrinsics();
 #ifdef ASSERT
   _type_verify_symmetry = true;
+  _exception_backedge = false;
 #endif
 }
 
