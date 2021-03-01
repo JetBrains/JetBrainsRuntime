@@ -1,13 +1,13 @@
 diff --git modules.list modules.list
-index 7896479c981..c1a5e664b86 100644
+index dcf610a6a56..f8797505c23 100644
 --- modules.list
 +++ modules.list
-@@ -50,4 +50,7 @@ jdk.xml.dom,
- jdk.zipfs,
+@@ -51,4 +51,7 @@ jdk.zipfs,
  jdk.hotspot.agent,
  jetbrains.api,
--jetbrains.api.impl
-+jetbrains.api.impl,
+ jetbrains.api.impl,
+-jdk.jcmd
++jdk.jcmd,
 +jcef,
 +gluegen.rt,
 +jogl.all
