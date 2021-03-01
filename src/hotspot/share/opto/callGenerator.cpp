@@ -457,7 +457,6 @@ void LateInlineCallGenerator::do_late_inline() {
     result = (result_size == 1) ? kit.pop() : kit.pop_pair();
   }
 
-  C->set_has_loops(C->has_loops() || _inline_cg->method()->has_loops());
   C->env()->notice_inlined_method(_inline_cg->method());
   C->set_inlining_progress(true);
 
