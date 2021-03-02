@@ -786,24 +786,6 @@ AwtFrame::Show()
         } else {
             ::ShowWindow(hwnd, SW_SHOWMAXIMIZED);
         }
-
-        // [tav] Workaround for unclear platform behaviour.
-        // When a custom decor frame is being shown maximized at the moment
-        // some another AWT window is still foreground - the frame can go
-        // in background when shown if:
-        // 1) the other AWT window is closed the moment after frame's show
-        // 2) some another maximized window is behind the frame, it steals activation
-        if (HasCustomDecoration()) {
-            HWND fgHWnd = ::GetForegroundWindow();
-            if (fgHWnd != NULL &&
-                GetComponent(fgHWnd) != NULL && // it's awt window
-                IsFocusableWindow() &&
-                IsAutoRequestFocus() &&
-                !::IsWindow(GetModalBlocker(GetHWnd())))
-            {
-                ::SetForegroundWindow(GetHWnd());
-            }
-        }
     }
     else if (m_isInputMethodWindow) {
         // Don't activate input methow window
@@ -1447,16 +1429,6 @@ void AwtFrame::_SetState(void *param)
 
             f->setIconic(iconify);
             f->setZoomed(zoom);
-
-            // [tav] With custom decor enabled, MS Win will send WM_SIZE msg w/o SIZE_MAXIMIZED param set
-            // before the frame will be shown. The msg handler will drop the maximized state in response.
-            // In order to prevent that, we set the maximized state on the native frame in advance.
-            if (zoom && f->HasCustomDecoration()) {
-                WINDOWPLACEMENT wp;
-                ::GetWindowPlacement(f->GetHWnd(), &wp);
-                wp.showCmd = SW_SHOWMAXIMIZED;
-                ::SetWindowPlacement(f->GetHWnd(), &wp);
-            }
         }
     }
 
