@@ -1244,8 +1244,12 @@ StatusDrawCallback(XIC ic, XPointer client_data,
                 statusWindow->status[MAX_STATUS_LEN - 1] = '\0';
             } else {
                 char *mbstr = wcstombsdmp(text->string.wide_char, text->length);
+                if (mbstr == NULL) {
+                    goto finally;
+                }
                 strncpy(statusWindow->status, mbstr, MAX_STATUS_LEN);
                 statusWindow->status[MAX_STATUS_LEN - 1] = '\0';
+                free(mbstr);
             }
             statusWindow->on = True;
             onoffStatusWindow(pX11IMData, statusWindow->parent, True);
