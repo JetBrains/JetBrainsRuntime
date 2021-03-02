@@ -2247,7 +2247,16 @@ void AwtWindow::RecalcNonClient()
 //
 void AwtWindow::RedrawNonClient()
 {
-    ::SetWindowPos(GetHWnd(), (HWND) NULL, 0, 0, 0, 0, SwpFrameChangeFlags|SWP_ASYNCWINDOWPOS);
+    UINT flags = SwpFrameChangeFlags;
+    if (!HasCustomDecoration()) {
+        // With custom decorations enabled, SetWindowPos call below can cause WM_SIZE message being sent.
+        // If we're coming here from WFramePeer.initialize (as part of 'setResizable' call),
+        // WM_SIZE message processing can happen concurrently with window flags update done as part of
+        // 'setState' call), and lead to inconsistent state.
+        // So, we disable asynchronous processing in case we have custom decorations to avoid the race condition.
+        flags |= SWP_ASYNCWINDOWPOS;
+    }
+    ::SetWindowPos(GetHWnd(), (HWND) NULL, 0, 0, 0, 0, flags);
 }
 
 int AwtWindow::GetScreenImOn() {
