@@ -1292,10 +1292,10 @@ JNF_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
  * Method:    nativeSetNSWindowBounds
- * Signature: (JDDDDZ)V
+ * Signature: (JDDDD)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetNSWindowBounds
-(JNIEnv *env, jclass clazz, jlong windowPtr, jdouble originX, jdouble originY, jdouble width, jdouble height, jboolean wait)
+(JNIEnv *env, jclass clazz, jlong windowPtr, jdouble originX, jdouble originY, jdouble width, jdouble height)
 {
 JNF_COCOA_ENTER(env);
 
@@ -1303,7 +1303,7 @@ JNF_COCOA_ENTER(env);
 
     // TODO: not sure we need displayIfNeeded message in our view
     NSWindow *nsWindow = OBJC(windowPtr);
-    [ThreadUtilities performOnMainThreadWaiting:(BOOL)wait block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
 
         AWTWindow *window = (AWTWindow*)[nsWindow delegate];
 
