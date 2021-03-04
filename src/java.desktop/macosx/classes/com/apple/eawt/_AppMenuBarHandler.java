@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,17 +25,20 @@
 
 package com.apple.eawt;
 
+import java.awt.Container;
 import java.awt.Frame;
-import java.awt.peer.MenuComponentPeer;
 
-import javax.swing.*;
+
+import javax.swing.JFrame;
+import javax.swing.JLayeredPane;
+import javax.swing.JMenuBar;
 import javax.swing.plaf.MenuBarUI;
 
 import com.apple.laf.ScreenMenuBar;
+import sun.awt.AWTAccessor;
 import sun.lwawt.macosx.CMenuBar;
 
 import com.apple.laf.AquaMenuBarUI;
-import sun.awt.AWTAccessor;
 
 class _AppMenuBarHandler {
     private static final int MENU_ABOUT = 1;
@@ -43,14 +46,20 @@ class _AppMenuBarHandler {
 
     private static native void nativeSetMenuState(final int menu, final boolean visible, final boolean enabled);
     private static native void nativeSetDefaultMenuBar(final long menuBarPeer);
+    private static native void nativeActivateDefaultMenuBar(final long menuBarPeer);
 
     static final _AppMenuBarHandler instance = new _AppMenuBarHandler();
     static _AppMenuBarHandler getInstance() {
         return instance;
     }
 
+    private static ScreenMenuBar defaultMenuBar;
+
     // callback from the native delegate -init function
-    private static void initMenuStates(final boolean aboutMenuItemVisible, final boolean aboutMenuItemEnabled, final boolean prefsMenuItemVisible, final boolean prefsMenuItemEnabled) {
+    private static void initMenuStates(final boolean aboutMenuItemVisible,
+                                       final boolean aboutMenuItemEnabled,
+                                       final boolean prefsMenuItemVisible,
+                                       final boolean prefsMenuItemEnabled) {
         synchronized (instance) {
             instance.aboutMenuItemVisible = aboutMenuItemVisible;
             instance.aboutMenuItemEnabled = aboutMenuItemEnabled;
@@ -70,41 +79,45 @@ class _AppMenuBarHandler {
 
     void setDefaultMenuBar(final JMenuBar menuBar) {
         installDefaultMenuBar(menuBar);
+    }
 
+    static boolean isMenuBarActivationNeeded() {
         // scan the current frames, and see if any are foreground
         final Frame[] frames = Frame.getFrames();
         for (final Frame frame : frames) {
             if (frame.isVisible() && !isFrameMinimized(frame)) {
-                return;
+                return false;
             }
         }
 
-        // if we have no foreground frames, then we have to "kick" the menubar
-        final JFrame pingFrame = new JFrame();
-        pingFrame.getRootPane().putClientProperty("Window.alpha", Float.valueOf(0.0f));
-        pingFrame.setUndecorated(true);
-        pingFrame.setVisible(true);
-        pingFrame.toFront();
-        pingFrame.setVisible(false);
-        pingFrame.dispose();
+        return true;
     }
 
     static boolean isFrameMinimized(final Frame frame) {
         return (frame.getExtendedState() & Frame.ICONIFIED) != 0;
     }
 
-    @SuppressWarnings("deprecation")
     static void installDefaultMenuBar(final JMenuBar menuBar) {
+
         if (menuBar == null) {
             // intentionally clearing the default menu
+            if (defaultMenuBar != null) {
+                defaultMenuBar.removeNotify();
+                defaultMenuBar = null;
+            }
             nativeSetDefaultMenuBar(0);
             return;
         }
 
-        final MenuBarUI ui = menuBar.getUI();
+        Container parent = menuBar.getParent();
+        if (parent instanceof JLayeredPane) {
+            ((JLayeredPane) parent).remove(menuBar);
+        }
+
+        MenuBarUI ui = menuBar.getUI();
         if (!(ui instanceof AquaMenuBarUI)) {
-            // Aqua was not installed
-            throw new IllegalStateException("Application.setDefaultMenuBar() only works with the Aqua Look and Feel");
+            ui = new AquaMenuBarUI();
+            menuBar.setUI(ui);
         }
 
         final AquaMenuBarUI aquaUI = (AquaMenuBarUI)ui;
@@ -114,7 +127,14 @@ class _AppMenuBarHandler {
             throw new IllegalStateException("Application.setDefaultMenuBar() only works if apple.laf.useScreenMenuBar=true");
         }
 
-        screenMenuBar.addNotify();
+        if (screenMenuBar != defaultMenuBar) {
+            if (defaultMenuBar != null) {
+                defaultMenuBar.removeNotify();
+            }
+            defaultMenuBar = screenMenuBar;
+            screenMenuBar.addNotify();
+        }
+
         final Object peer = AWTAccessor.getMenuComponentAccessor().getPeer(screenMenuBar);
         if (!(peer instanceof CMenuBar)) {
             // such a thing should not be possible
@@ -123,6 +143,11 @@ class _AppMenuBarHandler {
 
         // grab the pointer to the CMenuBar, and retain it in native
         ((CMenuBar) peer).execute(_AppMenuBarHandler::nativeSetDefaultMenuBar);
+
+        // if there is no currently active frame, install the default menu bar in the application main menu
+        if (isMenuBarActivationNeeded()) {
+            ((CMenuBar) peer).execute(_AppMenuBarHandler::nativeActivateDefaultMenuBar);
+        }
     }
 
     void setAboutMenuItemVisible(final boolean present) {

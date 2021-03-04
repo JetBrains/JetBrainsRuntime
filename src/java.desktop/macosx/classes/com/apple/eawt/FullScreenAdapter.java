@@ -25,7 +25,7 @@
 
 package com.apple.eawt;
 
-import com.apple.eawt.AppEvent.FullScreenEvent;
+import com.apple.eawt.event.FullScreenEvent;
 
 /**
  * Abstract adapter class for receiving fullscreen events. This class is provided
