@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,20 +25,38 @@
 
 package com.apple.eawt;
 
-import java.awt.*;
-import java.awt.peer.*;
+import java.awt.Image;
+import java.awt.PopupMenu;
+import java.awt.Toolkit;
+import java.awt.Window;
+import java.awt.desktop.AboutHandler;
+import java.awt.desktop.AppForegroundListener;
+import java.awt.desktop.AppHiddenListener;
+import java.awt.desktop.AppReopenedListener;
+import java.awt.desktop.OpenFilesEvent;
+import java.awt.desktop.OpenFilesHandler;
+import java.awt.desktop.OpenURIEvent;
+import java.awt.desktop.OpenURIHandler;
+import java.awt.desktop.PreferencesHandler;
+import java.awt.desktop.PrintFilesEvent;
+import java.awt.desktop.PrintFilesHandler;
+import java.awt.desktop.QuitHandler;
+import java.awt.desktop.QuitResponse;
+import java.awt.desktop.QuitStrategy;
+import java.awt.desktop.ScreenSleepListener;
+import java.awt.desktop.SystemEventListener;
+import java.awt.desktop.SystemSleepListener;
+import java.awt.desktop.UserSessionListener;
 import java.beans.Beans;
-import java.util.function.Consumer;
 
 import javax.swing.JMenuBar;
 
-import sun.lwawt.*;
-import sun.lwawt.macosx.*;
 import sun.awt.AWTAccessor;
-import sun.util.logging.PlatformLogger;
+import sun.lwawt.LWWindowPeer;
+import sun.lwawt.macosx.CPlatformWindow;
 
 /**
- * The <code>Application</code> class allows you to integrate your Java application with the native Mac OS X environment.
+ * The {@code Application} class allows you to integrate your Java application with the native Mac OS X environment.
  * You can provide your Mac OS X users a greatly enhanced experience by implementing a few basic handlers for standard system events.
  *
  * For example:
@@ -56,22 +74,13 @@ import sun.util.logging.PlatformLogger;
  * @since 1.4
  */
 public class Application {
-    private static final PlatformLogger focusRequestLog = PlatformLogger.getLogger("jb.focus.requests");
-
     private static native void nativeInitializeApplicationDelegate();
 
     static Application sApplication = null;
 
     static {
-        java.security.AccessController.doPrivileged(
-            new java.security.PrivilegedAction<Void>() {
-                public Void run() {
-                    System.loadLibrary("awt");
-                    return null;
-                }
-            });
-
         checkSecurity();
+        Toolkit.getDefaultToolkit(); // Start AppKit
         if (!Beans.isDesignTime()) {
             nativeInitializeApplicationDelegate();
         }
@@ -112,11 +121,11 @@ public class Application {
     }
 
     /**
-     * Adds sub-types of {@link AppEventListener} to listen for notifications from the native Mac OS X system.
+     * Adds sub-types of {@link SystemEventListener} to listen for notifications from the native Mac OS X system.
      *
      * @see AppForegroundListener
      * @see AppHiddenListener
-     * @see AppReOpenedListener
+     * @see AppReopenedListener
      * @see ScreenSleepListener
      * @see SystemSleepListener
      * @see UserSessionListener
@@ -125,16 +134,16 @@ public class Application {
      * @since Java for Mac OS X 10.6 Update 3
      * @since Java for Mac OS X 10.5 Update 8
      */
-    public void addAppEventListener(final AppEventListener listener) {
+    public void addAppEventListener(final SystemEventListener listener) {
         eventHandler.addListener(listener);
     }
 
     /**
-     * Removes sub-types of {@link AppEventListener} from listening for notifications from the native Mac OS X system.
+     * Removes sub-types of {@link SystemEventListener} from listening for notifications from the native Mac OS X system.
      *
      * @see AppForegroundListener
      * @see AppHiddenListener
-     * @see AppReOpenedListener
+     * @see AppReopenedListener
      * @see ScreenSleepListener
      * @see SystemSleepListener
      * @see UserSessionListener
@@ -143,16 +152,16 @@ public class Application {
      * @since Java for Mac OS X 10.6 Update 3
      * @since Java for Mac OS X 10.5 Update 8
      */
-    public void removeAppEventListener(final AppEventListener listener) {
+    public void removeAppEventListener(final SystemEventListener listener) {
         eventHandler.removeListener(listener);
     }
 
     /**
      * Installs a handler to show a custom About window for your application.
      *
-     * Setting the {@link AboutHandler} to <code>null</code> reverts it to the default Cocoa About window.
+     * Setting the {@link AboutHandler} to {@code null} reverts it to the default Cocoa About window.
      *
-     * @param aboutHandler the handler to respond to the {@link AboutHandler#handleAbout()} message
+     * @param aboutHandler the handler to respond to the {@link AboutHandler#handleAbout} message
      * @since Java for Mac OS X 10.6 Update 3
      * @since Java for Mac OS X 10.5 Update 8
      */
@@ -163,7 +172,7 @@ public class Application {
     /**
      * Installs a handler to create the Preferences menu item in your application's app menu.
      *
-     * Setting the {@link PreferencesHandler} to <code>null</code> will remove the Preferences item from the app menu.
+     * Setting the {@link PreferencesHandler} to {@code null} will remove the Preferences item from the app menu.
      *
      * @param preferencesHandler
      * @since Java for Mac OS X 10.6 Update 3
@@ -175,8 +184,8 @@ public class Application {
 
     /**
      * Installs the handler which is notified when the application is asked to open a list of files.
-     * The {@link OpenFilesHandler#openFiles(AppEvent.OpenFilesEvent)} notifications are only sent if the Java app is a bundled application, with a <code>CFBundleDocumentTypes</code> array present in it's Info.plist.
-     * See the <a href="http://developer.apple.com/mac/library/documentation/General/Reference/InfoPlistKeyReference">Info.plist Key Reference</a> for more information about adding a <code>CFBundleDocumentTypes</code> key to your app's Info.plist.
+     * The {@link OpenFilesHandler#openFiles(OpenFilesEvent)} notifications are only sent if the Java app is a bundled application, with a {@code CFBundleDocumentTypes} array present in it's Info.plist.
+     * See the <a href="http://developer.apple.com/mac/library/documentation/General/Reference/InfoPlistKeyReference">Info.plist Key Reference</a> for more information about adding a {@code CFBundleDocumentTypes} key to your app's Info.plist.
      *
      * @param openFileHandler
      * @since Java for Mac OS X 10.6 Update 3
@@ -188,8 +197,8 @@ public class Application {
 
     /**
      * Installs the handler which is notified when the application is asked to print a list of files.
-     * The {@link PrintFilesHandler#printFiles(AppEvent.PrintFilesEvent)} notifications are only sent if the Java app is a bundled application, with a <code>CFBundleDocumentTypes</code> array present in it's Info.plist.
-     * See the <a href="http://developer.apple.com/mac/library/documentation/General/Reference/InfoPlistKeyReference">Info.plist Key Reference</a> for more information about adding a <code>CFBundleDocumentTypes</code> key to your app's Info.plist.
+     * The {@link PrintFilesHandler#printFiles(PrintFilesEvent)} notifications are only sent if the Java app is a bundled application, with a {@code CFBundleDocumentTypes} array present in it's Info.plist.
+     * See the <a href="http://developer.apple.com/mac/library/documentation/General/Reference/InfoPlistKeyReference">Info.plist Key Reference</a> for more information about adding a {@code CFBundleDocumentTypes} key to your app's Info.plist.
      *
      * @param printFileHandler
      * @since Java for Mac OS X 10.6 Update 3
@@ -201,10 +210,10 @@ public class Application {
 
     /**
      * Installs the handler which is notified when the application is asked to open a URL.
-     * The {@link OpenURIHandler#openURI(AppEvent.OpenURIEvent)} notifications are only sent if the Java app is a bundled application, with a <code>CFBundleURLTypes</code> array present in it's Info.plist.
-     * See the <a href="http://developer.apple.com/mac/library/documentation/General/Reference/InfoPlistKeyReference">Info.plist Key Reference</a> for more information about adding a <code>CFBundleURLTypes</code> key to your app's Info.plist.
+     * The {@link OpenURIHandler#openURI(OpenURIEvent)} notifications are only sent if the Java app is a bundled application, with a {@code CFBundleURLTypes} array present in it's Info.plist.
+     * See the <a href="http://developer.apple.com/mac/library/documentation/General/Reference/InfoPlistKeyReference">Info.plist Key Reference</a> for more information about adding a {@code CFBundleURLTypes} key to your app's Info.plist.
      *
-     * Setting the handler to <code>null</code> causes all {@link OpenURIHandler#openURI(AppEvent.OpenURIEvent)} requests to be enqueued until another handler is set.
+     * Setting the handler to {@code null} causes all {@link OpenURIHandler#openURI(OpenURIEvent)} requests to be enqueued until another handler is set.
      *
      * @param openURIHandler
      * @since Java for Mac OS X 10.6 Update 3
@@ -217,7 +226,7 @@ public class Application {
     /**
      * Installs the handler which determines if the application should quit.
      * The handler is passed a one-shot {@link QuitResponse} which can cancel or proceed with the quit.
-     * Setting the handler to <code>null</code> causes all quit requests to directly perform the default {@link QuitStrategy}.
+     * Setting the handler to {@code null} causes all quit requests to directly perform the default {@link QuitStrategy}.
      *
      * @param quitHandler the handler that is called when the application is asked to quit
      * @since Java for Mac OS X 10.6 Update 3
@@ -287,9 +296,6 @@ public class Application {
      * @since Java for Mac OS X 10.5 Update 6 - 1.6, 1.5
      */
     public void requestForeground(final boolean allWindows) {
-        if (focusRequestLog.isLoggable(PlatformLogger.Level.FINE)) {
-            focusRequestLog.fine("requestForeground(" + (allWindows ? "allWindows" : "") + ")", new Throwable());
-        }
         _AppMiscHandlers.requestActivation(allWindows);
     }
 
@@ -379,6 +385,16 @@ public class Application {
     }
 
     /**
+     * Displays a progress bar to this application's Dock icon.
+     * Acceptable values are from 0 to 100, any other disables progress indication.
+     *
+     * @param value progress value
+     */
+    public void setDockIconProgress(final int value) {
+        iconHandler.setDockIconProgress(value);
+    }
+
+    /**
      * Sets the default menu bar to use when there are no active frames.
      * Only used when the system property "apple.laf.useScreenMenuBar" is "true", and
      * the Aqua Look and Feel is active.
@@ -400,189 +416,12 @@ public class Application {
      *
      * @since Java for Mac OS X 10.7 Update 1
      */
-    @SuppressWarnings("deprecation")
     public void requestToggleFullScreen(final Window window) {
-        invokeOnPlatformWindow(window, pw -> pw.toggleFullScreen());
-    }
-
-    public void requestEnterFullScreen(final Window window) {
-        invokeOnPlatformWindow(window, pw -> pw.enterFullScreen());
-    }
-
-    public void requestLeaveFullScreen(final Window window) {
-        invokeOnPlatformWindow(window, pw -> pw.leaveFullScreen());
-    }
-
-    private void invokeOnPlatformWindow (final Window window, Consumer<CPlatformWindow> consumer) {
         final Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
         if (!(peer instanceof LWWindowPeer)) return;
         Object platformWindow = ((LWWindowPeer) peer).getPlatformWindow();
         if (!(platformWindow instanceof CPlatformWindow)) return;
-        consumer.accept((CPlatformWindow)platformWindow);
+        ((CPlatformWindow)platformWindow).toggleFullScreen();
     }
 
-
-    // -- DEPRECATED API --
-
-    /**
-     * Adds the specified ApplicationListener as a receiver of callbacks from this class.
-     * This method throws a RuntimeException if the newer About, Preferences, Quit, etc handlers are installed.
-     *
-     * @param listener an implementation of ApplicationListener that handles ApplicationEvents
-     *
-     * @deprecated register individual handlers for each task (About, Preferences, Open, Print, Quit, etc)
-     * @since 1.4
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public void addApplicationListener(final ApplicationListener listener) {
-        eventHandler.legacyHandler.addLegacyAppListener(listener);
-    }
-
-    /**
-     * Removes the specified ApplicationListener from being a receiver of callbacks from this class.
-     * This method throws a RuntimeException if the newer About, Preferences, Quit, etc handlers are installed.
-     *
-     * @param listener an implementation of ApplicationListener that had previously been registered to handle ApplicationEvents
-     *
-     * @deprecated unregister individual handlers for each task (About, Preferences, Open, Print, Quit, etc)
-     * @since 1.4
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public void removeApplicationListener(final ApplicationListener listener) {
-        eventHandler.legacyHandler.removeLegacyAppListener(listener);
-    }
-
-    /**
-     * Enables the Preferences item in the application menu. The ApplicationListener receives a callback for
-     * selection of the Preferences item in the application menu only if this is set to <code>true</code>.
-     *
-     * If a Preferences item isn't present, this method adds and enables it.
-     *
-     * @param enable specifies whether the Preferences item in the application menu should be enabled (<code>true</code>) or not (<code>false</code>)
-     *
-     * @deprecated no replacement
-     * @since 1.4
-     */
-    @Deprecated
-    public void setEnabledPreferencesMenu(final boolean enable) {
-        menuBarHandler.setPreferencesMenuItemVisible(true);
-        menuBarHandler.setPreferencesMenuItemEnabled(enable);
-    }
-
-    /**
-     * Enables the About item in the application menu. The ApplicationListener receives a callback for
-     * selection of the About item in the application menu only if this is set to <code>true</code>. Because AWT supplies
-     * a standard About window when an application may not, by default this is set to <code>true</code>.
-     *
-     * If the About item isn't present, this method adds and enables it.
-     *
-     * @param enable specifies whether the About item in the application menu should be enabled (<code>true</code>) or not (<code>false</code>)
-     *
-     * @deprecated no replacement
-     * @since 1.4
-     */
-    @Deprecated
-    public void setEnabledAboutMenu(final boolean enable) {
-        menuBarHandler.setAboutMenuItemEnabled(enable);
-    }
-
-    /**
-     * Determines if the Preferences item of the application menu is enabled.
-     *
-     * @deprecated no replacement
-     * @since 1.4
-     */
-    @Deprecated
-    public boolean getEnabledPreferencesMenu() {
-        return menuBarHandler.isPreferencesMenuItemEnabled();
-    }
-
-    /**
-     * Determines if the About item of the application menu is enabled.
-     *
-     * @deprecated no replacement
-     * @since 1.4
-     */
-    @Deprecated
-    public boolean getEnabledAboutMenu() {
-        return menuBarHandler.isAboutMenuItemEnabled();
-    }
-
-    /**
-     * Determines if the About item of the application menu is present.
-     *
-     * @deprecated no replacement
-     * @since 1.4
-     */
-    @Deprecated
-    public boolean isAboutMenuItemPresent() {
-        return menuBarHandler.isAboutMenuItemVisible();
-    }
-
-    /**
-     * Adds the About item to the application menu if the item is not already present.
-     *
-     * @deprecated use {@link #setAboutHandler(AboutHandler)} with a non-null {@link AboutHandler} parameter
-     * @since 1.4
-     */
-    @Deprecated
-    public void addAboutMenuItem() {
-        menuBarHandler.setAboutMenuItemVisible(true);
-    }
-
-    /**
-     * Removes the About item from the application menu if  the item is present.
-     *
-     * @deprecated use {@link #setAboutHandler(AboutHandler)} with a null parameter
-     * @since 1.4
-     */
-    @Deprecated
-    public void removeAboutMenuItem() {
-        menuBarHandler.setAboutMenuItemVisible(false);
-    }
-
-    /**
-     * Determines if the About Preferences of the application menu is present. By default there is no Preferences menu item.
-     *
-     * @deprecated no replacement
-     * @since 1.4
-     */
-    @Deprecated
-    public boolean isPreferencesMenuItemPresent() {
-        return menuBarHandler.isPreferencesMenuItemVisible();
-    }
-
-    /**
-     * Adds the Preferences item to the application menu if the item is not already present.
-     *
-     * @deprecated use {@link #setPreferencesHandler(PreferencesHandler)} with a non-null {@link PreferencesHandler} parameter
-     * @since 1.4
-     */
-    @Deprecated
-    public void addPreferencesMenuItem() {
-        menuBarHandler.setPreferencesMenuItemVisible(true);
-    }
-
-    /**
-     * Removes the Preferences item from the application menu if that item is present.
-     *
-     * @deprecated use {@link #setPreferencesHandler(PreferencesHandler)} with a null parameter
-     * @since 1.4
-     */
-    @Deprecated
-    public void removePreferencesMenuItem() {
-        menuBarHandler.setPreferencesMenuItemVisible(false);
-    }
-
-    /**
-     * @deprecated Use <code>java.awt.MouseInfo.getPointerInfo().getLocation()</code>.
-     *
-     * @since 1.4
-     */
-    @Deprecated
-    public static Point getMouseLocationOnScreen() {
-        return java.awt.MouseInfo.getPointerInfo().getLocation();
-    }
 }

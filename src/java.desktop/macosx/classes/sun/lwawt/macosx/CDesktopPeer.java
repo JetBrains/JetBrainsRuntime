@@ -76,72 +76,72 @@ final public class CDesktopPeer implements DesktopPeer {
 
     @Override
     public void addAppEventListener(SystemEventListener listener) {
-        //Application.getApplication().addAppEventListener(listener);
+        Application.getApplication().addAppEventListener(listener);
     }
 
     @Override
     public void removeAppEventListener(SystemEventListener listener) {
-        //Application.getApplication().removeAppEventListener(listener);
+        Application.getApplication().removeAppEventListener(listener);
     }
 
     @Override
     public void setAboutHandler(AboutHandler aboutHandler) {
-//        Application.getApplication().setAboutHandler(aboutHandler);
+        Application.getApplication().setAboutHandler(aboutHandler);
     }
 
     @Override
     public void setPreferencesHandler(PreferencesHandler preferencesHandler) {
-//        Application.getApplication().setPreferencesHandler(preferencesHandler);
+        Application.getApplication().setPreferencesHandler(preferencesHandler);
     }
 
     @Override
     public void setOpenFileHandler(OpenFilesHandler openFileHandler) {
-//        Application.getApplication().setOpenFileHandler(openFileHandler);
+        Application.getApplication().setOpenFileHandler(openFileHandler);
     }
 
     @Override
     public void setPrintFileHandler(PrintFilesHandler printFileHandler) {
-//        Application.getApplication().setPrintFileHandler(printFileHandler);
+        Application.getApplication().setPrintFileHandler(printFileHandler);
     }
 
     @Override
     public void setOpenURIHandler(OpenURIHandler openURIHandler) {
-//        Application.getApplication().setOpenURIHandler(openURIHandler);
+        Application.getApplication().setOpenURIHandler(openURIHandler);
     }
 
     @Override
     public void setQuitHandler(QuitHandler quitHandler) {
-//        Application.getApplication().setQuitHandler(quitHandler);
+        Application.getApplication().setQuitHandler(quitHandler);
     }
 
     @Override
     public void setQuitStrategy(QuitStrategy strategy) {
-//        Application.getApplication().setQuitStrategy(strategy);
+        Application.getApplication().setQuitStrategy(strategy);
     }
 
     @Override
     public void enableSuddenTermination() {
-//        Application.getApplication().enableSuddenTermination();
+        Application.getApplication().enableSuddenTermination();
     }
 
     @Override
     public void disableSuddenTermination() {
-//        Application.getApplication().disableSuddenTermination();
+        Application.getApplication().disableSuddenTermination();
     }
 
     @Override
     public void requestForeground(boolean allWindows) {
-//        Application.getApplication().requestForeground(allWindows);
+        Application.getApplication().requestForeground(allWindows);
     }
 
     @Override
     public void openHelpViewer() {
-//        Application.getApplication().openHelpViewer();
+        Application.getApplication().openHelpViewer();
     }
 
     @Override
     public void setDefaultMenuBar(JMenuBar menuBar) {
-//        Application.getApplication().setDefaultMenuBar(menuBar);
+        Application.getApplication().setDefaultMenuBar(menuBar);
     }
 
     @Override

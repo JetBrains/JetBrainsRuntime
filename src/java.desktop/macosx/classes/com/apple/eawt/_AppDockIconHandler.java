@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,13 +28,14 @@ package com.apple.eawt;
 import java.awt.*;
 import java.lang.reflect.*;
 
+import sun.awt.AWTAccessor;
 import sun.lwawt.macosx.*;
 import sun.lwawt.macosx.CImage.Creator;
-import sun.awt.AWTAccessor;
 
 class _AppDockIconHandler {
     private static native void nativeSetDockMenu(final long cmenu);
     private static native void nativeSetDockIconImage(final long image);
+    private static native void nativeSetDockIconProgress(final int value);
     private static native long nativeGetDockIconImage();
     private static native void nativeSetDockIconBadge(final String badge);
 
@@ -42,7 +43,6 @@ class _AppDockIconHandler {
 
     _AppDockIconHandler() { }
 
-    @SuppressWarnings("deprecation")
     public void setDockMenu(final PopupMenu menu) {
         fDockMenu = menu;
 
@@ -72,9 +72,8 @@ class _AppDockIconHandler {
 
     public void setDockIconImage(final Image image) {
         try {
-            final CImage cImage = getCImageCreator().createFromImage(image);
-            final long nsImagePtr = getNSImagePtrFrom(cImage);
-            nativeSetDockIconImage(nsImagePtr);
+            final CImage cImage = CImage.createFromImage(image);
+            cImage.execute(_AppDockIconHandler::nativeSetDockIconImage);
         } catch (final Throwable e) {
             throw new RuntimeException(e);
         }
@@ -84,7 +83,11 @@ class _AppDockIconHandler {
         try {
             final long dockNSImage = nativeGetDockIconImage();
             if (dockNSImage == 0) return null;
-            return getCImageCreator().createImageUsingNativeSize(dockNSImage);
+            final Method getCreatorMethod = CImage.class.getDeclaredMethod(
+                    "getCreator", new Class<?>[]{});
+            getCreatorMethod.setAccessible(true);
+            Creator imageCreator = (Creator) getCreatorMethod.invoke(null, new Object[]{});
+            return imageCreator.createImageUsingNativeSize(dockNSImage);
         } catch (final Throwable e) {
             throw new RuntimeException(e);
         }
@@ -94,26 +97,7 @@ class _AppDockIconHandler {
         nativeSetDockIconBadge(badge);
     }
 
-    @SuppressWarnings("rawtypes")
-    static Creator getCImageCreator() {
-        try {
-            final Method getCreatorMethod = CImage.class.getDeclaredMethod("getCreator", new Class[] {});
-            getCreatorMethod.setAccessible(true);
-            return (Creator)getCreatorMethod.invoke(null, new Object[] {});
-        } catch (final Throwable e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    static long getNSImagePtrFrom(final CImage cImage) {
-        if (cImage == null) return 0;
-
-        try {
-            final Field cImagePtrField = CFRetainedResource.class.getDeclaredField("ptr");
-            cImagePtrField.setAccessible(true);
-            return cImagePtrField.getLong(cImage);
-        } catch (final Throwable e) {
-            throw new RuntimeException(e);
-        }
+    void setDockIconProgress(int value) {
+        nativeSetDockIconProgress(value);
     }
 }

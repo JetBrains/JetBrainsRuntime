@@ -52,7 +52,7 @@ final public class CTaskbarPeer implements TaskbarPeer {
 
     @Override
     public void setProgressValue(int value) {
-        //Application.getApplication().setDockIconProgress(value);
+        Application.getApplication().setDockIconProgress(value);
     }
 
     @Override

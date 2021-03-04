@@ -53,7 +53,7 @@ public class MacQuitResponse implements QuitResponse {
      */
     @Override
     public void performQuit() {
-        //if (appEventHandler.currentQuitResponse != this) return;
+        if (appEventHandler.currentQuitResponse != this) return;
         appEventHandler.performQuit();
     }
 
@@ -63,7 +63,7 @@ public class MacQuitResponse implements QuitResponse {
      */
     @Override
     public void cancelQuit() {
-        //if (appEventHandler.currentQuitResponse != this) return;
+        if (appEventHandler.currentQuitResponse != this) return;
         appEventHandler.cancelQuit();
     }
 }
