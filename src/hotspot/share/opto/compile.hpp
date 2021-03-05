@@ -1380,6 +1380,7 @@ class Compile : public Phase {
 #ifdef ASSERT
   bool _type_verify_symmetry;
 #endif
+
   static Node* narrow_value(BasicType bt, Node* value, const Type* type, PhaseGVN* phase, bool transform_res);
 };
 
