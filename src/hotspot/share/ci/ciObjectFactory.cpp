@@ -74,7 +74,10 @@ GrowableArray<ciMetadata*>* ciObjectFactory::_shared_ci_metadata = NULL;
 ciSymbol*                 ciObjectFactory::_shared_ci_symbols[vmSymbols::number_of_symbols()];
 int                       ciObjectFactory::_shared_ident_limit = 0;
 volatile bool             ciObjectFactory::_initialized = false;
+volatile bool             ciObjectFactory::_reinitialize_vm_klasses = false;
 
+// TODO: review...
+Arena* ciObjectFactory::_initial_arena = NULL;
 
 // ------------------------------------------------------------------
 // ciObjectFactory::ciObjectFactory
@@ -110,12 +113,43 @@ void ciObjectFactory::initialize() {
   // compiler thread that initializes the initial ciObjectFactory which
   // creates the shared ciObjects that all later ciObjectFactories use.
   Arena* arena = new (mtCompiler) Arena(mtCompiler);
+  ciObjectFactory::_initial_arena = arena;
   ciEnv initial(arena);
   ciEnv* env = ciEnv::current();
   env->_factory->init_shared_objects();
 
   _initialized = true;
 
+}
+
+// (DCEVM) vm classes could be modified
+void ciObjectFactory::reinitialize_vm_classes() {
+  ASSERT_IN_VM;
+  JavaThread* thread = JavaThread::current();
+  HandleMark  handle_mark(thread);
+
+  // This Arena is long lived and exists in the resource mark of the
+  // compiler thread that initializes the initial ciObjectFactory which
+  // creates the shared ciObjects that all later ciObjectFactories use.
+  // Arena* arena = new (mtCompiler) Arena(mtCompiler);
+  ciEnv initial(ciObjectFactory::_initial_arena);
+  ciEnv* env = ciEnv::current();
+  env->_factory->do_reinitialize_vm_classes();
+  _reinitialize_vm_klasses = false;
+}
+
+// (DCEVM) vm classes could be modified
+void ciObjectFactory::do_reinitialize_vm_classes() {
+#define VM_CLASS_DEFN(name, ignore_s)   \
+  if (ciEnv::_##name != NULL && ciEnv::_##name->new_version() != NULL) { \
+    int old_ident = ciEnv::_##name->ident(); \
+    ciEnv::_##name = get_metadata(vmClasses::name())->as_instance_klass(); \
+    ciEnv::_##name->compute_nonstatic_fields(); \
+    ciEnv::_##name->set_ident(old_ident); \
+  }
+
+  VM_CLASSES_DO(VM_CLASS_DEFN)
+#undef VM_CLASS_DEFN
 }
 
 void ciObjectFactory::init_shared_objects() {
