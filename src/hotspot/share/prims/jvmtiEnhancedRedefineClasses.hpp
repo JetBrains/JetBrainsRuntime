@@ -148,6 +148,8 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
 
   u8 next_id();
 
+  void reinitializeJDKClasses();
+
   static void check_class(InstanceKlass* k_oop, TRAPS);
 
   static void dump_methods();
