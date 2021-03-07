@@ -349,6 +349,9 @@ class Universe: AllStatic {
   // Function to initialize these
   static void initialize_known_methods(TRAPS);
 
+  // Enhanced class redefinition
+  static void reinitialize_loader_addClass_method(TRAPS);
+
   static oop          null_ptr_exception_instance()   { return _null_ptr_exception_instance;   }
   static oop          arithmetic_exception_instance() { return _arithmetic_exception_instance; }
   static oop          virtual_machine_error_instance() { return _virtual_machine_error_instance; }

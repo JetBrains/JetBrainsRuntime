@@ -467,6 +467,8 @@ public:
   static bool is_well_known_klass(Symbol* class_name);
 #endif
 
+  static bool update_well_known_klass(InstanceKlass* new_klass, InstanceKlass* old_klass);
+
   // Enhanced class redefinition
   static void remove_from_hierarchy(InstanceKlass* k);
   static void update_constraints_after_redefinition();

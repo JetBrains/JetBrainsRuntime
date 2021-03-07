@@ -1030,6 +1030,14 @@ void Universe::initialize_known_methods(TRAPS) {
                           vmSymbols::doStackWalk_signature(), false, CHECK);
 }
 
+void Universe::reinitialize_loader_addClass_method(TRAPS) {
+  // Set up method for registering loaded classes in class loader vector
+  initialize_known_method(_loader_addClass_cache,
+                          SystemDictionary::ClassLoader_klass(),
+                          "addClass",
+                          vmSymbols::class_void_signature(), false, CHECK);
+}
+
 void universe2_init() {
   EXCEPTION_MARK;
   Universe::genesis(CATCH);

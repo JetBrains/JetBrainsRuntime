@@ -1983,6 +1983,16 @@ bool SystemDictionary::is_well_known_klass(Symbol* class_name) {
 }
 #endif
 
+bool SystemDictionary::update_well_known_klass(InstanceKlass* old_klass, InstanceKlass* new_klass) {
+  for (int id = FIRST_WKID; id < WKID_LIMIT; id++) {
+    if (well_known_klass((WKID) id) == old_klass) {
+      *well_known_klass_addr((WKID)id) = new_klass;
+      return true;
+    }
+  }
+  return false;
+}
+
 bool SystemDictionary::resolve_wk_klass(WKID id, int init_opt, TRAPS) {
   assert(id >= (int)FIRST_WKID && id < (int)WKID_LIMIT, "oob");
   int  info = wk_init_info[id - FIRST_WKID];

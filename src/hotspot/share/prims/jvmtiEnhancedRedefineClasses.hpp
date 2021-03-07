@@ -141,6 +141,8 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
 
   void flush_dependent_code(InstanceKlass* k_h, TRAPS);
 
+  void reinitializeJDKClasses();
+
   static void check_class(InstanceKlass* k_oop, TRAPS);
 
   static void dump_methods();

@@ -1877,6 +1877,17 @@ void CompileBroker::compiler_thread_loop() {
       if (method()->number_of_breakpoints() == 0) {
         // Compile the method.
         if ((UseCompiler || AlwaysCompileLoopMethods) && CompileBroker::should_compile_new_jobs()) {
+
+          // TODO: review usage of CompileThread_lock (DCEVM)
+          if (ciObjectFactory::is_reinitialize_wk_klasses())
+          {
+            ASSERT_IN_VM;
+            MutexLocker only_one (CompileThread_lock, thread);
+            if (ciObjectFactory::is_reinitialize_wk_klasses()) {
+              ciObjectFactory::reinitialize_wk_classes();
+            }
+          }
+
           invoke_compiler_on_method(task);
           thread->start_idle_timer();
         } else {
