@@ -41,9 +41,11 @@ class ciObjectFactory : public ResourceObj {
 
 private:
   static volatile bool _initialized;
+  static volatile bool _reinitialize_wk_klasses;
   static GrowableArray<ciMetadata*>* _shared_ci_metadata;
   static ciSymbol*                 _shared_ci_symbols[];
   static int                       _shared_ident_limit;
+  static Arena*                    _initial_arena;
 
   Arena*                    _arena;
   GrowableArray<ciMetadata*>*        _ci_metadata;
@@ -89,10 +91,14 @@ private:
   ciInstance* get_unloaded_instance(ciInstanceKlass* klass);
 
   static int compare_cimetadata(ciMetadata** a, ciMetadata** b);
+  void do_reinitialize_wk_classes();
 public:
   static bool is_initialized() { return _initialized; }
+  static bool is_reinitialize_wk_klasses() { return _reinitialize_wk_klasses; }
+  static void set_reinitialize_wk_klasses() { _reinitialize_wk_klasses = true; }
 
   static void initialize();
+  static void reinitialize_wk_classes();
   void init_shared_objects();
   void remove_symbols();
 
