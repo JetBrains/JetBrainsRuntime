@@ -270,6 +270,8 @@ class Universe: AllStatic {
   // Function to initialize these
   static void initialize_known_methods(TRAPS);
 
+  static void reinitialize_loader_addClass_method(TRAPS);
+
   static void create_preallocated_out_of_memory_errors(TRAPS);
 
   // Reference pending list manipulation.  Access is protected by
