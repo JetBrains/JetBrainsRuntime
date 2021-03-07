@@ -457,6 +457,8 @@ public:
   }
   static BasicType box_klass_type(Klass* k);  // inverse of box_klass
 
+  static bool update_well_known_klass(InstanceKlass* new_klass, InstanceKlass* old_klass);
+
   // Enhanced class redefinition
   static void remove_from_hierarchy(InstanceKlass* k);
   static void update_constraints_after_redefinition();

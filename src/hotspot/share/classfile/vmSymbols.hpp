@@ -355,6 +355,8 @@
   template(exit_method_name,                          "exit")                                     \
   template(add_method_name,                           "add")                                      \
   template(remove_method_name,                        "remove")                                   \
+  template(registerNatives_method_name,               "registerNatives")                          \
+  template(initIDs_method_name,                       "initIDs")                                  \
   template(parent_name,                               "parent")                                   \
   template(threads_name,                              "threads")                                  \
   template(groups_name,                               "groups")                                   \
