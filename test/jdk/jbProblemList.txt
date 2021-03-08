@@ -699,6 +699,8 @@ java/awt/xembed/server/RunTestXEmbed.java                                       
 sun/awt/datatransfer/SuplementaryCharactersTransferTest.java                        8011371 generic-all
 sun/awt/shell/ShellFolderMemoryLeak.java                                            8197794 windows-all
 
+sun/java2d/AcceleratedXORModeTest.java                                              JBR-3167 linux-5.10.12-200.fc33.x86_64
+sun/java2d/ClassCastExceptionForInvalidSurface.java                                 JBR-3167 linux-5.10.12-200.fc33.x86_64
 sun/java2d/DirectX/OnScreenRenderingResizeTest/OnScreenRenderingResizeTest.java     8022403 generic-all
 sun/java2d/DirectX/OverriddenInsetsTest/OverriddenInsetsTest.java                   8196102 generic-all
 sun/java2d/DirectX/RenderingToCachedGraphicsTest/RenderingToCachedGraphicsTest.java 8196180 windows-all,linux-all,macosx-all
