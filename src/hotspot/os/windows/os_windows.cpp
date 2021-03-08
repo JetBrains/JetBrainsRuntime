@@ -3081,8 +3081,9 @@ char* os::reserve_memory_aligned(size_t size, size_t alignment, int file_desc) {
   assert(extra_size >= size, "overflow, size is too large to allow alignment");
 
   char* aligned_base = NULL;
+  static const int max_attempts = 20;
 
-  do {
+  for (int attempt = 0; attempt < max_attempts && aligned_base == NULL; attempt ++) {
     char* extra_base = os::reserve_memory(extra_size, NULL, alignment, file_desc);
     if (extra_base == NULL) {
       return NULL;
@@ -3090,15 +3091,22 @@ char* os::reserve_memory_aligned(size_t size, size_t alignment, int file_desc) {
     // Do manual alignment
     aligned_base = align_up(extra_base, alignment);
 
+    bool rc = false;
     if (file_desc != -1) {
-      os::unmap_memory(extra_base, extra_size);
+      rc = os::unmap_memory(extra_base, extra_size);
     } else {
-      os::release_memory(extra_base, extra_size);
+      rc = os::release_memory(extra_base, extra_size);
+    }
+    assert(rc, "release failed");
+    if (!rc) {
+      return NULL;
     }
 
     aligned_base = os::reserve_memory(size, aligned_base, 0, file_desc);
 
-  } while (aligned_base == NULL);
+  }
+
+  assert(aligned_base != NULL, "Did not manage to re-map after %d attempts?", max_attempts);
 
   return aligned_base;
 }
