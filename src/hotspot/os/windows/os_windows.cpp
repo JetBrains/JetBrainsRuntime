@@ -57,7 +57,7 @@
 #include "runtime/orderAccess.hpp"
 #include "runtime/osThread.hpp"
 #include "runtime/perfMemory.hpp"
-#include "runtime/safefetch.hpp"
+#include "runtime/safefetch.inline.hpp"
 #include "runtime/safepointMechanism.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/statSampler.hpp"
@@ -265,6 +265,8 @@ bool os::unsetenv(const char* name) {
   assert(name != NULL, "Null pointer");
   return (SetEnvironmentVariable(name, NULL) == TRUE);
 }
+
+char** os::get_environ() { return _environ; }
 
 // No setuid programs under Windows.
 bool os::have_special_privileges() {
@@ -5512,7 +5514,7 @@ int os::PlatformMonitor::wait(jlong millis) {
 
 // Run the specified command in a separate process. Return its exit value,
 // or -1 on failure (e.g. can't create a new process).
-int os::fork_and_exec(char* cmd, bool use_vfork_if_available) {
+int os::fork_and_exec(const char* cmd, bool dummy /* ignored */) {
   STARTUPINFO si;
   PROCESS_INFORMATION pi;
   DWORD exit_code;
