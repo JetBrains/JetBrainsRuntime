@@ -28,6 +28,7 @@
  * @requires vm.gc.G1
  * @requires !vm.flightRecorder
  * @requires vm.opt.ExplicitGCInvokesConcurrent != true
+ * @requires os.maxMemory > 1G
  * @library /test/lib /
  * @modules java.base/jdk.internal.misc
  * @modules java.management

@@ -25,7 +25,7 @@
 /**
  * @test TestMemoryPools
  * @key gc
- * @requires vm.gc.Epsilon & !vm.graal.enabled
+ * @requires vm.gc.Epsilon & !vm.graal.enabled & os.maxMemory >= 2G
  * @summary Test JMX memory pools
  * @modules java.base/jdk.internal.misc
  *          java.management
