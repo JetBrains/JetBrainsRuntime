@@ -947,7 +947,7 @@ class WindowsNativeDispatcher {
                 } catch (WindowsException xx) {
                     // Will fail with ERROR_INVALID_PARAMETER for Windows
                     // builds older than 14972.
-                    if (xx.lasError() != ERROR_INVALID_PARAMETER) {
+                    if (xx.lastError() != ERROR_INVALID_PARAMETER) {
                         x = xx;
                     }
                 }
