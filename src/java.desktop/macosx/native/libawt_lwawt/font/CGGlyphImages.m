@@ -286,6 +286,64 @@ CGGI_ConvertBWPixelToByteGray(UInt32 p)
 }
 
 static void
+CGGI_CopySubpixelImageFromCanvasToAlphaInfo(const UInt32* srcImage, int srcRowWidth,
+                                            UInt8* dstImage,
+                                            int dstWidth, int dstHeight,
+                                            int subpixelResolutionX,
+                                            int subpixelResolutionY,
+                                            short *tempBuffer)
+{
+    int srcWidth = dstWidth * subpixelResolutionX;
+    int srcHeight = dstHeight * subpixelResolutionY;
+    int imageSize = dstWidth * dstHeight;
+    int xGlyph, yGlyph, x, y;
+    // For each subpixel offset by x axis
+    for (xGlyph = 0; xGlyph < subpixelResolutionX; xGlyph++) {
+        // Sum values by x axis and store into temporary buffer
+        for (y = 0; y < srcHeight; y++) {
+            for (x = 0; x < dstWidth; x++) {
+                int value = 0;
+                int xFrom = x * subpixelResolutionX - xGlyph,
+                        xTo = xFrom + subpixelResolutionX;
+                if (xFrom < 0) xFrom = 0;
+                if (xTo > srcWidth) xTo = srcWidth;
+                int i;
+                for (i = xFrom; i < xTo; i++) {
+                    value += CGGI_ConvertBWPixelToByteGray(
+                            srcImage[y * srcRowWidth + i]);
+                }
+                tempBuffer[y * dstWidth + x] = (short) value;
+            }
+        }
+        // For each subpixel offset by y axis
+        for (yGlyph = 0; yGlyph < subpixelResolutionY; yGlyph++) {
+            UInt8 *dst = dstImage +
+                         imageSize * (xGlyph + yGlyph * subpixelResolutionX);
+            // Sum values by y axis and store average into destination image
+            for (y = 0; y < dstHeight; y++) {
+                for (x = 0; x < dstWidth; x++) {
+                    int value = 0;
+                    int yFrom = y * subpixelResolutionY - yGlyph,
+                            yTo = yFrom + subpixelResolutionY;
+                    if (yFrom < 0) yFrom = 0;
+                    if (yTo > srcHeight) yTo = srcHeight;
+                    int j;
+                    for (j = yFrom; j < yTo; j++) {
+                        value += tempBuffer[j * dstWidth + x];
+                    }
+                    dst[y * dstWidth + x] =
+                            value / subpixelResolutionX / subpixelResolutionY;
+                }
+            }
+        }
+    }
+}
+
+/* Size (in pixels) of stack-allocated temporary buffer for glyph downscaling.
+ * If glyph is too big and requires more memory, it will use malloc. */
+#define SUBPIXEL_DOWNSCALE_STATIC_BUFFER_SIZE 2048
+
+static void
 CGGI_CopyImageFromCanvasToAlphaInfo(CGGI_GlyphCanvas *canvas, GlyphInfo *info)
 {
     UInt32 *src = (UInt32 *)canvas->image->data;
@@ -296,16 +354,35 @@ CGGI_CopyImageFromCanvasToAlphaInfo(CGGI_GlyphCanvas *canvas, GlyphInfo *info)
 
     size_t height = info->height;
 
-    size_t y;
-    
-    // fill empty glyph image with black-on-white glyph
-    for (y = 0; y < height; y++) {
-        size_t destRow = y * destRowWidth;
-        size_t srcRow = y * srcRowWidth;
-        size_t x;
-        for (x = 0; x < destRowWidth; x++) {
-            UInt32 p = src[srcRow + x];
-            dest[destRow + x] = CGGI_ConvertBWPixelToByteGray(p);
+    if (info->subpixelResolutionX > 1 || info->subpixelResolutionY > 1) {
+        int bufferSize = destRowWidth * height * info->subpixelResolutionY;
+        if (bufferSize <= SUBPIXEL_DOWNSCALE_STATIC_BUFFER_SIZE) {
+            short staticBuffer[bufferSize];
+            CGGI_CopySubpixelImageFromCanvasToAlphaInfo(
+                    src, srcRowWidth,
+                    dest, destRowWidth, height,
+                    info->subpixelResolutionX, info->subpixelResolutionY,
+                    staticBuffer);
+        } else {
+            short *buffer = malloc(sizeof(short) * bufferSize);
+            CGGI_CopySubpixelImageFromCanvasToAlphaInfo(
+                    src, srcRowWidth,
+                    dest, destRowWidth, height,
+                    info->subpixelResolutionX, info->subpixelResolutionY,
+                    buffer);
+            free(buffer);
+        }
+    } else {
+        size_t y;
+        // fill empty glyph image with black-on-white glyph
+        for (y = 0; y < height; y++) {
+            size_t destRow = y * destRowWidth;
+            size_t srcRow = y * srcRowWidth;
+            size_t x;
+            for (x = 0; x < destRowWidth; x++) {
+                UInt32 p = src[srcRow + x];
+                dest[destRow + x] = CGGI_ConvertBWPixelToByteGray(p);
+            }
         }
     }
 }
@@ -353,8 +430,10 @@ typedef struct CGGI_GlyphInfoDescriptor {
 } CGGI_GlyphInfoDescriptor;
 
 typedef struct CGGI_RenderingMode {
-    CGGI_GlyphInfoDescriptor *glyphDescriptor;
+    CGGI_GlyphInfoDescriptor *mainFontDescriptor;
     JRSFontRenderingStyle cgFontMode;
+    bool lcdRendering;
+    bool subpixelResolution;
 } CGGI_RenderingMode;
 
 static CGGI_GlyphInfoDescriptor grey =
@@ -379,7 +458,7 @@ static inline CGGI_GlyphInfoDescriptor*
 CGGI_GetGlyphInfoDescriptor(const CGGI_RenderingMode *mode, CGFontRef font)
 {
     bool isFixedColor = CGGI_IsColorFont(font);
-    return isFixedColor ? &argb : mode->glyphDescriptor;
+    return isFixedColor ? &argb : mode->mainFontDescriptor;
 }
 
 static inline CGGI_RenderingMode
@@ -389,16 +468,26 @@ CGGI_GetRenderingMode(const AWTStrike *strike)
     mode.cgFontMode = strike->fStyle;
     NSException *e = nil;
 
+#ifdef USE_IMAGE_ALIGNED_MEMORY
+    mode.subpixelResolution = false;
+#else
+    mode.subpixelResolution = strike->fAAStyle == sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_ON &&
+                              strike->fFmHint == sun_awt_SunHints_INTVAL_FRACTIONALMETRICS_ON &&
+                              (strike->fSubpixelResolutionX > 1 || strike->fSubpixelResolutionY > 1);
+#endif
+
     switch (strike->fAAStyle) {
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_OFF:
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_ON:
-        mode.glyphDescriptor = &grey;
+        mode.lcdRendering = false;
+        mode.mainFontDescriptor = &grey;
         break;
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_LCD_HRGB:
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_LCD_HBGR:
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_LCD_VRGB:
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_LCD_VBGR:
-        mode.glyphDescriptor = &rgb;
+        mode.lcdRendering = true;
+        mode.mainFontDescriptor = &rgb;
         break;
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_GASP:
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_DEFAULT:
@@ -411,6 +500,10 @@ CGGI_GetRenderingMode(const AWTStrike *strike)
                 reason:@"Invalid hint value"
                 userInfo:nil];
         @throw e;
+    }
+    if (CGGI_IsColorFont(strike->fAWTFont->fNativeCGFont)) {
+        mode.mainFontDescriptor = &argb;
+        mode.subpixelResolution = false;
     }
 
     return mode;
@@ -444,7 +537,7 @@ CGGI_InitCanvas(CGGI_GlyphCanvas *canvas,
     }
 
     uint32_t bmpInfo = kCGImageAlphaPremultipliedFirst;
-    if (mode->glyphDescriptor == &rgb) {
+    if (mode->lcdRendering) {
         bmpInfo |= kCGBitmapByteOrder32Host;
     }
 
@@ -522,8 +615,8 @@ CGGI_ClearCanvas(CGGI_GlyphCanvas *canvas, GlyphInfo *info, bool transparent)
 {
     vImage_Buffer canvasRectToClear;
     canvasRectToClear.data = canvas->image->data;
-    canvasRectToClear.height = info->height;
-    canvasRectToClear.width = info->width;
+    canvasRectToClear.height = info->height * info->subpixelResolutionY;
+    canvasRectToClear.width = info->width * info->subpixelResolutionX;
     // use the row stride of the canvas, not the info
     canvasRectToClear.rowBytes = canvas->image->rowBytes;
 
@@ -561,7 +654,8 @@ static inline CGSize CGGI_ScaleAdvance(CGSize advance, const AWTStrike *strike) 
 static inline GlyphInfo *
 CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
                             const AWTStrike *strike,
-                            const CGGI_GlyphInfoDescriptor *glyphDescriptor)
+                            const CGGI_GlyphInfoDescriptor *glyphDescriptor,
+                            bool subpixelResolution)
 {
     size_t pixelSize = glyphDescriptor->pixelSize;
 
@@ -573,8 +667,23 @@ CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
     bbox.origin.x -= CGGI_GLYPH_BBOX_PADDING;
     bbox.origin.y -= CGGI_GLYPH_BBOX_PADDING;
 
-    vImagePixelCount width = ceilf(bbox.size.width);
-    vImagePixelCount height = ceilf(bbox.size.height);
+    int subpixelResX = 1;
+    int subpixelResY = 1;
+    int topLeftX, topLeftY;
+    vImagePixelCount width, height;
+    if (subpixelResolution) {
+        subpixelResX = strike->fSubpixelResolutionX;
+        subpixelResY = strike->fSubpixelResolutionY;
+        topLeftX = floorf(bbox.origin.x / (float) subpixelResX);
+        topLeftY = floorf(bbox.origin.y / (float) subpixelResY);
+        width = ceilf((bbox.origin.x + bbox.size.width) / (float) subpixelResX) - topLeftX;
+        height = ceilf((bbox.origin.y + bbox.size.height) / (float) subpixelResY) - topLeftY;
+    } else {
+        topLeftX = round(bbox.origin.x);
+        topLeftY = round(bbox.origin.y);
+        width = ceilf(bbox.size.width);
+        height = ceilf(bbox.size.height);
+    }
 
     // if the glyph is larger than 1MB, don't even try...
     // the GlyphVector path should have taken over by now
@@ -595,19 +704,20 @@ CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
     void *image = (void *)malloc(imageBytes + extraPixelStorage);
 #else
     // create a GlyphInfo struct fused to the image it points to
-    GlyphInfo *glyphInfo = (GlyphInfo *)malloc(sizeof(GlyphInfo) + imageBytes + extraPixelStorage);
+    GlyphInfo *glyphInfo = (GlyphInfo *)malloc(sizeof(GlyphInfo) +
+            (imageBytes + extraPixelStorage) * subpixelResX * subpixelResY);
 #endif
 
     glyphInfo->advanceX = advance.width;
     glyphInfo->advanceY = advance.height;
-    glyphInfo->topLeftX = round(bbox.origin.x);
-    glyphInfo->topLeftY = round(bbox.origin.y);
+    glyphInfo->topLeftX = topLeftX;
+    glyphInfo->topLeftY = topLeftY;
     glyphInfo->width = width;
     glyphInfo->height = height;
     glyphInfo->rowBytes = width * pixelSize;
     glyphInfo->cellInfo = NULL;
-    glyphInfo->subpixelResolutionX = 1;
-    glyphInfo->subpixelResolutionY = 1;
+    glyphInfo->subpixelResolutionX = subpixelResX;
+    glyphInfo->subpixelResolutionY = subpixelResY;
 
 #ifdef USE_IMAGE_ALIGNED_MEMORY
     glyphInfo->image = image;
@@ -623,6 +733,19 @@ CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
 
 
 #pragma mark --- Glyph Striking onto Canvas ---
+
+static inline void CGGI_ScaleTXForSubpixelResolution(CGAffineTransform *tx,
+                                                     const AWTStrike *strike,
+                                                     bool subpixelResolution) {
+    if (subpixelResolution) {
+        float subResX = (float) strike->fSubpixelResolutionX;
+        float subResY = (float) strike->fSubpixelResolutionY;
+        tx->a *= subResX;
+        tx->b *= subResY;
+        tx->c *= subResX;
+        tx->d *= subResY;
+    }
+}
 
 /*
  * Clears the canvas, strikes the glyph with CoreGraphics, and then
@@ -649,8 +772,8 @@ CGGI_CreateImageForGlyph
     CGGI_ClearCanvas(canvas, info, glyphDescriptor == &argb);
 
     // strike the glyph in the upper right corner
-    CGFloat x = -info->topLeftX;
-    CGFloat y = canvas->image->height + info->topLeftY;
+    CGFloat x = -info->topLeftX * (float) info->subpixelResolutionX;
+    CGFloat y = canvas->image->height + info->topLeftY * (float) info->subpixelResolutionY;
 
     if (isCatalinaOrAbove || glyphDescriptor == &argb) {
         CGAffineTransform matrix = CGContextGetTextMatrix(canvas->context);
@@ -699,8 +822,10 @@ CGGI_CreateImageForUnicode
      const CGGI_RenderingMode *mode, const UnicodeScalarValue uniChar,
      const bool isCatalinaOrAbove)
 {
-    // save the state of the world
+    // save the graphics state
     CGContextSaveGState(canvas->context);
+    // text matrix is not considered part of graphics state
+    CGAffineTransform originalTx = CGContextGetTextMatrix(canvas->context);
 
     // get the glyph, measure it using CG
     CGGlyph glyph;
@@ -717,26 +842,32 @@ CGGI_CreateImageForUnicode
         fallback = CTS_CopyCTFallbackFontAndGlyphForUnicode(strike->fAWTFont, (const UTF16Char *)&charRef, &glyph, 1);
     }
 
-    CGAffineTransform tx = strike->fTx;
     JRSFontRenderingStyle style = JRSFontAlignStyleForFractionalMeasurement(strike->fStyle);
 
+    const CGFontRef cgFallback = CTFontCopyGraphicsFont(fallback, NULL);
+    CGGI_GlyphInfoDescriptor *glyphDescriptor = CGGI_GetGlyphInfoDescriptor(mode, cgFallback);
+
+    bool subpixelResolution = mode->subpixelResolution && glyphDescriptor == &grey;
+
+    CGAffineTransform tx = strike->fTx;
+    CGGI_ScaleTXForSubpixelResolution(&tx, strike, subpixelResolution);
     CGRect bbox;
     JRSFontGetBoundingBoxesForGlyphsAndStyle(fallback, &tx, style, &glyph, 1, &bbox);
 
     CGSize advance;
     CTFontGetAdvancesForGlyphs(fallback, kCTFontDefaultOrientation, &glyph, &advance, 1);
 
-    const CGFontRef cgFallback = CTFontCopyGraphicsFont(fallback, NULL);
-    CGGI_GlyphInfoDescriptor *glyphDescriptor = CGGI_GetGlyphInfoDescriptor(mode, cgFallback);
 
     // create the Sun2D GlyphInfo we are going to strike into
-    GlyphInfo *info = CGGI_CreateNewGlyphInfoFrom(advance, bbox, strike, glyphDescriptor);
+    GlyphInfo *info = CGGI_CreateNewGlyphInfoFrom(advance, bbox, strike, glyphDescriptor, subpixelResolution);
 
     // fix the context size, just in case the substituted character is unexpectedly large
-    CGGI_SizeCanvas(canvas, info->width, info->height, mode);
+    CGGI_SizeCanvas(canvas, info->width * info->subpixelResolutionX, info->height * info->subpixelResolutionY, mode);
 
     // align the transform for the real CoreText strike
-    CGContextSetTextMatrix(canvas->context, strike->fAltTx);
+    CGAffineTransform altTx = strike->fAltTx;
+    CGGI_ScaleTXForSubpixelResolution(&altTx, strike, subpixelResolution);
+    CGContextSetTextMatrix(canvas->context, altTx);
 
     CGContextSetFont(canvas->context, cgFallback);
     CFRelease(cgFallback);
@@ -744,8 +875,9 @@ CGGI_CreateImageForUnicode
     // clean the canvas - align, strike, and copy the glyph from the canvas into the info
     CGGI_CreateImageForGlyph(cgFallback, canvas, glyph, info, glyphDescriptor, strike, isCatalinaOrAbove);
 
-    // restore the state of the world
+    // restore graphics state
     CGContextRestoreGState(canvas->context);
+    CGContextSetTextMatrix(canvas->context, originalTx);
 
     CFRelease(fallback);
 #ifdef CGGI_DEBUG
@@ -780,12 +912,12 @@ CGGI_FillImagesForGlyphsWithSizedCanvas(CGGI_GlyphCanvas *canvas,
                                         const CGGlyph glyphs[],
                                         const CFIndex len)
 {
-    CGContextSetTextMatrix(canvas->context, strike->fAltTx);
+    CGAffineTransform tx = strike->fAltTx;
+    CGGI_ScaleTXForSubpixelResolution(&tx, strike, mode->subpixelResolution);
+    CGContextSetTextMatrix(canvas->context, tx);
 
     CGContextSetFont(canvas->context, strike->fAWTFont->fNativeCGFont);
     JRSFontSetRenderingStyleOnContext(canvas->context, strike->fStyle);
-
-    CGGI_GlyphInfoDescriptor* mainFontDescriptor = CGGI_GetGlyphInfoDescriptor(mode, strike->fAWTFont->fNativeCGFont);
 
     const bool isMojaveOrAbove = IS_OSX_GT10_13;
     CFIndex i;
@@ -793,7 +925,7 @@ CGGI_FillImagesForGlyphsWithSizedCanvas(CGGI_GlyphCanvas *canvas,
         GlyphInfo *info = (GlyphInfo *)jlong_to_ptr(glyphInfos[i]);
         if (info != NULL) {
             CGGI_CreateImageForGlyph(strike->fAWTFont->fNativeCGFont,
-                                     canvas, glyphs[i], info, mainFontDescriptor, strike, isMojaveOrAbove);
+                                     canvas, glyphs[i], info, mode->mainFontDescriptor, strike, isMojaveOrAbove);
         } else {
             info = CGGI_CreateImageForUnicode(canvas, strike, mode, uniChars[i], isMojaveOrAbove);
             glyphInfos[i] = ptr_to_jlong(info);
@@ -852,7 +984,7 @@ CGGI_FillImagesForGlyphs(jlong *glyphInfos, const AWTStrike *strike,
     NSMutableDictionary *threadDict =
         [[NSThread currentThread] threadDictionary];
 
-    NSString* theKey = (mode->glyphDescriptor == &rgb) ?
+    NSString* theKey = mode->lcdRendering ?
         threadLocalLCDCanvasKey : threadLocalAACanvasKey;
 
     CGGI_GlyphCanvas *canvas = [threadDict objectForKey:theKey];
@@ -884,6 +1016,7 @@ CGGI_CreateGlyphInfos(jlong *glyphInfos, const AWTStrike *strike,
 {
     AWTFont *font = strike->fAWTFont;
     CGAffineTransform tx = strike->fTx;
+    CGGI_ScaleTXForSubpixelResolution(&tx, strike, mode->subpixelResolution);
     JRSFontRenderingStyle bboxCGMode = JRSFontAlignStyleForFractionalMeasurement(strike->fStyle);
 
     JRSFontGetBoundingBoxesForGlyphsAndStyle((CTFontRef)font->fFont, &tx, bboxCGMode, glyphs, len, bboxes);
@@ -891,8 +1024,6 @@ CGGI_CreateGlyphInfos(jlong *glyphInfos, const AWTStrike *strike,
 
     size_t maxWidth = 1;
     size_t maxHeight = 1;
-
-    CGGI_GlyphInfoDescriptor* mainFontDescriptor = CGGI_GetGlyphInfoDescriptor(mode, strike->fAWTFont->fNativeCGFont);
 
     CFIndex i;
     for (i = 0; i < len; i++)
@@ -906,10 +1037,15 @@ CGGI_CreateGlyphInfos(jlong *glyphInfos, const AWTStrike *strike,
         CGSize advance = advances[i];
         CGRect bbox = bboxes[i];
 
-        GlyphInfo *glyphInfo = CGGI_CreateNewGlyphInfoFrom(advance, bbox, strike, mainFontDescriptor);
+        GlyphInfo *glyphInfo = CGGI_CreateNewGlyphInfoFrom(advance, bbox, strike,
+                                                           mode->mainFontDescriptor,
+                                                           mode->subpixelResolution);
 
-        if (maxWidth < glyphInfo->width)   maxWidth = glyphInfo->width;
-        if (maxHeight < glyphInfo->height) maxHeight = glyphInfo->height;
+        int w = glyphInfo->width * glyphInfo->subpixelResolutionX;
+        int h = glyphInfo->height * glyphInfo->subpixelResolutionY;
+
+        if (maxWidth < w)   maxWidth = w;
+        if (maxHeight < h) maxHeight = h;
 
         glyphInfos[i] = ptr_to_jlong(glyphInfo);
     }
