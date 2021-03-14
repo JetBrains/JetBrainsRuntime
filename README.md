@@ -1,12 +1,5 @@
 [![official JetBrains project](http://jb.gg/badges/official.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
 
-# Downloads
-
-|Windows-x64  |macOS        |Linux-x64    |
-|-------------|-------------|-------------|
-|[ ![Download](https://api.bintray.com/packages/jetbrains/intellij-jdk/openjdk11-windows-x64/images/download.svg) ](https://bintray.com/jetbrains/intellij-jdk/openjdk11-windows-x64/_latestVersion)|[ ![Download](https://api.bintray.com/packages/jetbrains/intellij-jdk/openjdk11-osx-x64/images/download.svg) ](https://bintray.com/jetbrains/intellij-jdk/openjdk11-osx-x64/_latestVersion)|[ ![Download](https://api.bintray.com/packages/jetbrains/intellij-jdk/openjdk11-linux-x64/images/download.svg) ](https://bintray.com/jetbrains/intellij-jdk/openjdk11-linux-x64/_latestVersion)|
-
-
 # How JetBrains Runtime is organised
 ## Workspaces
 
