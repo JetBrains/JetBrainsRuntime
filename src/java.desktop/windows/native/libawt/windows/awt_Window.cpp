@@ -164,6 +164,7 @@ jfieldID AwtWindow::securityWarningHeightID;
 
 jfieldID AwtWindow::windowTypeID;
 jmethodID AwtWindow::notifyWindowStateChangedMID;
+jfieldID AwtWindow::sysInsetsID;
 
 jmethodID AwtWindow::getWarningStringMID;
 jmethodID AwtWindow::calculateSecurityWarningPositionMID;
@@ -1491,11 +1492,20 @@ BOOL AwtWindow::UpdateInsets(jobject insets)
     jobject peerInsets = (env)->GetObjectField(peer, AwtPanel::insets_ID);
     DASSERT(!safe_ExceptionOccurred(env));
 
+    jobject peerSysInsets = (env)->GetObjectField(peer, AwtWindow::sysInsetsID);
+    DASSERT(!safe_ExceptionOccurred(env));
+
     if (peerInsets != NULL) { // may have been called during creation
         (env)->SetIntField(peerInsets, AwtInsets::topID, ScaleDownY(m_insets.top));
         (env)->SetIntField(peerInsets, AwtInsets::bottomID, ScaleDownY(m_insets.bottom));
         (env)->SetIntField(peerInsets, AwtInsets::leftID, ScaleDownX(m_insets.left));
         (env)->SetIntField(peerInsets, AwtInsets::rightID, ScaleDownX(m_insets.right));
+    }
+    if (peerSysInsets != NULL) {
+        (env)->SetIntField(peerSysInsets, AwtInsets::topID, m_insets.top);
+        (env)->SetIntField(peerSysInsets, AwtInsets::bottomID, m_insets.bottom);
+        (env)->SetIntField(peerSysInsets, AwtInsets::leftID, m_insets.left);
+        (env)->SetIntField(peerSysInsets, AwtInsets::rightID, m_insets.right);
     }
     /* Get insets into the Inset object (if any) that was passed */
     if (insets != NULL) {
@@ -3406,6 +3416,8 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_initIDs(JNIEnv *env, jclass cls)
 {
     TRY;
+
+    CHECK_NULL(AwtWindow::sysInsetsID = env->GetFieldID(cls, "sysInsets", "Ljava/awt/Insets;"));
 
     AwtWindow::windowTypeID = env->GetFieldID(cls, "windowType",
             "Ljava/awt/Window$Type;");
