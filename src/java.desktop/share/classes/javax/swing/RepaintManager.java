@@ -27,7 +27,10 @@ package javax.swing;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.VolatileImage;
+import java.awt.peer.WindowPeer;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -1535,11 +1538,65 @@ public class RepaintManager
          */
         protected void paintDoubleBuffered(JComponent c, Image image,
                 Graphics g, int clipX, int clipY,
-                int clipW, int clipH) {
-            if (image instanceof VolatileImage && isPixelsCopying(c, g)) {
-                paintDoubleBufferedFPScales(c, image, g, clipX, clipY, clipW, clipH);
-            } else {
-                paintDoubleBufferedImpl(c, image, g, clipX, clipY, clipW, clipH);
+                int clipW, int clipH)
+        {
+            SunGraphics2D sg = (SunGraphics2D)g.create();
+            try {
+                // [tav] For the scaling graphics we need to compensate the toplevel insets rounding error
+                // to place [0, 0] of the client area in its correct device pixel.
+                if (sg.transformState == SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
+                    Point2D err = getInsetsRoundingError(sg);
+                    double errX = err.getX();
+                    double errY = err.getY();
+                    if (errX != 0 || errY != 0) {
+                        // save the current tx
+                        AffineTransform tx = sg.transform;
+
+                        // translate the constrain
+                        Region constrainClip = sg.constrainClip;
+                        Shape usrClip = sg.usrClip;
+                        if (constrainClip != null) {
+                            // SunGraphics2D.constrain(..) rounds down x/y, so to compensate we need to round up
+                            int _errX = (int)Math.ceil(errX);
+                            int _errY = (int)Math.ceil(errY);
+                            if ((_errX | _errY) != 0) {
+                                // drop everything to default
+                                sg.constrainClip = null;
+                                sg.usrClip = null;
+                                sg.clipState = SunGraphics2D.CLIP_DEVICE;
+                                sg.transform = new AffineTransform();
+                                sg.setDevClip(sg.getSurfaceData().getBounds());
+
+                                Region r = constrainClip.getTranslatedRegion(_errX, _errY);
+                                sg.constrain(r.getLoX(), r.getLoY(), r.getWidth(), r.getHeight());
+                            }
+                        }
+
+                        // translate usrClip
+                        if (usrClip != null) {
+                            if (usrClip instanceof Rectangle2D) {
+                                Rectangle2D u = (Rectangle2D)usrClip;
+                                u.setRect(u.getX() + errX, u.getY() + errY, u.getWidth(), u.getHeight());
+                            } else {
+                                usrClip = AffineTransform.getTranslateInstance(errX, errY).createTransformedShape(usrClip);
+                            }
+                            sg.transform = new AffineTransform();
+                            sg.setClip(usrClip); // constrain clip is already valid
+                        }
+
+                        // finally translate the tx
+                        AffineTransform newTx = AffineTransform.getTranslateInstance(errX - sg.constrainX, errY - sg.constrainY);
+                        newTx.concatenate(tx);
+                        sg.setTransform(newTx);
+                    }
+                }
+                if (image instanceof VolatileImage && isPixelsCopying(c, g)) {
+                    paintDoubleBufferedFPScales(c, image, sg, clipX, clipY, clipW, clipH);
+                } else {
+                    paintDoubleBufferedImpl(c, image, sg, clipX, clipY, clipW, clipH);
+                }
+            } finally {
+                sg.dispose();
             }
         }
 
@@ -1582,6 +1639,35 @@ public class RepaintManager
             } finally {
                 osg.dispose();
             }
+        }
+
+        /**
+         * For the scaling graphics and a decorated toplevel as the destination,
+         * calculates the rounding error of the toplevel insets.
+         *
+         * @return the left/top insets rounding error, in device space
+         */
+        private static Point2D getInsetsRoundingError(SunGraphics2D g) {
+            Point2D.Double err = new Point2D.Double(0, 0);
+            if (g.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
+                Object dst = g.getSurfaceData().getDestination();
+                if (dst instanceof Frame && !((Frame)dst).isUndecorated() ||
+                    dst instanceof Dialog && !((Dialog)dst).isUndecorated())
+                {
+                    Window wnd = (Window)dst;
+                    WindowPeer peer = (WindowPeer)AWTAccessor.getComponentAccessor().getPeer(wnd);
+                    Insets sysInsets = peer != null ? peer.getSysInsets() : null;
+                    if (sysInsets != null) {
+                        Insets insets = wnd.getInsets();
+                        // insets.left/top is a scaled down rounded value
+                        // insets.left/top * tx.scale is a scaled up value (which contributes to graphics translate)
+                        // sysInsets.left/top is the precise system value
+                        err.x = sysInsets.left - insets.left * g.transform.getScaleX();
+                        err.y = sysInsets.top - insets.top * g.transform.getScaleY();
+                    }
+                }
+            }
+            return err;
         }
 
         private void paintDoubleBufferedFPScales(JComponent c, Image image,
