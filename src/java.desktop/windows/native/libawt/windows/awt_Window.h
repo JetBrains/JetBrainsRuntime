@@ -60,6 +60,8 @@ public:
     /* java.awt.Window method IDs */
     static jmethodID windowTypeNameMID;
 
+    static jfieldID sysInsetsID;
+
     AwtWindow();
     virtual ~AwtWindow();
 
