@@ -636,34 +636,45 @@ void AwtWindow::Reshape(int x, int y, int w, int h) {
     int scaleUpAbsX = device == NULL ? x : device->ScaleUpAbsX(x);
     int scaleUpAbsY = device == NULL ? y : device->ScaleUpAbsY(y);
 
-    // The on-screen location of a component is affected by its toplevel. The toplvel's location in user space
-    // is represented with some loss of precision - the result of device->ScaleDownXY is ceil'ed. For instance,
-    // say we have scale 2.0 and a toplevel displayed at [13, 7] in device space. This location is translated to
-    // [7, 4] in user space. Were the toplevel moved to [14, 8] its location would still be translated to [7, 4]
-    // in user space. One of the problems caused by this fact is the problem of positioning of an owned window
-    // relative to its owner (or to the owner's content). Until we have a floating point API for managing Component
-    // bounds the following workaround is suggested. When a window with non-empty owner is positioned on the device,
-    // the component of the owner's position coordinate which is lost (as the fractional component) on translation to
-    // user space should be used to adjust the owned window position. For the example above this would be:
-    // [13, 7] is translated to [7, 4], the lost component is [1, 1]. So if one wants to display an owned window at,
-    // say, [11, 9] in user space, which is translated to [22, 18] on the device, the windows' position should be
-    // adjusted by [1, 1] (the owner's position lost component). Thus the result would be: [22, 18] - [1, 1] = [21, 17].
-    // The same formula works for fractional scale factors.
+    int usrX = x;
+    int usrY = y;
+
+    // [tav] Handle the fact that an owned window is most likely positioned relative to its owner, and it may
+    // require pixel-perfect alignment. For that, compensate rounding errors (caused by converting from the device
+    // space to the integer user space and back) for the owner's origin and for the owner's client area origin
+    // (see Window::GetAlignedInsets).
     AwtComponent* parent = GetParent();
     if (parent != NULL && (device->GetScaleX() > 1 || device->GetScaleY() > 1)) {
-        RECT rect;
-        VERIFY(::GetWindowRect(parent->GetHWnd(), &rect));
-        int xOffset = /*ceil'd*/device->ScaleUpAbsX(device->ScaleDownAbsX(rect.left)) - rect.left;
-        int yOffset = /*ceil'd*/device->ScaleUpAbsY(device->ScaleDownAbsY(rect.top)) - rect.top;
-        int newX = scaleUpAbsX - xOffset;
-        int newY = scaleUpAbsY - yOffset;
+        RECT parentInsets;
+        parent->GetInsets(&parentInsets);
+        // Convert the owner's client area origin to user space
+        int parentInsetsUsrX = device->ScaleDownX(parentInsets.left);
+        int parentInsetsUsrY = device->ScaleDownY(parentInsets.top);
+
+        RECT parentRect;
+        VERIFY(::GetWindowRect(parent->GetHWnd(), &parentRect));
+        // Convert the owner's origin to user space
+        int parentUsrX = device->ScaleDownAbsX(parentRect.left);
+        int parentUsrY = device->ScaleDownAbsY(parentRect.top);
+
+        // Calc the offset from the owner's client area in user space
+        int offsetUsrX = usrX - parentUsrX - parentInsetsUsrX;
+        int offsetUsrY = usrY - parentUsrY - parentInsetsUsrY;
+
+        // Convert the offset to device space
+        int offsetDevX = device->ScaleUpX(offsetUsrX);
+        int offsetDevY = device->ScaleUpY(offsetUsrY);
+
+        // Finally calc the window's location based on the frame's and its insets system numbers.
+        int devX = parentRect.left + parentInsets.left + offsetDevX;
+        int devY = parentRect.top + parentInsets.top + offsetDevY;
 
         // Check the toplevel is not going to be moved to another screen.
-        ::SetRect(&rect, newX, newY, newX + w, newY + h);
-        HMONITOR hmon = ::MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST);
+        ::SetRect(&parentRect, devX, devY, devX + w, devY + h);
+        HMONITOR hmon = ::MonitorFromRect(&parentRect, MONITOR_DEFAULTTONEAREST);
         if (hmon != NULL && AwtWin32GraphicsDevice::GetScreenFromHMONITOR(hmon) == device->GetDeviceIndex()) {
-            scaleUpAbsX = newX;
-            scaleUpAbsY = newY;
+            scaleUpAbsX = devX;
+            scaleUpAbsY = devY;
         }
     }
 
@@ -1292,8 +1303,46 @@ MsgRouting AwtWindow::WmMove(int x, int y)
     RECT rect;
     ::GetWindowRect(GetHWnd(), &rect);
 
-    (env)->SetIntField(target, AwtComponent::xID, ScaleDownAbsX(rect.left));
-    (env)->SetIntField(target, AwtComponent::yID, ScaleDownAbsY(rect.top));
+    // [tav] Convert x/y to user space, asymmetrically to AwtWindow::Reshape()
+    POINT pt = {rect.left + (rect.right - rect.left) / 2, rect.top + (rect.bottom - rect.top) / 2};
+    Devices::InstanceAccess devices;
+    HMONITOR monitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+    int screen = AwtWin32GraphicsDevice::GetScreenFromHMONITOR(monitor);
+    AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
+
+    int usrX = ScaleDownAbsX(rect.left);
+    int usrY = ScaleDownAbsY(rect.top);
+
+    AwtComponent* parent = GetParent();
+    if (parent != NULL && (device->GetScaleX() > 1 || device->GetScaleY() > 1)) {
+
+        RECT parentInsets;
+        parent->GetInsets(&parentInsets);
+        // Convert the owner's client area origin to user space
+        int parentInsetsUsrX = device->ScaleDownX(parentInsets.left);
+        int parentInsetsUsrY = device->ScaleDownY(parentInsets.top);
+
+        RECT parentRect;
+        VERIFY(::GetWindowRect(parent->GetHWnd(), &parentRect));
+        // Convert the owner's origin to user space
+        int parentUsrX = device->ScaleDownAbsX(parentRect.left);
+        int parentUsrY = device->ScaleDownAbsY(parentRect.top);
+
+        // Calc the offset from the owner's client area in device space
+        int offsetDevX = rect.left - parentRect.left - parentInsets.left;
+        int offsetDevY = rect.top - parentRect.top - parentInsets.top;
+
+        // Convert the offset to user space
+        int offsetUsrX = device->ScaleDownX(offsetDevX);
+        int offsetUsrY = device->ScaleDownY(offsetDevY);
+
+        // Finally calc the window's location based on the frame's and its insets user space values.
+        usrX = parentUsrX + parentInsetsUsrX + offsetUsrX;
+        usrY = parentUsrY + parentInsetsUsrY + offsetUsrY;
+    }
+
+    (env)->SetIntField(target, AwtComponent::xID, usrX);
+    (env)->SetIntField(target, AwtComponent::yID, usrY);
     SendComponentEvent(java_awt_event_ComponentEvent_COMPONENT_MOVED);
 
     env->DeleteLocalRef(target);
