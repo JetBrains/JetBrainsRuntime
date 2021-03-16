@@ -118,4 +118,11 @@ public interface WindowPeer extends ContainerPeer {
      * Instructs the peer to update the position of the security warning.
      */
     void repositionSecurityWarning();
+
+    /**
+     * Returns the system insets (in the scale of the Window device) when available.
+     *
+     * @return the system insets or null
+     */
+    default Insets getSysInsets() { return null; }
 }
