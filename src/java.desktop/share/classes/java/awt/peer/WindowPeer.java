@@ -120,6 +120,13 @@ public interface WindowPeer extends ContainerPeer {
     void repositionSecurityWarning();
 
     /**
+     * Returns the system insets (in the scale of the Window device) when available.
+     *
+     * @return the system insets or null
+     */
+    default Insets getSysInsets() { return null; }
+
+    /**
      * Requests a GC that best suits this Window. The returned GC may differ
      * from the requested GC passed as the argument to this method. This method
      * must return a non-null value (given the argument is non-null as well).
