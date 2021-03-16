@@ -66,6 +66,8 @@ public:
     static jmethodID calculateSecurityWarningPositionMID;
     static jmethodID windowTypeNameMID;
 
+    static jfieldID sysInsetsID;
+
     AwtWindow();
     virtual ~AwtWindow();
 
