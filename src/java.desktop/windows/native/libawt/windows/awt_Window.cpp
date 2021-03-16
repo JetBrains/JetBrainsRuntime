@@ -1213,6 +1213,30 @@ void AwtWindow::Reshape(int x, int y, int w, int h) {
     // monitor, so the WM_DPICHANGED will adjust it for the "target" monitor.
     int scaleUpAbsX = device == NULL ? x : device->ScaleUpAbsX(x);
     int scaleUpAbsY = device == NULL ? y : device->ScaleUpAbsY(y);
+
+    // The on-screen location of a component is affected by its toplevel. The toplvel's location in user space
+    // is represented with some loss of precision - the result of device->ScaleDownXY is ceil'ed. For instance,
+    // say we have scale 2.0 and a toplevel displayed at [13, 7] in device space. This location is translated to
+    // [7, 4] in user space. Were the toplevel moved to [14, 8] its location would still be translated to [7, 4]
+    // in user space. One of the problems caused by this fact is the problem of positioning of an owned window
+    // relative to its owner (or to the owner's content). Until we have a floating point API for managing Component
+    // bounds the following workaround is suggested. When a window with non-empty owner is positioned on the device,
+    // the component of the owner's position coordinate which is lost (as the fractional component) on translation to
+    // user space should be used to adjust the owned window position. For the example above this would be:
+    // [13, 7] is translated to [7, 4], the lost component is [1, 1]. So if one wants to display an owned window at,
+    // say, [11, 9] in user space, which is translated to [22, 18] on the device, the windows' position should be
+    // adjusted by [1, 1] (the owner's position lost component). Thus the result would be: [22, 18] - [1, 1] = [21, 17].
+    // The same formula works for fractional scale factors.
+    AwtComponent* parent = GetParent();
+    if (parent != NULL && (device->GetScaleX() > 1 || device->GetScaleY() > 1)) {
+        RECT rect;
+        VERIFY(::GetWindowRect(parent->GetHWnd(), &rect));
+        int xOffset = /*ceil'd*/device->ScaleUpAbsX(device->ScaleDownAbsX(rect.left)) - rect.left;
+        int yOffset = /*ceil'd*/device->ScaleUpAbsY(device->ScaleDownAbsY(rect.top)) - rect.top;
+        scaleUpAbsX -= xOffset;
+        scaleUpAbsY -= yOffset;
+    }
+
     ReshapeNoScale(scaleUpAbsX, scaleUpAbsY, ScaleUpX(w), ScaleUpY(h));
     // The window manager may tweak the size for different reasons, so try
     // to make sure our window has the correct size in the user's space.
