@@ -1241,8 +1241,16 @@ void AwtWindow::Reshape(int x, int y, int w, int h) {
         VERIFY(::GetWindowRect(parent->GetHWnd(), &rect));
         int xOffset = /*ceil'd*/device->ScaleUpAbsX(device->ScaleDownAbsX(rect.left)) - rect.left;
         int yOffset = /*ceil'd*/device->ScaleUpAbsY(device->ScaleDownAbsY(rect.top)) - rect.top;
-        scaleUpAbsX -= xOffset;
-        scaleUpAbsY -= yOffset;
+        int newX = scaleUpAbsX - xOffset;
+        int newY = scaleUpAbsY - yOffset;
+
+        // Check the toplevel is not going to be moved to another screen.
+        ::SetRect(&rect, newX, newY, newX + w, newY + h);
+        HMONITOR hmon = ::MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST);
+        if (hmon != NULL && AwtWin32GraphicsDevice::GetScreenFromHMONITOR(hmon) == device->GetDeviceIndex()) {
+            scaleUpAbsX = newX;
+            scaleUpAbsY = newY;
+        }
     }
 
     ReshapeNoScale(scaleUpAbsX, scaleUpAbsY, ScaleUpX(w), ScaleUpY(h));
