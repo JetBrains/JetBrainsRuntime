@@ -33,7 +33,6 @@
 #include "sun_font_SunFontManager.h"
 #include "sun_font_NullFontScaler.h"
 #include "sun_font_StrikeCache.h"
-#include "hb-jdk.h"
 
 static void *theNullScalerContext = NULL;
 extern void AccelGlyphCache_RemoveAllCellInfos(GlyphInfo *glyph);
@@ -200,7 +199,6 @@ Java_sun_font_SunFontManager_initIDs
     (JNIEnv *env, jclass cls) {
 
     initFontIDs(env);
-    initHBAPI();
 }
 
 JNIEXPORT FontManagerNativeIDs getSunFontIDs(JNIEnv *env) {
