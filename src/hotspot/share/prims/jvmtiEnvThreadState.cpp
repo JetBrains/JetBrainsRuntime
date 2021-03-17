@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -256,17 +256,14 @@ class VM_GetCurrentLocation : public VM_Operation {
     RegisterMap rm(_thread, false);
     // There can be a race condition between a VM_Operation reaching a safepoint
     // and the target thread exiting from Java execution.
-    // We must recheck the last Java frame still exists.
+    // We must recheck that the last Java frame still exists.
     if (!_thread->is_exiting() && _thread->has_last_Java_frame()) {
       javaVFrame* vf = _thread->last_java_vframe(&rm);
-      assert(vf != NULL, "must have last java frame");
-      Method* method = vf->method();
-      _method_id = method->jmethod_id();
-      _bci = vf->bci();
-    } else {
-      // Clear current location as the target thread has no Java frames anymore.
-      _method_id = (jmethodID)NULL;
-      _bci = 0;
+      if (vf != NULL) {
+        Method* method = vf->method();
+        _method_id = method->jmethod_id();
+        _bci = vf->bci();
+      }
     }
   }
   void get_current_location(jmethodID *method_id, int *bci) {
