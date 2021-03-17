@@ -199,8 +199,8 @@ java/awt/Focus/8013611/JDK8013611.java 8175366 windows-all,macosx-all
 java/awt/Focus/6378278/InputVerifierTest.java 8198616 macosx-all
 java/awt/Focus/6382144/EndlessLoopTest.java 8198617 macosx-all
 java/awt/Focus/6981400/Test1.java 8029675 windows-all,macosx-all
-java/awt/Focus/8073453/AWTFocusTransitionTest.java 8136517 macosx-all
-java/awt/Focus/8073453/SwingFocusTransitionTest.java 8136517 macosx-all
+java/awt/Focus/8073453/AWTFocusTransitionTest.java 8136517 windows-all,macosx-all
+java/awt/Focus/8073453/SwingFocusTransitionTest.java 8136517 windows-all,macosx-all
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all,macosx-all
 java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055 macosx-all,windows-all
@@ -876,9 +876,23 @@ java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java 8258103 linux-all
 
 ############################################################################
 
+# various Windows are created spontaneously during test execution
+
+javax/swing/JComboBox/6559152/bug6559152.java                                       windows-all
+javax/swing/JComboBox/6607130/bug6607130.java                                       windows-all
+
+javax/swing/JComboBox/4199622/bug4199622.java                                       windows-all
+javax/swing/JComboBox/4515752/DefaultButtonTest.java                                windows-all
+
+javax/swing/JComboBox/8032878/bug8032878.java                                       windows-all
+javax/swing/JComboBox/8057893/bug8057893.java                                       windows-all
+
 # no printer found
+java/awt/print/PrinterJob/CheckPrivilege.java                                       generic-all
 java/awt/print/PrinterJob/ExceptionTest.java                                        generic-all
 java/awt/print/PrinterJob/ImagePrinting/NullClipARGB.java                           generic-all
+java/awt/print/PrinterJob/LandscapeStackOverflow.java                               generic-all
+java/awt/print/PrinterJob/PaintText.java                                            generic-all
 java/awt/print/PrinterJob/PrintCrashTest.java                                       generic-all
 java/awt/print/PrinterJob/PrtException.java                                         generic-all
 javax/print/attribute/ChromaticityValues.java                                       generic-all
