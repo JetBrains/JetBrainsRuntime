@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -162,7 +162,7 @@ public final class ToXMLStream extends ToStream
                     writer.write('\"');
                     writer.write(standalone);
                     writer.write("?>");
-                    if (m_doIndent) {
+                    if (m_doIndent || m_isStandalone) {
                         if (m_standaloneWasSpecified
                                 || getDoctypePublic() != null
                                 || getDoctypeSystem() != null
