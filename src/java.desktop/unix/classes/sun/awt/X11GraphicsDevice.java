@@ -439,10 +439,7 @@ public final class X11GraphicsDevice extends GraphicsDevice
 
     @Override
     public synchronized DisplayMode[] getDisplayModes() {
-        if (!isFullScreenSupported()
-                || ((X11GraphicsEnvironment) GraphicsEnvironment
-                            .getLocalGraphicsEnvironment()).runningXinerama()) {
-            // only the current mode will be returned
+        if (!isFullScreenSupported()) {
             return super.getDisplayModes();
         }
         ArrayList<DisplayMode> modes = new ArrayList<DisplayMode>();
