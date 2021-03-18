@@ -51,6 +51,7 @@ public final class DisplayMode {
     private Dimension size;
     private int bitDepth;
     private int refreshRate;
+    private boolean isDefault;
 
     /**
      * Create a new display mode object with the supplied parameters.
@@ -69,6 +70,13 @@ public final class DisplayMode {
         this.size = new Dimension(width, height);
         this.bitDepth = bitDepth;
         this.refreshRate = refreshRate;
+    }
+
+    private DisplayMode(int width, int height, int bitDepth, int refreshRate, boolean isDefault) {
+        this.size = new Dimension(width, height);
+        this.bitDepth = bitDepth;
+        this.refreshRate = refreshRate;
+        this.isDefault = isDefault;
     }
 
     /**
@@ -121,6 +129,10 @@ public final class DisplayMode {
      */
     public int getRefreshRate() {
         return refreshRate;
+    }
+
+    private boolean isDefault() {
+        return isDefault;
     }
 
     /**
