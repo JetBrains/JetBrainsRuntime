@@ -582,24 +582,13 @@ else
                         -DHAVE_SYSCONF -DHAVE_SYS_MMAN_H -DHAVE_UNISTD_H \
                         -DHB_NO_PRAGMA_GCC_DIAGNOSTIC
    endif
-   ifeq ($(findstring $(OPENJDK_TARGET_OS), linux macosx), )
+   ifneq (, $(findstring $(OPENJDK_TARGET_OS), linux macosx))
      HARFBUZZ_CFLAGS += -DHAVE_INTEL_ATOMIC_PRIMITIVES
    endif
-   ifeq ($(OPENJDK_TARGET_OS), macosx)
-     HARFBUZZ_CFLAGS += -DHAVE_CORETEXT
-   endif
 
-   # Early re-canonizing has to be disabled to workaround an internal XlC compiler error
-   # when building libharfbuzz
-   ifeq ($(OPENJDK_TARGET_OS), aix)
-     HARFBUZZ_CFLAGS += -qdebug=necan
-   endif
-
-   ifneq ($(OPENJDK_TARGET_OS), macosx)
-     LIBFONTMANAGER_EXCLUDE_FILES += libharfbuzz/hb-coretext.cc
-   endif
    # hb-ft.cc is not presently needed, and requires freetype 2.4.2 or later.
-   LIBFONTMANAGER_EXCLUDE_FILES += libharfbuzz/hb-ft.cc
+   LIBFONTMANAGER_EXCLUDE_FILES += libharfbuzz/hb-ft.cc \
+                                   libharfbuzz/hb-coretext.cc
 
   HARFBUZZ_EXTRA_HEADER_DIRS := \
     libharfbuzz/hb-ucdn
