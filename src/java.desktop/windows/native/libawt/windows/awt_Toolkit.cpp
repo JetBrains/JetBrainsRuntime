@@ -54,6 +54,8 @@
 #include "debug_trace.h"
 #include "debug_mem.h"
 
+#include "java_rc.h"
+
 #include "ComCtl32Util.h"
 #include "DllUtil.h"
 
@@ -1863,7 +1865,9 @@ AwtObject* AwtToolkit::LookupCmdID(UINT id)
 
 HICON AwtToolkit::GetAwtIcon()
 {
-    return ::LoadIcon(GetModuleHandle(), TEXT("AWT_ICON"));
+    HICON hIcon = ::LoadIcon(::GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON));
+    if (!hIcon) hIcon = ::LoadIcon(GetModuleHandle(), TEXT("AWT_ICON"));
+    return hIcon;
 }
 
 HICON AwtToolkit::GetAwtIconSm(void* pAwtWindow)
@@ -1887,7 +1891,10 @@ HICON AwtToolkit::GetAwtIconSm(void* pAwtWindow)
 
     // Fixed 6364216: LoadImage() may leak memory
     if (defaultIconSm == NULL || smx != prevSmx || smy != prevSmy) {
-        defaultIconSm = (HICON)LoadImage(GetModuleHandle(), TEXT("AWT_ICON"), IMAGE_ICON, smx, smy, 0);
+        defaultIconSm = ::LoadIcon(::GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON));
+        if (!defaultIconSm) {
+            defaultIconSm = (HICON)LoadImage(GetModuleHandle(), TEXT("AWT_ICON"), IMAGE_ICON, smx, smy, 0);
+        }
         prevSmx = smx;
         prevSmy = smy;
     }

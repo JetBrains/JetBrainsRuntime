@@ -93,6 +93,7 @@ ifeq ($(call isTargetOs, windows), true)
   LIBAWT_RCFLAGS ?= -I$(TOPDIR)/src/java.base/windows/native/launcher/icons
   LIBAWT_VERSIONINFO_RESOURCE := \
       $(TOPDIR)/src/$(MODULE)/windows/native/libawt/windows/awt.rc
+  LIBAWT_EXTRA_HEADER_DIRS += $(TOPDIR)/src/java.base/windows/native/launcher
 endif
 
 # This is the object file to provide the dladdr API, which is not
