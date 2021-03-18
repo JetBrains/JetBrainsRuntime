@@ -777,7 +777,8 @@ CGGI_CreateImageForGlyph
 
     if (isCatalinaOrAbove || glyphDescriptor == &argb) {
         CGAffineTransform matrix = CGContextGetTextMatrix(canvas->context);
-        CGFloat fontSize = sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c));
+        CGFloat fontSize = sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c) /
+                (float) info->subpixelResolutionX / (float) info->subpixelResolutionY);
         CTFontRef font = CTFontCreateWithGraphicsFont(cgFont, fontSize, NULL, NULL);
 
         CGFloat normFactor = 1.0 / fontSize;
