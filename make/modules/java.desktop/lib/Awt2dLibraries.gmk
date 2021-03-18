@@ -73,6 +73,7 @@ ifeq ($(call isTargetOs, windows), true)
       $(TOPDIR)/src/$(MODULE)/share/native/common/font \
       $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/opengl \
       $(TOPDIR)/src/$(MODULE)/$(OPENJDK_TARGET_OS_TYPE)/native/common/awt/systemscale \
+      $(TOPDIR)/src/java.base/$(OPENJDK_TARGET_OS_TYPE)/native/launcher \
       #
 endif
 
