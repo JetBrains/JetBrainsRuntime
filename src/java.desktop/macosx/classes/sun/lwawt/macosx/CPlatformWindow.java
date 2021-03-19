@@ -64,6 +64,7 @@ import com.apple.laf.ClientPropertyApplicator.Property;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
+import sun.awt.InvokeOnToolkitHelper;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWToolkit;
@@ -348,7 +349,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         long nativeWindowPtr = java.security.AccessController.doPrivileged(
                 (PrivilegedAction<Long>) () -> {
                     try {
-                        return LWCToolkit.SelectorPerformer.perform(() -> {
+                        return InvokeOnToolkitHelper.invokeAndBlock(() -> {
                             AtomicLong ref = new AtomicLong();
                             contentView.execute(viewPtr -> {
                                 boolean hasOwnerPtr = false;
