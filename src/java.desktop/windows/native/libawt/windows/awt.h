@@ -52,6 +52,8 @@ typedef enum _PROCESS_DPI_AWARENESS {
 } PROCESS_DPI_AWARENESS;
 #endif
 
+typedef BOOL(WINAPI AdjustWindowRectExForDpiFunc)(LPRECT, DWORD, BOOL, DWORD, UINT);
+
 class AwtObject;
 typedef AwtObject* PDATA;
 
