@@ -85,23 +85,14 @@ import java.awt.peer.TaskbarPeer;
 import java.awt.peer.TrayIconPeer;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.UndeclaredThrowableException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.net.MalformedURLException;
 import javax.swing.UIManager;
 
 import com.apple.laf.AquaMenuBarUI;
-import sun.awt.AWTAccessor;
-import sun.awt.AppContext;
-import sun.awt.CGraphicsDevice;
-import sun.awt.LightweightFrame;
-import sun.awt.PlatformGraphicsInfo;
-import sun.awt.SunToolkit;
+import sun.awt.*;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.dnd.SunDragSourceContextPeer;
 import sun.awt.util.ThreadGroupUtils;
@@ -470,9 +461,9 @@ public final class LWCToolkit extends LWToolkit {
     public Insets getScreenInsets(final GraphicsConfiguration gc) {
         GraphicsDevice gd = gc.getDevice();
         if (!(gd instanceof CGraphicsDevice)) {
-            return LWCToolkit.SelectorPerformer.perform(() -> super.getScreenInsets(gc));
+            return InvokeOnToolkitHelper.invokeAndBlock(() -> super.getScreenInsets(gc));
         }
-        return LWCToolkit.SelectorPerformer.perform(() -> ((CGraphicsDevice)gd).getScreenInsets());
+        return InvokeOnToolkitHelper.invokeAndBlock(() -> ((CGraphicsDevice)gd).getScreenInsets());
     }
 
     @Override
@@ -676,150 +667,6 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     /**
-     * Performs a wrapped native selector on the main thread, waiting on EDT, preventing the threads from a deadlock.
-     */
-    public static class SelectorPerformer {
-        private ExecutorService executor;
-        // every perform() pushes a queue of invocations
-        private Stack<LinkedBlockingQueue<InvocationEvent>> invocations = new Stack<>();
-
-        // invocations should be dispatched on proper EDT (per AppContext)
-        private static final Map<Thread, SelectorPerformer> edt2performer = new ConcurrentHashMap<>();
-
-        private static final int WAIT_LIMIT_SECONDS = 5;
-
-        private SelectorPerformer() {}
-
-        /**
-         * Performs the selector wrapped in the callable. The selector should be executed via [JNFRunLoop performOnMainThreadWaiting:YES ...]
-         * on the native side so that the native doAWTRunLoop, which is run in [JNFRunLoop javaRunLoopMode], accepts it.
-         * The callable wrapper should not call any Java code which would normally be called on EDT.
-         * <p>
-         * If the main thread posts invocation events caused by the selector, those events are intercepted and dispatched on EDT out of order.
-         * <p>
-         * When called on non-EDT, the method performs the selector in place. The method is reentrant.
-         *
-         * @param selector the native selector wrapper
-         * @param <T> the selector return type
-         * @return the selector result
-         */
-        public static <T> T perform(Callable<T> selector) {
-            if (selector == null) return null;
-
-            if (EventQueue.isDispatchThread()) {
-                SelectorPerformer performer = getInstance(Thread.currentThread());
-                if (performer != null) {
-                    return performer.performImpl(selector);
-                }
-            }
-            // fallback to default
-            try {
-                return selector.call();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        private <T> T performImpl(Callable<T> selector) {
-            assert EventQueue.isDispatchThread();
-            if (executor == null) {
-                // init on EDT
-                AccessController.doPrivileged((PrivilegedAction<?>)() ->
-                    executor = new ThreadPoolExecutor(1, Integer.MAX_VALUE,
-                            60L, TimeUnit.SECONDS,
-                            new SynchronousQueue<>(),
-                            new ThreadFactory() {
-                                private ThreadFactory factory = Executors.privilegedThreadFactory();
-                                @Override
-                                public Thread newThread(Runnable r) {
-                                    Thread t = factory.newThread(r);
-                                    t.setDaemon(true);
-                                    t.setName("AWT-SelectorPerformer " + t.getName());
-                                    return t;
-                                }
-                            })
-                );
-            }
-            LinkedBlockingQueue<InvocationEvent> currentQueue;
-            synchronized (invocations) {
-                invocations.push(currentQueue = new LinkedBlockingQueue<>());
-            }
-
-            FutureTask<T> task = new FutureTask(selector) {
-                @Override
-                protected void done() {
-                    synchronized (invocations) {
-                        // Done with the current queue, wake it up.
-                        invocations.pop().add(new InvocationEvent(executor, () -> {}));
-                    }
-                }
-            };
-            executor.execute(task);
-
-            try {
-                while (!task.isDone() || !currentQueue.isEmpty()) {
-                    InvocationEvent event = currentQueue.poll(WAIT_LIMIT_SECONDS, TimeUnit.SECONDS);
-                    if (event == null) {
-                        new RuntimeException("Waiting for the invocation event timed out").printStackTrace();
-                        break;
-                    }
-                    event.dispatch();
-                }
-                return task.isDone() ? task.get() : null;
-
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        /**
-         * Checks if there's an active SelectorPerformer corresponding to the invocation's AppContext,
-         * adds the invocation to the SelectorPerformer's queue and returns true.
-         * Otherwise does nothing and returns false.
-         */
-        public static boolean offer(InvocationEvent invocation) {
-            Object source = invocation.getSource();
-
-            SelectorPerformer performer = (source instanceof Component) ?
-                    getInstance((Component)source) :
-                    getInstance(Toolkit.getDefaultToolkit().getSystemEventQueue());
-
-            if (performer == null) return false;
-
-            synchronized (performer.invocations) {
-                if (!performer.invocations.isEmpty()) {
-                    performer.invocations.peek().add(invocation);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static SelectorPerformer getInstance(Component comp) {
-            if (comp == null) return null;
-
-            AppContext appContext = SunToolkit.targetToAppContext(comp);
-            if (appContext == null) return null;
-
-            return getInstance((EventQueue)appContext.get(AppContext.EVENT_QUEUE_KEY));
-        }
-
-        private static SelectorPerformer getInstance(EventQueue eq) {
-            if (eq == null) return null;
-
-            return getInstance(AWTAccessor.getEventQueueAccessor().getDispatchThread(eq));
-        }
-
-        private static SelectorPerformer getInstance(Thread edt) {
-            if (edt == null) return null;
-
-            return edt2performer.computeIfAbsent(edt, key -> new SelectorPerformer());
-        }
-    }
-
-    /**
      * Kicks an event over to the appropriate event queue and waits for it to
      * finish To avoid deadlocking, we manually run the NSRunLoop while waiting
      * Any selector invoked using ThreadUtilities performOnMainThread will be
@@ -842,7 +689,7 @@ public final class LWCToolkit extends LWToolkit {
                         },
                         true);
 
-        if (!SelectorPerformer.offer(invocationEvent)) {
+        if (!InvokeOnToolkitHelper.offer(invocationEvent)) {
             if (component != null) {
                 AppContext appContext = SunToolkit.targetToAppContext(component);
                 SunToolkit.postEvent(appContext, invocationEvent);
@@ -851,7 +698,7 @@ public final class LWCToolkit extends LWToolkit {
                 SunToolkit.flushPendingEvents(appContext);
             } else {
                 // This should be the equivalent to EventQueue.invokeAndWait
-                ((LWCToolkit) Toolkit.getDefaultToolkit()).getSystemEventQueueForInvokeAndWait().postEvent(invocationEvent);
+                ((LWCToolkit) Toolkit.getDefaultToolkit()).getSystemEventQueueImpl().postEvent(invocationEvent);
             }
         }
         doAWTRunLoop(mediator, false);
