@@ -141,7 +141,7 @@ jb/java/awt/Focus/SecondLevelPopupTest.java NOBUG windows-x64 #NullPointerExcept
 jb/java/awt/Focus/TitleBarClickTest.java NOBUG windows-x64 #timeout
 jb/java/awt/Focus/WrongFrameFocusedOnModalDialogClosing.java NOBUG windows-x64 #timeout
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984,NOBUG windows-x64,macosx-all #timeout
-jb/java/awt/Window/UndecoratedDialogInTransientsChain.java NOBUG windows-x64 #Frame should have been closed
+jb/java/awt/Window/UndecoratedDialogInTransientsChain.java JBR-6924 windows-all
 jb/java/jcef/HwFacadeWindowNoFrontTest.java NOBUG windows-x64 #window is not above the bottom frame
 jb/sun/awt/macos/InputMethodTest/KeyCodesTest.java JBR-6480 macosx-all
 

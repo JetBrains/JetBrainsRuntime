@@ -1283,7 +1283,6 @@ jb/java/awt/Focus/EventsOnPopupShowing.java                                     
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java                                            JBR-3180 linux-5.18.2-arch1-1
 jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java                           JBR-5392 windows-aarch64
-jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java                          JBR-6122 windows-all
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java JBR-6681 windows-all
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/Font/font430.sh                                                         JBR-4956 linux-all
