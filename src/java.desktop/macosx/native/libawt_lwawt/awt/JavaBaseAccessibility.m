@@ -22,6 +22,7 @@
 #import "JavaCellAccessibility.h"
 #import "JavaOutlineAccessibility.h"
 #import "JavaOutlineRowAccessibility.h"
+#import "JavaStaticTextAccessibility.h"
 #import "JavaComponentAccessibility.h"
 #import "ThreadUtilities.h"
 #import "AWTView.h"
@@ -375,7 +376,9 @@ static jobject sAccessibilityClass = NULL;
         newChild = [ScrollAreaAccessibility alloc];
     } else {
         NSString *nsRole = [sRoles objectForKey:javaRole];
-        if ([nsRole isEqualToString:NSAccessibilityStaticTextRole] || [nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
+        if ([nsRole isEqualToString:NSAccessibilityStaticTextRole]) {
+            newChild = [JavaStaticTextAccessibility alloc];
+        } else if ([nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
             newChild = [JavaTextAccessibility alloc];
         } else if ([nsRole isEqualToString:NSAccessibilityListRole]) {
             newChild = [JavaListAccessibility alloc];

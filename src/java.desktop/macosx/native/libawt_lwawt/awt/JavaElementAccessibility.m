@@ -5,6 +5,7 @@
 #import "ThreadUtilities.h"
 
 static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;");
+static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleDescription, sjc_CAccessibility, "getAccessibleDescription", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;");
 
 static JNF_CLASS_CACHE(sjc_CAccessible, "sun/lwawt/macosx/CAccessible");
 static JNF_MEMBER_CACHE(jm_getAccessibleContext, sjc_CAccessible, "getAccessibleContext", "()Ljavax/accessibility/AccessibleContext;");
@@ -45,6 +46,15 @@ static void RaiseMustOverrideException(NSString *method)
     //   RaiseMustOverrideException(@"accessibilityLabel");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, [javaBase accessible], [javaBase component]);
+    NSString* str = JNFJavaToNSString(env, axName);
+    (*env)->DeleteLocalRef(env, axName);
+    return str;
+}
+
+- (NSString *)accessibilityHelp {
+    //   RaiseMustOverrideException(@"accessibilityLabel");
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleDescription, [javaBase accessible], [javaBase component]);
     NSString* str = JNFJavaToNSString(env, axName);
     (*env)->DeleteLocalRef(env, axName);
     return str;
