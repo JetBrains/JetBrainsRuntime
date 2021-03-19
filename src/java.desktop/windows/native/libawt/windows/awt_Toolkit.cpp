@@ -232,6 +232,8 @@ private:
 int DisplayChangeHandler::retryCount = 0;
 BOOL DisplayChangeHandler::recoveryPending = FALSE;
 
+AdjustWindowRectExForDpiFunc* AwtToolkit::lpAdjustWindowRectExForDpi = NULL;
+
 static LPCTSTR szAwtToolkitClassName = TEXT("SunAwtToolkit");
 
 static const int MOUSE_BUTTONS_WINDOWS_SUPPORTED = 5; //three standard buttons + XBUTTON1 + XBUTTON2.
@@ -729,6 +731,12 @@ BOOL AwtToolkit::Initialize() {
                                               0, tk.m_mainThreadId);
 
     awt_dnd_initialize();
+
+    HMODULE hLibUser32Dll = JDK_LoadSystemLibrary("User32.dll");
+    if (hLibUser32Dll != NULL) {
+        lpAdjustWindowRectExForDpi = (AdjustWindowRectExForDpiFunc*)GetProcAddress(hLibUser32Dll, "AdjustWindowRectExForDpi");
+        ::FreeLibrary(hLibUser32Dll);
+    }
 
     /*
      * Initialization of the touch keyboard related variables.
