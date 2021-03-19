@@ -35,6 +35,7 @@
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 #import "CPopupMenu.h"
+#import "CMenuBar.h"
 #import "ThreadUtilities.h"
 #import "NSApplicationAWT.h"
 
@@ -820,6 +821,26 @@ JNF_COCOA_ENTER(env);
     CMenuBar *menu = (CMenuBar *)jlong_to_ptr(cMenuBarPtr);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         [ApplicationDelegate sharedDelegate].fDefaultMenuBar = menu;
+    }];
+
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     com_apple_eawt__AppMenuBarHandler
+ * Method:    nativeActivateDefaultMenuBar
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_com_apple_eawt__1AppMenuBarHandler_nativeActivateDefaultMenuBar
+(JNIEnv *env, jclass clz, jlong cMenuBarPtr)
+{
+JNF_COCOA_ENTER(env);
+
+    CMenuBar *menu = (CMenuBar *)jlong_to_ptr(cMenuBarPtr);
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        if (menu) {
+            [CMenuBar activate:menu modallyDisabled:NO];
+        }
     }];
 
 JNF_COCOA_EXIT(env);
