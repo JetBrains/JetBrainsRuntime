@@ -24,7 +24,7 @@ public class AccessibleTextTest extends AccessibleComponentTest {
 
     private void createSimpleLabel() {
         AccessibleComponentTest.INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Check a11y of simple JLabel in a simple Window.\n\n"
+                + "Check a11y of JLabel in a simple Window.\n\n"
                 + "Turn screen reader on.\n"
                 + "On MacOS, use the VO navigation keys to read the label text;\n"
                 + "ON Windows with JAWS, use window virtualization (insert+alt+w and arrows) to read the label text;\n"
@@ -42,7 +42,7 @@ public class AccessibleTextTest extends AccessibleComponentTest {
 
     private void createOneLineTexField() {
         AccessibleComponentTest.INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Check a11y of simple JTextField in a simple Window.\n\n"
+                + "Check a11y of JTextField in a simple Window.\n\n"
                 + "Turn screen reader on and press Tab to move to the text field and type some characters.\n\n"
                 + "If you can hear input results according to your screen reader settings, tab further and press PASS, otherwise press FAIL.";
 
@@ -57,7 +57,7 @@ public class AccessibleTextTest extends AccessibleComponentTest {
 
     private void createPassField() {
         AccessibleComponentTest.INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Check a11y of simple JPasswordField in a simple Window.\n\n"
+                + "Check a11y of JPasswordField in a simple Window.\n\n"
                 + "Turn screen reader on and press Tab to move to the password field and type some characters.\n\n"
                 + "If you can hear  sounds specific to your screen reader when interacting with password fields, tab further and press PASS, otherwise press FAIL.";
 
@@ -72,7 +72,7 @@ public class AccessibleTextTest extends AccessibleComponentTest {
 
     private void createNamedTextField() {
         AccessibleComponentTest.INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Check a11y of named simple JTextField in a simple Window.\n\n"
+                + "Check a11y of named JTextField in a simple Window.\n\n"
                 + "Turn screen reader on and press Tab to move to the text field.\n\n"
                 + "If you can hear in addition to the fact that this text field is also the names of these fields, tab further and press PASS, otherwise press FAIL.";
 
@@ -94,7 +94,7 @@ public class AccessibleTextTest extends AccessibleComponentTest {
 
     private void createTextArea() {
         AccessibleComponentTest.INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Check a11y of simple JTextArea in a simple Window.\n\n"
+                + "Check a11y of JTextArea in a simple Window.\n\n"
                 + "Turn screen reader on and press the arrow keys.\n\n"
                 + "If you can hear this instructions, tab further and press PASS, otherwise press FAIL.";
 
@@ -139,10 +139,9 @@ public class AccessibleTextTest extends AccessibleComponentTest {
         super.createUI(panel, "AccessibleTextTest");
     }
 
-
     private void createTextPane() {
         AccessibleComponentTest.INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Check a11y of simple text in JTextPane in a simple Window.\n\n"
+                + "Check a11y of text in JTextPane in a simple Window.\n\n"
                 + "Turn screen reader on and press Tab to move to the text pane and press the arrow keys.\n\n"
                 + "If you can hear text, tab further and press PASS, otherwise press FAIL.";
 
@@ -212,7 +211,6 @@ public class AccessibleTextTest extends AccessibleComponentTest {
         exceptionString = "Editable text pane test failed!";
         super.createUI(panel, "AccessibleTextTest");
     }
-
 
     public static void main(String[] args) throws Exception {
         AccessibleTextTest test = new AccessibleTextTest();
