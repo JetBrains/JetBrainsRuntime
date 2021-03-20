@@ -108,6 +108,10 @@ class ClassLoaderDataGraph : public AllStatic {
   // for redefinition.  These classes are removed during the next class unloading.
   // Walking the ClassLoaderDataGraph also includes anonymous classes.
   static void classes_do(KlassClosure* klass_closure);
+
+  // Enhanced class redefinition
+  static void anonymous_classes_do(KlassClosure* klass_closure);
+
   static void classes_do(void f(Klass* const));
   static void methods_do(void f(Method*));
   static void modules_do(void f(ModuleEntry*));
