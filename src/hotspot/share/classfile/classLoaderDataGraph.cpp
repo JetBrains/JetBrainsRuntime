@@ -361,6 +361,16 @@ void ClassLoaderDataGraph::classes_do(KlassClosure* klass_closure) {
   }
 }
 
+void ClassLoaderDataGraph::anonymous_or_hidden_classes_do(KlassClosure* klass_closure) {
+  Thread* thread = Thread::current();
+  for (ClassLoaderData* cld = _head; cld != NULL; cld = cld->next()) {
+    if (cld->has_class_mirror_holder()) {
+      Handle holder(thread, cld->holder_phantom());
+      cld->classes_do(klass_closure);
+    }
+  }
+}
+
 void ClassLoaderDataGraph::classes_do(void f(Klass* const)) {
   ClassLoaderDataGraphIterator iter;
   while (ClassLoaderData* cld = iter.get_next()) {
