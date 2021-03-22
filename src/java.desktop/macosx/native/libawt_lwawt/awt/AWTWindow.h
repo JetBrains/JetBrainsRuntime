@@ -49,6 +49,7 @@
     BOOL isMinimizing;
     NSWindowTabbingMode javaWindowTabbingMode;
     BOOL isEnterFullScreen;
+    BOOL isJustCreated;
 }
 
 // An instance of either AWTWindow_Normal or AWTWindow_Panel
@@ -66,6 +67,7 @@
 @property (nonatomic) BOOL isMinimizing;
 @property (nonatomic) NSWindowTabbingMode javaWindowTabbingMode;
 @property (nonatomic) BOOL isEnterFullScreen;
+@property (nonatomic) BOOL isJustCreated;
 
 - (id) initWithPlatformWindow:(JNFWeakJObjectWrapper *)javaPlatformWindow
                   ownerWindow:owner
