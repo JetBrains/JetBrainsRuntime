@@ -41,10 +41,7 @@ import java.security.AccessController;
 import java.security.PrivilegedExceptionAction;
 import java.text.AttributedCharacterIterator.Attribute;
 import java.text.CharacterIterator;
-import java.util.EventListener;
-import java.util.Hashtable;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 import sun.awt.ComponentFactory;
 import sun.font.StandardGlyphVector;
@@ -585,7 +582,7 @@ public class Font implements java.io.Serializable
 
     /* This constructor is used by deriveFont when attributes is null */
     private Font(String name, int style, float sizePts,
-                 boolean created, Font2DHandle handle) {
+                 boolean created, Font2DHandle handle, boolean useOldHandle) {
         this(name, style, sizePts);
         this.createdFont = created;
         /* Fonts created from a stream will use the same font2D instance
@@ -605,6 +602,8 @@ public class Font implements java.io.Serializable
             } else {
                 this.font2DHandle = handle;
             }
+        } else if (useOldHandle) {
+            this.font2DHandle = handle;
         }
     }
 
@@ -650,7 +649,7 @@ public class Font implements java.io.Serializable
      * In these cases there is no need to interrogate "values".
      */
     private Font(AttributeValues values, String oldName, int oldStyle,
-                 boolean created, Font2DHandle handle) {
+                 boolean created, Font2DHandle handle, boolean useOldHandle) {
 
         this.createdFont = created;
         if (created) {
@@ -679,6 +678,8 @@ public class Font implements java.io.Serializable
                 this.createdFont = false;
                 this.font2DHandle = null;
             }
+        } else if (useOldHandle) {
+            this.font2DHandle = handle;
         }
         initFromValues(values);
     }
@@ -848,7 +849,7 @@ public class Font implements java.io.Serializable
                 values = font.getAttributeValues().clone();
                 values.merge(attributes, SECONDARY_MASK);
                 return new Font(values, font.name, font.style,
-                                font.createdFont, font.font2DHandle);
+                                font.createdFont, font.font2DHandle, false);
             }
             return new Font(attributes);
         }
@@ -859,7 +860,7 @@ public class Font implements java.io.Serializable
                 AttributeValues values = font.getAttributeValues().clone();
                 values.merge(attributes, SECONDARY_MASK);
                 return new Font(values, font.name, font.style,
-                                font.createdFont, font.font2DHandle);
+                                font.createdFont, font.font2DHandle, false);
             }
 
             return font;
@@ -2055,13 +2056,13 @@ public class Font implements java.io.Serializable
      */
     public Font deriveFont(int style, float size){
         if (values == null) {
-            return new Font(name, style, size, createdFont, font2DHandle);
+            return new Font(name, style, size, createdFont, font2DHandle, false);
         }
         AttributeValues newValues = getAttributeValues().clone();
         int oldStyle = (this.style != style) ? this.style : -1;
         applyStyle(style, newValues);
         newValues.setSize(size);
-        return new Font(newValues, null, oldStyle, createdFont, font2DHandle);
+        return new Font(newValues, null, oldStyle, createdFont, font2DHandle, false);
     }
 
     /**
@@ -2080,7 +2081,7 @@ public class Font implements java.io.Serializable
         int oldStyle = (this.style != style) ? this.style : -1;
         applyStyle(style, newValues);
         applyTransform(trans, newValues);
-        return new Font(newValues, null, oldStyle, createdFont, font2DHandle);
+        return new Font(newValues, null, oldStyle, createdFont, font2DHandle, false);
     }
 
     /**
@@ -2092,11 +2093,11 @@ public class Font implements java.io.Serializable
      */
     public Font deriveFont(float size){
         if (values == null) {
-            return new Font(name, style, size, createdFont, font2DHandle);
+            return new Font(name, style, size, createdFont, font2DHandle, true);
         }
         AttributeValues newValues = getAttributeValues().clone();
         newValues.setSize(size);
-        return new Font(newValues, null, -1, createdFont, font2DHandle);
+        return new Font(newValues, null, -1, createdFont, font2DHandle, true);
     }
 
     /**
@@ -2112,7 +2113,7 @@ public class Font implements java.io.Serializable
     public Font deriveFont(AffineTransform trans){
         AttributeValues newValues = getAttributeValues().clone();
         applyTransform(trans, newValues);
-        return new Font(newValues, null, -1, createdFont, font2DHandle);
+        return new Font(newValues, null, -1, createdFont, font2DHandle, true);
     }
 
     /**
@@ -2124,13 +2125,23 @@ public class Font implements java.io.Serializable
      */
     public Font deriveFont(int style){
         if (values == null) {
-           return new Font(name, style, size, createdFont, font2DHandle);
+           return new Font(name, style, size, createdFont, font2DHandle, false);
         }
         AttributeValues newValues = getAttributeValues().clone();
         int oldStyle = (this.style != style) ? this.style : -1;
         applyStyle(style, newValues);
-        return new Font(newValues, null, oldStyle, createdFont, font2DHandle);
+        return new Font(newValues, null, oldStyle, createdFont, font2DHandle, false);
     }
+
+    /*
+     * Set of attributes, updating which on a Font instance cannot possibly
+     * change the underlying Font2D instance it uses.
+     */
+    private static final Set<? extends Attribute> FONT_2D_UNRELATED_ATTRS
+            = Set.of(TextAttribute.KERNING,
+                     TextAttribute.LIGATURES,
+                     TextAttribute.SIZE,
+                     TextAttribute.TRANSFORM);
 
     /**
      * Creates a new {@code Font} object by replicating the current
@@ -2149,7 +2160,15 @@ public class Font implements java.io.Serializable
         AttributeValues newValues = getAttributeValues().clone();
         newValues.merge(attributes, RECOGNIZED_MASK);
 
-        return new Font(newValues, name, style, createdFont, font2DHandle);
+        boolean keepFont2DHandle = true;
+        for (Attribute attribute : attributes.keySet()) {
+            if (!FONT_2D_UNRELATED_ATTRS.contains(attribute)) {
+                keepFont2DHandle = false;
+                break;
+            }
+        }
+        return new Font(newValues, name, style, createdFont, font2DHandle,
+                keepFont2DHandle);
     }
 
     /**
