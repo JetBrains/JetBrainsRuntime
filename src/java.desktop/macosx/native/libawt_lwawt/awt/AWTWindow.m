@@ -247,6 +247,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
 @synthesize preFullScreenLevel;
 @synthesize standardFrame;
 @synthesize isMinimizing;
+@synthesize isJustCreated;
 
 - (void) updateMinMaxSize:(BOOL)resizable {
     if (resizable) {
@@ -399,6 +400,8 @@ AWT_ASSERT_APPKIT_THREAD;
     if (IS(bits, SHEET) && owner != nil) {
         [self.nsWindow setStyleMask: NSWindowStyleMaskDocModalWindow];
     }
+
+    self.isJustCreated = YES;
 
     return self;
 }
@@ -1164,6 +1167,11 @@ JNI_COCOA_ENTER(env);
                     screenContentRect.size.height);
                 nsWindow.contentView.frame = contentFrame;
                 resized = YES;
+            }
+            if (window.isJustCreated) {
+                // Perform Move/Resize event for just created windows
+                resized = YES;
+                window.isJustCreated = NO;
             }
         }
 
