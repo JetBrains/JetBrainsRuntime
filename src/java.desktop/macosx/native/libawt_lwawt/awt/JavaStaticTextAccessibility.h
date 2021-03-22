@@ -4,7 +4,7 @@
 
 @interface JavaStaticTextAccessibility : JavaElementAccessibility
 
- @property(readonly) NSString *accessibleValue;
+@property(readonly) NSString *accessibleValue;
 @property(readonly) NSValue *accessibleVisibleCharacterRange;
 
 @end
