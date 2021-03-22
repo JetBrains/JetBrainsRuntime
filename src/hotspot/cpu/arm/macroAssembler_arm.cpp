@@ -1229,6 +1229,15 @@ void MacroAssembler::_verify_oop_addr(Address addr, const char* s, const char* f
   bind(done);
 }
 
+void MacroAssembler::c2bool(Register x) {
+  tst(x, 0xff);   // Only look at the lowest byte
+#ifdef AARCH64
+  cset(x, ne);
+#else
+  mov(x, 1, ne);
+#endif
+}
+
 void MacroAssembler::null_check(Register reg, Register tmp, int offset) {
   if (needs_explicit_null_check(offset)) {
 #ifdef AARCH64

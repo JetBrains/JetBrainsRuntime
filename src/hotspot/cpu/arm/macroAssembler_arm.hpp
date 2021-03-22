@@ -1054,6 +1054,8 @@ public:
 #endif
   }
 
+  // C 'boolean' to Java boolean: x == 0 ? 0 : 1
+  void c2bool(Register x);
 
     // klass oop manipulations if compressed
 
