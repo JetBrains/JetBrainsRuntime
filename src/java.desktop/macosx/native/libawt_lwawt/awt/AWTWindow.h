@@ -46,6 +46,7 @@
     jint preFullScreenLevel;
     NSRect standardFrame;
     BOOL isMinimizing;
+    BOOL isJustCreated;
 }
 
 // An instance of either AWTWindow_Normal or AWTWindow_Panel
@@ -61,6 +62,7 @@
 @property (nonatomic) jint preFullScreenLevel;
 @property (nonatomic) NSRect standardFrame;
 @property (nonatomic) BOOL isMinimizing;
+@property (nonatomic) BOOL isJustCreated;
 
 - (id) initWithPlatformWindow:(jobject)javaPlatformWindow
                   ownerWindow:owner
