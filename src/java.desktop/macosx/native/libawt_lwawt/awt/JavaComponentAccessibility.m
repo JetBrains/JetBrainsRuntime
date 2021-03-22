@@ -42,7 +42,7 @@
 
 #import "JavaAccessibilityAction.h"
 #import "JavaAccessibilityUtilities.h"
-#import "JavaTextAccessibility.h"
+#import "JavaStaticTextAccessibility.h"
 #import "ThreadUtilities.h"
 #import "AWTView.h"
 

@@ -34,7 +34,7 @@
 #import "AWTView.h"
 #import "AWTWindow.h"
 #import "JavaComponentAccessibility.h"
-#import "JavaTextAccessibility.h"
+#import "JavaStaticTextAccessibility.h"
 #import "JavaAccessibilityUtilities.h"
 #import "GeomUtilities.h"
 #import "CGLLayer.h"
@@ -843,8 +843,8 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 - (NSString *)accessibleSelectedText
 {
     id focused = [self accessibilityFocusedUIElement];
-    if (![focused isKindOfClass:[JavaTextAccessibility class]]) return nil;
-    return [(JavaTextAccessibility *)focused accessibilitySelectedTextAttribute];
+    if (![focused respondsToSelector:@selector(accessibilitySelectedText)]) return nil;
+    return [focused accessibilitySelectedTextAttribute];
 }
 
 // same as above, but converts to RTFD
@@ -863,8 +863,8 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 - (BOOL)replaceAccessibleTextSelection:(NSString *)text
 {
     id focused = [self accessibilityFocusedUIElement];
-    if (![focused isKindOfClass:[JavaTextAccessibility class]]) return NO;
-    [(JavaTextAccessibility *)focused accessibilitySetSelectedTextAttribute:text];
+    if (![focused respondsToSelector:@selector(setAccessibilitySelectedText)]) return NO;
+    [focused setAccessibilitySelectedText:text];
     return YES;
 }
 

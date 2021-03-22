@@ -10,12 +10,6 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleText, sjc_CAccessibility, "getAc
 static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleEditableText, sjc_CAccessibleText, "getAccessibleEditableText", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleEditableText;");
 static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;");
 
-/*
- * Converts an int array to an NSRange wrapped inside an NSValue
- * takes [start, end] values and returns [start, end - start]
- */
-NSValue *javaConvertIntArrayToNSRangeValue(JNIEnv* env, jintArray array) ;
-
 @implementation JavaStaticTextAccessibility
 
 - (NSString *)getPlatformAxElementClassName {
@@ -24,15 +18,15 @@ NSValue *javaConvertIntArrayToNSRangeValue(JNIEnv* env, jintArray array) ;
 
 - (NSString *)accessibleValue {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    // if it's static text, the AppKit AXValue is the java accessibleName
+
     jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
     if (axName != NULL) {
         NSString* str = JNFJavaToNSString(env, axName);
         (*env)->DeleteLocalRef(env, axName);
         return str;
     }
-    return @"";;
-    }
+    return @"";
+}
 
 - (NSValue *)accessibleVisibleCharacterRange {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
