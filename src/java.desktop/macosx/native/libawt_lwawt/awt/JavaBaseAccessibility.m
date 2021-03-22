@@ -14,7 +14,6 @@
 #import "JavaBaseAccessibility.h"
 #import "JavaAccessibilityAction.h"
 #import "JavaAccessibilityUtilities.h"
-#import "JavaTextAccessibility.h"
 #import "JavaListAccessibility.h"
 #import "JavaTableAccessibility.h"
 #import "JavaListRowAccessibility.h"
@@ -23,6 +22,7 @@
 #import "JavaOutlineAccessibility.h"
 #import "JavaOutlineRowAccessibility.h"
 #import "JavaStaticTextAccessibility.h"
+#import "JavaNavigableTextAccessibility.h"
 #import "JavaComponentAccessibility.h"
 #import "ThreadUtilities.h"
 #import "AWTView.h"
@@ -240,7 +240,7 @@ static jobject sAccessibilityClass = NULL;
 {
     if ([parent isKindOfClass:[JavaTableAccessibility class]]) {
         if (whichChildren == JAVA_AX_SELECTED_CHILDREN) {
-            NSArray<NSNumber *> *selectedRowIndexses = [parent selectedAccessibleRows];
+            NSArray<NSNumber *> *selectedRowIndexses = [(JavaTableAccessibility *)parent selectedAccessibleRows];
             NSMutableArray *children = [NSMutableArray arrayWithCapacity:[selectedRowIndexses count]];
             for (NSNumber *index in selectedRowIndexses) {
                 [children addObject:[[JavaTableRowAccessibility alloc] initWithParent:parent
@@ -252,7 +252,7 @@ static jobject sAccessibilityClass = NULL;
             }
             return [NSArray arrayWithArray:children];
         } else if (whichChildren == JAVA_AX_ALL_CHILDREN) {
-            int rowCount = [parent accessibleRowCount];
+            int rowCount = [(JavaTableAccessibility *)parent accessibleRowCount];
             NSMutableArray *children = [NSMutableArray arrayWithCapacity:rowCount];
             for (int i = 0; i < rowCount; i++) {
                 [children addObject:[[JavaTableRowAccessibility alloc] initWithParent:parent
@@ -379,7 +379,7 @@ static jobject sAccessibilityClass = NULL;
         if ([nsRole isEqualToString:NSAccessibilityStaticTextRole]) {
             newChild = [JavaStaticTextAccessibility alloc];
         } else if ([nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
-            newChild = [JavaTextAccessibility alloc];
+            newChild = [JavaNavigableTextAccessibility alloc];
         } else if ([nsRole isEqualToString:NSAccessibilityListRole]) {
             newChild = [JavaListAccessibility alloc];
         } else if ([nsRole isEqualToString:NSAccessibilityTableRole]) {
