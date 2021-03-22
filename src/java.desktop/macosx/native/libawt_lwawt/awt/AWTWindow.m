@@ -286,6 +286,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
 @synthesize isMinimizing;
 @synthesize javaWindowTabbingMode;
 @synthesize isEnterFullScreen;
+@synthesize isJustCreated;
 
 - (void) updateMinMaxSize:(BOOL)resizable {
     if (resizable) {
@@ -429,6 +430,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
     self.javaWindowTabbingMode = [self getJavaWindowTabbingMode];
     self.isEnterFullScreen = NO;
+    self.isJustCreated = YES;
     
     return self;
 }
@@ -1204,6 +1206,11 @@ JNF_COCOA_ENTER(env);
                     screenContentRect.size.height);
                 nsWindow.contentView.frame = contentFrame;
                 resized = YES;
+            }
+            if (window.isJustCreated) {
+                // Perform Move/Resize event for just created windows
+                resized = YES;
+                window.isJustCreated = NO;
             }
         }
 
