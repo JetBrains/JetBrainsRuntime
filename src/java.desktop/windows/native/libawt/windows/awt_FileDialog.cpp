@@ -814,7 +814,7 @@ AwtFileDialog::Show(void *p)
 
     LPTSTR fileBuffer = NULL;
 
-    static BOOL useCommonItemDialog = JNU_CallStaticMethodByName(env, NULL,
+    BOOL useCommonItemDialog = JNU_CallStaticMethodByName(env, NULL,
             "sun/awt/windows/WFileDialogPeer", "useCommonItemDialog", "()Z").z == JNI_TRUE;
     try {
         DASSERT(peer);
