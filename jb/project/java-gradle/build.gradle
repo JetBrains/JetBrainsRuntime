@@ -1,0 +1,135 @@
+apply plugin: 'java'
+import org.gradle.internal.os.OperatingSystem
+
+repositories {
+    mavenCentral()
+}
+
+def test_jvm = {
+    if (project.hasProperty('jbsdkhome')) {
+        file(jbsdkhome + (OperatingSystem.current().isWindows()?"/bin/java.exe" : "/bin/java")).absolutePath
+    } else {
+        if (OperatingSystem.current().isMacOsX()) {
+            file('../../../build/macosx-x86_64-normal-server-release/images/jdk-bundle/jdk-11.0.4.jdk/Contents/Home/bin/java').absolutePath
+        } else if (OperatingSystem.current().isLinux()) {
+            file('../../../build/linux-x86_64-normal-server-release/images/jdk/bin/java').absolutePath
+        } else {
+            file('../../../build/windows-x86_64-normal-server-release/images/jdk/bin/java.exe').absolutePath
+        }
+    }
+}
+
+dependencies {
+    testCompile('junit:junit:4.12'){
+        exclude group: 'org.hamcrest'
+    }
+    testCompile 'org.hamcrest:hamcrest-library:1.3'
+    testCompile 'net.java.dev.jna:jna:4.4.0'
+    testCompile 'com.twelvemonkeys.imageio:imageio-tiff:3.3.2'
+    testCompile 'org.apache.commons:commons-lang3:3.0'
+}
+
+def jdk_modules = ["java.base", "java.logging", "java.prefs",
+               "java.se.ee", "java.sql", "java.datatransfer",
+               "java.management", "java.rmi", "java.security.jgss",
+               "java.sql.rowset", "java.desktop", "java.management.rmi",
+               "java.scripting", "java.security.sasl", "java.transaction",
+               "java.instrument", "java.naming", "java.se",
+               "java.smartcardio", "java.xml.crypto"]
+
+def jdk_class_dirs = []
+
+jdk_modules.collect(jdk_class_dirs) {
+    new File("../../../src/" + it + "/share/classes")
+}
+
+if (OperatingSystem.current().isMacOsX())
+    jdk_modules.collect(jdk_class_dirs) {
+        "../../../src/" + it + "/macosx/classes"
+    }
+else if (OperatingSystem.current().isLinux()) {
+    jdk_modules.collect(jdk_class_dirs) {
+        "../../../src/" + it + "/solaris/classes"
+    }
+    jdk_modules.collect(jdk_class_dirs) {
+        "../../../src/" + it + "/unix/classes"
+    }
+} else
+    jdk_modules.collect(jdk_class_dirs) {
+        "../../../src/" + it + "/windows/classes"
+    }
+
+sourceSets.main.java.srcDirs = jdk_class_dirs
+
+sourceSets {
+    test {
+        java {
+            srcDir "../../../test/jdk/jbu"
+        }
+    }
+}
+
+test.dependsOn.clear()
+
+test.dependsOn tasks.compileTestJava
+
+test {
+    systemProperty "jb.java2d.metal", "true"
+    systemProperty "testdata", file('../../../test/jdk/jbu/testdata').absolutePath
+
+//  Generate golden images for DroidFontTest and MixedTextTest
+//    systemProperty "gentestdata", ""
+
+//  Enable Java2D logging (https://confluence.jetbrains.com/display/JRE/Java2D+Rendering+Logging)
+//  systemProperty "sun.java2d.trace", "log"
+//  systemProperty "sun.java2d.trace", "log,pimpl"
+
+    outputs.upToDateWhen { false }
+    executable = test_jvm()
+
+//  Enable async/dtrace profiler
+    jvmArgs  "-XX:+PreserveFramePointer"
+//  Enable native J2D logging (only in debug build)
+//  Can be turned on for J2D by adding "#define DEBUG 1" into jdk/src/share/native/sun/java2d/Trace.h
+
+//    environment 'J2D_TRACE_LEVEL', '4'
+}
+
+def buildDir = project.buildscript.sourceFile.parentFile.parentFile.parentFile.parentFile
+
+def make_cmd = "make"
+if (OperatingSystem.current().isWindows()) {
+    def cyg_make_cmd = new File("c:/cygwin64/bin/make.exe")
+    if (cyg_make_cmd.exists()) make_cmd = cyg_make_cmd.absolutePath
+}
+def test_run = false
+task make_images {
+    doLast {
+        if (!test_run) {
+            def pb = new ProcessBuilder().command(make_cmd.toString(), "-C", buildDir.absolutePath, "images")
+            def proc = pb.redirectErrorStream(true).start()
+            proc.inputStream.eachLine { println it }
+            assert proc.waitFor() == 0
+        }
+    }
+}
+
+task make_clean {
+    doLast {
+        def pb = new ProcessBuilder().command(make_cmd.toString(), "-C", buildDir.absolutePath, "clean")
+        def proc = pb.redirectErrorStream(true).start()
+        proc.inputStream.eachLine { println it }
+        assert proc.waitFor() == 0
+    }
+}
+
+task run_test {
+    doLast {
+        test_run = true
+    }
+}
+
+tasks.cleanTest.dependsOn tasks.run_test
+classes.dependsOn.clear()
+classes.dependsOn tasks.make_images
+tasks.cleanClasses.dependsOn tasks.make_clean
