@@ -382,21 +382,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     if (![self hasMarkedText] && !fInPressAndHold) {
         [self deliverJavaKeyEventHelper: event];
     }
-    // Workaround for 8020209: special case for "Cmd =" and "Cmd ."
-    // because Cocoa calls performKeyEquivalent twice for these keystrokes
-    NSUInteger modFlags = [event modifierFlags] &
-    (NSCommandKeyMask | NSAlternateKeyMask | NSShiftKeyMask | NSControlKeyMask);
-    if (modFlags == NSCommandKeyMask) {
-        NSString *eventChars = [event charactersIgnoringModifiers];
-        if ([eventChars length] == 1) {
-            unichar ch = [eventChars characterAtIndex:0];
-            if (ch == '=' || ch == '.' ||
-                ch == 0x044E) { // small cyrillic u
-                [[NSApp mainMenu] performKeyEquivalent: event];
-                return YES;
-            }
-        }
-    }
 
     NSUInteger deviceIndependentModifierFlagsMask =
         [event modifierFlags] & NSDeviceIndependentModifierFlagsMask;
