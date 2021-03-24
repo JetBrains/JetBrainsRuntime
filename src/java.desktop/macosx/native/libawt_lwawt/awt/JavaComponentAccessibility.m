@@ -582,7 +582,8 @@ static NSObject *sAttributeNamesLOCK = nil;
         // The sRoles NSMutableDictionary maps popupmenu to Mac's popup button.
         // JComboBox behavior currently relies on this.  However this is not the
         // proper mapping for a JPopupMenu so fix that.
-        if ( [javaRole isEqualToString:@"popupmenu"] &&
+        if ([[self parent] isKindOfClass:[JavaBaseAccessibility class]] &&
+            [javaRole isEqualToString:@"popupmenu"] &&
              ![[[self parent] javaRole] isEqualToString:@"combobox"] ) {
              fNSRole = NSAccessibilityMenuRole;
         }

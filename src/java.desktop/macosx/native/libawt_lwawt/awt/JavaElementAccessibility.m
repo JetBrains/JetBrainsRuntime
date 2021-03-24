@@ -96,7 +96,7 @@ static void RaiseMustOverrideException(NSString *method)
 - (id)accessibilityParent
 {
     JavaBaseAccessibility *parent = (JavaBaseAccessibility *) [self.javaBase parent];
-    return parent.platformAxElement;
+    return [parent isKindOfClass:[JavaBaseAccessibility class]] ? [parent platformAxElement] : parent;
 }
 
 - (BOOL)accessibilityIsIgnored
