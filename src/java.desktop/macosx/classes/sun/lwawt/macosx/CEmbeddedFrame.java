@@ -100,11 +100,8 @@ public class CEmbeddedFrame extends EmbeddedFrame {
                                     deltaY, NSEvent.SCROLL_PHASE_UNSUPPORTED);
     }
 
-    public void handleKeyEvent(int eventType, int modifierFlags, String characters,
-                               String charsIgnoringMods, boolean isRepeat, short keyCode,
-                               boolean needsKeyTyped) {
-        responder.handleKeyEvent(eventType, modifierFlags, characters, charsIgnoringMods,
-                keyCode, needsKeyTyped, isRepeat);
+    public void handleKeyEvent(NSEvent nsEvent) {
+        responder.handleKeyEvent(nsEvent);
     }
 
     public void handleInputEvent(String text) {
