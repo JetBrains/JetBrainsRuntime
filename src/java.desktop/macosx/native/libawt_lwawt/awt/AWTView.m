@@ -71,14 +71,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 @synthesize cglLayer;
 @synthesize mouseIsOver;
 
-- (NSString *)getPlatformAxElementClassName {
-    return @"AWTView";
-}
-
-- (NSObject *)platformAxElement {
-    return self;
-}
-
 // Note: Must be called on main (AppKit) thread only
 - (id) initWithRect: (NSRect) rect
        platformView: (jobject) cPlatformView
