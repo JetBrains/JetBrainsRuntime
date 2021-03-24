@@ -95,8 +95,9 @@ static void RaiseMustOverrideException(NSString *method)
 
 - (id)accessibilityParent
 {
-    JavaBaseAccessibility *parent = (JavaBaseAccessibility *) [self.javaBase parent];
-    return [parent isKindOfClass:[JavaBaseAccessibility class]] ? [parent platformAxElement] : parent;
+    id parent = [self.javaBase parent];
+    // Checking for protocol compliance can slow down at runtime. For this, the check for the presence of a selector is used. look: https://developer.apple.com/documentation/objectivec/nsobject/1418893-conformstoprotocol?language=objc
+    return [parent respondsToSelector:@selector(platformAxElement)] ? [parent platformAxElement] : parent;
 }
 
 - (BOOL)accessibilityIsIgnored
