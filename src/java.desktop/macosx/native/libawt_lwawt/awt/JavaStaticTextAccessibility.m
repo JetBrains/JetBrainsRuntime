@@ -19,13 +19,13 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
 - (NSString *)accessibleValue {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
 
-        jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
-        if (axName != NULL) {
-            NSString* str = JNFJavaToNSString(env, axName);
-            (*env)->DeleteLocalRef(env, axName);
-            return str;
-        }
-        return @"";
+    jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    if (axName != NULL) {
+        NSString* str = JNFJavaToNSString(env, axName);
+        (*env)->DeleteLocalRef(env, axName);
+        return str;
+    }
+    return @"";
 }
 
 - (NSValue *)accessibleVisibleCharacterRange {
