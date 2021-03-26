@@ -129,10 +129,10 @@ void ciMethodData::load_extra_data() {
   }
 }
 
-void ciMethodData::load_data() {
+bool ciMethodData::load_data() {
   MethodData* mdo = get_MethodData();
   if (mdo == NULL) {
-    return;
+    return false;
   }
 
   // To do: don't copy the data if it is not "ripe" -- require a minimum #
@@ -184,8 +184,12 @@ void ciMethodData::load_data() {
 #ifndef PRODUCT
   if (ReplayCompiles) {
     ciReplay::initialize(this);
+    if (is_empty()) {
+      return false;
+    }
   }
 #endif
+  return true;
 }
 
 void ciReceiverTypeData::translate_receiver_data_from(const ProfileData* data) {
