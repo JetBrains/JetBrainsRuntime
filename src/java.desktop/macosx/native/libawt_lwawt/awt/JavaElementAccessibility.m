@@ -130,4 +130,11 @@ static void RaiseMustOverrideException(NSString *method)
     return [[self javaBase] accessibilityIndexOfChild:child];
 }
 
+- (NSAccessibilityRole)accessibilityRole {
+    if ([[self javaBase] respondsToSelector:@selector(javaRole)]) {
+        return [sRoles objectForKey:[[self javaBase] javaRole]];
+    }
+    return [super accessibilityRole];
+}
+
 @end

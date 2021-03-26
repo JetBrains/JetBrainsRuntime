@@ -133,15 +133,3 @@
 
 - (id)accessibilityValueAttribute;
 @end
-
-@interface ScrollAreaAccessibility : JavaComponentAccessibility {
-
-}
-- (NSArray *)initializeAttributeNamesWithEnv:(JNIEnv *)env;
-- (NSArray *)accessibilityContentsAttribute;
-- (BOOL)accessibilityIsContentsAttributeSettable;
-- (id)accessibilityVerticalScrollBarAttribute;
-- (BOOL)accessibilityIsVerticalScrollBarAttributeSettable;
-- (id)accessibilityHorizontalScrollBarAttribute;
-- (BOOL)accessibilityIsHorizontalScrollBarAttributeSettable;
-@end
