@@ -23,6 +23,7 @@
 #import "JavaOutlineRowAccessibility.h"
 #import "JavaStaticTextAccessibility.h"
 #import "JavaNavigableTextAccessibility.h"
+#import "JavaScrollAreaAccessibility.h"
 #import "JavaComponentAccessibility.h"
 #import "ThreadUtilities.h"
 #import "AWTView.h"
@@ -373,7 +374,7 @@ static jobject sAccessibilityClass = NULL;
     } else if ([javaRole isEqualToString:@"pagetablist"]) {
         newChild = [TabGroupAccessibility alloc];
     } else if ([javaRole isEqualToString:@"scrollpane"]) {
-        newChild = [ScrollAreaAccessibility alloc];
+        newChild = [JavaScrollAreaAccessibility alloc];
     } else {
         NSString *nsRole = [sRoles objectForKey:javaRole];
         if ([nsRole isEqualToString:NSAccessibilityStaticTextRole]) {
