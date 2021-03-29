@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1083,6 +1083,18 @@ class ZipFile implements ZipConstants, Closeable {
     }
 
     /**
+     * Returns the number of the META-INF/MANIFEST.MF entries, case insensitive.
+     * When this number is greater than 1, JarVerifier will treat a file as
+     * unsigned.
+     */
+    private int getManifestNum() {
+        synchronized (this) {
+            ensureOpen();
+            return res.zsrc.manifestNum;
+        }
+    }
+
+    /**
      * Returns the names of all non-directory entries that begin with
      * "META-INF/" (case ignored). This method is used in JarFile, via
      * SharedSecrets, as an optimization when looking up manifest and
@@ -1115,6 +1127,10 @@ class ZipFile implements ZipConstants, Closeable {
                 @Override
                 public boolean startsWithLocHeader(ZipFile zip) {
                     return zip.res.zsrc.startsWithLoc;
+                }
+                @Override
+                public int getManifestNum(JarFile jar) {
+                    return ((ZipFile)jar).getManifestNum();
                 }
                 @Override
                 public String[] getMetaInfEntryNames(ZipFile zip) {
@@ -1155,6 +1171,8 @@ class ZipFile implements ZipConstants, Closeable {
     }
 
     private static class Source {
+        // "META-INF/".length()
+        private static final int META_INF_LEN = 9;
         private final Key key;               // the key in files
         private int refs = 1;
 
@@ -1164,6 +1182,7 @@ class ZipFile implements ZipConstants, Closeable {
         private byte[] comment;              // zip file comment
                                              // list of meta entries in META-INF dir
         private int[] metanames;
+        private int   manifestNum = 0;       // number of META-INF/MANIFEST.MF, case insensitive
         private final boolean startsWithLoc; // true, if zip file starts with LOCSIG (usually true)
 
         // A Hashmap for all entries.
@@ -1304,6 +1323,7 @@ class ZipFile implements ZipConstants, Closeable {
             entries = null;
             table = null;
             metanames = null;
+            manifestNum = 0;
         }
 
         private static final int BUF_SIZE = 8192;
@@ -1523,6 +1543,7 @@ class ZipFile implements ZipConstants, Closeable {
             int hsh;
             int pos = 0;
             int limit = cen.length - ENDHDR;
+            manifestNum = 0;
             while (pos + CENHDR <= limit) {
                 if (i >= total) {
                     // This will only happen if the zip file has an incorrect
@@ -1560,6 +1581,10 @@ class ZipFile implements ZipConstants, Closeable {
                     if (metanamesList == null)
                         metanamesList = new ArrayList<>(4);
                     metanamesList.add(pos);
+                    if (isManifestName(cen, pos + CENHDR +
+                            META_INF_LEN, nlen - META_INF_LEN)) {
+                        manifestNum++;
+                    }
                 }
                 // skip ext and comment
                 pos += (CENHDR + nlen + elen + clen);
@@ -1653,6 +1678,24 @@ class ZipFile implements ZipConstants, Closeable {
                 && (name[off++] | 0x20) == 'n'
                 && (name[off++] | 0x20) == 'f'
                 && (name[off]         ) == '/';
+        }
+
+        /*
+         * Check if the bytes represents a name equals to MANIFEST.MF
+         */
+        private boolean isManifestName(byte[] name, int off, int len) {
+            return (len == 11 // "MANIFEST.MF".length()
+                    && (name[off++] | 0x20) == 'm'
+                    && (name[off++] | 0x20) == 'a'
+                    && (name[off++] | 0x20) == 'n'
+                    && (name[off++] | 0x20) == 'i'
+                    && (name[off++] | 0x20) == 'f'
+                    && (name[off++] | 0x20) == 'e'
+                    && (name[off++] | 0x20) == 's'
+                    && (name[off++] | 0x20) == 't'
+                    && (name[off++]       ) == '.'
+                    && (name[off++] | 0x20) == 'm'
+                    && (name[off]   | 0x20) == 'f');
         }
 
         /**
