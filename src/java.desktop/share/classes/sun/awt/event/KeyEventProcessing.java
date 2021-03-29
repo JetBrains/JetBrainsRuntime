@@ -12,7 +12,7 @@ public class KeyEventProcessing {
     @Native
     public final static boolean useNationalLayouts = "true".equals(
             Util.getProperty(useNationalLayoutsOption,
-                FontUtilities.isMacOSX && !FontUtilities.isMacOSX_aarch64 ? "true" : "false"));
+                FontUtilities.isMacOSX ? "true" : "false"));
 
     // Used on windows to emulate latin OEM keys on cyrillic keyboards
     public final static String useLatinNonAlphaNumKeycodesOption = "com.sun.awt.useLatinNonAlphaNumKeycodes";
