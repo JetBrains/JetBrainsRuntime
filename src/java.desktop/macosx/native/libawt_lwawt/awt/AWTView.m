@@ -507,10 +507,10 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
     const UCKeyboardLayout *keyboardLayout =  (UCKeyboardLayout*)CFDataGetBytePtr(keyLayoutPtr);
 
-    UInt32 isDeadKeyPressed;
+    UInt32 isDeadKeyPressed = 0;
     UInt32 lengthOfBuffer = 8;
     UniChar stringWithChars[lengthOfBuffer];
-    UniCharCount actualLength;
+    UniCharCount actualLength = 0;
 
     OSStatus status =  UCKeyTranslate(
                    keyboardLayout,
