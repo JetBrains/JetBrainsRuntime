@@ -24,7 +24,7 @@ public class AccessibleJScrollPaneTest extends AccessibleComponentTest {
                 + "Turn screen reader on, and tab to the table.\n"
                 + "this table has 10 rows and 10 columns, few cells are invisible.\n\n"
                 + "On Windows press arrow buttons to move through the table.\n\n"
-                + "On MacOS, use up and down arrow buttons to move through the rows, and VoiceOver fast navigation to move through the columns.\n\n"
+                + "On MacOS, use up and down arrow buttons to move through the rows, use VoiceOver fast navigation to move through the columns.\n\n"
                 + "If you can hear table cells tab further and press PASS, otherwise press FAIL.\n";
 
         final  int n = 10;
