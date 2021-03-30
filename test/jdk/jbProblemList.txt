@@ -878,29 +878,32 @@ java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java 8258103 linux-all
 
 # various Windows are created spontaneously during test execution
 
-javax/swing/JComboBox/6559152/bug6559152.java                                       windows-all
-javax/swing/JComboBox/6607130/bug6607130.java                                       windows-all
+javax/swing/JComboBox/6559152/bug6559152.java                                       nobug windows-all
+javax/swing/JComboBox/6607130/bug6607130.java                                       nobug windows-all
 
-javax/swing/JComboBox/4199622/bug4199622.java                                       windows-all
-javax/swing/JComboBox/4515752/DefaultButtonTest.java                                windows-all
+javax/swing/JComboBox/4199622/bug4199622.java                                       nobug windows-all
+javax/swing/JComboBox/4515752/DefaultButtonTest.java                                nobug windows-all
 
-javax/swing/JComboBox/8032878/bug8032878.java                                       windows-all
-javax/swing/JComboBox/8057893/bug8057893.java                                       windows-all
+javax/swing/JComboBox/8032878/bug8032878.java                                       nobug windows-all
+javax/swing/JComboBox/8057893/bug8057893.java                                       nobug windows-all
+
+javax/swing/JList/6462008/bug6462008.java                                           nobug windows-all
+javax/swing/JMenu/6470128/bug6470128.java                                           nobug windows-all
 
 # no printer found
-java/awt/print/PrinterJob/CheckPrivilege.java                                       generic-all
-java/awt/print/PrinterJob/ExceptionTest.java                                        generic-all
-java/awt/print/PrinterJob/ImagePrinting/NullClipARGB.java                           generic-all
-java/awt/print/PrinterJob/LandscapeStackOverflow.java                               generic-all
-java/awt/print/PrinterJob/PaintText.java                                            generic-all
-java/awt/print/PrinterJob/PrintCrashTest.java                                       generic-all
-java/awt/print/PrinterJob/PrtException.java                                         generic-all
-javax/print/attribute/ChromaticityValues.java                                       generic-all
-javax/print/CheckDupFlavor.java                                                     generic-all
-javax/print/PrintSE/PrintSE.sh                                                      generic-all
+java/awt/print/PrinterJob/CheckPrivilege.java                                       nobug generic-all
+java/awt/print/PrinterJob/ExceptionTest.java                                        nobug generic-all
+java/awt/print/PrinterJob/ImagePrinting/NullClipARGB.java                           nobug generic-all
+java/awt/print/PrinterJob/LandscapeStackOverflow.java                               nobug generic-all
+java/awt/print/PrinterJob/PaintText.java                                            nobug generic-all
+java/awt/print/PrinterJob/PrintCrashTest.java                                       nobug generic-all
+java/awt/print/PrinterJob/PrtException.java                                         nobug generic-all
+javax/print/attribute/ChromaticityValues.java                                       nobug generic-all
+javax/print/CheckDupFlavor.java                                                     nobug generic-all
+javax/print/PrintSE/PrintSE.sh                                                      nobug generic-all
 javax/print/PrintSEUmlauts/PrintSEUmlauts.java                                      8135174 generic-all
-javax/print/PrintServiceLookup/CountPrintServices.java                              generic-all
-javax/print/attribute/AttributeTest.java                                            generic-all
-javax/print/attribute/GetCopiesSupported.java                                       generic-all
-javax/print/attribute/SidesPageRangesTest.java                                      generic-all
-javax/print/attribute/SupportedPrintableAreas.java                                  generic-all
+javax/print/PrintServiceLookup/CountPrintServices.java                              nobug generic-all
+javax/print/attribute/AttributeTest.java                                            nobug generic-all
+javax/print/attribute/GetCopiesSupported.java                                       nobug generic-all
+javax/print/attribute/SidesPageRangesTest.java                                      nobug generic-all
+javax/print/attribute/SupportedPrintableAreas.java                                  nobug generic-all
