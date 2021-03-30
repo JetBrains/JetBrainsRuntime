@@ -24,6 +24,7 @@
 #import "JavaStaticTextAccessibility.h"
 #import "JavaNavigableTextAccessibility.h"
 #import "JavaScrollAreaAccessibility.h"
+#import "JavaTabGroupAccessibility.h"
 #import "JavaComponentAccessibility.h"
 #import "ThreadUtilities.h"
 #import "AWTView.h"
@@ -372,7 +373,7 @@ static jobject sAccessibilityClass = NULL;
     } else if ([parent isKindOfClass:[JavaOutlineAccessibility class]]) {
         newChild = [JavaOutlineRowAccessibility alloc];
     } else if ([javaRole isEqualToString:@"pagetablist"]) {
-        newChild = [TabGroupAccessibility alloc];
+        newChild = [JavaTabGroupAccessibility alloc];
     } else if ([javaRole isEqualToString:@"scrollpane"]) {
         newChild = [JavaScrollAreaAccessibility alloc];
     } else {
