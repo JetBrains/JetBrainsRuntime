@@ -885,10 +885,12 @@ javax/swing/JComboBox/6607130/bug6607130.java                                   
 javax/swing/JComboBox/4199622/bug4199622.java                                       nobug windows-all
 javax/swing/JComboBox/4515752/DefaultButtonTest.java                                nobug windows-all
 
+javax/swing/JComboBox/8032878/bug8032878.java                                       nobug windows-all
 javax/swing/JComboBox/8057893/bug8057893.java                                       nobug windows-all
 
 javax/swing/JList/6462008/bug6462008.java                                           nobug windows-all
 javax/swing/JMenu/6470128/bug6470128.java                                           nobug windows-all
+javax/swing/JComboBox/8057893/bug8057893.java                                       nobug windows-all
 
 # no printer found
 java/awt/print/PrinterJob/CheckPrivilege.java                                       nobug generic-all
