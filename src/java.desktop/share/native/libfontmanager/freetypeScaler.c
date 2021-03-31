@@ -771,6 +771,23 @@ static void setupTransform(FT_Matrix* target, FTScalerContext *context) {
     }
 }
 
+static void setDefaultScalerSettings(FTScalerContext *context) {
+    if (context->aaType == TEXT_AA_OFF) {
+        context->loadFlags = FT_LOAD_TARGET_MONO;
+    } else if (context->aaType == TEXT_AA_ON) {
+        context->loadFlags = FT_LOAD_TARGET_LIGHT;
+    } else {
+        context->lcdFilter = FT_LCD_FILTER_LIGHT;
+        if (context->aaType == TEXT_AA_LCD_HRGB ||
+            context->aaType == TEXT_AA_LCD_HBGR) {
+            context->loadFlags = FT_LOAD_TARGET_LCD;
+        } else {
+            context->loadFlags = FT_LOAD_TARGET_LCD_V;
+        }
+    }
+    context->renderFlags = FT_LOAD_TARGET_MODE(context->loadFlags);
+}
+
 static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo, FTScalerContext *context,
                           FT_Bool configureFont) {
     FT_Matrix matrix;
