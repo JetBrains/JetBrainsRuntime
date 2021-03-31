@@ -938,9 +938,6 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                             case FC_RGBA_NONE:
                                 if (logFC) fprintf(stderr, "FC_RGBA_NONE ");
                                 break;
-                            case FC_RGBA_NONE:
-                                if (logFC) fprintf(stderr, "FC_RGBA_NONE ");
-                                break;
                             default:
                                 if (logFC) fprintf(stderr, "FC_RGBA_UNKNOWN ");
                                 break;
