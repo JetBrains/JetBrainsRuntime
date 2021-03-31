@@ -235,7 +235,7 @@ Java_sun_font_FreetypeFontScaler_initIDs(
 }
 
 static FT_Error FT_Library_SetLcdFilter_Proxy(FT_Library library, FT_LcdFilter  filter) {
-#ifndef _WIN32
+#ifndef DISABLE_FONTCONFIG
     static FtLibrarySetLcdFilterPtrType FtLibrarySetLcdFilterPtr = NULL;
     static int ftLibrarySetLcdFilterNotChecked = 1;
     if (ftLibrarySetLcdFilterNotChecked) {
