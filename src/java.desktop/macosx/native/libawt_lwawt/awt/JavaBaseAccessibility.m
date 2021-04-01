@@ -25,6 +25,7 @@
 #import "JavaNavigableTextAccessibility.h"
 #import "JavaScrollAreaAccessibility.h"
 #import "JavaTabGroupAccessibility.h"
+#import "JavaComboBoxAccessibility.h"
 #import "JavaComponentAccessibility.h"
 #import "ThreadUtilities.h"
 #import "AWTView.h"
@@ -388,6 +389,8 @@ static jobject sAccessibilityClass = NULL;
             newChild = [JavaTableAccessibility alloc];
         } else if ([nsRole isEqualToString:NSAccessibilityOutlineRole]) {
             newChild = [JavaOutlineAccessibility alloc];
+        } else if ([nsRole isEqualToString:NSAccessibilityComboBoxRole]) {
+            newChild = [JavaComboBoxAccessibility alloc];
         } else {
             newChild = [JavaComponentAccessibility alloc];
         }

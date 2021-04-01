@@ -80,14 +80,12 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
 }
 
 - (int)accessibleRowAtIndex:(int)index {
-    printf("Пришёл индекс %d\n", index);
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     JNFClassInfo clsInfo;
     clsInfo.name = ACCESSIBLE_JTABLE_NAME;
     clsInfo.cls = (*env)->GetObjectClass(env, [self axContextWithEnv:env]);
     JNF_MEMBER_CACHE(jm_getAccessibleRowAtIndex, clsInfo, "getAccessibleRowAtIndex", "(I)I");
     jint rowAtIndex = JNFCallIntMethod(env, [self axContextWithEnv:env], jm_getAccessibleRowAtIndex, (jint)index);
-    printf("Получен индекс %d\n", rowAtIndex);
     return (int)rowAtIndex;
 }
 
