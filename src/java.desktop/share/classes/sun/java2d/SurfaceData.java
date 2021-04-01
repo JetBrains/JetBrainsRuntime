@@ -456,7 +456,11 @@ public abstract class SurfaceData
         } else {
             solidTextRenderer = new SolidTextRenderer();
         }
-        lcdTextRenderer = new LCDTextRenderer();
+        if (FontUtilities.isMacOSX16) {
+            lcdTextRenderer = aaTextRenderer;
+        } else {
+            lcdTextRenderer = new LCDTextRenderer();
+        }
 
         colorPipe = new AlphaColorPipe();
         // colorShape = colorPrimitives;
