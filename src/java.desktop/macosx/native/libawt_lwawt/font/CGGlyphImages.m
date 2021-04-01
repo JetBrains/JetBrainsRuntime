@@ -668,6 +668,7 @@ CGGI_CreateImageForGlyph
 
     // clean the canvas
     CGGI_ClearCanvas(canvas, info, glyphDescriptor == &argb);
+    CGContextSetShouldAntialias(canvas->context, strike->fAAStyle != sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_OFF);
 
     // strike the glyph in the upper right corner
     CGFloat x = -info->topLeftX;
