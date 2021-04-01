@@ -57,6 +57,7 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
     for (int i = 0; i < arrayLen; i++) {
         [nsArraySelectidRowNumbers addObject:[NSNumber numberWithInt:indexsis[i]]];
     }
+    (*env)->DeleteLocalRef(env, selectidRowNumbers);
     return [NSArray<NSNumber *> arrayWithArray:nsArraySelectidRowNumbers];
 }
 
@@ -76,18 +77,17 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
     for (int i = 0; i < arrayLen; i++) {
         [nsArraySelectidColumnNumbers addObject:[NSNumber numberWithInt:indexsis[i]]];
     }
+    (*env)->DeleteLocalRef(env, selectidColumnNumbers);
     return [NSArray<NSNumber *> arrayWithArray:nsArraySelectidColumnNumbers];
 }
 
 - (int)accessibleRowAtIndex:(int)index {
-    printf("Пришёл индекс %d\n", index);
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     JNFClassInfo clsInfo;
     clsInfo.name = ACCESSIBLE_JTABLE_NAME;
     clsInfo.cls = (*env)->GetObjectClass(env, [self axContextWithEnv:env]);
     JNF_MEMBER_CACHE(jm_getAccessibleRowAtIndex, clsInfo, "getAccessibleRowAtIndex", "(I)I");
     jint rowAtIndex = JNFCallIntMethod(env, [self axContextWithEnv:env], jm_getAccessibleRowAtIndex, (jint)index);
-    printf("Получен индекс %d\n", rowAtIndex);
     return (int)rowAtIndex;
 }
 
