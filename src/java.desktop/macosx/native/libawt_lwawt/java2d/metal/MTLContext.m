@@ -32,6 +32,7 @@
 #include "MTLRenderQueue.h"
 #import "MTLSamplerManager.h"
 #import "MTLStencilManager.h"
+#import "common.h"
 
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
