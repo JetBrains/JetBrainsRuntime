@@ -37,6 +37,7 @@
 #include "MTLVertexCache.h"
 #include "MTLGlyphCache.h"
 #include "MTLBlitLoops.h"
+#import "common.h"
 
 /**
  * The following constants define the inner and outer bounds of the
