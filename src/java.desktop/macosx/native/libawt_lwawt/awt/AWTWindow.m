@@ -35,6 +35,7 @@
 #import "GeomUtilities.h"
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
+#import "MTLLayer.h"
 
 #define MASK(KEY) \
     (sun_lwawt_macosx_CPlatformWindow_ ## KEY)
@@ -1174,6 +1175,16 @@ JNI_COCOA_ENTER(env);
                     screenContentRect.size.width,
                     screenContentRect.size.height);
                 nsWindow.contentView.frame = contentFrame;
+                if ([nsWindow.contentView.layer isKindOfClass:[MTLLayer class]]) {
+                    MTLLayer* layer = (MTLLayer*)nsWindow.contentView.layer;
+                    if (IS(newBits, FULL_WINDOW_CONTENT)) {
+                        layer.topInset = 0;
+                        layer.leftInset = 0;
+                    } else {
+                        layer.topInset = (jint)(frame.size.height - screenContentRect.size.height);
+                        layer.leftInset = (jint)(screenContentRect.origin.x - frame.origin.x);
+                    }
+                }
                 resized = YES;
             }
         }

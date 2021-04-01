@@ -28,23 +28,10 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 #include <CoreVideo/CVDisplayLink.h>
-#import "common.h"
+
+@class MTLContext;
 
 @interface MTLLayer : CAMetalLayer
-{
-@private
-    jobject javaLayer;
-
-    // intermediate buffer, used the RQ lock to synchronize
-    MTLContext* ctx;
-    float bufferWidth;
-    float bufferHeight;
-    id<MTLTexture> buffer;
-    int nextDrawableCount;
-    int topInset;
-    int leftInset;
-    CVDisplayLinkRef displayLink;
-}
 
 @property (nonatomic) jobject javaLayer;
 @property (readwrite, assign) MTLContext* ctx;
