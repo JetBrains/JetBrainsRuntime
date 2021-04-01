@@ -34,6 +34,7 @@
 #include "MTLSurfaceData.h"
 #include "MTLUtils.h"
 #import "MTLLayer.h"
+#import "common.h"
 
 /**
  * Note: Some of the methods in this file apply a "magic number"
