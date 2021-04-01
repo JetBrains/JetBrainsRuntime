@@ -30,6 +30,7 @@
 #include "MTLRenderQueue.h"
 #include "MTLSurfaceDataBase.h"
 #include "GraphicsPrimitiveMgr.h"
+#import "common.h"
 
 @implementation MTLRescaleOp {
     jboolean _isNonPremult;
