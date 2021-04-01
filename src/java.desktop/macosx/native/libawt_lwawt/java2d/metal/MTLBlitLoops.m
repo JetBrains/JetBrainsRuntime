@@ -37,6 +37,7 @@
 #include "IntArgbPre.h"
 
 #import <Accelerate/Accelerate.h>
+#import "common.h"
 
 #ifdef DEBUG
 #define TRACE_ISOBLIT
