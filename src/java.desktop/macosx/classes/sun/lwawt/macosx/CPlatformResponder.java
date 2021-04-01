@@ -246,7 +246,7 @@ final class CPlatformResponder {
                 testCharIgnoringModifiers = charsIgnoringModifiersAndShift.charAt(0);
             }
 
-            int useNationalLayouts = (!KeyEventProcessing.useNationalLayouts || isCyrillicKeyboardLayout()) ? 0 : 1;
+            int useNationalLayouts = (KeyEventProcessing.useNationalLayouts && !isCyrillicKeyboardLayout()) ? 1 : 0;
             int[] in = new int[] {testCharIgnoringModifiers, isDeadChar ? 1 : 0, modifierFlags, keyCode, useNationalLayouts};
             int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
 
