@@ -19,7 +19,7 @@ public class AccessibleJTabbedPaneTest extends AccessibleComponentTest {
 
     void createTabPane() {
         INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Check a11y JTabbedPane of  in a simple Window.\n\n"
+                + "Check a11y of JTabbedPane in a simple Window.\n\n"
                 + "Turn screen reader on, and tab to the JTabbedPane.\n"
                 + "Use up and down arrow buttons to move through the tabs.\n\n"
                 + "If you can hear selected tab names tab further and press PASS, otherwise press FAIL.\n";
@@ -44,7 +44,7 @@ public class AccessibleJTabbedPaneTest extends AccessibleComponentTest {
         JPanel panel = new JPanel();
         panel.add(tabbedPane);
 
-        exceptionString = "Accessible JTabbedPane with renderer simple list test failed!";
+        exceptionString = "AccessibleJTabbedPane test failed!";
         createUI(panel, "AccessibleJTabbedPaneTest");
     }
 

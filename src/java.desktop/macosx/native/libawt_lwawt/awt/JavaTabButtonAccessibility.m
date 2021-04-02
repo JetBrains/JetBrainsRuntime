@@ -52,7 +52,7 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
 - (void)getActions {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     TabGroupAction *action = [[TabGroupAction alloc] initWithEnv:env withTabGroup:[self tabGroup] withIndex:fIndex withComponent:fComponent];
-    [action release];
+    [action perform];
 }
 
 @end
@@ -69,7 +69,7 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
 
 - (BOOL)accessibilityPerformPress {
     [(JavaTabButtonAccessibility *)[self javaBase] getActions];
-     return YES;
+    return YES;
 }
 
 @end
