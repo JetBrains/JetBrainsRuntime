@@ -11,7 +11,7 @@
 
 @property(readonly) jobject tabGroup;
 @property(readonly) id accessibleValue;
-- (void)getActions;
+- (void)performPressAction;
 
 @end
 
