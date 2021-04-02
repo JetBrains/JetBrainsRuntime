@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -939,6 +939,11 @@ public:
   // that can be used for efficient implementation of
   // the intrinsic for java.lang.Thread.onSpinWait()
   static bool supports_on_spin_wait() { return supports_sse2(); }
+
+#ifdef __APPLE__
+  // Is the CPU running emulated (for example macOS Rosetta running x86_64 code on M1 ARM (aarch64)
+  static bool is_cpu_emulated();
+#endif
 
   // support functions for virtualization detection
  private:
