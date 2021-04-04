@@ -1333,7 +1333,7 @@ void InstanceKlass::init_implementor() {
 // (DCEVM) - init_implementor() for dcevm
 void InstanceKlass::init_implementor_from_redefine() {
   assert(is_interface(), "not interface");
-  Klass* volatile* addr = adr_implementor();
+  InstanceKlass* volatile* addr = adr_implementor();
   assert(addr != NULL, "null addr");
   if (addr != NULL) {
     *addr = NULL;

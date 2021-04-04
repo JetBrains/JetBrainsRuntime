@@ -1245,7 +1245,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
                                                            loader_data,
                                                            cl_info,
                                                            false, // pick_newest
-                                                           CHECK_NULL));
+                                                           CHECK_NULL);
   if (HAS_PENDING_EXCEPTION) {
     if (DumpSharedSpaces) {
       log_error(cds)("Preload Error: Failed to load %s", class_name);

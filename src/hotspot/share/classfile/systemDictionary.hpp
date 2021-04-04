@@ -134,6 +134,7 @@ class SystemDictionary : AllStatic {
                                                   Symbol* class_name,
                                                   Handle class_loader,
                                                   const ClassLoadInfo& cl_info,
+                                                  InstanceKlass* old_klass,
                                                   TRAPS);
 
  public:

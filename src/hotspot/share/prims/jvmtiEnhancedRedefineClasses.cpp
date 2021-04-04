@@ -901,12 +901,12 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
                             !the_class->is_non_strong_hidden(),    // is_strong_hidden
                             true);    // FIXME: check if correct. can_access_vm_annotations
 
-      k = SystemDictionary::parse_stream(the_class_sym,
-                                         the_class_loader,
-                                         &st,
-                                         cl_info,
-                                         the_class,
-                                         THREAD);
+      k = SystemDictionary::resolve_from_stream(&st,
+                                                the_class_sym,
+                                                the_class_loader,
+                                                cl_info,
+                                                the_class,
+                                                THREAD);
 
       k->class_loader_data()->exchange_holders(the_class->class_loader_data());
 
@@ -922,12 +922,12 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
       }
 
     } else {
-      k = SystemDictionary::resolve_from_stream(the_class_sym,
-                                                  the_class_loader,
-                                                  protection_domain,
-                                                  &st,
-                                                  the_class,
-                                                  THREAD);
+      k = SystemDictionary::resolve_from_stream(&st,
+                                                the_class_sym,
+                                                the_class_loader,
+                                                protection_domain,
+                                                the_class,
+                                                THREAD);
     }
     // Clear class_being_redefined just to be sure.
     state->clear_class_being_redefined();
