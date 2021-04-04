@@ -30,8 +30,10 @@ import java.awt.geom.AffineTransform;
 import javax.swing.plaf.FontUIResource;
 import java.util.StringTokenizer;
 
+import sun.awt.AWTAccessor;
 import sun.font.FontConfigManager;
 import sun.font.FontUtilities;
+import sun.java2d.SunGraphicsEnvironment;
 
 /**
  * @author Shannon Hickey
@@ -161,11 +163,15 @@ class PangoFonts {
          */
         double dsize = size;
         int dpi = 96;
-        Object value =
-            Toolkit.getDefaultToolkit().getDesktopProperty("gnome.Xft/DPI");
+        Object xftDPI = Toolkit.getDefaultToolkit().getDesktopProperty("gnome.Xft/DPI");
+        Object value = xftDPI;
+
+        if (!(value instanceof Integer)) {
+            value = GTKEngine.INSTANCE.getSetting(GTKEngine.Settings.GTK_XFT_DPI);
+        }
         if (value instanceof Integer) {
             dpi = ((Integer)value).intValue() / 1024;
-            if (dpi == -1) {
+            if (dpi == -1 || SunGraphicsEnvironment.isUIScaleEnabled(dpi)) {
               dpi = 96;
             }
             if (dpi < 50) { /* 50 dpi is the minimum value gnome allows */
@@ -175,6 +181,12 @@ class PangoFonts {
              * 72 dpi, so we need to adjust for that.
              */
             dsize = ((double)(dpi * size)/ 72.0);
+
+            if (xftDPI == null) {
+                // [tav] used to indicate the 96/72 scale correction to the client app
+                AWTAccessor.getToolkitAccessor().setDesktopProperty(
+                    Toolkit.getDefaultToolkit(), "gnome.Xft/DPI", value);
+            }
         } else {
             /* If there's no property, GTK scales for the resolution
              * reported by the Xserver using the formula listed above.

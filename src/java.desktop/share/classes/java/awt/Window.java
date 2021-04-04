@@ -3984,6 +3984,31 @@ public class Window extends Container implements Accessible {
         }
     }
 
+    private volatile boolean hasCustomDecoration;
+
+    boolean hasCustomDecoration() {
+        return hasCustomDecoration;
+    }
+
+    /**
+     * Set via reflection (JB JdkEx API).
+     */
+    void setHasCustomDecoration() {
+        hasCustomDecoration = true;
+    }
+
+    private volatile boolean ignoreMouseEvents;
+
+    boolean isIgnoreMouseEvents() {
+        return ignoreMouseEvents;
+    }
+
+    /**
+     * Set via reflection (JB JdkEx API).
+     */
+    void setIgnoreMouseEvents(boolean ignore) {
+        ignoreMouseEvents = ignore;
+    }
 
     // ************************** MIXING CODE *******************************
 

@@ -26,6 +26,7 @@
 package sun.lwawt.macosx;
 
 import java.awt.im.spi.*;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.awt.*;
 import java.awt.peer.*;
@@ -36,17 +37,21 @@ import java.lang.Character.Subset;
 import java.lang.reflect.InvocationTargetException;
 import java.text.AttributedCharacterIterator.Attribute;
 import java.text.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.text.JTextComponent;
 
 import sun.awt.AWTAccessor;
+import sun.awt.AppContext;
+import sun.awt.SunToolkit;
 import sun.awt.im.InputMethodAdapter;
 import sun.lwawt.*;
 
 import static sun.awt.AWTAccessor.ComponentAccessor;
 
 public class CInputMethod extends InputMethodAdapter {
-    private InputMethodContext fIMContext;
-    private Component fAwtFocussedComponent;
+    private volatile InputMethodContext fIMContext;
+    private volatile Component fAwtFocussedComponent;
     private LWComponentPeer<?, ?> fAwtFocussedComponentPeer;
     private boolean isActive;
 
@@ -290,6 +295,18 @@ public class CInputMethod extends InputMethodAdapter {
 
             // If we have a passive client, don't pass input method events to it.
             if (component.getInputMethodRequests() == null) {
+                imInstance = null;
+            }
+
+            LWWindowPeer windowPeer = peer.getPlatformWindow().getPeer();
+            if (windowPeer.isSimpleWindow()) {
+                // A simple window gains focus. Cocoa won't dispatch IME events into the simple window, but into its owner.
+                // This IM represents the focused component in the simple window. We will use the owner as IME proxy.
+                // For that, this IM is set for the owner and is dropped for the simple window.
+                Window owner = windowPeer.getTarget().getOwner();
+                assert owner != null && owner.isActive();
+                long ownerPtr = getNativeViewPtr((LWComponentPeer)AWTAccessor.getComponentAccessor().getPeer(owner));
+                nativeNotifyPeer(ownerPtr, this);
                 imInstance = null;
             }
         }
@@ -587,6 +604,7 @@ public class CInputMethod extends InputMethodAdapter {
         final String[] retString = new String[1];
 
         try {
+            if (fIMContext != null)
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(retString) {
                     int location = locationIn;
@@ -639,6 +657,7 @@ public class CInputMethod extends InputMethodAdapter {
         final int[] returnValue = new int[2];
 
         try {
+            if (fIMContext != null)
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(returnValue) {
                     AttributedCharacterIterator theIterator = fIMContext.getSelectedText(null);
@@ -714,36 +733,38 @@ public class CInputMethod extends InputMethodAdapter {
         final int[] rect = new int[4];
 
         try {
-            LWCToolkit.invokeAndWait(new Runnable() {
-                public void run() { synchronized(rect) {
-                    int insertOffset = fIMContext.getInsertPositionOffset();
-                    int composedTextOffset = absoluteTextOffset - insertOffset;
-                    if (composedTextOffset < 0) composedTextOffset = 0;
-                    Rectangle r = fIMContext.getTextLocation(TextHitInfo.beforeOffset(composedTextOffset));
-                    rect[0] = r.x;
-                    rect[1] = r.y;
-                    rect[2] = r.width;
-                    rect[3] = r.height;
+            if (fIMContext != null) {
+                FxInvoker.invoke(() -> {
+                    synchronized (rect) {
+                        int insertOffset = fIMContext.getInsertPositionOffset();
+                        int composedTextOffset = absoluteTextOffset - insertOffset;
+                        if (composedTextOffset < 0) composedTextOffset = 0;
+                        Rectangle r = fIMContext.getTextLocation(TextHitInfo.beforeOffset(composedTextOffset));
+                        rect[0] = r.x;
+                        rect[1] = r.y;
+                        rect[2] = r.width;
+                        rect[3] = r.height;
 
-                    // This next if-block is a hack to work around a bug in JTextComponent. getTextLocation ignores
-                    // the TextHitInfo passed to it and always returns the location of the insertion point, which is
-                    // at the start of the composed text.  We'll do some calculation so the candidate window for Kotoeri
-                    // follows the requested offset into the composed text.
-                    if (composedTextOffset > 0 && (fAwtFocussedComponent instanceof JTextComponent)) {
-                        Rectangle r2 = fIMContext.getTextLocation(TextHitInfo.beforeOffset(0));
+                        // This next if-block is a hack to work around a bug in JTextComponent. getTextLocation ignores
+                        // the TextHitInfo passed to it and always returns the location of the insertion point, which is
+                        // at the start of the composed text.  We'll do some calculation so the candidate window for Kotoeri
+                        // follows the requested offset into the composed text.
+                        if (composedTextOffset > 0 && (fAwtFocussedComponent instanceof JTextComponent)) {
+                            Rectangle r2 = fIMContext.getTextLocation(TextHitInfo.beforeOffset(0));
 
-                        if (r.equals(r2)) {
-                            // FIXME: (SAK) If the candidate text wraps over two lines, this calculation pushes the candidate
-                            // window off the right edge of the component.
-                            String inProgressSubstring = fCurrentTextAsString.substring(0, composedTextOffset);
-                            Graphics g = fAwtFocussedComponent.getGraphics();
-                            int xOffset = g.getFontMetrics().stringWidth(inProgressSubstring);
-                            rect[0] += xOffset;
-                            g.dispose();
+                            if (r.equals(r2) && fCurrentTextAsString != null) {
+                                // FIXME: (SAK) If the candidate text wraps over two lines, this calculation pushes the candidate
+                                // window off the right edge of the component.
+                                String inProgressSubstring = fCurrentTextAsString.substring(0, composedTextOffset);
+                                Graphics g = fAwtFocussedComponent.getGraphics();
+                                int xOffset = g.getFontMetrics().stringWidth(inProgressSubstring);
+                                rect[0] += xOffset;
+                                g.dispose();
+                            }
                         }
                     }
-                }}
-            }, fAwtFocussedComponent);
+                }, (sun.awt.im.InputContext)fIMContext, fAwtFocussedComponent);
+            }
         } catch (InvocationTargetException ite) { ite.printStackTrace(); }
 
         synchronized(rect) { return rect; }
@@ -758,12 +779,14 @@ public class CInputMethod extends InputMethodAdapter {
         final int[] insertPositionOffset = new int[1];
 
         try {
-            LWCToolkit.invokeAndWait(new Runnable() {
-                public void run() { synchronized(offsetInfo) {
-                    offsetInfo[0] = fIMContext.getLocationOffset(screenX, screenY);
-                    insertPositionOffset[0] = fIMContext.getInsertPositionOffset();
-                }}
-            }, fAwtFocussedComponent);
+            if (fIMContext != null) {
+                FxInvoker.invoke(() -> {
+                    synchronized (offsetInfo) {
+                        offsetInfo[0] = fIMContext.getLocationOffset(screenX, screenY);
+                        insertPositionOffset[0] = fIMContext.getInsertPositionOffset();
+                    }
+                }, (sun.awt.im.InputContext)fIMContext, fAwtFocussedComponent);
+            }
         } catch (InvocationTargetException ite) { ite.printStackTrace(); }
 
         // This bit of gymnastics ensures that the returned location is within the composed text.
@@ -813,4 +836,63 @@ public class CInputMethod extends InputMethodAdapter {
 
     // Initialize toolbox routines
     static native void nativeInit();
+
+    private static class FxInvoker {
+        final static Method GET_CLIENT_COMPONENT_METHOD;
+        static Class<?> JFX_PANEL_CLASS;
+
+        static {
+            Method m = null;
+            try {
+                m = sun.awt.im.InputContext.class.getDeclaredMethod("getClientComponent");
+                if (m != null) m.setAccessible(true);
+            } catch (NoSuchMethodException ignore) {
+            }
+            GET_CLIENT_COMPONENT_METHOD = m;
+        }
+
+        static Component getClientComponent(sun.awt.im.InputContext ctx) {
+            if (GET_CLIENT_COMPONENT_METHOD != null) {
+                try {
+                    return (Component)GET_CLIENT_COMPONENT_METHOD.invoke(ctx);
+                } catch (IllegalAccessException | InvocationTargetException ignore) {
+                }
+            }
+            return null;
+        }
+
+        static boolean instanceofJFXPanel(Component clientComponent) {
+            if (clientComponent != null) {
+                if (JFX_PANEL_CLASS == null) {
+                    try {
+                        // the class is not available in the current class loader context, use the client class loader
+                        JFX_PANEL_CLASS = Class.forName("javafx.embed.swing.JFXPanel", false, clientComponent.getClass().getClassLoader());
+                    } catch (ClassNotFoundException ignore) {
+                    }
+                }
+                if (JFX_PANEL_CLASS != null) {
+                    return JFX_PANEL_CLASS.isInstance(clientComponent);
+                }
+            }
+            return false;
+        }
+
+        // Executed on AppKit
+        static void invoke(Runnable runnable, sun.awt.im.InputContext inputContext, Component targetToAppContext) throws InvocationTargetException {
+            AtomicBoolean runOnAppKit = new AtomicBoolean(false);
+
+            // 1) Do not run secondary msg loop in this case.
+            // 2) Delegate runnable back to FX when applicable.
+            LWCToolkit.invokeAndWait(() -> {
+                runOnAppKit.set(instanceofJFXPanel(getClientComponent(inputContext)));
+                if (!runOnAppKit.get()) {
+                    runnable.run();
+                }
+            }, targetToAppContext);
+
+            if (runOnAppKit.get()) {
+                runnable.run();
+            }
+        }
+    }
 }

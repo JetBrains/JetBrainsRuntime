@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "classfile/altHashing.hpp"
+#include "classfile/classLoaderData.hpp"
 #include "classfile/compactHashtable.hpp"
 #include "classfile/javaClasses.hpp"
 #include "classfile/symbolTable.hpp"
@@ -31,7 +32,6 @@
 #include "memory/archiveBuilder.hpp"
 #include "memory/dynamicArchive.hpp"
 #include "memory/metaspaceClosure.hpp"
-#include "memory/metaspaceShared.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
@@ -273,6 +273,13 @@ void SymbolTable::symbols_do(SymbolClosure *cl) {
   // all symbols from the dynamic table
   SymbolsDo sd(cl);
   _local_table->do_safepoint_scan(sd);
+}
+
+// Call function for all symbols in shared table. Used by -XX:+PrintSharedArchiveAndExit
+void SymbolTable::shared_symbols_do(SymbolClosure *cl) {
+  SharedSymbolIterator iter(cl);
+  _shared_table.iterate(&iter);
+  _dynamic_shared_table.iterate(&iter);
 }
 
 Symbol* SymbolTable::lookup_dynamic(const char* name,
@@ -601,8 +608,7 @@ size_t SymbolTable::estimate_size_for_archive() {
 }
 
 void SymbolTable::write_to_archive(GrowableArray<Symbol*>* symbols) {
-  CompactHashtableWriter writer(int(_items_count),
-                                &MetaspaceShared::stats()->symbol);
+  CompactHashtableWriter writer(int(_items_count), ArchiveBuilder::symbol_stats());
   copy_shared_symbol_table(symbols, &writer);
   if (!DynamicDumpSharedSpaces) {
     _shared_table.reset();

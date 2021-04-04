@@ -25,6 +25,7 @@
 
 package sun.lwawt.macosx;
 
+import java.awt.AWTError;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.DefaultKeyboardFocusManager;
@@ -51,6 +52,7 @@ import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.security.PrivilegedAction;
 
 import javax.swing.JRootPane;
 import javax.swing.RootPaneContainer;
@@ -61,6 +63,7 @@ import com.apple.laf.ClientPropertyApplicator.Property;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
+import sun.awt.InvokeOnToolkitHelper;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWToolkit;
@@ -323,26 +326,36 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         } else {
             bounds = _peer.constrainBounds(_target.getBounds());
         }
-        AtomicLong ref = new AtomicLong();
-        contentView.execute(viewPtr -> {
-            boolean hasOwnerPtr = false;
+        long nativeWindowPtr = java.security.AccessController.doPrivileged(
+                (PrivilegedAction<Long>) () -> {
+                    try {
+                        return InvokeOnToolkitHelper.invokeAndBlock(() -> {
+                            AtomicLong ref = new AtomicLong();
+                            contentView.execute(viewPtr -> {
+                                boolean hasOwnerPtr = false;
 
-            if (owner != null) {
-                hasOwnerPtr = 0L != owner.executeGet(ownerPtr -> {
-                    ref.set(nativeCreateNSWindow(viewPtr, ownerPtr, styleBits,
-                                                    bounds.x, bounds.y,
-                                                    bounds.width, bounds.height));
-                    return 1;
+                                if (owner != null) {
+                                    hasOwnerPtr = 0L != owner.executeGet(ownerPtr -> {
+                                        ref.set(nativeCreateNSWindow(viewPtr, ownerPtr, styleBits,
+                                                bounds.x, bounds.y,
+                                                bounds.width, bounds.height));
+                                        return 1;
+                                    });
+                                }
+
+                                if (!hasOwnerPtr) {
+                                    ref.set(nativeCreateNSWindow(viewPtr, 0,
+                                            styleBits, bounds.x, bounds.y,
+                                            bounds.width, bounds.height));
+                                }
+                            });
+                            return ref.get();
+                        });
+                    } catch (Throwable throwable) {
+                        throw new AWTError(throwable.getMessage());
+                    }
                 });
-            }
-
-            if (!hasOwnerPtr) {
-                ref.set(nativeCreateNSWindow(viewPtr, 0,
-                                             styleBits, bounds.x, bounds.y,
-                                             bounds.width, bounds.height));
-            }
-        });
-        setPtr(ref.get());
+        setPtr(nativeWindowPtr);
 
         if (target instanceof javax.swing.RootPaneContainer) {
             final javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer)target).getRootPane();

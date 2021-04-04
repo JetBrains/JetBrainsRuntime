@@ -6260,6 +6260,7 @@ operand iRegL2I(iRegL reg) %{
   interface(REG_INTER)
 %}
 
+opclass vmem2(indirect, indIndex, indOffI2, indOffL2);
 opclass vmem4(indirect, indIndex, indOffI4, indOffL4);
 opclass vmem8(indirect, indIndex, indOffI8, indOffL8);
 opclass vmem16(indirect, indIndex, indOffI16, indOffL16);
@@ -9225,7 +9226,6 @@ instruct compareAndSwapNAcq(iRegINoSp res, indirect mem, iRegNNoSp oldval, iRegN
 
 // ---------------------------------------------------------------------
 
-
 // BEGIN This section of the file is automatically generated. Do not edit --------------
 
 // Sundry CAS operations.  Note that release is always true,
@@ -9239,7 +9239,10 @@ instruct compareAndSwapNAcq(iRegINoSp res, indirect mem, iRegNNoSp oldval, iRegN
 
 
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangeB(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
+
   match(Set res (CompareAndExchangeB mem (Binary oldval newval)));
   ins_cost(2 * VOLATILE_REF_COST);
   effect(TEMP_DEF res, KILL cr);
@@ -9255,7 +9258,10 @@ instruct compareAndExchangeB(iRegINoSp res, indirect mem, iRegI oldval, iRegI ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangeS(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
+
   match(Set res (CompareAndExchangeS mem (Binary oldval newval)));
   ins_cost(2 * VOLATILE_REF_COST);
   effect(TEMP_DEF res, KILL cr);
@@ -9271,7 +9277,10 @@ instruct compareAndExchangeS(iRegINoSp res, indirect mem, iRegI oldval, iRegI ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangeI(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
+
   match(Set res (CompareAndExchangeI mem (Binary oldval newval)));
   ins_cost(2 * VOLATILE_REF_COST);
   effect(TEMP_DEF res, KILL cr);
@@ -9286,7 +9295,10 @@ instruct compareAndExchangeI(iRegINoSp res, indirect mem, iRegI oldval, iRegI ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangeL(iRegLNoSp res, indirect mem, iRegL oldval, iRegL newval, rFlagsReg cr) %{
+
   match(Set res (CompareAndExchangeL mem (Binary oldval newval)));
   ins_cost(2 * VOLATILE_REF_COST);
   effect(TEMP_DEF res, KILL cr);
@@ -9301,7 +9313,10 @@ instruct compareAndExchangeL(iRegLNoSp res, indirect mem, iRegL oldval, iRegL ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN newval, rFlagsReg cr) %{
+
   match(Set res (CompareAndExchangeN mem (Binary oldval newval)));
   ins_cost(2 * VOLATILE_REF_COST);
   effect(TEMP_DEF res, KILL cr);
@@ -9316,6 +9331,8 @@ instruct compareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangeP(iRegPNoSp res, indirect mem, iRegP oldval, iRegP newval, rFlagsReg cr) %{
   predicate(n->as_LoadStore()->barrier_data() == 0);
   match(Set res (CompareAndExchangeP mem (Binary oldval newval)));
@@ -9332,6 +9349,8 @@ instruct compareAndExchangeP(iRegPNoSp res, indirect mem, iRegP oldval, iRegP ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangeBAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
   predicate(needs_acquiring_load_exclusive(n));
   match(Set res (CompareAndExchangeB mem (Binary oldval newval)));
@@ -9349,6 +9368,8 @@ instruct compareAndExchangeBAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangeSAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
   predicate(needs_acquiring_load_exclusive(n));
   match(Set res (CompareAndExchangeS mem (Binary oldval newval)));
@@ -9366,7 +9387,8 @@ instruct compareAndExchangeSAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI
   ins_pipe(pipe_slow);
 %}
 
-
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangeIAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
   predicate(needs_acquiring_load_exclusive(n));
   match(Set res (CompareAndExchangeI mem (Binary oldval newval)));
@@ -9383,6 +9405,8 @@ instruct compareAndExchangeIAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangeLAcq(iRegLNoSp res, indirect mem, iRegL oldval, iRegL newval, rFlagsReg cr) %{
   predicate(needs_acquiring_load_exclusive(n));
   match(Set res (CompareAndExchangeL mem (Binary oldval newval)));
@@ -9399,7 +9423,8 @@ instruct compareAndExchangeLAcq(iRegLNoSp res, indirect mem, iRegL oldval, iRegL
   ins_pipe(pipe_slow);
 %}
 
-
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRegN newval, rFlagsReg cr) %{
   predicate(needs_acquiring_load_exclusive(n));
   match(Set res (CompareAndExchangeN mem (Binary oldval newval)));
@@ -9416,6 +9441,8 @@ instruct compareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRegN
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRegP newval, rFlagsReg cr) %{
   predicate(needs_acquiring_load_exclusive(n) && (n->as_LoadStore()->barrier_data() == 0));
   match(Set res (CompareAndExchangeP mem (Binary oldval newval)));
@@ -9432,7 +9459,10 @@ instruct compareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRegP
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapB(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
+
   match(Set res (WeakCompareAndSwapB mem (Binary oldval newval)));
   ins_cost(2 * VOLATILE_REF_COST);
   effect(KILL cr);
@@ -9449,7 +9479,10 @@ instruct weakCompareAndSwapB(iRegINoSp res, indirect mem, iRegI oldval, iRegI ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapS(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
+
   match(Set res (WeakCompareAndSwapS mem (Binary oldval newval)));
   ins_cost(2 * VOLATILE_REF_COST);
   effect(KILL cr);
@@ -9466,7 +9499,10 @@ instruct weakCompareAndSwapS(iRegINoSp res, indirect mem, iRegI oldval, iRegI ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapI(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
+
   match(Set res (WeakCompareAndSwapI mem (Binary oldval newval)));
   ins_cost(2 * VOLATILE_REF_COST);
   effect(KILL cr);
@@ -9483,7 +9519,10 @@ instruct weakCompareAndSwapI(iRegINoSp res, indirect mem, iRegI oldval, iRegI ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapL(iRegINoSp res, indirect mem, iRegL oldval, iRegL newval, rFlagsReg cr) %{
+
   match(Set res (WeakCompareAndSwapL mem (Binary oldval newval)));
   ins_cost(2 * VOLATILE_REF_COST);
   effect(KILL cr);
@@ -9500,7 +9539,10 @@ instruct weakCompareAndSwapL(iRegINoSp res, indirect mem, iRegL oldval, iRegL ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapN(iRegINoSp res, indirect mem, iRegN oldval, iRegN newval, rFlagsReg cr) %{
+
   match(Set res (WeakCompareAndSwapN mem (Binary oldval newval)));
   ins_cost(2 * VOLATILE_REF_COST);
   effect(KILL cr);
@@ -9517,6 +9559,8 @@ instruct weakCompareAndSwapN(iRegINoSp res, indirect mem, iRegN oldval, iRegN ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapP(iRegINoSp res, indirect mem, iRegP oldval, iRegP newval, rFlagsReg cr) %{
   predicate(n->as_LoadStore()->barrier_data() == 0);
   match(Set res (WeakCompareAndSwapP mem (Binary oldval newval)));
@@ -9535,6 +9579,8 @@ instruct weakCompareAndSwapP(iRegINoSp res, indirect mem, iRegP oldval, iRegP ne
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapBAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
   predicate(needs_acquiring_load_exclusive(n));
   match(Set res (WeakCompareAndSwapB mem (Binary oldval newval)));
@@ -9553,6 +9599,8 @@ instruct weakCompareAndSwapBAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapSAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
   predicate(needs_acquiring_load_exclusive(n));
   match(Set res (WeakCompareAndSwapS mem (Binary oldval newval)));
@@ -9571,6 +9619,8 @@ instruct weakCompareAndSwapSAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapIAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI newval, rFlagsReg cr) %{
   predicate(needs_acquiring_load_exclusive(n));
   match(Set res (WeakCompareAndSwapI mem (Binary oldval newval)));
@@ -9589,6 +9639,8 @@ instruct weakCompareAndSwapIAcq(iRegINoSp res, indirect mem, iRegI oldval, iRegI
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapLAcq(iRegINoSp res, indirect mem, iRegL oldval, iRegL newval, rFlagsReg cr) %{
   predicate(needs_acquiring_load_exclusive(n));
   match(Set res (WeakCompareAndSwapL mem (Binary oldval newval)));
@@ -9607,6 +9659,8 @@ instruct weakCompareAndSwapLAcq(iRegINoSp res, indirect mem, iRegL oldval, iRegL
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN oldval, iRegN newval, rFlagsReg cr) %{
   predicate(needs_acquiring_load_exclusive(n));
   match(Set res (WeakCompareAndSwapN mem (Binary oldval newval)));
@@ -9625,9 +9679,11 @@ instruct weakCompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN oldval, iRegN
   ins_pipe(pipe_slow);
 %}
 
+// This pattern is generated automatically from cas.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP oldval, iRegP newval, rFlagsReg cr) %{
-  match(Set res (WeakCompareAndSwapP mem (Binary oldval newval)));
   predicate(needs_acquiring_load_exclusive(n) && (n->as_LoadStore()->barrier_data() == 0));
+  match(Set res (WeakCompareAndSwapP mem (Binary oldval newval)));
   ins_cost(VOLATILE_REF_COST);
   effect(KILL cr);
   format %{
@@ -11299,8 +11355,7 @@ instruct regI_not_reg(iRegINoSp dst,
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AndI_reg_not_reg(iRegINoSp dst,
-                         iRegIorL2I src1, iRegIorL2I src2, immI_M1 m1,
-                         rFlagsReg cr) %{
+                         iRegIorL2I src1, iRegIorL2I src2, immI_M1 m1) %{
   match(Set dst (AndI src1 (XorI src2 m1)));
   ins_cost(INSN_COST);
   format %{ "bicw  $dst, $src1, $src2" %}
@@ -11318,8 +11373,7 @@ instruct AndI_reg_not_reg(iRegINoSp dst,
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AndL_reg_not_reg(iRegLNoSp dst,
-                         iRegL src1, iRegL src2, immL_M1 m1,
-                         rFlagsReg cr) %{
+                         iRegL src1, iRegL src2, immL_M1 m1) %{
   match(Set dst (AndL src1 (XorL src2 m1)));
   ins_cost(INSN_COST);
   format %{ "bic  $dst, $src1, $src2" %}
@@ -11337,8 +11391,7 @@ instruct AndL_reg_not_reg(iRegLNoSp dst,
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct OrI_reg_not_reg(iRegINoSp dst,
-                         iRegIorL2I src1, iRegIorL2I src2, immI_M1 m1,
-                         rFlagsReg cr) %{
+                         iRegIorL2I src1, iRegIorL2I src2, immI_M1 m1) %{
   match(Set dst (OrI src1 (XorI src2 m1)));
   ins_cost(INSN_COST);
   format %{ "ornw  $dst, $src1, $src2" %}
@@ -11356,8 +11409,7 @@ instruct OrI_reg_not_reg(iRegINoSp dst,
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct OrL_reg_not_reg(iRegLNoSp dst,
-                         iRegL src1, iRegL src2, immL_M1 m1,
-                         rFlagsReg cr) %{
+                         iRegL src1, iRegL src2, immL_M1 m1) %{
   match(Set dst (OrL src1 (XorL src2 m1)));
   ins_cost(INSN_COST);
   format %{ "orn  $dst, $src1, $src2" %}
@@ -11375,8 +11427,7 @@ instruct OrL_reg_not_reg(iRegLNoSp dst,
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct XorI_reg_not_reg(iRegINoSp dst,
-                         iRegIorL2I src1, iRegIorL2I src2, immI_M1 m1,
-                         rFlagsReg cr) %{
+                         iRegIorL2I src1, iRegIorL2I src2, immI_M1 m1) %{
   match(Set dst (XorI m1 (XorI src2 src1)));
   ins_cost(INSN_COST);
   format %{ "eonw  $dst, $src1, $src2" %}
@@ -11394,8 +11445,7 @@ instruct XorI_reg_not_reg(iRegINoSp dst,
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct XorL_reg_not_reg(iRegLNoSp dst,
-                         iRegL src1, iRegL src2, immL_M1 m1,
-                         rFlagsReg cr) %{
+                         iRegL src1, iRegL src2, immL_M1 m1) %{
   match(Set dst (XorL m1 (XorL src2 src1)));
   ins_cost(INSN_COST);
   format %{ "eon  $dst, $src1, $src2" %}
@@ -11412,9 +11462,10 @@ instruct XorL_reg_not_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val & (-1 ^ (val >>> shift)) ==> bicw
 instruct AndI_reg_URShift_not_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, immI_M1 src4, rFlagsReg cr) %{
+                         immI src3, immI_M1 src4) %{
   match(Set dst (AndI src1 (XorI(URShiftI src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "bicw  $dst, $src1, $src2, LSR $src3" %}
@@ -11432,9 +11483,10 @@ instruct AndI_reg_URShift_not_reg(iRegINoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val & (-1 ^ (val >>> shift)) ==> bic
 instruct AndL_reg_URShift_not_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, immL_M1 src4, rFlagsReg cr) %{
+                         immI src3, immL_M1 src4) %{
   match(Set dst (AndL src1 (XorL(URShiftL src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "bic  $dst, $src1, $src2, LSR $src3" %}
@@ -11452,9 +11504,10 @@ instruct AndL_reg_URShift_not_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val & (-1 ^ (val >> shift)) ==> bicw
 instruct AndI_reg_RShift_not_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, immI_M1 src4, rFlagsReg cr) %{
+                         immI src3, immI_M1 src4) %{
   match(Set dst (AndI src1 (XorI(RShiftI src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "bicw  $dst, $src1, $src2, ASR $src3" %}
@@ -11472,9 +11525,10 @@ instruct AndI_reg_RShift_not_reg(iRegINoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val & (-1 ^ (val >> shift)) ==> bic
 instruct AndL_reg_RShift_not_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, immL_M1 src4, rFlagsReg cr) %{
+                         immI src3, immL_M1 src4) %{
   match(Set dst (AndL src1 (XorL(RShiftL src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "bic  $dst, $src1, $src2, ASR $src3" %}
@@ -11492,9 +11546,52 @@ instruct AndL_reg_RShift_not_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val & (-1 ^ (val ror shift)) ==> bicw
+instruct AndI_reg_RotateRight_not_reg(iRegINoSp dst,
+                         iRegIorL2I src1, iRegIorL2I src2,
+                         immI src3, immI_M1 src4) %{
+  match(Set dst (AndI src1 (XorI(RotateRight src2 src3) src4)));
+  ins_cost(1.9 * INSN_COST);
+  format %{ "bicw  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ bicw(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x1f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val & (-1 ^ (val ror shift)) ==> bic
+instruct AndL_reg_RotateRight_not_reg(iRegLNoSp dst,
+                         iRegL src1, iRegL src2,
+                         immI src3, immL_M1 src4) %{
+  match(Set dst (AndL src1 (XorL(RotateRight src2 src3) src4)));
+  ins_cost(1.9 * INSN_COST);
+  format %{ "bic  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ bic(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x3f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val & (-1 ^ (val << shift)) ==> bicw
 instruct AndI_reg_LShift_not_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, immI_M1 src4, rFlagsReg cr) %{
+                         immI src3, immI_M1 src4) %{
   match(Set dst (AndI src1 (XorI(LShiftI src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "bicw  $dst, $src1, $src2, LSL $src3" %}
@@ -11512,9 +11609,10 @@ instruct AndI_reg_LShift_not_reg(iRegINoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val & (-1 ^ (val << shift)) ==> bic
 instruct AndL_reg_LShift_not_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, immL_M1 src4, rFlagsReg cr) %{
+                         immI src3, immL_M1 src4) %{
   match(Set dst (AndL src1 (XorL(LShiftL src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "bic  $dst, $src1, $src2, LSL $src3" %}
@@ -11532,9 +11630,10 @@ instruct AndL_reg_LShift_not_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val ^ (-1 ^ (val >>> shift)) ==> eonw
 instruct XorI_reg_URShift_not_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, immI_M1 src4, rFlagsReg cr) %{
+                         immI src3, immI_M1 src4) %{
   match(Set dst (XorI src4 (XorI(URShiftI src2 src3) src1)));
   ins_cost(1.9 * INSN_COST);
   format %{ "eonw  $dst, $src1, $src2, LSR $src3" %}
@@ -11552,9 +11651,10 @@ instruct XorI_reg_URShift_not_reg(iRegINoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val ^ (-1 ^ (val >>> shift)) ==> eon
 instruct XorL_reg_URShift_not_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, immL_M1 src4, rFlagsReg cr) %{
+                         immI src3, immL_M1 src4) %{
   match(Set dst (XorL src4 (XorL(URShiftL src2 src3) src1)));
   ins_cost(1.9 * INSN_COST);
   format %{ "eon  $dst, $src1, $src2, LSR $src3" %}
@@ -11572,9 +11672,10 @@ instruct XorL_reg_URShift_not_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val ^ (-1 ^ (val >> shift)) ==> eonw
 instruct XorI_reg_RShift_not_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, immI_M1 src4, rFlagsReg cr) %{
+                         immI src3, immI_M1 src4) %{
   match(Set dst (XorI src4 (XorI(RShiftI src2 src3) src1)));
   ins_cost(1.9 * INSN_COST);
   format %{ "eonw  $dst, $src1, $src2, ASR $src3" %}
@@ -11592,9 +11693,10 @@ instruct XorI_reg_RShift_not_reg(iRegINoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val ^ (-1 ^ (val >> shift)) ==> eon
 instruct XorL_reg_RShift_not_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, immL_M1 src4, rFlagsReg cr) %{
+                         immI src3, immL_M1 src4) %{
   match(Set dst (XorL src4 (XorL(RShiftL src2 src3) src1)));
   ins_cost(1.9 * INSN_COST);
   format %{ "eon  $dst, $src1, $src2, ASR $src3" %}
@@ -11612,9 +11714,52 @@ instruct XorL_reg_RShift_not_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val ^ (-1 ^ (val ror shift)) ==> eonw
+instruct XorI_reg_RotateRight_not_reg(iRegINoSp dst,
+                         iRegIorL2I src1, iRegIorL2I src2,
+                         immI src3, immI_M1 src4) %{
+  match(Set dst (XorI src4 (XorI(RotateRight src2 src3) src1)));
+  ins_cost(1.9 * INSN_COST);
+  format %{ "eonw  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ eonw(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x1f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val ^ (-1 ^ (val ror shift)) ==> eon
+instruct XorL_reg_RotateRight_not_reg(iRegLNoSp dst,
+                         iRegL src1, iRegL src2,
+                         immI src3, immL_M1 src4) %{
+  match(Set dst (XorL src4 (XorL(RotateRight src2 src3) src1)));
+  ins_cost(1.9 * INSN_COST);
+  format %{ "eon  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ eon(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x3f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val ^ (-1 ^ (val << shift)) ==> eonw
 instruct XorI_reg_LShift_not_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, immI_M1 src4, rFlagsReg cr) %{
+                         immI src3, immI_M1 src4) %{
   match(Set dst (XorI src4 (XorI(LShiftI src2 src3) src1)));
   ins_cost(1.9 * INSN_COST);
   format %{ "eonw  $dst, $src1, $src2, LSL $src3" %}
@@ -11632,9 +11777,10 @@ instruct XorI_reg_LShift_not_reg(iRegINoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val ^ (-1 ^ (val << shift)) ==> eon
 instruct XorL_reg_LShift_not_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, immL_M1 src4, rFlagsReg cr) %{
+                         immI src3, immL_M1 src4) %{
   match(Set dst (XorL src4 (XorL(LShiftL src2 src3) src1)));
   ins_cost(1.9 * INSN_COST);
   format %{ "eon  $dst, $src1, $src2, LSL $src3" %}
@@ -11652,9 +11798,10 @@ instruct XorL_reg_LShift_not_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val | (-1 ^ (val >>> shift)) ==> ornw
 instruct OrI_reg_URShift_not_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, immI_M1 src4, rFlagsReg cr) %{
+                         immI src3, immI_M1 src4) %{
   match(Set dst (OrI src1 (XorI(URShiftI src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "ornw  $dst, $src1, $src2, LSR $src3" %}
@@ -11672,9 +11819,10 @@ instruct OrI_reg_URShift_not_reg(iRegINoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val | (-1 ^ (val >>> shift)) ==> orn
 instruct OrL_reg_URShift_not_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, immL_M1 src4, rFlagsReg cr) %{
+                         immI src3, immL_M1 src4) %{
   match(Set dst (OrL src1 (XorL(URShiftL src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "orn  $dst, $src1, $src2, LSR $src3" %}
@@ -11692,9 +11840,10 @@ instruct OrL_reg_URShift_not_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val | (-1 ^ (val >> shift)) ==> ornw
 instruct OrI_reg_RShift_not_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, immI_M1 src4, rFlagsReg cr) %{
+                         immI src3, immI_M1 src4) %{
   match(Set dst (OrI src1 (XorI(RShiftI src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "ornw  $dst, $src1, $src2, ASR $src3" %}
@@ -11712,9 +11861,10 @@ instruct OrI_reg_RShift_not_reg(iRegINoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val | (-1 ^ (val >> shift)) ==> orn
 instruct OrL_reg_RShift_not_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, immL_M1 src4, rFlagsReg cr) %{
+                         immI src3, immL_M1 src4) %{
   match(Set dst (OrL src1 (XorL(RShiftL src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "orn  $dst, $src1, $src2, ASR $src3" %}
@@ -11732,9 +11882,52 @@ instruct OrL_reg_RShift_not_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val | (-1 ^ (val ror shift)) ==> ornw
+instruct OrI_reg_RotateRight_not_reg(iRegINoSp dst,
+                         iRegIorL2I src1, iRegIorL2I src2,
+                         immI src3, immI_M1 src4) %{
+  match(Set dst (OrI src1 (XorI(RotateRight src2 src3) src4)));
+  ins_cost(1.9 * INSN_COST);
+  format %{ "ornw  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ ornw(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x1f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val | (-1 ^ (val ror shift)) ==> orn
+instruct OrL_reg_RotateRight_not_reg(iRegLNoSp dst,
+                         iRegL src1, iRegL src2,
+                         immI src3, immL_M1 src4) %{
+  match(Set dst (OrL src1 (XorL(RotateRight src2 src3) src4)));
+  ins_cost(1.9 * INSN_COST);
+  format %{ "orn  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ orn(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x3f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val | (-1 ^ (val << shift)) ==> ornw
 instruct OrI_reg_LShift_not_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, immI_M1 src4, rFlagsReg cr) %{
+                         immI src3, immI_M1 src4) %{
   match(Set dst (OrI src1 (XorI(LShiftI src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "ornw  $dst, $src1, $src2, LSL $src3" %}
@@ -11752,9 +11945,10 @@ instruct OrI_reg_LShift_not_reg(iRegINoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+// val | (-1 ^ (val << shift)) ==> orn
 instruct OrL_reg_LShift_not_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, immL_M1 src4, rFlagsReg cr) %{
+                         immI src3, immL_M1 src4) %{
   match(Set dst (OrL src1 (XorL(LShiftL src2 src3) src4)));
   ins_cost(1.9 * INSN_COST);
   format %{ "orn  $dst, $src1, $src2, LSL $src3" %}
@@ -11774,7 +11968,7 @@ instruct OrL_reg_LShift_not_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AndI_reg_URShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AndI src1 (URShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -11795,7 +11989,7 @@ instruct AndI_reg_URShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AndL_reg_URShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AndL src1 (URShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -11816,7 +12010,7 @@ instruct AndL_reg_URShift_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AndI_reg_RShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AndI src1 (RShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -11837,7 +12031,7 @@ instruct AndI_reg_RShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AndL_reg_RShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AndL src1 (RShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -11858,7 +12052,7 @@ instruct AndL_reg_RShift_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AndI_reg_LShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AndI src1 (LShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -11879,7 +12073,7 @@ instruct AndI_reg_LShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AndL_reg_LShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AndL src1 (LShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -11898,9 +12092,51 @@ instruct AndL_reg_LShift_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+instruct AndI_reg_RotateRight_reg(iRegINoSp dst,
+                         iRegIorL2I src1, iRegIorL2I src2,
+                         immI src3) %{
+  match(Set dst (AndI src1 (RotateRight src2 src3)));
+
+  ins_cost(1.9 * INSN_COST);
+  format %{ "andw  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ andw(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x1f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+instruct AndL_reg_RotateRight_reg(iRegLNoSp dst,
+                         iRegL src1, iRegL src2,
+                         immI src3) %{
+  match(Set dst (AndL src1 (RotateRight src2 src3)));
+
+  ins_cost(1.9 * INSN_COST);
+  format %{ "andr  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ andr(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x3f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct XorI_reg_URShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (XorI src1 (URShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -11921,7 +12157,7 @@ instruct XorI_reg_URShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct XorL_reg_URShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (XorL src1 (URShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -11942,7 +12178,7 @@ instruct XorL_reg_URShift_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct XorI_reg_RShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (XorI src1 (RShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -11963,7 +12199,7 @@ instruct XorI_reg_RShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct XorL_reg_RShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (XorL src1 (RShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -11984,7 +12220,7 @@ instruct XorL_reg_RShift_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct XorI_reg_LShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (XorI src1 (LShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12005,7 +12241,7 @@ instruct XorI_reg_LShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct XorL_reg_LShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (XorL src1 (LShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12024,9 +12260,51 @@ instruct XorL_reg_LShift_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+instruct XorI_reg_RotateRight_reg(iRegINoSp dst,
+                         iRegIorL2I src1, iRegIorL2I src2,
+                         immI src3) %{
+  match(Set dst (XorI src1 (RotateRight src2 src3)));
+
+  ins_cost(1.9 * INSN_COST);
+  format %{ "eorw  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ eorw(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x1f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+instruct XorL_reg_RotateRight_reg(iRegLNoSp dst,
+                         iRegL src1, iRegL src2,
+                         immI src3) %{
+  match(Set dst (XorL src1 (RotateRight src2 src3)));
+
+  ins_cost(1.9 * INSN_COST);
+  format %{ "eor  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ eor(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x3f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct OrI_reg_URShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (OrI src1 (URShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12047,7 +12325,7 @@ instruct OrI_reg_URShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct OrL_reg_URShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (OrL src1 (URShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12068,7 +12346,7 @@ instruct OrL_reg_URShift_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct OrI_reg_RShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (OrI src1 (RShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12089,7 +12367,7 @@ instruct OrI_reg_RShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct OrL_reg_RShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (OrL src1 (RShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12110,7 +12388,7 @@ instruct OrL_reg_RShift_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct OrI_reg_LShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (OrI src1 (LShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12131,7 +12409,7 @@ instruct OrI_reg_LShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct OrL_reg_LShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (OrL src1 (LShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12150,9 +12428,51 @@ instruct OrL_reg_LShift_reg(iRegLNoSp dst,
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+instruct OrI_reg_RotateRight_reg(iRegINoSp dst,
+                         iRegIorL2I src1, iRegIorL2I src2,
+                         immI src3) %{
+  match(Set dst (OrI src1 (RotateRight src2 src3)));
+
+  ins_cost(1.9 * INSN_COST);
+  format %{ "orrw  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ orrw(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x1f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+instruct OrL_reg_RotateRight_reg(iRegLNoSp dst,
+                         iRegL src1, iRegL src2,
+                         immI src3) %{
+  match(Set dst (OrL src1 (RotateRight src2 src3)));
+
+  ins_cost(1.9 * INSN_COST);
+  format %{ "orr  $dst, $src1, $src2, ROR $src3" %}
+
+  ins_encode %{
+    __ orr(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              Assembler::ROR,
+              $src3$$constant & 0x3f);
+  %}
+
+  ins_pipe(ialu_reg_reg_shift);
+%}
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AddI_reg_URShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AddI src1 (URShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12173,7 +12493,7 @@ instruct AddI_reg_URShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AddL_reg_URShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AddL src1 (URShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12194,7 +12514,7 @@ instruct AddL_reg_URShift_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AddI_reg_RShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AddI src1 (RShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12215,7 +12535,7 @@ instruct AddI_reg_RShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AddL_reg_RShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AddL src1 (RShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12236,7 +12556,7 @@ instruct AddL_reg_RShift_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AddI_reg_LShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AddI src1 (LShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12257,7 +12577,7 @@ instruct AddI_reg_LShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct AddL_reg_LShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (AddL src1 (LShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12278,7 +12598,7 @@ instruct AddL_reg_LShift_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct SubI_reg_URShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (SubI src1 (URShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12299,7 +12619,7 @@ instruct SubI_reg_URShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct SubL_reg_URShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (SubL src1 (URShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12320,7 +12640,7 @@ instruct SubL_reg_URShift_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct SubI_reg_RShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (SubI src1 (RShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12341,7 +12661,7 @@ instruct SubI_reg_RShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct SubL_reg_RShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (SubL src1 (RShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12362,7 +12682,7 @@ instruct SubL_reg_RShift_reg(iRegLNoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct SubI_reg_LShift_reg(iRegINoSp dst,
                          iRegIorL2I src1, iRegIorL2I src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (SubI src1 (LShiftI src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12383,7 +12703,7 @@ instruct SubI_reg_LShift_reg(iRegINoSp dst,
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct SubL_reg_LShift_reg(iRegLNoSp dst,
                          iRegL src1, iRegL src2,
-                         immI src3, rFlagsReg cr) %{
+                         immI src3) %{
   match(Set dst (SubL src1 (LShiftL src2 src3)));
 
   ins_cost(1.9 * INSN_COST);
@@ -12399,7 +12719,6 @@ instruct SubL_reg_LShift_reg(iRegLNoSp dst,
 
   ins_pipe(ialu_reg_reg_shift);
 %}
-
 
 // This pattern is automatically generated from aarch64_ad.m4
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE

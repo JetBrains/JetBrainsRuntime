@@ -54,6 +54,8 @@
 #include "debug_trace.h"
 #include "debug_mem.h"
 
+#include "java_rc.h"
+
 #include "ComCtl32Util.h"
 #include "DllUtil.h"
 
@@ -138,6 +140,8 @@ extern "C" JNIEXPORT jboolean JNICALL AWTIsHeadless() {
 }
 
 #define IDT_AWT_MOUSECHECK 0x101
+
+AdjustWindowRectExForDpiFunc* AwtToolkit::lpAdjustWindowRectExForDpi = NULL;
 
 static LPCTSTR szAwtToolkitClassName = TEXT("SunAwtToolkit");
 
@@ -668,6 +672,12 @@ BOOL AwtToolkit::Initialize(BOOL localPump) {
                                               0, tk.m_mainThreadId);
 
     awt_dnd_initialize();
+
+    HMODULE hLibUser32Dll = JDK_LoadSystemLibrary("User32.dll");
+    if (hLibUser32Dll != NULL) {
+        lpAdjustWindowRectExForDpi = (AdjustWindowRectExForDpiFunc*)GetProcAddress(hLibUser32Dll, "AdjustWindowRectExForDpi");
+        ::FreeLibrary(hLibUser32Dll);
+    }
 
     /*
      * Initialization of the touch keyboard related variables.
@@ -1918,10 +1928,12 @@ AwtObject* AwtToolkit::LookupCmdID(UINT id)
 
 HICON AwtToolkit::GetAwtIcon()
 {
-    return ::LoadIcon(GetModuleHandle(), TEXT("AWT_ICON"));
+    HICON hIcon = ::LoadIcon(::GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON));
+    if (!hIcon) hIcon = ::LoadIcon(GetModuleHandle(), TEXT("AWT_ICON"));
+    return hIcon;
 }
 
-HICON AwtToolkit::GetAwtIconSm()
+HICON AwtToolkit::GetAwtIconSm(void* pAwtWindow)
 {
     static HICON defaultIconSm = NULL;
     static int prevSmx = 0;
@@ -1930,9 +1942,22 @@ HICON AwtToolkit::GetAwtIconSm()
     int smx = GetSystemMetrics(SM_CXSMICON);
     int smy = GetSystemMetrics(SM_CYSMICON);
 
+    if (AwtWin32GraphicsDevice::IsUiScaleEnabled() && pAwtWindow != NULL) {
+        AwtWindow *wnd = reinterpret_cast<AwtWindow*>(pAwtWindow);
+        Devices::InstanceAccess devices;
+        AwtWin32GraphicsDevice* device = devices->GetDevice(AwtWin32GraphicsDevice::DeviceIndexForWindow(wnd->GetHWnd()));
+        if (device) {
+            smx = 16 * device->GetScaleX();
+            smy = 16 * device->GetScaleY();
+        }
+    }
+
     // Fixed 6364216: LoadImage() may leak memory
     if (defaultIconSm == NULL || smx != prevSmx || smy != prevSmy) {
-        defaultIconSm = (HICON)LoadImage(GetModuleHandle(), TEXT("AWT_ICON"), IMAGE_ICON, smx, smy, 0);
+        defaultIconSm = ::LoadIcon(::GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON));
+        if (!defaultIconSm) {
+            defaultIconSm = (HICON)LoadImage(GetModuleHandle(), TEXT("AWT_ICON"), IMAGE_ICON, smx, smy, 0);
+        }
         prevSmx = smx;
         prevSmy = smy;
     }

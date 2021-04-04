@@ -34,7 +34,7 @@
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/allocation.inline.hpp"
-#include "memory/filemap.hpp"
+#include "memory/archiveBuilder.hpp"
 #include "memory/heapShared.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
@@ -210,7 +210,7 @@ void StringTable::create_table() {
   log_trace(stringtable)("Start size: " SIZE_FORMAT " (" SIZE_FORMAT ")",
                          _current_size, start_size_log_2);
   _local_table = new StringTableHash(start_size_log_2, END_SIZE, REHASH_LEN);
-  _oop_storage = OopStorageSet::create_weak("StringTable Weak");
+  _oop_storage = OopStorageSet::create_weak("StringTable Weak", mtSymbol);
   _oop_storage->register_num_dead_callback(&gc_notification);
 }
 
@@ -760,7 +760,7 @@ void StringTable::write_to_archive(const DumpedInternedStrings* dumped_interned_
   assert(HeapShared::is_heap_object_archiving_allowed(), "must be");
 
   _shared_table.reset();
-  CompactHashtableWriter writer(_items_count, &MetaspaceShared::stats()->string);
+  CompactHashtableWriter writer(_items_count, ArchiveBuilder::string_stats());
 
   // Copy the interned strings into the "string space" within the java heap
   CopyToArchive copier(&writer);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,30 +85,19 @@ import java.awt.peer.TaskbarPeer;
 import java.awt.peer.TrayIconPeer;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.UndeclaredThrowableException;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.MissingResourceException;
-import java.util.Objects;
-import java.util.ResourceBundle;
-import java.util.concurrent.Callable;
-
+import java.security.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.net.MalformedURLException;
 import javax.swing.UIManager;
 
 import com.apple.laf.AquaMenuBarUI;
-import sun.awt.AWTAccessor;
-import sun.awt.AppContext;
-import sun.awt.CGraphicsDevice;
-import sun.awt.LightweightFrame;
-import sun.awt.PlatformGraphicsInfo;
-import sun.awt.SunToolkit;
+import sun.awt.*;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.dnd.SunDragSourceContextPeer;
 import sun.awt.util.ThreadGroupUtils;
+import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWCursorManager;
@@ -493,15 +482,19 @@ public final class LWCToolkit extends LWToolkit {
     public Insets getScreenInsets(final GraphicsConfiguration gc) {
         GraphicsDevice gd = gc.getDevice();
         if (!(gd instanceof CGraphicsDevice)) {
-            return super.getScreenInsets(gc);
+            return InvokeOnToolkitHelper.invokeAndBlock(() -> super.getScreenInsets(gc));
         }
-        return ((CGraphicsDevice)gd).getScreenInsets();
+        return InvokeOnToolkitHelper.invokeAndBlock(() -> ((CGraphicsDevice)gd).getScreenInsets());
     }
 
     @Override
     public void sync() {
-        // flush the OGL pipeline (this is a no-op if OGL is not enabled)
-        OGLRenderQueue.sync();
+        // flush the rendering pipeline
+        if (CGraphicsDevice.usingMetalPipeline()) {
+            MTLRenderQueue.sync();
+        } else {
+            OGLRenderQueue.sync();
+        }
         // setNeedsDisplay() selector was sent to the appropriate CALayer so now
         // we have to flush the native selectors queue.
         flushNativeSelectors();
@@ -720,12 +713,19 @@ public final class LWCToolkit extends LWToolkit {
                         },
                         true);
 
-        AppContext appContext = SunToolkit.targetToAppContext(component);
-        SunToolkit.postEvent(appContext, invocationEvent);
-        // 3746956 - flush events from PostEventQueue to prevent them from getting stuck and causing a deadlock
-        SunToolkit.flushPendingEvents(appContext);
-        doAWTRunLoop(mediator, false);
+        if (!InvokeOnToolkitHelper.offer(invocationEvent)) {
+            if (component != null) {
+                AppContext appContext = SunToolkit.targetToAppContext(component);
+                SunToolkit.postEvent(appContext, invocationEvent);
 
+                // 3746956 - flush events from PostEventQueue to prevent them from getting stuck and causing a deadlock
+                SunToolkit.flushPendingEvents(appContext);
+            } else {
+                // This should be the equivalent to EventQueue.invokeAndWait
+                ((LWCToolkit) Toolkit.getDefaultToolkit()).getSystemEventQueueImpl().postEvent(invocationEvent);
+            }
+        }
+        doAWTRunLoop(mediator, false);
         checkException(invocationEvent);
     }
 

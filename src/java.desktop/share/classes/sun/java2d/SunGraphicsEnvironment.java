@@ -40,15 +40,18 @@ import java.awt.Toolkit;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.peer.ComponentPeer;
+import java.security.PrivilegedAction;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.security.AccessController;
 import java.util.Locale;
 import java.util.TreeMap;
 
 import sun.awt.DisplayChangedListener;
 import sun.awt.SunDisplayChanger;
-import sun.font.FontManager;
-import sun.font.FontManagerFactory;
-import sun.font.FontManagerForSGE;
+import sun.font.*;
 import sun.java2d.pipe.Region;
 import sun.security.action.GetPropertyAction;
 
@@ -65,16 +68,49 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     /** Establish the default font to be used by SG2D. */
     private final Font defaultFont = new Font(Font.DIALOG, Font.PLAIN, 12);
 
-    private static final boolean uiScaleEnabled;
+    private static final Object UI_SCALE_LOCK = new Object();
+    private static boolean uiScaleEnabled;
+    private static Boolean uiScaleEnabled_overridden;
     private static final double debugScale;
 
     static {
-        uiScaleEnabled = "true".equals(AccessController.doPrivileged(
-                new GetPropertyAction("sun.java2d.uiScale.enabled", "true")));
+        uiScaleEnabled = FontUtilities.isMacOSX ||
+                ("true".equals(AccessController.doPrivileged(
+                        new GetPropertyAction("sun.java2d.uiScale.enabled", "true"))) &&
+                (isWindows_8_1_orUpper() || FontUtilities.isLinux));
+        if (uiScaleEnabled && FontUtilities.isWindows) {
+            AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
+                System.setProperty("swing.bufferPerWindow", "false"); // todo: until JRE-489 is fixed
+                return null;
+            });
+        }
         debugScale = uiScaleEnabled ? getScaleFactor("sun.java2d.uiScale") : -1;
     }
 
     protected GraphicsDevice[] screens;
+
+    private static boolean isWindows_8_1_orUpper() {
+        if (!FontUtilities.isWindows) return false;
+
+        String osVersion = AccessController.doPrivileged(new GetPropertyAction("os.version"));
+        if (osVersion == null) return false;
+
+        String[] parts = osVersion.split("\\.");
+        if (parts.length < 1) return false;
+
+        try {
+            int majorVer = Integer.parseInt(parts[0]);
+            if (majorVer > 6) return true;
+            if (majorVer < 6) return false;
+
+            if (parts.length < 2) return false;
+
+            int minorVer = Integer.parseInt(parts[1]);
+            if (minorVer >= 3) return true;
+        } catch (NumberFormatException e) {
+        }
+        return false;
+    }
 
     /**
      * Returns an array of all of the screen devices.
@@ -289,7 +325,27 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     }
 
     public static boolean isUIScaleEnabled() {
-        return uiScaleEnabled;
+        Boolean enabledOverridden = uiScaleEnabled_overridden;
+        return enabledOverridden != null ? enabledOverridden : uiScaleEnabled;
+    }
+
+    /**
+     * Overrides isUIScaleEnabled() to false for fractional scale on Linux.
+     *
+     * [tav] todo: temp until fract scale is supported on Linux
+     */
+    public static boolean isUIScaleEnabled(int dpi) {
+        if (FontUtilities.isLinux) {
+            if (uiScaleEnabled_overridden == null) {
+                synchronized (UI_SCALE_LOCK) {
+                    if (uiScaleEnabled_overridden == null) {
+                        uiScaleEnabled_overridden =
+                            Double.compare(dpi / 96.0, Math.floor(dpi / 96.0)) == 0 && uiScaleEnabled;
+                    }
+                }
+            }
+        }
+        return isUIScaleEnabled();
     }
 
     public static double getDebugScale() {

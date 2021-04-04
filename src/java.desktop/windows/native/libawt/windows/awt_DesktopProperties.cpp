@@ -27,6 +27,7 @@
 #include "mmsystem.h"
 #include "jlong.h"
 #include "awt_DesktopProperties.h"
+#include "awt_Win32GraphicsDevice.h"
 #include "awt_Toolkit.h"
 #include "sun_awt_windows_WDesktopProperties.h"
 #include "java_awt_Font.h"
@@ -36,6 +37,7 @@
 #include <shlobj.h>
 
 #include "math.h"
+#include <dwmapi.h>
 
 #if defined(_MSC_VER) && _MSC_VER >= 1800
 #  define ROUND_TO_INT(num)    ((int) round(num))
@@ -88,6 +90,11 @@ void AwtDesktopProperties::GetWindowsParameters() {
 }
 
 void getInvScale(float &invScaleX, float &invScaleY) {
+    if (!AwtWin32GraphicsDevice::IsUiScaleEnabled()) {
+        invScaleX = 1.0f;
+        invScaleY = 1.0f;
+        return;
+    }
     static int dpiX = -1;
     static int dpiY = -1;
     if (dpiX == -1 || dpiY == -1) {
@@ -492,6 +499,16 @@ void CheckFontSmoothingSettings(HWND hWnd) {
     }
 }
 
+BOOL ColorizationColorAffectsBorders() {
+    DWORD result = 0;
+    DWORD bufSize(sizeof(DWORD));
+    HKEY hKey = NULL;
+    if (::RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\DWM"), 0, KEY_READ, &hKey) != ERROR_SUCCESS) return TRUE;
+    if (::RegQueryValueEx(hKey, _T("ColorPrevalence"), NULL, NULL, reinterpret_cast<LPBYTE>(&result), &bufSize) != ERROR_SUCCESS) return TRUE;
+    RegCloseKey(hKey);
+    return result == 0 ? FALSE : TRUE;
+}
+
 void AwtDesktopProperties::GetColorParameters() {
 
     SetColorProperty(TEXT("win.frame.activeCaptionGradientColor"),
@@ -509,6 +526,17 @@ void AwtDesktopProperties::GetColorParameters() {
     SetColorProperty(TEXT("win.desktop.backgroundColor"), GetSysColor(COLOR_DESKTOP));
     SetColorProperty(TEXT("win.frame.activeCaptionColor"), GetSysColor(COLOR_ACTIVECAPTION));
     SetColorProperty(TEXT("win.frame.activeBorderColor"), GetSysColor(COLOR_ACTIVEBORDER));
+
+    BOOL enabled;
+    DwmIsCompositionEnabled(&enabled);
+    if (enabled) {
+        DWORD color;
+        BOOL opaque = FALSE;
+        // [tav] todo: listen WM_DWMCOLORIZATIONCOLORCHANGED
+        DwmGetColorizationColor(&color, &opaque);
+        SetColorProperty(TEXT("win.dwm.colorizationColor"), RGB(GetBValue(color), GetGValue(color), GetRValue(color)));
+        SetBooleanProperty(TEXT("win.dwm.colorizationColor.affects.borders"), ColorizationColorAffectsBorders());
+    }
 
     // ?? ?? ??
     SetColorProperty(TEXT("win.frame.color"), GetSysColor(COLOR_WINDOWFRAME)); // ?? WHAT THE HECK DOES THIS MEAN ??

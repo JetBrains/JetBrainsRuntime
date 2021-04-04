@@ -586,7 +586,7 @@ public:
                                     LPNCCALCSIZE_PARAMS lpncsp,
                                     LRESULT &retVal);
     virtual MsgRouting WmNcPaint(HRGN hrgn);
-    virtual MsgRouting WmNcHitTest(UINT x, UINT y, LRESULT &retVal);
+    virtual MsgRouting WmNcHitTest(int x, int y, LRESULT &retVal);
     virtual MsgRouting WmSysCommand(UINT uCmdType, int xPos, int yPos);
     virtual MsgRouting WmEnterSizeMove();
     virtual MsgRouting WmExitSizeMove();
@@ -755,6 +755,7 @@ protected:
     virtual void FillBackground(HDC hMemoryDC, SIZE &size);
     virtual void FillAlpha(void *bitmapBits, SIZE &size, BYTE alpha);
 
+public:
     int ScaleUpX(int x);
     int ScaleUpAbsX(int x);
     int ScaleUpY(int y);
@@ -763,6 +764,7 @@ protected:
     int ScaleDownAbsX(int x);
     int ScaleDownY(int y);
     int ScaleDownAbsY(int y);
+    void ScaleDownRect(RECT& r);
 
 private:
     /* A bitmask keeps the button's numbers as MK_LBUTTON, MK_MBUTTON, MK_RBUTTON

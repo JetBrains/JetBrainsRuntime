@@ -66,6 +66,8 @@ public:
     static jmethodID calculateSecurityWarningPositionMID;
     static jmethodID windowTypeNameMID;
 
+    static jfieldID sysInsetsID;
+
     AwtWindow();
     virtual ~AwtWindow();
 
@@ -131,7 +133,7 @@ public:
     virtual void RecalcNonClient();
     virtual void RedrawNonClient();
     virtual int  GetScreenImOn();
-    virtual void CheckIfOnNewScreen(BOOL force);
+    virtual BOOL CheckIfOnNewScreen(BOOL force);
     virtual void Grab();
     virtual void Ungrab();
     virtual void Ungrab(BOOL doPost);
@@ -168,6 +170,7 @@ public:
     virtual MsgRouting WmClose();
     virtual MsgRouting WmDestroy();
     virtual MsgRouting WmShowWindow(BOOL show, UINT status);
+    virtual MsgRouting WmEraseBkgnd(HDC hDC, BOOL& didErase);
     virtual MsgRouting WmGetMinMaxInfo(LPMINMAXINFO lpmmi);
     virtual MsgRouting WmMove(int x, int y);
     virtual MsgRouting WmSize(UINT type, int w, int h);
@@ -178,7 +181,7 @@ public:
     virtual MsgRouting WmSettingChange(UINT wFlag, LPCTSTR pszSection);
     virtual MsgRouting WmNcCalcSize(BOOL fCalcValidRects,
                                     LPNCCALCSIZE_PARAMS lpncsp, LRESULT& retVal);
-    virtual MsgRouting WmNcHitTest(UINT x, UINT y, LRESULT& retVal);
+    virtual MsgRouting WmNcHitTest(int x, int y, LRESULT& retVal);
     virtual MsgRouting WmNcMouseDown(WPARAM hitTest, int x, int y, int button);
     virtual MsgRouting WmGetIcon(WPARAM iconType, LRESULT& retVal);
     virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
@@ -261,6 +264,8 @@ public:
 
     inline HWND GetOverriddenHWnd() { return m_overriddenHwnd; }
     inline void OverrideHWnd(HWND hwnd) { m_overriddenHwnd = hwnd; }
+
+    virtual BOOL HasCustomDecoration() { return FALSE; }
 
 private:
     static int ms_instanceCounter;

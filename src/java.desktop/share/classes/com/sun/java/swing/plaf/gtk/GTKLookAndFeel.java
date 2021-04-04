@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,7 @@ import java.util.Map;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.OSInfo;
+import sun.awt.X11GraphicsDevice;
 import sun.security.action.GetPropertyAction;
 import sun.swing.DefaultLayoutStyle;
 import sun.swing.SwingAccessor;
@@ -249,7 +250,6 @@ public class GTKLookAndFeel extends SynthLookAndFeel {
                 region == Region.SPINNER ||
                 region == Region.TABLE ||
                 region == Region.TEXT_AREA ||
-                region == Region.TEXT_FIELD ||
                 region == Region.TEXT_PANE ||
                 region == Region.TREE);
     }
@@ -1447,6 +1447,18 @@ public class GTKLookAndFeel extends SynthLookAndFeel {
         gtkAAFontSettingsCond = SwingUtilities2.isLocalDisplay();
         aaTextInfo = new HashMap<>(2);
         SwingUtilities2.putAATextInfo(gtkAAFontSettingsCond, aaTextInfo);
+
+        Object value = GTKEngine.INSTANCE.getSetting(GTKEngine.Settings.GTK_XFT_DPI);
+        if (value instanceof Integer) {
+            int dpi = ((Integer)value).intValue() / 1024;
+            if (dpi == -1) {
+                dpi = 96;
+            }
+            if (dpi < 50) {
+                dpi = 50;
+            }
+            X11GraphicsDevice.setXftDpi(dpi);
+        }
     }
 
     static ReferenceQueue<GTKLookAndFeel> queue = new ReferenceQueue<GTKLookAndFeel>();

@@ -170,6 +170,7 @@ jfieldID AwtWindow::securityWarningHeightID;
 
 jfieldID AwtWindow::windowTypeID;
 jmethodID AwtWindow::notifyWindowStateChangedMID;
+jfieldID AwtWindow::sysInsetsID;
 
 jmethodID AwtWindow::getWarningStringMID;
 jmethodID AwtWindow::calculateSecurityWarningPositionMID;
@@ -1102,6 +1103,9 @@ AwtWindow* AwtWindow::Create(jobject self, jobject parent)
             if (env->ExceptionCheck()) goto done;
             DWORD style = WS_CLIPCHILDREN | WS_POPUP;
             DWORD exStyle = WS_EX_NOACTIVATE;
+            if (JNU_CallMethodByName(env, NULL, target, "isIgnoreMouseEvents", "()Z").z) {
+                exStyle |= WS_EX_LAYERED | WS_EX_TRANSPARENT;
+            }
             if (GetRTL()) {
                 exStyle |= WS_EX_RIGHT | WS_EX_LEFTSCROLLBAR;
                 if (GetRTLReadingOrder())
@@ -1213,6 +1217,49 @@ void AwtWindow::Reshape(int x, int y, int w, int h) {
     // monitor, so the WM_DPICHANGED will adjust it for the "target" monitor.
     int scaleUpAbsX = device == NULL ? x : device->ScaleUpAbsX(x);
     int scaleUpAbsY = device == NULL ? y : device->ScaleUpAbsY(y);
+
+    int usrX = x;
+    int usrY = y;
+
+    // [tav] Handle the fact that an owned window is most likely positioned relative to its owner, and it may
+    // require pixel-perfect alignment. For that, compensate rounding errors (caused by converting from the device
+    // space to the integer user space and back) for the owner's origin and for the owner's client area origin
+    // (see Window::GetAlignedInsets).
+    AwtComponent* parent = GetParent();
+    if (parent != NULL && (device->GetScaleX() > 1 || device->GetScaleY() > 1)) {
+        RECT parentInsets;
+        parent->GetInsets(&parentInsets);
+        // Convert the owner's client area origin to user space
+        int parentInsetsUsrX = device->ScaleDownX(parentInsets.left);
+        int parentInsetsUsrY = device->ScaleDownY(parentInsets.top);
+
+        RECT parentRect;
+        VERIFY(::GetWindowRect(parent->GetHWnd(), &parentRect));
+        // Convert the owner's origin to user space
+        int parentUsrX = device->ScaleDownAbsX(parentRect.left);
+        int parentUsrY = device->ScaleDownAbsY(parentRect.top);
+
+        // Calc the offset from the owner's client area in user space
+        int offsetUsrX = usrX - parentUsrX - parentInsetsUsrX;
+        int offsetUsrY = usrY - parentUsrY - parentInsetsUsrY;
+
+        // Convert the offset to device space
+        int offsetDevX = device->ScaleUpX(offsetUsrX);
+        int offsetDevY = device->ScaleUpY(offsetUsrY);
+
+        // Finally calc the window's location based on the frame's and its insets system numbers.
+        int devX = parentRect.left + parentInsets.left + offsetDevX;
+        int devY = parentRect.top + parentInsets.top + offsetDevY;
+
+        // Check the toplevel is not going to be moved to another screen.
+        ::SetRect(&parentRect, devX, devY, devX + w, devY + h);
+        HMONITOR hmon = ::MonitorFromRect(&parentRect, MONITOR_DEFAULTTONEAREST);
+        if (hmon != NULL && AwtWin32GraphicsDevice::GetScreenFromHMONITOR(hmon) == device->GetDeviceIndex()) {
+            scaleUpAbsX = devX;
+            scaleUpAbsY = devY;
+        }
+    }
+
     ReshapeNoScale(scaleUpAbsX, scaleUpAbsY, ScaleUpX(w), ScaleUpY(h));
     // The window manager may tweak the size for different reasons, so try
     // to make sure our window has the correct size in the user's space.
@@ -1461,11 +1508,20 @@ BOOL AwtWindow::UpdateInsets(jobject insets)
     jobject peerInsets = (env)->GetObjectField(peer, AwtPanel::insets_ID);
     DASSERT(!safe_ExceptionOccurred(env));
 
+    jobject peerSysInsets = (env)->GetObjectField(peer, AwtWindow::sysInsetsID);
+    DASSERT(!safe_ExceptionOccurred(env));
+
     if (peerInsets != NULL) { // may have been called during creation
         (env)->SetIntField(peerInsets, AwtInsets::topID, ScaleDownY(m_insets.top));
         (env)->SetIntField(peerInsets, AwtInsets::bottomID, ScaleDownY(m_insets.bottom));
         (env)->SetIntField(peerInsets, AwtInsets::leftID, ScaleDownX(m_insets.left));
         (env)->SetIntField(peerInsets, AwtInsets::rightID, ScaleDownX(m_insets.right));
+    }
+    if (peerSysInsets != NULL) {
+        (env)->SetIntField(peerSysInsets, AwtInsets::topID, m_insets.top);
+        (env)->SetIntField(peerSysInsets, AwtInsets::bottomID, m_insets.bottom);
+        (env)->SetIntField(peerSysInsets, AwtInsets::leftID, m_insets.left);
+        (env)->SetIntField(peerSysInsets, AwtInsets::rightID, m_insets.right);
     }
     /* Get insets into the Inset object (if any) that was passed */
     if (insets != NULL) {
@@ -1803,6 +1859,20 @@ void AwtWindow::WmDPIChanged(const LPARAM &lParam) {
     CheckIfOnNewScreen(true);
 }
 
+MsgRouting AwtWindow::WmEraseBkgnd(HDC hDC, BOOL& didErase)
+{
+    if (!IsUndecorated()) {
+        // [tav] When an undecorated window is shown nothing is actually displayed
+        // until something is drawn in it. In order to prevent blinking, the background
+        // is not erased for such windows.
+        RECT     rc;
+        ::GetClipBox(hDC, &rc);
+        ::FillRect(hDC, &rc, this->GetBackgroundBrush());
+    }
+    didErase = TRUE;
+    return mrConsume;
+}
+
 /*
  * Override AwtComponent's move handling to first update the
  * java AWT target's position fields directly, since Windows
@@ -1818,8 +1888,8 @@ MsgRouting AwtWindow::WmMove(int x, int y)
     // NOTE: See also AwtWindow::Reshape
         return mrDoDefault;
     }
-    // Check for the new screen and update the java peer
-    CheckIfOnNewScreen(false); // postpone if different DPI
+
+    if (CheckIfOnNewScreen(false)) DoUpdateIcon();
 
     /* Update the java AWT target component's fields directly */
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
@@ -1831,8 +1901,46 @@ MsgRouting AwtWindow::WmMove(int x, int y)
     RECT rect;
     ::GetWindowRect(GetHWnd(), &rect);
 
-    (env)->SetIntField(target, AwtComponent::xID, ScaleDownAbsX(rect.left));
-    (env)->SetIntField(target, AwtComponent::yID, ScaleDownAbsY(rect.top));
+    // [tav] Convert x/y to user space, asymmetrically to AwtWindow::Reshape()
+    POINT pt = {rect.left + (rect.right - rect.left) / 2, rect.top + (rect.bottom - rect.top) / 2};
+    Devices::InstanceAccess devices;
+    HMONITOR monitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+    int screen = AwtWin32GraphicsDevice::GetScreenFromHMONITOR(monitor);
+    AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
+
+    int usrX = ScaleDownAbsX(rect.left);
+    int usrY = ScaleDownAbsY(rect.top);
+
+    AwtComponent* parent = GetParent();
+    if (parent != NULL && (device->GetScaleX() > 1 || device->GetScaleY() > 1)) {
+
+        RECT parentInsets;
+        parent->GetInsets(&parentInsets);
+        // Convert the owner's client area origin to user space
+        int parentInsetsUsrX = device->ScaleDownX(parentInsets.left);
+        int parentInsetsUsrY = device->ScaleDownY(parentInsets.top);
+
+        RECT parentRect;
+        VERIFY(::GetWindowRect(parent->GetHWnd(), &parentRect));
+        // Convert the owner's origin to user space
+        int parentUsrX = device->ScaleDownAbsX(parentRect.left);
+        int parentUsrY = device->ScaleDownAbsY(parentRect.top);
+
+        // Calc the offset from the owner's client area in device space
+        int offsetDevX = rect.left - parentRect.left - parentInsets.left;
+        int offsetDevY = rect.top - parentRect.top - parentInsets.top;
+
+        // Convert the offset to user space
+        int offsetUsrX = device->ScaleDownX(offsetDevX);
+        int offsetUsrY = device->ScaleDownY(offsetDevY);
+
+        // Finally calc the window's location based on the frame's and its insets user space values.
+        usrX = parentUsrX + parentInsetsUsrX + offsetUsrX;
+        usrY = parentUsrY + parentInsetsUsrY + offsetUsrY;
+    }
+
+    (env)->SetIntField(target, AwtComponent::xID, usrX);
+    (env)->SetIntField(target, AwtComponent::yID, usrY);
     SendComponentEvent(java_awt_event_ComponentEvent_COMPONENT_MOVED);
 
     env->DeleteLocalRef(target);
@@ -1977,7 +2085,7 @@ MsgRouting AwtWindow::WmNcCalcSize(BOOL fCalcValidRects,
     return mrRetVal;
 }
 
-MsgRouting AwtWindow::WmNcHitTest(UINT x, UINT y, LRESULT& retVal)
+MsgRouting AwtWindow::WmNcHitTest(int x, int y, LRESULT& retVal)
 {
     // If this window is blocked by modal dialog, return HTCLIENT for any point of it.
     // That prevents it to be moved or resized using the mouse. Disabling these
@@ -2153,7 +2261,7 @@ int AwtWindow::GetScreenImOn() {
  * Check to see if we've been moved onto another screen.
  * If so, update internal data, surfaces, etc.
  */
-void AwtWindow::CheckIfOnNewScreen(BOOL force) {
+BOOL AwtWindow::CheckIfOnNewScreen(BOOL force) {
     int curScrn = GetScreenImOn();
 
     if (curScrn != m_screenNum) {  // we've been moved
@@ -2167,7 +2275,7 @@ void AwtWindow::CheckIfOnNewScreen(BOOL force) {
             if (oldDevice->GetScaleX() != newDevice->GetScaleX()
                     || oldDevice->GetScaleY() != newDevice->GetScaleY()) {
                 // scales are different, wait for WM_DPICHANGED
-                return;
+                return TRUE;
             }
         }
 
@@ -2175,21 +2283,23 @@ void AwtWindow::CheckIfOnNewScreen(BOOL force) {
 
         jclass peerCls = env->GetObjectClass(m_peerObject);
         DASSERT(peerCls);
-        CHECK_NULL(peerCls);
+        CHECK_NULL_RETURN(peerCls, TRUE);
 
         jmethodID draggedID = env->GetMethodID(peerCls, "draggedToNewScreen",
                                                "()V");
         DASSERT(draggedID);
         if (draggedID == NULL) {
             env->DeleteLocalRef(peerCls);
-            return;
+            return TRUE;
         }
 
         env->CallVoidMethod(m_peerObject, draggedID);
         m_screenNum = curScrn;
 
         env->DeleteLocalRef(peerCls);
+        return TRUE;
     }
+    return FALSE;
 }
 
 // The shared code is not ready to the top-level window which crosses a few
@@ -3324,6 +3434,8 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_initIDs(JNIEnv *env, jclass cls)
 {
     TRY;
+
+    CHECK_NULL(AwtWindow::sysInsetsID = env->GetFieldID(cls, "sysInsets", "Ljava/awt/Insets;"));
 
     AwtWindow::windowTypeID = env->GetFieldID(cls, "windowType",
             "Ljava/awt/Window$Type;");

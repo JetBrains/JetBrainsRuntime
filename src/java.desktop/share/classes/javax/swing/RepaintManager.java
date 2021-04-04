@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,10 @@ package javax.swing;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.VolatileImage;
+import java.awt.peer.WindowPeer;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -420,7 +423,7 @@ public class RepaintManager
      *
      * @see JComponent#repaint
      */
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     private void addDirtyRegion0(Container c, int x, int y, int w, int h) {
         /* Special cases we don't have to bother with.
          */
@@ -538,12 +541,13 @@ public class RepaintManager
      * <a href="../../java/applet/package-summary.html"> java.applet package
      * documentation</a> for further information.
      */
-    @Deprecated(since = "9")
+    @Deprecated(since = "9", forRemoval = true)
+    @SuppressWarnings("removal")
     public void addDirtyRegion(Applet applet, int x, int y, int w, int h) {
         addDirtyRegion0(applet, x, y, w, h);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     void scheduleHeavyWeightPaints() {
         Map<Container,Rectangle> hws;
 
@@ -1611,7 +1615,8 @@ public class RepaintManager
          */
         protected void paintDoubleBuffered(JComponent c, Image image,
                 Graphics g, int clipX, int clipY,
-                int clipW, int clipH) {
+                int clipW, int clipH)
+        {
             if (image instanceof VolatileImage && isPixelsCopying(c, g)) {
                 paintDoubleBufferedFPScales(c, image, g, clipX, clipY, clipW, clipH);
             } else {

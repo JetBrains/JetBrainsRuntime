@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@
 #include "opto/opcodes.hpp"
 #include "opto/type.hpp"
 #include "utilities/powerOfTwo.hpp"
+#include "utilities/stringUtils.hpp"
 
 // Portions of code courtesy of Clifford Click
 
@@ -1110,6 +1111,73 @@ bool Type::empty(void) const {
 #ifndef PRODUCT
 void Type::dump_stats() {
   tty->print("Types made: %d\n", type_dict()->Size());
+}
+#endif
+
+//------------------------------category---------------------------------------
+#ifndef PRODUCT
+Type::Category Type::category() const {
+  const TypeTuple* tuple;
+  switch (base()) {
+    case Type::Int:
+    case Type::Long:
+    case Type::Half:
+    case Type::NarrowOop:
+    case Type::NarrowKlass:
+    case Type::Array:
+    case Type::VectorA:
+    case Type::VectorS:
+    case Type::VectorD:
+    case Type::VectorX:
+    case Type::VectorY:
+    case Type::VectorZ:
+    case Type::AnyPtr:
+    case Type::RawPtr:
+    case Type::OopPtr:
+    case Type::InstPtr:
+    case Type::AryPtr:
+    case Type::MetadataPtr:
+    case Type::KlassPtr:
+    case Type::Function:
+    case Type::Return_Address:
+    case Type::FloatTop:
+    case Type::FloatCon:
+    case Type::FloatBot:
+    case Type::DoubleTop:
+    case Type::DoubleCon:
+    case Type::DoubleBot:
+      return Category::Data;
+    case Type::Memory:
+      return Category::Memory;
+    case Type::Control:
+      return Category::Control;
+    case Type::Top:
+    case Type::Abio:
+    case Type::Bottom:
+      return Category::Other;
+    case Type::Bad:
+    case Type::lastype:
+      return Category::Undef;
+    case Type::Tuple:
+      // Recursive case. Return CatMixed if the tuple contains types of
+      // different categories (e.g. CallStaticJavaNode's type), or the specific
+      // category if all types are of the same category (e.g. IfNode's type).
+      tuple = is_tuple();
+      if (tuple->cnt() == 0) {
+        return Category::Undef;
+      } else {
+        Category first = tuple->field_at(0)->category();
+        for (uint i = 1; i < tuple->cnt(); i++) {
+          if (tuple->field_at(i)->category() != first) {
+            return Category::Mixed;
+          }
+        }
+        return first;
+      }
+    default:
+      assert(false, "unmatched base type: all base types must be categorized");
+  }
+  return Category::Undef;
 }
 #endif
 
@@ -3712,50 +3780,8 @@ const Type *TypeInstPtr::xmeet_helper(const Type *t) const {
   case RawPtr: return TypePtr::BOTTOM;
 
   case AryPtr: {                // All arrays inherit from Object class
-    const TypeAryPtr *tp = t->is_aryptr();
-    int offset = meet_offset(tp->offset());
-    PTR ptr = meet_ptr(tp->ptr());
-    int instance_id = meet_instance_id(tp->instance_id());
-    const TypePtr* speculative = xmeet_speculative(tp);
-    int depth = meet_inline_depth(tp->inline_depth());
-    switch (ptr) {
-    case TopPTR:
-    case AnyNull:                // Fall 'down' to dual of object klass
-      // For instances when a subclass meets a superclass we fall
-      // below the centerline when the superclass is exact. We need to
-      // do the same here.
-      if (klass()->equals(ciEnv::current()->Object_klass()) && !klass_is_exact()) {
-        return TypeAryPtr::make(ptr, tp->ary(), tp->klass(), tp->klass_is_exact(), offset, instance_id, speculative, depth);
-      } else {
-        // cannot subclass, so the meet has to fall badly below the centerline
-        ptr = NotNull;
-        instance_id = InstanceBot;
-        return TypeInstPtr::make( ptr, ciEnv::current()->Object_klass(), false, NULL, offset, instance_id, speculative, depth);
-      }
-    case Constant:
-    case NotNull:
-    case BotPTR:                // Fall down to object klass
-      // LCA is object_klass, but if we subclass from the top we can do better
-      if( above_centerline(_ptr) ) { // if( _ptr == TopPTR || _ptr == AnyNull )
-        // If 'this' (InstPtr) is above the centerline and it is Object class
-        // then we can subclass in the Java class hierarchy.
-        // For instances when a subclass meets a superclass we fall
-        // below the centerline when the superclass is exact. We need
-        // to do the same here.
-        if (klass()->equals(ciEnv::current()->Object_klass()) && !klass_is_exact()) {
-          // that is, tp's array type is a subtype of my klass
-          return TypeAryPtr::make(ptr, (ptr == Constant ? tp->const_oop() : NULL),
-                                  tp->ary(), tp->klass(), tp->klass_is_exact(), offset, instance_id, speculative, depth);
-        }
-      }
-      // The other case cannot happen, since I cannot be a subtype of an array.
-      // The meet falls down to Object class below centerline.
-      if( ptr == Constant )
-         ptr = NotNull;
-      instance_id = InstanceBot;
-      return make(ptr, ciEnv::current()->Object_klass(), false, NULL, offset, instance_id, speculative, depth);
-    default: typerr(t);
-    }
+    // Call in reverse direction to avoid duplication
+    return t->is_aryptr()->xmeet_helper(this);
   }
 
   case OopPtr: {                // Meeting to OopPtrs
@@ -3893,8 +3919,12 @@ const Type *TypeInstPtr::xmeet_helper(const Type *t) const {
         k = above_centerline(ptr) ? tinst_klass : ciEnv::current()->Object_klass();
         xk = above_centerline(ptr) ? tinst_xk : false;
         // Watch out for Constant vs. AnyNull interface.
-        if (ptr == Constant)  ptr = NotNull;   // forget it was a constant
-        instance_id = InstanceBot;
+        if (ptr == Constant) {
+          ptr = NotNull;  // forget it was a constant
+        }
+        if (instance_id > 0) {
+          instance_id = InstanceBot;
+        }
       }
       ciObject* o = NULL;  // the Constant value, if any
       if (ptr == Constant) {
@@ -3983,9 +4013,9 @@ const Type *TypeInstPtr::xmeet_helper(const Type *t) const {
 
     // Since klasses are different, we require a LCA in the Java
     // class hierarchy - which means we have to fall to at least NotNull.
-    if( ptr == TopPTR || ptr == AnyNull || ptr == Constant )
+    if (ptr == TopPTR || ptr == AnyNull || ptr == Constant) {
       ptr = NotNull;
-
+    }
     instance_id = InstanceBot;
 
     // Now we find the LCA of Java classes
@@ -4036,15 +4066,23 @@ int TypeInstPtr::hash(void) const {
 //------------------------------dump2------------------------------------------
 // Dump oop Type
 #ifndef PRODUCT
-void TypeInstPtr::dump2( Dict &d, uint depth, outputStream *st ) const {
+void TypeInstPtr::dump2(Dict &d, uint depth, outputStream* st) const {
   // Print the name of the klass.
   klass()->print_name_on(st);
 
   switch( _ptr ) {
   case Constant:
-    // TO DO: Make CI print the hex address of the underlying oop.
     if (WizardMode || Verbose) {
-      const_oop()->print_oop(st);
+      ResourceMark rm;
+      stringStream ss;
+
+      st->print(" ");
+      const_oop()->print_oop(&ss);
+      // 'const_oop->print_oop()' may emit newlines('\n') into ss.
+      // suppress newlines from it so -XX:+Verbose -XX:+PrintIdeal dumps one-liner for each node.
+      char* buf = ss.as_string(/* c_heap= */false);
+      StringUtils::replace_no_expand(buf, "\n", "");
+      st->print_raw(buf);
     }
   case BotPTR:
     if (!WizardMode && !Verbose) {
@@ -4419,16 +4457,18 @@ const Type *TypeAryPtr::xmeet_helper(const Type *t) const {
         // Only precise for identical arrays
         xk = this->_klass_is_exact && (klass() == tap->klass());
       }
-      return TypeAryPtr::make(ptr, o, tary, lazy_klass, xk, off, instance_id, speculative, depth);
+      return make(ptr, o, tary, lazy_klass, xk, off, instance_id, speculative, depth);
     }
     case NotNull:
     case BotPTR:
       // Compute new klass on demand, do not use tap->_klass
-      if (above_centerline(this->_ptr))
-            xk = tap->_klass_is_exact;
-      else  xk = (tap->_klass_is_exact & this->_klass_is_exact) &&
-              (klass() == tap->klass()); // Only precise for identical arrays
-      return TypeAryPtr::make(ptr, NULL, tary, lazy_klass, xk, off, instance_id, speculative, depth);
+      if (above_centerline(this->_ptr)) {
+        xk = tap->_klass_is_exact;
+      } else {
+        xk = (tap->_klass_is_exact & this->_klass_is_exact) &&
+             (klass() == tap->klass()); // Only precise for identical arrays
+      }
+      return make(ptr, NULL, tary, lazy_klass, xk, off, instance_id, speculative, depth);
     default: ShouldNotReachHere();
     }
   }
@@ -4448,7 +4488,7 @@ const Type *TypeAryPtr::xmeet_helper(const Type *t) const {
       // below the centerline when the superclass is exact. We need to
       // do the same here.
       if (tp->klass()->equals(ciEnv::current()->Object_klass()) && !tp->klass_is_exact()) {
-        return TypeAryPtr::make(ptr, _ary, _klass, _klass_is_exact, offset, instance_id, speculative, depth);
+        return make(ptr, _ary, _klass, _klass_is_exact, offset, instance_id, speculative, depth);
       } else {
         // cannot subclass, so the meet has to fall badly below the centerline
         ptr = NotNull;
@@ -4473,10 +4513,13 @@ const Type *TypeAryPtr::xmeet_helper(const Type *t) const {
       }
       // The other case cannot happen, since t cannot be a subtype of an array.
       // The meet falls down to Object class below centerline.
-      if( ptr == Constant )
+      if (ptr == Constant) {
          ptr = NotNull;
-      instance_id = InstanceBot;
-      return TypeInstPtr::make(ptr, ciEnv::current()->Object_klass(), false, NULL,offset, instance_id, speculative, depth);
+      }
+      if (instance_id > 0) {
+        instance_id = InstanceBot;
+      }
+      return TypeInstPtr::make(ptr, ciEnv::current()->Object_klass(), false, NULL, offset, instance_id, speculative, depth);
     default: typerr(t);
     }
   }
