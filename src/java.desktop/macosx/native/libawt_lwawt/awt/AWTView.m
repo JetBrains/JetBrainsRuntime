@@ -859,7 +859,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 {
     id focused = [self accessibilityFocusedUIElement];
     if (![focused respondsToSelector:@selector(accessibilitySelectedText)]) return nil;
-    return [focused accessibilitySelectedTextAttribute];
+    return [focused accessibilitySelectedText];
 }
 
 // same as above, but converts to RTFD
