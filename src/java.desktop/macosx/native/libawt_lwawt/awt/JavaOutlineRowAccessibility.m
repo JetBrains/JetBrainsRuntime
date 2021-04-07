@@ -28,11 +28,9 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
         if (newAccessible != NULL) {
             return newAccessible;
         } else {
-            (*env)->DeleteLocalRef(env, newAccessible);
             return NULL;
         }
     } else {
-        (*env)->DeleteLocalRef(env, newComponent);
         return NULL;
     }
 }
@@ -45,7 +43,6 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject currentAccessible = [(JavaOutlineRowAccessibility *)[self javaBase] currentAccessibleWithENV:env];
     if (currentAccessible == NULL) {
-        (*env)->DeleteLocalRef(env, currentAccessible);
         return nil;
     }
     JavaBaseAccessibility *currentElement = [JavaBaseAccessibility createWithAccessible:currentAccessible withEnv:env withView:[[self javaBase] view] isCurrent:YES];

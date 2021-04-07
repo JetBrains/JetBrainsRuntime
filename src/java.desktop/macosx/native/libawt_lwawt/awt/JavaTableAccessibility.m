@@ -49,7 +49,6 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
     JNF_MEMBER_CACHE(jm_getSelectedAccessibleRows, clsInfo, "getSelectedAccessibleRows", "()[I");
     jintArray selectidRowNumbers = JNFCallObjectMethod(env, [self axContextWithEnv:env], jm_getSelectedAccessibleRows);
     if (selectidRowNumbers == NULL) {
-        (*env)->DeleteLocalRef(env, selectidRowNumbers);
         return nil;
     }
     jsize arrayLen = (*env)->GetArrayLength(env, selectidRowNumbers);
@@ -70,7 +69,6 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
     JNF_MEMBER_CACHE(jm_getSelectedAccessibleColumns, clsInfo, "getSelectedAccessibleColumns", "()[I");
     jintArray selectidColumnNumbers = JNFCallObjectMethod(env, [self axContextWithEnv:env], jm_getSelectedAccessibleColumns);
     if (selectidColumnNumbers == NULL) {
-        (*env)->DeleteLocalRef(env, selectidColumnNumbers);
         return nil;
     }
     jsize arrayLen = (*env)->GetArrayLength(env, selectidColumnNumbers);
