@@ -27,10 +27,12 @@ static const char* ACCESSIBLE_JCOMBOBOX_NAME = "javax.swing.JComboBox$Accessible
     jobject childName = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, axSelectedChild, fComponent);
     if (childName == NULL) return nil;
     NSString *selectedText = JNFObjectToString(env, childName);
+    (*env)->DeleteLocalRef(env, axSelectedChild);
+    (*env)->DeleteLocalRef(env, childName);
     return selectedText;
 }
 
-- (void)accessibleShowMinu {
+- (void)accessibleShowMenu {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     static JNF_STATIC_MEMBER_CACHE(jm_getAccessibleAction, sjc_CAccessibility, "getAccessibleAction", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleAction;");
 
@@ -57,7 +59,7 @@ static const char* ACCESSIBLE_JCOMBOBOX_NAME = "javax.swing.JComboBox$Accessible
 }
 
 - (BOOL)accessibilityPerformPress {
-    [(JavaComboBoxAccessibility *)[self javaBase] accessibleShowMinu];
+    [(JavaComboBoxAccessibility *)[self javaBase] accessibleShowMenu];
     return YES;
 }
 

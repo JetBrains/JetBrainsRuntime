@@ -19,25 +19,25 @@ public class AccessibleJComboboxTest extends AccessibleComponentTest {
     }
 
     void createCombobox() {
-    INSTRUCTIONS = "INSTRUCTIONS:\n"
-            + "Check a11y of JCombobox.\n\n"
-            + "Turn screen reader on, and Tab to the combobox.\n\n"
-            + "If you can hear combobox selected item tab further and press PASS, otherwise press FAIL.";
+        INSTRUCTIONS = "INSTRUCTIONS:\n"
+                + "Check a11y of JCombobox.\n\n"
+                + "Turn screen reader on, and Tab to the combobox.\n\n"
+                + "If you can hear combobox selected item tab further and press PASS, otherwise press FAIL.";
 
-    JPanel frame = new JPanel();
+        JPanel frame = new JPanel();
 
-    String[] NAMES = {"One", "Two", "Three", "Four", "Five"};
-    JComboBox<String> combo = new JComboBox<>(NAMES);
+        String[] NAMES = {"One", "Two", "Three", "Four", "Five"};
+        JComboBox<String> combo = new JComboBox<>(NAMES);
 
-    JLabel label = new JLabel("This is combobox:");
-    label.setLabelFor(combo);
+        JLabel label = new JLabel("This is combobox:");
+        label.setLabelFor(combo);
 
-    frame.setLayout(new FlowLayout());
+        frame.setLayout(new FlowLayout());
         frame.add(label);
-    frame.add(combo);
-    exceptionString = "AccessibleJCombobox test failed!";
-    super.createUI(frame, "AccessibleJComboboxTest");
-}
+        frame.add(combo);
+        exceptionString = "AccessibleJCombobox test failed!";
+        super.createUI(frame, "AccessibleJComboboxTest");
+    }
 
     public static void main(String[] args) throws Exception {
         AccessibleJComboboxTest test = new AccessibleJComboboxTest();

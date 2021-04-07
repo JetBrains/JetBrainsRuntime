@@ -4,6 +4,7 @@
 #import "JavaAccessibilityUtilities.h"
 #import "ThreadUtilities.h"
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
+#import "JavaComponentAccessibility.h"
 
 @implementation JavaScrollAreaAccessibility
 
@@ -22,7 +23,7 @@
     NSEnumerator *enumerator = [children objectEnumerator];
     id aElement;
     while ((aElement = [enumerator nextObject])) {
-        NSString *nsRole = [aElement respondsToSelector:@selector(accessibilityRole)] ? [aElement accessibilityRole] : [aElement accessibilityRoleAttribute]; // todo: Remove this solution when JavaComponentAccessibility is removed
+        NSString *nsRole = [aElement isKindOfClass:[JavaComponentAccessibility class]] ? [aElement accessibilityRoleAttribute] : [aElement accessibilityRole]; // todo: Remove this solution when JavaComponentAccessibility is removed
         if (![nsRole isEqualToString:NSAccessibilityScrollBarRole]) {
             // no scroll bars in contents
             [(NSMutableArray *) contents addObject:aElement];
@@ -42,7 +43,7 @@
     NSEnumerator *enumerator = [children objectEnumerator];
     id aElement;
     while ((aElement = (PlatformAxElement *)[enumerator nextObject])) {
-        NSString *nsRole = [aElement respondsToSelector:@selector(accessibilityRole)] ? [aElement accessibilityRole] : [aElement accessibilityRoleAttribute]; // todo: Remove this solution when JavaComponentAccessibility is removed
+        NSString *nsRole = [aElement isKindOfClass:[JavaComponentAccessibility class]] ? [aElement accessibilityRoleAttribute] : [aElement accessibilityRole]; // todo: Remove this solution when JavaComponentAccessibility is removed
         if ([nsRole isEqualToString:NSAccessibilityScrollBarRole]) {
             jobject elementAxContext = [[aElement javaBase] axContextWithEnv:env];
             if (isVertical(env, elementAxContext, fComponent)) {
@@ -66,7 +67,7 @@
     id aElement;
     NSEnumerator *enumerator = [children objectEnumerator];
     while ((aElement = [enumerator nextObject])) {
-        NSString *nsRole = [aElement respondsToSelector:@selector(accessibilityRole)] ? [aElement accessibilityRole] : [aElement accessibilityRoleAttribute]; // todo: Remove this solution when JavaComponentAccessibility is removed
+        NSString *nsRole = [aElement isKindOfClass:[JavaComponentAccessibility class]] ? [aElement accessibilityRoleAttribute] : [aElement accessibilityRole]; // todo: Remove this solution when JavaComponentAccessibility is removed
         if ([nsRole isEqualToString:NSAccessibilityScrollBarRole]) {
             jobject elementAxContext = [[aElement javaBase] axContextWithEnv:env];
             if (isHorizontal(env, elementAxContext, fComponent)) {

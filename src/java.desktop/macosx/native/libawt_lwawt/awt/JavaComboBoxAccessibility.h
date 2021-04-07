@@ -6,7 +6,7 @@
 
 @property(readonly) NSString *accessibleSelectedText;
 
-- (void)accessibleShowMinu;
+- (void)accessibleShowMenu;
 
 @end
 
