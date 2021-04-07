@@ -458,6 +458,7 @@ static NSColor * customBg = nil;
 }
 
 - (void) setJavaImage:(NSImage *)theImage {
+
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         [fMenuItem setImage:theImage];
         if ([fMenuItem.view isKindOfClass:CustomMenuItemView.class]) {

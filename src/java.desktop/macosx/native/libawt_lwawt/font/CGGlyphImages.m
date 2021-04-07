@@ -209,11 +209,11 @@ static inline UInt8* getReverseGammaLut() {
         if (pGammaEnv != NULL) {
             reverseGamma = atol(pGammaEnv);
         }
-        
+
         if (reverseGamma < 100 || reverseGamma > 250) {
             reverseGamma = 180;
         }
-        
+
         gamma = 100.0 / reverseGamma;
         for (i = 0; i < 256; i++) {
             double x = ((double)i) / 255.0;
@@ -227,7 +227,7 @@ static inline void
 CGGI_CopyARGBPixelToRGBPixel(const UInt32 p, UInt8 *dst)
 {
     UInt8* lut = getReverseGammaLut();
-    
+
     *(dst + 0) = lut[0xFF - (p >> 16 & 0xFF)];  // red
     *(dst + 1) = lut[0xFF - (p >>  8 & 0xFF)];  // green
     *(dst + 2) = lut[0xFF - (p & 0xFF)];        // blue
@@ -245,7 +245,7 @@ CGGI_CopyImageFromCanvasToRGBInfo(CGGI_GlyphCanvas *canvas, GlyphInfo *info)
     size_t height = info->height;
 
     size_t y;
-    
+
     // fill empty glyph image with black-on-white glyph
     for (y = 0; y < height; y++) {
         size_t destRow = y * destRowWidth * 3;
@@ -549,7 +549,7 @@ CGGI_InitCanvas(CGGI_GlyphCanvas *canvas,
 
     // set foreground color
     CGContextSetRGBFillColor(canvas->context, 0.0f, 0.0f, 0.0f, 1.0f);
-    
+
     CGContextSetFontSize(canvas->context, 1);
     CGContextSaveGState(canvas->context);
 
