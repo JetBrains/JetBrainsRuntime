@@ -939,10 +939,10 @@ static void RaiseMustOverrideException(NSString *method)
             NSArray *selectedChildrenOfMenu =
                 [self accessibilitySelectedChildren];
             JavaComponentAccessibility *selectedMenuItem =
-                    [selectedChildrenOfMenu objectAtIndex:0];
+                [selectedChildrenOfMenu objectAtIndex:0];
             if (selectedMenuItem != nil) {
                 jobject itemValue =
-                    JNFCallStaticObjectMethod( env,
+                        JNFCallStaticObjectMethod( env,
                                                    sjm_getAccessibleName,
                                                    selectedMenuItem->fAccessible,
                                                    selectedMenuItem->fComponent ); // AWT_THREADING Safe (AWTRunLoop)
