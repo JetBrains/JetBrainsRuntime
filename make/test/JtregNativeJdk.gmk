@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -76,11 +76,13 @@ else
 endif
 
 ifeq ($(OPENJDK_TARGET_OS), macosx)
-  BUILD_JDK_JTREG_LIBRARIES_CFLAGS_libTestMainKeyWindow := -ObjC
   BUILD_JDK_JTREG_LIBRARIES_LIBS_libTestMainKeyWindow := \
       -framework Cocoa -framework JavaNativeFoundation
+  BUILD_JDK_JTREG_LIBRARIES_LIBS_libTestDynamicStore := \
+      -framework Cocoa -framework SystemConfiguration
 else
-  BUILD_JDK_JTREG_EXCLUDE += libTestMainKeyWindow.c
+  BUILD_JDK_JTREG_EXCLUDE += libTestMainKeyWindow.m
+  BUILD_JDK_JTREG_EXCLUDE += libTestDynamicStore.m
 endif
 
 $(eval $(call SetupTestFilesCompilation, BUILD_JDK_JTREG_LIBRARIES, \
