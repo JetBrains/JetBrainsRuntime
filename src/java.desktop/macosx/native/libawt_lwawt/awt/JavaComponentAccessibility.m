@@ -1185,12 +1185,12 @@ static NSObject *sAttributeNamesLOCK = nil;
             // handle case of AXMenuItem
             // need to ask menu what is selected
             NSArray *selectedChildrenOfMenu =
-            	[self accessibilitySelectedChildrenAttribute];
+                [self accessibilitySelectedChildrenAttribute];
             JavaComponentAccessibility *selectedMenuItem =
-            	[selectedChildrenOfMenu objectAtIndex:0];
+                [selectedChildrenOfMenu objectAtIndex:0];
             if (selectedMenuItem != nil) {
                 jobject itemValue =
-                	JNFCallStaticObjectMethod( env,
+                        JNFCallStaticObjectMethod( env,
                                                    sjm_getAccessibleName,
                                                    selectedMenuItem->fAccessible,
                                                    selectedMenuItem->fComponent ); // AWT_THREADING Safe (AWTRunLoop)
@@ -1201,7 +1201,7 @@ static NSObject *sAttributeNamesLOCK = nil;
                 (*env)->DeleteLocalRef(env, itemValue);
                 return itemString;
             } else {
-            	return nil;
+                return nil;
             }
         }
     }

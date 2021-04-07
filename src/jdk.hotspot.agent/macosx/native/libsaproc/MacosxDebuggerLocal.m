@@ -393,7 +393,7 @@ Java_sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal_readBytesFromProcess0(
   // Try to read each of the pages.
   for (i = 0; i < pageCount; i++) {
     result = vm_read(gTask, alignedAddress + i*vm_page_size, vm_page_size,
-		     &pages[i], &byteCount);
+                     &pages[i], &byteCount);
     mapped[i] = (result == KERN_SUCCESS);
     // assume all failures are unmapped pages
   }

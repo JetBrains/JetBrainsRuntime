@@ -355,9 +355,9 @@ static void nsPrintInfoToJavaPrinterJob(JNIEnv* env, NSPrintInfo* src, jobject d
                 jLastPage = [nsLastPage integerValue] - 1;
             }
             isRangeSet = true;
-        } 
-        JNFCallVoidMethod(env, dstPrinterJob, jm_setPageRangeAttribute, 
-                          jFirstPage, jLastPage, isRangeSet); 
+        }
+        JNFCallVoidMethod(env, dstPrinterJob, jm_setPageRangeAttribute,
+                          jFirstPage, jLastPage, isRangeSet);
             // AWT_THREADING Safe (known object)
 
     }
@@ -412,7 +412,7 @@ static void javaPrinterJobToNSPrintInfo(JNIEnv* env, jobject srcPrinterJob, jobj
     [printingDictionary setObject:[NSNumber numberWithInteger:fromPage] forKey:NSPrintFirstPage];
     [printingDictionary setObject:[NSNumber numberWithInteger:toPage] forKey:NSPrintLastPage];
 
-    jobject page = JNFCallObjectMethod(env, srcPrinterJob, jm_getPageFormat); 
+    jobject page = JNFCallObjectMethod(env, srcPrinterJob, jm_getPageFormat);
     if (page != NULL) {
         javaPageFormatToNSPrintInfo(env, NULL, page, dst);
     }
