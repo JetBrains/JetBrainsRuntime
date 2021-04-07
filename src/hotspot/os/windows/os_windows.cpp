@@ -1354,6 +1354,7 @@ static int _print_module(const char* fname, address base_address,
   return 0;
 }
 
+static errno_t convert_to_unicode(char const* char_path, LPWSTR* unicode_path);
 // Loads .dll/.so and
 // in case of error it checks if .dll/.so was built for the
 // same architecture as Hotspot is running on
