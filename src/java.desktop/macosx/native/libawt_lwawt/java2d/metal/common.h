@@ -26,7 +26,6 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <stdint.h>
 #include <simd/simd.h>
 
 #define PGRAM_VERTEX_COUNT 6
