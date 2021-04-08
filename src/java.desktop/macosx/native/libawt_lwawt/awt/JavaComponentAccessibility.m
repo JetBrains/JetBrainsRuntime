@@ -505,6 +505,7 @@ static void RaiseMustOverrideException(NSString *method)
         } else {
             AWTView *view = fView;
             jobject jax = (*env)->CallStaticObjectMethod(env, sjc_CAccessible, sjm_getSwingAccessible, fAccessible);
+            CHECK_EXCEPTION();
 
             if ((*env)->IsInstanceOf(env, jax, sjc_Window)) {
                 // In this case jparent is an owner toplevel and we should retrieve its own view
@@ -911,6 +912,7 @@ static void RaiseMustOverrideException(NSString *method)
 
     if (accessibilityFocused) {
         (*env)->CallStaticVoidMethod(env, sjc_CAccessibility, jm_requestFocus, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+        CHECK_EXCEPTION();
     }
 }
 

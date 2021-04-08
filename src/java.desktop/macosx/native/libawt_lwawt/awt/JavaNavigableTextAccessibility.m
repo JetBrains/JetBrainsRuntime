@@ -139,7 +139,6 @@ static jmethodID sjm_getAccessibleEditableText = NULL;
 
     DECLARE_STATIC_METHOD_RETURN(jm_getTextRange, sjc_CAccessibleText, "getTextRange",
                     "(Ljavax/accessibility/AccessibleEditableText;IILjava/awt/Component;)Ljava/lang/String;", nil);
-    CHECK_EXCEPTION();
     jobject jrange = (*env)->CallStaticObjectMethod(env, sjc_CAccessibleText, jm_getTextRange,
                        axEditableText, 0, getAxTextCharCount(env, axEditableText, fComponent), fComponent);
     CHECK_EXCEPTION();
