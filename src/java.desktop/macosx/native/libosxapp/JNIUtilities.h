@@ -206,4 +206,48 @@
        return y; \
     };
 
+/* Create a pool and initiate a try block to catch any exception */
+#define JNI_COCOA_ENTER(env) \
+ NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init]; \
+ @try {
+
+/* Don't allow NSExceptions to escape to Java.
+ * If there is a Java exception that has been thrown that should escape.
+ * And ensure we drain the auto-release pool.
+ */
+#define JNI_COCOA_EXIT(env) \
+ } \
+ @catch (NSException *e) { \
+     NSLog(@"%@", [e callStackSymbols]); \
+ } \
+ @finally { \
+    [pool drain]; \
+ };
+
+/* Same as above but adds a clean up action.
+ * Requires that whatever is being cleaned up is in scope.
+ */
+#define JNI_COCOA_EXIT_WITH_ACTION(env, action) \
+ } \
+ @catch (NSException *e) { \
+     { action; }; \
+     NSLog(@"%@", [e callStackSymbols]); \
+ } \
+ @finally { \
+    [pool drain]; \
+ };
+
+/* Initiate a try block to catch any exception */
+#define JNI_COCOA_DURING(env) \
+ @try {
+
+/* Don't allow NSExceptions to escape to Java.
+ * If there is a Java exception that has been thrown that should escape.
+ */
+#define JNI_COCOA_HANDLE(env) \
+ } \
+ @catch (NSException *e) { \
+     NSLog(@"%@", [e callStackSymbols]); \
+ };
+
 #endif /* __JNIUTILITIES_H */

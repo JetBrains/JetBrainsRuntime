@@ -23,6 +23,8 @@
  * questions.
  */
 
+#import "JNIUtilities.h"
+
 #import <AppKit/AppKit.h>
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
@@ -414,7 +416,7 @@ Java_sun_lwawt_macosx_CMenuBar_nativeCreateMenuBar
     (JNIEnv *env, jobject peer)
 {
     __block CMenuBar *aCMenuBar = nil;
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
 
     jobject cPeerObjGlobal = (*env)->NewGlobalRef(env, peer);
 
@@ -427,7 +429,7 @@ Java_sun_lwawt_macosx_CMenuBar_nativeCreateMenuBar
         return 0L;
     }
 
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 
     if (!sUseSingleMenuBarCalculated) {
         NSString * sval = [PropertiesUtilities javaSystemPropertyForKey:@"mac.system.menu.singleton" withEnv:env];
@@ -448,10 +450,10 @@ Java_sun_lwawt_macosx_CMenuBar_nativeAddAtIndex
     (JNIEnv *env, jobject peer,
      jlong menuBarObject, jlong menuObject, jint index)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     // Remove the specified item.
     [((CMenuBar *) jlong_to_ptr(menuBarObject)) javaAddMenu:(CMenu *) jlong_to_ptr(menuObject) atIndex:index];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -463,10 +465,10 @@ JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_CMenuBar_nativeDelMenu
     (JNIEnv *env, jobject peer, jlong menuBarObject, jint index)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     // Remove the specified item.
     [((CMenuBar *) jlong_to_ptr(menuBarObject)) javaDeleteMenu: index];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -478,8 +480,8 @@ JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_CMenuBar_nativeSetHelpMenu
     (JNIEnv *env, jobject peer, jlong menuBarObject, jlong menuObject)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     // Remove the specified item.
     [((CMenuBar *) jlong_to_ptr(menuBarObject)) javaSetHelpMenu: ((CMenu *)jlong_to_ptr(menuObject))];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }

@@ -151,7 +151,7 @@ static CGDisplayModeRef getBestModeForParameters(CFArrayRef allModes, int w, int
 static jobject createJavaDisplayMode(CGDisplayModeRef mode, JNIEnv *env) {
     jobject ret = NULL;
     jint h = DEFAULT_DEVICE_HEIGHT, w = DEFAULT_DEVICE_WIDTH, bpp = 0, refrate = 0;
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     if (mode) {
         CFStringRef currentBPP = CGDisplayModeCopyPixelEncoding(mode);
         bpp = getBPPFromModeString(currentBPP);
@@ -166,7 +166,7 @@ static jobject createJavaDisplayMode(CGDisplayModeRef mode, JNIEnv *env) {
     DECLARE_METHOD_RETURN(jc_DisplayMode_ctor, jc_DisplayMode, "<init>", "(IIIIZ)V", ret);
     ret = (*env)->NewObject(env, jc_DisplayMode, jc_DisplayMode_ctor, w, h, bpp, refrate, (jboolean)isDisplayModeDefault);
     CHECK_EXCEPTION();
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
     return ret;
 }
 
@@ -236,7 +236,7 @@ Java_sun_awt_CGraphicsDevice_nativeGetScreenInsets
     jobject ret = NULL;
     __block NSRect frame = NSZeroRect;
     __block NSRect visibleFrame = NSZeroRect;
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         NSArray *screens = [NSScreen screens];
@@ -260,7 +260,7 @@ JNF_COCOA_ENTER(env);
     DECLARE_METHOD_RETURN(jc_Insets_ctor, jc_Insets, "<init>", "(IIII)V", ret);
     ret = (*env)->NewObject(env, jc_Insets, jc_Insets_ctor, top, left, bottom, right);
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 
     return ret;
 }
@@ -274,7 +274,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_CGraphicsDevice_nativeSetDisplayMode
 (JNIEnv *env, jclass class, jint displayID, jint w, jint h, jint bpp, jint refrate)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     CFArrayRef allModes = getAllValidDisplayModes(displayID);
     CGDisplayModeRef closestMatch = getBestModeForParameters(allModes, (int)w, (int)h, (int)bpp, (int)refrate);
 
@@ -291,14 +291,14 @@ Java_sun_awt_CGraphicsDevice_nativeSetDisplayMode
             CGDisplayModeRelease(closestMatch);
         }];
     } else {
-        [JNFException raise:env as:kIllegalArgumentException reason:"Invalid display mode"];
+        JNU_ThrowIllegalArgumentException(env, "Invalid display mode");
     }
 
     if (retCode != kCGErrorSuccess){
-        [JNFException raise:env as:kIllegalArgumentException reason:"Unable to set display mode!"];
+        JNU_ThrowIllegalArgumentException(env, "Unable to set display mode!");
     }
     CFRelease(allModes);
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 /*
  * Class:     sun_awt_CGraphicsDevice
@@ -327,7 +327,7 @@ Java_sun_awt_CGraphicsDevice_nativeGetDisplayModes
 (JNIEnv *env, jclass class, jint displayID)
 {
     jobjectArray jreturnArray = NULL;
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     CFArrayRef allModes = getAllValidDisplayModes(displayID);
 
     CFIndex numModes = allModes ? CFArrayGetCount(allModes): 0;
@@ -356,7 +356,7 @@ Java_sun_awt_CGraphicsDevice_nativeGetDisplayModes
     if (allModes) {
         CFRelease(allModes);
     }
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 
     return jreturnArray;
 }
@@ -372,7 +372,7 @@ Java_sun_awt_CGraphicsDevice_nativeGetScaleFactor
 {
     __block jdouble ret = 1.0f;
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         NSArray *screens = [NSScreen screens];
@@ -388,6 +388,6 @@ JNF_COCOA_ENTER(env);
         }
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
     return ret;
 }
