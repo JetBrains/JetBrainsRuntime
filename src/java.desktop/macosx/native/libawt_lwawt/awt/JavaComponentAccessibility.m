@@ -604,6 +604,7 @@ static NSObject *sAttributeNamesLOCK = nil;
         } else {
             AWTView *view = fView;
             jobject jax = (*env)->CallStaticObjectMethod(env, sjc_CAccessible, sjm_getSwingAccessible, fAccessible);
+            CHECK_EXCEPTION();
 
             if ((*env)->IsInstanceOf(env, jax, sjc_Window)) {
                 // In this case jparent is an owner toplevel and we should retrieve its own view
@@ -890,6 +891,7 @@ static NSObject *sAttributeNamesLOCK = nil;
     if ([(NSNumber*)value boolValue])
     {
         (*env)->CallStaticVoidMethod(env, sjc_CAccessibility, jm_requestFocus, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+        CHECK_EXCEPTION();
     }
 }
 
