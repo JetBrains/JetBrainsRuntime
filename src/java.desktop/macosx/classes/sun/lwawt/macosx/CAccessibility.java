@@ -467,7 +467,7 @@ class CAccessibility implements PropertyChangeListener {
         }, c);
     }
 
-    public static void requestSelection(final Accessible a, final Component c) {
+    public static void requestSelection(final Accessible a, final Component c, final  boolean selected) {
         if (a == null) return;
         invokeLater(new Runnable() {
             public void run() {
@@ -480,7 +480,15 @@ class CAccessibility implements PropertyChangeListener {
                 if (pac == null) return;
                 AccessibleSelection as = pac.getAccessibleSelection();
                 if (as == null) return;
-                as.addAccessibleSelection(i);
+                if (parent instanceof JList) {
+                    ((JList) parent).setSelectedIndex(i);
+                    return;
+                }
+                if (selected) {
+                    as.addAccessibleSelection(i);
+                } else {
+                    as.removeAccessibleSelection(i);
+                }
             }
         }, c);
     }

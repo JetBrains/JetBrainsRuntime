@@ -785,7 +785,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 - (id)getAxData:(JNIEnv*)env
 {
     jobject jcomponent = [self awtComponent:env];
-    id ax = [[[JavaComponentAccessibility alloc] initWithParent:self withEnv:env withAccessible:jcomponent withIndex:-1 withView:self withJavaRole:nil] autorelease];
+    id ax = [[[[JavaComponentAccessibility alloc] initWithParent:self withEnv:env withAccessible:jcomponent withIndex:-1 withView:self withJavaRole:nil] platformAxElement] autorelease];
     (*env)->DeleteLocalRef(env, jcomponent);
     return ax;
 }
@@ -818,9 +818,9 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
         return [super accessibilityAttributeValue:attribute];
     }
 }
-- (BOOL)accessibilityIsIgnored
-{
-    return YES;
+
+- (BOOL)isAccessibilityElement {
+    return NO;
 }
 
 - (id)accessibilityHitTest:(NSPoint)point
@@ -830,7 +830,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
     (*env)->PushLocalFrame(env, 4);
 
-    id result = [[self getAxData:env] accessibilityHitTest:point withEnv:env];
+    id result = [[self getAxData:env] accessibilityHitTest:point];
 
     (*env)->PopLocalFrame(env, NULL);
 

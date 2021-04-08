@@ -29,7 +29,7 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
 - (jobject)tabGroup {
     if (fTabGroupAxContext == NULL) {
         JNIEnv* env = [ThreadUtilities getJNIEnv];
-        jobject tabGroupAxContext = [(JavaBaseAccessibility *)[self parent] axContextWithEnv:env];
+        jobject tabGroupAxContext = [(JavaComponentAccessibility *)[self parent] axContextWithEnv:env];
         fTabGroupAxContext = JNFNewWeakGlobalRef(env, tabGroupAxContext);
         (*env)->DeleteLocalRef(env, tabGroupAxContext);
     }
@@ -65,11 +65,11 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
 }
 
 - (id)accessibilityValue {
-    return [(JavaTabButtonAccessibility *)[self javaBase] accessibleValue];
+    return [(JavaTabButtonAccessibility *) [self javaComponent] accessibleValue];
 }
 
 - (BOOL)accessibilityPerformPress {
-    [(JavaTabButtonAccessibility *)[self javaBase] performPressAction];
+    [(JavaTabButtonAccessibility *) [self javaComponent] performPressAction];
     return YES;
 }
 

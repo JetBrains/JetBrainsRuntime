@@ -1,33 +1,4 @@
-/*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
- */
-
-// External Java Accessibility links:
-//
-// <https://docs.oracle.com/javase/8/docs/technotes/guides/access/index.html>
-// <http://www-106.ibm.com/developerworks/library/j-access/?n-j-10172>
-// <http://archives.java.sun.com/archives/java-access.html> (Sun's mailing list for Java accessibility)
+// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
 #import "JavaComponentAccessibility.h"
 
@@ -42,18 +13,23 @@
 
 #import "JavaAccessibilityAction.h"
 #import "JavaAccessibilityUtilities.h"
+#import "JavaListAccessibility.h"
+#import "JavaTableAccessibility.h"
+#import "JavaListRowAccessibility.h"
+#import "JavaTableRowAccessibility.h"
+#import "JavaCellAccessibility.h"
+#import "JavaOutlineAccessibility.h"
+#import "JavaOutlineRowAccessibility.h"
 #import "JavaStaticTextAccessibility.h"
+#import "JavaNavigableTextAccessibility.h"
+#import "JavaScrollAreaAccessibility.h"
+#import "JavaTabGroupAccessibility.h"
+#import "JavaComboBoxAccessibility.h"
 #import "ThreadUtilities.h"
 #import "AWTView.h"
 
-
-// these constants are duplicated in CAccessibility.java
-#define JAVA_AX_ALL_CHILDREN (-1)
-#define JAVA_AX_SELECTED_CHILDREN (-2)
-#define JAVA_AX_VISIBLE_CHILDREN (-3)
-// If the value is >=0, it's an index
-
 static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;");
+static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRolesRecursive, sjc_CAccessibility, "getChildrenAndRolesRecursive", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZI)[Ljava/lang/Object;");
 static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleComponent, sjc_CAccessibility, "getAccessibleComponent", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleComponent;");
 static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleValue, sjc_CAccessibility, "getAccessibleValue", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleValue;");
 static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;");
@@ -66,362 +42,594 @@ static JNF_CLASS_CACHE(sjc_CAccessible, "sun/lwawt/macosx/CAccessible");
 static JNF_MEMBER_CACHE(jf_ptr, sjc_CAccessible, "ptr", "J");
 static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessible", "(Ljavax/accessibility/Accessible;)Lsun/lwawt/macosx/CAccessible;");
 
-// sAttributeNamesForRoleCache holds the names of the attributes to which each java
-// AccessibleRole responds (see AccessibleRole.java).
-// This cache is queried before attempting to access a given attribute for a particular role.
-static NSMutableDictionary *sAttributeNamesForRoleCache = nil;
-static NSObject *sAttributeNamesLOCK = nil;
+static JNF_MEMBER_CACHE(jm_getAccessibleContext, sjc_CAccessible, "getAccessibleContext", "()Ljavax/accessibility/AccessibleContext;");
+
+static jobject sAccessibilityClass = NULL;
+
+static void RaiseMustOverrideException(NSString *method)
+{
+    @throw [NSException exceptionWithName:NSInternalInconsistencyException
+                                   reason:[NSString stringWithFormat:@"You must override %@ in a subclass", method]
+                                 userInfo:nil];
+};
 
 @implementation JavaComponentAccessibility
 
-- (NSString *)description
+- (NSString *)getPlatformAxElementClassName
 {
-    return [NSString stringWithFormat:@"%@(title:'%@', desc:'%@', value:'%@')", [self accessibilityRoleAttribute],
-        [self accessibilityTitleAttribute], [self accessibilityRoleDescriptionAttribute], [self accessibilityValueAttribute]];
+    return @"PlatformAxElement";
+}
+
+@synthesize platformAxElement;
+
+- (id)init
+{
+    self = [super init];
+    if (self) {
+        NSString *className = [self getPlatformAxElementClassName];
+        self.platformAxElement = className != NULL ? [[NSClassFromString(className) alloc] init] : self; // defaults to [self]
+        self.platformAxElement.javaComponent = self;
+    }
+    return self;
 }
 
 - (id)initWithParent:(NSObject *)parent withEnv:(JNIEnv *)env withAccessible:(jobject)accessible withIndex:(jint)index withView:(NSView *)view withJavaRole:(NSString *)javaRole
 {
-    self = [super initWithParent:parent withEnv:env withAccessible:accessible withIndex:index withView:view withJavaRole:javaRole];
-    if (self)
-    {
+    self = [self init];
+    if (self) {
+        fParent = [parent retain];
+        fView = [view retain];
+        fJavaRole = [javaRole retain];
+
+            fAccessible = (*env)->NewWeakGlobalRef(env, accessible);
+            (*env)->ExceptionClear(env); // in case of OOME
+            jobject jcomponent = [(AWTView *)fView awtComponent:env];
+            fComponent = (*env)->NewWeakGlobalRef(env, jcomponent);
+            (*env)->DeleteLocalRef(env, jcomponent);
+
+        fIndex = index;
         fActions = nil;
         fActionsLOCK = [[NSObject alloc] init];
     }
     return self;
 }
 
+- (void)unregisterFromCocoaAXSystem
+{
+    AWT_ASSERT_APPKIT_THREAD;
+    static dispatch_once_t initialize_unregisterUniqueId_once;
+    static void (*unregisterUniqueId)(id);
+    dispatch_once(&initialize_unregisterUniqueId_once, ^{
+        void *jrsFwk = dlopen("/System/Library/Frameworks/JavaVM.framework/Frameworks/JavaRuntimeSupport.framework/JavaRuntimeSupport", RTLD_LAZY | RTLD_LOCAL);
+        unregisterUniqueId = dlsym(jrsFwk, "JRSAccessibilityUnregisterUniqueIdForUIElement");
+    });
+    if (unregisterUniqueId) unregisterUniqueId(self);
+}
+
 - (void)dealloc
 {
-    [fActions release];
-    fActions = nil;
+    [self unregisterFromCocoaAXSystem];
 
-    [fActionsLOCK release];
-    fActionsLOCK = nil;
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+
+    (*env)->DeleteWeakGlobalRef(env, fAccessible);
+    fAccessible = NULL;
+
+    (*env)->DeleteWeakGlobalRef(env, fComponent);
+    fComponent = NULL;
+
+    [fParent release];
+    fParent = nil;
+
+    [fNSRole release];
+    fNSRole = nil;
+
+    [fJavaRole release];
+    fJavaRole = nil;
+
+    [fView release];
+    fView = nil;
+
+    if (self.platformAxElement != self) {
+        [self.platformAxElement dealloc];
+    }
 
     [super dealloc];
 }
 
+- (void)postValueChanged
+{
+    AWT_ASSERT_APPKIT_THREAD;
+    NSAccessibilityPostNotification(self.platformAxElement, NSAccessibilityValueChangedNotification);
+}
+
+- (void)postSelectedTextChanged
+{
+    AWT_ASSERT_APPKIT_THREAD;
+    NSAccessibilityPostNotification(self.platformAxElement, NSAccessibilitySelectedTextChangedNotification);
+}
+
+- (void)postSelectionChanged
+{
+    AWT_ASSERT_APPKIT_THREAD;
+    NSAccessibilityPostNotification(self.platformAxElement, NSAccessibilitySelectedChildrenChangedNotification);
+}
+
+- (void)postMenuOpened
+{
+    AWT_ASSERT_APPKIT_THREAD;
+    NSAccessibilityPostNotification(self.platformAxElement, (NSString *)kAXMenuOpenedNotification);
+}
+
+- (void)postMenuClosed
+{
+    AWT_ASSERT_APPKIT_THREAD;
+    NSAccessibilityPostNotification(self.platformAxElement, (NSString *)kAXMenuClosedNotification);
+}
+
+- (void)postMenuItemSelected
+{
+    AWT_ASSERT_APPKIT_THREAD;
+    NSAccessibilityPostNotification(self.platformAxElement, (NSString *)kAXMenuItemSelectedNotification);
+}
+
+- (BOOL)isEqual:(id)anObject
+{
+    if (![anObject isKindOfClass:[self class]]) return NO;
+    JavaComponentAccessibility *accessibility = (JavaComponentAccessibility *)anObject;
+
+    JNIEnv* env = [ThreadUtilities getJNIEnv];
+    return (*env)->IsSameObject(env, accessibility->fAccessible, fAccessible);
+}
+
+- (BOOL)isAccessibleWithEnv:(JNIEnv *)env forAccessible:(jobject)accessible
+{
+    return (*env)->IsSameObject(env, fAccessible, accessible);
+}
+
 + (void)initialize
 {
-    if (sAttributeNamesForRoleCache == nil) {
-        sAttributeNamesLOCK = [[NSObject alloc] init];
-        sAttributeNamesForRoleCache = [[NSMutableDictionary alloc] initWithCapacity:60];
+    if (sRoles == nil) {
+        initializeRoles();
+    }
+    if (sActions == nil) {
+        initializeActions();
+    }
+
+    if (sAccessibilityClass == NULL) {
+        JNF_STATIC_MEMBER_CACHE(jm_getAccessibility, sjc_CAccessibility, "getAccessibility", "([Ljava/lang/String;)Lsun/lwawt/macosx/CAccessibility;");
+
+#ifdef JAVA_AX_NO_IGNORES
+        NSArray *ignoredKeys = [NSArray array];
+#else
+        NSArray *ignoredKeys = [sRoles allKeysForObject:JavaAccessibilityIgnore];
+#endif
+        jobjectArray result = NULL;
+        jsize count = [ignoredKeys count];
+
+        JNIEnv *env = [ThreadUtilities getJNIEnv];
+
+        static JNF_CLASS_CACHE(jc_String, "java/lang/String");
+        result = JNFNewObjectArray(env, &jc_String, count);
+        if (!result) {
+            NSLog(@"In %s, can't create Java array of String objects", __FUNCTION__);
+            return;
+        }
+
+        NSInteger i;
+        for (i = 0; i < count; i++) {
+            jstring jString = JNFNSToJavaString(env, [ignoredKeys objectAtIndex:i]);
+            (*env)->SetObjectArrayElement(env, result, i, jString);
+            (*env)->DeleteLocalRef(env, jString);
+        }
+
+        sAccessibilityClass = JNFCallStaticObjectMethod(env, jm_getAccessibility, result); // AWT_THREADING Safe (known object)
     }
 }
 
-- (NSArray *)initializeAttributeNamesWithEnv:(JNIEnv *)env
++ (void)postFocusChanged:(id)message
 {
-    static JNF_STATIC_MEMBER_CACHE(jm_getInitialAttributeStates, sjc_CAccessibility, "getInitialAttributeStates", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)[Z");
+    AWT_ASSERT_APPKIT_THREAD;
+    NSAccessibilityPostNotification([NSApp accessibilityFocusedUIElement], NSAccessibilityFocusedUIElementChangedNotification);
+}
 
-    NSMutableArray *attributeNames = [NSMutableArray arrayWithCapacity:20];
-    [attributeNames retain];
-
-    // all elements respond to parent, role, role description, window, topLevelUIElement, help
-    [attributeNames addObject:NSAccessibilityParentAttribute];
-    [attributeNames addObject:NSAccessibilityRoleAttribute];
-    [attributeNames addObject:NSAccessibilityRoleDescriptionAttribute];
-    [attributeNames addObject:NSAccessibilityHelpAttribute];
-
-    // cmcnote: AXMenu usually doesn't respond to window / topLevelUIElement. But menus within a Java app's window
-    // probably should. Should we use some role other than AXMenu / AXMenuBar for Java menus?
-    [attributeNames addObject:NSAccessibilityWindowAttribute];
-    [attributeNames addObject:NSAccessibilityTopLevelUIElementAttribute];
-
-    // set accessible subrole
-    NSString *javaRole = [self javaRole];
-    if (javaRole != nil && [javaRole isEqualToString:@"passwordtext"]) {
-        //cmcnote: should turn this into a constant
-        [attributeNames addObject:NSAccessibilitySubroleAttribute];
++ (jobject) getCAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env {
+    if (JNFIsInstanceOf(env, jaccessible, &sjc_CAccessible)) {
+        return jaccessible;
+    } else if (JNFIsInstanceOf(env, jaccessible, &sjc_Accessible)) {
+        return JNFCallStaticObjectMethod(env, sjm_getCAccessible, jaccessible);
     }
+    return NULL;
+}
 
-    // Get all the other accessibility attributes states we need in one swell foop.
-    // javaRole isn't pulled in because we need protected access to AccessibleRole.key
-    jbooleanArray attributeStates = (jbooleanArray)JNFCallStaticObjectMethod(env, jm_getInitialAttributeStates, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
-    if (attributeStates == NULL) return nil;
-    jboolean *attributeStatesArray = (*env)->GetBooleanArrayElements(env, attributeStates, 0);
-    if (attributeStatesArray == NULL) {
-        // Note: Java will not be on the stack here so a java exception can't happen and no need to call ExceptionCheck.
-        NSLog(@"%s failed calling GetBooleanArrayElements", __FUNCTION__);
-        return nil;
++ (NSArray *) childrenOfParent:(JavaComponentAccessibility *)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored
+{
+    return [JavaComponentAccessibility childrenOfParent:parent withEnv:env withChildrenCode:whichChildren allowIgnored:allowIgnored recursive:NO];
+}
+
++ (NSArray *) childrenOfParent:(JavaComponentAccessibility *)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored recursive:(BOOL)recursive
+{
+    if ([parent isKindOfClass:[JavaTableAccessibility class]]) {
+        if (whichChildren == JAVA_AX_SELECTED_CHILDREN) {
+            NSArray<NSNumber *> *selectedRowIndexses = [(JavaTableAccessibility *)parent selectedAccessibleRows];
+            NSMutableArray *children = [NSMutableArray arrayWithCapacity:[selectedRowIndexses count]];
+            for (NSNumber *index in selectedRowIndexses) {
+                [children addObject:[[JavaTableRowAccessibility alloc] initWithParent:parent
+                                                                              withEnv:env
+                                                                       withAccessible:NULL
+                                                                            withIndex:index.unsignedIntValue
+                                                                             withView:[parent view]
+                                                                         withJavaRole:JavaAccessibilityIgnore].platformAxElement];
+            }
+            return [NSArray arrayWithArray:children];
+        } else if (whichChildren == JAVA_AX_ALL_CHILDREN) {
+            int rowCount = [(JavaTableAccessibility *)parent accessibleRowCount];
+            NSMutableArray *children = [NSMutableArray arrayWithCapacity:rowCount];
+            for (int i = 0; i < rowCount; i++) {
+                [children addObject:[[JavaTableRowAccessibility alloc] initWithParent:parent
+                                                                              withEnv:env
+                                                                       withAccessible:NULL
+                                                                            withIndex:i
+                                                                             withView:[parent view]
+                                                                         withJavaRole:JavaAccessibilityIgnore].platformAxElement];
+            }
+            return [NSArray arrayWithArray:children];
+        } else {
+            return [NSArray arrayWithObject:[[JavaTableRowAccessibility alloc] initWithParent:parent
+                                                                                      withEnv:env
+                                                                               withAccessible:NULL
+                                                                                    withIndex:whichChildren
+                                                                                     withView:[parent view]
+                                                                                 withJavaRole:JavaAccessibilityIgnore].platformAxElement];
+        }
     }
-
-    // if there's a component, it can be enabled and it has a size/position
-    if (attributeStatesArray[0]) {
-        [attributeNames addObject:NSAccessibilityEnabledAttribute];
-        [attributeNames addObject:NSAccessibilitySizeAttribute];
-        [attributeNames addObject:NSAccessibilityPositionAttribute];
-    }
-
-    // According to javadoc, a component that is focusable will return true from isFocusTraversable,
-    // as well as having AccessibleState.FOCUSABLE in it's AccessibleStateSet.
-    // We use the former heuristic; if the component focus-traversable, add a focused attribute
-    // See also: accessibilityIsFocusedAttributeSettable
-    if (attributeStatesArray[1])
-    {
-        [attributeNames addObject:NSAccessibilityFocusedAttribute];
-    }
-
-    // if it's a pagetab / radiobutton, it has a value but no min/max value.
-    BOOL hasAxValue = attributeStatesArray[2];
-    if ([javaRole isEqualToString:@"pagetab"] || [javaRole isEqualToString:@"radiobutton"]) {
-        [attributeNames addObject:NSAccessibilityValueAttribute];
+    if (parent->fAccessible == NULL) return nil;
+    jobjectArray jchildrenAndRoles = NULL;
+    if (recursive) {
+        jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRolesRecursive, parent->fAccessible, parent->fComponent, whichChildren, allowIgnored, 1);
     } else {
-        // if not a pagetab/radio button, and it has a value, it has a min/max/current value.
-        if (hasAxValue) {
-            // er, it has a min/max/current value if it's not a button.
-            // See AppKit/NSButtonCellAccessibility.m
-            if (![javaRole isEqualToString:@"pushbutton"]) {
-                //cmcnote: make this (and "passwordtext") constants instead of magic strings
-                [attributeNames addObject:NSAccessibilityMinValueAttribute];
-                [attributeNames addObject:NSAccessibilityMaxValueAttribute];
-                [attributeNames addObject:NSAccessibilityValueAttribute];
+        jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, whichChildren, allowIgnored); // AWT_THREADING Safe (AWTRunLoop)
+    }
+    if (jchildrenAndRoles == NULL) return nil;
+
+    jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
+    NSMutableArray *children = [NSMutableArray arrayWithCapacity:arrayLen/2]; //childrenAndRoles array contains two elements (child, role) for each child
+
+    NSInteger i;
+    NSUInteger childIndex = (whichChildren >= 0) ? whichChildren : 0; // if we're getting one particular child, make sure to set its index correctly
+    int inc = recursive ? 3 : 2;
+    for(i = 0; i < arrayLen; i += inc)
+    {
+        jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
+        jobject /* String */ jchildJavaRole = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+1);
+
+        NSString *childJavaRole = nil;
+        if (jchildJavaRole != NULL) {
+            jobject jkey = JNFGetObjectField(env, jchildJavaRole, sjf_key);
+            childJavaRole = JNFJavaToNSString(env, jkey);
+            (*env)->DeleteLocalRef(env, jkey);
+        }
+
+        JavaComponentAccessibility *child = [self createWithParent:parent accessible:jchild role:childJavaRole index:childIndex withEnv:env withView:parent->fView];
+        if ([child isKindOfClass:[JavaOutlineRowAccessibility class]]) {
+            jobject jLevel = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+2);
+            NSString *sLevel = nil;
+            if (jLevel != NULL) {
+                sLevel = JNFJavaToNSString(env, jLevel);
+                (*env)->DeleteLocalRef(env, jLevel);
+                int level = sLevel.intValue;
+                [(JavaOutlineRowAccessibility *)child setAccessibleLevel:level];
             }
         }
+
+        [children addObject:child.platformAxElement];
+
+        (*env)->DeleteLocalRef(env, jchild);
+        (*env)->DeleteLocalRef(env, jchildJavaRole);
+
+        childIndex++;
     }
+    (*env)->DeleteLocalRef(env, jchildrenAndRoles);
 
-    // does it have an orientation?
-    if (attributeStatesArray[4]) {
-        [attributeNames addObject:NSAccessibilityOrientationAttribute];
-    }
-
-    // name
-    if (attributeStatesArray[5]) {
-        [attributeNames addObject:NSAccessibilityTitleAttribute];
-    }
-
-    // children
-    if (attributeStatesArray[6]) {
-        [attributeNames addObject:NSAccessibilityChildrenAttribute];
-        if ([javaRole isEqualToString:@"list"]) {
-            [attributeNames addObject:NSAccessibilitySelectedChildrenAttribute];
-            [attributeNames addObject:NSAccessibilityVisibleChildrenAttribute];
-        }
-        // Just above, the below mentioned support has been added back in for lists.
-        // However, the following comments may still be useful for future fixes.
-//        [attributeNames addObject:NSAccessibilitySelectedChildrenAttribute];
-//        [attributeNames addObject:NSAccessibilityVisibleChildrenAttribute];
-                //According to AXRoles.txt:
-                //VisibleChildren: radio group, list, row, table row subrole
-                //SelectedChildren: list
-    }
-
-    // Cleanup
-    (*env)->ReleaseBooleanArrayElements(env, attributeStates, attributeStatesArray, JNI_ABORT);
-
-    return attributeNames;
+    return children;
 }
 
-- (NSDictionary *)getActions:(JNIEnv *)env
++ (JavaComponentAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view
 {
-    @synchronized(fActionsLOCK) {
-        if (fActions == nil) {
-            fActions = [[NSMutableDictionary alloc] initWithCapacity:3];
-            [self getActionsWithEnv:env];
+    return [JavaComponentAccessibility createWithAccessible:jaccessible withEnv:env withView:view isCurrent:NO];
+}
+
++ (JavaComponentAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isCurrent:(BOOL)current
+{
+    JavaComponentAccessibility *ret = nil;
+    jobject jcomponent = [(AWTView *)view awtComponent:env];
+    jint index = JNFCallStaticIntMethod(env, sjm_getAccessibleIndexInParent, jaccessible, jcomponent);
+    NSString *javaRole = getJavaRole(env, jaccessible, jcomponent);
+    if ((index >= 0) || current) {
+        ret = [self createWithAccessible:jaccessible role:javaRole index:index withEnv:env withView:view];
+    }
+    (*env)->DeleteLocalRef(env, jcomponent);
+    return ret;
+}
+
++ (JavaComponentAccessibility *) createWithAccessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view
+{
+    return [self createWithParent:nil accessible:jaccessible role:javaRole index:index withEnv:env withView:view];
+}
+
++ (JavaComponentAccessibility *) createWithParent:(JavaComponentAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view
+{
+    return [JavaComponentAccessibility createWithParent:parent accessible:jaccessible role:javaRole index:index withEnv:env withView:view isWrapped:NO];
+}
+
++ (JavaComponentAccessibility *) createWithParent:(JavaComponentAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped
+{
+    // try to fetch the jCAX from Java, and return autoreleased
+    jobject jCAX = [JavaComponentAccessibility getCAccessible:jaccessible withEnv:env];
+    if (jCAX == NULL) return nil;
+    if (!wrapped) { // If wrapped is true, then you don't need to get an existing instance, you need to create a new one
+    JavaComponentAccessibility *value = (JavaComponentAccessibility *) jlong_to_ptr(JNFGetLongField(env, jCAX, jf_ptr));
+    if (value != nil) {
+        (*env)->DeleteLocalRef(env, jCAX);
+        return [[value retain] autorelease];
+    }
+    }
+
+    // otherwise, create a new instance
+    JavaComponentAccessibility *newChild = nil;
+    if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityListRole]) {
+        newChild = [JavaListRowAccessibility alloc];
+    } else if ([parent isKindOfClass:[JavaOutlineAccessibility class]]) {
+        newChild = [JavaOutlineRowAccessibility alloc];
+    } else if ([javaRole isEqualToString:@"pagetablist"]) {
+        newChild = [JavaTabGroupAccessibility alloc];
+    } else if ([javaRole isEqualToString:@"scrollpane"]) {
+        newChild = [JavaScrollAreaAccessibility alloc];
+    } else {
+        NSString *nsRole = [sRoles objectForKey:javaRole];
+        if ([nsRole isEqualToString:NSAccessibilityStaticTextRole]) {
+            newChild = [JavaStaticTextAccessibility alloc];
+        } else if ([nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
+            newChild = [JavaNavigableTextAccessibility alloc];
+        } else if ([nsRole isEqualToString:NSAccessibilityListRole]) {
+            newChild = [JavaListAccessibility alloc];
+        } else if ([nsRole isEqualToString:NSAccessibilityTableRole]) {
+            newChild = [JavaTableAccessibility alloc];
+        } else if ([nsRole isEqualToString:NSAccessibilityOutlineRole]) {
+            newChild = [JavaOutlineAccessibility alloc];
+        } else if ([nsRole isEqualToString:NSAccessibilityComboBoxRole]) {
+            newChild = [JavaComboBoxAccessibility alloc];
+        } else {
+            newChild = [JavaComponentAccessibility alloc];
         }
     }
 
-    return fActions;
-}
+    // must init freshly -alloc'd object
+    [newChild initWithParent:parent withEnv:env withAccessible:jCAX withIndex:index withView:view withJavaRole:javaRole]; // must init new instance
 
-- (void)getActionsWithEnv:(JNIEnv *)env
-{
-    static JNF_STATIC_MEMBER_CACHE(jm_getAccessibleAction, sjc_CAccessibility, "getAccessibleAction", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleAction;");
-
-    // On MacOSX, text doesn't have actions, in java it does.
-    // cmcnote: NOT TRUE - Editable text has AXShowMenu. Textfields have AXConfirm. Static text has no actions.
-    jobject axAction = JNFCallStaticObjectMethod(env, jm_getAccessibleAction, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
-    if (axAction != NULL) {
-        //+++gdb NOTE: In MacOSX, there is just a single Action, not multiple. In java,
-        //  the first one seems to be the most basic, so this will be used.
-        // cmcnote: NOT TRUE - Sometimes there are multiple actions, eg sliders have AXDecrement AND AXIncrement (radr://3893192)
-        JavaAxAction *action = [[JavaAxAction alloc] initWithEnv:env withAccessibleAction:axAction withIndex:0 withComponent:fComponent];
-        [fActions setObject:action forKey:[self isMenu] ? NSAccessibilityPickAction : NSAccessibilityPressAction];
-        [action release];
-        (*env)->DeleteLocalRef(env, axAction);
+    // If creating a JPopupMenu (not a combobox popup list) need to fire menuOpened.
+    // This is the only way to know if the menu is opening; visible state change
+    // can't be caught because the listeners are not set up in time.
+    if ( [javaRole isEqualToString:@"popupmenu"] &&
+         ![[parent javaRole] isEqualToString:@"combobox"] ) {
+        [newChild postMenuOpened];
     }
+
+    // must hard retain pointer poked into Java object
+    [newChild retain];
+    JNFSetLongField(env, jCAX, jf_ptr, ptr_to_jlong(newChild));
+
+    // the link is removed in the wrapper
+    if (!wrapped) {
+        (*env)->DeleteLocalRef(env, jCAX);
+    }
+
+    // return autoreleased instance
+    return [newChild autorelease];
 }
 
-// the array of names for each role is cached in the sAttributeNamesForRoleCache
-- (NSArray *)accessibilityAttributeNames
+- (jobject)axContextWithEnv:(JNIEnv *)env
 {
-    JNIEnv* env = [ThreadUtilities getJNIEnv];
+    return getAxContext(env, fAccessible, fComponent);
+}
 
-    @synchronized(sAttributeNamesLOCK) {
-        NSString *javaRole = [self javaRole];
-        NSArray *names =
-            (NSArray *)[sAttributeNamesForRoleCache objectForKey:javaRole];
-        if (names == nil) {
-            names = [self initializeAttributeNamesWithEnv:env];
-#ifdef JAVA_AX_DEBUG
-            NSLog(@"Initializing: %s for %@: %@", __FUNCTION__, javaRole, names);
-#endif
-            [sAttributeNamesForRoleCache setObject:names forKey:javaRole];
-        }
-        // The above set of attributes is immutable per role, but some objects, if
-        // they are the child of a list, need to add the selected and index attributes.
-        if ([self accessibilityIsIgnored]) {
-            return names;
-        }
-        id myParent = [self accessibilityParentAttribute];
-        if ([myParent isKindOfClass:[JavaComponentAccessibility class]]) {
-            NSString *parentRole = [(JavaComponentAccessibility *)myParent javaRole];
-            if ([parentRole isEqualToString:@"list"]) {
-                NSMutableArray *moreNames =
-                    [[NSMutableArray alloc] initWithCapacity: [names count] + 2];
-                [moreNames addObjectsFromArray: names];
-                [moreNames addObject:NSAccessibilitySelectedAttribute];
-                [moreNames addObject:NSAccessibilityIndexAttribute];
-                return moreNames;
+- (id)parent
+{
+    static JNF_CLASS_CACHE(sjc_Window, "java/awt/Window");
+    static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleParent, sjc_CAccessibility, "getAccessibleParent", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/Accessible;");
+    static JNF_STATIC_MEMBER_CACHE(sjm_getSwingAccessible, sjc_CAccessible, "getSwingAccessible", "(Ljavax/accessibility/Accessible;)Ljavax/accessibility/Accessible;");
+
+    if(fParent == nil) {
+        JNIEnv* env = [ThreadUtilities getJNIEnv];
+
+        jobject jparent = JNFCallStaticObjectMethod(env, sjm_getAccessibleParent, fAccessible, fComponent);
+
+        if (jparent == NULL) {
+            fParent = fView;
+        } else {
+            AWTView *view = fView;
+            jobject jax = JNFCallStaticObjectMethod(env, sjm_getSwingAccessible, fAccessible);
+
+            if (JNFIsInstanceOf(env, jax, &sjc_Window)) {
+                // In this case jparent is an owner toplevel and we should retrieve its own view
+                view = [AWTView awtView:env ofAccessible:jparent];
             }
+            if (view != nil) {
+                fParent = [JavaComponentAccessibility createWithAccessible:jparent withEnv:env withView:view];
+            }
+            if (fParent == nil) {
+                fParent = fView;
+            }
+            (*env)->DeleteLocalRef(env, jparent);
+            (*env)->DeleteLocalRef(env, jax );
         }
-        // popupmenu's return values not selected children
-        if ( [javaRole isEqualToString:@"popupmenu"] &&
-             ![[[self parent] javaRole] isEqualToString:@"combobox"] ) {
-            NSMutableArray *moreNames =
-                [[NSMutableArray alloc] initWithCapacity: [names count] + 1];
-            [moreNames addObjectsFromArray: names];
-            [moreNames addObject:NSAccessibilityValueAttribute];
-            return moreNames;
-        }
-        return names;
-
-    }  // end @synchronized
-
-#ifdef JAVA_AX_DEBUG
-    NSLog(@"Warning in %s: could not find attribute names for role: %@", __FUNCTION__, [self javaRole]);
-#endif
-
-    return nil;
-}
-
-// -- accessibility attributes --
-
-- (BOOL)accessibilityShouldUseUniqueId {
-    return YES;
-}
-
-- (BOOL)accessibilitySupportsOverriddenAttributes {
-    return YES;
-}
-
-
-// generic getters & setters
-// cmcnote: it would make more sense if these generic getters/setters were in JavaAccessibilityUtilities
-- (id)accessibilityAttributeValue:(NSString *)attribute
-{
-    AWT_ASSERT_APPKIT_THREAD;
-
-    // turns attribute "NSAccessibilityEnabledAttribute" into getter "accessibilityEnabledAttribute",
-    // calls getter on self
-    return JavaAccessibilityAttributeValue(self, attribute);
-}
-
-- (BOOL)accessibilityIsAttributeSettable:(NSString *)attribute
-{
-    AWT_ASSERT_APPKIT_THREAD;
-
-    // turns attribute "NSAccessibilityParentAttribute" into selector "accessibilityIsParentAttributeSettable",
-    // calls selector on self
-    return JavaAccessibilityIsAttributeSettable(self, attribute);
-}
-
-- (void)accessibilitySetValue:(id)value forAttribute:(NSString *)attribute
-{
-    AWT_ASSERT_APPKIT_THREAD;
-
-    if ([self accessibilityIsAttributeSettable:attribute]) {
-        // turns attribute "NSAccessibilityFocusAttribute" into setter "accessibilitySetFocusAttribute",
-        // calls setter on self
-        JavaAccessibilitySetAttributeValue(self, attribute, value);
+        [fParent retain];
     }
+    return fParent;
 }
 
+- (NSView *)view
+{
+    return fView;
+}
 
-// specific attributes, in alphabetical order a la
-// http://developer.apple.com/documentation/Cocoa/Reference/ApplicationKit/ObjC_classic/Protocols/NSAccessibility.html
+- (NSWindow *)window
+{
+    return [[self view] window];
+}
 
-// Elements that current element contains (NSArray)
-- (NSArray *)accessibilityChildrenAttribute
+- (NSString *)javaRole
+{
+    if(fJavaRole == nil) {
+        JNIEnv* env = [ThreadUtilities getJNIEnv];
+        fJavaRole = getJavaRole(env, fAccessible, fComponent);
+        [fJavaRole retain];
+    }
+    return fJavaRole;
+}
+
+- (BOOL)isMenu
+{
+    id role = [self accessibleRole];
+    return [role isEqualToString:NSAccessibilityMenuBarRole] || [role isEqualToString:NSAccessibilityMenuRole] || [role isEqualToString:NSAccessibilityMenuItemRole];
+}
+
+- (BOOL)isSelected:(JNIEnv *)env
+{
+    if (fIndex == -1) {
+        return NO;
+    }
+
+    return isChildSelected(env, ((JavaComponentAccessibility *)[self parent])->fAccessible, fIndex, fComponent);
+}
+
+- (BOOL)isSelectable:(JNIEnv *)env
+{
+    jobject axContext = [self axContextWithEnv:env];
+    BOOL selectable = isSelectable(env, axContext, fComponent);
+    (*env)->DeleteLocalRef(env, axContext);
+    return selectable;
+}
+
+- (BOOL)isVisible:(JNIEnv *)env
+{
+    if (fIndex == -1) {
+        return NO;
+    }
+
+    jobject axContext = [self axContextWithEnv:env];
+    BOOL showing = isShowing(env, axContext, fComponent);
+    (*env)->DeleteLocalRef(env, axContext);
+    return showing;
+}
+
+- (NSSize)getSize
 {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
-    NSArray *children = [JavaComponentAccessibility childrenOfParent:self
-                                                    withEnv:env
-                                                    withChildrenCode:JAVA_AX_ALL_CHILDREN
-                                                    allowIgnored:NO];
+    jobject axComponent = JNFCallStaticObjectMethod(env, sjm_getAccessibleComponent, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    NSSize size = getAxComponentSize(env, axComponent, fComponent);
+    (*env)->DeleteLocalRef(env, axComponent);
 
-    NSArray *value = nil;
-    if ([children count] > 0) {
-        value = children;
+    return size;
+}
+
+- (NSRect)getBounds
+{
+    JNIEnv* env = [ThreadUtilities getJNIEnv];
+    jobject axComponent = JNFCallStaticObjectMethod(env, sjm_getAccessibleComponent, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+
+    // NSAccessibility wants the bottom left point of the object in
+    // bottom left based screen coords
+
+    // Get the java screen coords, and make a NSPoint of the bottom left of the AxComponent.
+    NSSize size = getAxComponentSize(env, axComponent, fComponent);
+    NSPoint point = getAxComponentLocationOnScreen(env, axComponent, fComponent);
+    (*env)->DeleteLocalRef(env, axComponent);
+
+    point.y += size.height;
+    // Now make it into Cocoa screen coords.
+    point.y = [[[[self view] window] screen] frame].size.height - point.y;
+
+    return NSMakeRect(point.x, point.y, size.width, size.height);
+}
+
+- (id)getFocusedElement
+{
+    static JNF_STATIC_MEMBER_CACHE(jm_getFocusOwner, sjc_CAccessibility, "getFocusOwner", "(Ljava/awt/Component;)Ljavax/accessibility/Accessible;");
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    id value = nil;
+
+    NSWindow* hostWindow = [[self->fView window] retain];
+    jobject focused = JNFCallStaticObjectMethod(env, jm_getFocusOwner, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    [hostWindow release];
+
+    if (focused != NULL) {
+        if (JNFIsInstanceOf(env, focused, &sjc_Accessible)) {
+            value = [JavaComponentAccessibility createWithAccessible:focused withEnv:env withView:fView];
+            value = ((JavaComponentAccessibility *)value).platformAxElement;
+        }
+        (*env)->DeleteLocalRef(env, focused);
     }
 
+    if (value == nil) {
+        value = self;
+    }
+#ifdef JAVA_AX_DEBUG
+    NSLog(@"%s: %@", __FUNCTION__, value);
+#endif
     return value;
 }
 
-- (BOOL)accessibilityIsChildrenAttributeSettable
-{
-    return NO;
+- (jobject)accessible {
+    return fAccessible;
 }
 
-- (NSUInteger)accessibilityIndexOfChild:(id)child
-{
-    // Only special-casing for Lists, for now. This allows lists to be accessible, fixing radr://3856139 "JLists are broken".
-    // Will probably want to special-case for Tables when we implement them (radr://3096643 "Accessibility: Table").
-    // In AppKit, NSMatrixAccessibility (which uses NSAccessibilityListRole), NSTableRowAccessibility, and NSTableViewAccessibility are the
-    // only ones that override the default implementation in NSAccessibility
-    if (![[self accessibilityRoleAttribute] isEqualToString:NSAccessibilityListRole]) {
-        return [super accessibilityIndexOfChild:child];
-    }
+- (jobject)component {
+    return fComponent;
+}
 
-    jint returnValue =
-        JNFCallStaticIntMethod( [ThreadUtilities getJNIEnv],
+-(jint)index {
+    return fIndex;
+}
+
+- (void)setParent:(id)javaComponentAccessibilityParent {
+    fParent = javaComponentAccessibilityParent;
+}
+
+- (NSString *)nsRole {
+    return fNSRole;
+}
+
+- (NSUInteger)accessibilityIndexOfChild:(id)child {
+
+    if ([child isKindOfClass:[PlatformAxElement class]]) {
+        child = [child javaComponent];
+    }
+    jint returnValue = JNFCallStaticIntMethod( [ThreadUtilities getJNIEnv],
                                 sjm_getAccessibleIndexInParent,
-                                ((JavaComponentAccessibility *)child)->fAccessible,
-                                ((JavaComponentAccessibility *)child)->fComponent );
+                                [child accessible],
+                                [child component]);
     return (returnValue == -1) ? NSNotFound : returnValue;
 }
 
-// Without this optimization accessibilityChildrenAttribute is called in order to get the entire array of children.
-- (NSArray *)accessibilityArrayAttributeValues:(NSString *)attribute index:(NSUInteger)index maxCount:(NSUInteger)maxCount {
-    if ( (maxCount == 1) && [attribute isEqualToString:NSAccessibilityChildrenAttribute]) {
-        // Children codes for ALL, SELECTED, VISIBLE are <0. If the code is >=0, we treat it as an index to a single child
-        NSArray *child = [JavaComponentAccessibility childrenOfParent:self withEnv:[ThreadUtilities getJNIEnv] withChildrenCode:(NSInteger)index allowIgnored:NO];
-        if ([child count] > 0) {
-            return child;
-        }
-    }
-    return [super accessibilityArrayAttributeValues:attribute index:index maxCount:maxCount];
+- (int)accessibleIndexOfParent {
+    return (int)JNFCallStaticIntMethod    ([ThreadUtilities getJNIEnv], sjm_getAccessibleIndexInParent, fAccessible, fComponent);
 }
 
-// Flag indicating enabled state of element (NSNumber)
-- (NSNumber *)accessibilityEnabledAttribute
-{
+- (BOOL)accessibleEnabled {
     static JNF_STATIC_MEMBER_CACHE(jm_isEnabled, sjc_CAccessibility, "isEnabled", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Z");
 
     JNIEnv* env = [ThreadUtilities getJNIEnv];
     NSNumber *value = [NSNumber numberWithBool:JNFCallStaticBooleanMethod(env, jm_isEnabled, fAccessible, fComponent)]; // AWT_THREADING Safe (AWTRunLoop)
     if (value == nil) {
         NSLog(@"WARNING: %s called on component that has no accessible component: %@", __FUNCTION__, self);
+        return NO;
     }
-    return value;
+    return [value boolValue];
 }
 
-- (BOOL)accessibilityIsEnabledAttributeSettable
-{
-    return NO;
-}
-
-// Flag indicating presence of keyboard focus (NSNumber)
-- (NSNumber *)accessibilityFocusedAttribute
-{
-    if ([self accessibilityIsFocusedAttributeSettable]) {
-        return [NSNumber numberWithBool:[self isEqual:[NSApp accessibilityFocusedUIElement]]];
-    }
-    return [NSNumber numberWithBool:NO];
-}
-
-- (BOOL)accessibilityIsFocusedAttributeSettable
-{
+- (BOOL)accessibleFocused {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
     // According to javadoc, a component that is focusable will return true from isFocusTraversable,
     // as well as having AccessibleState.FOCUSABLE in its AccessibleStateSet.
@@ -434,51 +642,16 @@ static NSObject *sAttributeNamesLOCK = nil;
     return NO;
 }
 
-- (void)accessibilitySetFocusedAttribute:(id)value
-{
+- (void)setAccessibleFocused:(BOOL)accessibleFocused {
     static JNF_STATIC_MEMBER_CACHE(jm_requestFocus, sjc_CAccessibility, "requestFocus", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)V");
 
-    if ([(NSNumber*)value boolValue])
-    {
+    if (accessibleFocused) {
         JNIEnv* env = [ThreadUtilities getJNIEnv];
         JNFCallStaticVoidMethod(env, jm_requestFocus, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
     }
 }
 
-// Instance description, such as a help tag string (NSString)
-- (NSString *)accessibilityHelpAttribute
-{
-    JNIEnv* env = [ThreadUtilities getJNIEnv];
-
-    jobject val = JNFCallStaticObjectMethod(env, sjm_getAccessibleDescription, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
-    if (val == NULL) {
-        return nil;
-    }
-    NSString* str = JNFJavaToNSString(env, val);
-    (*env)->DeleteLocalRef(env, val);
-    return str;
-}
-
-- (BOOL)accessibilityIsHelpAttributeSettable
-{
-    return NO;
-}
-
-- (NSValue *)accessibilityIndexAttribute
-{
-    NSInteger index = fIndex;
-    NSValue *returnValue = [NSValue value:&index withObjCType:@encode(NSInteger)];
-    return returnValue;
-}
-
-- (BOOL)accessibilityIsIndexAttributeSettable
-{
-    return NO;
-}
-
-// Element's maximum value (id)
-- (id)accessibilityMaxValueAttribute
-{
+- (NSNumber *)accessibleMaxValue {
     static JNF_STATIC_MEMBER_CACHE(jm_getMaximumAccessibleValue, sjc_CAccessibility, "getMaximumAccessibleValue", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/Number;");
 
     JNIEnv* env = [ThreadUtilities getJNIEnv];
@@ -492,14 +665,7 @@ static NSObject *sAttributeNamesLOCK = nil;
     return num;
 }
 
-- (BOOL)accessibilityIsMaxValueAttributeSettable
-{
-    return NO;
-}
-
-// Element's minimum value (id)
-- (id)accessibilityMinValueAttribute
-{
+- (NSNumber *)accessibleMinValue {
     static JNF_STATIC_MEMBER_CACHE(jm_getMinimumAccessibleValue, sjc_CAccessibility, "getMinimumAccessibleValue", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/Number;");
 
     JNIEnv* env = [ThreadUtilities getJNIEnv];
@@ -513,13 +679,7 @@ static NSObject *sAttributeNamesLOCK = nil;
     return num;
 }
 
-- (BOOL)accessibilityIsMinValueAttributeSettable
-{
-    return NO;
-}
-
-- (id)accessibilityOrientationAttribute
-{
+- (id)accessibleOrientation {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
 
@@ -538,51 +698,19 @@ static NSObject *sAttributeNamesLOCK = nil;
     return nil;
 }
 
-- (BOOL)accessibilityIsOrientationAttributeSettable
-{
-    return NO;
-}
-
-// Element containing current element (id)
-- (id)accessibilityParentAttribute
-{
-    id parent = [self parent];
-    if ([parent isKindOfClass:[JavaBaseAccessibility class]]) {
-        parent = ((JavaBaseAccessibility *)parent).platformAxElement;
-    }
-    return NSAccessibilityUnignoredAncestor(parent);
-}
-
-- (BOOL)accessibilityIsParentAttributeSettable
-{
-    return NO;
-}
-
-// Screen position of element's lower-left corner in lower-left relative screen coordinates (NSValue)
-- (NSValue *)accessibilityPositionAttribute
-{
+- (NSValue *)accessiblePosition {
     NSRect bounds = [self getBounds];
     return [NSValue valueWithPoint:NSMakePoint(bounds.origin.x, bounds.origin.y)];
 }
 
-- (BOOL)accessibilityIsPositionAttributeSettable
-{
-    // In AppKit, position is only settable for a window (NSAccessibilityWindowRole). Our windows are taken care of natively, so we don't need to deal with this here
-    // We *could* make use of Java's AccessibleComponent.setLocation() method. Investigate. radr://3953869
-    return NO;
-}
-
-// Element type, such as NSAccessibilityRadioButtonRole (NSString). See the role table
-// at http://developer.apple.com/documentation/Cocoa/Reference/ApplicationKit/ObjC_classic/Protocols/NSAccessibility.html
-- (NSString *)accessibilityRoleAttribute
-{
+- (NSString *)accessibleRole {
     if (fNSRole == nil) {
         NSString *javaRole = [self javaRole];
         fNSRole = [sRoles objectForKey:javaRole];
         // The sRoles NSMutableDictionary maps popupmenu to Mac's popup button.
         // JComboBox behavior currently relies on this.  However this is not the
         // proper mapping for a JPopupMenu so fix that.
-        if ([[self parent] isKindOfClass:[JavaBaseAccessibility class]] &&
+        if ([[self parent] isKindOfClass:[JavaComponentAccessibility class]] &&
             [javaRole isEqualToString:@"popupmenu"] &&
              ![[[self parent] javaRole] isEqualToString:@"combobox"] ) {
              fNSRole = NSAccessibilityMenuRole;
@@ -596,16 +724,9 @@ static NSObject *sAttributeNamesLOCK = nil;
     return fNSRole;
 }
 
-- (BOOL)accessibilityIsRoleAttributeSettable
-{
-    return NO;
-}
-
-// Localized, user-readable description of role, such as radio button (NSString)
-- (NSString *)accessibilityRoleDescriptionAttribute
-{
+- (NSString *)accessibleRoleDescription {
     // first ask AppKit for its accessible role description for a given AXRole
-    NSString *value = NSAccessibilityRoleDescription([self accessibilityRoleAttribute], nil);
+    NSString *value = NSAccessibilityRoleDescription([self accessibleRole], nil);
 
     if (value == nil) {
         // query java if necessary
@@ -625,146 +746,32 @@ static NSObject *sAttributeNamesLOCK = nil;
     return value;
 }
 
-- (BOOL)accessibilityIsRoleDescriptionAttributeSettable
-{
-    return NO;
-}
-
-// Currently selected children (NSArray)
-- (NSArray *)accessibilitySelectedChildrenAttribute
-{
-    JNIEnv* env = [ThreadUtilities getJNIEnv];
-    NSArray *selectedChildren = [JavaComponentAccessibility childrenOfParent:self withEnv:env withChildrenCode:JAVA_AX_SELECTED_CHILDREN allowIgnored:NO];
-    if ([selectedChildren count] > 0) {
-        return selectedChildren;
+- (id)accessibleParent {
+    id parent = [self parent];
+    if ([parent isKindOfClass:[JavaComponentAccessibility class]]) {
+        parent = ((JavaComponentAccessibility *)parent).platformAxElement;
     }
-
-    return nil;
+    return NSAccessibilityUnignoredAncestor(parent);
 }
 
-- (BOOL)accessibilityIsSelectedChildrenAttributeSettable
-{
-    return NO; // cmcnote: actually it should be. so need to write accessibilitySetSelectedChildrenAttribute also
-}
-
-- (NSNumber *)accessibilitySelectedAttribute
-{
+- (NSNumber *)accessibleSelected {
     return [NSNumber numberWithBool:[self isSelected:[ThreadUtilities getJNIEnv]]];
 }
 
-- (BOOL)accessibilityIsSelectedAttributeSettable
-{
-    if ([self isSelectable:[ThreadUtilities getJNIEnv]]) {
-        return YES;
-    } else {
-        return NO;
-    }
-}
-
-- (void)accessibilitySetSelectedAttribute:(id)value
-{
-    static JNF_STATIC_MEMBER_CACHE( jm_requestSelection,
-                                    sjc_CAccessibility,
-                                    "requestSelection",
-                                    "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)V" );
-
-    if ([(NSNumber*)value boolValue]) {
-        JNIEnv* env = [ThreadUtilities getJNIEnv];
-        JNFCallStaticVoidMethod(env, jm_requestSelection, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
-    }
-}
-
-// Element size (NSValue)
-- (NSValue *)accessibilitySizeAttribute {
-    return [NSValue valueWithSize:[self getSize]];
-}
-
-- (BOOL)accessibilityIsSizeAttributeSettable
-{
-    // SIZE is settable in windows if [self styleMask] & NSResizableWindowMask - but windows are heavyweight so we're ok here
-    // SIZE is settable in columns if [[self tableValue] allowsColumnResizing - haven't dealt with columns yet
-    return NO;
-}
-
-// Element subrole type, such as NSAccessibilityTableRowSubrole (NSString). See the subrole attribute table at
-// http://developer.apple.com/documentation/Cocoa/Reference/ApplicationKit/ObjC_classic/Protocols/NSAccessibility.html
-- (NSString *)accessibilitySubroleAttribute
-{
-    NSString *value = nil;
-    if ([[self javaRole] isEqualToString:@"passwordtext"]) {
-        value = NSAccessibilitySecureTextFieldSubrole;
-    }
-    /*
-    // other subroles. TableRow and OutlineRow may be relevant to us
-     NSAccessibilityCloseButtonSubrole // no, heavyweight window takes care of this
-     NSAccessibilityMinimizeButtonSubrole // "
-     NSAccessibilityOutlineRowSubrole    // maybe?
-     NSAccessibilitySecureTextFieldSubrole // currently used
-     NSAccessibilityTableRowSubrole        // maybe?
-     NSAccessibilityToolbarButtonSubrole // maybe?
-     NSAccessibilityUnknownSubrole
-     NSAccessibilityZoomButtonSubrole    // no, heavyweight window takes care of this
-     NSAccessibilityStandardWindowSubrole// no, heavyweight window takes care of this
-     NSAccessibilityDialogSubrole        // maybe?
-     NSAccessibilitySystemDialogSubrole    // no
-     NSAccessibilityFloatingWindowSubrole // in 1.5 if we implement these, heavyweight will take care of them anyway
-     NSAccessibilitySystemFloatingWindowSubrole
-     NSAccessibilityIncrementArrowSubrole  // no
-     NSAccessibilityDecrementArrowSubrole  // no
-     NSAccessibilityIncrementPageSubrole   // no
-     NSAccessibilityDecrementPageSubrole   // no
-     NSAccessibilitySearchFieldSubrole    //no
-     */
-    return value;
-}
-
-- (BOOL)accessibilityIsSubroleAttributeSettable
-{
-    return NO;
-}
-
-// Title of element, such as button text (NSString)
-- (NSString *)accessibilityTitleAttribute
-{
-    // Return empty string for labels, since their value and tile end up being the same thing and this leads to repeated text.
-    if ([[self accessibilityRoleAttribute] isEqualToString:NSAccessibilityStaticTextRole]) {
-        return @"";
-    }
-
+- (void)setAccessibleSelected:(NSNumber *)accessibleSelected {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
+    if ([self isSelectable:env]) {
+        static JNF_STATIC_MEMBER_CACHE( jm_requestSelection,
+                                       sjc_CAccessibility,
+                                       "requestSelection",
+                                       "(Ljavax/accessibility/Accessible;Ljava/awt/Component;Z)V");
 
-    jobject val = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
-    if (val == NULL) {
-        return nil;
+        JNFCallStaticVoidMethod(env, jm_requestSelection, fAccessible, fComponent, [accessibleSelected boolValue]); // AWT_THREADING Safe (AWTRunLoop)
     }
-    NSString* str = JNFJavaToNSString(env, val);
-    (*env)->DeleteLocalRef(env, val);
-    return str;
 }
 
-- (BOOL)accessibilityIsTitleAttributeSettable
-{
-    return NO;
-}
-
-- (NSWindow *)accessibilityTopLevelUIElementAttribute
-{
-    return [self window];
-}
-
-- (BOOL)accessibilityIsTopLevelUIElementAttributeSettable
-{
-    return NO;
-}
-
-// Element's value (id)
-// note that the appKit meaning of "accessibilityValue" is different from the java
-// meaning of "accessibleValue", which is specific to numerical values
-// (https://docs.oracle.com/javase/8/docs/api/javax/accessibility/AccessibleValue.html#setCurrentAccessibleValue-java.lang.Number-)
-- (id)accessibilityValueAttribute
-{
+- (id)accessibleValue {
     static JNF_STATIC_MEMBER_CACHE(jm_getCurrentAccessibleValue, sjc_CAccessibility, "getCurrentAccessibleValue", "(Ljavax/accessibility/AccessibleValue;Ljava/awt/Component;)Ljava/lang/Number;");
-
     JNIEnv* env = [ThreadUtilities getJNIEnv];
 
     // Need to handle popupmenus differently.
@@ -785,12 +792,12 @@ static NSObject *sAttributeNamesLOCK = nil;
             // handle case of AXMenuItem
             // need to ask menu what is selected
             NSArray *selectedChildrenOfMenu =
-            	[self accessibilitySelectedChildrenAttribute];
+                [(PlatformAxElement *)[self platformAxElement] accessibilitySelectedChildren];
             JavaComponentAccessibility *selectedMenuItem =
-            	[selectedChildrenOfMenu objectAtIndex:0];
+                    [[selectedChildrenOfMenu objectAtIndex:0] javaComponent];
             if (selectedMenuItem != nil) {
                 jobject itemValue =
-                	JNFCallStaticObjectMethod( env,
+                    JNFCallStaticObjectMethod( env,
                                                    sjm_getAccessibleName,
                                                    selectedMenuItem->fAccessible,
                                                    selectedMenuItem->fComponent ); // AWT_THREADING Safe (AWTRunLoop)
@@ -801,7 +808,7 @@ static NSObject *sAttributeNamesLOCK = nil;
                 (*env)->DeleteLocalRef(env, itemValue);
                 return itemString;
             } else {
-            	return nil;
+                return nil;
             }
         }
     }
@@ -826,91 +833,9 @@ static NSObject *sAttributeNamesLOCK = nil;
     return num;
 }
 
-- (BOOL)accessibilityIsValueAttributeSettable
-{
-    // according ot AppKit sources, in general the value attribute is not settable, except in the cases
-    // of an NSScroller, an NSSplitView, and text that's both enabled & editable
-    BOOL isSettable = NO;
-    NSString *role = [self accessibilityRoleAttribute];
+- (id)accessibleHitTest:(NSPoint)point {
+    JNIEnv* env = [ThreadUtilities getJNIEnv];
 
-    if ([role isEqualToString:NSAccessibilityScrollBarRole] || // according to NSScrollerAccessibility
-        [role isEqualToString:NSAccessibilitySplitGroupRole] ) // according to NSSplitViewAccessibility
-    {
-        isSettable = YES;
-    }
-    return isSettable;
-}
-
-- (void)accessibilitySetValueAttribute:(id)value
-{
-#ifdef JAVA_AX_DEBUG
-    NSLog(@"Not yet implemented: %s\n", __FUNCTION__); // radr://3954018
-#endif
-}
-
-
-// Child elements that are visible (NSArray)
-- (NSArray *)accessibilityVisibleChildrenAttribute
-{
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    NSArray *visibleChildren = [JavaComponentAccessibility childrenOfParent:self withEnv:env withChildrenCode:JAVA_AX_VISIBLE_CHILDREN allowIgnored:NO];
-    if ([visibleChildren count] <= 0) return nil;
-    return visibleChildren;
-}
-
-- (BOOL)accessibilityIsVisibleChildrenAttributeSettable
-{
-    return NO;
-}
-
-// Window containing current element (id)
-- (id)accessibilityWindowAttribute
-{
-    return [self window];
-}
-
-- (BOOL)accessibilityIsWindowAttributeSettable
-{
-    return NO;
-}
-
-
-// -- accessibility actions --
-- (NSArray *)accessibilityActionNames
-{
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    return [[self getActions:env] allKeys];
-}
-
-- (NSString *)accessibilityActionDescription:(NSString *)action
-{
-    AWT_ASSERT_APPKIT_THREAD;
-
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    return [(id <JavaAccessibilityAction>)[[self getActions:env] objectForKey:action] getDescription];
-}
-
-- (void)accessibilityPerformAction:(NSString *)action
-{
-    AWT_ASSERT_APPKIT_THREAD;
-
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    [(id <JavaAccessibilityAction>)[[self getActions:env] objectForKey:action] perform];
-}
-
-
-// -- misc accessibility --
-- (BOOL)accessibilityIsIgnored
-{
-#ifdef JAVA_AX_NO_IGNORES
-    return NO;
-#else
-    return [[self accessibilityRoleAttribute] isEqualToString:JavaAccessibilityIgnore];
-#endif /* JAVA_AX_NO_IGNORES */
-}
-
-- (id)accessibilityHitTest:(NSPoint)point withEnv:(JNIEnv *)env
-{
     static JNF_CLASS_CACHE(jc_Container, "java/awt/Container");
     static JNF_STATIC_MEMBER_CACHE(jm_accessibilityHitTest, sjc_CAccessibility, "accessibilityHitTest", "(Ljava/awt/Container;FF)Ljavax/accessibility/Accessible;");
 
@@ -923,17 +848,17 @@ static NSObject *sAttributeNamesLOCK = nil;
     if (JNFIsInstanceOf(env, jparent, &jc_Container)) {
         jobject jaccessible = JNFCallStaticObjectMethod(env, jm_accessibilityHitTest, jparent, (jfloat)point.x, (jfloat)point.y); // AWT_THREADING Safe (AWTRunLoop)
         if (jaccessible != NULL) {
-            value = [JavaBaseAccessibility createWithAccessible:jaccessible withEnv:env withView:fView];
-            value = ((JavaBaseAccessibility *)value).platformAxElement;
+            value = [JavaComponentAccessibility createWithAccessible:jaccessible withEnv:env withView:fView];
+            value = ((JavaComponentAccessibility *)value).platformAxElement;
             (*env)->DeleteLocalRef(env, jaccessible);
         }
     }
 
     if (value == nil) {
-        value = self;
+        value = [self platformAxElement];
     }
 
-    if ([value accessibilityIsIgnored]) {
+    if (![value isAccessibilityElement]) {
         value = NSAccessibilityUnignoredAncestor(value);
     }
 
@@ -943,9 +868,365 @@ static NSObject *sAttributeNamesLOCK = nil;
     return value;
 }
 
-- (id)accessibilityFocusedUIElement
-{
-    return [self getFocusedElement];
+- (void)getActionsWithEnv:(JNIEnv *)env {
+    static JNF_STATIC_MEMBER_CACHE(jm_getAccessibleAction, sjc_CAccessibility, "getAccessibleAction", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleAction;");
+    
+    jobject axAction = JNFCallStaticObjectMethod(env, jm_getAccessibleAction, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    if (axAction != NULL) {
+        JNF_CLASS_CACHE(jc_AccessibleAction, "javax/accessibility/AccessibleAction");
+        JNF_MEMBER_CACHE(jm_getAccessibleActionCount, jc_AccessibleAction, "getAccessibleActionCount", "()I");
+        jint count = JNFCallObjectMethod(env, axAction, jm_getAccessibleActionCount);
+        fActions = [[NSMutableDictionary alloc] initWithCapacity:count];
+        fActionSElectors = [[NSMutableArray alloc] initWithCapacity:count];
+        for (int i =0; i < count; i++) {
+            JavaAxAction *action = [[JavaAxAction alloc] initWithEnv:env withAccessibleAction:axAction withIndex:i withComponent:fComponent];
+            if ([fParent isKindOfClass:[JavaComponentAccessibility class]] &&
+                [fParent isMenu] &&
+                [[sActions objectForKey:[action getDescription]] isEqualToString:NSAccessibilityPressAction]) {
+                [fActions setObject:action forKey:NSAccessibilityPickAction];
+                [fActionSElectors addObject:[sActionSelectores objectForKey:NSAccessibilityPickAction]];
+            } else {
+                [fActions setObject:action forKey:[sActions objectForKey:[action getDescription]]];
+                [fActionSElectors addObject:[sActionSelectores objectForKey:[sActions objectForKey:[action getDescription]]]];
+            }
+            [action release];
+        }
+        (*env)->DeleteLocalRef(env, axAction);
+    }
+}
+
+- (NSMutableDictionary *)getActions {
+    @synchronized(fActionsLOCK) {
+        if (fActions == nil) {
+            [self getActionsWithEnv:[ThreadUtilities getJNIEnv]];
+        }
+    }
+
+    return fActions;
+}
+
+- (BOOL)accessiblePerformAction:(NSAccessibilityActionName)actionName {
+    NSMutableDictionary *currentAction = [self getActions];
+    if (currentAction == nil) {
+        return NO;
+    }
+    if ([[currentAction allKeys] containsObject:actionName]) {
+        [(JavaAxAction *)[[self getActions] objectForKey:actionName] perform];
+        return YES;;
+    }
+    return NO;
+}
+
+- (NSArray *)actionSelectores {
+    @synchronized(fActionsLOCK) {
+        if (fActionSElectors == nil) {
+            [self getActionsWithEnv:[ThreadUtilities getJNIEnv]];
+        }
+    }
+
+    return [NSArray arrayWithArray:fActionSElectors];
 }
 
 @end
+
+@implementation PlatformAxElement
+
+@synthesize javaComponent;
+
+- (BOOL)isAccessibilityElement
+{
+    return ![[self accessibilityRole] isEqualToString:JavaAccessibilityIgnore];
+}
+
+- (NSString *)accessibilityLabel
+{
+    //   RaiseMustOverrideException(@"accessibilityLabel");
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, [[self javaComponent] accessible], [[self javaComponent] component]);
+    NSString* str = JNFJavaToNSString(env, axName);
+    (*env)->DeleteLocalRef(env, axName);
+    return str;
+}
+
+- (NSString *)accessibilityHelp {
+    //   RaiseMustOverrideException(@"accessibilityLabel");
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleDescription, [[self javaComponent] accessible], [[self javaComponent] component]);
+    NSString* str = JNFJavaToNSString(env, axName);
+    (*env)->DeleteLocalRef(env, axName);
+    return str;
+}
+
+- (NSArray *)accessibilityChildren
+{
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    NSArray *children = [JavaComponentAccessibility childrenOfParent:self.javaComponent
+                                                        withEnv:env
+                                               withChildrenCode:JAVA_AX_ALL_CHILDREN
+                                                   allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole])
+                                                      recursive:[[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole]];
+    if ([children count] > 0) {
+        return children;
+    }
+    return NULL;
+}
+
+- (NSArray *)accessibilitySelectedChildren
+{
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    NSArray *selectedChildren = [JavaComponentAccessibility childrenOfParent:self.javaComponent
+                                                                withEnv:env
+                                                       withChildrenCode:JAVA_AX_SELECTED_CHILDREN
+                                                           allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole])
+                                                              recursive:[[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole]];
+    if ([selectedChildren count] > 0) {
+        return selectedChildren;
+    }
+    return NULL;
+}
+
+- (NSArray *)accessibilityVisibleChildren {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    NSArray *children = [JavaComponentAccessibility childrenOfParent:self.javaComponent
+                                                        withEnv:env
+                                               withChildrenCode:JAVA_AX_VISIBLE_CHILDREN
+                                                   allowIgnored:([[self accessibilityRole] isEqualToString:NSAccessibilityListRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityTableRole] || [[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole])
+                                                      recursive:[[self accessibilityRole] isEqualToString:NSAccessibilityOutlineRole]];
+    if ([children count] > 0) {
+        return children;
+    }
+    return NULL;
+}
+
+- (NSRect)accessibilityFrame
+{
+    return [self.javaComponent getBounds];
+}
+
+- (id)accessibilityParent
+{
+    return [(JavaComponentAccessibility *) [self javaComponent] accessibleParent];
+}
+
+- (BOOL)isAccessibilityEnabled
+{
+    return [(JavaComponentAccessibility *) [self javaComponent] accessibleEnabled];
+}
+
+- (id)accessibilityApplicationFocusedUIElement {
+    return [self.javaComponent getFocusedElement];
+}
+
+- (id)getAccessibilityWindow {
+    return [self.javaComponent window];
+}
+
+- (void)setAccessibilityParent:(id)accessibilityParent {
+    [[self javaComponent] setParent:accessibilityParent];
+}
+
+- (NSUInteger)accessibilityIndexOfChild:(id)child {
+    return [[self javaComponent] accessibilityIndexOfChild:child];
+}
+
+- (NSAccessibilityRole)accessibilityRole {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessibleRole];
+}
+
+- (NSString *)accessibilityRoleDescription {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessibleRoleDescription];
+}
+
+- (BOOL)isAccessibilityFocused {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessibleFocused];
+}
+
+- (void)setAccessibilityFocused:(BOOL)accessibilityFocused {
+    [(JavaComponentAccessibility *) [self javaComponent] setAccessibleFocused:accessibilityFocused];
+}
+
+- (NSInteger)accessibilityIndex {
+    return [[self javaComponent] index];
+}
+
+- (id)accessibilityMaxValue {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessibleMaxValue];
+}
+
+- (id)accessibilityMinValue {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessibleMinValue];
+}
+
+- (NSAccessibilityOrientation)accessibilityOrientation {
+    return (NSAccessibilityOrientation)[(JavaComponentAccessibility *) [self javaComponent] accessibleOrientation];
+}
+
+- (NSPoint)accessibilityActivationPoint {
+    return [[(JavaComponentAccessibility *) [self javaComponent] accessiblePosition] pointValue];
+}
+
+- (BOOL)isAccessibilitySelected {
+    return [[(JavaComponentAccessibility *) [self javaComponent] accessibleSelected] boolValue];
+}
+
+- (void)setAccessibilitySelected:(BOOL)accessibilitySelected {
+    [(JavaComponentAccessibility *) [self javaComponent] setAccessibleSelected:[NSNumber numberWithBool:accessibilitySelected]];
+}
+
+- (id)accessibilityValue {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessibleValue];
+}
+
+- (id)accessibilityHitTest:(NSPoint)point {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessibleHitTest:point];
+}
+
+- (BOOL)isAccessibilitySelectorAllowed:(SEL)selector {
+    if ([sAllActionSelectores containsObject:NSStringFromSelector(selector)] &&
+        ![[(JavaComponentAccessibility *) [self javaComponent] actionSelectores] containsObject:NSStringFromSelector(selector)]) {
+        return NO;
+    }
+    return [super isAccessibilitySelectorAllowed:selector];
+}
+
+- (BOOL)accessibilityPerformPick {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessiblePerformAction:NSAccessibilityPickAction];
+}
+
+- (BOOL)accessibilityPerformPress {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessiblePerformAction:NSAccessibilityPressAction];
+}
+
+- (BOOL)accessibilityPerformShowMenu {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessiblePerformAction:NSAccessibilityShowMenuAction];
+}
+
+- (BOOL)accessibilityPerformDecrement {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessiblePerformAction:NSAccessibilityDecrementAction];
+}
+
+- (BOOL)accessibilityPerformIncrement {
+    return [(JavaComponentAccessibility *) [self javaComponent] accessiblePerformAction:NSAccessibilityIncrementAction];
+}
+
+- (id)accessibilityFocusedUIElement {
+    return [[self javaComponent] getFocusedElement];
+}
+
+@end
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessibility
+ * Method:    focusChanged
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessibility_focusChanged
+(JNIEnv *env, jobject jthis)
+{
+JNF_COCOA_ENTER(env);
+[ThreadUtilities performOnMainThread:@selector(postFocusChanged:) on:[JavaComponentAccessibility class] withObject:nil waitUntilDone:NO];
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessible
+ * Method:    valueChanged
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_valueChanged
+(JNIEnv *env, jclass jklass, jlong element)
+{
+JNF_COCOA_ENTER(env);
+[ThreadUtilities performOnMainThread:@selector(postValueChanged) on:(JavaComponentAccessibility *)jlong_to_ptr(element) withObject:nil waitUntilDone:NO];
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessible
+ * Method:    selectedTextChanged
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_selectedTextChanged
+(JNIEnv *env, jclass jklass, jlong element)
+{
+JNF_COCOA_ENTER(env);
+[ThreadUtilities performOnMainThread:@selector(postSelectedTextChanged)
+on:(JavaComponentAccessibility *)jlong_to_ptr(element)
+withObject:nil
+        waitUntilDone:NO];
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessible
+ * Method:    selectionChanged
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_selectionChanged
+(JNIEnv *env, jclass jklass, jlong element)
+{
+JNF_COCOA_ENTER(env);
+[ThreadUtilities performOnMainThread:@selector(postSelectionChanged) on:(JavaComponentAccessibility *)jlong_to_ptr(element) withObject:nil waitUntilDone:NO];
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessible
+ * Method:    menuOpened
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_menuOpened
+(JNIEnv *env, jclass jklass, jlong element)
+{
+JNF_COCOA_ENTER(env);
+[ThreadUtilities performOnMainThread:@selector(postMenuOpened)
+on:(JavaComponentAccessibility *)jlong_to_ptr(element)
+withObject:nil
+        waitUntilDone:NO];
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessible
+ * Method:    menuClosed
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_menuClosed
+(JNIEnv *env, jclass jklass, jlong element)
+{
+JNF_COCOA_ENTER(env);
+[ThreadUtilities performOnMainThread:@selector(postMenuClosed)
+on:(JavaComponentAccessibility *)jlong_to_ptr(element)
+withObject:nil
+        waitUntilDone:NO];
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessible
+ * Method:    menuItemSelected
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_menuItemSelected
+(JNIEnv *env, jclass jklass, jlong element)
+{
+JNF_COCOA_ENTER(env);
+[ThreadUtilities performOnMainThread:@selector(postMenuItemSelected)
+on:(JavaComponentAccessibility *)jlong_to_ptr(element)
+withObject:nil
+        waitUntilDone:NO];
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessible
+ * Method:    unregisterFromCocoaAXSystem
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_unregisterFromCocoaAXSystem
+(JNIEnv *env, jclass jklass, jlong element)
+{
+JNF_COCOA_ENTER(env);
+[ThreadUtilities performOnMainThread:@selector(unregisterFromCocoaAXSystem) on:(JavaComponentAccessibility *)jlong_to_ptr(element) withObject:nil waitUntilDone:NO];
+JNF_COCOA_EXIT(env);
+}

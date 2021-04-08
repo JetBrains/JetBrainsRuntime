@@ -30,8 +30,8 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
-        if ([[[self accessibilityParent] javaBase] accessible] == NULL) return nil;
-        jobjectArray jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, [[[self accessibilityParent] javaBase] accessible], [[[self accessibilityParent] javaBase] component], JAVA_AX_ALL_CHILDREN, NO);
+        if ([[[self accessibilityParent] javaComponent] accessible] == NULL) return nil;
+        jobjectArray jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, [[[self accessibilityParent] javaComponent] accessible], [[[self accessibilityParent] javaComponent] component], JAVA_AX_ALL_CHILDREN, NO);
         if (jchildrenAndRoles == NULL) return nil;
 
         jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
@@ -39,8 +39,8 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
         NSUInteger childIndex = [self columnNumberInTable];
 
-        JavaColumnAccessibility *selfRow = [self javaBase];
-        int inc = [(JavaTableAccessibility *)[[self accessibilityParent] javaBase] accessibleColCount] * 2;
+        JavaColumnAccessibility *selfRow = [self javaComponent];
+        int inc = [(JavaTableAccessibility *) [[self accessibilityParent] javaComponent] accessibleColCount] * 2;
         NSInteger i = childIndex * 2;
         for(NSInteger i; i < arrayLen; i += inc)
         {
@@ -75,7 +75,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 }
 
 - (NSUInteger)columnNumberInTable {
-    return [[self javaBase] index];
+    return [[self javaComponent] index];
 }
 
 @end

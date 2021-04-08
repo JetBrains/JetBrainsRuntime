@@ -28,11 +28,18 @@
 
 #import "ThreadUtilities.h"
 
+NSMutableDictionary *sActions = nil;
+NSMutableDictionary *sActionSelectores = nil;
+NSMutableArray *sAllActionSelectores = nil;
+void initializeActions();
 
 @implementation JavaAxAction
 
 - (id)initWithEnv:(JNIEnv *)env withAccessibleAction:(jobject)accessibleAction withIndex:(jint)index withComponent:(jobject)component
 {
+    if (sActions == nil) {
+        initializeActions();
+    }
     self = [super init];
     if (self) {
         fAccessibleAction = JNFNewWeakGlobalRef(env, accessibleAction);
@@ -130,3 +137,31 @@
 }
 
 @end
+
+void initializeActions() {
+    int actionsCount = 5;
+
+    sActions = [[NSMutableDictionary alloc] initWithCapacity:actionsCount];
+
+    [sActions setObject:NSAccessibilityPressAction forKey:@"click"];
+    [sActions setObject:NSAccessibilityIncrementAction forKey:@"increment"];
+    [sActions setObject:NSAccessibilityDecrementAction forKey:@"decrement"];
+    [sActions setObject:NSAccessibilityShowMenuAction forKey:@"toggle popup"];
+    [sActions setObject:NSAccessibilityPressAction forKey:@"toggleexpand"];
+    
+    sActionSelectores = [[NSMutableDictionary alloc] initWithCapacity:actionsCount];
+
+    [sActionSelectores setObject:NSStringFromSelector(@selector(accessibilityPerformPress)) forKey:NSAccessibilityPressAction];
+    [sActionSelectores setObject:NSStringFromSelector(@selector(accessibilityPerformShowMenu)) forKey:NSAccessibilityShowMenuAction];
+    [sActionSelectores setObject:NSStringFromSelector(@selector(accessibilityPerformDecrement)) forKey:NSAccessibilityDecrementAction];
+    [sActionSelectores setObject:NSStringFromSelector(@selector(accessibilityPerformIncrement)) forKey:NSAccessibilityIncrementAction];
+    [sActionSelectores setObject:NSStringFromSelector(@selector(accessibilityPerformPick)) forKey:NSAccessibilityPickAction];
+
+    sAllActionSelectores = [[NSMutableArray alloc] initWithCapacity:actionsCount];
+
+    [sAllActionSelectores addObject:NSStringFromSelector(@selector(accessibilityPerformPick))];
+    [sAllActionSelectores addObject:NSStringFromSelector(@selector(accessibilityPerformIncrement))];
+    [sAllActionSelectores addObject:NSStringFromSelector(@selector(accessibilityPerformDecrement))];
+    [sAllActionSelectores addObject:NSStringFromSelector(@selector(accessibilityPerformShowMenu))];
+    [sAllActionSelectores addObject:NSStringFromSelector(@selector(accessibilityPerformPress))];
+}

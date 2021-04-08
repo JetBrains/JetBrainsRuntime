@@ -185,66 +185,66 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
 @implementation PlatformAxNavigableText
 
 - (NSRect)accessibilityFrameForRange:(NSRange)range {
-    return [[(JavaNavigableTextAccessibility *)[self javaBase] accessibleBoundsForRange:range] rectValue];
+    return [[(JavaNavigableTextAccessibility *) [self javaComponent] accessibleBoundsForRange:range] rectValue];
 }
 
 - (NSInteger)accessibilityLineForIndex:(NSInteger)index {
-    return [[(JavaNavigableTextAccessibility *)[self javaBase] accessibleLineForIndex:index] integerValue];
+    return [[(JavaNavigableTextAccessibility *) [self javaComponent] accessibleLineForIndex:index] integerValue];
 }
 
 - (NSRange)accessibilityRangeForLine:(NSInteger)line {
-    return [[(JavaNavigableTextAccessibility *)[self javaBase] accessibleRangeForLine:line] rangeValue];
+    return [[(JavaNavigableTextAccessibility *) [self javaComponent] accessibleRangeForLine:line] rangeValue];
 }
 
 - (NSString *)accessibilityStringForRange:(NSRange)range {
-    return [(JavaNavigableTextAccessibility *)[self javaBase] accessibleStringForRange:range];
+    return [(JavaNavigableTextAccessibility *) [self javaComponent] accessibleStringForRange:range];
 }
 
 - (id)accessibilityValue {
-    return [(JavaNavigableTextAccessibility *)[self javaBase] accessibleValue];
+    return [(JavaNavigableTextAccessibility *) [self javaComponent] accessibleValue];
 }
 
 - (NSAccessibilitySubrole)accessibilitySubrole {
-    if ([(JavaNavigableTextAccessibility *)[self javaBase] accessibleIsPasswordText]) {
+    if ([(JavaNavigableTextAccessibility *) [self javaComponent] accessibleIsPasswordText]) {
         return NSAccessibilitySecureTextFieldSubrole;
     }
     return nil;
 }
 
 - (NSRange)accessibilityRangeForIndex:(NSInteger)index {
-    return [[(JavaNavigableTextAccessibility *)[self javaBase] accessibleRangeForIndex:index] rangeValue];
+    return [[(JavaNavigableTextAccessibility *) [self javaComponent] accessibleRangeForIndex:index] rangeValue];
 }
 
 - (NSAccessibilityRole)accessibilityRole {
-    return [sRoles objectForKey:[self javaBase].javaRole];
+    return [sRoles objectForKey:[self javaComponent].javaRole];
 }
 
 - (NSRange)accessibilityRangeForPosition:(NSPoint)point {
-    return [[(JavaNavigableTextAccessibility *)[self javaBase] accessibleRangeForPosition:point] rangeValue];
+    return [[(JavaNavigableTextAccessibility *) [self javaComponent] accessibleRangeForPosition:point] rangeValue];
 }
 
 - (NSString *)accessibilitySelectedText {
-    return [(JavaNavigableTextAccessibility *)[self javaBase] accessibleSelectedText];
+    return [(JavaNavigableTextAccessibility *) [self javaComponent] accessibleSelectedText];
 }
 
 - (NSRange)accessibilitySelectedTextRange {
-    return [[(JavaNavigableTextAccessibility *)[self javaBase] accessibleSelectedTextRange] rangeValue];
+    return [[(JavaNavigableTextAccessibility *) [self javaComponent] accessibleSelectedTextRange] rangeValue];
 }
 
 - (NSInteger)accessibilityNumberOfCharacters {
-    return [[(JavaNavigableTextAccessibility *)[self javaBase] accessibleNumberOfCharacters] integerValue];
+    return [[(JavaNavigableTextAccessibility *) [self javaComponent] accessibleNumberOfCharacters] integerValue];
 }
 
 - (NSInteger)accessibilityInsertionPointLineNumber {
-    return [[(JavaNavigableTextAccessibility *)[self javaBase] accessibleInsertionPointLineNumber] integerValue];
+    return [[(JavaNavigableTextAccessibility *) [self javaComponent] accessibleInsertionPointLineNumber] integerValue];
 }
 
 - (void)setAccessibilitySelectedText:(NSString *)accessibilitySelectedText {
-    [(JavaNavigableTextAccessibility *)[self javaBase] accessibleSetSelectedText:accessibilitySelectedText];
+    [(JavaNavigableTextAccessibility *) [self javaComponent] accessibleSetSelectedText:accessibilitySelectedText];
 }
 
 - (void)setAccessibilitySelectedTextRange:(NSRange)accessibilitySelectedTextRange {
-    [(JavaNavigableTextAccessibility *)[self javaBase] accessibleSetSelectedTextRange:accessibilitySelectedTextRange];
+    [(JavaNavigableTextAccessibility *) [self javaComponent] accessibleSetSelectedTextRange:accessibilitySelectedTextRange];
 }
 
 - (BOOL)isAccessibilityEdited {

@@ -22,12 +22,12 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 - (NSArray *)accessibilityChildren {
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
-        JavaBaseAccessibility *newChild = [JavaBaseAccessibility createWithParent:[self javaBase]
-                                                                       accessible:[[self javaBase] accessible]
-                                                                             role:[[self javaBase] javaRole]
-                                                                            index:[[self javaBase] index]
+        JavaComponentAccessibility *newChild = [JavaComponentAccessibility createWithParent:[self javaComponent]
+                                                                       accessible:[[self javaComponent] accessible]
+                                                                             role:[[self javaComponent] javaRole]
+                                                                            index:[[self javaComponent] index]
                                                                           withEnv:[ThreadUtilities getJNIEnv]
-                                                                         withView:[[self javaBase] view]
+                                                                         withView:[[self javaComponent] view]
                                                                         isWrapped:YES];
         return [NSArray arrayWithObject:[newChild autorelease].platformAxElement];
     } else {
@@ -36,12 +36,16 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 }
 
 - (NSInteger)accessibilityIndex {
-    return [super accessibilityIndex];
+    return [[self accessibilityParent] accessibilityIndexOfChild:self];
 }
 
 - (id)accessibilityParent
 {
     return [super accessibilityParent];
+}
+
+- (NSRect)accessibilityFrame {
+    return [super accessibilityFrame];
 }
 
 @end
