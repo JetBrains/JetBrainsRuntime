@@ -78,7 +78,7 @@ static NSSize ScaledImageSizeForStatusBar(NSSize imageSize, BOOL autosize) {
     [[NSUserNotificationCenter defaultUserNotificationCenter] setDelegate:nil];
 
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-    JNFDeleteGlobalRef(env, peer);
+    (*env)->DeleteGlobalRef(env, peer);
 
     [[NSStatusBar systemStatusBar] removeStatusItem: theItem];
 
@@ -344,7 +344,7 @@ JNIEXPORT jlong JNICALL Java_sun_lwawt_macosx_CTrayIcon_nativeCreate
 
 JNI_COCOA_ENTER(env);
 
-    jobject thePeer = JNFNewGlobalRef(env, peer);
+    jobject thePeer = (*env)->NewGlobalRef(env, peer);
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         trayIcon = [[AWTTrayIcon alloc] initWithPeer:thePeer];
     }];

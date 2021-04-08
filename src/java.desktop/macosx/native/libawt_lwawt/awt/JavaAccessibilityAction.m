@@ -36,9 +36,11 @@
 {
     self = [super init];
     if (self) {
-        fAccessibleAction = JNFNewWeakGlobalRef(env, accessibleAction);
+        fAccessibleAction = (*env)->NewWeakGlobalRef(env, accessibleAction);
+        CHECK_EXCEPTION();
         fIndex = index;
-        fComponent = JNFNewWeakGlobalRef(env, component);
+        fComponent = (*env)->NewWeakGlobalRef(env, component);
+        CHECK_EXCEPTION();
     }
     return self;
 }
@@ -47,10 +49,10 @@
 {
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
 
-    JNFDeleteWeakGlobalRef(env, fAccessibleAction);
+    (*env)->DeleteWeakGlobalRef(env, fAccessibleAction);
     fAccessibleAction = NULL;
 
-    JNFDeleteWeakGlobalRef(env, fComponent);
+    (*env)->DeleteWeakGlobalRef(env, fComponent);
     fComponent = NULL;
 
     [super dealloc];
@@ -63,14 +65,20 @@
     DECLARE_METHOD_RETURN(jm_getAccessibleActionDescription, sjc_CAccessibility, "getAccessibleActionDescription",
                           "(Ljavax/accessibility/AccessibleAction;ILjava/awt/Component;)Ljava/lang/String;", nil);
 
+    /* WeakGlobalRefs can be cleared at any time, so first get strong local refs and use those */
     jobject fCompLocal = (*env)->NewLocalRef(env, fComponent);
     if ((*env)->IsSameObject(env, fCompLocal, NULL)) {
+        return nil;
+    }
+    jobject fAccessibleActionLocal = (*env)->NewLocalRef(env, fAccessibleAction);
+    if ((*env)->IsSameObject(env, fAccessibleActionLocal, NULL)) {
+        (*env)->DeleteLocalRef(env, fCompLocal);
         return nil;
     }
     NSString *str = nil;
     jstring jstr = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
                                               jm_getAccessibleActionDescription,
-                                              fAccessibleAction,
+                                              fAccessibleActionLocal,
                                               fIndex,
                                               fCompLocal );
     CHECK_EXCEPTION();
@@ -79,6 +87,7 @@
         (*env)->DeleteLocalRef(env, jstr);
     }
     (*env)->DeleteLocalRef(env, fCompLocal);
+    (*env)->DeleteLocalRef(env, fAccessibleActionLocal);
     return str;
 }
 
@@ -103,9 +112,11 @@
 {
     self = [super init];
     if (self) {
-        fTabGroup = JNFNewWeakGlobalRef(env, tabGroup);
+        fTabGroup = (*env)->NewWeakGlobalRef(env, tabGroup);
+        CHECK_EXCEPTION();
         fIndex = index;
-        fComponent = JNFNewWeakGlobalRef(env, component);
+        fComponent = (*env)->NewWeakGlobalRef(env, component);
+        CHECK_EXCEPTION();
     }
     return self;
 }
@@ -114,10 +125,10 @@
 {
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
 
-    JNFDeleteWeakGlobalRef(env, fTabGroup);
+    (*env)->DeleteWeakGlobalRef(env, fTabGroup);
     fTabGroup = NULL;
 
-    JNFDeleteWeakGlobalRef(env, fComponent);
+    (*env)->DeleteWeakGlobalRef(env, fComponent);
     fComponent = NULL;
 
     [super dealloc];
