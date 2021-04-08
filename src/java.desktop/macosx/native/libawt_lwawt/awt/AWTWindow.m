@@ -144,7 +144,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
     AWT_ASSERT_APPKIT_THREAD;
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [((AWTWindow *)self.delegate).javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, ((AWTWindow *)self.delegate).javaPlatformWindow);
     if (platformWindow != NULL) {
         // extract the target AWT Window object out of the CPlatformWindow
         GET_CPLATFORM_WINDOW_CLASS();
@@ -235,7 +235,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
     [super moveTabToNewWindow:sender];
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [((AWTWindow *)self.delegate).javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, ((AWTWindow *)self.delegate).javaPlatformWindow);
     if (platformWindow != NULL) {
         // extract the target AWT Window object out of the CPlatformWindow
         GET_CPLATFORM_WINDOW_CLASS();
@@ -405,7 +405,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
 
 }
 
-- (id) initWithPlatformWindow:(JNFWeakJObjectWrapper *)platformWindow
+- (id) initWithPlatformWindow:(jobject)platformWindow
                   ownerWindow:owner
                     styleBits:(jint)bits
                     frameRect:(NSRect)rect
@@ -481,7 +481,7 @@ AWT_ASSERT_APPKIT_THREAD;
     BOOL result = NO;
     
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         // extract the target AWT Window object out of the CPlatformWindow
         GET_CPLATFORM_WINDOW_CLASS();
@@ -570,7 +570,7 @@ AWT_ASSERT_APPKIT_THREAD;
 AWT_ASSERT_APPKIT_THREAD;
 
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-    [self.javaPlatformWindow setJObject:nil withEnv:env];
+    (*env)->DeleteWeakGlobalRef(env, self.javaPlatformWindow);
     self.javaPlatformWindow = nil;
     self.nsWindow = nil;
     self.ownerWindow = nil;
@@ -582,7 +582,7 @@ AWT_ASSERT_APPKIT_THREAD;
     BOOL isSimpleWindowOwnedByEmbeddedFrame = NO;
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         GET_CPLATFORM_WINDOW_CLASS_RETURN(NO);
         DECLARE_METHOD_RETURN(jm_isBlocked, jc_CPlatformWindow, "isSimpleWindowOwnedByEmbeddedFrame", "()Z", NO);
@@ -603,7 +603,7 @@ AWT_ASSERT_APPKIT_THREAD;
         [AWTToolkit eventCountPlusPlus];
 
         JNIEnv *env = [ThreadUtilities getJNIEnv];
-        jobject platformWindow = [awtWindow.javaPlatformWindow jObjectWithEnv:env];
+        jobject platformWindow = (*env)->NewLocalRef(env, awtWindow.javaPlatformWindow);
         if (platformWindow != NULL) {
             GET_CPLATFORM_WINDOW_CLASS_RETURN(isVisible);
             DECLARE_METHOD_RETURN(jm_isVisible, jc_CPlatformWindow, "isVisible", "()Z", isVisible)
@@ -614,6 +614,44 @@ AWT_ASSERT_APPKIT_THREAD;
         }
     }
     return isVisible;
+}
+
+- (BOOL) delayShowing {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    return ownerWindow != nil && ([ownerWindow delayShowing] || !ownerWindow.nsWindow.onActiveSpace)
+           && !nsWindow.visible;
+}
+
+- (void) checkBlockingAndOrder {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    if (platformWindow != NULL) {
+        GET_CPLATFORM_WINDOW_CLASS_RETURN(NO);
+        DECLARE_METHOD_RETURN(jm_checkBlockingAndOrder, jc_CPlatformWindow, "checkBlockingAndOrder", "()Z", NO);
+        (*env)->CallBooleanMethod(env, platformWindow, jm_checkBlockingAndOrder);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, platformWindow);
+    }
+}
+
++ (void)activeSpaceDidChange {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    for (NSWindow* window in [NSApp windows]) {
+        if (window.onActiveSpace && [AWTWindow isJavaPlatformWindowVisible:window]) {
+            AWTWindow *awtWindow = (AWTWindow *)[window delegate];
+             // there can be only one current blocker per window hierarchy,
+             // so we're checking just hierarchy root
+            if (awtWindow.ownerWindow == nil) {
+                // this should ensure that delayed blocking windows
+                // show up on space activation
+                [awtWindow checkBlockingAndOrder];
+            }
+        }
+    }
 }
 
 // Orders window's childs based on the current focus state
@@ -706,7 +744,7 @@ AWT_ASSERT_APPKIT_THREAD;
     // the bounds of the window to avoid the Dock or remain on screen.
     [AWTToolkit eventCountPlusPlus];
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow == NULL) {
         // TODO: create generic AWT assert
     }
@@ -790,7 +828,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
     [AWTToolkit eventCountPlusPlus];
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         GET_CPLATFORM_WINDOW_CLASS();
         DECLARE_METHOD(jm_deliverIconify, jc_CPlatformWindow, "deliverIconify", "(Z)V");
@@ -806,7 +844,7 @@ AWT_ASSERT_APPKIT_THREAD;
     self.isMinimizing = YES;
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         GET_CPLATFORM_WINDOW_CLASS();
         DECLARE_METHOD(jm_windowWillMiniaturize, jc_CPlatformWindow, "windowWillMiniaturize", "()V");
@@ -837,9 +875,9 @@ AWT_ASSERT_APPKIT_THREAD;
 - (void) _deliverWindowFocusEvent:(BOOL)focused oppositeWindow:(AWTWindow *)opposite {
 //AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
-        jobject oppositeWindow = [opposite respondsToSelector:@selector(javaPlatformWindow)] ? [opposite.javaPlatformWindow jObjectWithEnv:env] : NULL;
+        jobject oppositeWindow = [opposite respondsToSelector:@selector(javaPlatformWindow)] ? (*env)->NewLocalRef(env, opposite.javaPlatformWindow) : NULL;
         GET_CPLATFORM_WINDOW_CLASS();
         DECLARE_METHOD(jm_deliverWindowFocusEvent, jc_CPlatformWindow, "deliverWindowFocusEvent", "(ZLsun/lwawt/macosx/CPlatformWindow;)V");
         (*env)->CallVoidMethod(env, platformWindow, jm_deliverWindowFocusEvent, (jboolean)focused, oppositeWindow);
@@ -859,7 +897,7 @@ AWT_ASSERT_APPKIT_THREAD;
     [self activateWindowMenuBar];
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         GET_CPLATFORM_WINDOW_CLASS();
         DECLARE_METHOD(jm_windowDidBecomeMain, jc_CPlatformWindow, "windowDidBecomeMain", "()V");
@@ -966,7 +1004,7 @@ AWT_ASSERT_APPKIT_THREAD;
 AWT_ASSERT_APPKIT_THREAD;
     [AWTToolkit eventCountPlusPlus];
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         GET_CPLATFORM_WINDOW_CLASS_RETURN(NO);
         DECLARE_METHOD_RETURN(jm_deliverWindowClosingEvent, jc_CPlatformWindow, "deliverWindowClosingEvent", "()V", NO);
@@ -984,7 +1022,7 @@ AWT_ASSERT_APPKIT_THREAD;
                            "handleFullScreenEventFromNative", "(Ljava/awt/Window;I)V");
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_FIELD(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;");
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         jobject awtWindow = (*env)->GetObjectField(env, platformWindow, jf_target);
         if (awtWindow != NULL) {
@@ -999,11 +1037,11 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
     self.isEnterFullScreen = YES;
-
+    
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowWillEnterFullScreen, jc_CPlatformWindow, "windowWillEnterFullScreen", "()V");
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         (*env)->CallVoidMethod(env, platformWindow, jm_windowWillEnterFullScreen);
         CHECK_EXCEPTION();
@@ -1018,7 +1056,7 @@ AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowDidEnterFullScreen, jc_CPlatformWindow, "windowDidEnterFullScreen", "()V");
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         (*env)->CallVoidMethod(env, platformWindow, jm_windowDidEnterFullScreen);
         CHECK_EXCEPTION();
@@ -1039,7 +1077,7 @@ AWT_ASSERT_APPKIT_THREAD;
         jm_windowWillExitFullScreen = (*env)->GetMethodID(env, jc_CPlatformWindow, "windowWillExitFullScreen", "()V");
     }
     CHECK_NULL(jm_windowWillExitFullScreen);
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         (*env)->CallVoidMethod(env, platformWindow, jm_windowWillExitFullScreen);
         CHECK_EXCEPTION();
@@ -1052,7 +1090,7 @@ AWT_ASSERT_APPKIT_THREAD;
     self.isEnterFullScreen = NO;
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         GET_CPLATFORM_WINDOW_CLASS();
         DECLARE_METHOD(jm_windowDidExitFullScreen, jc_CPlatformWindow, "windowDidExitFullScreen", "()V");
@@ -1073,7 +1111,7 @@ AWT_ASSERT_APPKIT_THREAD;
             // Check if the click happened in the non-client area (title bar)
             if (p.y >= (frame.origin.y + contentRect.size.height)) {
                 JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-                jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+                jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
                 if (platformWindow != NULL) {
                     // Currently, no need to deliver the whole NSEvent.
                     GET_CPLATFORM_WINDOW_CLASS();
@@ -1156,7 +1194,7 @@ JNIEXPORT jlong JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeCreateNSWind
 
 JNI_COCOA_ENTER(env);
 
-    JNFWeakJObjectWrapper *platformWindow = [JNFWeakJObjectWrapper wrapperWithJObject:obj withEnv:env];
+    jobject platformWindow = (*env)->NewWeakGlobalRef(env, obj);
     NSView *contentView = OBJC(contentViewPtr);
     NSRect frameRect = NSMakeRect(x, y, w, h);
     AWTWindow *owner = [OBJC(ownerPtr) delegate];
@@ -1625,7 +1663,7 @@ JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeGetTopmostPlatformWindowUnde
     [ThreadUtilities performOnMainThreadWaiting:YES block:^{
         AWTWindow *awtWindow = [AWTWindow getTopmostWindowUnderMouse];
         if (awtWindow != nil) {
-            topmostWindowUnderMouse = [awtWindow.javaPlatformWindow jObject];
+            topmostWindowUnderMouse = awtWindow.javaPlatformWindow;
         }
     }];
 
