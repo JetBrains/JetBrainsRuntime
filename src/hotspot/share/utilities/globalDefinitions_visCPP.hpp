@@ -113,6 +113,7 @@ inline int g_isfinite(jdouble f)                 { return _finite(f); }
 // Visual Studio 2005 deprecates POSIX names - use ISO C++ names instead
 #if _MSC_VER >= 1400
 #define open _open
+#define wopen _wopen
 #define close _close
 #define read  _read
 #define write _write

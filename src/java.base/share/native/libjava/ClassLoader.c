@@ -338,7 +338,6 @@ JNIEXPORT jboolean JNICALL
 Java_java_lang_ClassLoader_00024NativeLibrary_load0
   (JNIEnv *env, jobject this, jstring name, jboolean isBuiltin)
 {
-    const char *cname;
     jint jniVersion;
     jthrowable cause;
     void * handle;
@@ -347,7 +346,8 @@ Java_java_lang_ClassLoader_00024NativeLibrary_load0
     if (!initIDs(env))
         return JNI_FALSE;
 
-    cname = JNU_GetStringPlatformChars(env, name, 0);
+    char   cname_buf[128];
+    char * cname = getUTF(env, name, cname_buf, sizeof(cname_buf));
     if (cname == 0)
         return JNI_FALSE;
     handle = isBuiltin ? procHandle : JVM_LoadLibrary(cname);
@@ -400,7 +400,9 @@ Java_java_lang_ClassLoader_00024NativeLibrary_load0
     loaded = JNI_TRUE;
 
  done:
-    JNU_ReleaseStringPlatformChars(env, name, cname);
+    if (cname != NULL && cname != cname_buf) {
+        free(cname);
+    }
     return loaded;
 }
 
