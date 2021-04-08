@@ -29,7 +29,7 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
 - (jobject)tabGroup {
     if (fTabGroupAxContext == NULL) {
         JNIEnv* env = [ThreadUtilities getJNIEnv];
-        jobject tabGroupAxContext = [(JavaBaseAccessibility *)[self parent] axContextWithEnv:env];
+        jobject tabGroupAxContext = [(JavaElementAccessibility *)[self parent] axContextWithEnv:env];
         fTabGroupAxContext = JNFNewWeakGlobalRef(env, tabGroupAxContext);
         (*env)->DeleteLocalRef(env, tabGroupAxContext);
     }

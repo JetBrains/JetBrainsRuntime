@@ -6,8 +6,6 @@
 
 @property(readonly) NSString *accessibleSelectedText;
 
-- (void)accessibleShowMenu;
-
 @end
 
 @interface PlatformAxComboBox : PlatformAxElement

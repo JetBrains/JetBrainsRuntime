@@ -21,7 +21,7 @@
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
         NSString *javaRole = [[self javaBase] javaRole];
-        JavaBaseAccessibility *newChild = [JavaBaseAccessibility createWithParent:[self javaBase]
+        JavaElementAccessibility *newChild = [JavaElementAccessibility createWithParent:[self javaBase]
                                                                        accessible:[[self javaBase] accessible]
                                                                              role:javaRole
                                                                             index:[[self javaBase] index]

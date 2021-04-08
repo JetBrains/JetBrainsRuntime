@@ -68,7 +68,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 }
 
 - (NSInteger)accessibilityIndex {
-        return [[self javaBase] index];
+    return [[self accessibilityParent] accessibilityIndexOfChild:self];
 }
 
 - (NSString *)accessibilityLabel {
@@ -100,6 +100,10 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
             width += [cell accessibilityFrame].size.width;
         }
         return NSMakeRect(point.x, point.y, width, height);
+}
+
+- (NSAccessibilitySubrole)accessibilitySubrole {
+    return NSAccessibilityTableRowSubrole;
 }
 
 @end

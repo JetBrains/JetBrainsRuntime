@@ -23,7 +23,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
     // Go through the tabs and find selAccessible
     _numTabs = [tabs count];
-    JavaBaseAccessibility *aTab;
+    JavaElementAccessibility *aTab;
     NSInteger i;
     for (i = 0; i < _numTabs; i++) {
         aTab = [(PlatformAxElement *)[tabs objectAtIndex:i] javaBase];
@@ -61,7 +61,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     NSUInteger tabIndex = (whichTabs >= 0) ? whichTabs : 0; // if we're getting one particular child, make sure to set its index correctly
     for(i = 0; i < arrayLen; i+=2) {
         jobject jtab = (*env)->GetObjectArrayElement(env, jtabsAndRoles, i);
-        JavaBaseAccessibility *tab = [[[JavaTabButtonAccessibility alloc] initWithParent:self withEnv:env withAccessible:jtab withIndex:tabIndex withTabGroup:axContext withView:[self view] withJavaRole:tabJavaRole] autorelease];
+        JavaElementAccessibility *tab = [[[JavaTabButtonAccessibility alloc] initWithParent:self withEnv:env withAccessible:jtab withIndex:tabIndex withTabGroup:axContext withView:[self view] withJavaRole:tabJavaRole] autorelease];
         (*env)->DeleteLocalRef(env, jtab);
         [tabs addObject:[tab platformAxElement]];
         tabIndex++;
@@ -75,7 +75,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     PlatformAxElement *currentTab = [self currentTabWithEnv:env withAxContext:axContext];
     if (currentTab == nil) return nil;
 
-    NSArray *contents = [JavaBaseAccessibility childrenOfParent:[currentTab javaBase] withEnv:env withChildrenCode:whichTabs allowIgnored:allowIgnored];
+    NSArray *contents = [JavaElementAccessibility childrenOfParent:[currentTab javaBase] withEnv:env withChildrenCode:whichTabs allowIgnored:allowIgnored];
     if ([contents count] <= 0) return nil;
     return contents;
 }
