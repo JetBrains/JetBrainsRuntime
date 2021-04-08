@@ -132,7 +132,7 @@
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CClipboard_declareTypes
 (JNIEnv *env, jobject inObject, jlongArray inTypes, jobject inJavaClip)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     jint i;
     jint nElements = (*env)->GetArrayLength(env, inTypes);
@@ -147,7 +147,7 @@ JNF_COCOA_ENTER(env);
 
     (*env)->ReleasePrimitiveArrayCritical(env, inTypes, elements, JNI_ABORT);
     [[CClipboard sharedClipboard] declareTypes:formatArray withOwner:inJavaClip jniEnv:env];
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -162,7 +162,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CClipboard_setData
         return;
     }
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
     jint nBytes = (*env)->GetArrayLength(env, inBytes);
     jbyte *rawBytes = (*env)->GetPrimitiveArrayCritical(env, inBytes, NULL);
     CHECK_NULL(rawBytes);
@@ -172,7 +172,7 @@ JNF_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
         [[NSPasteboard generalPasteboard] setData:bytesAsData forType:format];
     }];
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -188,7 +188,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CClipboard_writeObjects
     }
     
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
     jint nBytes = (*env)->GetArrayLength(env, inBytes);
     jbyte *rawBytes = (*env)->GetPrimitiveArrayCritical(env, inBytes, NULL);
     CHECK_NULL(rawBytes);
@@ -213,7 +213,7 @@ JNF_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
         [[NSPasteboard generalPasteboard] writeObjects:formatArray];
     }];
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 
@@ -226,7 +226,7 @@ JNIEXPORT jlongArray JNICALL Java_sun_lwawt_macosx_CClipboard_getClipboardFormat
 (JNIEnv *env, jobject inObject)
 {
     jlongArray returnValue = NULL;
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     __block NSArray* dataTypes;
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
@@ -271,7 +271,7 @@ JNF_COCOA_ENTER(env);
     }
 
     (*env)->ReleaseLongArrayElements(env, returnValue, saveFormats, JNI_COMMIT);
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
     return returnValue;
 }
 
@@ -287,7 +287,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_lwawt_macosx_CClipboard_getClipboardData
 
     // Note that this routine makes no attempt to interpret the data, since we're returning
     // a byte array back to Java.  CDataTransferer will do that if necessary.
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     NSString *formatAsString = formatForIndex(format);
     __block NSData* clipData;
@@ -296,7 +296,7 @@ JNF_COCOA_ENTER(env);
     }];
 
     if (clipData == NULL) {
-        [JNFException raise:env as:"java/io/IOException" reason:"Font transform has NaN position"];
+        JNU_ThrowIOException(env, "Font transform has NaN position");
         return NULL;
     } else {
         [clipData autorelease];
@@ -322,7 +322,7 @@ JNF_COCOA_ENTER(env);
         (*env)->SetByteArrayRegion(env, returnValue, 0, dataSize, (jbyte *)dataBuffer);
     }
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
     return returnValue;
 }
 
@@ -335,11 +335,11 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CClipboard_checkPasteboardWitho
 (JNIEnv *env, jobject inObject)
 {
     __block BOOL ret = NO;
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         ret = [[CClipboard sharedClipboard] checkPasteboardWithoutNotification:nil];
     }];
 
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
     return ret;
 }

@@ -3074,7 +3074,7 @@ Java_sun_font_CFontManager_loadNativeFonts
 
     jint num = 0;
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     NSArray *filteredFonts = GetFilteredFonts();
     num = (jint)[filteredFonts count];
@@ -3097,7 +3097,7 @@ JNF_COCOA_ENTER(env);
         }
     }
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -3110,7 +3110,7 @@ Java_sun_font_CFontManager_getNativeFontVersion
         (JNIEnv *env, jclass clz, jstring psName)
 {
     jstring result = NULL;
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
     NSString *psNameStr = JNFJavaToNSString(env, psName);
     CTFontRef sFont = CTFontCreateWithName(psNameStr, 13, nil);
     if (sFont != NULL) {
@@ -3131,7 +3131,7 @@ JNF_COCOA_ENTER(env);
         }
         CFRelease(sFont);
     }
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
     return result;
 }
 
@@ -3144,7 +3144,7 @@ JNIEXPORT void JNICALL
 Java_sun_font_CFontManager_loadNativeDirFonts
 (JNIEnv *env, jclass clz, jstring filename)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     NSString *path = JNFJavaToNSString(env, filename);
     NSURL *url = [NSURL fileURLWithPath:(NSString *)path];
@@ -3154,7 +3154,7 @@ JNF_COCOA_ENTER(env);
     NSLog(@"url is : %@", (NSString*)url);
     printf("res is %d\n", res);
 #endif
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 #pragma mark --- sun.font.CFont JNI ---
@@ -3184,7 +3184,7 @@ Java_sun_font_CFont_getTableBytesNative
      jlong awtFontPtr, jint jtag)
 {
     jbyteArray jbytes = NULL;
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     CTFontTableTag tag = (CTFontTableTag)jtag;
     int i, found = 0;
@@ -3226,7 +3226,7 @@ JNF_COCOA_ENTER(env);
                                (jbyte*)tableBytes);
     CFRelease(table);
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 
     return jbytes;
 }
@@ -3243,7 +3243,7 @@ Java_sun_font_CFont_createNativeFont
 {
     AWTFont *awtFont = nil;
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     awtFont =
         [AWTFont awtFontForName:JNFJavaToNSString(env, nativeFontName)
@@ -3253,7 +3253,7 @@ JNF_COCOA_ENTER(env);
         CFRetain(awtFont); // GC
     }
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 
     return ptr_to_jlong(awtFont);
 }
@@ -3268,7 +3268,7 @@ Java_sun_font_CFont_getWidthNative
     (JNIEnv *env, jobject cfont, jlong awtFontPtr)
 {
     float widthVal;
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
     NSFont* nsFont = awtFont->fFont;
@@ -3277,7 +3277,7 @@ JNF_COCOA_ENTER(env);
     NSNumber *width = [fontTraits objectForKey : NSFontWidthTrait];
     widthVal = (float)[width floatValue];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
    return (jfloat)widthVal;
 }
 
@@ -3291,7 +3291,7 @@ Java_sun_font_CFont_getWeightNative
     (JNIEnv *env, jobject cfont, jlong awtFontPtr)
 {
     float weightVal;
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
     NSFont* nsFont = awtFont->fFont;
@@ -3300,7 +3300,7 @@ JNF_COCOA_ENTER(env);
     NSNumber *weight = [fontTraits objectForKey : NSFontWeightTrait];
     weightVal = (float)[weight floatValue];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
    return (jfloat)weightVal;
 }
 
@@ -3313,13 +3313,13 @@ JNIEXPORT void JNICALL
 Java_sun_font_CFont_disposeNativeFont
     (JNIEnv *env, jclass clazz, jlong awtFontPtr)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     if (awtFontPtr) {
         CFRelease((AWTFont *)jlong_to_ptr(awtFontPtr)); // GC
     }
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 

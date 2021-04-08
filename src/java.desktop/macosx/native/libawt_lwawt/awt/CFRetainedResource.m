@@ -23,6 +23,8 @@
  * questions.
  */
 
+#import "JNIUtilities.h"
+
 #import <Cocoa/Cocoa.h>
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
@@ -30,7 +32,7 @@
 
 void nativeCFRelease(JNIEnv *env, jlong ptr, jboolean releaseOnAppKitThread, bool (^condition)(jlong))
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
     if (releaseOnAppKitThread) {
         // Releasing resources on the main AppKit message loop only
         // Releasing resources on the nested loops may cause dangling
@@ -48,7 +50,7 @@ JNF_COCOA_ENTER(env);
     } else {
         if (condition(ptr)) CFRelease(jlong_to_ptr(ptr));
     }
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*

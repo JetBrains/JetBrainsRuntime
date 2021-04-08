@@ -111,7 +111,7 @@ JNIEXPORT void JNICALL Java_com_apple_concurrent_LibDispatchNative_nativeRelease
 
 static void perform_dispatch(JNIEnv *env, jlong nativeQueue, jobject runnable, void (*dispatch_fxn)(dispatch_queue_t, dispatch_block_t))
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
         dispatch_queue_t queue = (dispatch_queue_t)jlong_to_ptr(nativeQueue);
         if (queue == NULL) return; // shouldn't happen
 
@@ -123,7 +123,7 @@ JNF_COCOA_ENTER(env);
                 JNFThreadContext ctx = JNFThreadDetachOnThreadDeath | JNFThreadSetSystemClassLoaderOnAttach | JNFThreadAttachAsDaemon;
                 JNIEnv *blockEnv = JNFObtainEnv(&ctx);
 
-        JNF_COCOA_ENTER(blockEnv);
+        JNI_COCOA_ENTER(blockEnv);
 
                 // call the user's runnable
                 JNFCallObjectMethod(blockEnv, [wrappedRunnable jObject], jm_run);
@@ -131,7 +131,7 @@ JNF_COCOA_ENTER(env);
                 // explicitly clear object while we have an env (it's cheaper that way)
                 [wrappedRunnable setJObject:NULL withEnv:blockEnv];
 
-        JNF_COCOA_EXIT(blockEnv);
+        JNI_COCOA_EXIT(blockEnv);
 
                 // let the env go, but leave the thread attached as a daemon
                 JNFReleaseEnv(blockEnv, &ctx);
@@ -141,7 +141,7 @@ JNF_COCOA_ENTER(env);
         // will have retained the it's own interest above
         [wrappedRunnable release];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 
