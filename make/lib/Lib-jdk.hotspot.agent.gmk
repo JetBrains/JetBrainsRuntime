@@ -67,7 +67,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBSA, \
     LDFLAGS := $(LDFLAGS_JDKLIB) $(SA_LDFLAGS), \
     LIBS_linux := -lthread_db $(LIBDL), \
     LIBS_solaris := -ldl -ldemangle -lthread -lproc, \
-    LIBS_macosx := -framework Foundation -framework JavaNativeFoundation \
+    LIBS_macosx := -framework Foundation \
         -framework JavaRuntimeSupport -framework Security -framework CoreFoundation, \
     LIBS_windows := dbgeng.lib, \
 ))
