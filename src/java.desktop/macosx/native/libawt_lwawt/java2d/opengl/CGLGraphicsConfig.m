@@ -28,6 +28,7 @@
 #import "CGLGraphicsConfig.h"
 #import "CGLSurfaceData.h"
 #import "ThreadUtilities.h"
+#import "JNIUtilities.h"
 
 #import <stdlib.h>
 #import <string.h>
@@ -194,7 +195,7 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_getCGLConfigInfo
      jint displayID, jint pixfmt, jint swapInterval)
 {
   jlong ret = 0L;
-  JNF_COCOA_ENTER(env);
+  JNI_COCOA_ENTER(env);
   NSMutableArray * retArray = [NSMutableArray arrayWithCapacity:3];
   [retArray addObject: [NSNumber numberWithInt: (int)displayID]];
   [retArray addObject: [NSNumber numberWithInt: (int)pixfmt]];
@@ -206,7 +207,7 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_getCGLConfigInfo
   }
   NSNumber * num = (NSNumber *)[retArray objectAtIndex: 0];
   ret = (jlong)[num longValue];
-  JNF_COCOA_EXIT(env);
+  JNI_COCOA_EXIT(env);
   return ret;
 }
 
