@@ -603,8 +603,8 @@ public abstract class Toolkit {
                                 toolkit = new HeadlessToolkit(toolkit);
                             }
                         }
-                    } catch (final ReflectiveOperationException ignored) {
-                        throw new AWTError("Could not create Toolkit: " + nm);
+                    } catch (final ReflectiveOperationException e) {
+                        newAWTError(e, "Could not create Toolkit: " + nm);
                     }
                     return null;
                 }
