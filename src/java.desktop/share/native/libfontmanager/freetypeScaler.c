@@ -323,12 +323,6 @@ static FT_Error FT_Library_SetLcdFilter_Proxy(FT_Library library, FT_LcdFilter  
 #endif
 }
 
-static char* getPhysFontName(JNIEnv *env, jobject font2d) {
-    jstring jstr;
-    jstr = (*env)->GetObjectField(env, font2d, platNameFID);
-    return (char*)(*env)->GetStringUTFChars(env, jstr, NULL);
-}
-
 static int getScreenResolution(JNIEnv *env) {
 /*
  * Actual screen dpi is necessary only for fontconfig requests
