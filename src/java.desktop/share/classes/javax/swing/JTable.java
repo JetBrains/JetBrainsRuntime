@@ -5323,7 +5323,6 @@ public class JTable extends JComponent implements TableModelListener, Scrollable
         // Start editing when a key is typed. UI classes can disable this behavior
         // by setting the client property JTable.autoStartsEdit to Boolean.FALSE.
         if (!retValue && condition == WHEN_ANCESTOR_OF_FOCUSED_COMPONENT &&
-            isFocusOwner() &&
             !Boolean.FALSE.equals(getClientProperty("JTable.autoStartsEdit"))) {
             // We do not have a binding for the event.
             Component editorComponent = getEditorComponent();
@@ -5352,11 +5351,6 @@ public class JTable extends JComponent implements TableModelListener, Scrollable
                 if (editorComponent == null) {
                     return false;
                 }
-            }
-            // If the editorComponent is a JComponent, pass the event to it.
-            if (editorComponent instanceof JComponent) {
-                retValue = ((JComponent)editorComponent).processKeyBinding
-                                        (ks, e, WHEN_FOCUSED, pressed);
                 // If we have started an editor as a result of the user
                 // pressing a key and the surrendersFocusOnKeystroke property
                 // is true, give the focus to the new editor.
@@ -5365,6 +5359,11 @@ public class JTable extends JComponent implements TableModelListener, Scrollable
                         || Boolean.TRUE.equals(prop)) {
                     editorComponent.requestFocus();
                 }
+            }
+            // If the editorComponent is a JComponent, pass the event to it.
+            if (editorComponent instanceof JComponent) {
+                retValue = ((JComponent)editorComponent).processKeyBinding
+                                        (ks, e, WHEN_FOCUSED, pressed);
             }
         }
         return retValue;
