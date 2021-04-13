@@ -17,9 +17,9 @@
 /*
  * @test
  * @summary regression test on JRE-624 CThreading.isAppKit() fails to detect main app thread if it was renamed
- * @compile -XDignore.symbol.file --add-exports java.desktop/sun.lwawt.macosx=ALL-UNNAMED IsAppKit.java
+ * @compile -XDignore.symbol.file IsAppKit.java
  * @requires os.family == "mac"
- * @run main/othervm --add-opens java.desktop/sun.lwawt.macosx=ALL-UNNAMED IsAppKit
+ * @run main/othervm IsAppKit 
  */
 
 import javax.swing.*;
