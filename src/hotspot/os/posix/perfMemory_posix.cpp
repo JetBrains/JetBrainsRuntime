@@ -532,12 +532,12 @@ static char* get_user_name_slow(int vmid, int nspid, TRAPS) {
 #if defined(LINUX)
   assert(strlen(tmpdirname) == 4, "No longer using /tmp - update buffer size");
 
+  char buffer[MAXPATHLEN + 1];
   // On Linux, if nspid != -1, look in /proc/{vmid}/root/tmp for directories
   // containing nspid, otherwise just look for vmid in /tmp.
   if (nspid == -1) {
     searchpid = vmid;
   } else {
-    char buffer[MAXPATHLEN + 1];
     jio_snprintf(buffer, MAXPATHLEN, "/proc/%d/root%s", vmid, tmpdirname);
     tmpdirname = buffer;
     searchpid = nspid;
