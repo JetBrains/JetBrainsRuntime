@@ -25,6 +25,8 @@
 
 package sun.font;
 
+import sun.lwawt.macosx.concurrent.Dispatch;
+
 import java.awt.Rectangle;
 import java.awt.geom.*;
 import java.util.HashMap;
@@ -377,7 +379,7 @@ public final class CStrike extends PhysicalStrike {
         private static final int SECOND_LAYER_SIZE = 16384; // 16384 = 128x128
 
         // rdar://problem/5204197
-        private boolean disposed = false;
+        private final AtomicBoolean disposed = new AtomicBoolean(false);
 
         private final long[] firstLayerCache;
         private SparseBitShiftingTwoLayerArray secondLayerCache;
@@ -441,41 +443,64 @@ public final class CStrike extends PhysicalStrike {
 
         @Override
         public synchronized void dispose() {
-            // rdar://problem/5204197
-            // Note that sun.font.Font2D.getStrike() actively disposes
-            // cleared strikeRef.  We need to check the disposed flag to
-            // prevent double frees of native resources.
-            if (disposed) {
-                return;
-            }
+            final Runnable command = () -> {
+                // rdar://problem/5204197
+                // Note that sun.font.Font2D.getStrike() actively disposes
+                // cleared strikeRef.  We need to check the disposed flag to
+                // prevent double frees of native resources.
+                if (disposed.compareAndSet(false, true)) {
 
-            super.dispose();
+                    super.dispose();
 
-            // clean out the first array
-            disposeLongArray(firstLayerCache);
+                    // clean out the first array
+                    disposeLongArray(firstLayerCache);
 
-            // clean out the two layer arrays
-            if (secondLayerCache != null) {
-                final long[][] secondLayerLongArrayArray = secondLayerCache.cache;
-                for (int i = 0; i < secondLayerLongArrayArray.length; i++) {
-                    final long[] longArray = secondLayerLongArrayArray[i];
-                    if (longArray != null) disposeLongArray(longArray);
-                }
-            }
+                    // clean out the two layer arrays
+                    if (secondLayerCache != null) {
+                        final long[][] secondLayerLongArrayArray = secondLayerCache.cache;
+                        for (final long[] longArray : secondLayerLongArrayArray) {
+                            if (longArray != null) disposeLongArray(longArray);
+                        }
+                    }
 
-            // clean up everyone else
-            if (generalCache != null) {
-                for (long longValue : generalCache.values()) {
-                    if (longValue != -1 && longValue != 0) {
-                        removeGlyphInfoFromCache(longValue);
-                        StrikeCache.freeLongPointer(longValue);
+                    // clean up everyone else
+                    if (generalCache != null) {
+                                    for (long longValue : generalCache.values()) {
+                                        if (longValue != -1 && longValue != 0) {
+                                            removeGlyphInfoFromCache(longValue);
+                                            StrikeCache.freeLongPointer(longValue);
+                                        }
+                                    }
+                                }
+                    if (generalCache != null) {
+                        for (Long aLong : generalCache.values()) {
+                            final long longValue = aLong;
+                            if (longValue != -1 && longValue != 0) {
+                                removeGlyphInfoFromCache(longValue);
+                                StrikeCache.freeLongPointer(longValue);
+                            }
+                        }
                     }
                 }
-            }
+            };
 
-            // rdar://problem/5204197
-            // Finally, set the flag.
-            disposed = true;
+            // Move disposal code to AppKit thread in order to avoid the
+            // following deadlock:
+            // 1) CGLGraphicsConfig.getCGLConfigInfo (called from Java2D
+            //    disposal thread) takes RenderQueue.lock
+            // 2) CGLLayer.drawInCGLContext is invoked on AppKit thread and
+            //    blocked on RenderQueue.lock
+            // 1) invokes native block on AppKit and wait
+            //
+            // If dispatch instance is not available, run the code on
+            // disposal thread as before
+
+            final Dispatch dispatch = Dispatch.getInstance();
+
+            if (!CThreading.isAppKit() && dispatch != null)
+                dispatch.getNonBlockingMainQueueExecutor().execute(command);
+            else
+                command.run();
         }
 
         private static void disposeLongArray(final long[] longArray) {
