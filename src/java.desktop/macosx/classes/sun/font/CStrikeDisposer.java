@@ -25,6 +25,11 @@
 
 package sun.font;
 
+import sun.lwawt.macosx.concurrent.Dispatch;
+import sun.lwawt.macosx.CThreading;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /*
  * This keeps track of data that needs to be cleaned up once a
  * strike is freed.
@@ -49,6 +54,7 @@ package sun.font;
 class CStrikeDisposer extends FontStrikeDisposer {
 
     long pNativeScalerContext;
+    private final AtomicBoolean disposed = new AtomicBoolean(false);
 
     public CStrikeDisposer(Font2D font2D, FontStrikeDesc desc,
                                long pContext, int[] images)
@@ -76,12 +82,31 @@ class CStrikeDisposer extends FontStrikeDisposer {
     }
 
     public synchronized void dispose() {
-        if (!disposed) {
-            if (pNativeScalerContext != 0L) {
-                freeNativeScalerContext(pNativeScalerContext);
+        final Runnable command = () -> {
+            if (disposed.compareAndSet(false, true)) {
+                if (pNativeScalerContext != 0L) {
+                    freeNativeScalerContext(pNativeScalerContext);
+                }
+                super.dispose();
             }
-            super.dispose();
-        }
+        };
+        // Move disposal code to AppKit thread in order to avoid the
+        // following deadlock:
+        // 1) CGLGraphicsConfig.getCGLConfigInfo (called from Java2D
+        //    disposal thread) takes RenderQueue.lock
+        // 2) CGLLayer.drawInCGLContext is invoked on AppKit thread and
+        //    blocked on RenderQueue.lock
+        // 1) invokes native block on AppKit and wait
+        //
+        // If dispatch instance is not available, run the code on
+        // disposal thread as before
+
+        final Dispatch dispatch = Dispatch.getInstance();
+
+        if (!CThreading.isAppKit() && dispatch != null)
+            dispatch.getNonBlockingMainQueueExecutor().execute(command);
+        else
+            command.run();
     }
 
     private native void freeNativeScalerContext(long pContext);
