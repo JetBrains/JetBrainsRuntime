@@ -48,11 +48,12 @@ void InternalVMTests::run() {
   run_unit_test(GCTimer_test);
   run_unit_test(ObjectMonitor_test);
   // These tests require the "C" locale to correctly parse decimal values
-  const char* orig_locale = setlocale(LC_NUMERIC, NULL);
+  char* orig_locale = os::strdup(setlocale(LC_NUMERIC, NULL));
   setlocale(LC_NUMERIC, "C");
   run_unit_test(DirectivesParser_test);
   setlocale(LC_NUMERIC, orig_locale);
   tty->print_cr("All internal VM tests passed");
+  os::free(orig_locale);
 }
 
 #endif

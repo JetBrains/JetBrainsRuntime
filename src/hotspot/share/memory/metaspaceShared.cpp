@@ -838,6 +838,7 @@ public:
     _dump_region->append_intptr_t((intptr_t)*p);
   }
 
+  ATTRIBUTE_NO_SANITIZE_ADDRESS("FIXME: do_u4 is often used to do bool")
   void do_u4(u4* p) {
     void* ptr = (void*)(uintx(*p));
     do_ptr(&ptr);
@@ -2017,6 +2018,7 @@ public:
     *p = (void*)obj;
   }
 
+  ATTRIBUTE_NO_SANITIZE_ADDRESS("FIXME: do_u4 is often used to do bool")
   void do_u4(u4* p) {
     intptr_t obj = nextPtr();
     *p = (u4)(uintx(obj));
