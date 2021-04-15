@@ -104,7 +104,6 @@ ifeq ($(OPENJDK_TARGET_OS), macosx)
           -framework Cocoa \
           -framework Security \
           -framework ExceptionHandling \
-          -framework JavaNativeFoundation \
           -framework JavaRuntimeSupport \
           -framework OpenGL \
           -framework IOSurface \
@@ -130,7 +129,6 @@ ifeq ($(OPENJDK_TARGET_OS), macosx)
           -losxapp \
           -framework Cocoa \
           -framework ApplicationServices \
-          -framework JavaNativeFoundation \
           -framework JavaRuntimeSupport \
           -framework SystemConfiguration \
           $(JDKLIB_LIBS), \

@@ -23,8 +23,6 @@
  * questions.
  */
 
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
-
 #import "java_awt_Font.h"
 #import "sun_awt_PlatformFont.h"
 #import "sun_awt_FontDescriptor.h"
@@ -3082,11 +3080,11 @@ JNI_COCOA_ENTER(env);
     jint i;
     for (i = 0; i < num; i++) {
         NSString *fontname = [filteredFonts objectAtIndex:i];
-        jobject jFontName = JNFNSToJavaString(env, fontname);
+        jobject jFontName = NSStringToJavaString(env, fontname);
         jobject jFontFamilyName =
-            JNFNSToJavaString(env, GetFamilyNameForFontName(fontname));
+            NSStringToJavaString(env, GetFamilyNameForFontName(fontname));
         NSString *face = GetFaceForFontName(fontname);
-        jobject jFaceName = face ? JNFNSToJavaString(env, face) : NULL;
+        jobject jFaceName = face ? NSStringToJavaString(env, face) : NULL;
 
         (*env)->CallVoidMethod(env, jthis, jm_registerFont, jFontName, jFontFamilyName, jFaceName);
         CHECK_EXCEPTION();
@@ -3111,7 +3109,7 @@ Java_sun_font_CFontManager_getNativeFontVersion
 {
     jstring result = NULL;
 JNI_COCOA_ENTER(env);
-    NSString *psNameStr = JNFJavaToNSString(env, psName);
+    NSString *psNameStr = JavaStringToNSString(env, psName);
     CTFontRef sFont = CTFontCreateWithName(psNameStr, 13, nil);
     if (sFont != NULL) {
         CFStringRef sFontPSName = CTFontCopyName(sFont, kCTFontPostScriptNameKey);
@@ -3122,7 +3120,7 @@ JNI_COCOA_ENTER(env);
             CFStringRef fontVersionStr = CTFontCopyName(sFont,
                                                         kCTFontVersionNameKey);
             if (fontVersionStr != NULL) {
-                result = JNFNSToJavaString(env, fontVersionStr);
+                result = NSStringToJavaString(env, fontVersionStr);
                 CFRelease(fontVersionStr);
             }
         }
@@ -3146,7 +3144,7 @@ Java_sun_font_CFontManager_loadNativeDirFonts
 {
 JNI_COCOA_ENTER(env);
 
-    NSString *path = JNFJavaToNSString(env, filename);
+    NSString *path = JavaStringToNSString(env, filename);
     NSURL *url = [NSURL fileURLWithPath:(NSString *)path];
     bool res = CTFontManagerRegisterFontsForURL((CFURLRef)url, kCTFontManagerScopeProcess, nil);
 #ifdef DEBUG
@@ -3246,7 +3244,7 @@ Java_sun_font_CFont_createNativeFont
 JNI_COCOA_ENTER(env);
 
     awtFont =
-        [AWTFont awtFontForName:JNFJavaToNSString(env, nativeFontName)
+        [AWTFont awtFontForName:JavaStringToNSString(env, nativeFontName)
          style:style]; // autoreleased
 
     if (awtFont) {

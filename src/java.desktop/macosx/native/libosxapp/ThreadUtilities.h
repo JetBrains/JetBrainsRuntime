@@ -26,6 +26,8 @@
 #ifndef __THREADUTILITIES_H
 #define __THREADUTILITIES_H
 
+#include "jni.h"
+
 #import <pthread.h>
 
 #import "AWT_debug.h"
@@ -123,16 +125,16 @@ do {                                  \
 // --------------------------------------------------------------------------
 
 __attribute__((visibility("default")))
-@interface ThreadUtilities { }
+@interface ThreadUtilities : NSObject { } /* Extend NSObject so can call performSelectorOnMainThread */
 
 + (JNIEnv*)getJNIEnv;
 + (JNIEnv*)getJNIEnvUncached;
 + (void)detachCurrentThread;
 + (void)setAppkitThreadGroup:(jobject)group;
 
-//Wrappers for the corresponding JNFRunLoop methods with a check for main thread
 + (void)performOnMainThreadWaiting:(BOOL)wait block:(void (^)())block;
 + (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait;
++ (NSString*)javaRunLoopMode;
 @end
 
 void OSXAPP_SetJavaVM(JavaVM *vm);

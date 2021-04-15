@@ -32,8 +32,6 @@
 #import "com_apple_eawt__AppMenuBarHandler.h"
 #import "com_apple_eawt__AppMiscHandlers.h"
 
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
-
 #import "CPopupMenu.h"
 #import "CMenuBar.h"
 #import "ThreadUtilities.h"
@@ -296,10 +294,10 @@ AWT_ASSERT_APPKIT_THREAD;
 
     //fprintf(stderr,"jm_handleOpenURL\n");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jstring jURL = JNFNSToJavaString(env, url);
+    jstring jURL = NSStringToJavaString(env, url);
     GET_APPEVENTHANDLER_CLASS();
     DECLARE_STATIC_METHOD(jm_handleOpenURI, sjc_AppEventHandler, "handleOpenURI", "(Ljava/lang/String;)V");
-    (*env)->CallStaticVoidMethod(env, sjc_AppEventHandler, jm_handleOpenURI, jURL); // AWT_THREADING Safe (event)
+    (*env)->CallStaticVoidMethod(env, sjc_AppEventHandler, jm_handleOpenURI, jURL);
     CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, jURL);
 
@@ -318,11 +316,11 @@ AWT_ASSERT_APPKIT_THREAD;
     DECLARE_METHOD_RETURN(jm_ArrayList_ctor, sjc_ArrayList, "<init>", "(I)V", NULL);
     DECLARE_METHOD_RETURN(jm_ArrayList_add, sjc_ArrayList, "add", "(Ljava/lang/Object;)Z", NULL);
 
-    jobject jFileNamesArray = (*env)->NewObject(env, sjc_ArrayList, jm_ArrayList_ctor, (jint)[filenames count]); // AWT_THREADING Safe (known object)
+    jobject jFileNamesArray = (*env)->NewObject(env, sjc_ArrayList, jm_ArrayList_ctor, (jint)[filenames count]);
     CHECK_EXCEPTION_NULL_RETURN(jFileNamesArray, NULL);
 
     for (NSString *filename in filenames) {
-        jstring jFileName = JNFNormalizedJavaStringForPath(env, filename);
+        jstring jFileName = NormalizedPathJavaStringFromNSString(env, filename);
         (*env)->CallVoidMethod(env, jFileNamesArray, jm_ArrayList_add, jFileName);
         CHECK_EXCEPTION();
     }
@@ -344,7 +342,7 @@ AWT_ASSERT_APPKIT_THREAD;
     // if these files were opened from a Spotlight query, try to get the search text from the current AppleEvent
     NSAppleEventDescriptor *currentEvent = [[NSAppleEventManager sharedAppleEventManager] currentAppleEvent];
     NSString *searchString = [[currentEvent paramDescriptorForKeyword:keyAESearchText] stringValue];
-    jstring jSearchString = JNFNSToJavaString(env, searchString);
+    jstring jSearchString = NSStringToJavaString(env, searchString);
 
     // convert the file names array
     jobject jFileNamesArray = [self _createFilePathArrayFrom:fileNames withEnv:env];
@@ -371,7 +369,7 @@ AWT_ASSERT_APPKIT_THREAD;
     GET_APPEVENTHANDLER_CLASS_RETURN(NSPrintingCancelled);
     DECLARE_STATIC_METHOD_RETURN(jm_handlePrintFile, sjc_AppEventHandler,
                               "handlePrintFiles", "(Ljava/util/List;)V", NSPrintingCancelled);
-    (*env)->CallStaticVoidMethod(env, sjc_AppEventHandler, jm_handlePrintFile, jFileNamesArray); // AWT_THREADING Safe (event)
+    (*env)->CallStaticVoidMethod(env, sjc_AppEventHandler, jm_handlePrintFile, jFileNamesArray);
     CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, jFileNamesArray);
 
@@ -386,7 +384,7 @@ AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_APPEVENTHANDLER_CLASS();
     DECLARE_STATIC_METHOD(jm_handleNativeNotification, sjc_AppEventHandler, "handleNativeNotification", "(I)V");
-    (*env)->CallStaticVoidMethod(env, sjc_AppEventHandler, jm_handleNativeNotification, notificationType); // AWT_THREADING Safe (event)
+    (*env)->CallStaticVoidMethod(env, sjc_AppEventHandler, jm_handleNativeNotification, notificationType);
     CHECK_EXCEPTION();
 }
 
@@ -630,7 +628,7 @@ JNI_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThread:@selector(_registerForNotification:)
                                       on:[ApplicationDelegate class]
                               withObject:[NSNumber numberWithInt:notificationType]
-                           waitUntilDone:NO]; // AWT_THREADING Safe (non-blocking)
+                           waitUntilDone:NO];
 JNI_COCOA_EXIT(env);
 }
 
@@ -720,7 +718,7 @@ JNIEXPORT void JNICALL Java_com_apple_eawt__1AppDockIconHandler_nativeSetDockIco
 {
 JNI_COCOA_ENTER(env);
 
-    NSString *badgeString = JNFJavaToNSString(env, badge);
+    NSString *badgeString = JavaStringToNSString(env, badge);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         NSDockTile *dockTile = [NSApp dockTile];
         [dockTile setBadgeLabel:badgeString];

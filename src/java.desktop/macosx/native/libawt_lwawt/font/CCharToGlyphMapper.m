@@ -25,8 +25,6 @@
 
 #import "JNIUtilities.h"
 
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
-
 #import "AWTFont.h"
 #import "CoreTextSupport.h"
 
@@ -131,9 +129,9 @@ JNI_COCOA_ENTER(env);
     CFStringRef fontNames[] = {NULL, NULL};
     CGGlyph glyph = CTS_CopyGlyphAndFontNamesForCodePoint(awtFont, (UnicodeScalarValue)codePoint, fontNames);
     if (glyph > 0) {
-        jstring fontName = (jstring)JNFNSToJavaString(env, (NSString *)fontNames[0]);
+        jstring fontName = (jstring)NSStringToJavaString(env, (NSString *)fontNames[0]);
         (*env)->SetObjectArrayElement(env, resultArray, 0, fontName);
-        jstring fontFamilyName = (jstring)JNFNSToJavaString(env, (NSString *)fontNames[1]);
+        jstring fontFamilyName = (jstring)NSStringToJavaString(env, (NSString *)fontNames[1]);
         (*env)->SetObjectArrayElement(env, resultArray, 1, fontFamilyName);
     }
     if (fontNames[0]) CFRelease(fontNames[0]);
