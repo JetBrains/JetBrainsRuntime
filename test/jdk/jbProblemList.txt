@@ -194,7 +194,7 @@ java/awt/Toolkit/RealSync/Test.java 6849383 linux-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252 windows-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java 8203047 macosx-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java 8073636 macosx-all
-java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java 7019055 windows-all,linux-all
+java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java 7019055,8266245 windows-all,linux-all,macosx-aarch64
 java/awt/Focus/8013611/JDK8013611.java 8175366 windows-all,macosx-all
 java/awt/Focus/6378278/InputVerifierTest.java 8198616 macosx-all
 java/awt/Focus/6382144/EndlessLoopTest.java 8198617 macosx-all
