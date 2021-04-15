@@ -4,9 +4,14 @@
 #import "JavaTabButtonAccessibility.h"
 #import "JavaAccessibilityUtilities.h"
 #import "ThreadUtilities.h"
+#import "JNIUtilities.h"
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
-static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;");
+static jmethodID jm_getChildrenAndRoles = NULL;
+#define GET_CHILDRENANDROLES_METHOD_RETURN(ret) \
+    GET_CACCESSIBILITY_CLASS_RETURN(ret); \
+    GET_STATIC_METHOD_RETURN(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles",\
+                      "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;", ret);
 
 @implementation JavaTabGroupAccessibility
 
@@ -33,7 +38,10 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 }
 
 - (NSArray *)tabButtonsWithEnv:(JNIEnv *)env withTabGroupAxContext:(jobject)axContext withTabCode:(NSInteger)whichTabs allowIgnored:(BOOL)allowIgnored {
-    jobjectArray jtabsAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, fAccessible, fComponent, whichTabs, allowIgnored); // AWT_THREADING Safe (AWTRunLoop)
+    GET_CHILDRENANDROLES_METHOD_RETURN(nil);
+    jobjectArray jtabsAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getChildrenAndRoles,
+                                  fAccessible, fComponent, whichTabs, allowIgnored); // AWT_THREADING Safe (AWTRunLoop)
+    CHECK_EXCEPTION();
     if(jtabsAndRoles == NULL) return nil;
 
     jsize arrayLen = (*env)->GetArrayLength(env, jtabsAndRoles);
@@ -49,7 +57,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
         (*env)->DeleteLocalRef(env, jtabsAndRoles);
         return nil;
     }
-    jobject jkey = JNFGetObjectField(env, jtabJavaRole, sjf_key);
+    jobject jkey = (*env)->GetObjectField(env, jtabJavaRole, sjf_key);
     NSString *tabJavaRole = JNFJavaToNSString(env, jkey);
     (*env)->DeleteLocalRef(env, jkey);
 

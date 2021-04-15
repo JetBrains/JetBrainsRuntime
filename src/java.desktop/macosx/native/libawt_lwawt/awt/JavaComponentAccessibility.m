@@ -26,23 +26,40 @@
 #import "JavaTabGroupAccessibility.h"
 #import "JavaComboBoxAccessibility.h"
 #import "ThreadUtilities.h"
+#import "JNIUtilities.h"
 #import "AWTView.h"
 
-static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;");
-static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRolesRecursive, sjc_CAccessibility, "getChildrenAndRolesRecursive", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZI)[Ljava/lang/Object;");
-static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleComponent, sjc_CAccessibility, "getAccessibleComponent", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleComponent;");
-static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleValue, sjc_CAccessibility, "getAccessibleValue", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleValue;");
-static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;");
-static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleDescription, sjc_CAccessibility, "getAccessibleDescription", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;");
-static JNF_STATIC_MEMBER_CACHE(sjm_isFocusTraversable, sjc_CAccessibility, "isFocusTraversable", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Z");
-static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleIndexInParent, sjc_CAccessibility, "getAccessibleIndexInParent", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)I");
+// GET* macros defined in JavaAccessibilityUtilities.h, so they can be shared.
+static jclass sjc_CAccessibility = NULL;
 
-static JNF_CLASS_CACHE(sjc_CAccessible, "sun/lwawt/macosx/CAccessible");
+static jmethodID sjm_getAccessibleName = NULL;
+#define GET_ACCESSIBLENAME_METHOD_RETURN(ret) \
+    GET_CACCESSIBILITY_CLASS_RETURN(ret); \
+    GET_STATIC_METHOD_RETURN(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName", \
+                     "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;", ret);
 
-static JNF_MEMBER_CACHE(jf_ptr, sjc_CAccessible, "ptr", "J");
-static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessible", "(Ljavax/accessibility/Accessible;)Lsun/lwawt/macosx/CAccessible;");
+static jmethodID jm_getChildrenAndRoles = NULL;
+#define GET_CHILDRENANDROLES_METHOD_RETURN(ret) \
+    GET_CACCESSIBILITY_CLASS_RETURN(ret); \
+    GET_STATIC_METHOD_RETURN(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles",\
+                      "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;", ret);
 
-static JNF_MEMBER_CACHE(jm_getAccessibleContext, sjc_CAccessible, "getAccessibleContext", "()Ljavax/accessibility/AccessibleContext;");
+static jmethodID sjm_getAccessibleComponent = NULL;
+#define GET_ACCESSIBLECOMPONENT_STATIC_METHOD_RETURN(ret) \
+    GET_CACCESSIBILITY_CLASS_RETURN(ret); \
+    GET_STATIC_METHOD_RETURN(sjm_getAccessibleComponent, sjc_CAccessibility, "getAccessibleComponent", \
+           "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleComponent;", ret);
+
+static jmethodID sjm_getAccessibleIndexInParent = NULL;
+#define GET_ACCESSIBLEINDEXINPARENT_STATIC_METHOD_RETURN(ret) \
+    GET_CACCESSIBILITY_CLASS_RETURN(ret); \
+    GET_STATIC_METHOD_RETURN(sjm_getAccessibleIndexInParent, sjc_CAccessibility, "getAccessibleIndexInParent", \
+                             "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)I", ret);
+
+static jclass sjc_CAccessible = NULL;
+#define GET_CACCESSIBLE_CLASS_RETURN(ret) \
+    GET_CLASS_RETURN(sjc_CAccessible, "sun/lwawt/macosx/CAccessible", ret);
+
 
 static jobject sAccessibilityClass = NULL;
 
@@ -205,7 +222,10 @@ static void RaiseMustOverrideException(NSString *method)
     }
 
     if (sAccessibilityClass == NULL) {
-        JNF_STATIC_MEMBER_CACHE(jm_getAccessibility, sjc_CAccessibility, "getAccessibility", "([Ljava/lang/String;)Lsun/lwawt/macosx/CAccessibility;");
+        JNIEnv *env = [ThreadUtilities getJNIEnv];
+
+        GET_CACCESSIBILITY_CLASS();
+        DECLARE_STATIC_METHOD(jm_getAccessibility, sjc_CAccessibility, "getAccessibility", "([Ljava/lang/String;)Lsun/lwawt/macosx/CAccessibility;");
 
 #ifdef JAVA_AX_NO_IGNORES
         NSArray *ignoredKeys = [NSArray array];
@@ -215,10 +235,9 @@ static void RaiseMustOverrideException(NSString *method)
         jobjectArray result = NULL;
         jsize count = [ignoredKeys count];
 
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
-
-        static JNF_CLASS_CACHE(jc_String, "java/lang/String");
-        result = JNFNewObjectArray(env, &jc_String, count);
+        DECLARE_CLASS(jc_String, "java/lang/String");
+        result = (*env)->NewObjectArray(env, count, jc_String, NULL);
+        CHECK_EXCEPTION();
         if (!result) {
             NSLog(@"In %s, can't create Java array of String objects", __FUNCTION__);
             return;
@@ -231,7 +250,8 @@ static void RaiseMustOverrideException(NSString *method)
             (*env)->DeleteLocalRef(env, jString);
         }
 
-        sAccessibilityClass = JNFCallStaticObjectMethod(env, jm_getAccessibility, result); // AWT_THREADING Safe (known object)
+        sAccessibilityClass = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getAccessibility, result); // AWT_THREADING Safe (known object)
+        CHECK_EXCEPTION();
     }
 }
 
@@ -243,10 +263,16 @@ static void RaiseMustOverrideException(NSString *method)
 
 + (jobject) getCAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env {
     JNF_COCOA_DURING(env);
-    if (JNFIsInstanceOf(env, jaccessible, &sjc_CAccessible)) {
+    DECLARE_CLASS_RETURN(sjc_Accessible, "javax/accessibility/Accessible", NULL);
+    GET_CACCESSIBLE_CLASS_RETURN(NULL);
+    DECLARE_STATIC_METHOD_RETURN(sjm_getCAccessible, sjc_CAccessible, "getCAccessible",
+                                "(Ljavax/accessibility/Accessible;)Lsun/lwawt/macosx/CAccessible;", NULL);
+    if ((*env)->IsInstanceOf(env, jaccessible, sjc_CAccessible)) {
         return jaccessible;
-    } else if (JNFIsInstanceOf(env, jaccessible, &sjc_Accessible)) {
-        return JNFCallStaticObjectMethod(env, sjm_getCAccessible, jaccessible);
+    } else if ((*env)->IsInstanceOf(env, jaccessible, sjc_Accessible)) {
+        jobject o = (*env)->CallStaticObjectMethod(env, sjc_CAccessible,  sjm_getCAccessible, jaccessible);
+        CHECK_EXCEPTION();
+        return o;
     }
     JNF_COCOA_HANDLE(env);
     return NULL;
@@ -296,10 +322,17 @@ static void RaiseMustOverrideException(NSString *method)
     if (parent->fAccessible == NULL) return nil;
     jobjectArray jchildrenAndRoles = NULL;
     if (recursive) {
-        jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRolesRecursive, parent->fAccessible, parent->fComponent, whichChildren, allowIgnored, 1);
+        GET_CACCESSIBILITY_CLASS_RETURN(nil);
+        DECLARE_STATIC_METHOD_RETURN(jm_getChildrenAndRolesRecursive, sjc_CAccessibility, "getChildrenAndRolesRecursive",
+                                     "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZI)[Ljava/lang/Object;", nil);
+        jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
+                              parent->fAccessible, parent->fComponent, whichChildren, allowIgnored, 1);
     } else {
-        jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, whichChildren, allowIgnored); // AWT_THREADING Safe (AWTRunLoop)
+        GET_CHILDRENANDROLES_METHOD_RETURN(nil);
+        jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getChildrenAndRoles,
+                      parent->fAccessible, parent->fComponent, whichChildren, allowIgnored); // AWT_THREADING Safe (AWTRunLoop)
     }
+    CHECK_EXCEPTION();
     if (jchildrenAndRoles == NULL) return nil;
 
     jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
@@ -315,7 +348,10 @@ static void RaiseMustOverrideException(NSString *method)
 
         NSString *childJavaRole = nil;
         if (jchildJavaRole != NULL) {
-            jobject jkey = JNFGetObjectField(env, jchildJavaRole, sjf_key);
+            DECLARE_CLASS_RETURN(sjc_AccessibleRole, "javax/accessibility/AccessibleRole", nil);
+            DECLARE_FIELD_RETURN(sjf_key, sjc_AccessibleRole, "key", "Ljava/lang/String;", nil);
+            jobject jkey = (*env)->GetObjectField(env, jchildJavaRole, sjf_key);
+            CHECK_EXCEPTION();
             childJavaRole = JNFJavaToNSString(env, jkey);
             (*env)->DeleteLocalRef(env, jkey);
         }
@@ -351,10 +387,12 @@ static void RaiseMustOverrideException(NSString *method)
 
 + (JavaComponentAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isCurrent:(BOOL)current
 {
+    GET_ACCESSIBLEINDEXINPARENT_STATIC_METHOD_RETURN(nil);
     JavaComponentAccessibility *ret = nil;
     jobject jcomponent = [(AWTView *)view awtComponent:env];
     JNF_COCOA_DURING(env);
-    jint index = JNFCallStaticIntMethod(env, sjm_getAccessibleIndexInParent, jaccessible, jcomponent);
+    jint index = (*env)->CallStaticIntMethod(env, sjc_CAccessibility, sjm_getAccessibleIndexInParent, jaccessible, jcomponent);
+    CHECK_EXCEPTION();
     NSString *javaRole = getJavaRole(env, jaccessible, jcomponent);
     if ((index >= 0) || current) {
         ret = [self createWithAccessible:jaccessible role:javaRole index:index withEnv:env withView:view];
@@ -376,11 +414,13 @@ static void RaiseMustOverrideException(NSString *method)
 
 + (JavaComponentAccessibility *) createWithParent:(JavaComponentAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped
 {
+    GET_CACCESSIBLE_CLASS_RETURN(NULL);
+    DECLARE_FIELD_RETURN(jf_ptr, sjc_CAccessible, "ptr", "J", NULL);
     // try to fetch the jCAX from Java, and return autoreleased
     jobject jCAX = [JavaComponentAccessibility getCAccessible:jaccessible withEnv:env];
     if (jCAX == NULL) return nil;
     if (!wrapped) { // If wrapped is true, then you don't need to get an existing instance, you need to create a new one
-    JavaComponentAccessibility *value = (JavaComponentAccessibility *) jlong_to_ptr(JNFGetLongField(env, jCAX, jf_ptr));
+    JavaComponentAccessibility *value = (JavaComponentAccessibility *) jlong_to_ptr((*env)->GetLongField(env, jCAX, jf_ptr));
     if (value != nil) {
         (*env)->DeleteLocalRef(env, jCAX);
         return [[value retain] autorelease];
@@ -429,7 +469,7 @@ static void RaiseMustOverrideException(NSString *method)
 
     // must hard retain pointer poked into Java object
     [newChild retain];
-    JNFSetLongField(env, jCAX, jf_ptr, ptr_to_jlong(newChild));
+    (*env)->SetLongField(env, jCAX, jf_ptr, ptr_to_jlong(newChild));
 
     // the link is removed in the wrapper
     if (!wrapped) {
@@ -447,22 +487,26 @@ static void RaiseMustOverrideException(NSString *method)
 
 - (id)parent
 {
-    static JNF_CLASS_CACHE(sjc_Window, "java/awt/Window");
-    static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleParent, sjc_CAccessibility, "getAccessibleParent", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/Accessible;");
-    static JNF_STATIC_MEMBER_CACHE(sjm_getSwingAccessible, sjc_CAccessible, "getSwingAccessible", "(Ljavax/accessibility/Accessible;)Ljavax/accessibility/Accessible;");
-
     if(fParent == nil) {
         JNIEnv* env = [ThreadUtilities getJNIEnv];
+        GET_CACCESSIBILITY_CLASS_RETURN(nil);
+        DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleParent, sjc_CAccessibility, "getAccessibleParent",
+                                 "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/Accessible;", nil);
+        GET_CACCESSIBLE_CLASS_RETURN(nil);
+        DECLARE_STATIC_METHOD_RETURN(sjm_getSwingAccessible, sjc_CAccessible, "getSwingAccessible",
+                                 "(Ljavax/accessibility/Accessible;)Ljavax/accessibility/Accessible;", nil);
+        DECLARE_CLASS_RETURN(sjc_Window, "java/awt/Window", nil);
 
-        jobject jparent = JNFCallStaticObjectMethod(env, sjm_getAccessibleParent, fAccessible, fComponent);
+        jobject jparent = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility,  sjm_getAccessibleParent, fAccessible, fComponent);
+        CHECK_EXCEPTION();
 
         if (jparent == NULL) {
             fParent = fView;
         } else {
             AWTView *view = fView;
-            jobject jax = JNFCallStaticObjectMethod(env, sjm_getSwingAccessible, fAccessible);
+            jobject jax = (*env)->CallStaticObjectMethod(env, sjc_CAccessible, sjm_getSwingAccessible, fAccessible);
 
-            if (JNFIsInstanceOf(env, jax, &sjc_Window)) {
+            if ((*env)->IsInstanceOf(env, jax, sjc_Window)) {
                 // In this case jparent is an owner toplevel and we should retrieve its own view
                 view = [AWTView awtView:env ofAccessible:jparent];
             }
@@ -538,7 +582,10 @@ static void RaiseMustOverrideException(NSString *method)
 - (NSSize)getSize
 {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
-    jobject axComponent = JNFCallStaticObjectMethod(env, sjm_getAccessibleComponent, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    GET_ACCESSIBLECOMPONENT_STATIC_METHOD_RETURN(nil);
+    jobject axComponent = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
+                           sjm_getAccessibleComponent, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    CHECK_EXCEPTION();
     NSSize size = getAxComponentSize(env, axComponent, fComponent);
     (*env)->DeleteLocalRef(env, axComponent);
 
@@ -567,25 +614,39 @@ static void RaiseMustOverrideException(NSString *method)
 
 - (NSUInteger)accessibilityIndexOfChild:(id)child
 {
-    jint returnValue = JNFCallStaticIntMethod( [ThreadUtilities getJNIEnv],
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    GET_ACCESSIBLEINDEXINPARENT_STATIC_METHOD_RETURN(0);
+    jint returnValue =
+        (*env)->CallStaticIntMethod( env,
+                                sjc_CAccessibility,
                                 sjm_getAccessibleIndexInParent,
                                 [child accessible],
                                 [child component]);
+    CHECK_EXCEPTION();
     return (returnValue == -1) ? NSNotFound : returnValue;
 }
 
 - (int)accessibleIndexOfParent {
-    return (int)JNFCallStaticIntMethod    ([ThreadUtilities getJNIEnv], sjm_getAccessibleIndexInParent, fAccessible, fComponent);
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    GET_ACCESSIBLEINDEXINPARENT_STATIC_METHOD_RETURN(0);
+    jint returnValue =
+        (*env)->CallStaticIntMethod(env, sjc_CAccessibility, sjm_getAccessibleIndexInParent, fAccessible, fComponent);
+    CHECK_EXCEPTION();
+    return (int) returnValue;
 }
 
 - (void)getActionsWithEnv:(JNIEnv *)env {
-    static JNF_STATIC_MEMBER_CACHE(jm_getAccessibleAction, sjc_CAccessibility, "getAccessibleAction", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleAction;");
-    
-    jobject axAction = JNFCallStaticObjectMethod(env, jm_getAccessibleAction, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    GET_CACCESSIBILITY_CLASS();
+    DECLARE_STATIC_METHOD(jm_getAccessibleAction, sjc_CAccessibility, "getAccessibleAction",
+                           "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleAction;");
+
+    jobject axAction = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getAccessibleAction, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    CHECK_EXCEPTION();
     if (axAction != NULL) {
-        JNF_CLASS_CACHE(jc_AccessibleAction, "javax/accessibility/AccessibleAction");
-        JNF_MEMBER_CACHE(jm_getAccessibleActionCount, jc_AccessibleAction, "getAccessibleActionCount", "()I");
-        jint count = JNFCallIntMethod(env, axAction, jm_getAccessibleActionCount);
+        DECLARE_CLASS(jc_AccessibleAction, "javax/accessibility/AccessibleAction");
+        DECLARE_METHOD(jm_getAccessibleActionCount, jc_AccessibleAction, "getAccessibleActionCount", "()I");
+        jint count = (*env)->CallIntMethod(env, axAction, jm_getAccessibleActionCount);
+        CHECK_EXCEPTION();
         fActions = [[NSMutableDictionary alloc] initWithCapacity:count];
         fActionSElectors = [[NSMutableArray alloc] initWithCapacity:count];
         for (int i =0; i < count; i++) {
@@ -648,7 +709,10 @@ static void RaiseMustOverrideException(NSString *method)
 {
     //   RaiseMustOverrideException(@"accessibilityLabel");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, self->fAccessible, self->fComponent);
+    GET_ACCESSIBLENAME_METHOD_RETURN(nil);
+    jobject axName = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleName, self->fAccessible, self->fComponent);
+    CHECK_EXCEPTION();
+
     NSString* str = JNFJavaToNSString(env, axName);
     (*env)->DeleteLocalRef(env, axName);
     return str;
@@ -657,7 +721,13 @@ static void RaiseMustOverrideException(NSString *method)
 - (NSString *)accessibilityHelp {
     //   RaiseMustOverrideException(@"accessibilityLabel");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleDescription, self->fAccessible, self->fComponent);
+
+    GET_CACCESSIBILITY_CLASS_RETURN(nil);
+    DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleDescription, sjc_CAccessibility, "getAccessibleDescription",
+                                 "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;", nil);
+    jobject axName = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
+                                   sjm_getAccessibleDescription, , self->fAccessible, self->fComponent);
+    CHECK_EXCEPTION();
     NSString* str = JNFJavaToNSString(env, axName);
     (*env)->DeleteLocalRef(env, axName);
     return str;
@@ -707,7 +777,10 @@ static void RaiseMustOverrideException(NSString *method)
 - (NSRect)accessibilityFrame
 {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
-    jobject axComponent = JNFCallStaticObjectMethod(env, sjm_getAccessibleComponent, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    GET_ACCESSIBLECOMPONENT_STATIC_METHOD_RETURN(nil);
+    jobject axComponent = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleComponent,
+                           fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    CHECK_EXCEPTION();
 
     // NSAccessibility wants the bottom left point of the object in
     // bottom left based screen coords
@@ -735,10 +808,12 @@ static void RaiseMustOverrideException(NSString *method)
 
 - (BOOL)isAccessibilityEnabled
 {
-    static JNF_STATIC_MEMBER_CACHE(jm_isEnabled, sjc_CAccessibility, "isEnabled", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Z");
-
     JNIEnv* env = [ThreadUtilities getJNIEnv];
-    NSNumber *value = [NSNumber numberWithBool:JNFCallStaticBooleanMethod(env, jm_isEnabled, fAccessible, fComponent)]; // AWT_THREADING Safe (AWTRunLoop)
+    GET_CACCESSIBILITY_CLASS_RETURN(nil);
+    DECLARE_STATIC_METHOD_RETURN(jm_isEnabled, sjc_CAccessibility, "isEnabled", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Z", nil);
+
+    NSNumber *value = [NSNumber numberWithBool:(*env)->CallStaticBooleanMethod(env, sjc_CAccessibility, jm_isEnabled, fAccessible, fComponent)]; // AWT_THREADING Safe (AWTRunLoop)
+    CHECK_EXCEPTION();
     if (value == nil) {
         NSLog(@"WARNING: %s called on component that has no accessible component: %@", __FUNCTION__, self);
         return NO;
@@ -790,11 +865,14 @@ static void RaiseMustOverrideException(NSString *method)
 
     if (value == nil) {
         // query java if necessary
-        static JNF_STATIC_MEMBER_CACHE(jm_getAccessibleRoleDisplayString, sjc_CAccessibility, "getAccessibleRoleDisplayString", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;");
-
         JNIEnv* env = [ThreadUtilities getJNIEnv];
+        GET_CACCESSIBILITY_CLASS_RETURN(nil);
+        DECLARE_STATIC_METHOD_RETURN(jm_getAccessibleRoleDisplayString, sjc_CAccessibility, "getAccessibleRoleDisplayString",
+                                     "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;", nil);
 
-        jobject axRole = JNFCallStaticObjectMethod(env, jm_getAccessibleRoleDisplayString, fAccessible, fComponent);
+
+        jobject axRole = (*env)->CallStaticObjectMethod(env, jm_getAccessibleRoleDisplayString, fAccessible, fComponent);
+        CHECK_EXCEPTION();
         if (axRole != NULL) {
             value = JNFJavaToNSString(env, axRole);
             (*env)->DeleteLocalRef(env, axRole);
@@ -809,24 +887,30 @@ static void RaiseMustOverrideException(NSString *method)
 - (BOOL)isAccessibilityFocused
 {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
+    GET_CACCESSIBILITY_CLASS_RETURN(NO);
+    DECLARE_STATIC_METHOD_RETURN(sjm_isFocusTraversable, sjc_CAccessibility, "isFocusTraversable",
+                                 "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Z", NO);
     // According to javadoc, a component that is focusable will return true from isFocusTraversable,
     // as well as having AccessibleState.FOCUSABLE in its AccessibleStateSet.
     // We use the former heuristic; if the component focus-traversable, add a focused attribute
     // See also initializeAttributeNamesWithEnv:
-    if (JNFCallStaticBooleanMethod(env, sjm_isFocusTraversable, fAccessible, fComponent)) { // AWT_THREADING Safe (AWTRunLoop)
+    if ((*env)->CallStaticBooleanMethod(env, sjc_CAccessibility, sjm_isFocusTraversable, fAccessible, fComponent)) { // AWT_THREADING Safe (AWTRunLoop)
         return YES;
     }
+    CHECK_EXCEPTION();
 
     return NO;
 }
 
 - (void)setAccessibilityFocused:(BOOL)accessibilityFocused
 {
-    static JNF_STATIC_MEMBER_CACHE(jm_requestFocus, sjc_CAccessibility, "requestFocus", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)V");
+    JNIEnv* env = [ThreadUtilities getJNIEnv];
+
+    GET_CACCESSIBILITY_CLASS();
+    DECLARE_STATIC_METHOD(jm_requestFocus, sjc_CAccessibility, "requestFocus", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)V");
 
     if (accessibilityFocused) {
-        JNIEnv* env = [ThreadUtilities getJNIEnv];
-        JNFCallStaticVoidMethod(env, jm_requestFocus, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+        (*env)->CallStaticVoidMethod(env, sjc_CAccessibility, jm_requestFocus, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
     }
 }
 
@@ -837,11 +921,13 @@ static void RaiseMustOverrideException(NSString *method)
 
 - (id)accessibilityMaxValue
 {
-    static JNF_STATIC_MEMBER_CACHE(jm_getMaximumAccessibleValue, sjc_CAccessibility, "getMaximumAccessibleValue", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/Number;");
-
     JNIEnv* env = [ThreadUtilities getJNIEnv];
+    GET_CACCESSIBILITY_CLASS_RETURN(nil);
+    DECLARE_STATIC_METHOD_RETURN(jm_getMaximumAccessibleValue, sjc_CAccessibility, "getMaximumAccessibleValue",
+                                  "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/Number;", nil);
 
-    jobject axValue = JNFCallStaticObjectMethod(env, jm_getMaximumAccessibleValue, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    jobject axValue = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getMaximumAccessibleValue, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    CHECK_EXCEPTION();
     if (axValue == NULL) {
         return [NSNumber numberWithInt:0];
     }
@@ -852,11 +938,13 @@ static void RaiseMustOverrideException(NSString *method)
 
 - (id)accessibilityMinValue
 {
-    static JNF_STATIC_MEMBER_CACHE(jm_getMinimumAccessibleValue, sjc_CAccessibility, "getMinimumAccessibleValue", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/Number;");
-
     JNIEnv* env = [ThreadUtilities getJNIEnv];
+    GET_CACCESSIBILITY_CLASS_RETURN(nil);
+    DECLARE_STATIC_METHOD_RETURN(jm_getMinimumAccessibleValue, sjc_CAccessibility, "getMinimumAccessibleValue",
+                                  "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/Number;", nil);
 
-    jobject axValue = JNFCallStaticObjectMethod(env, jm_getMinimumAccessibleValue, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    jobject axValue = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getMinimumAccessibleValue, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    CHECK_EXCEPTION();
     if (axValue == NULL) {
         return [NSNumber numberWithInt:0];
     }
@@ -899,19 +987,20 @@ static void RaiseMustOverrideException(NSString *method)
 - (void)setAccessibilitySelected:(BOOL)accessibilitySelected
 {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
-    if ([self isSelectable:env]) {
-        static JNF_STATIC_MEMBER_CACHE( jm_requestSelection,
-                                       sjc_CAccessibility,
-                                       "requestSelection",
-                                       "(Ljavax/accessibility/Accessible;Ljava/awt/Component;Z)V");
+    GET_CACCESSIBILITY_CLASS();
+    DECLARE_STATIC_METHOD(jm_requestSelection,
+                          sjc_CAccessibility,
+                          "requestSelection",
+                          "(Ljavax/accessibility/Accessible;Ljava/awt/Component;Z)V");
 
-        JNFCallStaticVoidMethod(env, jm_requestSelection, fAccessible, fComponent, accessibilitySelected); // AWT_THREADING Safe (AWTRunLoop)
+    if ([self isSelectable:env]) {
+        (*env)->CallStaticVoidMethod(env, sjc_CAccessibility, jm_requestSelection, fAccessible, fComponent, accessibilitySelected); // AWT_THREADING Safe (AWTRunLoop)
+        CHECK_EXCEPTION();
     }
 }
 
 - (id)accessibilityValue
 {
-    static JNF_STATIC_MEMBER_CACHE(jm_getCurrentAccessibleValue, sjc_CAccessibility, "getCurrentAccessibleValue", "(Ljavax/accessibility/AccessibleValue;Ljava/awt/Component;)Ljava/lang/Number;");
     JNIEnv* env = [ThreadUtilities getJNIEnv];
 
     // Need to handle popupmenus differently.
@@ -936,11 +1025,14 @@ static void RaiseMustOverrideException(NSString *method)
             JavaComponentAccessibility *selectedMenuItem =
                 [selectedChildrenOfMenu objectAtIndex:0];
             if (selectedMenuItem != nil) {
+                GET_CACCESSIBILITY_CLASS_RETURN(nil);
+                GET_ACCESSIBLENAME_METHOD_RETURN(nil);
                 jobject itemValue =
-                        JNFCallStaticObjectMethod( env,
+                        (*env)->CallStaticObjectMethod( env,
                                                    sjm_getAccessibleName,
                                                    selectedMenuItem->fAccessible,
                                                    selectedMenuItem->fComponent ); // AWT_THREADING Safe (AWTRunLoop)
+                CHECK_EXCEPTION();
                 if (itemValue == NULL) {
                     return nil;
                 }
@@ -958,9 +1050,16 @@ static void RaiseMustOverrideException(NSString *method)
 
     // cmcnote should coalesce these calls into one java call
     NSNumber *num = nil;
-    jobject axValue = JNFCallStaticObjectMethod(env, sjm_getAccessibleValue, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    GET_CACCESSIBILITY_CLASS_RETURN(nil);
+    DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleValue, sjc_CAccessibility, "getAccessibleValue",
+                "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleValue;", nil);
+    jobject axValue = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleValue, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    CHECK_EXCEPTION();
     if (axValue != NULL) {
-        jobject str = JNFCallStaticObjectMethod(env, jm_getCurrentAccessibleValue, axValue, fComponent);
+        DECLARE_STATIC_METHOD_RETURN(jm_getCurrentAccessibleValue, sjc_CAccessibility, "getCurrentAccessibleValue",
+                                     "(Ljavax/accessibility/AccessibleValue;Ljava/awt/Component;)Ljava/lang/Number;", nil);
+        jobject str = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getCurrentAccessibleValue, axValue, fComponent);
+        CHECK_EXCEPTION();
         if (str != NULL) {
             num = JNFJavaToNSNumber(env, str); // AWT_THREADING Safe (AWTRunLoop)
             (*env)->DeleteLocalRef(env, str);
@@ -977,8 +1076,9 @@ static void RaiseMustOverrideException(NSString *method)
 {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
 
-    static JNF_CLASS_CACHE(jc_Container, "java/awt/Container");
-    static JNF_STATIC_MEMBER_CACHE(jm_accessibilityHitTest, sjc_CAccessibility, "accessibilityHitTest", "(Ljava/awt/Container;FF)Ljavax/accessibility/Accessible;");
+    DECLARE_CLASS_RETURN(jc_Container, "java/awt/Container", nil);
+    DECLARE_STATIC_METHOD_RETURN(jm_accessibilityHitTest, sjc_CAccessibility, "accessibilityHitTest",
+                                 "(Ljava/awt/Container;FF)Ljavax/accessibility/Accessible;", nil);
 
     // Make it into java screen coords
     point.y = [[[[self view] window] screen] frame].size.height - point.y;
@@ -987,7 +1087,9 @@ static void RaiseMustOverrideException(NSString *method)
 
     id value = nil;
     if (JNFIsInstanceOf(env, jparent, &jc_Container)) {
-        jobject jaccessible = JNFCallStaticObjectMethod(env, jm_accessibilityHitTest, jparent, (jfloat)point.x, (jfloat)point.y); // AWT_THREADING Safe (AWTRunLoop)
+        jobject jaccessible = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_accessibilityHitTest,
+                               jparent, (jfloat)point.x, (jfloat)point.y); // AWT_THREADING Safe (AWTRunLoop)
+        CHECK_EXCEPTION();
         if (jaccessible != NULL) {
             value = [JavaComponentAccessibility createWithAccessible:jaccessible withEnv:env withView:fView];
             (*env)->DeleteLocalRef(env, jaccessible);
@@ -1037,19 +1139,22 @@ static void RaiseMustOverrideException(NSString *method)
 }
 
 - (id)accessibilityFocusedUIElement {
-    static JNF_STATIC_MEMBER_CACHE(jm_getFocusOwner, sjc_CAccessibility, "getFocusOwner", "(Ljava/awt/Component;)Ljavax/accessibility/Accessible;");
-
     JNIEnv *env = [ThreadUtilities getJNIEnv];
+    DECLARE_STATIC_METHOD_RETURN(jm_getFocusOwner, sjc_CAccessibility, "getFocusOwner",
+                                  "(Ljava/awt/Component;)Ljavax/accessibility/Accessible;", nil);
     id value = nil;
 
     NSWindow* hostWindow = [[self->fView window] retain];
-    jobject focused = JNFCallStaticObjectMethod(env, jm_getFocusOwner, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    jobject focused = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getFocusOwner, fComponent); // AWT_THREADING Safe (AWTRunLoop)
     [hostWindow release];
+    CHECK_EXCEPTION();
 
     if (focused != NULL) {
-        if (JNFIsInstanceOf(env, focused, &sjc_Accessible)) {
+        DECLARE_CLASS_RETURN(sjc_Accessible, "javax/accessibility/Accessible", nil);
+        if ((*env)->IsInstanceOf(env, focused, sjc_Accessible)) {
             value = [JavaComponentAccessibility createWithAccessible:focused withEnv:env withView:fView];
         }
+        CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, focused);
     }
 
