@@ -30,6 +30,7 @@
 #import "CFileDialog.h"
 #import "AWTWindow.h"
 #import "ThreadUtilities.h"
+#import "JNIUtilities.h"
 #import "ApplicationDelegate.h"
 
 #import "java_awt_FileDialog.h"
@@ -251,9 +252,10 @@ canChooseDirectories:(BOOL)inChooseDirectories
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jstring jString = JNFNormalizedJavaStringForPath(env, filename);
 
-    static JNF_CLASS_CACHE(jc_CFileDialog, "sun/lwawt/macosx/CFileDialog");
-    static JNF_MEMBER_CACHE(jm_queryFF, jc_CFileDialog, "queryFilenameFilter", "(Ljava/lang/String;)Z");
-    BOOL returnValue = JNFCallBooleanMethod(env, fFileDialog, jm_queryFF, jString); // AWT_THREADING Safe (AWTRunLoopMode)
+    DECLARE_CLASS_RETURN(jc_CFileDialog, "sun/lwawt/macosx/CFileDialog", NO);
+    DECLARE_METHOD_RETURN(jm_queryFF, jc_CFileDialog, "queryFilenameFilter", "(Ljava/lang/String;)Z", NO);
+    BOOL returnValue = (*env)->CallBooleanMethod(env, fFileDialog, jm_queryFF, jString); // AWT_THREADING Safe (AWTRunLoopMode)
+    CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, jString);
 
     return returnValue;
@@ -330,8 +332,8 @@ JNF_COCOA_ENTER(env);
         NSArray *urls = [dialogDelegate URLs];
         jsize count = [urls count];
 
-        static JNF_CLASS_CACHE(jc_String, "java/lang/String");
-        returnValue = JNFNewObjectArray(env, &jc_String, count);
+        DECLARE_CLASS_RETURN(jc_String, "java/lang/String", NULL);
+        returnValue = (*env)->NewObjectArray(env, count, jc_String, NULL);
 
         [urls enumerateObjectsUsingBlock:^(id url, NSUInteger index, BOOL *stop) {
             jstring filename = JNFNormalizedJavaStringForPath(env, [url path]);

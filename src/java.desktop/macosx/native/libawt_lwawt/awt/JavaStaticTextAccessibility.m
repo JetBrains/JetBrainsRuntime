@@ -3,12 +3,21 @@
 #import "JavaStaticTextAccessibility.h"
 #import "JavaAccessibilityUtilities.h"
 #import "ThreadUtilities.h"
+#import "JNIUtilities.h"
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
-static JNF_CLASS_CACHE(sjc_CAccessibleText, "sun/lwawt/macosx/CAccessibleText");
-static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleText, sjc_CAccessibility, "getAccessibleText", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleText;");
-static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleEditableText, sjc_CAccessibleText, "getAccessibleEditableText", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleEditableText;");
-static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;");
+static jclass sjc_CAccessibility = NULL;
+#define GET_CACCESSIBLITY_CLASS() \
+     GET_CLASS(sjc_CAccessibility, "sun/lwawt/macosx/CAccessibility");
+#define GET_CACCESSIBLITY_CLASS_RETURN(ret) \
+     GET_CLASS_RETURN(sjc_CAccessibility, "sun/lwawt/macosx/CAccessibility", ret);
+
+static jclass sjc_CAccessibleText = NULL;
+#define GET_CACCESSIBLETEXT_CLASS() \
+    GET_CLASS(sjc_CAccessibleText, "sun/lwawt/macosx/CAccessibleText");
+#define GET_CACCESSIBLETEXT_CLASS_RETURN(ret) \
+    GET_CLASS_RETURN(sjc_CAccessibleText, "sun/lwawt/macosx/CAccessibleText", ret);
+
 
 @implementation JavaStaticTextAccessibility
 
@@ -16,8 +25,12 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
 
 - (id)accessibilityValue {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-
-    jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    GET_CACCESSIBLITY_CLASS_RETURN(nil);
+    DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName",
+                          "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;", nil);
+    jobject axName = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
+                       sjm_getAccessibleName, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    CHECK_EXCEPTION();
     if (axName != NULL) {
         NSString* str = JNFJavaToNSString(env, axName);
         (*env)->DeleteLocalRef(env, axName);
@@ -36,8 +49,12 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
 
 - (NSRange)accessibilityVisibleCharacterRange {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    static JNF_STATIC_MEMBER_CACHE(jm_getVisibleCharacterRange, sjc_CAccessibleText, "getVisibleCharacterRange", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)[I");
-    jintArray axTextRange = JNFCallStaticObjectMethod(env, jm_getVisibleCharacterRange, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    GET_CACCESSIBLETEXT_CLASS_RETURN(nil);
+    DECLARE_STATIC_METHOD_RETURN(jm_getVisibleCharacterRange, sjc_CAccessibleText, "getVisibleCharacterRange",
+                          "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)[I", nil);
+    jintArray axTextRange = (*env)->CallStaticObjectMethod(env, sjc_CAccessibleText,
+                 jm_getVisibleCharacterRange, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    CHECK_EXCEPTION();
     if (axTextRange == NULL) return NSRangeFromString(@"");
 
     return [javaConvertIntArrayToNSRangeValue(env, axTextRange) rangeValue];

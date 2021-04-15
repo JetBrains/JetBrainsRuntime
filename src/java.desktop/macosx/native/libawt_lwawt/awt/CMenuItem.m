@@ -30,6 +30,7 @@
 #import "AWTEvent.h"
 #import "AWTWindow.h"
 #import "ThreadUtilities.h"
+#import "JNIUtilities.h"
 #import "LWCToolkit.h"
 
 #import "java_awt_Event.h"
@@ -361,14 +362,14 @@ static NSColor * customBg = nil;
     }
 
     if (fIsCheckbox) {
-        static JNF_CLASS_CACHE(jc_CCheckboxMenuItem, "sun/lwawt/macosx/CCheckboxMenuItem");
-        static JNF_MEMBER_CACHE(jm_ckHandleAction, jc_CCheckboxMenuItem, "handleAction", "(Z)V");
+        DECLARE_CLASS(jc_CCheckboxMenuItem, "sun/lwawt/macosx/CCheckboxMenuItem");
+        DECLARE_METHOD(jm_ckHandleAction, jc_CCheckboxMenuItem, "handleAction", "(Z)V");
 
         // Send the opposite of what's currently checked -- the action
         // indicates what state we're going to.
         NSInteger state = [sender state];
         jboolean newState = (state == NSOnState ? JNI_FALSE : JNI_TRUE);
-        JNFCallVoidMethod(env, fPeer, jm_ckHandleAction, newState);
+        (*env)->CallVoidMethod(env, fPeer, jm_ckHandleAction, newState);
     }
     else {
         if ([currEvent type] == NSKeyDown) {
@@ -399,14 +400,15 @@ static NSColor * customBg = nil;
             }
 		}
 
-        static JNF_CLASS_CACHE(jc_CMenuItem, "sun/lwawt/macosx/CMenuItem");
-        static JNF_MEMBER_CACHE(jm_handleAction, jc_CMenuItem, "handleAction", "(JI)V"); // AWT_THREADING Safe (event)
+        DECLARE_CLASS(jc_CMenuItem, "sun/lwawt/macosx/CMenuItem");
+        DECLARE_METHOD(jm_handleAction, jc_CMenuItem, "handleAction", "(JI)V"); // AWT_THREADING Safe (event)
 
         NSUInteger modifiers = [currEvent modifierFlags];
         jint javaModifiers = NsKeyModifiersToJavaModifiers(modifiers, NO);
 
-        JNFCallVoidMethod(env, fPeer, jm_handleAction, UTC(currEvent), javaModifiers); // AWT_THREADING Safe (event)
+        (*env)->CallVoidMethod(env, fPeer, jm_handleAction, UTC(currEvent), javaModifiers); // AWT_THREADING Safe (event)
     }
+    CHECK_EXCEPTION();
     JNF_COCOA_EXIT(env);
 
 }

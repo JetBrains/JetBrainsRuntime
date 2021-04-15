@@ -27,6 +27,7 @@
 #import "JavaAccessibilityUtilities.h"
 
 #import "ThreadUtilities.h"
+#import "JNIUtilities.h"
 
 NSMutableDictionary *sActions = nil;
 NSMutableDictionary *sActionSelectores = nil;
@@ -64,20 +65,22 @@ void initializeActions();
 
 - (NSString *)getDescription
 {
-    static JNF_STATIC_MEMBER_CACHE(jm_getAccessibleActionDescription, sjc_CAccessibility, "getAccessibleActionDescription", "(Ljavax/accessibility/AccessibleAction;ILjava/awt/Component;)Ljava/lang/String;");
-
     JNIEnv* env = [ThreadUtilities getJNIEnv];
+    DECLARE_CLASS_RETURN(sjc_CAccessibility, "sun/lwawt/macosx/CAccessibility", nil);
+    DECLARE_METHOD_RETURN(jm_getAccessibleActionDescription, sjc_CAccessibility, "getAccessibleActionDescription",
+                          "(Ljavax/accessibility/AccessibleAction;ILjava/awt/Component;)Ljava/lang/String;", nil);
 
     jobject fCompLocal = (*env)->NewLocalRef(env, fComponent);
     if ((*env)->IsSameObject(env, fCompLocal, NULL)) {
         return nil;
     }
     NSString *str = nil;
-    jstring jstr = JNFCallStaticObjectMethod( env,
+    jstring jstr = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
                                               jm_getAccessibleActionDescription,
                                               fAccessibleAction,
                                               fIndex,
                                               fCompLocal );
+    CHECK_EXCEPTION();
     if (jstr != NULL) {
         str = JNFJavaToNSString(env, jstr); // AWT_THREADING Safe (AWTRunLoopMode)
         (*env)->DeleteLocalRef(env, jstr);
@@ -88,11 +91,14 @@ void initializeActions();
 
 - (void)perform
 {
-    static JNF_STATIC_MEMBER_CACHE(jm_doAccessibleAction, sjc_CAccessibility, "doAccessibleAction", "(Ljavax/accessibility/AccessibleAction;ILjava/awt/Component;)V");
-
     JNIEnv* env = [ThreadUtilities getJNIEnv];
+    DECLARE_CLASS(sjc_CAccessibility, "sun/lwawt/macosx/CAccessibility");
+    DECLARE_METHOD(jm_doAccessibleAction, sjc_CAccessibility, "doAccessibleAction",
+                    "(Ljavax/accessibility/AccessibleAction;ILjava/awt/Component;)V");
 
-    JNFCallStaticVoidMethod(env, jm_doAccessibleAction, fAccessibleAction, fIndex, fComponent); // AWT_THREADING Safe (AWTRunLoopMode)
+    (*env)->CallStaticVoidMethod(env, sjc_CAccessibility, jm_doAccessibleAction,
+             fAccessibleAction, fIndex, fComponent); // AWT_THREADING Safe (AWTRunLoopMode)
+    CHECK_EXCEPTION();
 }
 
 @end

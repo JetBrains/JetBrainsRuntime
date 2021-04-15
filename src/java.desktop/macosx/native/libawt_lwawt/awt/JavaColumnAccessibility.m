@@ -7,8 +7,13 @@
 #import "JavaColumnAccessibility.h"
 #import "JavaTableAccessibility.h"
 #import "ThreadUtilities.h"
+#import "JNIUtilities.h"
 
-static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;");
+static jmethodID jm_getChildrenAndRoles = NULL;
+#define GET_CHILDRENANDROLES_METHOD_RETURN(ret) \
+    GET_CACCESSIBILITY_CLASS_RETURN(ret); \
+    GET_STATIC_METHOD_RETURN(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles",\
+                      "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;", ret);
 
 @implementation JavaColumnAccessibility
 
@@ -24,7 +29,9 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
         JNIEnv *env = [ThreadUtilities getJNIEnv];
         JavaComponentAccessibility *parent = [self accessibilityParent];
         if (parent->fAccessible == NULL) return nil;
-        jobjectArray jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, JAVA_AX_ALL_CHILDREN, NO);
+        GET_CHILDRENANDROLES_METHOD_RETURN(nil);
+        jobjectArray jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, JAVA_AX_ALL_CHILDREN, NO);
+        CHECK_EXCEPTION();
         if (jchildrenAndRoles == NULL) return nil;
 
         jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
@@ -41,7 +48,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
             NSString *childJavaRole = nil;
             if (jchildJavaRole != NULL) {
-                jobject jkey = JNFGetObjectField(env, jchildJavaRole, sjf_key);
+                jobject jkey = (*env)->GetObjectField(env, jchildJavaRole, sjf_key);
                 childJavaRole = JNFJavaToNSString(env, jkey);
                 (*env)->DeleteLocalRef(env, jkey);
             }

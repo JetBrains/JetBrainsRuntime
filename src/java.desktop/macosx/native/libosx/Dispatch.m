@@ -109,9 +109,6 @@ JNIEXPORT void JNICALL Java_com_apple_concurrent_LibDispatchNative_nativeRelease
 }
 
 
-static JNF_CLASS_CACHE(jc_Runnable, "java/lang/Runnable");
-static JNF_MEMBER_CACHE(jm_run, jc_Runnable, "run", "()V");
-
 static void perform_dispatch(JNIEnv *env, jlong nativeQueue, jobject runnable, void (*dispatch_fxn)(dispatch_queue_t, dispatch_block_t))
 {
 JNF_COCOA_ENTER(env);
