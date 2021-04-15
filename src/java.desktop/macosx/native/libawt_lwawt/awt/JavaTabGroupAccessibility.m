@@ -40,7 +40,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
 - (NSArray *)tabButtonsWithEnv:(JNIEnv *)env withTabGroupAxContext:(jobject)axContext withTabCode:(NSInteger)whichTabs allowIgnored:(BOOL)allowIgnored {
     GET_CHILDRENANDROLES_METHOD_RETURN(nil);
     jobjectArray jtabsAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getChildrenAndRoles,
-                                  fAccessible, fComponent, whichTabs, allowIgnored); // AWT_THREADING Safe (AWTRunLoop)
+                                  fAccessible, fComponent, whichTabs, allowIgnored);
     CHECK_EXCEPTION();
     if(jtabsAndRoles == NULL) return nil;
 
@@ -58,7 +58,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
         return nil;
     }
     jobject jkey = (*env)->GetObjectField(env, jtabJavaRole, sjf_key);
-    NSString *tabJavaRole = JNFJavaToNSString(env, jkey);
+    NSString *tabJavaRole = JavaStringToNSString(env, jkey);
     (*env)->DeleteLocalRef(env, jkey);
 
     NSInteger i;

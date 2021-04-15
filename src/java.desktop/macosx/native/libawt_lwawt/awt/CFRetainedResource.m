@@ -24,9 +24,9 @@
  */
 
 #import "JNIUtilities.h"
+#import "ThreadUtilities.h"
 
 #import <Cocoa/Cocoa.h>
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 #import "sun_lwawt_macosx_CFRetainedResource.h"
 
@@ -43,7 +43,7 @@ JNI_COCOA_ENTER(env);
             }];
         } else {
             // could happen if we are embedded inside SWT/FX application,
-            [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
+            [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
                 if (condition(ptr)) CFRelease(jlong_to_ptr(ptr));
             }];
         }

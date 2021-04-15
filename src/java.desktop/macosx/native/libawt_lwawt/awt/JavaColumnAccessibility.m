@@ -49,7 +49,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
             NSString *childJavaRole = nil;
             if (jchildJavaRole != NULL) {
                 jobject jkey = (*env)->GetObjectField(env, jchildJavaRole, sjf_key);
-                childJavaRole = JNFJavaToNSString(env, jkey);
+                childJavaRole = JavaStringToNSString(env, jkey);
                 (*env)->DeleteLocalRef(env, jkey);
             }
 

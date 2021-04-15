@@ -27,7 +27,7 @@
     DECLARE_CLASS_RETURN(sjc_CAccessible, "sun/lwawt/macosx/CAccessible", nil);
     DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName",
                           "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;", nil);
-    jobject childName = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleName, axSelectedChild, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    jobject childName = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleName, axSelectedChild, fComponent);
     CHECK_EXCEPTION();
     if (childName == NULL) {
         (*env)->DeleteLocalRef(env, axSelectedChild);

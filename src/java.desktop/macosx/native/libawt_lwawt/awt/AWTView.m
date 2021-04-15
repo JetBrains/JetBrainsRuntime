@@ -26,7 +26,6 @@
 #import "jni_util.h"
 #import "CGLGraphicsConfig.h"
 
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
 #import <Carbon/Carbon.h>
 
@@ -162,7 +161,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
     [AWTToolkit eventCountPlusPlus];
 
-    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
         [[self window] makeFirstResponder: self];
     }];
     if ([self window] != NULL) {
@@ -553,9 +552,9 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     jstring charactersIgnoringModifiersAndShift = NULL;
 
     if ([event type] != NSFlagsChanged) {
-        characters = JNFNSToJavaString(env, [event characters]);
-        charactersIgnoringModifiers = JNFNSToJavaString(env, [event charactersIgnoringModifiers]);
-        charactersIgnoringModifiersAndShift = JNFNSToJavaString(env, charactersIgnoringModifiersAndShiftAsNsString);
+        characters = NSStringToJavaString(env, [event characters]);
+        charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
+        charactersIgnoringModifiersAndShift = NSStringToJavaString(env, charactersIgnoringModifiersAndShiftAsNsString);
     }
 
     jint javaDeadKeyCode = 0;
@@ -574,7 +573,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
                     &actualLength,
                     stringWithChars);
 
-        charactersIgnoringModifiersAndShift = JNFNSToJavaString(env, [NSString stringWithCharacters:stringWithChars length:actualLength]);
+        charactersIgnoringModifiersAndShift = NSStringToJavaString(env, [NSString stringWithCharacters:stringWithChars length:actualLength]);
 
         switch ([event keyCode]) {
             case 0x0060:
@@ -637,8 +636,8 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     jstring oldCharacters = NULL;
     jstring oldCharactersIgnoringModifiers = NULL;
     if ([event type] != NSFlagsChanged) {
-        oldCharacters = JNFNSToJavaString(env, [event characters]);
-        oldCharactersIgnoringModifiers = JNFNSToJavaString(env, [event charactersIgnoringModifiers]);
+        oldCharacters = NSStringToJavaString(env, [event characters]);
+        oldCharactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
     }
 
     DECLARE_CLASS(jc_NSEvent, "sun/lwawt/macosx/NSEvent");
@@ -756,10 +755,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     DECLARE_FIELD_RETURN(jf_Peer, jc_CPlatformView, "peer", "Lsun/lwawt/LWWindowPeer;", NULL);
     if ((env == NULL) || (m_cPlatformView == NULL)) {
         NSLog(@"Apple AWT : Error AWTView:awtComponent given bad parameters.");
-        if (env != NULL)
-        {
-            JNI_EXECUTE_AND_HANDLE(JNFDumpJavaStack(env));
-        }
+        NSLog(@"%@",[NSThread callStackSymbols]);
         return NULL;
     }
 
@@ -773,7 +769,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     DECLARE_FIELD_RETURN(jf_Target, jc_LWWindowPeer, "target", "Ljava/awt/Component;", NULL);
     if (peer == NULL) {
         NSLog(@"Apple AWT : Error AWTView:awtComponent got null peer from CPlatformView");
-        JNI_EXECUTE_AND_HANDLE(JNFDumpJavaStack(env));
+        NSLog(@"%@",[NSThread callStackSymbols]);
         return NULL;
     }
     jobject comp = (*env)->GetObjectField(env, peer, jf_Target);
@@ -1177,8 +1173,8 @@ static jclass jc_CInputMethod = NULL;
         }
 
         DECLARE_METHOD(jm_insertText, jc_CInputMethod, "insertText", "(Ljava/lang/String;)V");
-        jstring insertedText =  JNFNSToJavaString(env, useString);
-        (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_insertText, insertedText); // AWT_THREADING Safe (AWTRunLoopMode)
+        jstring insertedText =  NSStringToJavaString(env, useString);
+        (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_insertText, insertedText);
         CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, insertedText);
 
@@ -1245,8 +1241,8 @@ static jclass jc_CInputMethod = NULL;
     // NSInputContext already did the analysis of the TSM event and created attributes indicating
     // the underlining and color that should be done to the string.  We need to look at the underline
     // style and color to determine what kind of Java hilighting needs to be done.
-    jstring inProcessText = JNFNSToJavaString(env, incomingString);
-    (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_startIMUpdate, inProcessText); // AWT_THREADING Safe (AWTRunLoopMode)
+    jstring inProcessText = NSStringToJavaString(env, incomingString);
+    (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_startIMUpdate, inProcessText);
     CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, inProcessText);
 
@@ -1271,7 +1267,7 @@ static jclass jc_CInputMethod = NULL;
                 isGray = !([underlineColorObj isEqual:[NSColor blackColor]]);
 
                 (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_addAttribute, isThickUnderline,
-                       isGray, effectiveRange.location, effectiveRange.length); // AWT_THREADING Safe (AWTRunLoopMode)
+                       isGray, effectiveRange.location, effectiveRange.length);
                 CHECK_EXCEPTION();
             }
         }
@@ -1286,7 +1282,7 @@ static jclass jc_CInputMethod = NULL;
     }
 
     (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_dispatchText,
-            selectionRange.location, selectionRange.length, JNI_FALSE); // AWT_THREADING Safe (AWTRunLoopMode)
+            selectionRange.location, selectionRange.length, JNI_FALSE);
          CHECK_EXCEPTION();
     // If the marked text is being cleared (zero-length string) don't handle the key event.
     if ([incomingString length] == 0) {
@@ -1308,7 +1304,7 @@ static jclass jc_CInputMethod = NULL;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CIM_CLASS();
     DECLARE_METHOD(jm_unmarkText, jc_CInputMethod, "unmarkText", "()V");
-    (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_unmarkText); // AWT_THREADING Safe (AWTRunLoopMode)
+    (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_unmarkText);
     CHECK_EXCEPTION();
 }
 
@@ -1364,13 +1360,13 @@ static jclass jc_CInputMethod = NULL;
     }
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     DECLARE_METHOD_RETURN(jm_substringFromRange, jc_CInputMethod, "attributedSubstringFromRange", "(II)Ljava/lang/String;", nil);
-    jobject theString = (*env)->CallObjectMethod(env, fInputMethodLOCKABLE, jm_substringFromRange, theRange.location, theRange.length); // AWT_THREADING Safe (AWTRunLoopMode)
+    jobject theString = (*env)->CallObjectMethod(env, fInputMethodLOCKABLE, jm_substringFromRange, theRange.location, theRange.length);
     CHECK_EXCEPTION_NULL_RETURN(theString, nil);
 
     if (!theString) {
         return NULL;
     }
-    id result = [[[NSAttributedString alloc] initWithString:JNFJavaToNSString(env, theString)] autorelease];
+    id result = [[[NSAttributedString alloc] initWithString:JavaStringToNSString(env, theString)] autorelease];
 #ifdef IM_DEBUG
     NSLog(@"attributedSubstringFromRange returning \"%@\"", result);
 #endif // IM_DEBUG
@@ -1401,7 +1397,7 @@ static jclass jc_CInputMethod = NULL;
     GET_CIM_CLASS_RETURN(range);
     DECLARE_METHOD_RETURN(jm_markedRange, jc_CInputMethod, "markedRange", "()[I", range);
 
-    array = (*env)->CallObjectMethod(env, fInputMethodLOCKABLE, jm_markedRange); // AWT_THREADING Safe (AWTRunLoopMode)
+    array = (*env)->CallObjectMethod(env, fInputMethodLOCKABLE, jm_markedRange);
     CHECK_EXCEPTION();
 
     if (array) {
@@ -1442,7 +1438,7 @@ static jclass jc_CInputMethod = NULL;
     fprintf(stderr, "AWTView InputMethod Selector Called : [selectedRange]\n");
 #endif // IM_DEBUG
 
-    array = (*env)->CallObjectMethod(env, fInputMethodLOCKABLE, jm_selectedRange); // AWT_THREADING Safe (AWTRunLoopMode)
+    array = (*env)->CallObjectMethod(env, fInputMethodLOCKABLE, jm_selectedRange);
     CHECK_EXCEPTION();
     if (array) {
         _array = (*env)->GetIntArrayElements(env, array, &isCopy);
@@ -1481,7 +1477,7 @@ static jclass jc_CInputMethod = NULL;
 #endif // IM_DEBUG
 
     array = (*env)->CallObjectMethod(env, fInputMethodLOCKABLE, jm_firstRectForCharacterRange,
-                                theRange.location); // AWT_THREADING Safe (AWTRunLoopMode)
+                                theRange.location);
     CHECK_EXCEPTION();
 
     _array = (*env)->GetIntArrayElements(env, array, &isCopy);
@@ -1522,7 +1518,7 @@ static jclass jc_CInputMethod = NULL;
 #endif // IM_DEBUG
 
     jint index = (*env)->CallIntMethod(env, fInputMethodLOCKABLE, jm_characterIndexForPoint,
-                      (jint)flippedLocation.x, (jint)flippedLocation.y); // AWT_THREADING Safe (AWTRunLoopMode)
+                      (jint)flippedLocation.x, (jint)flippedLocation.y);
     CHECK_EXCEPTION();
 
 #ifdef IM_DEBUG

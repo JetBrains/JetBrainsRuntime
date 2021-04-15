@@ -79,11 +79,11 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
         DECLARE_CLASS_RETURN(sjc_LWCToolkit, "sun/lwawt/macosx/LWCToolkit", NO);
         DECLARE_STATIC_METHOD_RETURN(jm_doEquals, sjc_LWCToolkit, "doEquals",
                                      "(Ljava/lang/Object;Ljava/lang/Object;Ljava/awt/Component;)Z", NO);
-        return (*env)->CallStaticBooleanMethod(env, sjc_LWCToolkit, jm_doEquals, a, b, component); // AWT_THREADING Safe (AWTRunLoopMode)
+        return (*env)->CallStaticBooleanMethod(env, sjc_LWCToolkit, jm_doEquals, a, b, component);
         CHECK_EXCEPTION();
     }
 
-    jboolean jb = (*env)->CallBooleanMethod(env, a, jm_equals, b); // AWT_THREADING Safe (!appKit)
+    jboolean jb = (*env)->CallBooleanMethod(env, a, jm_equals, b);
     CHECK_EXCEPTION();
     return jb;
 }

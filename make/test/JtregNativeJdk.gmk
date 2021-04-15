@@ -77,7 +77,7 @@ endif
 
 ifeq ($(OPENJDK_TARGET_OS), macosx)
   BUILD_JDK_JTREG_LIBRARIES_LIBS_libTestMainKeyWindow := \
-      -framework Cocoa -framework JavaNativeFoundation
+      -framework Cocoa
   BUILD_JDK_JTREG_LIBRARIES_LIBS_libTestDynamicStore := \
       -framework Cocoa -framework SystemConfiguration
 else

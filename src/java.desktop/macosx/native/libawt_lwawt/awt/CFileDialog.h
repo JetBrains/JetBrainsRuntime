@@ -24,7 +24,6 @@
  */
 
 #import <Cocoa/Cocoa.h>
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 @interface CFileDialog : NSObject <NSOpenSavePanelDelegate> {
     NSWindow* fOwner;

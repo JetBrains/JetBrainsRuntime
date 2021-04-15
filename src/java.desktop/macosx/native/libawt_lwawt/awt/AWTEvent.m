@@ -37,7 +37,6 @@
 
 #import "JNIUtilities.h"
 
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <sys/time.h>
 #import <Carbon/Carbon.h>
 
