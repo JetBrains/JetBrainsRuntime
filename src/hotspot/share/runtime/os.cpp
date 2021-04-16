@@ -938,6 +938,7 @@ ATTRIBUTE_NO_ASAN static void print_hex_readable_pointer(outputStream* st, addre
   }
 }
 
+ATTRIBUTE_NO_SANITIZE_ADDRESS("Memory is read raw here without any regard for objects' boundaries")
 void os::print_hex_dump(outputStream* st, address start, address end, int unitsize,
                         int bytes_per_line, address logical_start) {
   assert(unitsize == 1 || unitsize == 2 || unitsize == 4 || unitsize == 8, "just checking");
