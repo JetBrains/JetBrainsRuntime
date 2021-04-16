@@ -1010,6 +1010,7 @@ static void print_hex_location(outputStream* st, const_address p, int unitsize, 
   }
 }
 
+ATTRIBUTE_NO_SANITIZE_ADDRESS("Memory is read raw here without any regard for objects' boundaries")
 void os::print_hex_dump(outputStream* st, const_address start, const_address end, int unitsize,
                         bool print_ascii, int bytes_per_line, const_address logical_start, const_address highlight_address) {
   constexpr int max_bytes_per_line = 64;
