@@ -168,4 +168,10 @@
 #define END_ALLOW_FORBIDDEN_FUNCTIONS           \
   PRAGMA_DIAG_POP
 
+#if defined(__clang__) || defined (__GNUC__)
+# define ATTRIBUTE_NO_SANITIZE_ADDRESS(reason_for_exclusion) __attribute__((no_sanitize_address))
+#else
+# define ATTRIBUTE_NO_SANITIZE_ADDRESS(reason_for_exclusion)
+#endif
+
 #endif // SHARE_UTILITIES_COMPILERWARNINGS_HPP
