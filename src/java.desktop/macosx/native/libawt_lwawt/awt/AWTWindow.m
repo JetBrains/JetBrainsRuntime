@@ -1127,6 +1127,14 @@ JNI_COCOA_ENTER(env);
 
         window.styleBits = newBits;
 
+        NSString *uiStyle = [[NSUserDefaults standardUserDefaults] stringForKey:@"AppleInterfaceStyle"];
+
+        if ([@"Dark" isEqualToString: uiStyle]) {
+            [nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+        } else {
+            [nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
+        }
+
         if (resized) {
             [window _deliverMoveResizeEvent];
         }
