@@ -445,6 +445,45 @@ AC_DEFUN_ONCE([JDKOPT_SETUP_ADDRESS_SANITIZER],
   AC_SUBST(ASAN_ENABLED)
 ])
 
+###############################################################################
+#
+# UndefinedBehaviorSanitizer
+#
+AC_DEFUN_ONCE([JDKOPT_SETUP_UNDEFINED_BEHAVIOR_SANITIZER],
+[
+  UTIL_ARG_ENABLE(NAME: usan, DEFAULT: false,
+      DESC: [enable UndefinedBehaviorSanitizer],
+      CHECK_AVAILABLE: [
+        AC_MSG_CHECKING([if UndefinedBehaviorSanitizer (usan) is available])
+        if test "x$TOOLCHAIN_TYPE" = "xgcc" ||
+            test "x$TOOLCHAIN_TYPE" = "xclang"; then
+          AC_MSG_RESULT([yes])
+        else
+          AC_MSG_RESULT([no])
+          AVAILABLE=false
+        fi
+      ],
+      IF_ENABLED: [
+        USAN_FLAGS="-fsanitize=undefined"
+        USAN_CFLAGS="$USAN_FLAGS -fno-omit-frame-pointer"
+        USAN_LDFLAGS="$USAN_FLAGS"
+        JVM_CFLAGS="$JVM_CFLAGS $USAN_CFLAGS"
+        JVM_LDFLAGS="$JVM_LDFLAGS $USAN_LDFLAGS"
+        CFLAGS_JDKLIB="$CFLAGS_JDKLIB $USAN_CFLAGS"
+        CFLAGS_JDKEXE="$CFLAGS_JDKEXE $USAN_CFLAGS"
+        CXXFLAGS_JDKLIB="$CXXFLAGS_JDKLIB $USAN_CFLAGS"
+        CXXFLAGS_JDKEXE="$CXXFLAGS_JDKEXE $USAN_CFLAGS"
+        LDFLAGS_JDKLIB="$LDFLAGS_JDKLIB $USAN_LDFLAGS"
+        LDFLAGS_JDKEXE="$LDFLAGS_JDKEXE $USAN_LDFLAGS"
+        USAN_ENABLED="yes"
+      ],
+      IF_DISABLED: [
+        USAN_ENABLED="no"
+      ])
+
+  AC_SUBST(USAN_ENABLED)
+])
+
 ################################################################################
 #
 # Static build support.  When enabled will generate static
