@@ -230,7 +230,7 @@ AC_DEFUN([FLAGS_SETUP_OPTIMIZATION],
       DISABLE_FORTIFY_CFLAGS="-U_FORTIFY_SOURCE"
       # ASan doesn't work well with _FORTIFY_SOURCE
       # See https://github.com/google/sanitizers/wiki/AddressSanitizer#faq
-      if test "x$ASAN_ENABLED" = xyes; then
+      if test "x$ASAN_ENABLED" = xyes || test "x$USAN_ENABLED" = xyes; then
         ENABLE_FORTIFY_CFLAGS="${DISABLE_FORTIFY_CFLAGS}"
       else
         ENABLE_FORTIFY_CFLAGS="-D_FORTIFY_SOURCE=2"
