@@ -885,6 +885,7 @@ bool os::print_function_and_library_name(outputStream* st,
   return have_function_name || have_library_name;
 }
 
+ATTRIBUTE_NO_SANITIZE_ADDRESS("Memory is read raw here without any regard for objects' boundaries")
 void os::print_hex_dump(outputStream* st, address start, address end, int unitsize,
                         int bytes_per_line, address logical_start) {
   assert(unitsize == 1 || unitsize == 2 || unitsize == 4 || unitsize == 8, "just checking");
