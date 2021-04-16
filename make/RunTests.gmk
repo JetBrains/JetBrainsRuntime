@@ -798,6 +798,15 @@ define SetupRunJtregTestBody
     $1_JTREG_BASIC_OPTIONS += -ea -esa
   endif
 
+  ifeq ($$(ASAN_ENABLED), yes)
+    $1_JTREG_BASIC_OPTIONS += -e:ASAN_OPTIONS=handle_segv=0:handle_sigfpe=0:detect_leaks=false
+    $1_JTREG_BASIC_OPTIONS += -e:LD_PRELOAD=libasan.so.5
+  endif
+
+  ifeq ($$(USAN_ENABLED), yes)
+    $1_JTREG_BASIC_OPTIONS += -e:LD_PRELOAD=libubsan.so.1
+  endif
+
   ifneq ($$($1_JTREG_NATIVEPATH), )
     $1_JTREG_BASIC_OPTIONS += -nativepath:$$($1_JTREG_NATIVEPATH)
   endif
