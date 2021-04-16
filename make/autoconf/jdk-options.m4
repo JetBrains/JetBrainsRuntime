@@ -472,6 +472,46 @@ AC_DEFUN_ONCE([JDKOPT_SETUP_ADDRESS_SANITIZER],
   AC_SUBST(ASAN_ENABLED)
 ])
 
+###############################################################################
+#
+# UndefinedBehaviorSanitizer
+#
+AC_DEFUN_ONCE([JDKOPT_SETUP_UNDEFINED_BEHAVIOR_SANITIZER],
+[
+  AC_ARG_ENABLE(usan, [AS_HELP_STRING([--enable-usan],
+      [enable UndefinedBehaviorSanitizer if possible @<:@disabled@:>@])])
+  USAN_ENABLED="no"
+  if test "x$enable_usan" = "xyes"; then
+    case $TOOLCHAIN_TYPE in
+      gcc | clang)
+        AC_MSG_CHECKING([if usan is enabled])
+        AC_MSG_RESULT([yes])
+        USAN_CFLAGS="-fsanitize=undefined -fno-omit-frame-pointer"
+        USAN_LDFLAGS="-fsanitize=undefined"
+        JVM_CFLAGS="$JVM_CFLAGS $USAN_CFLAGS"
+        JVM_LDFLAGS="$JVM_LDFLAGS $USAN_LDFLAGS"
+        CFLAGS_JDKLIB="$CFLAGS_JDKLIB $USAN_CFLAGS"
+        CFLAGS_JDKEXE="$CFLAGS_JDKEXE $USAN_CFLAGS"
+        CXXFLAGS_JDKLIB="$CXXFLAGS_JDKLIB $USAN_CFLAGS"
+        CXXFLAGS_JDKEXE="$CXXFLAGS_JDKEXE $USAN_CFLAGS"
+        LDFLAGS_JDKLIB="$LDFLAGS_JDKLIB $USAN_LDFLAGS"
+        LDFLAGS_JDKEXE="$LDFLAGS_JDKEXE $USAN_LDFLAGS"
+        USAN_ENABLED="yes"
+        ;;
+      *)
+        AC_MSG_ERROR([--enable-usan only works with toolchain type gcc or clang])
+        ;;
+    esac
+  elif test "x$enable_usan" = "xno"; then
+    AC_MSG_CHECKING([if usan is enabled])
+    AC_MSG_RESULT([no])
+  elif test "x$enable_usan" != "x"; then
+    AC_MSG_ERROR([--enable-usan can only be assigned "yes" or "no"])
+  fi
+
+  AC_SUBST(USAN_ENABLED)
+])
+
 ################################################################################
 #
 # Static build support.  When enabled will generate static
