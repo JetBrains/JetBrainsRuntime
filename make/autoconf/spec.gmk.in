@@ -449,7 +449,16 @@ JCOV_FILTERS=@JCOV_FILTERS@
 export ASAN_ENABLED:=@ASAN_ENABLED@
 export DEVKIT_LIB_DIR:=@DEVKIT_LIB_DIR@
 ifeq ($(ASAN_ENABLED), yes)
-  export ASAN_OPTIONS=handle_segv=0 detect_leaks=0
+  export ASAN_OPTIONS=handle_segv=0:handle_sigfpe=0:detect_leaks=false
+  ifneq ($(DEVKIT_LIB_DIR),)
+    export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(DEVKIT_LIB_DIR)
+  endif
+endif
+
+# UndefinedBehaviorSanitizer
+export USAN_ENABLED:=@USAN_ENABLED@
+export DEVKIT_LIB_DIR:=@DEVKIT_LIB_DIR@
+ifeq ($(USAN_ENABLED), yes)
   ifneq ($(DEVKIT_LIB_DIR),)
     export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(DEVKIT_LIB_DIR)
   endif
