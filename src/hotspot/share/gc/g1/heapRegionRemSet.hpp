@@ -282,6 +282,7 @@ private:
   // the region that owns this RSet.
   G1CodeRootSet _code_roots;
 
+  char  _m_name[48];
   Mutex _m;
 
   OtherRegionsTable _other_regions;

@@ -30,9 +30,17 @@
 #include <stdarg.h>
 
 FormatBufferResource::FormatBufferResource(const char * format, ...)
-  : FormatBufferBase((char*)resource_allocate_bytes(FormatBufferBase::BufferSize)) {
+  : FormatBufferBase((char*)resource_allocate_bytes(FormatBufferBase::DefaultBufferSize)) {
   va_list argp;
   va_start(argp, format);
-  jio_vsnprintf(_buf, FormatBufferBase::BufferSize, format, argp);
+  jio_vsnprintf(_buf, FormatBufferBase::DefaultBufferSize, format, argp);
+  va_end(argp);
+}
+
+FormatBufferExternal::FormatBufferExternal(char* buf, size_t buf_size, const char * format, ...)
+  : FormatBufferBase(buf) {
+  va_list argp;
+  va_start(argp, format);
+  jio_vsnprintf(_buf, buf_size, format, argp);
   va_end(argp);
 }
