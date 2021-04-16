@@ -414,6 +414,7 @@ jlong VMError::get_step_start_time() {
   return Atomic::load(&_step_start_time);
 }
 
+ATTRIBUTE_NO_SANITIZE_ADDRESS("Memory is read raw here without any regard for objects' boundaries")
 void VMError::report(outputStream* st, bool _verbose) {
 
 # define BEGIN if (_current_step == 0) { _current_step = __LINE__;

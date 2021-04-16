@@ -84,4 +84,10 @@
 #define PRAGMA_DIAG_POP
 #endif
 
+#if defined(__clang__) || defined (__GNUC__)
+# define ATTRIBUTE_NO_SANITIZE_ADDRESS(reason_for_exclusion) __attribute__((no_sanitize_address))
+#else
+# define ATTRIBUTE_NO_SANITIZE_ADDRESS(reason_for_exclusion)
+#endif
+
 #endif // SHARE_VM_UTILITIES_COMPILERWARNINGS_HPP
