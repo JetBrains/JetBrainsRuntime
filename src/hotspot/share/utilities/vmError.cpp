@@ -526,6 +526,7 @@ void VMError::clear_step_start_time() {
 // could be nested report_and_die() calls on stack (see above). Only one
 // thread can report error, so large buffers are statically allocated in data
 // segment.
+ATTRIBUTE_NO_SANITIZE_ADDRESS("Memory is read raw here without any regard for objects' boundaries")
 void VMError::report(outputStream* st, bool _verbose) {
 
 # define BEGIN if (_current_step == 0) { _current_step = __LINE__;
