@@ -26,7 +26,7 @@
 
 JNIEXPORT void JNICALL Java_FindClassUtf8_nTest(JNIEnv* env, jclass jclazz)
 {
-    const uint64_t chars = 0x5b3132315d20f818UL;  // f8 is invalid utf8
+    const char * chars = "\x5b\x31\x32\x31\x5d\x20\xf8\x18";  // f8 is invalid utf8
 
-    jclass badClass = (*env)->FindClass(env, (const char*)&chars);
+    jclass badClass = (*env)->FindClass(env, chars);
 }
