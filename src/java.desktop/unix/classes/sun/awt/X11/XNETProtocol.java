@@ -233,6 +233,12 @@ final class XNETProtocol extends XProtocol implements XStateProtocol, XLayerProt
                 }
                 return;
             }
+            if (!set) {
+                net_wm_state.remove(state);
+            } else {
+                net_wm_state.add(state);
+            }
+            window.net_wm_state = net_wm_state;
             requestState(window, state, set);
         } else {
             if (log.isLoggable(PlatformLogger.Level.FINER)) {
