@@ -2996,7 +2996,7 @@ void MacroAssembler::verify_heapbase(const char* msg) {
 #endif // AARCH64
 
 #ifdef COMPILER2
-void MacroAssembler::fast_lock(Register Roop, Register Rbox, Register Rscratch, Register Rscratch2 AARCH64_ONLY_ARG(Register Rscratch3))
+void MacroAssembler::fast_lock(Register Roop, Register Rbox, Register Rscratch, Register Rscratch2, Register scratch3)
 {
   assert(VM_Version::supports_ldrex(), "unsupported, yet?");
 
@@ -3010,14 +3010,12 @@ void MacroAssembler::fast_lock(Register Roop, Register Rbox, Register Rscratch, 
   Label fast_lock, done;
 
   if (UseBiasedLocking && !UseOptoBiasInlining) {
-    Label failed;
-#ifdef AARCH64
-    biased_locking_enter(Roop, Rmark, Rscratch, false, Rscratch3, done, failed);
-#else
-    biased_locking_enter(Roop, Rmark, Rscratch, false, noreg, done, failed);
-#endif
-    bind(failed);
+    assert(scratch3 != noreg, "need extra temporary for -XX:-UseOptoBiasInlining");
+    biased_locking_enter(Roop, Rmark, Rscratch, false, scratch3, done, done);
+    // Fall through if lock not biased otherwise branch to done
   }
+
+  // Invariant: Rmark loaded below does not contain biased lock pattern
 
   ldr(Rmark, Address(Roop, oopDesc::mark_offset_in_bytes()));
   tst(Rmark, markOopDesc::unlocked_value);
@@ -3057,6 +3055,9 @@ void MacroAssembler::fast_lock(Register Roop, Register Rbox, Register Rscratch, 
 
   bind(done);
 
+  // At this point flags are set as follows:
+  //  EQ -> Success
+  //  NE -> Failure, branch to slow path
 }
 
 void MacroAssembler::fast_unlock(Register Roop, Register Rbox, Register Rscratch, Register Rscratch2  AARCH64_ONLY_ARG(Register Rscratch3))

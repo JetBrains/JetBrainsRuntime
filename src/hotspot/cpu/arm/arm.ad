@@ -12016,9 +12016,10 @@ instruct cmpFastLock(flagsRegP pcc, iRegP object, iRegP box, iRegP scratch2, iRe
 #ifdef AARCH64
   effect(TEMP scratch, TEMP scratch2, TEMP scratch3);
 #else
+  predicate(!(UseBiasedLocking && !UseOptoBiasInlining));
   effect(TEMP scratch, TEMP scratch2);
 #endif
-  ins_cost(100);
+  ins_cost(DEFAULT_COST*3);
 
 #ifdef AARCH64
   format %{ "FASTLOCK  $object, $box; KILL $scratch, $scratch2, $scratch3" %}
@@ -12048,6 +12049,21 @@ instruct cmpFastUnlock(flagsRegP pcc, iRegP object, iRegP box, iRegP scratch2, i
   ins_pipe(long_memory_op);
 %}
 #else
+instruct cmpFastLock_noBiasInline(flagsRegP pcc, iRegP object, iRegP box, iRegP scratch2,
+                                  iRegP scratch, iRegP scratch3) %{
+  match(Set pcc (FastLock object box));
+  predicate(UseBiasedLocking && !UseOptoBiasInlining);
+
+  effect(TEMP scratch, TEMP scratch2, TEMP scratch3);
+  ins_cost(DEFAULT_COST*5);
+
+  format %{ "FASTLOCK  $object, $box; KILL $scratch, $scratch2, $scratch3" %}
+  ins_encode %{
+    __ fast_lock($object$$Register, $box$$Register, $scratch$$Register, $scratch2$$Register, $scratch3$$Register);
+  %}
+  ins_pipe(long_memory_op);
+%}
+
 instruct cmpFastUnlock(flagsRegP pcc, iRegP object, iRegP box, iRegP scratch2, iRegP scratch ) %{
   match(Set pcc (FastUnlock object box));
   effect(TEMP scratch, TEMP scratch2);
