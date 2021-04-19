@@ -41,19 +41,22 @@ if [ -z "${TESTJAVA}" ]; then
   exit 1
 fi
 
-pushd .
+curdir=$(pwd)
 cd ${TESTSRC}
 ${TESTJAVA}/bin/javac -d ${TESTCLASSES} HandleJSQueryTest.java
-popd
+cd $curdir
 
-for ((i = 0 ; i < $RUNS_NUMBER ; i++)); do
+i=0
+while [ "$i" -le "$RUNS_NUMBER" ]; do
     echo "iteration - $i"
     ${TESTJAVA}/bin/java -cp ${TESTCLASSES} HandleJSQueryTest
     exit_code=$?
+    echo "exit_xode=$exit_code"
     if [ $exit_code -ne "0" ]; then
       [[ $exit_code -eq "134" ]] && echo "FAILED: Test crashed" && exit $exit_code
       echo "Test failed because of not a crash. Execution is being conituned"
     fi
+    i=$(( i + 1 ))
 done
 echo "PASSED: Test did never crash during 100 iterations"
 exit 0
