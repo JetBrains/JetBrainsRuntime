@@ -1133,12 +1133,6 @@ JNI_COCOA_ENTER(env);
 
         NSString *uiStyle = [[NSUserDefaults standardUserDefaults] stringForKey:@"AppleInterfaceStyle"];
 
-        if ([@"Dark" isEqualToString: uiStyle]) {
-            [nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
-        } else {
-            [nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
-        }
-
         if (resized) {
             [window _deliverMoveResizeEvent];
         }
@@ -1166,6 +1160,34 @@ JNI_COCOA_ENTER(env);
 
         [nsWindow setAccessibilityElement:axElement];
     }];
+
+    JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CPlatformWindow
+ * Method:    nativeSetNSWindowAppearance
+ * Signature: (JLjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetNSWindowAppearance
+        (JNIEnv *env, jclass clazz, jlong windowPtr,  jstring appearanceName)
+{
+    JNI_COCOA_ENTER(env);
+
+        NSWindow *nsWindow = OBJC(windowPtr);
+        // create a global-ref around the appearanceName, so it can be safely passed to Main thread
+        jobject appearanceNameRef= (*env)->NewGlobalRef(env, appearanceName);
+
+        [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+           // attach the dispatch thread to the JVM if necessary, and get an env
+            JNIEnv*      blockEnv = [ThreadUtilities getJNIEnvUncached];
+            NSAppearance* appearance = [NSAppearance appearanceNamed:
+                                        JavaStringToNSString(blockEnv, appearanceNameRef)];
+            if (appearance != NULL) {
+                [nsWindow setAppearance:appearance];
+            }
+            (*blockEnv)->DeleteGlobalRef(blockEnv, appearanceNameRef);
+        }];
 
     JNI_COCOA_EXIT(env);
 }
