@@ -187,7 +187,10 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
 
     protected synchronized long getNativeFontPtr() {
         if (nativeFontPtr == 0L) {
-            nativeFontPtr = createNativeFont(nativeFontName, style);
+            /* Do not try to create native italic font when isFakeItalic
+             * is true, otherwise we can make it italic twice */
+            nativeFontPtr = createNativeFont(nativeFontName, style &
+                    (isFakeItalic ? ~Font.ITALIC : -1));
         }
         return nativeFontPtr;
     }
