@@ -2024,21 +2024,6 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         }
     }
 
-    @Override
-    public void handlePropertyNotify(XEvent xev) {
-        super.handlePropertyNotify(xev);
-        if (isMapped()) { // we assume window manager isn't changing the property for unmapped windows
-            XPropertyEvent ev = xev.get_xproperty();
-            if (ev.get_atom() == XA_NET_WM_STATE.getAtom()) {
-                // State has changed, invalidate saved value
-                net_wm_state = null;
-                if (log.isLoggable(PlatformLogger.Level.FINEST)) {
-                    log.finest(XA_NET_WM_STATE + " property changed by window manager, clearing cached value");
-                }
-            }
-        }
-    }
-
     public PropMwmHints getMWMHints() {
         if (mwm_hints == null) {
             mwm_hints = new PropMwmHints();
