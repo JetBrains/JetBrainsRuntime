@@ -75,6 +75,7 @@ import sun.util.logging.PlatformLogger;
 public class CPlatformWindow extends CFRetainedResource implements PlatformWindow {
     private native long nativeCreateNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h);
     private static native void nativeSetNSWindowStyleBits(long nsWindowPtr, int mask, int data);
+    private static native void nativeSetNSWindowAppearance(long nsWindowPtr, String appearanceName);
     private static native void nativeSetNSWindowMenuBar(long nsWindowPtr, long menuBarPtr);
     private static native Insets nativeGetNSWindowInsets(long nsWindowPtr);
     private static native void nativeSetNSWindowBounds(long nsWindowPtr, double x, double y, double w, double h);
@@ -126,6 +127,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     public static final String WINDOW_FULL_CONTENT = "apple.awt.fullWindowContent";
     public static final String WINDOW_TRANSPARENT_TITLE_BAR = "apple.awt.transparentTitleBar";
     public static final String WINDOW_TITLE_VISIBLE = "apple.awt.windowTitleVisible";
+    public static final String WINDOW_APPEARANCE = "apple.awt.windowAppearance";
 
     // Yeah, I know. But it's easier to deal with ints from JNI
     static final int MODELESS = 0;
@@ -257,6 +259,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         new Property<CPlatformWindow>(WINDOW_TITLE_VISIBLE) {
             public void applyProperty(final CPlatformWindow c, final Object value) {
                 c.setStyleBits(TITLE_VISIBLE, value == null ? true : Boolean.parseBoolean(value.toString()));
+            }
+        },
+        new Property<CPlatformWindow>(WINDOW_APPEARANCE) {
+            public void applyProperty(final CPlatformWindow c, final Object value) {
+                if (value != null && (value instanceof String)) {
+                    c.execute(ptr -> nativeSetNSWindowAppearance(ptr, (String) value));
+                }
             }
         }
     }) {
