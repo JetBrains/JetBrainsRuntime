@@ -1043,12 +1043,12 @@ JNI_COCOA_ENTER(env);
     AWTWindow *owner = [OBJC(ownerPtr) delegate];
 
     BOOL isIgnoreMouseEvents = NO;
-    GET_CPLATFORM_WINDOW_CLASS_RETURN(nil);
-    DECLARE_FIELD_RETURN(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;", nil);
+    GET_CPLATFORM_WINDOW_CLASS_RETURN(0);
+    DECLARE_FIELD_RETURN(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;", 0);
     jobject awtWindow = (*env)->GetObjectField(env, obj, jf_target);
     if (awtWindow != NULL) {
-        DECLARE_CLASS_RETURN(jc_Window, "java/awt/Window", nil);
-        DECLARE_METHOD_RETURN(jm_isIgnoreMouseEvents, jc_Window, "isIgnoreMouseEvents", "()Z", nil);
+        DECLARE_CLASS_RETURN(jc_Window, "java/awt/Window", 0);
+        DECLARE_METHOD_RETURN(jm_isIgnoreMouseEvents, jc_Window, "isIgnoreMouseEvents", "()Z", 0);
         isIgnoreMouseEvents = (*env)->CallBooleanMethod(env, awtWindow, jm_isIgnoreMouseEvents) == JNI_TRUE ? YES : NO;
         (*env)->DeleteLocalRef(env, awtWindow);
     }
