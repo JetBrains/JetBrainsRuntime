@@ -23,7 +23,7 @@
 #          Number of iterations can be specified via the environment variable RUN_NUMBER, by default it is set to 100.
 # @run shell/timeout=300 HandleJSQueryTest3314.sh
 
-RUNS_NUMBER=${RUN_NUMBER:-100}
+RUNS_NUMBER=${RUN_NUMBER:-50}
 echo "number of iterations: $RUNS_NUMBER"
 
 if [ -z "${TESTSRC}" ]; then
