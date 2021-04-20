@@ -27,7 +27,6 @@ JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 [ -z "$bundle_type" ] && (git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch || exit $?)
 
 sh configure \
-  --disable-warnings-as-errors \
   --with-debug-level=release \
   --with-vendor-name="${VENDOR_NAME}" \
   --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
