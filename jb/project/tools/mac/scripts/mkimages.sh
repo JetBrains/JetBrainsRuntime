@@ -91,7 +91,6 @@ case "$bundle_type" in
 esac
 
 sh configure \
-  --disable-warnings-as-errors \
   $WITH_DEBUG_LEVEL \
   --with-vendor-name="$VENDOR_NAME" \
   --with-vendor-version-string="$VENDOR_VERSION_STRING" \
