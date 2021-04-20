@@ -27,9 +27,8 @@
 
 #import "CDragSource.h"
 #import "CDropTarget.h"
-#import "JavaBaseAccessibility.h"
 
-@interface AWTView : NSView<NSTextInputClient, CDragSourceHolder, CDropTargetHolder, PlatformAxElementProvider> {
+@interface AWTView : NSView<NSTextInputClient, CDragSourceHolder, CDropTargetHolder> {
 @private
     jobject m_cPlatformView;
 
