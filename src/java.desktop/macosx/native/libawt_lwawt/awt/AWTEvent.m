@@ -222,7 +222,6 @@ struct CharToVKEntry {
 static const struct CharToVKEntry charToDeadVKTable[] = {
     {0x0060, java_awt_event_KeyEvent_VK_DEAD_GRAVE},
     {0x00B4, java_awt_event_KeyEvent_VK_DEAD_ACUTE},
-    {0xFFFF, java_awt_event_KeyEvent_VK_DEAD_ACUTE},
     {0x0384, java_awt_event_KeyEvent_VK_DEAD_ACUTE}, // Unicode "GREEK TONOS" -- Greek keyboard, semicolon key
     {0x005E, java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX},
     {0x007E, java_awt_event_KeyEvent_VK_DEAD_TILDE},
@@ -891,17 +890,39 @@ JNF_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_NSEvent
  * Method:    nsToJavaChar
+ * Signature: (CI)Ljava/lang/String
+ */
+JNIEXPORT jstring JNICALL
+Java_sun_lwawt_macosx_NSEvent_nsToJavaChar
+(JNIEnv *env, jclass cls, jchar nsChar, jint modifierFlags, jboolean spaceKeyTyped)
+{
+    jstring charAsString = NULL;
+
+JNF_COCOA_ENTER(env);
+
+    NSString * nsStr = [NSString stringWithFormat: @"%C", nsChar];
+    charAsString = JNFNSToJavaString(env,  nsStr);
+
+
+JNF_COCOA_EXIT(env);
+
+    return charAsString;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_NSEvent
+ * Method:    nsToJavaChar
  * Signature: (CI)C
  */
 JNIEXPORT jint JNICALL
-Java_sun_lwawt_macosx_NSEvent_nsToJavaChar
-(JNIEnv *env, jclass cls, jchar nsChar, jint modifierFlags, jboolean spaceKeyTyped)
+Java_sun_lwawt_macosx_NSEvent_nsToJavaCharOld
+(JNIEnv *env, jclass cls, jchar nsChar, jint modifierFlags)
 {
     jchar javaChar = 0;
 
 JNF_COCOA_ENTER(env);
 
-    javaChar = NsCharToJavaChar(nsChar, modifierFlags, spaceKeyTyped);
+    javaChar = NsCharToJavaChar(nsChar, modifierFlags, false);
 
 JNF_COCOA_EXIT(env);
 

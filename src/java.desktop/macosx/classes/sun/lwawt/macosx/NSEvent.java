@@ -298,7 +298,8 @@ final class NSEvent {
      * There is a small number of NS characters that need to be converted
      * into other characters before we pass them to AWT.
      */
-    static native char nsToJavaChar(char nsChar, int modifierFlags, boolean spaceKeyTyped);
+    static native String nsToJavaChar(char nsChar, int modifierFlags, boolean spaceKeyTyped);
+    static native char nsToJavaCharOld(char nsChar, int modifierFlags);
 
     static boolean isPopupTrigger(int jmodifiers) {
         final boolean isRightButtonDown = ((jmodifiers & InputEvent.BUTTON3_DOWN_MASK) != 0);
