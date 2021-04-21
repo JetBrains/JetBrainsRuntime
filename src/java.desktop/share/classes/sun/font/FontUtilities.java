@@ -147,7 +147,7 @@ public final class FontUtilities {
                                     property.substring(separatorIndex + 1)), MAX_RESOLUTION), 1)
                     );
                 } catch (Exception ignore) {
-                    supplementarySubpixelGlyphResolution = new Dimension(1, 1);
+                    supplementarySubpixelGlyphResolution = new Dimension(4, 1);
                 }
 
                 return null;
