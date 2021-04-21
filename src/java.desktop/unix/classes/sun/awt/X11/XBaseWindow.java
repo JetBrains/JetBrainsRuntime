@@ -1033,7 +1033,9 @@ public class XBaseWindow {
         buttonState = xbe.get_state() & XConstants.ALL_BUTTONS_MASK;
 
         boolean isWheel = (theButton == XConstants.MouseWheelUp ||
-                           theButton == XConstants.MouseWheelDown);
+                           theButton == XConstants.MouseWheelDown ||
+                           theButton == XConstants.ScrollLeft ||
+                           theButton == XConstants.ScrollRight);
 
         // don't give focus if it's just the mouse wheel turning
         if (!isWheel) {
