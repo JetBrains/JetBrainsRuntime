@@ -210,6 +210,8 @@ public final class XConstants {
     // as it may be possible to remap them via x11 configuration files
     public static final int MouseWheelUp = buttons[3];
     public static final int MouseWheelDown = buttons[4];
+    public static final int ScrollLeft = buttons[5];
+    public static final int ScrollRight = buttons[6];
 
     /* Notify modes */
 
