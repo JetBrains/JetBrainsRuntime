@@ -797,6 +797,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             }
         }
 
+        this.visible = visible;
+
         // Actually show or hide the window
         LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
         if (!visible) {
@@ -858,7 +860,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 });
             });
         }
-        this.visible = visible;
 
         nativeSynthesizeMouseEnteredExitedEvents();
 
