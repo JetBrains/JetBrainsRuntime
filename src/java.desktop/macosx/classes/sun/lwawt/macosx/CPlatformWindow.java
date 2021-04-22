@@ -745,6 +745,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             execute(CPlatformWindow::nativeSetNSWindowLocationByPlatform);
         }
 
+        this.visible = visible;
+
         // Actually show or hide the window
         LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
         if (blocker == null || !visible) {
@@ -796,7 +798,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 });
             });
         }
-        this.visible = visible;
 
         // Manage the extended state when showing
         if (visible) {
