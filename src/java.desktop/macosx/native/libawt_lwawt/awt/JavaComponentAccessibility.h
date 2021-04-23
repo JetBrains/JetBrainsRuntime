@@ -12,11 +12,11 @@
 #define JAVA_AX_VISIBLE_CHILDREN (-3)
 // If the value is >=0, it's an index
 
-@class JavaElementAccessibility;
+@class JavaComponentAccessibility;
 
-@protocol JavaBaseProvider
+@protocol JavaComponentProvider
 
-@property (nonatomic, retain) JavaElementAccessibility *javaBase;
+@property (nonatomic, retain) JavaComponentAccessibility *javaComponent;
 
 @end
 
@@ -25,11 +25,11 @@
 
 - (NSString *)getPlatformAxElementClassName;
 
-@property (nonatomic, retain) NSObject <JavaBaseProvider> *platformAxElement;
+@property (nonatomic, retain) NSObject <JavaComponentProvider> *platformAxElement;
 
 @end
 
-@interface JavaElementAccessibility : NSObject <JavaBaseProvider, PlatformAxElementProvider> {
+@interface JavaComponentAccessibility : NSObject <JavaComponentProvider, PlatformAxElementProvider> {
     NSView *fView;
     NSObject *fParent;
 
@@ -55,20 +55,20 @@
 
 + (void)postFocusChanged:(id)message;
 
-+ (NSArray *)childrenOfParent:(JavaElementAccessibility *) parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored;
-+ (NSArray *)childrenOfParent:(JavaElementAccessibility *) parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored recursive:(BOOL)recursive;
-+ (JavaElementAccessibility *) createWithParent:(JavaElementAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
-+ (JavaElementAccessibility *) createWithAccessible:(jobject)jaccessible role:(NSString *)role index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
-+ (JavaElementAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view;
++ (NSArray *)childrenOfParent:(JavaComponentAccessibility *) parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored;
++ (NSArray *)childrenOfParent:(JavaComponentAccessibility *) parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored recursive:(BOOL)recursive;
++ (JavaComponentAccessibility *) createWithParent:(JavaComponentAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
++ (JavaComponentAccessibility *) createWithAccessible:(jobject)jaccessible role:(NSString *)role index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view;
++ (JavaComponentAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view;
 
 // If the isWraped parameter is true, then the object passed as a parent was created based on the same java component,
 // but performs a different NSAccessibilityRole of a table cell, or a list row, or tree row,
 // and we need to create an element whose role corresponds to the role in Java.
-+ (JavaElementAccessibility *) createWithParent:(JavaElementAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped;
++ (JavaComponentAccessibility *) createWithParent:(JavaComponentAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped;
 
 // The current parameter is used to bypass the check for an item's index on the parent so that the item is created. This is necessary,
 // for example, for AccessibleJTreeNode, whose currentComponent has index -1
-+ (JavaElementAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isCurrent:(BOOL)current;
++ (JavaComponentAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isCurrent:(BOOL)current;
 
 @property(readonly) jobject accessible;
 @property(readonly) jobject component;
@@ -79,7 +79,7 @@
 - (NSView*)view;
 - (NSWindow*)window;
 - (id)parent;
--(void)setParent:(id)javaBaseAccessibilityParent;
+- (void)setParent:(id)javaComponentAccessibilityParent;
 - (NSString *)javaRole;
 - (NSString *)nsRole;
 - (BOOL)isMenu;
@@ -110,7 +110,7 @@
 
 @end
 
-@interface PlatformAxElement : NSAccessibilityElement <JavaBaseProvider>
+@interface PlatformAxElement : NSAccessibilityElement <JavaComponentProvider>
 
 // begin of NSAccessibility protocol methods
 - (BOOL)isAccessibilityElement;

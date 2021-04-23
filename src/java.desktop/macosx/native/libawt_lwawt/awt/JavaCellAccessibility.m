@@ -20,13 +20,13 @@
 - (NSArray *)accessibilityChildren {
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
-        NSString *javaRole = [[self javaBase] javaRole];
-        JavaElementAccessibility *newChild = [JavaElementAccessibility createWithParent:[self javaBase]
-                                                                       accessible:[[self javaBase] accessible]
+        NSString *javaRole = [[self javaComponent] javaRole];
+        JavaComponentAccessibility *newChild = [JavaComponentAccessibility createWithParent:[self javaComponent]
+                                                                       accessible:[[self javaComponent] accessible]
                                                                              role:javaRole
-                                                                            index:[[self javaBase] index]
+                                                                            index:[[self javaComponent] index]
                                                                           withEnv:[ThreadUtilities getJNIEnv]
-                                                                         withView:[[self javaBase] view]
+                                                                         withView:[[self javaComponent] view]
                                                                         isWrapped:YES];
         return [NSArray arrayWithObject:newChild.platformAxElement];
     } else {

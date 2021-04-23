@@ -145,28 +145,28 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
 }
 
 - (nullable NSArray *)accessibilityColumns {
-    int colCount = [(JavaTableAccessibility *)[self javaBase] accessibleColCount];
+    int colCount = [(JavaTableAccessibility *) [self javaComponent] accessibleColCount];
     NSMutableArray *columns = [NSMutableArray arrayWithCapacity:colCount];
     for (int i = 0; i < colCount; i++) {
-        [columns addObject:[[JavaColumnAccessibility alloc] initWithParent:[self javaBase]
+        [columns addObject:[[JavaColumnAccessibility alloc] initWithParent:[self javaComponent]
                                                                    withEnv:[ThreadUtilities getJNIEnv]
                                                             withAccessible:NULL
                                                                  withIndex:i
-                                                                  withView:[[self javaBase] view]
+                                                                  withView:[[self javaComponent] view]
                                                               withJavaRole:JavaAccessibilityIgnore].platformAxElement];
     }
     return [NSArray arrayWithArray:columns];
 }
 
 - (nullable NSArray *)accessibilitySelectedColumns {
-    NSArray<NSNumber *> *indexes = [(JavaTableAccessibility *)[self javaBase] selectedAccessibleColumns];
+    NSArray<NSNumber *> *indexes = [(JavaTableAccessibility *) [self javaComponent] selectedAccessibleColumns];
     NSMutableArray *columns = [NSMutableArray arrayWithCapacity:[indexes count]];
     for (NSNumber *i in indexes) {
-        [columns addObject:[[JavaColumnAccessibility alloc] initWithParent:[self javaBase]
+        [columns addObject:[[JavaColumnAccessibility alloc] initWithParent:[self javaComponent]
                                                                    withEnv:[ThreadUtilities getJNIEnv]
                                                             withAccessible:NULL
                                                                  withIndex:i.unsignedIntValue
-                                                                  withView:[[self javaBase] view]
+                                                                  withView:[[self javaComponent] view]
                                                               withJavaRole:JavaAccessibilityIgnore].platformAxElement];
     }
     return [NSArray arrayWithArray:columns];

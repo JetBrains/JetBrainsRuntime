@@ -42,7 +42,7 @@ static const char* ACCESSIBLE_JCOMBOBOX_NAME = "javax.swing.JComboBox$Accessible
 @implementation PlatformAxComboBox
 
 - (id)accessibilityValue {
-    return [(JavaComboBoxAccessibility *)[self javaBase] accessibleSelectedText];
+    return [(JavaComboBoxAccessibility *) [self javaComponent] accessibleSelectedText];
 }
 
 @end

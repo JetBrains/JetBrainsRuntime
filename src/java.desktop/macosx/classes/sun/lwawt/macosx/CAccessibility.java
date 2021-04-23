@@ -467,7 +467,7 @@ class CAccessibility implements PropertyChangeListener {
         }, c);
     }
 
-    public static void requestSelection(final Accessible a, final Component c) {
+    public static void requestSelection(final Accessible a, final Component c, final  boolean selected) {
         if (a == null) return;
         invokeLater(new Runnable() {
             public void run() {
@@ -484,35 +484,13 @@ class CAccessibility implements PropertyChangeListener {
                     ((JList) parent).setSelectedIndex(i);
                     return;
                 }
-                as.addAccessibleSelection(i);
+                if (selected) {
+                    as.addAccessibleSelection(i);
+                } else {
+                    as.removeAccessibleSelection(i);
+                }
             }
         }, c);
-    }
-
-    public static void requestDeSelection(final Accessible a, final Component c) {
-        if (a == null) return;
-        invokeLater(new Runnable() {
-            public void run() {
-                AccessibleContext ac = a.getAccessibleContext();
-                if (ac == null) return;
-                int i = ac.getAccessibleIndexInParent();
-                if (i == -1) return;
-                Accessible parent = ac.getAccessibleParent();
-                AccessibleContext pac = parent.getAccessibleContext();
-                if (pac == null) return;
-                AccessibleSelection as = pac.getAccessibleSelection();
-                if (as == null) return;
-                as.removeAccessibleSelection(i);
-            }
-        }, c);
-    }
-
-    public static void requestSelection(final Accessible a, final Component c, final  boolean selected) {
-        if (selected) {
-            requestSelection(a, c);
-        } else {
-            requestDeSelection(a, c);
-        }
     }
 
     public static Number getMaximumAccessibleValue(final Accessible a, final Component c) {

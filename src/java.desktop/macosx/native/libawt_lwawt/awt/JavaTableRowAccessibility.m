@@ -24,17 +24,17 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
-        if ([[[self accessibilityParent] javaBase] accessible] == NULL) return nil;
-        jobjectArray jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, [[[self accessibilityParent] javaBase] accessible], [[[self accessibilityParent] javaBase] component], JAVA_AX_ALL_CHILDREN, NO);
+        if ([[[self accessibilityParent] javaComponent] accessible] == NULL) return nil;
+        jobjectArray jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, [[[self accessibilityParent] javaComponent] accessible], [[[self accessibilityParent] javaComponent] component], JAVA_AX_ALL_CHILDREN, NO);
         if (jchildrenAndRoles == NULL) return nil;
 
         jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
         NSMutableArray *childrenCells = [NSMutableArray arrayWithCapacity:arrayLen/2];
 
-        NSUInteger childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *)[[self accessibilityParent] javaBase] accessibleColCount];
+        NSUInteger childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *) [[self accessibilityParent] javaComponent] accessibleColCount];
         NSInteger i = childIndex * 2;
-        NSInteger n = ([self rowNumberInTable] + 1) * [(JavaTableAccessibility *)[[self accessibilityParent] javaBase] accessibleColCount] * 2;
-        JavaTableRowAccessibility *selfRow = [self javaBase];
+        NSInteger n = ([self rowNumberInTable] + 1) * [(JavaTableAccessibility *) [[self accessibilityParent] javaComponent] accessibleColCount] * 2;
+        JavaTableRowAccessibility *selfRow = [self javaComponent];
         for(i; i < n; i+=2)
         {
             jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
@@ -89,7 +89,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 }
 
 - (NSUInteger)rowNumberInTable {
-        return [[self javaBase] index];
+        return [[self javaComponent] index];
 }
 
 - (NSRect)accessibilityFrame {

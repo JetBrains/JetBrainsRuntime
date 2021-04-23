@@ -23,10 +23,10 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
     // Go through the tabs and find selAccessible
     _numTabs = [tabs count];
-    JavaElementAccessibility *aTab;
+    JavaComponentAccessibility *aTab;
     NSInteger i;
     for (i = 0; i < _numTabs; i++) {
-        aTab = [(PlatformAxElement *)[tabs objectAtIndex:i] javaBase];
+        aTab = [(PlatformAxElement *) [tabs objectAtIndex:i] javaComponent];
         if ([aTab isAccessibleWithEnv:env forAccessible:selAccessible]) {
             (*env)->DeleteLocalRef(env, selAccessible);
             return [aTab platformAxElement];
@@ -61,7 +61,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     NSUInteger tabIndex = (whichTabs >= 0) ? whichTabs : 0; // if we're getting one particular child, make sure to set its index correctly
     for(i = 0; i < arrayLen; i+=2) {
         jobject jtab = (*env)->GetObjectArrayElement(env, jtabsAndRoles, i);
-        JavaElementAccessibility *tab = [[[JavaTabButtonAccessibility alloc] initWithParent:self withEnv:env withAccessible:jtab withIndex:tabIndex withTabGroup:axContext withView:[self view] withJavaRole:tabJavaRole] autorelease];
+        JavaComponentAccessibility *tab = [[[JavaTabButtonAccessibility alloc] initWithParent:self withEnv:env withAccessible:jtab withIndex:tabIndex withTabGroup:axContext withView:[self view] withJavaRole:tabJavaRole] autorelease];
         (*env)->DeleteLocalRef(env, jtab);
         [tabs addObject:[tab platformAxElement]];
         tabIndex++;
@@ -75,7 +75,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     PlatformAxElement *currentTab = [self currentTabWithEnv:env withAxContext:axContext];
     if (currentTab == nil) return nil;
 
-    NSArray *contents = [JavaElementAccessibility childrenOfParent:[currentTab javaBase] withEnv:env withChildrenCode:whichTabs allowIgnored:allowIgnored];
+    NSArray *contents = [JavaComponentAccessibility childrenOfParent:[currentTab javaComponent] withEnv:env withChildrenCode:whichTabs allowIgnored:allowIgnored];
     if ([contents count] <= 0) return nil;
     return contents;
 }
@@ -113,15 +113,15 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 @implementation PlatformAxTabGroup
 
 - (NSArray *)accessibilityTabs {
-    return [(JavaTabGroupAccessibility *)[self javaBase] accessibleTabs];
+    return [(JavaTabGroupAccessibility *) [self javaComponent] accessibleTabs];
 }
 
 - (NSArray *)accessibilityContents {
-    return [(JavaTabGroupAccessibility *)[self javaBase] accessibleContents];
+    return [(JavaTabGroupAccessibility *) [self javaComponent] accessibleContents];
 }
 
 - (id)accessibilityValue {
-    return [(JavaTabGroupAccessibility *)[self javaBase] accessibleValue];
+    return [(JavaTabGroupAccessibility *) [self javaComponent] accessibleValue];
 }
 
 - (NSArray *)accessibilityChildren {
@@ -141,20 +141,20 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     if ( (maxCount == 1) && [attribute isEqualToString:NSAccessibilityChildrenAttribute]) {
         // Children codes for ALL, SELECTED, VISIBLE are <0. If the code is >=0, we treat it as an index to a single child
         JNIEnv *env = [ThreadUtilities getJNIEnv];
-        jobject axContext = [(JavaTabGroupAccessibility *)[self javaBase] axContextWithEnv:env];
+        jobject axContext = [(JavaTabGroupAccessibility *) [self javaComponent] axContextWithEnv:env];
 
         //children = AXTabs + AXContents
-        NSArray *children = [(JavaTabGroupAccessibility *)[self javaBase] tabButtonsWithEnv:env
-                                                                      withTabGroupAxContext:axContext
-                                                                                withTabCode:index
-                                                                               allowIgnored:NO]; // first look at the tabs
+        NSArray *children = [(JavaTabGroupAccessibility *) [self javaComponent] tabButtonsWithEnv:env
+                                                                            withTabGroupAxContext:axContext
+                                                                                      withTabCode:index
+                                                                                     allowIgnored:NO]; // first look at the tabs
         if ([children count] > 0) {
             result = children;
          } else {
-            children= [(JavaTabGroupAccessibility *)[self javaBase] contentsWithEnv:env
-                                                              withTabGroupAxContext:axContext
-                                                                        withTabCode:(index-[(JavaTabGroupAccessibility *)[self javaBase] numTabs])
-                                                                       allowIgnored:NO];
+            children= [(JavaTabGroupAccessibility *) [self javaComponent] contentsWithEnv:env
+                                                                    withTabGroupAxContext:axContext
+                                                                              withTabCode:(index-[(JavaTabGroupAccessibility *) [self javaComponent] numTabs])
+                                                                             allowIgnored:NO];
             if ([children count] > 0) {
                 result = children;
             }
@@ -172,7 +172,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
-    setAxContextSelection(env, axContext, [[self javaBase] index], [[self javaBase] component]);
+    setAxContextSelection(env, axContext, [[self javaComponent] index], [[self javaComponent] component]);
     (*env)->DeleteLocalRef(env, axContext);
 }
 

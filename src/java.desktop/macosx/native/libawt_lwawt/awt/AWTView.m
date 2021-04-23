@@ -33,7 +33,7 @@
 #import "ThreadUtilities.h"
 #import "AWTView.h"
 #import "AWTWindow.h"
-#import "JavaElementAccessibility.h"
+#import "JavaComponentAccessibility.h"
 #import "JavaStaticTextAccessibility.h"
 #import "JavaAccessibilityUtilities.h"
 #import "GeomUtilities.h"
@@ -785,7 +785,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 - (id)getAxData:(JNIEnv*)env
 {
     jobject jcomponent = [self awtComponent:env];
-    id ax = [[[[JavaElementAccessibility alloc] initWithParent:self withEnv:env withAccessible:jcomponent withIndex:-1 withView:self withJavaRole:nil] platformAxElement] autorelease];
+    id ax = [[[[JavaComponentAccessibility alloc] initWithParent:self withEnv:env withAccessible:jcomponent withIndex:-1 withView:self withJavaRole:nil] platformAxElement] autorelease];
     (*env)->DeleteLocalRef(env, jcomponent);
     return ax;
 }

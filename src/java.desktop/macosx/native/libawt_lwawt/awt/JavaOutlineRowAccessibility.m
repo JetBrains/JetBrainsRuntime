@@ -41,25 +41,25 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
 
 - (NSArray *)accessibilityChildren {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject currentAccessible = [(JavaOutlineRowAccessibility *)[self javaBase] currentAccessibleWithENV:env];
+    jobject currentAccessible = [(JavaOutlineRowAccessibility *) [self javaComponent] currentAccessibleWithENV:env];
     if (currentAccessible == NULL) {
         return nil;
     }
-    JavaElementAccessibility *currentElement = [JavaElementAccessibility createWithAccessible:currentAccessible withEnv:env withView:[[self javaBase] view] isCurrent:YES];
-    NSArray *children = [JavaElementAccessibility childrenOfParent:currentElement withEnv:env withChildrenCode:JAVA_AX_ALL_CHILDREN allowIgnored:YES];
+    JavaComponentAccessibility *currentElement = [JavaComponentAccessibility createWithAccessible:currentAccessible withEnv:env withView:[[self javaComponent] view] isCurrent:YES];
+    NSArray *children = [JavaComponentAccessibility childrenOfParent:currentElement withEnv:env withChildrenCode:JAVA_AX_ALL_CHILDREN allowIgnored:YES];
     if ([children count] == 0) {
-        return [NSArray arrayWithObject:[JavaElementAccessibility createWithParent:[self javaBase] accessible:[[self javaBase] accessible] role:[[self javaBase] javaRole] index:[[self javaBase] index] withEnv:env withView:[[self javaBase] view] isWrapped:YES].platformAxElement];
+        return [NSArray arrayWithObject:[JavaComponentAccessibility createWithParent:[self javaComponent] accessible:[[self javaComponent] accessible] role:[[self javaComponent] javaRole] index:[[self javaComponent] index] withEnv:env withView:[[self javaComponent] view] isWrapped:YES].platformAxElement];
     } else {
         return children;
     }
 }
 
 - (NSInteger)accessibilityDisclosureLevel {
-    return [(JavaOutlineRowAccessibility *)[self javaBase] accessibleLevel];
+    return [(JavaOutlineRowAccessibility *) [self javaComponent] accessibleLevel];
 }
 
 - (BOOL)isAccessibilityDisclosed {
-    return isExpanded([ThreadUtilities getJNIEnv], [[self javaBase] axContextWithEnv:[ThreadUtilities getJNIEnv]], [[self javaBase] component]);
+    return isExpanded([ThreadUtilities getJNIEnv], [[self javaComponent] axContextWithEnv:[ThreadUtilities getJNIEnv]], [[self javaComponent] component]);
 }
 
 - (NSAccessibilitySubrole)accessibilitySubrole {

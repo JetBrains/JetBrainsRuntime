@@ -42,7 +42,7 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
 @implementation PlatformAxStaticText
 
 - (id)accessibilityValue {
-    return [(JavaStaticTextAccessibility *)[self javaBase] accessibleValue];
+    return [(JavaStaticTextAccessibility *) [self javaComponent] accessibleValue];
 }
 
 - (NSRect)accessibilityFrame {
@@ -54,7 +54,7 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
 }
 
 - (NSRange)accessibilityVisibleCharacterRange {
-    return [[(JavaStaticTextAccessibility *)[self javaBase] accessibleVisibleCharacterRange] rangeValue];
+    return [[(JavaStaticTextAccessibility *) [self javaComponent] accessibleVisibleCharacterRange] rangeValue];
 }
 
 @end
