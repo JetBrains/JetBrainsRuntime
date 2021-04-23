@@ -1119,6 +1119,10 @@ void *os::dll_load(const char *filename, char *ebuf, int ebuflen) {
   return NULL;
 }
 
+void * os::dll_load_utf8(const char *filename, char *ebuf, int ebuflen) {
+    return os::dll_load(filename, ebuf, ebuflen);
+}
+
 void os::print_dll_info(outputStream *st) {
   st->print_cr("Dynamic libraries:");
   LoadedLibraries::print(st);
