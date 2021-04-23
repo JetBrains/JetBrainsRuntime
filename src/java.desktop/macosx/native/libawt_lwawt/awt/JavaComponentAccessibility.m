@@ -61,7 +61,6 @@ static void RaiseMustOverrideException(NSString *method)
 }
 
 @synthesize platformAxElement;
-@synthesize javaComponent;
 
 - (id)init
 {

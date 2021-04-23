@@ -20,16 +20,32 @@
 
 @end
 
+@interface PlatformAxElement : NSAccessibilityElement <JavaComponentProvider>
+
+// begin of NSAccessibility protocol methods
+- (BOOL)isAccessibilityElement;
+- (NSString *)accessibilityLabel;
+- (NSArray *)accessibilityChildren;
+- (NSArray *)accessibilitySelectedChildren;
+- (NSRect)accessibilityFrame;
+- (id)accessibilityParent;
+- (BOOL)isAccessibilityEnabled;
+- (id)accessibilityApplicationFocusedUIElement;
+- (id)getAccessibilityWindow;
+// end of NSAccessibility protocol methods
+
+@end
+
 @protocol PlatformAxElementProvider
 @required
 
 - (NSString *)getPlatformAxElementClassName;
 
-@property (nonatomic, retain) NSObject <JavaComponentProvider> *platformAxElement;
+@property (nonatomic, retain) PlatformAxElement *platformAxElement;
 
 @end
 
-@interface JavaComponentAccessibility : NSObject <JavaComponentProvider, PlatformAxElementProvider> {
+@interface JavaComponentAccessibility : NSObject <PlatformAxElementProvider> {
     NSView *fView;
     NSObject *fParent;
 
@@ -107,21 +123,5 @@
 - (id)accessibleHitTest:(NSPoint)point;
 - (void)getActionsWithEnv:(JNIEnv *)env;
 - (BOOL)accessiblePerformAction:(NSAccessibilityActionName)actionName;
-
-@end
-
-@interface PlatformAxElement : NSAccessibilityElement <JavaComponentProvider>
-
-// begin of NSAccessibility protocol methods
-- (BOOL)isAccessibilityElement;
-- (NSString *)accessibilityLabel;
-- (NSArray *)accessibilityChildren;
-- (NSArray *)accessibilitySelectedChildren;
-- (NSRect)accessibilityFrame;
-- (id)accessibilityParent;
-- (BOOL)isAccessibilityEnabled;
-- (id)accessibilityApplicationFocusedUIElement;
-- (id)getAccessibilityWindow;
-// end of NSAccessibility protocol methods
 
 @end
