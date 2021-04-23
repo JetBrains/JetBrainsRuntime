@@ -1226,6 +1226,10 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
 }
 #endif // !__APPLE__
 
+void * os::dll_load_utf8(const char *filename, char *ebuf, int ebuflen) {
+    return os::dll_load(filename, ebuf, ebuflen);
+}
+
 void* os::get_default_process_handle() {
 #ifdef __APPLE__
   // MacOS X needs to use RTLD_FIRST instead of RTLD_LAZY
