@@ -101,6 +101,11 @@ inline int g_isnan(jdouble f)                    { return _isnan(f); }
 inline int g_isfinite(jfloat  f)                 { return _finite(f); }
 inline int g_isfinite(jdouble f)                 { return _finite(f); }
 
+// Miscellaneous
+
+// Visual Studio 2005 deprecates POSIX names - use ISO C++ names instead
+#define wopen _wopen
+
 // Formatting.
 #define FORMAT64_MODIFIER "ll"
 
