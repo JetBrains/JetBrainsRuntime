@@ -3371,34 +3371,30 @@ JVM_LEAF(void*, JVM_LoadZipLibrary())
   return ClassLoader::zip_library_handle();
 JVM_END
 
-JVM_ENTRY_NO_ENV(void*, JVM_LoadLibrary(const char* name, jboolean throwException))
+JVM_ENTRY_NO_ENV(void*, JVM_LoadLibrary(const char* utf8_name, jboolean throwException))
   //%note jvm_ct
   char ebuf[1024];
   void *load_result;
   {
     ThreadToNativeFromVM ttnfvm(thread);
-    load_result = os::dll_load(name, ebuf, sizeof ebuf);
+    load_result = os::dll_load_utf8(utf8_name, ebuf, sizeof ebuf);
   }
   if (load_result == NULL) {
     if (throwException) {
       char msg[1024];
-      jio_snprintf(msg, sizeof msg, "%s: %s", name, ebuf);
-      // Since 'ebuf' may contain a string encoded using
-      // platform encoding scheme, we need to pass
-      // Exceptions::unsafe_to_utf8 to the new_exception method
-      // as the last argument. See bug 6367357.
+      jio_snprintf(msg, sizeof msg, "%s: %s", utf8_name, ebuf);
       Handle h_exception =
         Exceptions::new_exception(thread,
                                   vmSymbols::java_lang_UnsatisfiedLinkError(),
-                                  msg, Exceptions::unsafe_to_utf8);
+                                  msg);
 
       THROW_HANDLE_0(h_exception);
     } else {
-      log_info(library)("Failed to load library %s", name);
+      log_info(library)("Failed to load library %s", utf8_name);
       return load_result;
     }
   }
-  log_info(library)("Loaded library %s, handle " INTPTR_FORMAT, name, p2i(load_result));
+  log_info(library)("Loaded library %s, handle " INTPTR_FORMAT, utf8_name, p2i(load_result));
   return load_result;
 JVM_END
 
