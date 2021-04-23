@@ -115,7 +115,6 @@ Java_jdk_internal_loader_NativeLibraries_load
   (JNIEnv *env, jclass cls, jobject lib, jstring name,
    jboolean isBuiltin, jboolean throwExceptionIfFail)
 {
-    const char *cname;
     jint jniVersion;
     jthrowable cause;
     void * handle;
@@ -124,14 +123,15 @@ Java_jdk_internal_loader_NativeLibraries_load
     if (!initIDs(env))
         return JNI_FALSE;
 
-    cname = JNU_GetStringPlatformChars(env, name, 0);
-    if (cname == 0)
+    const char * utf8_name = GetStringUTF8Chars(env, name);
+    if (utf8_name == NULL)
         return JNI_FALSE;
-    handle = isBuiltin ? procHandle : JVM_LoadLibrary(cname, throwExceptionIfFail);
+
+    handle = isBuiltin ? procHandle : JVM_LoadLibrary(utf8_name, throwExceptionIfFail);
     if (handle) {
         JNI_OnLoad_t JNI_OnLoad;
         JNI_OnLoad = (JNI_OnLoad_t)findJniFunction(env, handle,
-                                                   isBuiltin ? cname : NULL,
+                                                   isBuiltin ? utf8_name : NULL,
                                                    JNI_TRUE);
         if (JNI_OnLoad) {
             JavaVM *jvm;
@@ -156,7 +156,7 @@ Java_jdk_internal_loader_NativeLibraries_load
             char msg[256];
             jio_snprintf(msg, sizeof(msg),
                          "unsupported JNI version 0x%08X required by %s",
-                         jniVersion, cname);
+                         jniVersion, utf8_name);
             JNU_ThrowByName(env, "java/lang/UnsatisfiedLinkError", msg);
             if (!isBuiltin) {
                 JVM_UnloadLibrary(handle);
@@ -178,7 +178,7 @@ Java_jdk_internal_loader_NativeLibraries_load
     loaded = JNI_TRUE;
 
  done:
-    JNU_ReleaseStringPlatformChars(env, name, cname);
+    ReleaseStringUTF8Chars(env, name, utf8_name);
     return loaded;
 }
 
