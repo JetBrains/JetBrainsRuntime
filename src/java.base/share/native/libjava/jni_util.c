@@ -639,8 +639,8 @@ static jmethodID String_getBytes_ID;    /* String.getBytes(enc) */
 static jfieldID String_coder_ID;        /* String.coder */
 static jfieldID String_value_ID;        /* String.value */
 
-static jboolean isJNUEncodingSupported = JNI_FALSE;
 static jboolean jnuEncodingSupported(JNIEnv *env) {
+    static jboolean isJNUEncodingSupported = JNI_FALSE;
     jboolean exe;
     if (isJNUEncodingSupported == JNI_TRUE) {
         return JNI_TRUE;
@@ -815,14 +815,37 @@ GetStringPlatformChars(JNIEnv *env, jstring jstr, jboolean *isCopy)
     return JNU_GetStringPlatformChars(env, jstr, isCopy);
 }
 
-static const char* getStringBytes(JNIEnv *env, jstring jstr) {
+static inline jstring getUTF8String(JNIEnv *env) {
+    static jstring utf8Str = NULL;     /* Java String "UTF-8" */
+
+    if (utf8Str == NULL) {
+        jstring utf8TempStr = (*env)->NewStringUTF(env, "UTF-8");
+        if (utf8TempStr == NULL) {
+            return NULL;
+        }
+        utf8Str = (jstring)(*env)->NewGlobalRef(env, utf8TempStr);
+        (*env)->DeleteLocalRef(env, utf8TempStr);
+    }
+
+    return utf8Str;
+}
+
+/* Convert the given Java string into a null-terminated byte sequence according
+ * to the platform encoding (if needUTF8 is false) or to UTF-8 encoding (if
+ * needUTF8 is true).
+ */
+static const char* getStringBytes(JNIEnv *env, jstring jstr, jboolean needUTF8) {
     char *result = NULL;
     jbyteArray hab = 0;
 
     if ((*env)->EnsureLocalCapacity(env, 2) < 0)
         return 0;
 
-    if (jnuEncodingSupported(env)) {
+    if (needUTF8) {
+        if (getUTF8String(env) == NULL)
+            return NULL;
+        hab = (*env)->CallObjectMethod(env, jstr, String_getBytes_ID, getUTF8String(env));
+    } else if (!needUTF8 && jnuEncodingSupported(env)) {
         hab = (*env)->CallObjectMethod(env, jstr, String_getBytes_ID, jnuEncoding);
     } else {
         jmethodID mid;
@@ -863,7 +886,8 @@ getStringUTF8(JNIEnv *env, jstring jstr)
     int ri;
     jbyte coder = (*env)->GetByteField(env, jstr, String_coder_ID);
     if (coder != java_lang_String_LATIN1) {
-        return getStringBytes(env, jstr);
+        const jboolean forceUTF8 = (fastEncoding != FAST_UTF_8);
+        return getStringBytes(env, jstr, forceUTF8);
     }
     if ((*env)->EnsureLocalCapacity(env, 2) < 0) {
         return NULL;
@@ -907,6 +931,18 @@ getStringUTF8(JNIEnv *env, jstring jstr)
 }
 
 JNIEXPORT const char * JNICALL
+GetStringUTF8Chars(JNIEnv *env, jstring jstr)
+{
+    return getStringUTF8(env, jstr);
+}
+
+JNIEXPORT void
+ReleaseStringUTF8Chars(JNIEnv* env, jstring jstr, const char *str)
+{
+    free((void *)str);
+}
+
+JNIEXPORT const char * JNICALL
 JNU_GetStringPlatformChars(JNIEnv *env, jstring jstr, jboolean *isCopy)
 {
 
@@ -925,7 +961,7 @@ JNU_GetStringPlatformChars(JNIEnv *env, jstring jstr, jboolean *isCopy)
         JNU_ThrowInternalError(env, "platform encoding not initialized");
         return 0;
     } else
-        return getStringBytes(env, jstr);
+        return getStringBytes(env, jstr, JNI_FALSE /* Need platform encoding */);
 }
 
 JNIEXPORT void JNICALL
