@@ -1795,6 +1795,10 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
   return nullptr;
 }
 
+void * os::dll_load_utf8(const char *filename, char *ebuf, int ebuflen) {
+    return os::dll_load(filename, ebuf, ebuflen);
+}
+
 void * os::Linux::dlopen_helper(const char *filename, char *ebuf,
                                 int ebuflen) {
   void * result = ::dlopen(filename, RTLD_LAZY);
