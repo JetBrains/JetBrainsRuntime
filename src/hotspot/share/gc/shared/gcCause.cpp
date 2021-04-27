@@ -61,6 +61,9 @@ const char* GCCause::to_string(GCCause::Cause cause) {
     case _wb_full_gc:
       return "WhiteBox Initiated Full GC";
 
+    case _archive_time_gc:
+      return "Full GC for -Xshare:dump";
+
     case _no_gc:
       return "No GC";
 
