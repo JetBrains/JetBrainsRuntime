@@ -34,6 +34,7 @@
 #include "classfile/systemDictionary.hpp"
 #include "classfile/systemDictionaryShared.hpp"
 #include "code/codeCache.hpp"
+#include "gc/shared/vmGCOperations.hpp"
 #include "interpreter/bytecodeStream.hpp"
 #include "interpreter/bytecodes.hpp"
 #include "logging/log.hpp"
@@ -1015,7 +1016,7 @@ void DumpAllocStats::print_stats(int ro_all, int rw_all, int mc_all, int md_all)
 
 // Populate the shared space.
 
-class VM_PopulateDumpSharedSpace: public VM_Operation {
+class VM_PopulateDumpSharedSpace : public VM_GC_Operation {
 private:
   GrowableArray<MemRegion> *_closed_archive_heap_regions;
   GrowableArray<MemRegion> *_open_archive_heap_regions;
@@ -1033,6 +1034,11 @@ private:
   void print_heap_region_stats(GrowableArray<MemRegion> *heap_mem,
                                const char *name, const size_t total_size);
 public:
+  VM_PopulateDumpSharedSpace() : VM_GC_Operation(0, /* total collections, ignored */
+                                                GCCause::_archive_time_gc)
+  { }
+
+  bool skip_operation() const { return false; }
 
   VMOp_Type type() const { return VMOp_PopulateDumpSharedSpace; }
   void doit();   // outline because gdb sucks

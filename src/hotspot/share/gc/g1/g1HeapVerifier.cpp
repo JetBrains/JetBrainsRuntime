@@ -419,6 +419,7 @@ void G1HeapVerifier::verify(VerifyOption vo) {
 
   assert(Thread::current()->is_VM_thread(),
          "Expected to be executed serially by the VM thread at this point");
+  assert(Heap_lock->is_locked(), "heap must be locked");
 
   log_debug(gc, verify)("Roots");
   VerifyRootsClosure rootsCl(vo);
