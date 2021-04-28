@@ -79,6 +79,11 @@ CardTableBarrierSet::~CardTableBarrierSet() {
 }
 
 void CardTableBarrierSet::write_ref_array_work(MemRegion mr) {
+  if (_card_table->scanned_concurrently()) {
+    // The array stores must not be reordered with the card marks if the
+    // card table is scanned concurrently.
+    OrderAccess::storestore();
+  }
   _card_table->dirty_MemRegion(mr);
 }
 
