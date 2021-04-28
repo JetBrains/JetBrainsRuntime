@@ -92,6 +92,10 @@ void VM_Version::initialize() {
     SoftwarePrefetchHintDistance &= ~7;
   }
 
+  if (FLAG_IS_DEFAULT(ContendedPaddingWidth) && (dcache_line > ContendedPaddingWidth)) {
+    ContendedPaddingWidth = dcache_line;
+  }
+
   // Enable vendor specific features
 
   // ThunderX
