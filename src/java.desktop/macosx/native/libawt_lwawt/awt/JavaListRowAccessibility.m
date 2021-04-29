@@ -19,6 +19,10 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
 @implementation PlatformAxListRow
 
+- (NSAccessibilityRole)accessibilityRole {
+    return NSAccessibilityRowRole;;
+}
+
 - (NSArray *)accessibilityChildren {
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
