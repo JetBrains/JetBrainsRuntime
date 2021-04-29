@@ -62,12 +62,12 @@ static void RaiseMustOverrideException(NSString *method)
 
 @synthesize platformAxElement;
 
-- (id)init
-{
+- (id)init {
     self = [super init];
     if (self) {
         NSString *className = [self getPlatformAxElementClassName];
-        self.platformAxElement = className != NULL ? [[NSClassFromString(className) alloc] init] : self; // defaults to [self]
+        if (className == nil) className = @"PlatformAxElement";
+        self.platformAxElement = [[NSClassFromString(className) alloc] init];
         self.platformAxElement.javaComponent = self;
     }
     return self;
@@ -123,6 +123,14 @@ static void RaiseMustOverrideException(NSString *method)
 
     [fNSRole release];
     fNSRole = nil;
+
+    [fActions release];
+    fActions = nil;
+
+    [fActionSElectors release];
+    fActionSElectors = nil;
+
+    [fActionsLOCK release];
 
     [fJavaRole release];
     fJavaRole = nil;
@@ -749,9 +757,9 @@ static void RaiseMustOverrideException(NSString *method)
 - (id)accessibleParent {
     id parent = [self parent];
     if ([parent isKindOfClass:[JavaComponentAccessibility class]]) {
-        parent = ((JavaComponentAccessibility *)parent).platformAxElement;
+        return NSAccessibilityUnignoredAncestor(((JavaComponentAccessibility *)parent).platformAxElement);
     }
-    return NSAccessibilityUnignoredAncestor(parent);
+    return (id)fView;
 }
 
 - (NSNumber *)accessibleSelected {
@@ -968,7 +976,7 @@ static void RaiseMustOverrideException(NSString *method)
     if ([children count] > 0) {
         return children;
     }
-    return NULL;
+    return nil;
 }
 
 - (NSArray *)accessibilitySelectedChildren
@@ -982,7 +990,7 @@ static void RaiseMustOverrideException(NSString *method)
     if ([selectedChildren count] > 0) {
         return selectedChildren;
     }
-    return NULL;
+    return nil;
 }
 
 - (NSArray *)accessibilityVisibleChildren {
@@ -995,7 +1003,7 @@ static void RaiseMustOverrideException(NSString *method)
     if ([children count] > 0) {
         return children;
     }
-    return NULL;
+    return nil;
 }
 
 - (NSRect)accessibilityFrame
@@ -1017,7 +1025,7 @@ static void RaiseMustOverrideException(NSString *method)
     return [self.javaComponent getFocusedElement];
 }
 
-- (id)getAccessibilityWindow {
+- (id)accessibilityWindow {
     return [self.javaComponent window];
 }
 

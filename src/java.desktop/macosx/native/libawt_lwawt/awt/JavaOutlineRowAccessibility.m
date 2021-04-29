@@ -18,11 +18,12 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
 @synthesize accessibleLevel;
 
 - (jobject) currentAccessibleWithENV:(JNIEnv *)env {
+    jobject jAxContext = getAxContext(env, fAccessible, fComponent);
     JNFClassInfo clsInfo;
     clsInfo.name = [JNFObjectClassName(env, getAxContext(env, fAccessible, fComponent)) UTF8String];
-    clsInfo.cls = (*env)->GetObjectClass(env, getAxContext(env, fAccessible, fComponent));
+    clsInfo.cls = (*env)->GetObjectClass(env, jAxContext);
     JNF_MEMBER_CACHE(jm_getCurrentComponent, clsInfo, "getCurrentComponent", "()Ljava/awt/Component;");
-    jobject newComponent = JNFCallObjectMethod(env, getAxContext(env, fAccessible, fComponent), jm_getCurrentComponent);
+    jobject newComponent = JNFCallObjectMethod(env, jAxContext, jm_getCurrentComponent);
     if (newComponent != NULL) {
         jobject newAccessible = JNFCallStaticObjectMethod(env, sjm_getCAccessible, newComponent);
         if (newAccessible != NULL) {

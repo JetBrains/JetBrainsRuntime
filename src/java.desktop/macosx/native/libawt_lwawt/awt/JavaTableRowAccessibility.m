@@ -20,6 +20,14 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
 @implementation PlatformAxTableRow
 
+- (NSAccessibilityRole)accessibilityRole {
+    return NSAccessibilityRowRole;
+}
+
+- (NSAccessibilitySubrole)accessibilitySubrole {
+    return NSAccessibilityTableRowSubrole;
+}
+
 - (NSArray *)accessibilityChildren {
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
@@ -100,10 +108,6 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
             width += [cell accessibilityFrame].size.width;
         }
         return NSMakeRect(point.x, point.y, width, height);
-}
-
-- (NSAccessibilitySubrole)accessibilitySubrole {
-    return NSAccessibilityTableRowSubrole;
 }
 
 @end
