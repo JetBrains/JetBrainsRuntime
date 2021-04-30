@@ -67,4 +67,8 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
     return NSAccessibilityOutlineRowSubrole;;
 }
 
+- (NSAccessibilityRole)accessibilityRole {
+    return NSAccessibilityRowRole;;
+}
+
 @end
