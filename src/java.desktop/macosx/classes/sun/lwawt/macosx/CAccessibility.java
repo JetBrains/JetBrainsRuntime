@@ -107,11 +107,7 @@ class CAccessibility implements PropertyChangeListener {
 
     static void invokeLater(final Runnable runnable, final Component c) {
         try {
-            if (EventQueue.isDispatchThread()) {
-                runnable.run();
-            } else {
-                LWCToolkit.invokeLater(runnable, c);
-            }
+            LWCToolkit.invokeLater(runnable, c);
         } catch (InvocationTargetException e) { e.printStackTrace(); }
     }
 
