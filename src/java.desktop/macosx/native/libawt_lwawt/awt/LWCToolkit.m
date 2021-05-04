@@ -69,6 +69,8 @@ static BOOL sAppKitStarted = NO;
 static pthread_mutex_t sAppKitStarted_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t sAppKitStarted_cv = PTHREAD_COND_INITIALIZER;
 
+static time_t YEAR_SECONDS = 60 * 60 * 24 * 365;
+
 @implementation AWTToolkit
 
 static NSEvent* latestPerformKeyEquivalentEvent;
@@ -576,23 +578,31 @@ JNF_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
  * Method:    doAWTRunLoopImpl
- * Signature: (JZZ)V
+ * Signature: (JZZI)Z
  */
-JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_doAWTRunLoopImpl
-(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT)
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_doAWTRunLoopImpl
+(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT, jint timeoutSeconds/*(-1) for infinite*/)
 {
 AWT_ASSERT_APPKIT_THREAD;
+
+    jboolean result = JNI_TRUE;
 JNF_COCOA_ENTER(env);
 
     AWTRunLoopObject* mediatorObject = (AWTRunLoopObject*)jlong_to_ptr(mediator);
 
-    if (mediatorObject == nil) return;
+    if (mediatorObject == nil) return JNI_TRUE;
+
+    time_t timeThreshold = timeoutSeconds < 0 ? time(NULL) + YEAR_SECONDS : time(NULL) + timeoutSeconds;
 
     // Don't use acceptInputForMode because that doesn't setup autorelease pools properly
     BOOL isRunning = true;
     while (![mediatorObject shouldEndRunLoop] && isRunning) {
         isRunning = [[NSRunLoop currentRunLoop] runMode:(inAWT ? [JNFRunLoop javaRunLoopMode] : NSDefaultRunLoopMode)
                                              beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.010]];
+        if (difftime(timeThreshold, time(NULL)) < 0) {
+            result = JNI_FALSE;
+            break;
+        }
         if (processEvents) {
             //We do not spin a runloop here as date is nil, so does not matter which mode to use
             // Processing all events excluding NSApplicationDefined which need to be processed
@@ -609,6 +619,7 @@ JNF_COCOA_ENTER(env);
     }
     [mediatorObject release];
 JNF_COCOA_EXIT(env);
+    return result;
 }
 
 /*
