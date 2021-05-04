@@ -46,6 +46,8 @@ import java.util.Set;
 
 import java.util.concurrent.Callable;
 import java.util.Arrays;
+import java.util.function.Function;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.accessibility.Accessible;
 import javax.accessibility.AccessibleAction;
@@ -76,6 +78,8 @@ import sun.swing.SwingAccessor;
 
 final class CAccessibility implements PropertyChangeListener {
     private static Set<String> ignoredRoles;
+    private static final int INVOKE_TIMEOUT_SECONDS_DEFAULT = 1;
+    private static /*final*/ int INVOKE_TIMEOUT_SECONDS;
 
     static {
         loadAWTLibrary();
@@ -83,8 +87,10 @@ final class CAccessibility implements PropertyChangeListener {
 
     @SuppressWarnings("restricted")
     private static void loadAWTLibrary() {
-            // Need to load the native library for this code.
-            System.loadLibrary("awt");
+        // Need to load the native library for this code.
+        System.loadLibrary("awt");
+        INVOKE_TIMEOUT_SECONDS = Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds",
+                INVOKE_TIMEOUT_SECONDS_DEFAULT);
     }
 
     static CAccessibility sAccessibility;
@@ -127,14 +133,14 @@ final class CAccessibility implements PropertyChangeListener {
     private native void focusChanged();
 
     static <T> T invokeAndWait(final Callable<T> callable, final Component c) {
-        return invokeAndWait(callable, c, null);
+        return invokeAndWait(callable, c, (T)null);
     }
 
     static <T> T invokeAndWait(final Callable<T> callable, final Component c, final T defValue) {
         T value = null;
         if (c != null) {
             try {
-                value = LWCToolkit.invokeAndWait(callable, c);
+                value = LWCToolkit.invokeAndWait(callable, c, INVOKE_TIMEOUT_SECONDS);
             } catch (final Exception e) { e.printStackTrace(); }
         }
 
