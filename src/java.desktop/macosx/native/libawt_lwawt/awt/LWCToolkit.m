@@ -575,23 +575,34 @@ JNI_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
  * Method:    doAWTRunLoopImpl
- * Signature: (JZZ)V
+ * Signature: (JZZI)Z
  */
-JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_doAWTRunLoopImpl
-(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT)
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_doAWTRunLoopImpl
+(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT, jint timeoutSeconds/*(-1) for infinite*/)
 {
-AWT_ASSERT_APPKIT_THREAD;
+    AWT_ASSERT_APPKIT_THREAD;
+    jboolean result = JNI_TRUE;
 JNI_COCOA_ENTER(env);
 
     AWTRunLoopObject* mediatorObject = (AWTRunLoopObject*)jlong_to_ptr(mediator);
 
-    if (mediatorObject == nil) return;
+    if (mediatorObject == nil) return JNI_TRUE;
+
+    NSDate *date = timeoutSeconds > 0 ? [NSDate dateWithTimeIntervalSinceNow:timeoutSeconds] : nil;
 
     // Don't use acceptInputForMode because that doesn't setup autorelease pools properly
     BOOL isRunning = true;
     while (![mediatorObject shouldEndRunLoop] && isRunning) {
         isRunning = [[NSRunLoop currentRunLoop] runMode:(inAWT ? [ThreadUtilities javaRunLoopMode] : NSDefaultRunLoopMode)
                                              beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.010]];
+
+        if (date != nil) {
+            NSDate *now = [[NSDate alloc] init];
+            if ([date compare:(now)] == NSOrderedAscending) result = JNI_FALSE;
+            [now release];
+            if (result == JNI_FALSE) break;
+        }
+
         if (processEvents) {
             //We do not spin a runloop here as date is nil, so does not matter which mode to use
             // Processing all events excluding NSApplicationDefined which need to be processed
@@ -608,6 +619,8 @@ JNI_COCOA_ENTER(env);
     }
     [mediatorObject release];
 JNI_COCOA_EXIT(env);
+
+    return result;
 }
 
 /*
