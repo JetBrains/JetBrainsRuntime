@@ -32,6 +32,7 @@ import java.beans.*;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.accessibility.*;
 import javax.swing.*;
@@ -39,16 +40,24 @@ import sun.awt.AWTAccessor;
 
 class CAccessibility implements PropertyChangeListener {
     private static Set<String> ignoredRoles;
+    private static final int INVOKE_TIMEOUT_SECONDS_DEFAULT = 1;
+    private static final int INVOKE_TIMEOUT_SECONDS;
 
     static {
+        AtomicInteger invokeTimeoutSecondsRef = new AtomicInteger();
         // Need to load the native library for this code.
         java.security.AccessController.doPrivileged(
             new java.security.PrivilegedAction<Void>() {
                 public Void run() {
                     System.loadLibrary("awt");
+                    invokeTimeoutSecondsRef.set(
+                            // (-1) for the infinite timeout
+                            Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds",
+                                    INVOKE_TIMEOUT_SECONDS_DEFAULT));
                     return null;
                 }
             });
+        INVOKE_TIMEOUT_SECONDS = invokeTimeoutSecondsRef.get();
     }
 
     static CAccessibility sAccessibility;
@@ -90,16 +99,13 @@ class CAccessibility implements PropertyChangeListener {
     private native void focusChanged();
 
     static <T> T invokeAndWait(final Callable<T> callable, final Component c) {
-        try {
-            return EventQueue.isDispatchThread() ? callable.call() : LWCToolkit.invokeAndWait(callable, c);
-        } catch (final Exception e) { e.printStackTrace(); }
-        return null;
+        return invokeAndWait(callable, c, (T)null);
     }
 
     static <T> T invokeAndWait(final Callable<T> callable, final Component c, final T defValue) {
         T value = null;
         try {
-            value = EventQueue.isDispatchThread() ? callable.call() : LWCToolkit.invokeAndWait(callable, c);
+            value = EventQueue.isDispatchThread() ? callable.call() : LWCToolkit.invokeAndWait(callable, c, INVOKE_TIMEOUT_SECONDS);
         } catch (final Exception e) { e.printStackTrace(); }
 
         return value != null ? value : defValue;

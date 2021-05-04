@@ -652,9 +652,31 @@ public final class LWCToolkit extends LWToolkit {
 
     public static <T> T invokeAndWait(final Callable<T> callable,
                                       Component component) throws Exception {
+        return invokeAndWait(callable, component, -1);
+    }
+
+    static <T> T invokeAndWait(final Callable<T> callable, Component component, int timeoutSeconds) throws Exception {
         final CallableWrapper<T> wrapper = new CallableWrapper<>(callable);
-        invokeAndWait(wrapper, component);
+        invokeAndWait(wrapper, component, false, timeoutSeconds);
         return wrapper.getResult();
+    }
+
+    static final class CancelableRunnable implements Runnable {
+        volatile Runnable runnable;
+
+        public CancelableRunnable(Runnable runnable) {
+            this.runnable = runnable;
+        }
+
+        @Override
+        public void run() {
+            Runnable r = runnable;
+            if (r != null) r.run();
+        }
+
+        public void cancel() {
+            runnable = null;
+        }
     }
 
     static final class CallableWrapper<T> implements Runnable {
@@ -731,11 +753,18 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents)
             throws InvocationTargetException
     {
+        invokeAndWait(runnable, component, false, -1);
+    }
+
+    static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, int timeoutSeconds)
+            throws InvocationTargetException
+    {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("invokeAndWait started: " + runnable);
         }
 
         boolean nonBlockingRunLoop;
+        CancelableRunnable cancelableRunnable = new CancelableRunnable(runnable);
 
         if (!processEvents) {
             synchronized (priorityInvocationPending) {
@@ -751,7 +780,7 @@ public final class LWCToolkit extends LWToolkit {
 
         InvocationEvent invocationEvent =
                 AWTThreading.createAndTrackInvocationEvent(component,
-                        runnable,
+                        cancelableRunnable,
                         () -> {
                             if (mediator != 0) {
                                 stopAWTRunLoop(mediator);
@@ -771,7 +800,10 @@ public final class LWCToolkit extends LWToolkit {
             ((LWCToolkit)Toolkit.getDefaultToolkit()).getSystemEventQueueForInvokeAndWait().postEvent(invocationEvent);
         }
 
-        doAWTRunLoop(mediator, nonBlockingRunLoop);
+        if (!doAWTRunLoop(mediator, nonBlockingRunLoop, timeoutSeconds)) {
+            new Throwable("Invocation timed out (" + timeoutSeconds + "sec)").printStackTrace();
+            cancelableRunnable.cancel();
+        }
         if (!nonBlockingRunLoop) blockingRunLoopCounter.decrementAndGet();
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -999,9 +1031,16 @@ public final class LWCToolkit extends LWToolkit {
      *                      if false - all events come after exit form the nested loop
      */
     static void doAWTRunLoop(long mediator, boolean processEvents) {
-        doAWTRunLoopImpl(mediator, processEvents, inAWT);
+        doAWTRunLoop(mediator, processEvents, -1);
     }
-    private static native void doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT);
+
+    /**
+     * Starts run-loop with the provided timeout. Use (-1) for the infinite value.
+     */
+    static boolean doAWTRunLoop(long mediator, boolean processEvents, int timeoutSeconds) {
+        return doAWTRunLoopImpl(mediator, processEvents, inAWT, timeoutSeconds);
+    }
+    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, int timeoutSeconds);
     static native void stopAWTRunLoop(long mediator);
 
     private native boolean nativeSyncQueue(long timeout);
