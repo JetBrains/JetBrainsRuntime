@@ -14,15 +14,6 @@
  * limitations under the License.
  */
 
-/* @test
- * @bug 8195129
- * @summary regression test for 8195129,
- *          verifies the ability to System.load() from a location containing non-Latin characters
- * @requires os.family == "win" | os.family == "mac" | os.family == "linux"
- * @library /test/lib
- * @run main/native LoadLibraryUnicode
- */
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -48,7 +39,7 @@ public class LoadLibraryUnicode {
             throw new Error("Unsupported OS");
         }
 
-        String testNativePath = getSystemProperty("test.nativepath");
+        String testNativePath = LoadLibraryUnicodeTest.getSystemProperty("test.nativepath");
         Path origLibraryPath = Paths.get(testNativePath).resolve(osDependentLibraryFileName);
 
         Path currentDirPath = Paths.get(".").toAbsolutePath();
@@ -83,15 +74,5 @@ public class LoadLibraryUnicode {
     public static void main(String[] args) throws Exception {
         verifySystemLoad();
         verifyExceptionMessage();
-    }
-
-    // Utility method to retrieve and validate system properties
-    private static String getSystemProperty(String propertyName) throws Error {
-        String systemProperty = System.getProperty(propertyName, "").trim();
-        System.out.println(propertyName + " = " + systemProperty);
-        if (systemProperty.isEmpty()) {
-            throw new Error("TESTBUG: property " + propertyName + " is empty");
-        }
-        return systemProperty;
     }
 }
