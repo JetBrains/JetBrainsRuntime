@@ -34,7 +34,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import sun.lwawt.macosx.CThreading;
 import static sun.awt.SunHints.*;
 
-import java.util.*;
 
 public final class CStrike extends PhysicalStrike {
 
@@ -477,16 +476,7 @@ public final class CStrike extends PhysicalStrike {
 
                     // clean up everyone else
                     if (generalCache != null) {
-                                    for (long longValue : generalCache.values()) {
-                                        if (longValue != -1 && longValue != 0) {
-                                            removeGlyphInfoFromCache(longValue);
-                                            StrikeCache.freeLongPointer(longValue);
-                                        }
-                                    }
-                                }
-                    if (generalCache != null) {
-                        for (Long aLong : generalCache.values()) {
-                            final long longValue = aLong;
+                        for (long longValue : generalCache.values()) {
                             if (longValue != -1 && longValue != 0) {
                                 removeGlyphInfoFromCache(longValue);
                                 StrikeCache.freeLongPointer(longValue);
