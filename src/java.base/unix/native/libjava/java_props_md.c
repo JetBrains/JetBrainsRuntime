@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -457,8 +457,10 @@ GetJavaProperties(JNIEnv *env)
 #endif /* MACOSX */
 
         sprops.os_arch = ARCHPROPNAME;
+        char* curr_desktop = getenv("XDG_CURRENT_DESKTOP");
 
-        if (getenv("GNOME_DESKTOP_SESSION_ID") != NULL) {
+        if (getenv("GNOME_DESKTOP_SESSION_ID") != NULL
+            || (curr_desktop != NULL && strcasestr(curr_desktop, "gnome") != NULL)) {
             sprops.desktop = "gnome";
         }
         else {
