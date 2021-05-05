@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,8 +77,6 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)dealloc
 {
-    [[NSUserNotificationCenter defaultUserNotificationCenter] setDelegate:nil];
-
     [fApplicationName release];
     fApplicationName = nil;
 
@@ -159,16 +157,8 @@ AWT_ASSERT_APPKIT_THREAD;
 
     [super finishLaunching];
 
-    [[NSUserNotificationCenter defaultUserNotificationCenter] setDelegate:self];
-
     // inform any interested parties that the AWT has arrived and is pumping
     [[NSNotificationCenter defaultCenter] postNotificationName:JNFRunLoopDidStartNotification object:self];
-}
-
-- (BOOL)userNotificationCenter:(NSUserNotificationCenter *)center
-     shouldPresentNotification:(NSUserNotification *)notification
-{
-    return YES; // We always show notifications to the user
 }
 
 - (void) registerWithProcessManager
