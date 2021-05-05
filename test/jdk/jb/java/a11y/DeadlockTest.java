@@ -21,7 +21,7 @@ import com.apple.concurrent.Dispatch;
 
 public class DeadlockTest {
     static final int COUNTER_THRESHOLD = 2;
-    static final int WAIT_SECONDS = 10;
+    static final int WAIT_SECONDS = 20;
 
     static final AtomicInteger COUNTER_1 = new AtomicInteger(0);
     static final AtomicInteger COUNTER_2 = new AtomicInteger(0);
@@ -48,6 +48,7 @@ public class DeadlockTest {
 
     static void showInstructions() {
         JFrame frame = new JFrame("Test Instructions");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
         JLabel label = new JLabel("Start VoiceOver (Cmd + F5) and press \"Test\".");
         label.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
