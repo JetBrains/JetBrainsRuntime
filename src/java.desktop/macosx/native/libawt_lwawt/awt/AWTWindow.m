@@ -489,7 +489,11 @@ AWT_ASSERT_APPKIT_THREAD;
 #ifdef DEBUG
     NSLog(@"=== getJavaWindowTabbingMode: %d ===", result);
 #endif
-    
+
+    if (result) {
+        self.nsWindow.tabbingIdentifier = @"Jbr-Awt-Window-With-Tabs";
+    }
+
     return result ? NSWindowTabbingModeAutomatic : NSWindowTabbingModeDisallowed;
 }
 
