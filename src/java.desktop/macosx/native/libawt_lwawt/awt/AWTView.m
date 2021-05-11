@@ -790,35 +790,21 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     return ax;
 }
 
-- (NSArray *)accessibilityAttributeNames
-{
-    return [[super accessibilityAttributeNames] arrayByAddingObject:NSAccessibilityChildrenAttribute];
+- (NSArray *)accessibilityChildren {
+    AWT_ASSERT_APPKIT_THREAD;
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+
+    (*env)->PushLocalFrame(env, 4);
+
+    id result = NSAccessibilityUnignoredChildrenForOnlyChild([self getAxData:env]);
+
+    (*env)->PopLocalFrame(env, NULL);
+
+    return result;
 }
 
 // NSAccessibility messages
 // attribute methods
-- (id)accessibilityAttributeValue:(NSString *)attribute
-{
-    AWT_ASSERT_APPKIT_THREAD;
-
-    if ([attribute isEqualToString:NSAccessibilityChildrenAttribute])
-    {
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
-
-        (*env)->PushLocalFrame(env, 4);
-
-        id result = NSAccessibilityUnignoredChildrenForOnlyChild([self getAxData:env]);
-
-        (*env)->PopLocalFrame(env, NULL);
-
-        return result;
-    }
-    else
-    {
-        return [super accessibilityAttributeValue:attribute];
-    }
-}
-
 - (BOOL)isAccessibilityElement {
     return NO;
 }
@@ -855,7 +841,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 // --- Services menu support for lightweights ---
 
 // finds the focused accessible element, and if it is a text element, obtains the text from it
-- (NSString *)accessibleSelectedText
+- (NSString *)accessibilitySelectedText
 {
     id focused = [self accessibilityFocusedUIElement];
     if (![focused respondsToSelector:@selector(accessibilitySelectedText)]) return nil;
@@ -865,13 +851,20 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 // same as above, but converts to RTFD
 - (NSData *)accessibleSelectedTextAsRTFD
 {
-    NSString *selectedText = [self accessibleSelectedText];
+    NSString *selectedText = [self accessibilitySelectedText];
     NSAttributedString *styledText = [[NSAttributedString alloc] initWithString:selectedText];
     NSData *rtfdData = [styledText RTFDFromRange:NSMakeRange(0, [styledText length])
                               documentAttributes:
                                 @{NSDocumentTypeDocumentAttribute: NSRTFTextDocumentType}];
     [styledText release];
     return rtfdData;
+}
+
+- (void)setAccessibilitySelectedText:(NSString *)accessibilitySelectedText {
+    id focused = [self accessibilityFocusedUIElement];
+    if ([focused respondsToSelector:@selector(setAccessibilitySelectedText)]) {
+    [focused setAccessibilitySelectedText:accessibilitySelectedText];
+}
 }
 
 // finds the focused accessible element, and if it is a text element, sets the text in it

@@ -581,7 +581,7 @@ static void RaiseMustOverrideException(NSString *method)
     }
 
     if (value == nil) {
-        value = self;
+        value = [self platformAxElement];
     }
 #ifdef JAVA_AX_DEBUG
     NSLog(@"%s: %@", __FUNCTION__, value);

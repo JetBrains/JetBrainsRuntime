@@ -18,11 +18,14 @@ static const char* ACCESSIBLE_JCOMBOBOX_NAME = "javax.swing.JComboBox$Accessible
 
 - (NSString *)accessibleSelectedText {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject axContext = [self axContextWithEnv:env];
+    if (axContext == NULL) return nil;
     JNFClassInfo clsInfo;
     clsInfo.name = ACCESSIBLE_JCOMBOBOX_NAME;
-    clsInfo.cls = (*env)->GetObjectClass(env, [self axContextWithEnv:env]);
+    clsInfo.cls = (*env)->GetObjectClass(env, axContext);
     JNF_MEMBER_CACHE(jm_getAccessibleSelection, clsInfo, "getAccessibleSelection", "(I)Ljavax/accessibility/Accessible;");
-    jobject axSelectedChild = JNFCallObjectMethod(env, [self axContextWithEnv:env], jm_getAccessibleSelection, 0);
+    jobject axSelectedChild = JNFCallObjectMethod(env, axContext, jm_getAccessibleSelection, 0);
+    (*env)->DeleteLocalRef(env, axContext);
     if (axSelectedChild == NULL) {
         return nil;
     }
