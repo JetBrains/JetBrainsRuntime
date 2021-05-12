@@ -1434,10 +1434,14 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     }
 
     private void windowDidBecomeMain() {
-        lastBecomeMainTime = System.currentTimeMillis();
-        if (checkBlockingAndOrder()) return;
-        // If it's not blocked, make sure it's above its siblings
-        orderAboveSiblings();
+        try {
+            lastBecomeMainTime = System.currentTimeMillis();
+            if (checkBlockingAndOrder()) return;
+            // If it's not blocked, make sure it's above its siblings
+            orderAboveSiblings();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
     }
 
     private void windowWillEnterFullScreen() {
