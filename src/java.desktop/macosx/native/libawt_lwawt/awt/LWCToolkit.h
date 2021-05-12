@@ -53,6 +53,11 @@ extern int useFontSmoothing;
 + (void) setLatestPerformKeyEquivalentEvent:(NSEvent *)val;
 @end
 
+#define JNF_EXECUTE_AND_HANDLE(jnf_method_call) \
+    JNF_COCOA_DURING(env)                       \
+    jnf_method_call;                            \
+    JNF_COCOA_HANDLE(env)
+
 /*
  * Utility Macros
  */

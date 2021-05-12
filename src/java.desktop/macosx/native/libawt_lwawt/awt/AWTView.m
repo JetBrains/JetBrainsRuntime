@@ -749,7 +749,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
         NSLog(@"Apple AWT : Error AWTView:awtComponent given bad parameters.");
         if (env != NULL)
         {
-            JNFDumpJavaStack(env);
+            JNF_EXECUTE_AND_HANDLE(JNFDumpJavaStack(env));
         }
         return NULL;
     }
@@ -764,7 +764,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     static JNF_MEMBER_CACHE(jf_Target, jc_LWWindowPeer, "target", "Ljava/awt/Component;");
     if (peer == NULL) {
         NSLog(@"Apple AWT : Error AWTView:awtComponent got null peer from CPlatformView");
-        JNFDumpJavaStack(env);
+        JNF_EXECUTE_AND_HANDLE(JNFDumpJavaStack(env));
         return NULL;
     }
     jobject comp = JNFGetObjectField(env, peer, jf_Target);
