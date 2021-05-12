@@ -146,6 +146,10 @@ final class CFileDialog implements FileDialogPeer {
      * If the dialog doesn't have a file filter return true.
      */
     private boolean queryFilenameFilter(final String inFilename) {
+        if (!Boolean.getBoolean("awt.file.dialog.enable.filter")) {
+            return true;
+        }
+
         boolean ret = false;
 
         final FilenameFilter ff = target.getFilenameFilter();
