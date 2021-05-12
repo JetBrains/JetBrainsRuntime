@@ -12,11 +12,9 @@ static const char* ACCESSIBLE_JCOMBOBOX_NAME = "javax.swing.JComboBox$Accessible
 
 @implementation JavaComboBoxAccessibility
 
-- (NSString *)getPlatformAxElementClassName {
-    return @"PlatformAxComboBox";
-}
+// NSAccessibilityElement protocol methods
 
-- (NSString *)accessibleSelectedText {
+- (id)accessibilityValue {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return nil;
@@ -38,14 +36,6 @@ static const char* ACCESSIBLE_JCOMBOBOX_NAME = "javax.swing.JComboBox$Accessible
     (*env)->DeleteLocalRef(env, axSelectedChild);
     (*env)->DeleteLocalRef(env, childName);
     return selectedText;
-}
-
-@end
-
-@implementation PlatformAxComboBox
-
-- (id)accessibilityValue {
-    return [(JavaComboBoxAccessibility *) [self javaComponent] accessibleSelectedText];
 }
 
 @end

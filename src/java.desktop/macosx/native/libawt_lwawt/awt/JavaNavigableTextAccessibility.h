@@ -2,28 +2,9 @@
 
 #import "JavaStaticTextAccessibility.h"
 
-@interface JavaNavigableTextAccessibility : JavaStaticTextAccessibility
+@interface JavaNavigableTextAccessibility : JavaStaticTextAccessibility <NSAccessibilityNavigableStaticText>
 
-// protocol methods
-- (NSValue *)accessibleBoundsForRange:(NSRange)range;
-- (NSNumber *)accessibleLineForIndex:(NSInteger)index;
-- (NSValue *)accessibleRangeForLine:(NSInteger)line;
-- (NSString *)accessibleStringForRange:(NSRange)range;
-
-- (NSValue *)accessibleRangeForIndex:(NSInteger)index;
-- (NSValue *)accessibleRangeForPosition:(NSPoint)point;
-
-@property(readonly) NSString *accessibleSelectedText;
-@property(readonly) NSValue *accessibleSelectedTextRange;
-@property(readonly) NSNumber *accessibleNumberOfCharacters;
-@property(readonly) NSNumber *accessibleInsertionPointLineNumber;
 @property(readonly) BOOL accessibleIsValueSettable;
 @property(readonly) BOOL accessibleIsPasswordText;
 
-- (void)accessibleSetSelectedText:(NSString *)accessibilitySelectedText;
-- (void)accessibleSetSelectedTextRange:(NSRange)accessibilitySelectedTextRange;
-
-@end
-
-@interface PlatformAxNavigableText : PlatformAxStaticText <NSAccessibilityNavigableStaticText>
 @end

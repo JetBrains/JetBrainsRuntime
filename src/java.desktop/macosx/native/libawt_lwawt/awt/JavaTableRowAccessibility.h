@@ -2,10 +2,7 @@
 
 #import "JavaComponentAccessibility.h"
 
-@interface JavaTableRowAccessibility : JavaComponentAccessibility
-@end
-
-@interface PlatformAxTableRow : PlatformAxElement <NSAccessibilityRow>
+@interface JavaTableRowAccessibility : JavaComponentAccessibility <NSAccessibilityRow>
 
 @property(readonly) NSUInteger rowNumberInTable;
 

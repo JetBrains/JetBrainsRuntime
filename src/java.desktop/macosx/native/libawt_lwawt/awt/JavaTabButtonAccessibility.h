@@ -10,10 +10,6 @@
 - (id)initWithParent:(NSObject *)parent withEnv:(JNIEnv *)env withAccessible:(jobject)accessible withIndex:(jint)index withTabGroup:(jobject)tabGroup withView:(NSView *)view withJavaRole:(NSString *)javaRole;
 
 @property(readonly) jobject tabGroup;
-@property(readonly) id accessibleValue;
 - (void)performPressAction;
 
-@end
-
-@interface PlatformAxTabButton : PlatformAxElement
 @end

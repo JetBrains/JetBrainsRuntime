@@ -10,12 +10,6 @@
 - (NSArray *)tabButtonsWithEnv:(JNIEnv *)env withTabGroupAxContext:(jobject)axContext withTabCode:(NSInteger)whichTabs allowIgnored:(BOOL)allowIgnored;
 - (NSArray *)contentsWithEnv:(JNIEnv *)env withTabGroupAxContext:(jobject)axContext withTabCode:(NSInteger)whichTabs allowIgnored:(BOOL)allowIgnored;
 
-@property(readonly) NSArray *accessibleTabs;
-@property(readonly) NSArray *accessibleContents;
-@property(readonly) id accessibleValue;
 @property(readonly) NSInteger numTabs;
 
-@end
-
-@interface PlatformAxTabGroup : PlatformAxElement
 @end

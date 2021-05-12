@@ -11,13 +11,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
 @implementation JavaListRowAccessibility
 
-- (NSString *)getPlatformAxElementClassName {
-    return @"PlatformAxListRow";
-}
-
-@end
-
-@implementation PlatformAxListRow
+// NSAccessibilityElement protocol methods
 
 - (NSAccessibilityRole)accessibilityRole {
     return NSAccessibilityRowRole;;
@@ -26,14 +20,14 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 - (NSArray *)accessibilityChildren {
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
-        JavaComponentAccessibility *newChild = [JavaComponentAccessibility createWithParent:[self javaComponent]
-                                                                       accessible:[[self javaComponent] accessible]
-                                                                             role:[[self javaComponent] javaRole]
-                                                                            index:[[self javaComponent] index]
+        JavaComponentAccessibility *newChild = [JavaComponentAccessibility createWithParent:self
+                                                                       accessible:self->fAccessible
+                                                                             role:self->fJavaRole
+                                                                            index:self->fIndex
                                                                           withEnv:[ThreadUtilities getJNIEnv]
-                                                                         withView:[[self javaComponent] view]
+                                                                         withView:self->fView
                                                                         isWrapped:YES];
-        return [NSArray arrayWithObject:[newChild autorelease].platformAxElement];
+        return [NSArray arrayWithObject:[newChild autorelease]];
     } else {
         return children;
     }

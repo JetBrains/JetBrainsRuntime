@@ -12,11 +12,9 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
 
 @implementation JavaStaticTextAccessibility
 
-- (NSString *)getPlatformAxElementClassName {
-    return @"PlatformAxStaticText";
-}
+// NSAccessibilityElement protocol methods
 
-- (NSString *)accessibleValue {
+- (id)accessibilityValue {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
 
     jobject axName = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
@@ -28,23 +26,6 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
     return @"";
 }
 
-- (NSValue *)accessibleVisibleCharacterRange {
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    static JNF_STATIC_MEMBER_CACHE(jm_getVisibleCharacterRange, sjc_CAccessibleText, "getVisibleCharacterRange", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)[I");
-    jintArray axTextRange = JNFCallStaticObjectMethod(env, jm_getVisibleCharacterRange, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
-    if (axTextRange == NULL) return nil;
-
-    return javaConvertIntArrayToNSRangeValue(env, axTextRange);
-}
-
-@end
-
-@implementation PlatformAxStaticText
-
-- (id)accessibilityValue {
-    return [(JavaStaticTextAccessibility *) [self javaComponent] accessibleValue];
-}
-
 - (NSRect)accessibilityFrame {
     return [super accessibilityFrame];
 }
@@ -54,7 +35,12 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
 }
 
 - (NSRange)accessibilityVisibleCharacterRange {
-    return [[(JavaStaticTextAccessibility *) [self javaComponent] accessibleVisibleCharacterRange] rangeValue];
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    static JNF_STATIC_MEMBER_CACHE(jm_getVisibleCharacterRange, sjc_CAccessibleText, "getVisibleCharacterRange", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)[I");
+    jintArray axTextRange = JNFCallStaticObjectMethod(env, jm_getVisibleCharacterRange, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    if (axTextRange == NULL) return NSRangeFromString(@"");
+
+    return [javaConvertIntArrayToNSRangeValue(env, axTextRange) rangeValue];
 }
 
 @end

@@ -6,14 +6,7 @@
 
 @implementation JavaListAccessibility
 
-- (NSString *)getPlatformAxElementClassName
-{
-    return @"PlatformAxList";
-}
-
-@end
-
-@implementation PlatformAxList
+// NSAccessibilityElement protocol methods
 
 - (nullable NSArray<id<NSAccessibilityRow>> *)accessibilityRows {
     return [self accessibilityChildren];

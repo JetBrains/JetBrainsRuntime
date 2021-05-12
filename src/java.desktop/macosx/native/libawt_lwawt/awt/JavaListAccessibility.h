@@ -2,8 +2,5 @@
 
 #import "JavaComponentAccessibility.h"
 
-@interface JavaListAccessibility : JavaComponentAccessibility
-@end
-
-@interface PlatformAxList : PlatformAxElement <NSAccessibilityList>
+@interface JavaListAccessibility : JavaComponentAccessibility <NSAccessibilityList>
 @end

@@ -10,10 +10,6 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
 
 @implementation JavaTabButtonAccessibility
 
-- (NSString *)getPlatformAxElementClassName {
-    return @"PlatformAxTabButton";
-}
-
 - (id)initWithParent:(NSObject *)parent withEnv:(JNIEnv *)env withAccessible:(jobject)accessible withIndex:(jint)index withTabGroup:(jobject)tabGroup withView:(NSView *)view withJavaRole:(NSString *)javaRole {
     self = [super initWithParent:parent withEnv:env withAccessible:accessible withIndex:index withView:view withJavaRole:javaRole];
     if (self) {
@@ -36,7 +32,20 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
     return fTabGroupAxContext;
 }
 
-- (id)accessibleValue {
+- (void)performPressAction {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    TabGroupAction *action = [[TabGroupAction alloc] initWithEnv:env withTabGroup:[self tabGroup] withIndex:fIndex withComponent:fComponent];
+    [action perform];
+    [action release];
+}
+
+// NSAccessibilityElement protocol methods
+
+- (NSAccessibilitySubrole)accessibilitySubrole {
+    return NSAccessibilityTabButtonSubrole;
+}
+
+- (id)accessibilityValue {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     jobject selAccessible = getAxContextSelection(env, [self tabGroup], fIndex, fComponent);
@@ -49,27 +58,8 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
     return val;
 }
 
-- (void)performPressAction {
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    TabGroupAction *action = [[TabGroupAction alloc] initWithEnv:env withTabGroup:[self tabGroup] withIndex:fIndex withComponent:fComponent];
-    [action perform];
-    [action release];
-}
-
-@end
-
-@implementation PlatformAxTabButton
-
-- (NSAccessibilitySubrole)accessibilitySubrole {
-    return NSAccessibilityTabButtonSubrole;
-}
-
-- (id)accessibilityValue {
-    return [(JavaTabButtonAccessibility *) [self javaComponent] accessibleValue];
-}
-
 - (BOOL)accessibilityPerformPress {
-    [(JavaTabButtonAccessibility *) [self javaComponent] performPressAction];
+    [self performPressAction];
     return YES;
 }
 

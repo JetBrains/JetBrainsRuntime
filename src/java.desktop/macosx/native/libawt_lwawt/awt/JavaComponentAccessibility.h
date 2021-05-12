@@ -14,38 +14,7 @@
 
 @class JavaComponentAccessibility;
 
-@protocol JavaComponentProvider
-
-@property (nonatomic, retain) JavaComponentAccessibility *javaComponent;
-
-@end
-
-@interface PlatformAxElement : NSAccessibilityElement <JavaComponentProvider>
-
-// begin of NSAccessibility protocol methods
-- (BOOL)isAccessibilityElement;
-- (NSString *)accessibilityLabel;
-- (NSArray *)accessibilityChildren;
-- (NSArray *)accessibilitySelectedChildren;
-- (NSRect)accessibilityFrame;
-- (id)accessibilityParent;
-- (BOOL)isAccessibilityEnabled;
-- (id)accessibilityApplicationFocusedUIElement;
-- (id)getAccessibilityWindow;
-// end of NSAccessibility protocol methods
-
-@end
-
-@protocol PlatformAxElementProvider
-@required
-
-- (NSString *)getPlatformAxElementClassName;
-
-@property (nonatomic, retain) PlatformAxElement *platformAxElement;
-
-@end
-
-@interface JavaComponentAccessibility : NSObject <PlatformAxElementProvider> {
+@interface JavaComponentAccessibility : NSAccessibilityElement {
     NSView *fView;
     NSObject *fParent;
 
@@ -103,24 +72,10 @@
 - (BOOL)isSelectable:(JNIEnv *)env;
 - (BOOL)isVisible:(JNIEnv *)env;
 - (NSSize)getSize;
-- (NSRect)getBounds;
-- (id)getFocusedElement;
 
 @property(readonly) int accessibleIndexOfParent;
-@property(readonly) BOOL accessibleEnabled;
-@property(readwrite) BOOL accessibleFocused;
-@property(readonly) NSNumber *accessibleMaxValue;
-@property(readonly) NSNumber *accessibleMinValue;
-@property(readonly) id accessibleOrientation;
-@property(readonly) NSValue *accessiblePosition;
-@property(readonly) NSString *accessibleRole;
-@property(readonly) NSString *accessibleRoleDescription;
-@property(readonly) id accessibleParent;
-@property(readwrite, copy) NSNumber *accessibleSelected;
-@property(readonly) id accessibleValue;;
 @property(readonly) NSMutableDictionary *getActions;
 
-- (id)accessibleHitTest:(NSPoint)point;
 - (void)getActionsWithEnv:(JNIEnv *)env;
 - (BOOL)accessiblePerformAction:(NSAccessibilityActionName)actionName;
 

@@ -2,7 +2,7 @@
 
 #import "JavaComponentAccessibility.h"
 
-@interface JavaTableAccessibility : JavaComponentAccessibility
+@interface JavaTableAccessibility : JavaComponentAccessibility <NSAccessibilityTable>
 
 @property(readonly) int accessibleRowCount;
 @property(readonly) int accessibleColCount;
@@ -12,7 +12,4 @@
 - (int) accessibleRowAtIndex:(int)index;
 - (int) accessibleColumnAtIndex:(int)index;
 
-@end
-
-@interface PlatformAxTable : PlatformAxElement <NSAccessibilityTable>
 @end

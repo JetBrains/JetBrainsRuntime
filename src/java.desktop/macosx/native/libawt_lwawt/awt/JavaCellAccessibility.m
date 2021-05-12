@@ -5,13 +5,7 @@
 
 @implementation JavaCellAccessibility
 
-- (NSString *)getPlatformAxElementClassName {
-    return @"PlatformAxCell";
-}
-
-@end
-
-@implementation PlatformAxCell
+// NSAccessibilityElement protocol methods
 
 - (NSAccessibilityRole)accessibilityRole {
     return NSAccessibilityCellRole;;
@@ -20,15 +14,15 @@
 - (NSArray *)accessibilityChildren {
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
-        NSString *javaRole = [[self javaComponent] javaRole];
-        JavaComponentAccessibility *newChild = [JavaComponentAccessibility createWithParent:[self javaComponent]
-                                                                       accessible:[[self javaComponent] accessible]
+        NSString *javaRole = [self  javaRole];
+        JavaComponentAccessibility *newChild = [JavaComponentAccessibility createWithParent:self
+                                                                       accessible:self->fAccessible
                                                                              role:javaRole
-                                                                            index:[[self javaComponent] index]
+                                                                            index:self->fIndex
                                                                           withEnv:[ThreadUtilities getJNIEnv]
-                                                                         withView:[[self javaComponent] view]
+                                                                         withView:self->fView
                                                                         isWrapped:YES];
-        return [NSArray arrayWithObject:newChild.platformAxElement];
+        return [NSArray arrayWithObject:newChild];
     } else {
         return children;
     }

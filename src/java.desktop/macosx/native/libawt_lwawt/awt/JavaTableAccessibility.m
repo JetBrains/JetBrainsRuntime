@@ -17,10 +17,6 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
 
 @implementation JavaTableAccessibility
 
-- (NSString *)getPlatformAxElementClassName {
-    return @"PlatformAxTable";
-}
-
 - (int)accessibleRowCount {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
@@ -132,9 +128,7 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
     return isAccessibleChildSelected;
 }
 
-@end
-
-@implementation PlatformAxTable
+// NSAccessibilityElement protocol methods
 
 - (NSArray *)accessibilityChildren {
     NSArray *children = [super accessibilityChildren];
@@ -166,29 +160,29 @@ static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable
 }
 
 - (nullable NSArray *)accessibilityColumns {
-    int colCount = [(JavaTableAccessibility *) [self javaComponent] accessibleColCount];
+    int colCount = [self accessibleColCount];
     NSMutableArray *columns = [NSMutableArray arrayWithCapacity:colCount];
     for (int i = 0; i < colCount; i++) {
-        [columns addObject:[[JavaColumnAccessibility alloc] initWithParent:[self javaComponent]
+        [columns addObject:[[JavaColumnAccessibility alloc] initWithParent:self
                                                                    withEnv:[ThreadUtilities getJNIEnv]
                                                             withAccessible:NULL
                                                                  withIndex:i
-                                                                  withView:[[self javaComponent] view]
-                                                              withJavaRole:JavaAccessibilityIgnore].platformAxElement];
+                                                                  withView:self->fView
+                                                              withJavaRole:JavaAccessibilityIgnore]];
     }
     return [NSArray arrayWithArray:columns];
 }
 
 - (nullable NSArray *)accessibilitySelectedColumns {
-    NSArray<NSNumber *> *indexes = [(JavaTableAccessibility *) [self javaComponent] selectedAccessibleColumns];
+    NSArray<NSNumber *> *indexes = [self selectedAccessibleColumns];
     NSMutableArray *columns = [NSMutableArray arrayWithCapacity:[indexes count]];
     for (NSNumber *i in indexes) {
-        [columns addObject:[[JavaColumnAccessibility alloc] initWithParent:[self javaComponent]
+        [columns addObject:[[JavaColumnAccessibility alloc] initWithParent:self
                                                                    withEnv:[ThreadUtilities getJNIEnv]
                                                             withAccessible:NULL
                                                                  withIndex:i.unsignedIntValue
-                                                                  withView:[[self javaComponent] view]
-                                                              withJavaRole:JavaAccessibilityIgnore].platformAxElement];
+                                                                  withView:self->fView
+                                                              withJavaRole:JavaAccessibilityIgnore]];
     }
     return [NSArray arrayWithArray:columns];
 }

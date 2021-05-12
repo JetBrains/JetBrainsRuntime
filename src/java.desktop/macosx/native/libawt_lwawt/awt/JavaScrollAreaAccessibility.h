@@ -3,12 +3,4 @@
 #import "JavaComponentAccessibility.h"
 
 @interface JavaScrollAreaAccessibility : JavaComponentAccessibility
-
-@property(readonly) NSArray *accessibleContents;
-@property(readonly) id accessibleVerticalScrollBar;
-@property(readonly) id accessibleHorizontalScrollBar;
-
-@end
-
-@interface PlatformAxScrollArea : PlatformAxElement
 @end

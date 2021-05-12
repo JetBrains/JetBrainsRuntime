@@ -3,10 +3,8 @@
 #import "JavaComponentAccessibility.h"
 
 @interface JavaColumnAccessibility : JavaComponentAccessibility
-@end
-
-@interface PlatformAxColumn : PlatformAxElement
 
 @property(readonly) NSUInteger columnNumberInTable;
+
 @end
 
