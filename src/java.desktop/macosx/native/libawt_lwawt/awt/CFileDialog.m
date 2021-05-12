@@ -132,11 +132,35 @@ canChooseDirectories:(BOOL)inChooseDirectories
 
         [thePanel setDelegate:self];
         inModalLoop = YES;
+
+        NSMenuItem *editMenuItem = nil;
+        NSMenu *menu = [NSApp mainMenu];
+        if (menu != nil) {
+            if (menu.numberOfItems > 0) {
+                NSMenu *submenu = [[menu itemAtIndex:0] submenu];
+                if (submenu != nil) {
+                    menu = submenu;
+                }
+            }
+
+            editMenuItem = [self createEditMenu];
+            if (menu.numberOfItems > 0) {
+                [menu insertItem:editMenuItem atIndex:0];
+            } else {
+                [menu addItem:editMenuItem];
+            }
+            [editMenuItem release];
+        }
+
         fPanelResult = [thePanel runModalForDirectory:fDirectory file:fFile];
         inModalLoop = NO;
         [thePanel setDelegate:nil];
         CMenuBar *menuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
         [CMenuBar activate:menuBar modallyDisabled:NO];
+
+        if (editMenuItem != nil) {
+            [menu removeItem:editMenuItem];
+        }
 
         if ([self userClickedOK]) {
             if (fMode == java_awt_FileDialog_LOAD) {
@@ -151,6 +175,33 @@ canChooseDirectories:(BOOL)inChooseDirectories
 
     (*env)->SetLongField(env, fFileDialog, jc_windowID, ptr_to_jlong(0L));
     [self disposer];
+}
+
+- (NSMenuItem *) createEditMenu {
+    NSMenu *editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
+
+    NSMenuItem *cutItem = [[NSMenuItem alloc] initWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
+    [editMenu addItem:cutItem];
+    [cutItem release];
+
+    NSMenuItem *copyItem = [[NSMenuItem alloc] initWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+    [editMenu addItem:copyItem];
+    [copyItem release];
+
+    NSMenuItem *pasteItem = [[NSMenuItem alloc] initWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
+    [editMenu addItem:pasteItem];
+    [pasteItem release];
+
+    NSMenuItem *selectAllItem = [[NSMenuItem alloc] initWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
+    [editMenu addItem:selectAllItem];
+    [selectAllItem release];
+
+    NSMenuItem *editMenuItem = [NSMenuItem new];
+    [editMenuItem setTitle:@"Edit"];
+    [editMenuItem setSubmenu:editMenu];
+    [editMenu release];
+
+    return editMenuItem;
 }
 
 - (BOOL) askFilenameFilter:(NSString *)filename {
