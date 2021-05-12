@@ -12,13 +12,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
 @implementation JavaTableRowAccessibility
 
-- (NSString *)getPlatformAxElementClassName {
-    return @"PlatformAxTableRow";
-}
-
-@end
-
-@implementation PlatformAxTableRow
+// NSAccessibilityElement protocol methods
 
 - (NSAccessibilityRole)accessibilityRole {
     return NSAccessibilityRowRole;
@@ -32,17 +26,17 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
-        if ([[[self accessibilityParent] javaComponent] accessible] == NULL) return nil;
-        jobjectArray jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, [[[self accessibilityParent] javaComponent] accessible], [[[self accessibilityParent] javaComponent] component], JAVA_AX_ALL_CHILDREN, NO);
+        JavaComponentAccessibility *parent = [self accessibilityParent];
+        if (parent->fAccessible == NULL) return nil;
+        jobjectArray jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, JAVA_AX_ALL_CHILDREN, NO);
         if (jchildrenAndRoles == NULL) return nil;
 
         jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
         NSMutableArray *childrenCells = [NSMutableArray arrayWithCapacity:arrayLen/2];
 
-        NSUInteger childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *) [[self accessibilityParent] javaComponent] accessibleColCount];
+        NSUInteger childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *)parent accessibleColCount];
         NSInteger i = childIndex * 2;
-        NSInteger n = ([self rowNumberInTable] + 1) * [(JavaTableAccessibility *) [[self accessibilityParent] javaComponent] accessibleColCount] * 2;
-        JavaTableRowAccessibility *selfRow = [self javaComponent];
+        NSInteger n = ([self rowNumberInTable] + 1) * [(JavaTableAccessibility *)parent accessibleColCount] * 2;
         for(i; i < n; i+=2)
         {
             jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
@@ -55,13 +49,13 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
                 (*env)->DeleteLocalRef(env, jkey);
             }
 
-            JavaCellAccessibility *child = [[JavaCellAccessibility alloc] initWithParent:selfRow
+            JavaCellAccessibility *child = [[JavaCellAccessibility alloc] initWithParent:self
                                                                                  withEnv:env
                                                                           withAccessible:jchild
                                                                                withIndex:childIndex
-                                                                                withView:[selfRow view]
+                                                                                withView:self->fView
                                                                             withJavaRole:childJavaRole];
-            [childrenCells addObject:[child autorelease].platformAxElement];
+            [childrenCells addObject:[child autorelease]];
 
             (*env)->DeleteLocalRef(env, jchild);
             (*env)->DeleteLocalRef(env, jchildJavaRole);
@@ -97,7 +91,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 }
 
 - (NSUInteger)rowNumberInTable {
-        return [[self javaComponent] index];
+        return self->fIndex;
 }
 
 - (NSRect)accessibilityFrame {

@@ -4,8 +4,5 @@
 
 // This is a tree representation. See: https://developer.apple.com/documentation/appkit/nsoutlineview
 
-@interface JavaOutlineAccessibility : JavaListAccessibility
-@end
-
-@interface PlatformAxOutline : PlatformAxList <NSAccessibilityOutline>
+@interface JavaOutlineAccessibility : JavaListAccessibility <NSAccessibilityOutline>
 @end

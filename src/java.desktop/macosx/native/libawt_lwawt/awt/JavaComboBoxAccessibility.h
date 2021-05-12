@@ -3,10 +3,4 @@
 #import "JavaComponentAccessibility.h"
 
 @interface JavaComboBoxAccessibility : JavaComponentAccessibility
-
-@property(readonly) NSString *accessibleSelectedText;
-
-@end
-
-@interface PlatformAxComboBox : PlatformAxElement
 @end

@@ -5,13 +5,7 @@
 
 @implementation JavaOutlineAccessibility
 
-- (NSString *)getPlatformAxElementClassName {
-    return @"PlatformAxOutline";
-}
-
-@end
-
-@implementation PlatformAxOutline
+// NSAccessibilityElement protocol methods
 
 - (NSString *)accessibilityLabel
 {

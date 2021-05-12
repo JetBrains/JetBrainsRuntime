@@ -10,11 +10,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
 @implementation JavaTabGroupAccessibility
 
-- (NSString *)getPlatformAxElementClassName {
-    return @"PlatformAxTabGroup";
-}
-
-- (id)currentTabWithEnv:(JNIEnv *)env withAxContext:(jobject)axContext { 
+- (id)currentTabWithEnv:(JNIEnv *)env withAxContext:(jobject)axContext {
     NSArray *tabs = [self tabButtonsWithEnv:env withTabGroupAxContext:axContext withTabCode:JAVA_AX_ALL_CHILDREN allowIgnored:NO];
 
     // Looking at the JTabbedPane sources, there is always one AccessibleSelection.
@@ -26,10 +22,10 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     JavaComponentAccessibility *aTab;
     NSInteger i;
     for (i = 0; i < _numTabs; i++) {
-        aTab = [(PlatformAxElement *) [tabs objectAtIndex:i] javaComponent];
+        aTab = [tabs objectAtIndex:i];
         if ([aTab isAccessibleWithEnv:env forAccessible:selAccessible]) {
             (*env)->DeleteLocalRef(env, selAccessible);
-            return [aTab platformAxElement];
+            return aTab;
         }
     }
     (*env)->DeleteLocalRef(env, selAccessible);
@@ -63,7 +59,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
         jobject jtab = (*env)->GetObjectArrayElement(env, jtabsAndRoles, i);
         JavaComponentAccessibility *tab = [[[JavaTabButtonAccessibility alloc] initWithParent:self withEnv:env withAccessible:jtab withIndex:tabIndex withTabGroup:axContext withView:[self view] withJavaRole:tabJavaRole] autorelease];
         (*env)->DeleteLocalRef(env, jtab);
-        [tabs addObject:[tab platformAxElement]];
+        [tabs addObject:tab];
         tabIndex++;
     }
     (*env)->DeleteLocalRef(env, jtabsAndRoles);
@@ -72,15 +68,21 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
 - (NSArray *)contentsWithEnv:(JNIEnv *)env withTabGroupAxContext:(jobject)axContext withTabCode:(NSInteger)whichTabs allowIgnored:(BOOL)allowIgnored {
     // Contents are the children of the selected tab.
-    PlatformAxElement *currentTab = [self currentTabWithEnv:env withAxContext:axContext];
+    JavaComponentAccessibility *currentTab = [self currentTabWithEnv:env withAxContext:axContext];
     if (currentTab == nil) return nil;
 
-    NSArray *contents = [JavaComponentAccessibility childrenOfParent:[currentTab javaComponent] withEnv:env withChildrenCode:whichTabs allowIgnored:allowIgnored];
+    NSArray *contents = [JavaComponentAccessibility childrenOfParent:currentTab withEnv:env withChildrenCode:whichTabs allowIgnored:allowIgnored];
     if ([contents count] <= 0) return nil;
     return contents;
 }
 
-- (NSArray *)accessibleTabs {
+- (NSInteger)numTabs {
+    return _numTabs;
+}
+
+// NSAccessibilityElement protocol methods
+
+- (NSArray *)accessibilityTabs {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     id tabs = [self tabButtonsWithEnv:env withTabGroupAxContext:axContext withTabCode:JAVA_AX_ALL_CHILDREN allowIgnored:NO];
@@ -88,7 +90,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     return tabs;
 }
 
-- (NSArray *) accessibleContents {
+- (NSArray *)accessibilityContents {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     NSArray* cont = [self contentsWithEnv:env withTabGroupAxContext:axContext withTabCode:JAVA_AX_ALL_CHILDREN allowIgnored:NO];
@@ -96,32 +98,12 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     return cont;
 }
 
--(id) accessibleValue {
+- (id)accessibilityValue {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     id val = [self currentTabWithEnv:env withAxContext:axContext];
     (*env)->DeleteLocalRef(env, axContext);
     return val;
-}
-
-- (NSInteger)numTabs {
-    return _numTabs;
-}
-
-@end
-
-@implementation PlatformAxTabGroup
-
-- (NSArray *)accessibilityTabs {
-    return [(JavaTabGroupAccessibility *) [self javaComponent] accessibleTabs];
-}
-
-- (NSArray *)accessibilityContents {
-    return [(JavaTabGroupAccessibility *) [self javaComponent] accessibleContents];
-}
-
-- (id)accessibilityValue {
-    return [(JavaTabGroupAccessibility *) [self javaComponent] accessibleValue];
 }
 
 - (NSArray *)accessibilityChildren {
@@ -141,19 +123,19 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
     if ( (maxCount == 1) && [attribute isEqualToString:NSAccessibilityChildrenAttribute]) {
         // Children codes for ALL, SELECTED, VISIBLE are <0. If the code is >=0, we treat it as an index to a single child
         JNIEnv *env = [ThreadUtilities getJNIEnv];
-        jobject axContext = [(JavaTabGroupAccessibility *) [self javaComponent] axContextWithEnv:env];
+        jobject axContext = [self axContextWithEnv:env];
 
         //children = AXTabs + AXContents
-        NSArray *children = [(JavaTabGroupAccessibility *) [self javaComponent] tabButtonsWithEnv:env
+        NSArray *children = [self tabButtonsWithEnv:env
                                                                             withTabGroupAxContext:axContext
                                                                                       withTabCode:index
                                                                                      allowIgnored:NO]; // first look at the tabs
         if ([children count] > 0) {
             result = children;
          } else {
-            children= [(JavaTabGroupAccessibility *) [self javaComponent] contentsWithEnv:env
+            children= [self contentsWithEnv:env
                                                                     withTabGroupAxContext:axContext
-                                                                              withTabCode:(index-[(JavaTabGroupAccessibility *) [self javaComponent] numTabs])
+                                                                              withTabCode:(index-[self numTabs])
                                                                              allowIgnored:NO];
             if ([children count] > 0) {
                 result = children;
@@ -172,7 +154,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
-    setAxContextSelection(env, axContext, [[self javaComponent] index], [[self javaComponent] component]);
+    setAxContextSelection(env, axContext, self->fIndex, self->fComponent);
     (*env)->DeleteLocalRef(env, axContext);
 }
 

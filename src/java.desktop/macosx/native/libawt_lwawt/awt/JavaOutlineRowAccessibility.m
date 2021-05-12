@@ -11,13 +11,12 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
 
 @implementation JavaOutlineRowAccessibility
 
-- (NSString *)getPlatformAxElementClassName {
-    return @"PlatformAxOutlineRow";
-}
-
 @synthesize accessibleLevel;
 
-- (jobject) currentAccessibleWithENV:(JNIEnv *)env {
+// NSAccessibilityElement protocol methods
+
+- (NSArray *)accessibilityChildren {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject jAxContext = getAxContext(env, fAccessible, fComponent);
     if (jAxContext == NULL) return nil;
     JNFClassInfo clsInfo;
@@ -26,44 +25,37 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
     JNF_MEMBER_CACHE(jm_getCurrentComponent, clsInfo, "getCurrentComponent", "()Ljava/awt/Component;");
     jobject newComponent = JNFCallObjectMethod(env, jAxContext, jm_getCurrentComponent);
     (*env)->DeleteLocalRef(env, jAxContext);
+    jobject currentAccessible = NULL;
     if (newComponent != NULL) {
-        jobject newAccessible = JNFCallStaticObjectMethod(env, sjm_getCAccessible, newComponent);
+        currentAccessible = JNFCallStaticObjectMethod(env, sjm_getCAccessible, newComponent);
         (*env)->DeleteLocalRef(env, newComponent);
-        if (newAccessible != NULL) {
-            return newAccessible;
-        } else {
-            return NULL;
-        }
     } else {
-        return NULL;
+        return nil;
     }
-}
-
-@end
-
-@implementation PlatformAxOutlineRow
-
-- (NSArray *)accessibilityChildren {
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject currentAccessible = [(JavaOutlineRowAccessibility *) [self javaComponent] currentAccessibleWithENV:env];
     if (currentAccessible == NULL) {
         return nil;
     }
-    JavaComponentAccessibility *currentElement = [JavaComponentAccessibility createWithAccessible:currentAccessible withEnv:env withView:[[self javaComponent] view] isCurrent:YES];
+    JavaComponentAccessibility *currentElement = [JavaComponentAccessibility createWithAccessible:currentAccessible withEnv:env withView:self->fView isCurrent:YES];
     NSArray *children = [JavaComponentAccessibility childrenOfParent:currentElement withEnv:env withChildrenCode:JAVA_AX_ALL_CHILDREN allowIgnored:YES];
     if ([children count] == 0) {
-        return [NSArray arrayWithObject:[JavaComponentAccessibility createWithParent:[self javaComponent] accessible:[[self javaComponent] accessible] role:[[self javaComponent] javaRole] index:[[self javaComponent] index] withEnv:env withView:[[self javaComponent] view] isWrapped:YES].platformAxElement];
+        return [NSArray arrayWithObject:[JavaComponentAccessibility createWithParent:self
+                                                                          accessible:self->fAccessible
+                                                                                role:self->fJavaRole
+                                                                               index:self->fIndex
+                                                                             withEnv:env
+                                                                            withView:self->fView
+                                                                           isWrapped:YES]];
     } else {
         return children;
     }
 }
 
 - (NSInteger)accessibilityDisclosureLevel {
-    return [(JavaOutlineRowAccessibility *) [self javaComponent] accessibleLevel];
+    return [self accessibleLevel];
 }
 
 - (BOOL)isAccessibilityDisclosed {
-    return isExpanded([ThreadUtilities getJNIEnv], [[self javaComponent] axContextWithEnv:[ThreadUtilities getJNIEnv]], [[self javaComponent] component]);
+    return isExpanded([ThreadUtilities getJNIEnv], [self axContextWithEnv:[ThreadUtilities getJNIEnv]], self->fComponent);
 }
 
 - (NSAccessibilitySubrole)accessibilitySubrole {

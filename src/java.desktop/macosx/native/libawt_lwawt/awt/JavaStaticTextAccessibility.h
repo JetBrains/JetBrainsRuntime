@@ -2,18 +2,11 @@
 
 #import "JavaComponentAccessibility.h"
 
-@interface JavaStaticTextAccessibility : JavaComponentAccessibility
-
 /*
  * Converts an int array to an NSRange wrapped inside an NSValue
  * takes [start, end] values and returns [start, end - start]
  */
 NSValue *javaConvertIntArrayToNSRangeValue(JNIEnv* env, jintArray array);
 
-@property(readonly) NSString *accessibleValue;
-@property(readonly) NSValue *accessibleVisibleCharacterRange;
-
-@end
-
-@interface PlatformAxStaticText : PlatformAxElement <NSAccessibilityStaticText>
+@interface JavaStaticTextAccessibility : JavaComponentAccessibility <NSAccessibilityStaticText>
 @end

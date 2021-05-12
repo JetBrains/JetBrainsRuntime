@@ -5,6 +5,3 @@
 @interface JavaCellAccessibility : JavaComponentAccessibility
 @end
 
-@interface PlatformAxCell : PlatformAxElement
-@end
-

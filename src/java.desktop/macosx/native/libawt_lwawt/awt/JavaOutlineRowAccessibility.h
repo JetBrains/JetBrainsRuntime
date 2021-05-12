@@ -5,10 +5,6 @@
 @interface JavaOutlineRowAccessibility : JavaListRowAccessibility
 
 @property(readwrite) int accessibleLevel;
-- (jobject) currentAccessibleWithENV:(JNIEnv *)env;
 
-@end
-
-@interface PlatformAxOutlineRow : PlatformAxListRow
 @end
 
