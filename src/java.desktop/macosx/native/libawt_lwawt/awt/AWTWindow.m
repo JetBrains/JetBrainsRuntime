@@ -845,11 +845,9 @@ AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
     if (platformWindow != NULL) {
-JNF_COCOA_DURING(env)
         static JNF_MEMBER_CACHE(jm_windowDidBecomeMain, jc_CPlatformWindow, "windowDidBecomeMain", "()V");
-        JNFCallVoidMethod(env, platformWindow, jm_windowDidBecomeMain);
+        JNF_EXECUTE_AND_HANDLE(JNFCallVoidMethod(env, platformWindow, jm_windowDidBecomeMain));
         (*env)->DeleteLocalRef(env, platformWindow);
-JNF_COCOA_HANDLE(env)
     }
     [self orderChildWindows:YES];
 }
