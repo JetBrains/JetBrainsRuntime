@@ -57,6 +57,10 @@ public class CGLLayer extends CFLayer {
         // the layer redirects all painting to the buffer's graphics
         // and blits the buffer to the layer surface (in drawInCGLContext callback)
         CGraphicsConfig gc = (CGraphicsConfig)getGraphicsConfiguration();
+        if (gc == null) {
+            surfaceData = NullSurfaceData.theInstance;
+            return surfaceData;
+        }
         surfaceData = gc.createSurfaceData(this);
         setScale(gc.getDevice().getScaleFactor());
         // the layer holds a reference to the buffer, which in
