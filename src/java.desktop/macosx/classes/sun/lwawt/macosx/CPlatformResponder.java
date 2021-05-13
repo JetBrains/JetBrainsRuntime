@@ -257,7 +257,8 @@ final class CPlatformResponder {
 
             if(isDeadChar){
                 testChar = (char) out[2];
-                if(testChar == 0){
+                jkeyCode = out[0];
+                if(testChar == 0 && jkeyCode == KeyEvent.VK_UNDEFINED){
                     return;
                 }
             }
