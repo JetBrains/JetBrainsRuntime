@@ -18,13 +18,17 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
 @synthesize accessibleLevel;
 
 - (jobject) currentAccessibleWithENV:(JNIEnv *)env {
+    jobject jAxContext = getAxContext(env, fAccessible, fComponent);
+    if (jAxContext == NULL) return nil;
     JNFClassInfo clsInfo;
-    clsInfo.name = [JNFObjectClassName(env, getAxContext(env, fAccessible, fComponent)) UTF8String];
-    clsInfo.cls = (*env)->GetObjectClass(env, getAxContext(env, fAccessible, fComponent));
+    clsInfo.name = [JNFObjectClassName(env, jAxContext) UTF8String];
+    clsInfo.cls = (*env)->GetObjectClass(env, jAxContext);
     JNF_MEMBER_CACHE(jm_getCurrentComponent, clsInfo, "getCurrentComponent", "()Ljava/awt/Component;");
-    jobject newComponent = JNFCallObjectMethod(env, getAxContext(env, fAccessible, fComponent), jm_getCurrentComponent);
+    jobject newComponent = JNFCallObjectMethod(env, jAxContext, jm_getCurrentComponent);
+    (*env)->DeleteLocalRef(env, jAxContext);
     if (newComponent != NULL) {
         jobject newAccessible = JNFCallStaticObjectMethod(env, sjm_getCAccessible, newComponent);
+        (*env)->DeleteLocalRef(env, newComponent);
         if (newAccessible != NULL) {
             return newAccessible;
         } else {
@@ -41,7 +45,7 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
 
 - (NSArray *)accessibilityChildren {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject currentAccessible = [(JavaOutlineRowAccessibility *)[self javaBase] currentAccessibleWithENV:env];
+    jobject currentAccessible = [(JavaOutlineRowAccessibility *) [self javaBase] currentAccessibleWithENV:env];
     if (currentAccessible == NULL) {
         return nil;
     }
@@ -55,11 +59,19 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
 }
 
 - (NSInteger)accessibilityDisclosureLevel {
-    return [(JavaOutlineRowAccessibility *)[self javaBase] accessibleLevel];
+    return [(JavaOutlineRowAccessibility *) [self javaBase] accessibleLevel];
 }
 
 - (BOOL)isAccessibilityDisclosed {
     return isExpanded([ThreadUtilities getJNIEnv], [[self javaBase] axContextWithEnv:[ThreadUtilities getJNIEnv]], [[self javaBase] component]);
+}
+
+- (NSAccessibilitySubrole)accessibilitySubrole {
+    return NSAccessibilityOutlineRowSubrole;;
+}
+
+- (NSAccessibilityRole)accessibilityRole {
+    return NSAccessibilityRowRole;;
 }
 
 @end
