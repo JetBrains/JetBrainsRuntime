@@ -20,7 +20,7 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessi
     jobject jAxContext = getAxContext(env, fAccessible, fComponent);
     if (jAxContext == NULL) return nil;
     JNFClassInfo clsInfo;
-    clsInfo.name = [JNFObjectClassName(env, getAxContext(env, fAccessible, fComponent)) UTF8String];
+    clsInfo.name = [JNFObjectClassName(env, jAxContext) UTF8String];
     clsInfo.cls = (*env)->GetObjectClass(env, jAxContext);
     JNF_MEMBER_CACHE(jm_getCurrentComponent, clsInfo, "getCurrentComponent", "()Ljava/awt/Component;");
     jobject newComponent = JNFCallObjectMethod(env, jAxContext, jm_getCurrentComponent);
