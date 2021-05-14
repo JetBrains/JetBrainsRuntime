@@ -547,10 +547,13 @@ static NSObject *sAttributeNamesLOCK = nil;
 - (id)accessibilityParentAttribute
 {
     id parent = [self parent];
-    if ([parent isKindOfClass:[JavaBaseAccessibility class]]) {
-        parent = ((JavaBaseAccessibility *)parent).platformAxElement;
+    if ([parent isKindOfClass:[JavaComponentAccessibility class]]) {
+        return NSAccessibilityUnignoredAncestor(parent);
     }
-    return NSAccessibilityUnignoredAncestor(parent);
+    if ([parent isKindOfClass:[JavaBaseAccessibility class]]) {
+        return NSAccessibilityUnignoredAncestor(((JavaBaseAccessibility *)parent).platformAxElement);
+    }
+    return fView;
 }
 
 - (BOOL)accessibilityIsParentAttributeSettable
