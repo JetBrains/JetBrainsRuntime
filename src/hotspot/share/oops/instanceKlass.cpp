@@ -978,7 +978,7 @@ bool InstanceKlass::link_class_impl(TRAPS) {
         set_init_state(linked);
       }
       // (DCEVM) Must check for old version in order to prevent infinite loops.
-      if (JvmtiExport::should_post_class_prepare()  && (!AllowEnhancedClassRedefinition || old_version() == NULL /* JVMTI deadlock otherwise */) {
+      if (JvmtiExport::should_post_class_prepare()  && (!AllowEnhancedClassRedefinition || old_version() == NULL /* JVMTI deadlock otherwise */)) {
         JvmtiExport::post_class_prepare(THREAD, this);
       }
     }
