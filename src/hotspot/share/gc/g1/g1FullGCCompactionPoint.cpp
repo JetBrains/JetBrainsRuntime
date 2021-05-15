@@ -171,7 +171,7 @@ void G1FullGCCompactionPoint::forward_dcevm(oop object, size_t size, bool force_
 
   // Store a forwarding pointer if the object should be moved.
   if (cast_from_oop<HeapWord*>(object) != _compaction_top || force_forward) {
-    object->forward_to(oop(_compaction_top));
+    object->forward_to(cast_to_oop(_compaction_top));
   } else {
     if (object->forwardee() != NULL) {
       // Object should not move but mark-word is used so it looks like the
@@ -208,17 +208,17 @@ void G1FullGCCompactionPoint::forward_rescued() {
   for (;i<rescued_oops()->length(); i++) {
     HeapWord* q = rescued_oops()->at(i);
 
-    size_t size = oop(q)->size();
+    size_t size = cast_to_oop(q)->size();
 
     // (DCEVM) There is a new version of the class of q => different size
-    if (oop(q)->klass()->new_version() != NULL) {
+    if (cast_to_oop(q)->klass()->new_version() != NULL) {
       // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
-      size = oop(q)->size_given_klass(oop(q)->klass()->new_version());
+      size = cast_to_oop(q)->size_given_klass(cast_to_oop(q)->klass()->new_version());
     }
     if (forward_compact_top(size) == NULL) {
       break;
     }
-    forward_dcevm(oop(q), size, true);
+    forward_dcevm(cast_to_oop(q), size, true);
   }
   _last_rescued_oop = i;
 }

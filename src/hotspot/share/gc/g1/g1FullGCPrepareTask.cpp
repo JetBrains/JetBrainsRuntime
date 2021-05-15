@@ -297,7 +297,7 @@ size_t G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::apply(oop object) 
 
   HeapWord* compact_top = _cp->forward_compact_top(forward_size);
 
-  if (compact_top == NULL || must_rescue(object, oop(compact_top))) {
+  if (compact_top == NULL || must_rescue(object, cast_to_oop(compact_top))) {
     _cp->rescued_oops()->append(cast_from_oop<HeapWord*>(object));
   } else {
     _cp->forward_dcevm(object, forward_size, (size != forward_size));
@@ -308,7 +308,7 @@ size_t G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::apply(oop object) 
 
 bool G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::must_rescue(oop old_obj, oop new_obj) {
   // Only redefined objects can have the need to be rescued.
-  if (oop(old_obj)->klass()->new_version() == NULL) {
+  if (old_obj->klass()->new_version() == NULL) {
     return false;
   }
 
