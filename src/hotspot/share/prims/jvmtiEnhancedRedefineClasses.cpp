@@ -708,7 +708,7 @@ void VM_EnhancedRedefineClasses::reinitializeJDKClasses() {
       InstanceKlass* cur = _new_classes->at(i);
 
       if ((cur->name()->starts_with("java/") || cur->name()->starts_with("jdk/") || cur->name()->starts_with("sun/"))
-          && cur->name()->index_of_at(0, "$$") == -1) { // skip dynamic proxies
+          && cur->name()->index_of_at(0, "$$", (int) strlen("$$")) == -1) { // skip dynamic proxies
 
         if (cur == vmClasses::ClassLoader_klass()) {
           // ClassLoader.addClass method is cached in Universe, we must redefine
