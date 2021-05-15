@@ -350,7 +350,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
       size_t size = space->obj_size(cur_obj);
       HeapWord* compaction_top = cast_from_oop<HeapWord*>(cast_to_oop(cur_obj)->forwardee());
 
-      if (redefinition_run &&  space->must_rescue(oop(cur_obj), oop(cur_obj)->forwardee())) {
+      if (redefinition_run &&  space->must_rescue(cast_to_oop(cur_obj), cast_to_oop(cur_obj)->forwardee())) {
          space->rescue(cur_obj);
         debug_only(Copy::fill_to_words(cur_obj, size, 0));
         cur_obj += size;
@@ -362,16 +362,16 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
 
       // copy object and reinit its mark
       assert(redefinition_run || cur_obj != compaction_top, "everything in this pass should be moving");
-      if (redefinition_run && oop(cur_obj)->klass()->new_version() != NULL) {
-        Klass* new_version = oop(cur_obj)->klass()->new_version();
+      if (redefinition_run && cast_to_oop(cur_obj)->klass()->new_version() != NULL) {
+        Klass* new_version = cast_to_oop(cur_obj)->klass()->new_version();
         if (new_version->update_information() == NULL) {
           Copy::aligned_conjoint_words(cur_obj, compaction_top, size);
-          oop(compaction_top)->set_klass(new_version);
+          cast_to_oop(compaction_top)->set_klass(new_version);
         } else {
-          DcevmSharedGC::update_fields(oop(cur_obj), oop(compaction_top));
+          DcevmSharedGC::update_fields(cast_to_oop(cur_obj), cast_to_oop(compaction_top));
         }
-        oop(compaction_top)->init_mark();
-        assert(oop(compaction_top)->klass() != NULL, "should have a class");
+        cast_to_oop(compaction_top)->init_mark();
+        assert(cast_to_oop(compaction_top)->klass() != NULL, "should have a class");
 
         debug_only(prev_obj = cur_obj);
         cur_obj += size;

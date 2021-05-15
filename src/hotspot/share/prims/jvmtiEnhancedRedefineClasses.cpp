@@ -439,7 +439,7 @@ public:
     int size = o->size();
     if (_tmp_obj_size < size) {
       _tmp_obj_size = size;
-      _tmp_obj = (oop)resource_allocate_bytes(size * HeapWordSize);
+      _tmp_obj = cast_to_oop(resource_allocate_bytes(size * HeapWordSize));
     }
     Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(o), cast_from_oop<HeapWord*>(_tmp_obj), size);
   }

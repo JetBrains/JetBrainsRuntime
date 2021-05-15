@@ -182,18 +182,18 @@ size_t G1FullGCCompactTask::G1CompactRegionClosureDcevm::apply(oop obj) {
     Klass* new_version = obj->klass()->new_version();
     if (new_version->update_information() == NULL) {
       Copy::aligned_conjoint_words(obj_addr, destination, size);
-      oop(destination)->set_klass(new_version);
+      cast_to_oop(destination)->set_klass(new_version);
     } else {
-      DcevmSharedGC::update_fields(obj, oop(destination));
+      DcevmSharedGC::update_fields(obj, cast_to_oop(destination));
     }
-    oop(destination)->init_mark();
-    assert(oop(destination)->klass() != NULL, "should have a class");
+    cast_to_oop(destination)->init_mark();
+    assert(cast_to_oop(destination)->klass() != NULL, "should have a class");
     return size;
   }
 
   Copy::aligned_conjoint_words(obj_addr, destination, size);
-  oop(destination)->init_mark();
-  assert(oop(destination)->klass() != NULL, "should have a class");
+  cast_to_oop(destination)->init_mark();
+  assert(cast_to_oop(destination)->klass() != NULL, "should have a class");
 
   return size;
 }

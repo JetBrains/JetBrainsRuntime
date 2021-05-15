@@ -46,7 +46,7 @@ void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_
   if (rescued_oops != NULL) {
     for (int i=from; i < to; i++) {
       HeapWord* rescued_ptr = rescued_oops->at(i);
-      oop rescued_obj = (oop) rescued_ptr;
+      oop rescued_obj = cast_to_oop(rescued_ptr);
 
       int size = rescued_obj->size();
       oop new_obj = rescued_obj->forwardee();
@@ -75,7 +75,7 @@ void DcevmSharedGC::clear_rescued_objects_resource(GrowableArray<HeapWord*>* res
   if (rescued_oops != NULL) {
     for (int i=0; i < rescued_oops->length(); i++) {
       HeapWord* rescued_ptr = rescued_oops->at(i);
-      int size = ((oop) rescued_ptr)->size();
+      int size = cast_to_oop(rescued_ptr)->size();
       FREE_RESOURCE_ARRAY(HeapWord, rescued_ptr, size);
     }
     rescued_oops->clear();
@@ -114,7 +114,7 @@ void DcevmSharedGC::update_fields(oop q, oop new_location) {
     if ((cast_from_oop<HeapWord*>(q) >= cast_from_oop<HeapWord*>(new_location) && cast_from_oop<HeapWord*>(q) < cast_from_oop<HeapWord*>(new_location) + new_size) ||
         (cast_from_oop<HeapWord*>(new_location) >= cast_from_oop<HeapWord*>(q) && cast_from_oop<HeapWord*>(new_location) < cast_from_oop<HeapWord*>(q) + size)) {
        tmp = NEW_RESOURCE_ARRAY(HeapWord, size);
-       q = (oop) tmp;
+       q = cast_to_oop(tmp);
        Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(tmp_obj), cast_from_oop<HeapWord*>(q), size);
     }
   }
