@@ -439,7 +439,7 @@ public:
     int size = o->size();
     if (_tmp_obj_size < size) {
       _tmp_obj_size = size;
-      _tmp_obj = (oop)resource_allocate_bytes(size * HeapWordSize);
+      _tmp_obj = cast_to_oop(resource_allocate_bytes(size * HeapWordSize));
     }
     Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(o), cast_from_oop<HeapWord*>(_tmp_obj), size);
   }
@@ -708,7 +708,7 @@ void VM_EnhancedRedefineClasses::reinitializeJDKClasses() {
       InstanceKlass* cur = _new_classes->at(i);
 
       if ((cur->name()->starts_with("java/") || cur->name()->starts_with("jdk/") || cur->name()->starts_with("sun/"))
-          && cur->name()->index_of_at(0, "$$") == -1) { // skip dynamic proxies
+          && cur->name()->index_of_at(0, "$$", (int) strlen("$$")) == -1) { // skip dynamic proxies
 
         if (cur == vmClasses::ClassLoader_klass()) {
           // ClassLoader.addClass method is cached in Universe, we must redefine
