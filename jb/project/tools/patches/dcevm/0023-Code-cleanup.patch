@@ -1,0 +1,78 @@
+From 93cea8d61ef395a1ef9e308b0d3a8f9409b108d0 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Fri, 12 Feb 2021 11:27:39 +0100
+Subject: [PATCH 23/28] Code cleanup
+
+- Rename confusing method name old_if_redefined to old_if_redefining
+- Remove unused is_redefining_gc_run
+---
+ src/hotspot/share/classfile/dictionary.cpp | 6 +++---
+ src/hotspot/share/classfile/dictionary.hpp | 2 +-
+ src/hotspot/share/memory/universe.hpp      | 5 -----
+ 3 files changed, 4 insertions(+), 9 deletions(-)
+
+diff --git a/src/hotspot/share/classfile/dictionary.cpp b/src/hotspot/share/classfile/dictionary.cpp
+index dda5188c370..4e361d439f4 100644
+--- a/src/hotspot/share/classfile/dictionary.cpp
++++ b/src/hotspot/share/classfile/dictionary.cpp
+@@ -381,7 +381,7 @@ InstanceKlass* Dictionary::find(unsigned int hash, Symbol* name,
+   int index = hash_to_index(hash);
+   DictionaryEntry* entry = get_entry(index, hash, name);
+   if (entry != NULL && entry->is_valid_protection_domain(protection_domain)) {
+-    return old_if_redefined(entry->instance_klass());
++    return old_if_redefining(entry->instance_klass());
+   } else {
+     return NULL;
+   }
+@@ -394,7 +394,7 @@ InstanceKlass* Dictionary::find_class(int index, unsigned int hash,
+   assert (index == index_for(name), "incorrect index?");
+ 
+   DictionaryEntry* entry = get_entry(index, hash, name);
+-  return old_if_redefined((entry != NULL) ? entry->instance_klass() : NULL);
++  return old_if_redefining((entry != NULL) ? entry->instance_klass() : NULL);
+ }
+ 
+ 
+@@ -406,7 +406,7 @@ InstanceKlass* Dictionary::find_shared_class(int index, unsigned int hash,
+   assert (index == index_for(name), "incorrect index?");
+ 
+   DictionaryEntry* entry = get_entry(index, hash, name);
+-  return old_if_redefined((entry != NULL) ? entry->instance_klass() : NULL);
++  return old_if_redefining((entry != NULL) ? entry->instance_klass() : NULL);
+ }
+ 
+ 
+diff --git a/src/hotspot/share/classfile/dictionary.hpp b/src/hotspot/share/classfile/dictionary.hpp
+index 5eaa741d500..f6e08e7bfd5 100644
+--- a/src/hotspot/share/classfile/dictionary.hpp
++++ b/src/hotspot/share/classfile/dictionary.hpp
+@@ -120,7 +120,7 @@ public:
+   void rollback_redefinition();
+ 
+   // (DCEVM) return old class if redefining in AllowEnhancedClassRedefinition, otherwise return "k"
+-  static InstanceKlass* old_if_redefined(InstanceKlass* k) {
++  static InstanceKlass* old_if_redefining(InstanceKlass* k) {
+     return (k != NULL && k->is_redefining()) ? ((InstanceKlass* )k->old_version()) : k;
+   }
+ };
+diff --git a/src/hotspot/share/memory/universe.hpp b/src/hotspot/share/memory/universe.hpp
+index b32db16b9cf..742dada0e8f 100644
+--- a/src/hotspot/share/memory/universe.hpp
++++ b/src/hotspot/share/memory/universe.hpp
+@@ -52,13 +52,8 @@ class LatestMethodCache : public CHeapObj<mtClass> {
+   Klass*                _klass;
+   int                   _method_idnum;
+ 
+-  static bool _is_redefining_gc_run;
+-
+  public:
+ 
+-   static bool is_redefining_gc_run()               { return _is_redefining_gc_run; }
+-   static void set_redefining_gc_run(bool b)        { _is_redefining_gc_run = b;    }
+-
+   LatestMethodCache()   { _klass = NULL; _method_idnum = -1; }
+   ~LatestMethodCache()  { _klass = NULL; _method_idnum = -1; }
+ 
+-- 
+2.23.0
+
