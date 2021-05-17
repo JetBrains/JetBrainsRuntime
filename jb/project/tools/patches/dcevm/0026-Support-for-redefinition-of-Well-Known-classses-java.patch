@@ -1,0 +1,333 @@
+From f279999a412cc87c6f4a7eed7e1e2ad34655b4fe Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Mon, 8 Mar 2021 02:22:54 +0700
+Subject: [PATCH 26/28] Support for redefinition of Well Known classses
+ (java.*,jdk.*, sun.*)
+
+---
+ src/hotspot/share/ci/ciKlass.hpp              |  1 +
+ src/hotspot/share/ci/ciObjectFactory.cpp      | 34 +++++++++++
+ src/hotspot/share/ci/ciObjectFactory.hpp      |  6 ++
+ .../share/classfile/systemDictionary.cpp      | 10 +++
+ .../share/classfile/systemDictionary.hpp      |  2 +
+ src/hotspot/share/classfile/vmSymbols.hpp     |  2 +
+ src/hotspot/share/compiler/compileBroker.cpp  | 11 ++++
+ src/hotspot/share/memory/universe.cpp         |  8 +++
+ src/hotspot/share/memory/universe.hpp         |  3 +
+ .../prims/jvmtiEnhancedRedefineClasses.cpp    | 61 ++++++++++++++++++-
+ .../prims/jvmtiEnhancedRedefineClasses.hpp    |  2 +
+ 11 files changed, 139 insertions(+), 1 deletion(-)
+
+diff --git a/src/hotspot/share/ci/ciKlass.hpp b/src/hotspot/share/ci/ciKlass.hpp
+index 896f489453a..c610c365aba 100644
+--- a/src/hotspot/share/ci/ciKlass.hpp
++++ b/src/hotspot/share/ci/ciKlass.hpp
+@@ -129,6 +129,7 @@ public:
+   void print_name_on(outputStream* st);
+ 
+   const char* external_name() const;
++  Klass* new_version() { return get_Klass()->new_version(); }
+ };
+ 
+ #endif // SHARE_VM_CI_CIKLASS_HPP
+diff --git a/src/hotspot/share/ci/ciObjectFactory.cpp b/src/hotspot/share/ci/ciObjectFactory.cpp
+index 66bbe835e7b..107c16fa5cf 100644
+--- a/src/hotspot/share/ci/ciObjectFactory.cpp
++++ b/src/hotspot/share/ci/ciObjectFactory.cpp
+@@ -70,7 +70,10 @@ GrowableArray<ciMetadata*>* ciObjectFactory::_shared_ci_metadata = NULL;
+ ciSymbol*                 ciObjectFactory::_shared_ci_symbols[vmSymbols::SID_LIMIT];
+ int                       ciObjectFactory::_shared_ident_limit = 0;
+ volatile bool             ciObjectFactory::_initialized = false;
++volatile bool             ciObjectFactory::_reinitialize_wk_klasses = false;
+ 
++// TODO: review...
++Arena* ciObjectFactory::_initial_arena = NULL;
+ 
+ // ------------------------------------------------------------------
+ // ciObjectFactory::ciObjectFactory
+@@ -112,6 +115,7 @@ void ciObjectFactory::initialize() {
+   // compiler thread that initializes the initial ciObjectFactory which
+   // creates the shared ciObjects that all later ciObjectFactories use.
+   Arena* arena = new (mtCompiler) Arena(mtCompiler);
++  ciObjectFactory::_initial_arena = arena;
+   ciEnv initial(arena);
+   ciEnv* env = ciEnv::current();
+   env->_factory->init_shared_objects();
+@@ -120,6 +124,36 @@ void ciObjectFactory::initialize() {
+ 
+ }
+ 
++// (DCEVM) wk classes could be modified
++void ciObjectFactory::reinitialize_wk_classes() {
++  ASSERT_IN_VM;
++  JavaThread* thread = JavaThread::current();
++  HandleMark  handle_mark(thread);
++
++  // This Arena is long lived and exists in the resource mark of the
++  // compiler thread that initializes the initial ciObjectFactory which
++  // creates the shared ciObjects that all later ciObjectFactories use.
++  // Arena* arena = new (mtCompiler) Arena(mtCompiler);
++  ciEnv initial(ciObjectFactory::_initial_arena);
++  ciEnv* env = ciEnv::current();
++  env->_factory->do_reinitialize_wk_classes();
++  _reinitialize_wk_klasses = false;
++}
++
++// (DCEVM) wk classes could be modified
++void ciObjectFactory::do_reinitialize_wk_classes() {
++#define WK_KLASS_DEFN(name, ignore_s, opt)   \
++  if (ciEnv::_##name != NULL && ciEnv::_##name->new_version() != NULL) { \
++    int old_ident = ciEnv::_##name->ident(); \
++    ciEnv::_##name = get_metadata(SystemDictionary::name())->as_instance_klass(); \
++    ciEnv::_##name->compute_nonstatic_fields(); \
++    ciEnv::_##name->set_ident(old_ident); \
++  }
++
++  WK_KLASSES_DO(WK_KLASS_DEFN)
++#undef WK_KLASS_DEFN
++}
++
+ void ciObjectFactory::init_shared_objects() {
+ 
+   _next_ident = 1;  // start numbering CI objects at 1
+diff --git a/src/hotspot/share/ci/ciObjectFactory.hpp b/src/hotspot/share/ci/ciObjectFactory.hpp
+index 3e9d48c4cdc..79059f6e2e8 100644
+--- a/src/hotspot/share/ci/ciObjectFactory.hpp
++++ b/src/hotspot/share/ci/ciObjectFactory.hpp
+@@ -41,9 +41,11 @@ class ciObjectFactory : public ResourceObj {
+ 
+ private:
+   static volatile bool _initialized;
++  static volatile bool _reinitialize_wk_klasses;
+   static GrowableArray<ciMetadata*>* _shared_ci_metadata;
+   static ciSymbol*                 _shared_ci_symbols[];
+   static int                       _shared_ident_limit;
++  static Arena*                    _initial_arena;
+ 
+   Arena*                    _arena;
+   GrowableArray<ciMetadata*>*        _ci_metadata;
+@@ -89,10 +91,14 @@ private:
+   ciInstance* get_unloaded_instance(ciInstanceKlass* klass);
+ 
+   static int compare_cimetadata(ciMetadata** a, ciMetadata** b);
++  void do_reinitialize_wk_classes();
+ public:
+   static bool is_initialized() { return _initialized; }
++  static bool is_reinitialize_wk_klasses() { return _reinitialize_wk_klasses; }
++  static void set_reinitialize_wk_klasses() { _reinitialize_wk_klasses = true; }
+ 
+   static void initialize();
++  static void reinitialize_wk_classes();
+   void init_shared_objects();
+   void remove_symbols();
+ 
+diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
+index 789b5fb1e6d..25e577a664c 100644
+--- a/src/hotspot/share/classfile/systemDictionary.cpp
++++ b/src/hotspot/share/classfile/systemDictionary.cpp
+@@ -1983,6 +1983,16 @@ bool SystemDictionary::is_well_known_klass(Symbol* class_name) {
+ }
+ #endif
+ 
++bool SystemDictionary::update_well_known_klass(InstanceKlass* old_klass, InstanceKlass* new_klass) {
++  for (int id = FIRST_WKID; id < WKID_LIMIT; id++) {
++    if (well_known_klass((WKID) id) == old_klass) {
++      *well_known_klass_addr((WKID)id) = new_klass;
++      return true;
++    }
++  }
++  return false;
++}
++
+ bool SystemDictionary::resolve_wk_klass(WKID id, int init_opt, TRAPS) {
+   assert(id >= (int)FIRST_WKID && id < (int)WKID_LIMIT, "oob");
+   int  info = wk_init_info[id - FIRST_WKID];
+diff --git a/src/hotspot/share/classfile/systemDictionary.hpp b/src/hotspot/share/classfile/systemDictionary.hpp
+index 1dbbffa197f..4220978a025 100644
+--- a/src/hotspot/share/classfile/systemDictionary.hpp
++++ b/src/hotspot/share/classfile/systemDictionary.hpp
+@@ -467,6 +467,8 @@ public:
+   static bool is_well_known_klass(Symbol* class_name);
+ #endif
+ 
++  static bool update_well_known_klass(InstanceKlass* new_klass, InstanceKlass* old_klass);
++
+   // Enhanced class redefinition
+   static void remove_from_hierarchy(InstanceKlass* k);
+   static void update_constraints_after_redefinition();
+diff --git a/src/hotspot/share/classfile/vmSymbols.hpp b/src/hotspot/share/classfile/vmSymbols.hpp
+index 2409af9b06e..daaa8d12375 100644
+--- a/src/hotspot/share/classfile/vmSymbols.hpp
++++ b/src/hotspot/share/classfile/vmSymbols.hpp
+@@ -355,6 +355,8 @@
+   template(exit_method_name,                          "exit")                                     \
+   template(add_method_name,                           "add")                                      \
+   template(remove_method_name,                        "remove")                                   \
++  template(registerNatives_method_name,               "registerNatives")                          \
++  template(initIDs_method_name,                       "initIDs")                                  \
+   template(parent_name,                               "parent")                                   \
+   template(threads_name,                              "threads")                                  \
+   template(groups_name,                               "groups")                                   \
+diff --git a/src/hotspot/share/compiler/compileBroker.cpp b/src/hotspot/share/compiler/compileBroker.cpp
+index 765b8ffa4dc..25271feb41f 100644
+--- a/src/hotspot/share/compiler/compileBroker.cpp
++++ b/src/hotspot/share/compiler/compileBroker.cpp
+@@ -1877,6 +1877,17 @@ void CompileBroker::compiler_thread_loop() {
+       if (method()->number_of_breakpoints() == 0) {
+         // Compile the method.
+         if ((UseCompiler || AlwaysCompileLoopMethods) && CompileBroker::should_compile_new_jobs()) {
++
++          // TODO: review usage of CompileThread_lock (DCEVM)
++          if (ciObjectFactory::is_reinitialize_wk_klasses())
++          {
++            ASSERT_IN_VM;
++            MutexLocker only_one (CompileThread_lock, thread);
++            if (ciObjectFactory::is_reinitialize_wk_klasses()) {
++              ciObjectFactory::reinitialize_wk_classes();
++            }
++          }
++
+           invoke_compiler_on_method(task);
+           thread->start_idle_timer();
+         } else {
+diff --git a/src/hotspot/share/memory/universe.cpp b/src/hotspot/share/memory/universe.cpp
+index 3dc4cc1323c..6b88271b5ef 100644
+--- a/src/hotspot/share/memory/universe.cpp
++++ b/src/hotspot/share/memory/universe.cpp
+@@ -1030,6 +1030,14 @@ void Universe::initialize_known_methods(TRAPS) {
+                           vmSymbols::doStackWalk_signature(), false, CHECK);
+ }
+ 
++void Universe::reinitialize_loader_addClass_method(TRAPS) {
++  // Set up method for registering loaded classes in class loader vector
++  initialize_known_method(_loader_addClass_cache,
++                          SystemDictionary::ClassLoader_klass(),
++                          "addClass",
++                          vmSymbols::class_void_signature(), false, CHECK);
++}
++
+ void universe2_init() {
+   EXCEPTION_MARK;
+   Universe::genesis(CATCH);
+diff --git a/src/hotspot/share/memory/universe.hpp b/src/hotspot/share/memory/universe.hpp
+index 742dada0e8f..d1af82b5fa7 100644
+--- a/src/hotspot/share/memory/universe.hpp
++++ b/src/hotspot/share/memory/universe.hpp
+@@ -349,6 +349,9 @@ class Universe: AllStatic {
+   // Function to initialize these
+   static void initialize_known_methods(TRAPS);
+ 
++  // Enhanced class redefinition
++  static void reinitialize_loader_addClass_method(TRAPS);
++
+   static oop          null_ptr_exception_instance()   { return _null_ptr_exception_instance;   }
+   static oop          arithmetic_exception_instance() { return _arithmetic_exception_instance; }
+   static oop          virtual_machine_error_instance() { return _virtual_machine_error_instance; }
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index f4bde7504c8..80d4e68ccae 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -497,6 +497,16 @@ void VM_EnhancedRedefineClasses::doit() {
+     redefine_single_class(_new_classes->at(i), thread);
+   }
+ 
++  // Update possible redefinition of well-known classes (like ClassLoader)
++  for (int i = 0; i < _new_classes->length(); i++) {
++    InstanceKlass* cur = _new_classes->at(i);
++    if (cur->old_version() != NULL && SystemDictionary::update_well_known_klass(InstanceKlass::cast(cur->old_version()), cur))
++    {
++      log_trace(redefine, class, obsolete, metadata)("Well known class updated %s", cur->external_name());
++      ciObjectFactory::set_reinitialize_wk_klasses();
++    }
++  }
++
+   // Deoptimize all compiled code that depends on this class (do only once, because it clears whole cache)
+   // if (_max_redefinition_flags > Klass::ModifyClass) {
+     flush_dependent_code(NULL, thread);
+@@ -672,12 +682,56 @@ void VM_EnhancedRedefineClasses::doit() {
+   _timer_vm_op_doit.stop();
+ }
+ 
++void VM_EnhancedRedefineClasses::reinitializeJDKClasses() {
++  if (!_new_classes->is_empty()) {
++    ResourceMark rm(Thread::current());
++
++    for (int i = 0; i < _new_classes->length(); i++) {
++      InstanceKlass* cur = _new_classes->at(i);
++
++      if (cur->name()->starts_with("java/") || cur->name()->starts_with("jdk/") || cur->name()->starts_with("sun/")) {
++
++        if (cur == SystemDictionary::ClassLoader_klass()) {
++          // ClassLoader.addClass method is cached in Universe, we must redefine
++          Universe::reinitialize_loader_addClass_method(Thread::current());
++          log_trace(redefine, class, obsolete, metadata)("Reinitialize ClassLoade addClass method cache.");
++        }
++
++        // naive assumptions that only JDK classes has native static "registerNative" and "initIDs" methods
++        int end;
++        Symbol* signature = vmSymbols::registerNatives_method_name();
++        int midx = cur->find_method_by_name(signature, &end);
++        if (midx == -1) {
++          signature = vmSymbols::initIDs_method_name();
++          midx = cur->find_method_by_name(signature, &end);
++        }
++        Method* m = NULL;
++        if (midx != -1) {
++          m = cur->methods()->at(midx);
++        }
++        if (m != NULL && m->is_static() && m->is_native()) {
++          // call static registerNative if present
++          JavaValue result(T_VOID);
++          JavaCalls::call_static(&result,
++                                  cur,
++                                  signature,
++                                  vmSymbols::void_method_signature(),
++                                  Thread::current());
++          log_trace(redefine, class, obsolete, metadata)("Reregister natives of JDK class %s", cur->external_name());
++        }
++      }
++    }
++  }
++}
++
+ // Cleanup - runs in JVM thread
+ //  - free used memory
+ //  - end GC
+ void VM_EnhancedRedefineClasses::doit_epilogue() {
+   VM_GC_Operation::doit_epilogue();
+ 
++  reinitializeJDKClasses();
++
+   if (_new_classes != NULL) {
+     delete _new_classes;
+   }
+@@ -1589,7 +1643,12 @@ void VM_EnhancedRedefineClasses::check_methods_and_mark_as_obsolete() {
+ 
+       // obsolete methods need a unique idnum so they become new entries in
+       // the jmethodID cache in InstanceKlass
+-      assert(old_method->method_idnum() == new_method->method_idnum(), "must match");
++      if (old_method->method_idnum() != new_method->method_idnum()) {
++        log_error(redefine, class, normalize)
++          ("Method not matched: %d != %d  old: %s = new: %s",  old_method->method_idnum(), new_method->method_idnum(),
++              old_method->name_and_sig_as_C_string(), new_method->name_and_sig_as_C_string());
++        // assert(old_method->method_idnum() == new_method->method_idnum(), "must match");
++      }
+ //      u2 num = InstanceKlass::cast(_the_class_oop)->next_method_idnum();
+ //      if (num != ConstMethod::UNSET_IDNUM) {
+ //        old_method->set_method_idnum(num);
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+index 4c0412d343d..79ea17b0d47 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
+@@ -141,6 +141,8 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
+ 
+   void flush_dependent_code(InstanceKlass* k_h, TRAPS);
+ 
++  void reinitializeJDKClasses();
++
+   static void check_class(InstanceKlass* k_oop, TRAPS);
+ 
+   static void dump_methods();
+-- 
+2.23.0
+
