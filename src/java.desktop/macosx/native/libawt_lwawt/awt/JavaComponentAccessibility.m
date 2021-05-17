@@ -557,10 +557,6 @@ static void RaiseMustOverrideException(NSString *method)
     return (int)JNFCallStaticIntMethod    ([ThreadUtilities getJNIEnv], sjm_getAccessibleIndexInParent, fAccessible, fComponent);
 }
 
-- (id)accessibleHitTest:(NSPoint)point {
-
-}
-
 - (void)getActionsWithEnv:(JNIEnv *)env {
     static JNF_STATIC_MEMBER_CACHE(jm_getAccessibleAction, sjc_CAccessibility, "getAccessibleAction", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/AccessibleAction;");
     
