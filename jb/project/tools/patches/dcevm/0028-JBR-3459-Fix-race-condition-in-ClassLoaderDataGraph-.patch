@@ -1,0 +1,79 @@
+From 88e0325768b074607f5f9edfbb7f8e4a76159942 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Sat, 20 Mar 2021 20:51:08 +0100
+Subject: [PATCH 28/28] JBR-3459: Fix race condition in
+ ClassLoaderDataGraph::classes_do
+
+InstanceKlass in ClassLoaderData can be uninitialized when
+ClassLoaderDataGraph::classes_do is called. Using
+ClassLoaderDataGraph::dictionary_classes_do is safe but problem is still
+persisting with anonymous classes.
+---
+ src/hotspot/share/classfile/classLoaderData.cpp     | 10 ++++++++++
+ src/hotspot/share/classfile/classLoaderData.hpp     |  4 ++++
+ .../share/prims/jvmtiEnhancedRedefineClasses.cpp    | 13 +++++++++++--
+ 3 files changed, 25 insertions(+), 2 deletions(-)
+
+diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
+index 4e06b09e7d5..f319cca3b2b 100644
+--- a/src/hotspot/share/classfile/classLoaderData.cpp
++++ b/src/hotspot/share/classfile/classLoaderData.cpp
+@@ -1166,6 +1166,16 @@ void ClassLoaderDataGraph::classes_do(KlassClosure* klass_closure) {
+   }
+ }
+ 
++void ClassLoaderDataGraph::anonymous_classes_do(KlassClosure* klass_closure) {
++  Thread* thread = Thread::current();
++  for (ClassLoaderData* cld = _head; cld != NULL; cld = cld->next()) {
++    if (cld->is_anonymous()) {
++      Handle holder(thread, cld->holder_phantom());
++      cld->classes_do(klass_closure);
++    }
++  }
++}
++
+ void ClassLoaderDataGraph::classes_do(void f(Klass* const)) {
+   Thread* thread = Thread::current();
+   for (ClassLoaderData* cld = _head; cld != NULL; cld = cld->next()) {
+diff --git a/src/hotspot/share/classfile/classLoaderData.hpp b/src/hotspot/share/classfile/classLoaderData.hpp
+index 16711dca237..b10fafa01e5 100644
+--- a/src/hotspot/share/classfile/classLoaderData.hpp
++++ b/src/hotspot/share/classfile/classLoaderData.hpp
+@@ -108,6 +108,10 @@ class ClassLoaderDataGraph : public AllStatic {
+   // for redefinition.  These classes are removed during the next class unloading.
+   // Walking the ClassLoaderDataGraph also includes anonymous classes.
+   static void classes_do(KlassClosure* klass_closure);
++
++  // Enhanced class redefinition
++  static void anonymous_classes_do(KlassClosure* klass_closure);
++
+   static void classes_do(void f(Klass* const));
+   static void methods_do(void f(Method*));
+   static void modules_do(void f(ModuleEntry*));
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 10c375d601c..5de5f78aea0 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -2130,8 +2130,17 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
+   AffectedKlassClosure closure(_affected_klasses);
+   // Updated in j10, from original SystemDictionary::classes_do
+ 
+-  ClassLoaderDataGraph::classes_do(&closure);
+-  //ClassLoaderDataGraph::dictionary_classes_do(&closure);
++  // 0. we can't use ClassLoaderDataGraph::classes_do since classes can be uninitialized in cld,
++  // fully initialized class is in system dictionary
++  // ClassLoaderDataGraph::classes_do(&closure);
++
++  // 1. Scan over dictionaries
++  ClassLoaderDataGraph::dictionary_classes_do(&closure);
++
++  // 2. Anonymous class is not in dictionary, we have to iterate anonymous cld directly, but there is race cond...
++  // TODO: review ... anonymous class is added to cld before InstanceKlass initialization,
++  //                  find out how to check if the InstanceKlass is initialized
++  ClassLoaderDataGraph::anonymous_classes_do(&closure);
+ 
+   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
+ 
+-- 
+2.23.0
+
