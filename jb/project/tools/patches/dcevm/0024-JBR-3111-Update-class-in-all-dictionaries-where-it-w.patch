@@ -1,0 +1,95 @@
+From dcb44f0e56dbc63b90d655b694a3f7751744fe53 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Sat, 13 Feb 2021 20:47:52 +0100
+Subject: [PATCH 24/28] JBR-3111 Update class in all dictionaries where it was
+ already defined
+
+This patch keeps compatibility with std redefinition, that does not
+create a new Klass, but modifies it, then it is modified in all
+dictionaries containing this class.
+---
+ src/hotspot/share/classfile/classLoaderData.cpp  | 9 +++++++++
+ src/hotspot/share/classfile/classLoaderData.hpp  | 3 +++
+ src/hotspot/share/classfile/dictionary.cpp       | 2 +-
+ src/hotspot/share/classfile/dictionary.hpp       | 2 +-
+ src/hotspot/share/classfile/systemDictionary.cpp | 4 +++-
+ 5 files changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
+index 8b2deb70e1b..4e06b09e7d5 100644
+--- a/src/hotspot/share/classfile/classLoaderData.cpp
++++ b/src/hotspot/share/classfile/classLoaderData.cpp
+@@ -1274,6 +1274,15 @@ void ClassLoaderDataGraph::rollback_redefinition() {
+   }
+ }
+ 
++// (DCEVM) - iterate over all classes in all dictionaries
++bool ClassLoaderDataGraph::dictionary_classes_do_update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass) {
++  bool ok = false;
++  FOR_ALL_DICTIONARY(cld) {
++    ok = cld->dictionary()->update_klass(name, k, old_klass) || ok;
++  }
++  return ok;
++}
++
+ // Walks all entries in the dictionary including entries initiated by this class loader.
+ void ClassLoaderDataGraph::dictionary_all_entries_do(void f(InstanceKlass*, ClassLoaderData*)) {
+   Thread* thread = Thread::current();
+diff --git a/src/hotspot/share/classfile/classLoaderData.hpp b/src/hotspot/share/classfile/classLoaderData.hpp
+index 00a84610b43..16711dca237 100644
+--- a/src/hotspot/share/classfile/classLoaderData.hpp
++++ b/src/hotspot/share/classfile/classLoaderData.hpp
+@@ -130,6 +130,9 @@ class ClassLoaderDataGraph : public AllStatic {
+   // Enhanced class redefinition
+   static void rollback_redefinition();
+ 
++  // Enhanced class redefinition
++  static bool dictionary_classes_do_update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass);
++
+   // Iterate all classes and their class loaders, including initiating class loaders.
+   static void dictionary_all_entries_do(void f(InstanceKlass*, ClassLoaderData*));
+ 
+diff --git a/src/hotspot/share/classfile/dictionary.cpp b/src/hotspot/share/classfile/dictionary.cpp
+index 4e361d439f4..6c072407fd9 100644
+--- a/src/hotspot/share/classfile/dictionary.cpp
++++ b/src/hotspot/share/classfile/dictionary.cpp
+@@ -345,7 +345,7 @@ DictionaryEntry* Dictionary::get_entry(int index, unsigned int hash,
+ }
+ 
+ // (DCEVM) replace old_class by new class in dictionary
+-bool Dictionary::update_klass(unsigned int hash, Symbol* name, ClassLoaderData* loader_data, InstanceKlass* k, InstanceKlass* old_klass) {
++bool Dictionary::update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass) {
+   // There are several entries for the same class in the dictionary: One extra entry for each parent classloader of the classloader of the class.
+   bool found = false;
+   for (int index = 0; index < table_size(); index++) {
+diff --git a/src/hotspot/share/classfile/dictionary.hpp b/src/hotspot/share/classfile/dictionary.hpp
+index f6e08e7bfd5..2932cc9c320 100644
+--- a/src/hotspot/share/classfile/dictionary.hpp
++++ b/src/hotspot/share/classfile/dictionary.hpp
+@@ -115,7 +115,7 @@ public:
+   void free_entry(DictionaryEntry* entry);
+ 
+   // Enhanced class redefinition
+-  bool update_klass(unsigned int hash, Symbol* name, ClassLoaderData* loader_data, InstanceKlass* k, InstanceKlass* old_klass);
++  bool update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass);
+ 
+   void rollback_redefinition();
+ 
+diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
+index 9e0f4dd3c96..789b5fb1e6d 100644
+--- a/src/hotspot/share/classfile/systemDictionary.cpp
++++ b/src/hotspot/share/classfile/systemDictionary.cpp
+@@ -1606,7 +1606,9 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
+   Dictionary* dictionary = loader_data->dictionary();
+   unsigned int d_hash = dictionary->compute_hash(name_h);
+   if (is_redefining) {
+-    bool ok = dictionary->update_klass(d_hash, name_h, loader_data, k, old_klass);
++    // Update all dictionaries containing old_class to new_class
++    // outcome must be same as result of standard redefinition, that does not create a new Klass
++    bool ok = ClassLoaderDataGraph::dictionary_classes_do_update_klass(name_h, k, old_klass);
+     assert (ok, "must have found old class and updated!");
+   }
+   check_constraints(d_hash, k, class_loader_h, !is_redefining, CHECK);
+-- 
+2.23.0
+
