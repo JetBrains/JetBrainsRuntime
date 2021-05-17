@@ -641,6 +641,7 @@ java/awt/event/ComponentEvent/MovedResizedTwiceTest/MovedResizedTwiceTest.java  
 java/awt/event/HierarchyEvent/AncestorResized/AncestorResized.java                  6618538 generic-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java                          8168646 generic-all
 java/awt/event/KeyEvent/CorrectTime/CorrectTime.java                                6626492 generic-all
+java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java                         8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java                   8194045 generic-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java                    8169476 windows-all,linux-all,macosx-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java            8129778 generic-all
@@ -1235,6 +1236,7 @@ tools/jlink/JLink2Test.java                                                     
 tools/jlink/JLinkNegativeTest.java                                                  nobug windows-6.1 fails on Windows 7 only
 tools/jlink/JLinkPluginsTest.java                                                   nobug windows-6.1 fails on Windows 7 only
 tools/jlink/JLinkPostProcessingTest.java                                            nobug windows-6.1 fails on Windows 7 only
+tools/jlink/JLinkReproducibleTest.java                                              8258945 linux-all,macosx-all
 tools/jlink/NativeTest.java                                                         nobug windows-6.1 fails on Windows 7 only
 tools/jlink/basic/AllModulePath.java                                                nobug windows-6.1 fails on Windows 7 only
 tools/jlink/basic/BasicTest.java                                                    nobug windows-6.1 fails on Windows 7 only
