@@ -1,0 +1,527 @@
+From b9692c48bdbad8474251cfe72ac85e5c7ff2847e Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Thu, 18 Jun 2020 18:40:11 +0200
+Subject: [PATCH 25/28] JBR-3140 - support for modularized HotswapAgent
+
+Add -XX:HotswapAgent=[disabled,fatjar.core]
+---
+ make/launcher/Launcher-java.base.gmk          |  1 -
+ make/launcher/Launcher-java.rmi.gmk           |  2 -
+ make/launcher/Launcher-java.scripting.gmk     |  3 +-
+ make/launcher/Launcher-java.security.jgss.gmk |  3 --
+ make/launcher/Launcher-jdk.aot.gmk            |  2 -
+ make/launcher/Launcher-jdk.compiler.gmk       |  5 +-
+ make/launcher/Launcher-jdk.hotspot.agent.gmk  |  1 -
+ make/launcher/Launcher-jdk.jartool.gmk        |  2 -
+ make/launcher/Launcher-jdk.javadoc.gmk        |  3 +-
+ make/launcher/Launcher-jdk.jcmd.gmk           | 13 +----
+ make/launcher/Launcher-jdk.jdeps.gmk          |  3 --
+ make/launcher/Launcher-jdk.jdi.gmk            |  1 -
+ make/launcher/Launcher-jdk.jlink.gmk          |  5 +-
+ make/launcher/Launcher-jdk.jshell.gmk         |  1 -
+ make/launcher/Launcher-jdk.jstatd.gmk         |  1 -
+ make/launcher/Launcher-jdk.pack.gmk           |  1 -
+ make/launcher/Launcher-jdk.rmic.gmk           |  1 -
+ .../Launcher-jdk.scripting.nashorn.shell.gmk  |  3 +-
+ src/hotspot/share/runtime/arguments.cpp       | 48 +++++++++++--------
+ .../runtime/flags/jvmFlagConstraintList.cpp   | 23 +++++++++
+ .../runtime/flags/jvmFlagConstraintList.hpp   |  1 +
+ .../flags/jvmFlagConstraintsRuntime.cpp       | 10 ++++
+ .../flags/jvmFlagConstraintsRuntime.hpp       |  1 +
+ src/hotspot/share/runtime/globals.hpp         | 12 ++++-
+ 24 files changed, 81 insertions(+), 65 deletions(-)
+
+diff --git a/make/launcher/Launcher-java.base.gmk b/make/launcher/Launcher-java.base.gmk
+index 38ba29530d8..f6d4aa28fe6 100644
+--- a/make/launcher/Launcher-java.base.gmk
++++ b/make/launcher/Launcher-java.base.gmk
+@@ -52,7 +52,6 @@ endif
+ 
+ $(eval $(call SetupBuildLauncher, keytool, \
+     MAIN_CLASS := sun.security.tools.keytool.Main, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+ ))
+ 
+ ################################################################################
+diff --git a/make/launcher/Launcher-java.rmi.gmk b/make/launcher/Launcher-java.rmi.gmk
+index 07046232275..a69a90bcc81 100644
+--- a/make/launcher/Launcher-java.rmi.gmk
++++ b/make/launcher/Launcher-java.rmi.gmk
+@@ -27,10 +27,8 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, rmid, \
+     MAIN_CLASS := sun.rmi.server.Activation, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+ ))
+ 
+ $(eval $(call SetupBuildLauncher, rmiregistry, \
+     MAIN_CLASS := sun.rmi.registry.RegistryImpl, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+ ))
+diff --git a/make/launcher/Launcher-java.scripting.gmk b/make/launcher/Launcher-java.scripting.gmk
+index cf100e20789..057d2bf3aca 100644
+--- a/make/launcher/Launcher-java.scripting.gmk
++++ b/make/launcher/Launcher-java.scripting.gmk
+@@ -27,6 +27,5 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, jrunscript, \
+     MAIN_CLASS := com.sun.tools.script.shell.Main, \
+-    JAVA_ARGS := --add-modules ALL-DEFAULT \
+-        -XX:+DisableHotswapAgent, \
++    JAVA_ARGS := --add-modules ALL-DEFAULT, \
+ ))
+diff --git a/make/launcher/Launcher-java.security.jgss.gmk b/make/launcher/Launcher-java.security.jgss.gmk
+index 2b856bfccb4..7411e1a21c4 100644
+--- a/make/launcher/Launcher-java.security.jgss.gmk
++++ b/make/launcher/Launcher-java.security.jgss.gmk
+@@ -28,16 +28,13 @@ include LauncherCommon.gmk
+ ifeq ($(OPENJDK_TARGET_OS), windows)
+   $(eval $(call SetupBuildLauncher, kinit, \
+       MAIN_CLASS := sun.security.krb5.internal.tools.Kinit, \
+-      JAVA_ARGS := -XX:+DisableHotswapAgent, \
+   ))
+ 
+   $(eval $(call SetupBuildLauncher, klist, \
+       MAIN_CLASS := sun.security.krb5.internal.tools.Klist, \
+-      JAVA_ARGS := -XX:+DisableHotswapAgent, \
+   ))
+ 
+   $(eval $(call SetupBuildLauncher, ktab, \
+       MAIN_CLASS := sun.security.krb5.internal.tools.Ktab, \
+-      JAVA_ARGS := -XX:+DisableHotswapAgent, \
+   ))
+ endif
+diff --git a/make/launcher/Launcher-jdk.aot.gmk b/make/launcher/Launcher-jdk.aot.gmk
+index 2c52c31a555..10717a5e1c5 100644
+--- a/make/launcher/Launcher-jdk.aot.gmk
++++ b/make/launcher/Launcher-jdk.aot.gmk
+@@ -31,7 +31,6 @@ include LauncherCommon.gmk
+ $(eval $(call SetupBuildLauncher, jaotc, \
+     MAIN_CLASS := jdk.tools.jaotc.Main, \
+     EXTRA_JAVA_ARGS := -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI \
+-        -XX:+DisableHotswapAgent \
+         --add-exports=jdk.internal.vm.ci/jdk.vm.ci.aarch64=$(call CommaList, jdk.internal.vm.compiler  jdk.aot) \
+         --add-exports=jdk.internal.vm.ci/jdk.vm.ci.amd64=$(call CommaList, jdk.internal.vm.compiler  jdk.aot) \
+         --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=$(call CommaList, jdk.internal.vm.compiler  jdk.aot) \
+@@ -41,7 +40,6 @@ $(eval $(call SetupBuildLauncher, jaotc, \
+         --add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=$(call CommaList, jdk.internal.vm.compiler  jdk.aot) \
+     , \
+     JAVA_ARGS := --add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.aarch64=$(call CommaList, jdk.internal.vm.compiler  jdk.aot) \
+-        -XX:+DisableHotswapAgent \
+         --add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.amd64=$(call CommaList, jdk.internal.vm.compiler  jdk.aot) \
+         --add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.aarch64=$(call CommaList, jdk.internal.vm.compiler  jdk.aot) \
+         --add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.sparc=$(call CommaList, jdk.internal.vm.compiler  jdk.aot) \
+diff --git a/make/launcher/Launcher-jdk.compiler.gmk b/make/launcher/Launcher-jdk.compiler.gmk
+index 744969546de..f71c37adf74 100644
+--- a/make/launcher/Launcher-jdk.compiler.gmk
++++ b/make/launcher/Launcher-jdk.compiler.gmk
+@@ -27,14 +27,12 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, javac, \
+    MAIN_CLASS := com.sun.tools.javac.Main, \
+-   JAVA_ARGS := --add-modules ALL-DEFAULT \
+-       -XX:+DisableHotswapAgent, \
++   JAVA_ARGS := --add-modules ALL-DEFAULT, \
+    CFLAGS := -DEXPAND_CLASSPATH_WILDCARDS, \
+ ))
+ 
+ $(eval $(call SetupBuildLauncher, serialver, \
+     MAIN_CLASS := sun.tools.serialver.SerialVer, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+     CFLAGS := -DEXPAND_CLASSPATH_WILDCARDS, \
+ ))
+ 
+@@ -43,7 +41,6 @@ ifeq ($(ENABLE_SJAVAC), yes)
+   # into any real images
+   $(eval $(call SetupBuildLauncher, sjavac, \
+       MAIN_CLASS := com.sun.tools.sjavac.Main, \
+-      JAVA_ARGS := -XX:+DisableHotswapAgent, \
+       CFLAGS := -DEXPAND_CLASSPATH_WILDCARDS, \
+       OUTPUT_DIR := $(JDK_OUTPUTDIR)/bin, \
+   ))
+diff --git a/make/launcher/Launcher-jdk.hotspot.agent.gmk b/make/launcher/Launcher-jdk.hotspot.agent.gmk
+index 9f12b05b172..76da3600368 100644
+--- a/make/launcher/Launcher-jdk.hotspot.agent.gmk
++++ b/make/launcher/Launcher-jdk.hotspot.agent.gmk
+@@ -27,6 +27,5 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, jhsdb, \
+     MAIN_CLASS := sun.jvm.hotspot.SALauncher, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+     MACOSX_PRIVILEGED := true, \
+ ))
+diff --git a/make/launcher/Launcher-jdk.jartool.gmk b/make/launcher/Launcher-jdk.jartool.gmk
+index 647d82b65b1..f74e82bfdae 100644
+--- a/make/launcher/Launcher-jdk.jartool.gmk
++++ b/make/launcher/Launcher-jdk.jartool.gmk
+@@ -27,10 +27,8 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, jar, \
+     MAIN_CLASS := sun.tools.jar.Main, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+ ))
+ 
+ $(eval $(call SetupBuildLauncher, jarsigner, \
+     MAIN_CLASS := sun.security.tools.jarsigner.Main, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+ ))
+diff --git a/make/launcher/Launcher-jdk.javadoc.gmk b/make/launcher/Launcher-jdk.javadoc.gmk
+index c3d2093be04..889028a2b17 100644
+--- a/make/launcher/Launcher-jdk.javadoc.gmk
++++ b/make/launcher/Launcher-jdk.javadoc.gmk
+@@ -27,7 +27,6 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, javadoc, \
+     MAIN_CLASS := jdk.javadoc.internal.tool.Main, \
+-    JAVA_ARGS := --add-modules ALL-DEFAULT \
+-        -XX:+DisableHotswapAgent, \
++    JAVA_ARGS := --add-modules ALL-DEFAULT, \
+     CFLAGS := -DEXPAND_CLASSPATH_WILDCARDS, \
+ ))
+diff --git a/make/launcher/Launcher-jdk.jcmd.gmk b/make/launcher/Launcher-jdk.jcmd.gmk
+index 761a52d8466..7117fa78059 100644
+--- a/make/launcher/Launcher-jdk.jcmd.gmk
++++ b/make/launcher/Launcher-jdk.jcmd.gmk
+@@ -30,7 +30,6 @@ $(eval $(call SetupBuildLauncher, jinfo, \
+     JAVA_ARGS := \
+         -Dsun.jvm.hotspot.debugger.useProcDebugger \
+         -Dsun.jvm.hotspot.debugger.useWindbgDebugger, \
+-        -XX:+DisableHotswapAgent, \
+     MACOSX_PRIVILEGED := true, \
+ ))
+ 
+@@ -38,36 +37,28 @@ $(eval $(call SetupBuildLauncher, jmap, \
+     MAIN_CLASS := sun.tools.jmap.JMap, \
+     JAVA_ARGS := \
+         -Dsun.jvm.hotspot.debugger.useProcDebugger \
+-        -Dsun.jvm.hotspot.debugger.useWindbgDebugger \
+-        -XX:+DisableHotswapAgent, \
++        -Dsun.jvm.hotspot.debugger.useWindbgDebugger, \
+     MACOSX_PRIVILEGED := true, \
+ ))
+ 
+ $(eval $(call SetupBuildLauncher, jps, \
+     MAIN_CLASS := sun.tools.jps.Jps, \
+-    JAVA_ARGS := \
+-        -XX:+DisableHotswapAgent, \
+ ))
+ 
+ $(eval $(call SetupBuildLauncher, jstack, \
+     MAIN_CLASS := sun.tools.jstack.JStack, \
+     JAVA_ARGS := \
+         -Dsun.jvm.hotspot.debugger.useProcDebugger \
+-        -Dsun.jvm.hotspot.debugger.useWindbgDebugger \
+-        -XX:+DisableHotswapAgent, \
++        -Dsun.jvm.hotspot.debugger.useWindbgDebugger, \
+     MACOSX_PRIVILEGED := true, \
+ ))
+ 
+ $(eval $(call SetupBuildLauncher, jstat, \
+     MAIN_CLASS := sun.tools.jstat.Jstat, \
+-    JAVA_ARGS := \
+-        -XX:+DisableHotswapAgent, \
+ ))
+ 
+ $(eval $(call SetupBuildLauncher, jcmd, \
+     MAIN_CLASS := sun.tools.jcmd.JCmd, \
+-    JAVA_ARGS := \
+-        -XX:+DisableHotswapAgent, \
+ ))
+ 
+ # Hook to include the corresponding custom file, if present.
+diff --git a/make/launcher/Launcher-jdk.jdeps.gmk b/make/launcher/Launcher-jdk.jdeps.gmk
+index 5448278dae7..217523c48cc 100644
+--- a/make/launcher/Launcher-jdk.jdeps.gmk
++++ b/make/launcher/Launcher-jdk.jdeps.gmk
+@@ -27,18 +27,15 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, javap, \
+     MAIN_CLASS := com.sun.tools.javap.Main, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+     CFLAGS := -DEXPAND_CLASSPATH_WILDCARDS, \
+ ))
+ 
+ $(eval $(call SetupBuildLauncher, jdeps, \
+     MAIN_CLASS := com.sun.tools.jdeps.Main, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+     CFLAGS := -DEXPAND_CLASSPATH_WILDCARDS, \
+ ))
+ 
+ $(eval $(call SetupBuildLauncher, jdeprscan, \
+     MAIN_CLASS := com.sun.tools.jdeprscan.Main, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+     CFLAGS := -DEXPAND_CLASSPATH_WILDCARDS, \
+ ))
+diff --git a/make/launcher/Launcher-jdk.jdi.gmk b/make/launcher/Launcher-jdk.jdi.gmk
+index 27bd448e3ae..fcce98cf430 100644
+--- a/make/launcher/Launcher-jdk.jdi.gmk
++++ b/make/launcher/Launcher-jdk.jdi.gmk
+@@ -27,5 +27,4 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, jdb, \
+     MAIN_CLASS := com.sun.tools.example.debug.tty.TTY, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+ ))
+diff --git a/make/launcher/Launcher-jdk.jlink.gmk b/make/launcher/Launcher-jdk.jlink.gmk
+index 9e61edeb2c8..df2173996d7 100644
+--- a/make/launcher/Launcher-jdk.jlink.gmk
++++ b/make/launcher/Launcher-jdk.jlink.gmk
+@@ -27,21 +27,18 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, jimage,\
+     MAIN_CLASS := jdk.tools.jimage.Main, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+     CFLAGS := -DENABLE_ARG_FILES, \
+ ))
+ 
+ $(eval $(call SetupBuildLauncher, jlink,\
+     MAIN_CLASS := jdk.tools.jlink.internal.Main, \
+-    JAVA_ARGS :=  --add-modules ALL-DEFAULT \
+-        -XX:+DisableHotswapAgent, \
++    JAVA_ARGS :=  --add-modules ALL-DEFAULT, \
+     CFLAGS := -DENABLE_ARG_FILES \
+         -DEXPAND_CLASSPATH_WILDCARDS, \
+ ))
+ 
+ $(eval $(call SetupBuildLauncher, jmod,\
+     MAIN_CLASS := jdk.tools.jmod.Main, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+     CFLAGS := -DENABLE_ARG_FILES \
+         -DEXPAND_CLASSPATH_WILDCARDS, \
+ ))
+diff --git a/make/launcher/Launcher-jdk.jshell.gmk b/make/launcher/Launcher-jdk.jshell.gmk
+index 7287f8f998a..349eb88e9eb 100644
+--- a/make/launcher/Launcher-jdk.jshell.gmk
++++ b/make/launcher/Launcher-jdk.jshell.gmk
+@@ -27,6 +27,5 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, jshell, \
+     MAIN_CLASS := jdk.internal.jshell.tool.JShellToolProvider, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+     CFLAGS := -DEXPAND_CLASSPATH_WILDCARDS, \
+ ))
+diff --git a/make/launcher/Launcher-jdk.jstatd.gmk b/make/launcher/Launcher-jdk.jstatd.gmk
+index e1657910c67..e9286d63094 100644
+--- a/make/launcher/Launcher-jdk.jstatd.gmk
++++ b/make/launcher/Launcher-jdk.jstatd.gmk
+@@ -27,7 +27,6 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, jstatd, \
+     MAIN_CLASS := sun.tools.jstatd.Jstatd, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+ ))
+ 
+ # Hook to include the corresponding custom file, if present.
+diff --git a/make/launcher/Launcher-jdk.pack.gmk b/make/launcher/Launcher-jdk.pack.gmk
+index 64bbbb7c949..a93fd2a9017 100644
+--- a/make/launcher/Launcher-jdk.pack.gmk
++++ b/make/launcher/Launcher-jdk.pack.gmk
+@@ -28,7 +28,6 @@ include LauncherCommon.gmk
+ $(eval $(call SetupBuildLauncher, pack200, \
+     MAIN_MODULE := java.base, \
+     MAIN_CLASS := com.sun.java.util.jar.pack.Driver, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+ ))
+ 
+ ################################################################################
+diff --git a/make/launcher/Launcher-jdk.rmic.gmk b/make/launcher/Launcher-jdk.rmic.gmk
+index b8a55900b0e..d60c3d9b60b 100644
+--- a/make/launcher/Launcher-jdk.rmic.gmk
++++ b/make/launcher/Launcher-jdk.rmic.gmk
+@@ -27,6 +27,5 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, rmic, \
+     MAIN_CLASS := sun.rmi.rmic.Main, \
+-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
+     CFLAGS := -DEXPAND_CLASSPATH_WILDCARDS, \
+ ))
+diff --git a/make/launcher/Launcher-jdk.scripting.nashorn.shell.gmk b/make/launcher/Launcher-jdk.scripting.nashorn.shell.gmk
+index bd39f8595b2..82311e69fd6 100644
+--- a/make/launcher/Launcher-jdk.scripting.nashorn.shell.gmk
++++ b/make/launcher/Launcher-jdk.scripting.nashorn.shell.gmk
+@@ -27,7 +27,6 @@ include LauncherCommon.gmk
+ 
+ $(eval $(call SetupBuildLauncher, jjs, \
+     MAIN_CLASS := jdk.nashorn.tools.jjs.Main, \
+-    JAVA_ARGS := --add-modules ALL-DEFAULT \
+-        -XX:+DisableHotswapAgent, \
++    JAVA_ARGS := --add-modules ALL-DEFAULT, \
+     CFLAGS := -DENABLE_ARG_FILES, \
+ ))
+diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
+index c5635bb8537..d7fee6a8c95 100644
+--- a/src/hotspot/share/runtime/arguments.cpp
++++ b/src/hotspot/share/runtime/arguments.cpp
+@@ -4310,11 +4310,17 @@ void Arguments::setup_hotswap_agent() {
+   if (DumpSharedSpaces)
+     return;
+ 
+-  if (!AllowEnhancedClassRedefinition)
++  if (HotswapAgent == NULL || strcmp(HotswapAgent, "disabled") == 0)
+     return;
+ 
++  // Force AllowEnhancedClassRedefinition if HA is enabled
++  AllowEnhancedClassRedefinition = true;
++
++  bool ha_fatjar = strcmp(HotswapAgent, "fatjar") == 0;
++  bool ha_core = strcmp(HotswapAgent, "core") == 0;
++
+   // Set HotswapAgent
+-  if (!DisableHotswapAgent) {
++  if (ha_fatjar || ha_core) {
+ 
+     char ext_path_str[JVM_MAXPATHLEN];
+ 
+@@ -4333,23 +4339,27 @@ void Arguments::setup_hotswap_agent() {
+       }
+     }
+     if (ext_path_length < JVM_MAXPATHLEN - 10) {
+-      jio_snprintf(ext_path_str + ext_path_length, sizeof(ext_path_str) - ext_path_length,
+-                   "%shotswap%shotswap-agent.jar", os::file_separator(), os::file_separator());
+-    }
+-
+-    int fd = ::open(ext_path_str, O_RDONLY);
+-    if (fd >= 0) {
+-      os::close(fd);
+-      size_t length = strlen(ext_path_str) + 1;
+-      char *options = NEW_C_HEAP_ARRAY(char,  length, mtArguments);
+-      jio_snprintf(options, length, "%s", ext_path_str);
+-      add_init_agent("instrument", ext_path_str, false);
+-      jio_fprintf(defaultStream::output_stream(), "Starting HotswapAgent '%s'\n", ext_path_str);
+-    }
+-//    else
+-//    {
+-//      jio_fprintf(defaultStream::error_stream(), "HotswapAgent not found on path:'%s'\n", ext_path_str);
+-//    }
++      if (ha_fatjar) {
++        jio_snprintf(ext_path_str + ext_path_length, sizeof(ext_path_str) - ext_path_length,
++                     "%shotswap%shotswap-agent.jar", os::file_separator(), os::file_separator());
++      } else {
++        jio_snprintf(ext_path_str + ext_path_length, sizeof(ext_path_str) - ext_path_length,
++                     "%shotswap%shotswap-agent-core.jar", os::file_separator(), os::file_separator());
++      }
++      int fd = ::open(ext_path_str, O_RDONLY);
++      if (fd >= 0) {
++        os::close(fd);
++        size_t length = strlen(ext_path_str) + 1;
++        char *options = NEW_C_HEAP_ARRAY(char,  length, mtArguments);
++        jio_snprintf(options, length, "%s", ext_path_str);
++        add_init_agent("instrument", ext_path_str, false);
++        jio_fprintf(defaultStream::output_stream(), "Starting HotswapAgent '%s'\n", ext_path_str);
++      }
++      else
++      {
++        jio_fprintf(defaultStream::error_stream(), "HotswapAgent not found on path:'%s'!\n", ext_path_str);
++      }
++    }
+   }
+ 
+   // TODO: open it only for org.hotswap.agent module
+diff --git a/src/hotspot/share/runtime/flags/jvmFlagConstraintList.cpp b/src/hotspot/share/runtime/flags/jvmFlagConstraintList.cpp
+index 16d8030fd1c..94044c4831c 100644
+--- a/src/hotspot/share/runtime/flags/jvmFlagConstraintList.cpp
++++ b/src/hotspot/share/runtime/flags/jvmFlagConstraintList.cpp
+@@ -199,6 +199,26 @@ public:
+   }
+ };
+ 
++class JVMFlagConstraint_ccstr : public JVMFlagConstraint {
++  JVMFlagConstraintFunc_ccstr _constraint;
++  const ccstr* _ptr;
++
++public:
++  // the "name" argument must be a string literal
++  JVMFlagConstraint_ccstr(const char* name, const ccstr* ptr,
++                                   JVMFlagConstraintFunc_ccstr func,
++                                 ConstraintType type) : JVMFlagConstraint(name, type), _constraint(func), _ptr(ptr) {}
++
++  JVMFlag::Error apply(bool verbose) {
++    ccstr value = *_ptr;
++    return _constraint(value, verbose);
++  }
++
++  JVMFlag::Error apply_ccstr(ccstr value, bool verbose) {
++    return _constraint(value, verbose);
++  }
++};
++
+ // No constraint emitting
+ void emit_constraint_no(...)                                                      { /* NOP */ }
+ 
+@@ -239,6 +259,9 @@ void emit_constraint_size_t(const char* name, const size_t* ptr, JVMFlagConstrai
+ void emit_constraint_double(const char* name, const double* ptr, JVMFlagConstraintFunc_double func, JVMFlagConstraint::ConstraintType type) {
+   JVMFlagConstraintList::add(new JVMFlagConstraint_double(name, ptr, func, type));
+ }
++void emit_constraint_ccstr(const char* name, ccstr* ptr, JVMFlagConstraintFunc_ccstr func, JVMFlagConstraint::ConstraintType type) {
++  JVMFlagConstraintList::add(new JVMFlagConstraint_ccstr(name, ptr, func, type));
++}
+ 
+ // Generate code to call emit_constraint_xxx function
+ #define EMIT_CONSTRAINT_PRODUCT_FLAG(type, name, value, doc)      ); emit_constraint_##type(#name,&name
+diff --git a/src/hotspot/share/runtime/flags/jvmFlagConstraintList.hpp b/src/hotspot/share/runtime/flags/jvmFlagConstraintList.hpp
+index 9c27f1db955..b644f7b817a 100644
+--- a/src/hotspot/share/runtime/flags/jvmFlagConstraintList.hpp
++++ b/src/hotspot/share/runtime/flags/jvmFlagConstraintList.hpp
+@@ -47,6 +47,7 @@ typedef JVMFlag::Error (*JVMFlagConstraintFunc_uintx)(uintx value, bool verbose)
+ typedef JVMFlag::Error (*JVMFlagConstraintFunc_uint64_t)(uint64_t value, bool verbose);
+ typedef JVMFlag::Error (*JVMFlagConstraintFunc_size_t)(size_t value, bool verbose);
+ typedef JVMFlag::Error (*JVMFlagConstraintFunc_double)(double value, bool verbose);
++typedef JVMFlag::Error (*JVMFlagConstraintFunc_ccstr)(ccstr value, bool verbose);
+ 
+ class JVMFlagConstraint : public CHeapObj<mtArguments> {
+ public:
+diff --git a/src/hotspot/share/runtime/flags/jvmFlagConstraintsRuntime.cpp b/src/hotspot/share/runtime/flags/jvmFlagConstraintsRuntime.cpp
+index 6559d4252f0..21afac72a2e 100644
+--- a/src/hotspot/share/runtime/flags/jvmFlagConstraintsRuntime.cpp
++++ b/src/hotspot/share/runtime/flags/jvmFlagConstraintsRuntime.cpp
+@@ -140,3 +140,13 @@ JVMFlag::Error ThreadLocalHandshakesConstraintFunc(bool value, bool verbose) {
+   }
+   return JVMFlag::SUCCESS;
+ }
++
++JVMFlag::Error HotswapAgentConstraintFunc(char const* value, bool verbose) {
++  if (value != NULL) {
++    if (strcmp("disabled", value) != 0 && strcmp("fatjar", value) != 0 && strcmp("core", value) != 0 && strcmp("external", value) != 0) {
++      JVMFlag::printError(verbose, "HotswapAgent(%s) must be one of disabled,fatjar,core or external.\n", value);
++      return JVMFlag::VIOLATES_CONSTRAINT;
++    }
++  }
++  return JVMFlag::SUCCESS;
++}
+diff --git a/src/hotspot/share/runtime/flags/jvmFlagConstraintsRuntime.hpp b/src/hotspot/share/runtime/flags/jvmFlagConstraintsRuntime.hpp
+index 8763b83fd37..c9ed15a89e1 100644
+--- a/src/hotspot/share/runtime/flags/jvmFlagConstraintsRuntime.hpp
++++ b/src/hotspot/share/runtime/flags/jvmFlagConstraintsRuntime.hpp
+@@ -46,5 +46,6 @@ JVMFlag::Error PerfDataSamplingIntervalFunc(intx value, bool verbose);
+ 
+ JVMFlag::Error ThreadLocalHandshakesConstraintFunc(bool value, bool verbose);
+ 
++JVMFlag::Error HotswapAgentConstraintFunc(char const* value, bool verbose);
+ 
+ #endif /* SHARE_VM_RUNTIME_JVMFLAGCONSTRAINTSRUNTIME_HPP */
+diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
+index d4453de1ff5..8c41f0af888 100644
+--- a/src/hotspot/share/runtime/globals.hpp
++++ b/src/hotspot/share/runtime/globals.hpp
+@@ -2686,8 +2686,16 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
+              "Allow enhanced class redefinition beyond swapping method "    \
+              "bodies")                                                      \
+                                                                             \
+-  product(bool, DisableHotswapAgent, DISABLED_HOTSWAP_AGENT,                \
+-             "Disable integrated Hotswap Agent (HotswapVM only)")
++  product(ccstr, HotswapAgent, "disabled",                                  \
++          "Specify HotswapAgent image to be used."                          \
++          "disabled: hotswap agent is disabled (default)"                   \
++          "fatjar: full HA. Use integrated hotswap-agent.jar"               \
++          "core: core HA. Use integrated hotswap-agent-core.jar"            \
++          "external: external HA. use external HA, open required JDK "      \
++          "modules.")                                                       \
++          constraint(HotswapAgentConstraintFunc, AfterErgo)
++
++
+ #define VM_FLAGS(develop,                                                   \
+                  develop_pd,                                                \
+                  product,                                                   \
+-- 
+2.23.0
+
