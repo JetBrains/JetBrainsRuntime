@@ -1,0 +1,25 @@
+From 5b5f620932894e807956b45653d153d001be9fb1 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <lada.dvorak7@gmail.com>
+Date: Sun, 1 Nov 2020 21:19:00 +0100
+Subject: [PATCH 18/28] Ignore MetadataOnStackMark if redefining_gc_run
+
+---
+ src/hotspot/share/classfile/classLoaderData.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
+index bba5ce0511f..8b2deb70e1b 100644
+--- a/src/hotspot/share/classfile/classLoaderData.cpp
++++ b/src/hotspot/share/classfile/classLoaderData.cpp
+@@ -1401,7 +1401,7 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
+   bool walk_all_metadata = clean_previous_versions &&
+                              JvmtiExport::has_redefined_a_class() &&
+                              InstanceKlass::has_previous_versions_and_reset();
+-  MetadataOnStackMark md_on_stack(walk_all_metadata, AllowEnhancedClassRedefinition);
++  MetadataOnStackMark md_on_stack(walk_all_metadata, Universe::is_redefining_gc_run());
+ 
+   // Save previous _unloading pointer for CMS which may add to unloading list before
+   // purging and we don't want to rewalk the previously unloaded class loader data.
+-- 
+2.23.0
+

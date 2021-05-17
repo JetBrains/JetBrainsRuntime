@@ -1,7 +1,7 @@
-From 002ad1880190d0749f8f8d325c587fd9275bdab2 Mon Sep 17 00:00:00 2001
+From 93373779a1d44181ca07498faa8a0e8d7fc6b608 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@mailprofiler.com>
 Date: Wed, 11 Mar 2020 14:19:34 +0100
-Subject: [PATCH 04/18] Fix class cast exception on redefinition of class A,
+Subject: [PATCH 04/28] Fix class cast exception on redefinition of class A,
  that is superclass of B that has anonymous class C
 
 ---

@@ -1,7 +1,7 @@
-From a022248d12e37084c8f8987a44d567ba0e02fb6d Mon Sep 17 00:00:00 2001
+From fde9f15ed4fdb5139b6b81238d0a667327b552bb Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 23 Oct 2020 11:07:40 +0200
-Subject: [PATCH 17/18] Fix metadataOnStack bug
+Subject: [PATCH 17/28] Fix metadataOnStack bug
 
 ---
  .../share/classfile/classLoaderData.cpp       |  7 +-

@@ -1,7 +1,7 @@
-From aaefe6f66a8d363eb35fcdc8ce29bb25be67fe1c Mon Sep 17 00:00:00 2001
+From caa877d9126bd91d6719675a83928ba01bffb69a Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 12 Dec 2018 19:38:28 +0100
-Subject: [PATCH 03/18] Support for Concurrent Mark Sweep (CMS) collector
+Subject: [PATCH 03/28] Support for Concurrent Mark Sweep (CMS) collector
 
 ---
  .../share/gc/cms/compactibleFreeListSpace.cpp | 139 ++++++++++++------
@@ -422,7 +422,7 @@ index 6b109fcd2e5..8c255d6d428 100644
          Klass* new_version = oop(cur_obj)->klass()->new_version();
          if (new_version->update_information() == NULL) {
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 43d761cdbb2..14af1aad21b 100644
+index 92ce6c27b8a..41e82ae7a69 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -54,6 +54,7 @@

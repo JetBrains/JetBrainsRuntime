@@ -1,7 +1,7 @@
-From ebd5c9df33771ad5181a225cccc0cca3881a4dbe Mon Sep 17 00:00:00 2001
+From 41093b9513718c3122f3ff36da7fc2eeca224a10 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:18:22 +0100
-Subject: [PATCH 02/18] dcevm11 fixes
+Subject: [PATCH 02/28] dcevm11 fixes
 
 1. We need to set classRedefinitionCount on new class, not old class.
 
@@ -463,7 +463,7 @@ index 2cc98b636f1..e8107a39813 100644
    // link this class into the implementors list of every interface it implements
    void process_interfaces(Thread *thread);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 80c31135487..43d761cdbb2 100644
+index 83c0952de37..92ce6c27b8a 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1,4 +1,4 @@
@@ -1394,7 +1394,7 @@ index 80c31135487..43d761cdbb2 100644
    ResourceMark mark(THREAD);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 3f95cf42645..a48e07e3a6a 100644
+index b712d69a193..60b62c3170a 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -16,6 +16,8 @@

@@ -1,7 +1,7 @@
-From b6ea0ee6fcc376f575be0f461c494664d55ed986 Mon Sep 17 00:00:00 2001
+From 8d14e792d9849beedc74de690cf4d208ac384878 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 13 Jun 2020 18:50:59 +0200
-Subject: [PATCH 10/18] Change log level in advanced redefinition
+Subject: [PATCH 10/28] Change log level in advanced redefinition
 
 - Change log level for "Comparing different class ver.." to debug
 - Fix adjust_method_entries_dcevm logging levels and severity
@@ -11,7 +11,7 @@ Subject: [PATCH 10/18] Change log level in advanced redefinition
  2 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 8b6fad2128e..a8adfa5af47 100644
+index e67fc2dd58f..5be9bb74305 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -915,7 +915,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {

@@ -1,7 +1,7 @@
-From 122562d31005edd3573a645c3a02c1d8fe843c5e Mon Sep 17 00:00:00 2001
+From c2a4abf7d01ecd7bd262e824338d6235a584086b Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 11 Oct 2020 10:43:28 +0200
-Subject: [PATCH 14/18] Fix G1 nmethod registration
+Subject: [PATCH 14/28] Fix G1 nmethod registration
 
 ---
  .../prims/jvmtiEnhancedRedefineClasses.cpp    | 19 ++++++++++++++++---
@@ -9,7 +9,7 @@ Subject: [PATCH 14/18] Fix G1 nmethod registration
  2 files changed, 18 insertions(+), 4 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index a8adfa5af47..4ee12b7021f 100644
+index 5be9bb74305..f4bde7504c8 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -217,7 +217,14 @@ void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
@@ -53,7 +53,7 @@ index a8adfa5af47..4ee12b7021f 100644
    log_trace(redefine, class, obsolete, metadata)("After updating instances");
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 62a0fbf54d4..d00109a0b92 100644
+index 9755944d70b..4c0412d343d 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -116,7 +116,8 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

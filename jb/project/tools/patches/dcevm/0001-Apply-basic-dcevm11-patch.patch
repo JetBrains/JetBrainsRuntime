@@ -1,7 +1,7 @@
-From d75ca6d0d1799ffde4199f6ef5047699b98d3ff2 Mon Sep 17 00:00:00 2001
+From 07373a8bd65d7c2663024709f0d5b7e0e41aba40 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:09:39 +0100
-Subject: [PATCH 01/18] Apply basic dcevm11 patch
+Subject: [PATCH 01/28] Apply basic dcevm11 patch
 
 ---
  src/hotspot/share/ci/ciObjectFactory.cpp      |   25 +
@@ -449,10 +449,10 @@ index d26f1f11fb4..fd4b134d7a7 100644
  
  // An entry in the class loader data dictionaries, this describes a class as
 diff --git a/src/hotspot/share/classfile/javaClasses.cpp b/src/hotspot/share/classfile/javaClasses.cpp
-index fc4efecc6e7..903979c9ef2 100644
+index e4f1b934afc..ef4011c1292 100644
 --- a/src/hotspot/share/classfile/javaClasses.cpp
 +++ b/src/hotspot/share/classfile/javaClasses.cpp
-@@ -2446,6 +2446,8 @@ void java_lang_Throwable::fill_in_stack_trace(Handle throwable, const methodHand
+@@ -2428,6 +2428,8 @@ void java_lang_Throwable::fill_in_stack_trace(Handle throwable, const methodHand
          skip_throwableInit_check = true;
        }
      }
@@ -461,7 +461,7 @@ index fc4efecc6e7..903979c9ef2 100644
      if (method->is_hidden()) {
        if (skip_hidden)  continue;
      }
-@@ -3628,6 +3630,62 @@ void java_lang_invoke_DirectMethodHandle::serialize_offsets(SerializeClosure* f)
+@@ -3610,6 +3612,62 @@ void java_lang_invoke_DirectMethodHandle::serialize_offsets(SerializeClosure* f)
  }
  #endif
  
@@ -524,7 +524,7 @@ index fc4efecc6e7..903979c9ef2 100644
  // Support for java_lang_invoke_MethodHandle
  
  int java_lang_invoke_MethodHandle::_type_offset;
-@@ -3814,6 +3872,11 @@ void java_lang_invoke_ResolvedMethodName::set_vmtarget(oop resolved_method, Meth
+@@ -3796,6 +3854,11 @@ void java_lang_invoke_ResolvedMethodName::set_vmtarget(oop resolved_method, Meth
    resolved_method->address_field_put(_vmtarget_offset, (address)m);
  }
  
@@ -537,7 +537,7 @@ index fc4efecc6e7..903979c9ef2 100644
    // lookup ResolvedMethod oop in the table, or create a new one and intern it
    oop resolved_method = ResolvedMethodTable::find_method(m());
 diff --git a/src/hotspot/share/classfile/javaClasses.hpp b/src/hotspot/share/classfile/javaClasses.hpp
-index bd9cdca3fe3..da004d1b307 100644
+index 910bb084b63..89a46264553 100644
 --- a/src/hotspot/share/classfile/javaClasses.hpp
 +++ b/src/hotspot/share/classfile/javaClasses.hpp
 @@ -67,6 +67,8 @@
@@ -561,7 +561,7 @@ index bd9cdca3fe3..da004d1b307 100644
    static void allocate_fixup_lists();
    static void compute_offsets();
  
-@@ -1055,6 +1057,55 @@ class java_lang_invoke_DirectMethodHandle: AllStatic {
+@@ -1048,6 +1050,55 @@ class java_lang_invoke_DirectMethodHandle: AllStatic {
    static int member_offset_in_bytes()           { return _member_offset; }
  };
  
@@ -617,7 +617,7 @@ index bd9cdca3fe3..da004d1b307 100644
  // Interface to java.lang.invoke.LambdaForm objects
  // (These are a private interface for managing adapter code generation.)
  
-@@ -1106,6 +1157,7 @@ class java_lang_invoke_ResolvedMethodName : AllStatic {
+@@ -1099,6 +1150,7 @@ class java_lang_invoke_ResolvedMethodName : AllStatic {
  
    static Method* vmtarget(oop resolved_method);
    static void set_vmtarget(oop resolved_method, Method* method);
@@ -977,7 +977,7 @@ index 05239c57866..c1357bde0ed 100644
    methodHandle        _method; // current method being verified
    VerificationType    _this_type; // the verification type of the current class
 diff --git a/src/hotspot/share/classfile/vmSymbols.hpp b/src/hotspot/share/classfile/vmSymbols.hpp
-index 44cf2583eb9..41e9a84cd69 100644
+index 8955dd0b366..26ff6ee9853 100644
 --- a/src/hotspot/share/classfile/vmSymbols.hpp
 +++ b/src/hotspot/share/classfile/vmSymbols.hpp
 @@ -286,6 +286,8 @@
@@ -1684,10 +1684,10 @@ index 81998728f66..b9ccdee8cca 100644
      }
    }
 diff --git a/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp b/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
-index 77c28924b0d..84891b48c2a 100644
+index 6cf7aec68f8..61a406377ee 100644
 --- a/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
 +++ b/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
-@@ -1467,6 +1467,7 @@ static InstanceKlass* create_new_instance_klass(InstanceKlass* ik, ClassFileStre
+@@ -1471,6 +1471,7 @@ static InstanceKlass* create_new_instance_klass(InstanceKlass* ik, ClassFileStre
                               NULL, // host klass
                               NULL, // cp_patches
                               ClassFileParser::INTERNAL, // internal visibility
@@ -2260,7 +2260,7 @@ index 21e7f652652..e9cc3de9652 100644
  
    if (log_is_enabled(Debug, class, resolve) && k != NULL) {
 diff --git a/src/hotspot/share/prims/jvm.cpp b/src/hotspot/share/prims/jvm.cpp
-index 378dcce8cf5..f92d2697e0e 100644
+index 0d686d85fc7..70b525533cd 100644
 --- a/src/hotspot/share/prims/jvm.cpp
 +++ b/src/hotspot/share/prims/jvm.cpp
 @@ -936,6 +936,7 @@ static jclass jvm_define_class_common(JNIEnv *env, const char *name,
@@ -2273,7 +2273,7 @@ index 378dcce8cf5..f92d2697e0e 100644
    if (log_is_enabled(Debug, class, resolve) && k != NULL) {
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 new file mode 100644
-index 00000000000..80c31135487
+index 00000000000..83c0952de37
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -0,0 +1,2255 @@
@@ -4534,7 +4534,7 @@ index 00000000000..80c31135487
 +}
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 new file mode 100644
-index 00000000000..3f95cf42645
+index 00000000000..b712d69a193
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -0,0 +1,202 @@
@@ -4819,7 +4819,7 @@ index 6600848e2d3..9337b6ab585 100644
   if (_code_blobs != NULL) {
     for (int i=0; i<_code_blobs->length(); i++) {
 diff --git a/src/hotspot/share/prims/jvmtiExport.hpp b/src/hotspot/share/prims/jvmtiExport.hpp
-index cc5868f1e93..a6cbac03bb2 100644
+index b8246554f74..be2c373aba7 100644
 --- a/src/hotspot/share/prims/jvmtiExport.hpp
 +++ b/src/hotspot/share/prims/jvmtiExport.hpp
 @@ -176,6 +176,7 @@ class JvmtiExport : public AllStatic {

@@ -1,7 +1,7 @@
-From 81ba8f1d120e158a7b0cfa09b5dd51295d51901f Mon Sep 17 00:00:00 2001
+From 0550e70425054a77e32fb96770d416b077720857 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 23 Oct 2020 10:20:26 +0200
-Subject: [PATCH 16/18] Clear dcevm code separation
+Subject: [PATCH 16/28] Clear dcevm code separation
 
 ---
  src/hotspot/share/classfile/systemDictionary.cpp   |  4 ++--
@@ -93,10 +93,10 @@ index 9dc184d02f5..bff1c3627b0 100644
                   is_static ? "static" : "non-static", resolved_klass->external_name(), fd.name()->as_C_string(),
                  current_klass->external_name());
 diff --git a/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp b/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
-index 84891b48c2a..6f19e2939a2 100644
+index 61a406377ee..da9df7a21a2 100644
 --- a/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
 +++ b/src/hotspot/share/jfr/instrumentation/jfrEventClassTransformer.cpp
-@@ -1467,7 +1467,7 @@ static InstanceKlass* create_new_instance_klass(InstanceKlass* ik, ClassFileStre
+@@ -1471,7 +1471,7 @@ static InstanceKlass* create_new_instance_klass(InstanceKlass* ik, ClassFileStre
                               NULL, // host klass
                               NULL, // cp_patches
                               ClassFileParser::INTERNAL, // internal visibility

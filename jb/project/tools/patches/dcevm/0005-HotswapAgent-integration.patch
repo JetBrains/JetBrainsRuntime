@@ -1,7 +1,7 @@
-From a00292280f4e3754bffc7a0c562dca1d7552eb39 Mon Sep 17 00:00:00 2001
+From c8850725d4c84f93beaee3c05f9d8f9862fe6159 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
-Date: Wed, 14 Nov 2018 21:20:08 +0100
-Subject: [PATCH 05/18] HotswapAgent integration
+Date: Thu, 15 Nov 2018 03:20:08 +0700
+Subject: [PATCH 05/28] HotswapAgent integration
 
 It include:
 
@@ -37,7 +37,7 @@ old DCEVM
  make/launcher/Launcher-jdk.jartool.gmk        |  2 +
  make/launcher/Launcher-jdk.javadoc.gmk        |  3 +-
  make/launcher/Launcher-jdk.jcmd.gmk           | 13 +++-
- make/launcher/Launcher-jdk.jconsole.gmk       |  3 +-
+ make/launcher/Launcher-jdk.jconsole.gmk       |  1 +
  make/launcher/Launcher-jdk.jdeps.gmk          |  3 +
  make/launcher/Launcher-jdk.jdi.gmk            |  1 +
  make/launcher/Launcher-jdk.jlink.gmk          |  5 +-
@@ -55,7 +55,7 @@ old DCEVM
  .../classes/com/sun/beans/package-info.java   | 26 +++++++
  .../com/sun/beans/util/package-info.java      | 26 +++++++
  .../share/classes/module-info.java            |  3 +
- 28 files changed, 209 insertions(+), 11 deletions(-)
+ 28 files changed, 208 insertions(+), 10 deletions(-)
  create mode 100644 src/java.desktop/share/classes/com/sun/beans/introspect/package-info.java
  create mode 100644 src/java.desktop/share/classes/com/sun/beans/package-info.java
  create mode 100644 src/java.desktop/share/classes/com/sun/beans/util/package-info.java
@@ -259,16 +259,14 @@ index 7117fa78059..761a52d8466 100644
  
  # Hook to include the corresponding custom file, if present.
 diff --git a/make/launcher/Launcher-jdk.jconsole.gmk b/make/launcher/Launcher-jdk.jconsole.gmk
-index 575b9e0595b..9b38683a489 100644
+index 575b9e0595b..2f442f69113 100644
 --- a/make/launcher/Launcher-jdk.jconsole.gmk
 +++ b/make/launcher/Launcher-jdk.jconsole.gmk
-@@ -29,7 +29,8 @@ $(eval $(call SetupBuildLauncher, jconsole, \
-     MAIN_CLASS := sun.tools.jconsole.JConsole, \
+@@ -30,6 +30,7 @@ $(eval $(call SetupBuildLauncher, jconsole, \
      JAVA_ARGS := --add-opens java.base/java.io=jdk.jconsole \
  		 -Djconsole.showOutputViewer \
--		 -Djdk.attach.allowAttachSelf=true, \
-+		 -Djdk.attach.allowAttachSelf=true \
-+		 -XX:+DisableHotswapAgent, \
+ 		 -Djdk.attach.allowAttachSelf=true, \
++         -XX:+DisableHotswapAgent, \
      CFLAGS_windows := -DJAVAW, \
      LIBS_windows := user32.lib, \
  ))
@@ -392,7 +390,7 @@ index 82311e69fd6..bd39f8595b2 100644
      CFLAGS := -DENABLE_ARG_FILES, \
  ))
 diff --git a/src/hotspot/share/classfile/vmSymbols.hpp b/src/hotspot/share/classfile/vmSymbols.hpp
-index 41e9a84cd69..1f67eb202b5 100644
+index 26ff6ee9853..2409af9b06e 100644
 --- a/src/hotspot/share/classfile/vmSymbols.hpp
 +++ b/src/hotspot/share/classfile/vmSymbols.hpp
 @@ -342,6 +342,7 @@

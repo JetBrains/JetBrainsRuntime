@@ -1,0 +1,41 @@
+From 1bb55ff9f91733e45dd6f87eb4201a989b3338e3 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Fri, 12 Feb 2021 12:33:11 +0100
+Subject: [PATCH 21/28] JBR-3106 Check InstanceKlass::has_nestmate_access_to
+ with active classes
+
+Dcevm can leave old host in nested class if nested class is not
+redefined together with host class
+---
+ src/hotspot/share/oops/instanceKlass.cpp | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
+index 710e0ddc930..24eb3ed68a6 100644
+--- a/src/hotspot/share/oops/instanceKlass.cpp
++++ b/src/hotspot/share/oops/instanceKlass.cpp
+@@ -327,11 +327,21 @@ bool InstanceKlass::has_nestmate_access_to(InstanceKlass* k, TRAPS) {
+     return false;
+   }
+ 
++  // (DCEVM) cur_host can be old, decide accessibility based on active version
++  if (AllowEnhancedClassRedefinition) {
++    cur_host = InstanceKlass::cast(cur_host->active_version());
++  }
++
+   Klass* k_nest_host = k->nest_host(icce, CHECK_false);
+   if (k_nest_host == NULL) {
+     return false;
+   }
+ 
++  // (DCEVM) k_nest_host can be old, decide accessibility based on active version
++  if (AllowEnhancedClassRedefinition) {
++    k_nest_host = InstanceKlass::cast(k_nest_host->active_version());
++  }
++
+   bool access = (cur_host == k_nest_host);
+ 
+   if (log_is_enabled(Trace, class, nestmates)) {
+-- 
+2.23.0
+

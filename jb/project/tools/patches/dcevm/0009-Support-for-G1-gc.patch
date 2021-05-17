@@ -1,7 +1,7 @@
-From aa1d291c7349e5cecf9d93e817d0866460deb903 Mon Sep 17 00:00:00 2001
+From a579caf20ac76a5d7cc159d5fed2efa074380f0f Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 12 Jun 2020 17:43:52 +0200
-Subject: [PATCH 09/18] Support for G1 gc
+Subject: [PATCH 09/28] Support for G1 gc
 
 ---
  src/hotspot/share/gc/g1/g1CollectedHeap.cpp   |  20 +++
@@ -31,10 +31,10 @@ Subject: [PATCH 09/18] Support for G1 gc
  create mode 100644 src/hotspot/share/gc/shared/dcevmSharedGC.hpp
 
 diff --git a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
-index dea8d9fdb0e..33664a30519 100644
+index a15b400c8e4..985fbad581b 100644
 --- a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
 +++ b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
-@@ -2108,6 +2108,21 @@ public:
+@@ -2111,6 +2111,21 @@ public:
    }
  };
  
@@ -56,7 +56,7 @@ index dea8d9fdb0e..33664a30519 100644
  void G1CollectedHeap::object_iterate(ObjectClosure* cl) {
    IterateObjectClosureRegionClosure blk(cl);
    heap_region_iterate(&blk);
-@@ -2117,6 +2132,11 @@ void G1CollectedHeap::heap_region_iterate(HeapRegionClosure* cl) const {
+@@ -2124,6 +2139,11 @@ void G1CollectedHeap::heap_region_iterate(HeapRegionClosure* cl) const {
    _hrm.iterate(cl);
  }
  
@@ -69,7 +69,7 @@ index dea8d9fdb0e..33664a30519 100644
                                                                   HeapRegionClaimer *hrclaimer,
                                                                   uint worker_id) const {
 diff --git a/src/hotspot/share/gc/g1/g1CollectedHeap.hpp b/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
-index 8a171dc6b52..05a068bb2e0 100644
+index be160d04bfe..9e92ee4a1fa 100644
 --- a/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
 +++ b/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
 @@ -144,6 +144,7 @@ class G1CollectedHeap : public CollectedHeap {
@@ -1040,7 +1040,7 @@ index d0a6d665aa0..3dc4cc1323c 100644
    SystemDictionary::oops_do(oopClosure);
  }
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index aba99bb60fa..8b6fad2128e 100644
+index 1fbba406087..e67fc2dd58f 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -36,7 +36,6 @@
@@ -1244,7 +1244,7 @@ index aba99bb60fa..8b6fad2128e 100644
    ResourceMark mark(THREAD);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 3551b06ecde..62a0fbf54d4 100644
+index d8a11b51fe9..9755944d70b 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -86,9 +86,10 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

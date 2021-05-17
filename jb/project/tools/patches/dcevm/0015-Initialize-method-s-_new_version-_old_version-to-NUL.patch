@@ -1,7 +1,7 @@
-From 0156b2084be20579b407e112a00ba15f54248003 Mon Sep 17 00:00:00 2001
+From f0b7253294f14a64a5a4d0ef825e5377da03efa5 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Thu, 22 Oct 2020 20:15:20 +0200
-Subject: [PATCH 15/18] Initialize method's _new_version/_old_version to NULL
+Subject: [PATCH 15/28] Initialize method's _new_version/_old_version to NULL
 
 ---
  src/hotspot/share/oops/method.cpp | 3 ++-
