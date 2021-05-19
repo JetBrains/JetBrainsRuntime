@@ -901,7 +901,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     if ([types containsObject:NSRTFDPboardType])
     {
         [pboard declareTypes:[NSArray arrayWithObject:NSRTFDPboardType] owner:nil];
-        return [pboard setData:[self accessibilitySelectedText] forType:NSRTFDPboardType];
+        return [pboard setData:[self accessibleSelectedTextAsRTFD] forType:NSRTFDPboardType];
     }
 
     return NO;
