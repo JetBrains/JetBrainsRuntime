@@ -882,7 +882,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     if ([[self window] firstResponder] != self) return nil; // let AWT components handle themselves
 
     if ([sendType isEqual:NSStringPboardType] || [returnType isEqual:NSStringPboardType]) {
-        NSString *selectedText = [self accessibleSelectedText];
+        NSString *selectedText = [self accessibilitySelectedText];
         if (selectedText) return self;
     }
 
@@ -895,13 +895,13 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     if ([types containsObject:NSStringPboardType])
     {
         [pboard declareTypes:[NSArray arrayWithObject:NSStringPboardType] owner:nil];
-        return [pboard setString:[self accessibleSelectedText] forType:NSStringPboardType];
+        return [pboard setString:[self accessibilitySelectedText] forType:NSStringPboardType];
     }
 
     if ([types containsObject:NSRTFDPboardType])
     {
         [pboard declareTypes:[NSArray arrayWithObject:NSRTFDPboardType] owner:nil];
-        return [pboard setData:[self accessibleSelectedTextAsRTFD] forType:NSRTFDPboardType];
+        return [pboard setData:[self accessibilitySelectedText] forType:NSRTFDPboardType];
     }
 
     return NO;
