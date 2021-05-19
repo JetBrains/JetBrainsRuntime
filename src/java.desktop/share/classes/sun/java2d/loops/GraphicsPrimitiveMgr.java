@@ -68,6 +68,11 @@ public final class GraphicsPrimitiveMgr {
         CustomComponent.register();
         GeneralRenderer.register();
         registerNativeLoops();
+        // Note: grab traceflags from GraphicsPrimitive rather than have GraphicsPrimitive set our flags
+        // in order to follow the static initialization order of these two classes. Else we run into a
+        // check-and-egg problem and end up with static fields not completely initialized at the time
+        // some primitives are constructed and these appear to have no methodSignature's.
+        setTraceFlags(GraphicsPrimitive.traceflags);
     }
 
     private static class PrimitiveSpec {
