@@ -67,8 +67,10 @@ final class FullScreenHandler {
     }
 
     static FullScreenHandler getHandlerFor(final RootPaneContainer window) {
-        final Object value = window.getRootPane().getClientProperty(CLIENT_PROPERTY);
-        if (value instanceof FullScreenHandler) return (FullScreenHandler)value;
+        if (window != null && window.getRootPane() != null) {
+            final Object value = window.getRootPane().getClientProperty(CLIENT_PROPERTY);
+            if (value instanceof FullScreenHandler) return (FullScreenHandler)value;
+        }
         return null;
     }
 
