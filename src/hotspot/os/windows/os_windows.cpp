@@ -417,6 +417,7 @@ struct tm* os::gmtime_pd(const time_t* clock, struct tm* res) {
   return NULL;
 }
 
+JNIEXPORT
 LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo);
 
 // Thread start routine for all newly created threads
@@ -2355,6 +2356,7 @@ bool os::win32::get_frame_at_stack_banging_point(JavaThread* thread,
 }
 
 //-----------------------------------------------------------------------------
+JNIEXPORT
 LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
   if (InterceptOSException) return EXCEPTION_CONTINUE_SEARCH;
   DWORD exception_code = exceptionInfo->ExceptionRecord->ExceptionCode;

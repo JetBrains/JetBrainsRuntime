@@ -82,7 +82,8 @@ public class GTestWrapper {
         pb.command(new String[] {
             execPath.toString(),
             "-jdk",
-            System.getProperty("test.jdk")
+            System.getProperty("test.jdk"),
+            "--gtest_catch_exceptions=0"
         });
         ProcessTools.executeCommand(pb).shouldHaveExitValue(0);
     }

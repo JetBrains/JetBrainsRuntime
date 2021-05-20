@@ -69,6 +69,7 @@
 #define REG_PC Eip
 #endif // AMD64
 
+JNIEXPORT
 extern LONG WINAPI topLevelExceptionFilter(_EXCEPTION_POINTERS* );
 
 // Install a win32 structured exception handler around thread.
