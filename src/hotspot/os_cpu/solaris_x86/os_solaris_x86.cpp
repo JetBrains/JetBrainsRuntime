@@ -463,6 +463,15 @@ JVM_handle_solaris_signal(int sig, siginfo_t* info, void* ucVoid,
     assert(sig == info->si_signo, "bad siginfo");
   }
 
+  // Handle SafeFetch faults:
+  if (uc != NULL) {
+    address const pc = (address) uc->uc_mcontext.gregs[REG_PC];
+    if (pc && StubRoutines::is_safefetch_fault(pc)) {
+      os::Solaris::ucontext_set_pc(uc, StubRoutines::continuation_for_safefetch_fault(pc));
+      return 1;
+    }
+  }
+
   // decide if this trap can be handled by a stub
   address stub = NULL;
 
@@ -472,11 +481,6 @@ JVM_handle_solaris_signal(int sig, siginfo_t* info, void* ucVoid,
   if (info != NULL && uc != NULL && thread != NULL) {
     // factor me: getPCfromContext
     pc = (address) uc->uc_mcontext.gregs[REG_PC];
-
-    if (StubRoutines::is_safefetch_fault(pc)) {
-      os::Solaris::ucontext_set_pc(uc, StubRoutines::continuation_for_safefetch_fault(pc));
-      return true;
-    }
 
     // Handle ALL stack overflow variations here
     if (sig == SIGSEGV && info->si_code == SEGV_ACCERR) {
