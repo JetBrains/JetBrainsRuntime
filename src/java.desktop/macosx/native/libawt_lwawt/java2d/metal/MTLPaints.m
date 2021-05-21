@@ -189,8 +189,10 @@ jint _color;
 
     NSString *vertShader = @"vert_col";
     NSString *fragShader = @"frag_col";
+    BOOL alphaBlendNeeded = NO;
 
     if (renderOptions->isTexture) {
+        alphaBlendNeeded = YES;
         vertShader = @"vert_txt";
         fragShader = @"frag_txt";
         rpDesc = [[templateTexturePipelineDesc copy] autorelease];
@@ -210,6 +212,7 @@ jint _color;
                        renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha], &renderOptions->srcFlags,
                        &renderOptions->dstFlags, 1);
     } else if (renderOptions->isAAShader) {
+        alphaBlendNeeded = YES;
         vertShader = @"vert_col_aa";
         fragShader = @"frag_col_aa";
         rpDesc = [[templateAAPipelineDesc copy] autorelease];
@@ -225,7 +228,8 @@ jint _color;
                                                                       fragmentShaderId:fragShader
                                                                              composite:mtlc.composite
                                                                          renderOptions:renderOptions
-                                                                         stencilNeeded:[mtlc.clip isShape]];
+                                                                         stencilNeeded:[mtlc.clip isShape]
+                                                                      alphaBlendNeeded:alphaBlendNeeded];
     [encoder setRenderPipelineState:pipelineState];
 }
 

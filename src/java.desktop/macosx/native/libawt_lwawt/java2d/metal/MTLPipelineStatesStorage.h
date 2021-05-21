@@ -54,19 +54,23 @@ NSMutableDictionary<NSString*, id<MTLComputePipelineState>> * computeStates;
 
 - (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
                                  vertexShaderId:(NSString *)vertexShaderId
-                               fragmentShaderId:(NSString *)fragmentShaderId;
+                               fragmentShaderId:(NSString *)fragmentShaderId
+                                  stencilNeeded:(BOOL)stencilNeeded;
 
-- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
+- (id <MTLRenderPipelineState>)getPipelineState:(MTLRenderPipelineDescriptor *)pipelineDescriptor
                                  vertexShaderId:(NSString *)vertexShaderId
                                fragmentShaderId:(NSString *)fragmentShaderId
-                                  stencilNeeded:(bool)stencilNeeded;
-
-- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
-                                 vertexShaderId:(NSString *)vertexShaderId
-                               fragmentShaderId:(NSString *)fragmentShaderId
-                                      composite:(MTLComposite*)composite
+                                      composite:(MTLComposite *)composite
                                   renderOptions:(const RenderOptions *)renderOptions
-                                  stencilNeeded:(bool)stencilNeeded;
+                                  stencilNeeded:(BOOL)stencilNeeded;
+
+- (id <MTLRenderPipelineState>)getPipelineState:(MTLRenderPipelineDescriptor *)pipelineDescriptor
+                                 vertexShaderId:(NSString *)vertexShaderId
+                               fragmentShaderId:(NSString *)fragmentShaderId
+                                      composite:(MTLComposite *)composite
+                                  renderOptions:(const RenderOptions *)renderOptions
+                                  stencilNeeded:(BOOL)stencilNeeded
+                               alphaBlendNeeded:(BOOL)alphaBlendNeeded;
 
 - (id<MTLComputePipelineState>) getComputePipelineState:(NSString *)computeShaderId;
 
