@@ -35,7 +35,8 @@ extern const SurfaceRasterFlags defaultRasterFlags;
 static void setBlendingFactors(
         MTLRenderPipelineColorAttachmentDescriptor * cad,
         MTLComposite* composite,
-        const RenderOptions * renderOptions);
+        const RenderOptions * renderOptions,
+        BOOL useAlphaBlend);
 
 @implementation MTLPipelineStatesStorage
 
@@ -83,38 +84,44 @@ static void setBlendingFactors(
 - (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
                                  vertexShaderId:(NSString *)vertexShaderId
                                fragmentShaderId:(NSString *)fragmentShaderId
+                                   stencilNeeded:(BOOL)stencilNeeded;
 {
-    RenderOptions defaultOptions = {JNI_FALSE, JNI_FALSE, 0/*unused*/, {JNI_FALSE, JNI_TRUE}, {JNI_FALSE, JNI_TRUE}, JNI_FALSE, JNI_FALSE, JNI_FALSE};
+    RenderOptions defaultOptions = {JNI_FALSE, JNI_FALSE, 0/*unused*/, {JNI_FALSE, JNI_TRUE}, {JNI_FALSE, JNI_TRUE},
+                                    JNI_FALSE, JNI_FALSE, JNI_FALSE};
     return [self getPipelineState:pipelineDescriptor
                    vertexShaderId:vertexShaderId
                  fragmentShaderId:fragmentShaderId
                         composite:nil
                     renderOptions:&defaultOptions
-                    stencilNeeded:NO];
+                    stencilNeeded:stencilNeeded
+                 alphaBlendNeeded:YES];
 }
 
-- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
+- (id <MTLRenderPipelineState>)getPipelineState:(MTLRenderPipelineDescriptor *)pipelineDescriptor
                                  vertexShaderId:(NSString *)vertexShaderId
                                fragmentShaderId:(NSString *)fragmentShaderId
-                               stencilNeeded:(bool)stencilNeeded
+                                      composite:(MTLComposite *)composite
+                                  renderOptions:(const RenderOptions *)renderOptions
+                                  stencilNeeded:(BOOL)stencilNeeded
 {
-    RenderOptions defaultOptions = {JNI_FALSE, JNI_FALSE, 0/*unused*/, {JNI_FALSE, JNI_TRUE}, {JNI_FALSE, JNI_TRUE}, JNI_FALSE, JNI_FALSE, JNI_FALSE};
     return [self getPipelineState:pipelineDescriptor
                    vertexShaderId:vertexShaderId
                  fragmentShaderId:fragmentShaderId
                         composite:nil
-                    renderOptions:&defaultOptions
-                    stencilNeeded:stencilNeeded];
+                    renderOptions:renderOptions
+                    stencilNeeded:stencilNeeded
+                 alphaBlendNeeded:YES];
 }
 
 // Base method to obtain MTLRenderPipelineState.
 // NOTE: parameters compositeRule, srcFlags, dstFlags are used to set MTLRenderPipelineColorAttachmentDescriptor multipliers
-- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
+- (id <MTLRenderPipelineState>)getPipelineState:(MTLRenderPipelineDescriptor *)pipelineDescriptor
                                  vertexShaderId:(NSString *)vertexShaderId
                                fragmentShaderId:(NSString *)fragmentShaderId
-                                      composite:(MTLComposite*) composite
+                                      composite:(MTLComposite *)composite
                                   renderOptions:(const RenderOptions *)renderOptions
-                                  stencilNeeded:(bool)stencilNeeded;
+                                  stencilNeeded:(BOOL)stencilNeeded
+                               alphaBlendNeeded:(BOOL)alphaBlendNeeded
 {
     jint compositeRule = composite != nil ? [composite getRule] : RULE_Src;
     const jboolean useXorComposite = composite != nil && [composite getCompositeState] == sun_java2d_SunGraphics2D_COMP_XOR;
@@ -192,7 +199,8 @@ static void setBlendingFactors(
                 setBlendingFactors(
                         pipelineDesc.colorAttachments[0],
                         composite,
-                        renderOptions
+                        renderOptions,
+                        alphaBlendNeeded
                 );
             }
             if (stencilNeeded) {
@@ -206,7 +214,7 @@ static void setBlendingFactors(
 
             if (renderOptions->isAA) {
                 pipelineDesc.sampleCount = MTLAASampleCount;
-                pipelineDesc.colorAttachments[0].rgbBlendOperation =   MTLBlendOperationAdd;
+                pipelineDesc.colorAttachments[0].rgbBlendOperation = MTLBlendOperationAdd;
                 pipelineDesc.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
                 pipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
                 pipelineDesc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
@@ -303,7 +311,8 @@ static struct MTLBlendRule StdBlendRules[] = {
 static void setBlendingFactors(
         MTLRenderPipelineColorAttachmentDescriptor * cad,
         MTLComposite* composite,
-        const RenderOptions * renderOptions
+        const RenderOptions * renderOptions,
+        BOOL useAlphaBlend
 ) {
     const long compositeRule = composite != nil ? [composite getRule] : RULE_Src;
 
@@ -318,9 +327,10 @@ static void setBlendingFactors(
     cad.blendingEnabled = YES;
     cad.rgbBlendOperation = MTLBlendOperationAdd;
     cad.alphaBlendOperation = MTLBlendOperationAdd;
-
-    cad.sourceAlphaBlendFactor = StdBlendRules[compositeRule].src;
     cad.sourceRGBBlendFactor = StdBlendRules[compositeRule].src;
-    cad.destinationAlphaBlendFactor = StdBlendRules[compositeRule].dst;
     cad.destinationRGBBlendFactor = StdBlendRules[compositeRule].dst;
+    if (useAlphaBlend) {
+        cad.sourceAlphaBlendFactor = StdBlendRules[compositeRule].src;
+        cad.destinationAlphaBlendFactor = StdBlendRules[compositeRule].dst;
+    }
 }
