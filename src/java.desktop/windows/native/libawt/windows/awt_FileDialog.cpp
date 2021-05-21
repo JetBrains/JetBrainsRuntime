@@ -745,7 +745,7 @@ AwtFileDialog::Show(void *p)
             {
                 IShellItemPtr directoryItem;
                 OLE_TRY
-                OLE_HRT(CreateShellItem(directoryBuffer, directoryItem));
+                OLE_HRT(CreateShellItem(const_cast<LPTSTR>(static_cast<LPCTSTR>(directoryBuffer)), directoryItem));
                 OLE_HRT(pfd->SetFolder(directoryItem));
                 OLE_CATCH
             }
