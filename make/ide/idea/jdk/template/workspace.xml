@@ -8,19 +8,6 @@
   <component name="StructureViewFactory">
     <option name="ACTIVE_ACTIONS" value=",ALPHA_COMPARATOR" />
   </component>
-  <component name="antWorkspaceConfiguration">
-    <option name="IS_AUTOSCROLL_TO_SOURCE" value="false" />
-    <option name="FILTER_TARGETS" value="false" />
-    <buildFile url="file://$PROJECT_DIR$/make/ide/idea/jdk/build.xml">
-      <runInBackground value="false" />
-      <targetFilters>
-        <filter targetName="clean" isVisible="true" />
-        <filter targetName="images" isVisible="true" />
-      </targetFilters>
-      <treeView value="false" />
-      <expanded value="true" />
-    </buildFile>
-  </component>
   <component name="ProjectView">
     <navigator currentView="ProjectPane" proportions="" version="1">
       <flattenPackages />
