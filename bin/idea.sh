@@ -153,6 +153,15 @@ RELATIVE_SPEC_DIR="`realpath --relative-to=\"$TOPLEVEL_DIR\" \"$SPEC_DIR\"`"
 add_replacement "###BUILD_DIR###" "$RELATIVE_SPEC_DIR"
 add_replacement "###IMAGES_DIR###" "$RELATIVE_SPEC_DIR/images/jdk"
 if [ "x$PATHTOOL" != "x" ]; then
+  if [ "$CUSTOM_IDEA_OUTPUT" = true ]; then
+    add_replacement "###BASH_RUNNER_PREFIX###" "`$PATHTOOL -am $IDEA_OUTPUT/.idea/bash.bat`"
+  else
+    add_replacement "###BASH_RUNNER_PREFIX###" ".idea\\\\bash.bat"
+  fi
+else
+  add_replacement "###BASH_RUNNER_PREFIX###" ""
+fi
+if [ "x$PATHTOOL" != "x" ]; then
     if [ "x$JT_HOME" = "x" ]; then
       add_replacement "###JTREG_HOME###" ""
     else
@@ -215,3 +224,14 @@ for value in $MODULES; do
 done
 )
 rm "$IDEA_OUTPUT/module.iml"
+
+### Create shell script runner for Windows
+
+if [ "x$PATHTOOL" != "x" ]; then
+  echo "@echo off" > "$IDEA_OUTPUT/bash.bat"
+  if [ "x$WSL_DISTRO_NAME" != "x" ] ; then
+    echo "wsl -d $WSL_DISTRO_NAME --cd \"%cd%\" -e %*" >> "$IDEA_OUTPUT/bash.bat"
+  else
+    echo "$WINENV_ROOT\bin\bash.exe -l -c \"cd %CD:\=/%/ && %*\"" >> "$IDEA_OUTPUT/bash.bat"
+  fi
+fi
