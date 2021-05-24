@@ -1275,10 +1275,10 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
         jboolean ok;
         GlyphInfo *ginfo = (GlyphInfo *)jlong_to_ptr(NEXT_LONG(images));
 
-        if (ginfo == NULL) {
+        if (ginfo == NULL || ginfo == (void*) -1) {
             // this shouldn't happen, but if it does we'll just break out...
-            J2dRlsTraceLn(J2D_TRACE_ERROR,
-                          "OGLTR_DrawGlyphList: glyph info is null");
+            J2dRlsTraceLn1(J2D_TRACE_ERROR,
+                           "OGLTR_DrawGlyphList: glyph info is %d", ginfo);
             break;
         }
 
