@@ -36,6 +36,8 @@
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
 
+#import <QuartzCore/CAMetalLayer.h>
+
 #define MASK(KEY) \
     (sun_lwawt_macosx_CPlatformWindow_ ## KEY)
 
@@ -348,6 +350,10 @@ AWT_ASSERT_APPKIT_THREAD;
 
     if (IS(bits, SHEET) && owner != nil) {
         [self.nsWindow setStyleMask: NSWindowStyleMaskDocModalWindow];
+    }
+
+    if ([view.layer isKindOfClass:[CAMetalLayer class]]) {
+        self.nsWindow.backgroundColor = NSColor.blackColor;
     }
 
     return self;
