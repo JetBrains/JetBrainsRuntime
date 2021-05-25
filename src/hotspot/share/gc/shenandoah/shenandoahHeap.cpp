@@ -1717,6 +1717,15 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
       set_process_references(heuristics()->can_process_references());
       set_unload_classes(heuristics()->can_unload_classes());
 
+      if (_heap->process_references()) {
+        ReferenceProcessor* rp = _heap->ref_processor();
+        rp->set_active_mt_degree(_heap->workers()->active_workers());
+
+        // enable ("weak") refs discovery
+        rp->enable_discovery(true /*verify_no_refs*/);
+        rp->setup_policy(_heap->soft_ref_policy()->should_clear_all_soft_refs());
+      }
+
       op_reset();
 
       op_init_mark();
