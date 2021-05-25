@@ -127,7 +127,7 @@ public class ChannelInputStream
                 newPos = pos + n;
                 long size = sbc.size();
                 if (newPos < 0 || newPos > size) {
-                    newPos = size;8227609
+                    newPos = size;
                 }
             } else {
                 newPos = Long.max(pos + n, 0);
