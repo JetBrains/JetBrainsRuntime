@@ -25,7 +25,21 @@
 # Shell script for generating an IDEA project from a given list of modules
 
 usage() {
-      echo "Usage: $0 [-h|--help] [-q|--quiet] [-a|--absolute-paths] [-o|--output <path>] [modules]+"
+      echo "Usage: $0 [-h|--help] [-q|--quiet] [-a|--absolute-paths] [-o|--output <path>] [modules...]"
+      echo "    -h | --help"
+      echo "    -q | --quiet
+        No stdout output"
+      echo "    -a | --absolute-paths
+        Use absolute paths to this jdk, so that generated .idea
+        project files can be moved independently of jdk sources"
+      echo "    -o | --output <path>
+        Where .idea directory with project files will be generated
+        (e.g. using '-o .' will place project files in './.idea')
+        Default: $TOPLEVEL_DIR"
+      echo "    [modules...]
+        Generate project modules for specific java modules
+        (e.g. 'java.base java.desktop')
+        Default: all existing modules (java.* and jdk.*)"
       exit 1
 }
 
@@ -36,7 +50,7 @@ cd $SCRIPT_DIR; SCRIPT_DIR=`pwd`
 cd .. ; TOPLEVEL_DIR=`pwd`
 cd $TOP;
 
-IDEA_OUTPUT=$TOP/.idea
+IDEA_OUTPUT=$TOPLEVEL_DIR/.idea
 VERBOSE=true
 ABSOLUTE_PATHS=false
 while [ $# -gt 0 ]
@@ -127,10 +141,19 @@ if [ "$ABSOLUTE_PATHS" = true ] ; then
     PROJECT_DIR="$TOPLEVEL_DIR"
   fi
   MODULE_DIR="$PROJECT_DIR"
+  CLION_SCRIPT_TOPDIR="$TOPLEVEL_DIR"
+  CLION_PROJECT_DIR="$PROJECT_DIR"
 else
   PROJECT_DIR="`realpath --relative-to=\"$IDEA_OUTPUT/..\" \"$TOPLEVEL_DIR\"`"
-  MODULE_DIR="\$MODULE_DIR\$/$PROJECT_DIR"
-  PROJECT_DIR="\$PROJECT_DIR\$/$PROJECT_DIR"
+  if [ "$PROJECT_DIR" = "." ] ; then
+    PROJECT_DIR=""
+  else
+    PROJECT_DIR="/$PROJECT_DIR"
+  fi
+  MODULE_DIR="\$MODULE_DIR\$$PROJECT_DIR"
+  PROJECT_DIR="\$PROJECT_DIR\$$PROJECT_DIR"
+  CLION_SCRIPT_TOPDIR="`realpath --relative-to=\"$IDEA_OUTPUT/jdk-clion\" \"$TOPLEVEL_DIR\"`"
+  CLION_PROJECT_DIR="\$PROJECT_DIR\$/$CLION_SCRIPT_TOPDIR"
 fi
 if [ "$VERBOSE" = true ] ; then
   echo "Project root: $PROJECT_DIR"
@@ -160,6 +183,9 @@ add_replacement() {
     eval TO$NUM_REPLACEMENTS='$2'
 }
 
+add_replacement "###PATHTOOL###" "$PATHTOOL"
+add_replacement "###CLION_SCRIPT_TOPDIR###" "$CLION_SCRIPT_TOPDIR"
+add_replacement "###CLION_PROJECT_DIR###" "$CLION_PROJECT_DIR"
 add_replacement "###PROJECT_DIR###" "$PROJECT_DIR"
 add_replacement "###MODULE_DIR###" "$MODULE_DIR"
 add_replacement "###MODULE_NAMES###" "$MODULE_NAMES"
@@ -196,6 +222,9 @@ replace_template_dir "$IDEA_OUTPUT"
 
 ### Generate module project files
 
+if [ "$VERBOSE" = true ] ; then
+    echo "Generating project modules:"
+  fi
 (
 DEFAULT_IFS="$IFS"
 IFS='#'
@@ -208,7 +237,7 @@ for value in $MODULES; do
   (
   eval "$value"
   if [ "$VERBOSE" = true ] ; then
-    echo "Generating project module: $module"
+    echo "    $module"
   fi
   add_replacement "###MODULE_CONTENT###" "src/$module"
   SOURCE_DIRS=""
@@ -247,4 +276,16 @@ if [ "x$PATHTOOL" != "x" ]; then
   else
     echo "$WINENV_ROOT\bin\bash.exe -l -c \"cd %CD:\=/%/ && %*\"" >> "$IDEA_OUTPUT/bash.bat"
   fi
+fi
+
+
+
+if [ "$VERBOSE" = true ] ; then
+  IDEA_PROJECT_DIR="`dirname $IDEA_OUTPUT`"
+  if [ "x$PATHTOOL" != "x" ]; then
+    IDEA_PROJECT_DIR="`$PATHTOOL -am $IDEA_PROJECT_DIR`"
+  fi
+  echo "
+Now you can open \"$IDEA_PROJECT_DIR\" as IDEA project
+You can also run 'bash \"$IDEA_OUTPUT/jdk-clion/update-project.sh\"' to generate Clion project"
 fi
