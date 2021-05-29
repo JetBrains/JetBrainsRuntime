@@ -36,7 +36,7 @@ cd $SCRIPT_DIR; SCRIPT_DIR=`pwd`
 cd .. ; TOPLEVEL_DIR=`pwd`
 cd $TOP;
 
-IDEA_OUTPUT=$TOP/.idea
+IDEA_OUTPUT=$TOPLEVEL_DIR/.idea
 VERBOSE=true
 ABSOLUTE_PATHS=false
 while [ $# -gt 0 ]
@@ -127,10 +127,14 @@ if [ "$ABSOLUTE_PATHS" = true ] ; then
     PROJECT_DIR="$TOPLEVEL_DIR"
   fi
   MODULE_DIR="$PROJECT_DIR"
+  CLION_SCRIPT_TOPDIR="$TOPLEVEL_DIR"
+  CLION_PROJECT_DIR="$PROJECT_DIR"
 else
   PROJECT_DIR="`realpath --relative-to=\"$IDEA_OUTPUT/..\" \"$TOPLEVEL_DIR\"`"
   MODULE_DIR="\$MODULE_DIR\$/$PROJECT_DIR"
   PROJECT_DIR="\$PROJECT_DIR\$/$PROJECT_DIR"
+  CLION_SCRIPT_TOPDIR="`realpath --relative-to=\"$IDEA_OUTPUT/jdk-clion\" \"$TOPLEVEL_DIR\"`"
+  CLION_PROJECT_DIR="\$PROJECT_DIR\$/$CLION_SCRIPT_TOPDIR"
 fi
 if [ "$VERBOSE" = true ] ; then
   echo "Project root: $PROJECT_DIR"
@@ -160,6 +164,9 @@ add_replacement() {
     eval TO$NUM_REPLACEMENTS='$2'
 }
 
+add_replacement "###PATHTOOL###" "$PATHTOOL"
+add_replacement "###CLION_SCRIPT_TOPDIR###" "$CLION_SCRIPT_TOPDIR"
+add_replacement "###CLION_PROJECT_DIR###" "$CLION_PROJECT_DIR"
 add_replacement "###PROJECT_DIR###" "$PROJECT_DIR"
 add_replacement "###MODULE_DIR###" "$MODULE_DIR"
 add_replacement "###MODULE_NAMES###" "$MODULE_NAMES"
@@ -247,4 +254,15 @@ if [ "x$PATHTOOL" != "x" ]; then
   else
     echo "$WINENV_ROOT\bin\bash.exe -l -c \"cd %CD:\=/%/ && %*\"" >> "$IDEA_OUTPUT/bash.bat"
   fi
+fi
+
+
+
+IDEA_PROJECT_DIR="`dirname $IDEA_OUTPUT`"
+if [ "x$PATHTOOL" != "x" ]; then
+  IDEA_PROJECT_DIR="`$PATHTOOL -am $IDEA_PROJECT_DIR`"
+fi
+if [ "$VERBOSE" = true ] ; then
+  echo "Now you can open $IDEA_PROJECT_DIR as IDEA project"
+  echo "You can also run \"bash $IDEA_OUTPUT/jdk-clion/update-project.sh\" to generate Clion project"
 fi
