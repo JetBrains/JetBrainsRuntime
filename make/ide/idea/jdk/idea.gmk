@@ -55,6 +55,7 @@ else #with SPEC
 	$(ECHO) "RELATIVE_TOPLEVEL_PROJECT_DIR=\"$(call RelativePath,$(TOPLEVEL_DIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
 	$(ECHO) "RELATIVE_PROJECT_DIR=\"$(call RelativePath,$(topdir),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
 	$(ECHO) "RELATIVE_BUILD_DIR=\"$(call RelativePath,$(OUTPUTDIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
+	$(ECHO) "CLION_RELATIVE_PROJECT_DIR=\"$(call RelativePath,$(topdir),$(IDEA_OUTPUT_PARENT)/.idea/jdk-clion)\"" >> $(OUT)
 	$(ECHO) "PATHTOOL=\"$(PATHTOOL)\"" >> $(OUT)
 	$(ECHO) "JT_HOME=\"$(JT_HOME)\"" >> $(OUT)
 	$(ECHO) "WINENV_ROOT=\"$(WINENV_ROOT)\"" >> $(OUT)
