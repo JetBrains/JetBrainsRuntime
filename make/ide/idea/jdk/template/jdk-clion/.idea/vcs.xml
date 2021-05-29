@@ -11,6 +11,6 @@
     </option>
   </component>
   <component name="VcsDirectoryMappings">
-    <mapping directory="###TOPLEVEL_PROJECT_DIR###" vcs="###VCS_TYPE###" />
+    <mapping directory="###CLION_PROJECT_DIR###" vcs="###VCS_TYPE###" />
   </component>
 </project>
