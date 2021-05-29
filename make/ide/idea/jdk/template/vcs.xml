@@ -4,8 +4,8 @@
     <option name="links">
       <list>
         <IssueNavigationLink>
-          <option name="issueRegexp" value="\d{7}" />
-          <option name="linkRegexp" value="https://bugs.openjdk.org/browse/JDK-$0" />
+          <option name="issueRegexp" value="(?:^|\s|\p{Punct})(?:JDK-)?(\d{7})(?=$|\s|\p{Punct})" />
+          <option name="linkRegexp" value="https://bugs.openjdk.java.net/browse/JDK-$1" />
         </IssueNavigationLink>
       </list>
     </option>
