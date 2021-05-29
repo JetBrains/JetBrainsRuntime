@@ -25,7 +25,7 @@
 # Shell script for generating an IDEA project from a given list of modules
 
 usage() {
-      echo "usage: $0 [-h|--help] [-v|--verbose] [-o|--output <path>] [modules]+"
+      echo "Usage: $0 [-h|--help] [-q|--quiet] [-a|--absolute-paths] [-o|--output <path>] [modules]+"
       exit 1
 }
 
@@ -33,11 +33,12 @@ SCRIPT_DIR=`dirname $0`
 #assume TOP is the dir from which the script has been called
 TOP=`pwd`
 cd $SCRIPT_DIR; SCRIPT_DIR=`pwd`
+cd .. ; TOPLEVEL_DIR=`pwd`
 cd $TOP;
 
 IDEA_OUTPUT=$TOP/.idea
-CUSTOM_IDEA_OUTPUT=false
-VERBOSE="false"
+VERBOSE=true
+ABSOLUTE_PATHS=false
 while [ $# -gt 0 ]
 do
   case $1 in
@@ -45,13 +46,16 @@ do
       usage
       ;;
 
-    -v | --vebose )
-      VERBOSE="true"
+    -q | --quiet )
+      VERBOSE=false
+      ;;
+
+    -a | --absolute-paths )
+      ABSOLUTE_PATHS=true
       ;;
 
     -o | --output )
       IDEA_OUTPUT=$2/.idea
-      CUSTOM_IDEA_OUTPUT=true
       shift
       ;;
 
@@ -69,12 +73,6 @@ done
 mkdir -p $IDEA_OUTPUT || exit 1
 cd $IDEA_OUTPUT; IDEA_OUTPUT=`pwd`
 
-if [ "x$TOPLEVEL_DIR" = "x" ] ; then
-    cd $SCRIPT_DIR/..
-    TOPLEVEL_DIR=`pwd`
-    cd $IDEA_OUTPUT
-fi
-
 MAKE_DIR="$SCRIPT_DIR/../make"
 IDEA_MAKE="$MAKE_DIR/ide/idea/jdk"
 IDEA_TEMPLATE="$IDEA_MAKE/template"
@@ -88,9 +86,8 @@ if [ -d "$TEMPLATES_OVERRIDE" ] ; then
     done
 fi
 
-if [ "$VERBOSE" = "true" ] ; then
-  echo "output dir: $IDEA_OUTPUT"
-  echo "idea template dir: $IDEA_TEMPLATE"
+if [ "$VERBOSE" = true ] ; then
+  echo "Will generate IDEA project files in \"$IDEA_OUTPUT\" for project \"$TOPLEVEL_DIR\""
 fi
 
 cd $TOP ; make -f "$IDEA_MAKE/idea.gmk" -I $MAKE_DIR/.. idea MAKEOVERRIDES= OUT=$IDEA_OUTPUT/env.cfg MODULES="$*" || exit 1
@@ -123,6 +120,23 @@ if [ -d "$TOPLEVEL_DIR/.git" ] ; then
     VCS_TYPE="Git"
 fi
 
+if [ "$ABSOLUTE_PATHS" = true ] ; then
+  if [ "x$PATHTOOL" != "x" ]; then
+    PROJECT_DIR="`$PATHTOOL -am $TOPLEVEL_DIR`"
+  else
+    PROJECT_DIR="$TOPLEVEL_DIR"
+  fi
+  MODULE_DIR="$PROJECT_DIR"
+else
+  PROJECT_DIR="`realpath --relative-to=\"$IDEA_OUTPUT/..\" \"$TOPLEVEL_DIR\"`"
+  MODULE_DIR="\$MODULE_DIR\$/$PROJECT_DIR"
+  PROJECT_DIR="\$PROJECT_DIR\$/$PROJECT_DIR"
+fi
+if [ "$VERBOSE" = true ] ; then
+  echo "Project root: $PROJECT_DIR"
+  echo "Generating IDEA project files..."
+fi
+
 ### Replace template variables
 
 NUM_REPLACEMENTS=0
@@ -146,18 +160,16 @@ add_replacement() {
     eval TO$NUM_REPLACEMENTS='$2'
 }
 
+add_replacement "###PROJECT_DIR###" "$PROJECT_DIR"
+add_replacement "###MODULE_DIR###" "$MODULE_DIR"
 add_replacement "###MODULE_NAMES###" "$MODULE_NAMES"
 add_replacement "###VCS_TYPE###" "$VCS_TYPE"
-SPEC_DIR=`dirname $SPEC`
+SPEC_DIR=`dirname $SPEC`; cd $SPEC_DIR; SPEC_DIR=`pwd`
 RELATIVE_SPEC_DIR="`realpath --relative-to=\"$TOPLEVEL_DIR\" \"$SPEC_DIR\"`"
 add_replacement "###BUILD_DIR###" "$RELATIVE_SPEC_DIR"
 add_replacement "###IMAGES_DIR###" "$RELATIVE_SPEC_DIR/images/jdk"
 if [ "x$PATHTOOL" != "x" ]; then
-  if [ "$CUSTOM_IDEA_OUTPUT" = true ]; then
-    add_replacement "###BASH_RUNNER_PREFIX###" "`$PATHTOOL -am $IDEA_OUTPUT/.idea/bash.bat`"
-  else
-    add_replacement "###BASH_RUNNER_PREFIX###" ".idea\\\\bash.bat"
-  fi
+  add_replacement "###BASH_RUNNER_PREFIX###" "\$PROJECT_DIR\$/.idea/bash.bat"
 else
   add_replacement "###BASH_RUNNER_PREFIX###" ""
 fi
@@ -195,10 +207,10 @@ fi
 for value in $MODULES; do
   (
   eval "$value"
-  if [ "$VERBOSE" = "true" ] ; then
-    echo "generating project module: $module"
+  if [ "$VERBOSE" = true ] ; then
+    echo "Generating project module: $module"
   fi
-  add_replacement "###MODULE_DIR###" "src/$module"
+  add_replacement "###MODULE_CONTENT###" "src/$module"
   SOURCE_DIRS=""
   IFS=' '
   for dir in $moduleSrcDirs; do
@@ -207,14 +219,15 @@ for value in $MODULES; do
     fi
     dir="`realpath --relative-to=\"$TOPDIR_FOR_RELATIVITY_CHECKS\" \"$dir\"`"
     case $dir in # Exclude generated sources to avoid module-info conflicts, see https://youtrack.jetbrains.com/issue/IDEA-185108
-      "$SPEC_DIR"*) ;;
-      *) SOURCE_DIRS="$SOURCE_DIRS<sourceFolder url=\"file://\$MODULE_DIR\$/$dir\" isTestSource=\"false\" /> "
+      "src/"*) SOURCE_DIRS="$SOURCE_DIRS<sourceFolder url=\"file://$MODULE_DIR/$dir\" isTestSource=\"false\" /> "
     esac
   done
   add_replacement "###SOURCE_DIRS###" "$SOURCE_DIRS"
   DEPENDENCIES=""
   for dep in $moduleDependencies; do
-    DEPENDENCIES="$DEPENDENCIES<orderEntry type=\"module\" module-name=\"$dep\" /> "
+    case $MODULE_NAMES in # Exclude skipped modules from dependencies
+      *"$dep"*) DEPENDENCIES="$DEPENDENCIES<orderEntry type=\"module\" module-name=\"$dep\" /> "
+    esac
   done
   add_replacement "###DEPENDENCIES###" "$DEPENDENCIES"
   cp "$IDEA_OUTPUT/module.iml" "$IDEA_OUTPUT/$module.iml"
