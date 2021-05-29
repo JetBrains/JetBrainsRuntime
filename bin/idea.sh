@@ -170,6 +170,8 @@ if [ "$ABSOLUTE_PATHS" = true ] ; then
   MODULE_DIR="$PROJECT_DIR"
   TOPLEVEL_MODULE_DIR="$TOPLEVEL_PROJECT_DIR"
   cd "$IDEA_OUTPUT_PARENT" && cd "$RELATIVE_BUILD_DIR" && BUILD_DIR="`pwd`"
+  CLION_SCRIPT_TOPDIR="$OPENJDK_DIR"
+  CLION_PROJECT_DIR="$PROJECT_DIR"
 else
   if [ "$RELATIVE_PROJECT_DIR" = "." ] ; then
     PROJECT_DIR=""
@@ -186,6 +188,8 @@ else
   TOPLEVEL_MODULE_DIR="\$MODULE_DIR\$$TOPLEVEL_PROJECT_DIR"
   TOPLEVEL_PROJECT_DIR="\$PROJECT_DIR\$$TOPLEVEL_PROJECT_DIR"
   BUILD_DIR="\$PROJECT_DIR\$/$RELATIVE_BUILD_DIR"
+  CLION_SCRIPT_TOPDIR="$CLION_RELATIVE_PROJECT_DIR"
+  CLION_PROJECT_DIR="\$PROJECT_DIR\$/$CLION_SCRIPT_TOPDIR"
 fi
 if [ "$VERBOSE" = true ] ; then
   echo "Project root: $PROJECT_DIR"
@@ -215,6 +219,9 @@ add_replacement() {
     eval TO$NUM_REPLACEMENTS='$2'
 }
 
+add_replacement "###PATHTOOL###" "$PATHTOOL"
+add_replacement "###CLION_SCRIPT_TOPDIR###" "$CLION_SCRIPT_TOPDIR"
+add_replacement "###CLION_PROJECT_DIR###" "$CLION_PROJECT_DIR"
 add_replacement "###PROJECT_DIR###" "$PROJECT_DIR"
 add_replacement "###MODULE_DIR###" "$MODULE_DIR"
 add_replacement "###TOPLEVEL_PROJECT_DIR###" "$TOPLEVEL_PROJECT_DIR"
@@ -222,6 +229,7 @@ add_replacement "###TOPLEVEL_MODULE_DIR###" "$TOPLEVEL_MODULE_DIR"
 add_replacement "###MODULE_NAMES###" "$MODULE_NAMES"
 add_replacement "###VCS_TYPE###" "$VCS_TYPE"
 add_replacement "###BUILD_DIR###" "$BUILD_DIR"
+add_replacement "###RELATIVE_BUILD_DIR###" "$RELATIVE_BUILD_DIR"
 if [ "x$PATHTOOL" != "x" ]; then
   add_replacement "###BASH_RUNNER_PREFIX###" "\$PROJECT_DIR\$/.idea/bash.bat"
 else
@@ -301,4 +309,16 @@ if [ "x$PATHTOOL" != "x" ]; then
   else
     echo "$WINENV_ROOT\bin\bash.exe -l -c \"cd %CD:\=/%/ && %*\"" >> "$IDEA_OUTPUT/bash.bat"
   fi
+fi
+
+
+
+if [ "$VERBOSE" = true ] ; then
+  IDEA_PROJECT_DIR="`dirname $IDEA_OUTPUT`"
+  if [ "x$PATHTOOL" != "x" ]; then
+    IDEA_PROJECT_DIR="`$PATHTOOL -am $IDEA_PROJECT_DIR`"
+  fi
+  echo "
+Now you can open \"$IDEA_PROJECT_DIR\" as IDEA project
+You can also run 'bash \"$IDEA_OUTPUT/jdk-clion/update-project.sh\"' to generate Clion project"
 fi
