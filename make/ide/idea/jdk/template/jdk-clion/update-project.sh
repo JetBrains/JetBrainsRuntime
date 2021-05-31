@@ -44,4 +44,4 @@ else
   cp "$BUILD_DIR/compile_commands.json" "$SCRIPT_DIR"
 fi
 
-echo "Now you can open $CLION_PROJECT_DIR as Clion project"
+echo "Now you can open \"$CLION_PROJECT_DIR\" as Clion project"
