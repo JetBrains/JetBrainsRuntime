@@ -106,8 +106,8 @@ public class ParamsTest  {
         keytool("-importkeystore -srckeystore ks -srcstorepass changeit "
                 + "-destkeystore ksnormal -deststorepass changeit");
         data = Files.readAllBytes(Path.of("ksnormal"));
-        checkInt(data, "22", 10000); // Mac ic
-        checkAlg(data, "2000", SHA_256); // Mac alg
+        checkInt(data, "22", 100000); // Mac ic
+        checkAlg(data, "2000", SHA_1); // Mac alg
         checkAlg(data, "110c010c01000", PBES2); // key alg
         checkInt(data, "110c010c01001011", 10000); // key ic
         checkAlg(data, "110c110110", PBES2); // cert alg
@@ -132,8 +132,8 @@ public class ParamsTest  {
                 + "-J-Dkeystore.pkcs12.certProtectionAlgorithm=NONE "
                 + "-J-Dkeystore.pkcs12.macAlgorithm=NONE");
         data = Files.readAllBytes(Path.of("ksnormal"));
-        checkInt(data, "22", 10000); // Mac ic
-        checkAlg(data, "2000", SHA_256); // Mac alg
+        checkInt(data, "22", 100000); // Mac ic
+        checkAlg(data, "2000", SHA_1); // Mac alg
         checkAlg(data, "110c010c01000", PBES2); // key alg
         checkInt(data, "110c010c01001011", 10000); // key ic
         checkAlg(data, "110c010c11000", PBES2); // new key alg
@@ -177,7 +177,7 @@ public class ParamsTest  {
                 + "-J-Dkeystore.pkcs12.keyPbeIterationCount=7777");
         data = Files.readAllBytes(Path.of("ksnewic"));
         checkInt(data, "22", 5555); // Mac ic
-        checkAlg(data, "2000", SHA_256); // Mac alg
+        checkAlg(data, "2000", SHA_1); // Mac alg
         checkAlg(data, "110c010c01000", PBES2); // key alg
         checkInt(data, "110c010c01001011", 7777); // key ic
         checkAlg(data, "110c110110", PBES2); // cert alg
@@ -194,7 +194,7 @@ public class ParamsTest  {
                 + "-J-Dkeystore.pkcs12.keyProtectionAlgorithm=PBEWithSHA1AndRC4_128");
         data = Files.readAllBytes(Path.of("ksnewic"));
         checkInt(data, "22", 5555); // Mac ic
-        checkAlg(data, "2000", SHA_256); // Mac alg
+        checkAlg(data, "2000", SHA_1); // Mac alg
         checkAlg(data, "110c010c01000", PBES2); // key alg
         checkInt(data, "110c010c01001011", 7777); // key ic
         checkAlg(data, "110c010c11000", PBEWithSHA1AndRC4_128); // new key alg
@@ -210,8 +210,8 @@ public class ParamsTest  {
             ks.store(fos, "changeit".toCharArray());
         }
         data = Files.readAllBytes(Path.of("ksnormaldup"));
-        checkInt(data, "22", 10000); // Mac ic
-        checkAlg(data, "2000", SHA_256); // Mac alg
+        checkInt(data, "22", 100000); // Mac ic
+        checkAlg(data, "2000", SHA_1); // Mac alg
         checkAlg(data, "110c010c01000", PBES2); // key alg
         checkInt(data, "110c010c01001011", 10000); // key ic
         checkAlg(data, "110c010c11000", PBES2); // new key alg
@@ -240,7 +240,7 @@ public class ParamsTest  {
         }
         data = Files.readAllBytes(Path.of("ksnewicdup"));
         checkInt(data, "22", 5555); // Mac ic
-        checkAlg(data, "2000", SHA_256); // Mac alg
+        checkAlg(data, "2000", SHA_1); // Mac alg
         checkAlg(data, "110c010c01000", PBES2); // key alg
         checkInt(data, "110c010c01001011", 7777); // key ic
         checkAlg(data, "110c010c11000", PBEWithSHA1AndRC4_128); // new key alg
