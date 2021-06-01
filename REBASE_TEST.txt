@@ -1,2 +1,2 @@
 This is a branch rebase & autosquash test
-Here we change something
+And here's the fixup (that should fail on rebase)
