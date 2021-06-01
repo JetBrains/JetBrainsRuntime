@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -117,12 +117,23 @@ static traceid get_thread_id(JavaThread* thread) {
   return tl->thread_id();
 }
 
-static void record_stacktrace(JavaThread* thread) {
-  assert(thread != NULL, "invariant");
-  if (JfrEventSetting::has_stacktrace(EventOldObjectSample::eventId)) {
-    JfrStackTraceRepository::record_and_cache(thread);
+class RecordStackTrace {
+ private:
+  JavaThread* _jt;
+  bool _enabled;
+ public:
+  RecordStackTrace(JavaThread* jt) : _jt(jt),
+    _enabled(JfrEventSetting::has_stacktrace(EventOldObjectSample::eventId)) {
+    if (_enabled) {
+      JfrStackTraceRepository::record_for_leak_profiler(jt);
+    }
   }
-}
+  ~RecordStackTrace() {
+    if (_enabled) {
+      _jt->jfr_thread_local()->clear_cached_stack_trace();
+    }
+  }
+};
 
 void ObjectSampler::sample(HeapWord* obj, size_t allocated, JavaThread* thread) {
   assert(thread != NULL, "invariant");
@@ -131,7 +142,7 @@ void ObjectSampler::sample(HeapWord* obj, size_t allocated, JavaThread* thread) 
   if (thread_id == 0) {
     return;
   }
-  record_stacktrace(thread);
+  RecordStackTrace rst(thread);
   // try enter critical section
   JfrTryLock tryLock(&_lock);
   if (!tryLock.has_lock()) {
