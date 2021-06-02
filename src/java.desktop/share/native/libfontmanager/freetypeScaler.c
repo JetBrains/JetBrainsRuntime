@@ -1363,7 +1363,7 @@ static jlong
     int error, imageSize;
     UInt16 width, height, rowBytes;
     GlyphInfo *glyphInfo;
-    int renderFlags = FT_LOAD_DEFAULT, target;
+    int target;
     FT_GlyphSlot ftglyph;
     FT_Library library;
 
@@ -1423,11 +1423,11 @@ static jlong
      * which did not use freetype.
      */
     if (context->aaType == TEXT_AA_ON && context->fmType == TEXT_FM_ON) {
-         renderFlags |= FT_LOAD_NO_HINTING;
-     }
+        context->loadFlags |= FT_LOAD_NO_HINTING;
+    }
 
     if (!context->useSbits) {
-        renderFlags |= FT_LOAD_NO_BITMAP;
+        context->loadFlags |= FT_LOAD_NO_BITMAP;
     }
 
     /* NB: in case of non identity transform
@@ -1446,9 +1446,9 @@ static jlong
     } else {
         target = FT_LOAD_TARGET_LCD_V;
     }
-    renderFlags |= target;
+    context->loadFlags |= target;
 
-    error = FT_Load_Glyph(scalerInfo->face, glyphCode, renderFlags);
+    error = FT_Load_Glyph(scalerInfo->face, glyphCode, context->loadFlags);
     if (error) {
         //do not destroy scaler yet.
         //this can be problem of particular context (e.g. with bad transform)
@@ -1475,7 +1475,7 @@ static jlong
             glyphInfo = getNullGlyphImage();
             return ptr_to_jlong(glyphInfo);
         }
-        error = FT_Render_Glyph(ftglyph, FT_LOAD_TARGET_MODE(target));
+        error = FT_Render_Glyph(ftglyph, context->renderFlags);
         if (error != 0) {
             return ptr_to_jlong(getNullGlyphImage());
         }
