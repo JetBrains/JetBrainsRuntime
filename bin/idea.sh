@@ -114,6 +114,7 @@ cd "$SCRIPT_DIR/.." ; OPENJDK_DIR=`pwd`
 IDEA_MAKE="$OPENJDK_DIR/make/ide/idea/jdk"
 IDEA_TEMPLATE="$IDEA_MAKE/template"
 
+cp -rn "$TOPLEVEL_DIR/jb/project/idea-project-files"/* "$IDEA_OUTPUT"
 cp -rn "$IDEA_TEMPLATE"/* "$IDEA_OUTPUT"
 
 #override template
