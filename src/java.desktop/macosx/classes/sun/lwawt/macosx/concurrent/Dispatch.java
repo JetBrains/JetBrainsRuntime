@@ -38,6 +38,7 @@ import java.util.concurrent.*;
  *
  * @since Java for Mac OS X 10.6 Update 2
  */
+@SuppressWarnings("removal")
 public final class Dispatch {
         /**
          * The priorities of the three default asynchronous queues.
