@@ -97,7 +97,7 @@ final class WFileDialogPeer extends WWindowPeer implements FileDialogPeer {
         WToolkit.targetDisposedPeer(target, this);
         _dispose();
     }
-
+    @SuppressWarnings("removal")
     private static boolean useCommonItemDialog() {
         return AccessController.doPrivileged(new GetBooleanAction("sun.awt.windows.useCommonItemDialog"));
     }
