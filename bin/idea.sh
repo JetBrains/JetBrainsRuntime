@@ -85,6 +85,7 @@ MAKE_DIR="$SCRIPT_DIR/../make"
 IDEA_MAKE="$MAKE_DIR/ide/idea/jdk"
 IDEA_TEMPLATE="$IDEA_MAKE/template"
 
+cp -r "$TOPLEVEL_DIR/jb/project/idea-project-files"/* "$IDEA_OUTPUT"
 cp -r "$IDEA_TEMPLATE"/* "$IDEA_OUTPUT"
 
 #override template
