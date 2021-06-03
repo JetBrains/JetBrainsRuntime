@@ -55,7 +55,7 @@ public class InvokeOnToolkitHelper {
         }
         return null;
     }
-
+    @SuppressWarnings("removal")
     private <T> T invoke(Callable<T> callable) {
         assert EventQueue.isDispatchThread();
         if (executor == null) {
