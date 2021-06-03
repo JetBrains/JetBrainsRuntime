@@ -119,6 +119,7 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
                                          OGLSurfaceData.TEXTURE);
     }
 
+    @SuppressWarnings("removal")
     public static CGLGraphicsConfig getConfig(CGraphicsDevice device)
     {
         if (!cglAvailable) {
