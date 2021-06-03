@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="IssueNavigationConfiguration">
+    <option name="links">
+      <list>
+        <IssueNavigationLink>
+          <option name="issueRegexp" value="(?:^|\s|\p{Punct})([A-Z]+\-\d+)(?=$|\s|\p{Punct})" />
+          <option name="linkRegexp" value="https://youtrack.jetbrains.com/issue/$1" />
+        </IssueNavigationLink>
+        <IssueNavigationLink>
+          <option name="issueRegexp" value="(?:^|\s|\p{Punct})(?:JDK-)?(\d{7})(?=$|\s|\p{Punct})" />
+          <option name="linkRegexp" value="https://bugs.openjdk.java.net/browse/JDK-$1" />
+        </IssueNavigationLink>
+      </list>
+    </option>
+  </component>
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+  </component>
+</project>
