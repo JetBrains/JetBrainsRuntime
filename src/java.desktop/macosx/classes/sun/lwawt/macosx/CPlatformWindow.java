@@ -356,6 +356,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         } else {
             bounds = _peer.constrainBounds(_target.getBounds());
         }
+        @SuppressWarnings("removal")
         long nativeWindowPtr = java.security.AccessController.doPrivileged(
                 (PrivilegedAction<Long>) () -> {
                     try {
