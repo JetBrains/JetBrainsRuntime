@@ -40,7 +40,7 @@ import java.security.PrivilegedAction;
 import java.util.concurrent.ConcurrentHashMap;
 import static sun.awt.SunHints.*;
 
-
+@SuppressWarnings("removal")
 public class FileFontStrike extends PhysicalStrike {
 
     /* fffe and ffff are values we specially interpret as meaning
