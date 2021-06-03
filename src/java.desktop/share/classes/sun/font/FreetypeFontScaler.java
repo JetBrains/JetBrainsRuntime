@@ -50,7 +50,7 @@ class FreetypeFontScaler extends FontScaler {
         /* At the moment fontmanager library depends on freetype library
            and therefore no need to load it explicitly here */
         FontManagerNativeLibrary.load();
-
+        @SuppressWarnings("removal")
         String jreFontConfName = java.security.AccessController.doPrivileged(
                 (PrivilegedAction<String>) () ->
                         "true".equals(System.getProperty(
