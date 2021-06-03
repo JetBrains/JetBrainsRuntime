@@ -142,6 +142,7 @@ public final class CFontManager extends SunFontManager {
 
     @Override
     protected void registerJREFonts() {
+        @SuppressWarnings("removal")
         String[] files = AccessController.doPrivileged((PrivilegedAction<String[]>) () ->
                 new File(jreFontDirName).list(getTrueTypeFilter()));
 
