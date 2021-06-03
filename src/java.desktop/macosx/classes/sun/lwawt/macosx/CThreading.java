@@ -34,7 +34,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
-
+@SuppressWarnings("removal")
 public class CThreading {
     static String APPKIT_THREAD_NAME = "AWT-AppKit";
 
