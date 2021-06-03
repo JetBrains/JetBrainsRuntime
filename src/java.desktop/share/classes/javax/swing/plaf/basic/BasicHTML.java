@@ -45,6 +45,7 @@ import javax.swing.text.html.*;
  */
 public class BasicHTML {
     // Rebase CSS size map to let relative font sizes scale properly.
+    @SuppressWarnings("removal")
     private final static boolean REBASE_CSS_SIZE_MAP =
             java.security.AccessController.doPrivileged(
                     (PrivilegedAction<Boolean>)
