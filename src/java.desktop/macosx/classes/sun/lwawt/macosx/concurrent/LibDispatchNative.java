@@ -25,6 +25,7 @@
 
 package sun.lwawt.macosx.concurrent;
 
+@SuppressWarnings("removal")
 final class LibDispatchNative {
     static {
         java.security.AccessController.doPrivileged(
