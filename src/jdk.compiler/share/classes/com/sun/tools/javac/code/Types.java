@@ -5025,6 +5025,10 @@ public class Types {
             this.types = types;
         }
 
+        protected void reportIllegalSignature(Type t) {
+            throw new InvalidSignatureException(t);
+        }
+
         /**
          * Assemble signature of given type in string buffer.
          */
@@ -5059,7 +5063,7 @@ public class Types {
                     break;
                 case CLASS:
                     if (type.isCompound()) {
-                        throw new InvalidSignatureException(type);
+                        reportIllegalSignature(type);
                     }
                     append('L');
                     assembleClassSig(type);
@@ -5104,7 +5108,7 @@ public class Types {
                 }
                 case TYPEVAR:
                     if (((TypeVar)type).isCaptured()) {
-                        throw new InvalidSignatureException(type);
+                        reportIllegalSignature(type);
                     }
                     append('T');
                     append(type.tsym.name);
