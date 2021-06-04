@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "classfile/classLoaderData.hpp"
 #include "classfile/javaClasses.hpp"
 #include "logging/log.hpp"
 #include "memory/allocation.hpp"
@@ -78,7 +79,8 @@ oop ResolvedMethodTable::lookup(int index, unsigned int hash, Method* method) {
 }
 
 unsigned int ResolvedMethodTable::compute_hash(Method* method) {
-  unsigned int hash = method->klass_name()->identity_hash();
+  unsigned int hash = method->method_holder()->class_loader_data()->identity_hash();
+  hash = (hash * 31) ^ method->klass_name()->identity_hash();
   hash = (hash * 31) ^ method->name()->identity_hash();
   hash = (hash * 31) ^ method->signature()->identity_hash();
   return hash;
