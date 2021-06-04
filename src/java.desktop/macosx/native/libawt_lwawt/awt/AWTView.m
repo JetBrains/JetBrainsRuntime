@@ -31,7 +31,6 @@
 #import "JavaTextAccessibility.h"
 #import "JavaAccessibilityUtilities.h"
 #import "GeomUtilities.h"
-#import "OSVersion.h"
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
 
@@ -56,10 +55,7 @@ static NSString *kbdLayout;
 //#define EXTRA_DEBUG
 
 static BOOL shouldUsePressAndHold() {
-    static int shouldUsePressAndHold = -1;
-    if (shouldUsePressAndHold != -1) return shouldUsePressAndHold;
-    shouldUsePressAndHold = !isSnowLeopardOrLower();
-    return shouldUsePressAndHold;
+    return YES;
 }
 
 @implementation AWTView
