@@ -645,7 +645,9 @@ public abstract class Component implements ImageObserver, MenuContainer,
                                                         new GetPropertyAction("awt.image.redrawrate"));
         incRate = (s2 != null) ? Integer.parseInt(s2) : 100;
 
-        INPUT_METHODS_DISABLED = java.security.AccessController.doPrivileged(new GetBooleanAction("awt.ime.disabled"));
+        @SuppressWarnings("removal")
+        boolean imeDisabled = java.security.AccessController.doPrivileged(new GetBooleanAction("awt.ime.disabled"));
+        INPUT_METHODS_DISABLED = imeDisabled;
     }
 
     /**
