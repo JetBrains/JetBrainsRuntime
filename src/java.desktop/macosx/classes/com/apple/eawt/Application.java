@@ -424,4 +424,19 @@ public class Application {
         ((CPlatformWindow)platformWindow).toggleFullScreen();
     }
 
+    public void requestEnterFullScreen(final Window window) {
+        final Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
+        if (!(peer instanceof LWWindowPeer)) return;
+        Object platformWindow = ((LWWindowPeer) peer).getPlatformWindow();
+        if (!(platformWindow instanceof CPlatformWindow)) return;
+        ((CPlatformWindow)platformWindow).enterFullScreen();
+    }
+
+    public void requestLeaveFullScreen(final Window window) {
+        final Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
+        if (!(peer instanceof LWWindowPeer)) return;
+        Object platformWindow = ((LWWindowPeer) peer).getPlatformWindow();
+        if (!(platformWindow instanceof CPlatformWindow)) return;
+        ((CPlatformWindow)platformWindow).leaveFullScreen();
+    }
 }
