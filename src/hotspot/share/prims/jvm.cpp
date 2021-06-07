@@ -3451,7 +3451,7 @@ JVM_ENTRY_NO_ENV(void*, JVM_LoadLibrary(const char* name))
   {
     ThreadToNativeFromVM ttnfvm(thread);
     Thread::WXWriteVerifier wx_write;
-    load_result = os::dll_load(name, ebuf, sizeof ebuf);
+    load_result = os::dll_load_utf8(name, ebuf, sizeof ebuf);
   }
   if (load_result == NULL) {
     char msg[1024];

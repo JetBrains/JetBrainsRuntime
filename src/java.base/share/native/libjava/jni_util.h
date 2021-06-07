@@ -126,6 +126,13 @@ NewStringPlatform(JNIEnv *env, const char *str);
 JNIEXPORT const char *
 GetStringPlatformChars(JNIEnv *env, jstring jstr, jboolean *isCopy);
 
+/* Convert the Java string to UTF-8 (not "modified UTF-8") */
+JNIEXPORT const char *
+GetStringUTF8Chars(JNIEnv *env, jstring jstr);
+
+JNIEXPORT void
+ReleaseStringUTF8Chars(JNIEnv* env, jstring jstr, const char *str);
+
 JNIEXPORT jstring JNICALL
 JNU_NewStringPlatform(JNIEnv *env, const char *str);
 
