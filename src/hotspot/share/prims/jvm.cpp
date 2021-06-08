@@ -3360,7 +3360,7 @@ JVM_ENTRY_NO_ENV(void*, JVM_LoadLibrary(const char* utf8_name))
   void *load_result;
   {
     ThreadToNativeFromVM ttnfvm(thread);
-    load_result = os::dll_load(utf8_name, ebuf, sizeof ebuf);
+    load_result = os::dll_load_utf8(utf8_name, ebuf, sizeof ebuf);
   }
   if (load_result == NULL) {
     char msg[1024];
