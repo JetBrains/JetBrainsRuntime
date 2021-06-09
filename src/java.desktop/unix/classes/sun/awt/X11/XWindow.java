@@ -79,14 +79,6 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     static long lastButton = 0;
     static WeakReference<XWindow> lastWindowRef = null;
     static int clickCount = 0;
-    private static int touchBeginX = 0, touchBeginY = 0;
-    private static int trackingId = 0;
-    private static boolean isTouchScroll = false;
-    private static final int TOUCH_CLICK_RADIUS = 3;
-    // all touch scrolls are measured in pixels
-    private static final int TOUCH_BEGIN = 2;
-    private static final int TOUCH_UPDATE = 3;
-    private static final int TOUCH_END = 4;
 
     // used to check if we need to re-create surfaceData.
     int oldWidth = -1;
@@ -247,11 +239,6 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         }
 
         params.putIfNull(BACKING_STORE, XToolkit.getBackingStoreType());
-
-        params.putIfNull(XI_EVENT_MASK, XConstants.XI_TouchBeginMask |
-                        XConstants.XI_TouchUpdateMask |
-                        XConstants.XI_TouchEndMask);
-        params.putIfNull(XI_DEVICE_ID, XConstants.XIAllMasterDevices);
 
         XToolkit.awtLock();
         try {
@@ -798,112 +785,6 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
             /* Exclude this mouse button from allowed list.*/
             mouseButtonClickAllowed &= ~ XlibUtil.getButtonMask(lbutton);
         }
-    }
-
-    public void handleTouchEvent(XEvent xev) {
-        super.handleTouchEvent(xev);
-
-        XIDeviceEvent dev = XToolkit.GetXIDeviceEvent(xev.get_xcookie());
-        // TODO remove this after TouchEvents support
-        // own touch processing by tracking id
-        if (isTouchReleased()) {
-            trackingId = dev.get_detail();
-        } else if (!isOwningTouch(dev.get_detail())) {
-            return;
-        }
-
-        int x = scaleDown((int) dev.get_event_x());
-        int y = scaleDown((int) dev.get_event_y());
-
-        if (dev.get_event() != window) {
-            Point localXY = toLocal(x, y);
-            x = localXY.x;
-            y = localXY.y;
-        }
-
-        int button = XConstants.buttons[0];
-        int modifiers = getModifiers(dev.get_mods().get_effective(), button, 0);
-        // turning off shift modifier
-        modifiers &= ~InputEvent.SHIFT_DOWN_MASK;
-
-        long jWhen = XToolkit.nowMillisUTC_offset(dev.get_time());
-
-        switch (dev.get_evtype()) {
-            case XConstants.XI_TouchBegin:
-                isTouchScroll = false;
-                touchBeginX = x;
-                touchBeginY = y;
-                break;
-            case XConstants.XI_TouchUpdate:
-                if (isInsideTouchClickBoundaries(x, y)) {
-                    return;
-                }
-
-                if (!isTouchScroll) {
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, touchBeginX, touchBeginY, TOUCH_BEGIN, 1);
-                    isTouchScroll = true;
-                }
-
-                if (lastY - y != 0) {
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastY - y);
-                }
-                // horizontal scroll
-                if (lastX - x != 0) {
-                    modifiers |= InputEvent.SHIFT_DOWN_MASK;
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastX - x);
-                }
-                break;
-            case XConstants.XI_TouchEnd:
-                if (isTouchScroll) {
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_END, 1);
-                } else {
-                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, touchBeginX, touchBeginY, button);
-                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, touchBeginX, touchBeginY, button);
-                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, touchBeginX, touchBeginY, button);
-                }
-
-                // release touch processing
-                trackingId = 0;
-                break;
-        }
-
-        lastX = x;
-        lastY = y;
-    }
-
-    private boolean isInsideTouchClickBoundaries(int x, int y) {
-        return Math.abs(touchBeginX - x) <= TOUCH_CLICK_RADIUS &&
-                Math.abs(touchBeginY - y) <= TOUCH_CLICK_RADIUS;
-    }
-
-    private static boolean isOwningTouch(int fingerId) {
-        return trackingId == fingerId;
-    }
-
-    private static boolean isTouchReleased() {
-        return trackingId == 0;
-    }
-
-    private void sendWheelEventFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int type, int delta) {
-        postEventToEventQueue(
-                new MouseWheelEvent(getEventSource(), MouseEvent.MOUSE_WHEEL, jWhen,
-                        modifiers,
-                        x, y,
-                        scaleDown((int) dev.get_root_x()),
-                        scaleDown((int) dev.get_root_y()),
-                        0, false, type,
-                        1, delta));
-    }
-
-    private void sendMouseEventFromTouch(XIDeviceEvent dev, int type, long jWhen, int modifiers, int x, int y, int button) {
-        postEventToEventQueue(
-                new MouseEvent(getEventSource(), type, jWhen,
-                        modifiers,
-                        x, y,
-                        scaleDown((int) dev.get_root_x()),
-                        scaleDown((int) dev.get_root_y()),
-                        1,
-                        false, button));
     }
 
     @Override
