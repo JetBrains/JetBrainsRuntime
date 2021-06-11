@@ -29,7 +29,6 @@
 #import <assert.h>
 
 #import <Cocoa/Cocoa.h>
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <Carbon/Carbon.h>
 
 //#define DEBUG 1
