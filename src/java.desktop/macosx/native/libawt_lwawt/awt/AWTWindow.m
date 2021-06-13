@@ -373,10 +373,6 @@ AWT_ASSERT_APPKIT_THREAD;
         [self.nsWindow setStyleMask: NSWindowStyleMaskDocModalWindow];
     }
 
-    if ([view.layer isKindOfClass:[CAMetalLayer class]]) {
-        self.nsWindow.backgroundColor = NSColor.blackColor;
-    }
-
     return self;
 }
 
