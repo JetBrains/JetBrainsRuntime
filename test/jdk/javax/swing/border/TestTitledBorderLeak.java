@@ -68,6 +68,12 @@ public class TestTitledBorderLeak {
         Thread.sleep(3000);
         SwingUtilities.invokeAndWait(() -> {
             for (int i = 0; i < TOTAL_TITLEDBORDER; i++) {
+                frame[i].setVisible(false);
+            }
+        });
+        Thread.sleep(3000);
+        SwingUtilities.invokeAndWait(() -> {
+            for (int i = 0; i < TOTAL_TITLEDBORDER; i++) {
                 frame[i].dispose();
                 frame[i] = null;
             }
