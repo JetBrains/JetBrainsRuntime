@@ -52,6 +52,7 @@ else #with SPEC
 	          moduleDependencies='$(call FindTransitiveDepsForModule,$(mod))' \
 	        #)\"" > $(OUT)
 	$(ECHO) "MODULE_NAMES=\"$(strip $(foreach mod, $(SEL_MODULES), $(mod)))\"" >> $(OUT)
+	$(ECHO) "RELATIVE_TOPLEVEL_PROJECT_DIR=\"$(call RelativePath,$(TOPLEVEL_DIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
 	$(ECHO) "RELATIVE_PROJECT_DIR=\"$(call RelativePath,$(topdir),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
 	$(ECHO) "RELATIVE_BUILD_DIR=\"$(call RelativePath,$(OUTPUTDIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
 	$(ECHO) "PATHTOOL=\"$(PATHTOOL)\"" >> $(OUT)
