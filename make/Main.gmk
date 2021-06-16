@@ -358,7 +358,7 @@ $(eval $(call SetupTarget, vscode-project-ccls, \
 
 $(eval $(call SetupTarget, idea-gen-config, \
     MAKEFILE := ide/idea/jdk/IdeaGenConfig, \
-    ARGS := IDEA_OUTPUT="$(IDEA_OUTPUT)" MODULES="$(MODULES)", \
+    ARGS := IDEA_OUTPUT="$(IDEA_OUTPUT)" MODULES="$(MODULES)" TOPLEVEL_DIR="$(TOPLEVEL_DIR)" IDEA_OUTPUT_PARENT="$(IDEA_OUTPUT_PARENT)", \
 ))
 
 ################################################################################
