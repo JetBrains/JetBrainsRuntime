@@ -25,17 +25,20 @@
 # Shell script for generating an IDEA project from a given list of modules
 
 usage() {
-      echo "Usage: $0 [-h|--help] [-q|--quiet] [-a|--absolute-paths] [-o|--output <path>] [modules...]"
+      echo "Usage: $0 [-h|--help] [-q|--quiet] [-a|--absolute-paths] [-r|--root <path>] [-o|--output <path>] [modules...]"
       echo "    -h | --help"
       echo "    -q | --quiet
         No stdout output"
       echo "    -a | --absolute-paths
         Use absolute paths to this jdk, so that generated .idea
         project files can be moved independently of jdk sources"
+      echo "    -r | --root <path>
+        Project content root
+        Default: $TOPLEVEL_DIR"
       echo "    -o | --output <path>
         Where .idea directory with project files will be generated
         (e.g. using '-o .' will place project files in './.idea')
-        Default: $TOPLEVEL_DIR"
+        Default: same as --root"
       echo "    [modules...]
         Generate project modules for specific java modules
         (e.g. 'java.base java.desktop')
@@ -47,10 +50,11 @@ SCRIPT_DIR=`dirname $0`
 #assume TOP is the dir from which the script has been called
 TOP=`pwd`
 cd $SCRIPT_DIR; SCRIPT_DIR=`pwd`
-cd .. ; TOPLEVEL_DIR=`pwd`
+if [ "x$TOPLEVEL_DIR" = "x" ] ; then
+  cd .. ; TOPLEVEL_DIR=`pwd`
+fi
 cd $TOP;
 
-IDEA_OUTPUT=$TOPLEVEL_DIR/.idea
 VERBOSE=true
 ABSOLUTE_PATHS=false
 while [ $# -gt 0 ]
@@ -68,8 +72,13 @@ do
       ABSOLUTE_PATHS=true
       ;;
 
+    -r | --root )
+      TOPLEVEL_DIR="$2"
+      shift
+      ;;
+
     -o | --output )
-      IDEA_OUTPUT=$2/.idea
+      IDEA_OUTPUT="$2/.idea"
       shift
       ;;
 
@@ -84,15 +93,19 @@ do
   shift
 done
 
-mkdir -p $IDEA_OUTPUT || exit 1
-cd $IDEA_OUTPUT; IDEA_OUTPUT=`pwd`
-cd ..; IDEA_OUTPUT_PARENT=`pwd`
+if [ "x$IDEA_OUTPUT" = "x" ] ; then
+  IDEA_OUTPUT="$TOPLEVEL_DIR/.idea"
+fi
 
-MAKE_DIR="$TOPLEVEL_DIR/make"
-IDEA_MAKE="$MAKE_DIR/ide/idea/jdk"
+mkdir -p $IDEA_OUTPUT || exit 1
+cd "$TOP" ; cd $TOPLEVEL_DIR; TOPLEVEL_DIR=`pwd`
+cd "$TOP" ; cd $IDEA_OUTPUT; IDEA_OUTPUT=`pwd`
+cd ..; IDEA_OUTPUT_PARENT=`pwd`
+cd "$SCRIPT_DIR/.." ; OPENJDK_DIR=`pwd`
+
+IDEA_MAKE="$OPENJDK_DIR/make/ide/idea/jdk"
 IDEA_TEMPLATE="$IDEA_MAKE/template"
 
-cp -rn "$TOPLEVEL_DIR/jb/project/idea-project-files"/* "$IDEA_OUTPUT"
 cp -rn "$IDEA_TEMPLATE"/* "$IDEA_OUTPUT"
 
 #override template
@@ -106,7 +119,7 @@ if [ "$VERBOSE" = true ] ; then
   echo "Will generate IDEA project files in \"$IDEA_OUTPUT\" for project \"$TOPLEVEL_DIR\""
 fi
 
-cd $TOP ; make -f "$IDEA_MAKE/idea.gmk" -I "$TOPLEVEL_DIR" idea \
+cd $TOP ; make -f "$IDEA_MAKE/idea.gmk" -I "$OPENJDK_DIR" idea TOPLEVEL_DIR="$TOPLEVEL_DIR" \
     MAKEOVERRIDES= IDEA_OUTPUT_PARENT="$IDEA_OUTPUT_PARENT" OUT="$IDEA_OUTPUT/env.cfg" MODULES="$*" || exit 1
 cd $SCRIPT_DIR
 
@@ -139,20 +152,30 @@ fi
 
 if [ "$ABSOLUTE_PATHS" = true ] ; then
   if [ "x$PATHTOOL" != "x" ]; then
-    PROJECT_DIR="`$PATHTOOL -am $TOPLEVEL_DIR`"
+    PROJECT_DIR="`$PATHTOOL -am $OPENJDK_DIR`"
+    TOPLEVEL_PROJECT_DIR="`$PATHTOOL -am $TOPLEVEL_DIR`"
   else
-    PROJECT_DIR="$TOPLEVEL_DIR"
+    PROJECT_DIR="$OPENJDK_DIR"
+    TOPLEVEL_PROJECT_DIR="$TOPLEVEL_DIR"
   fi
   MODULE_DIR="$PROJECT_DIR"
-  cd "$TOPLEVEL_DIR" && cd "$RELATIVE_BUILD_DIR" && BUILD_DIR="`pwd`"
+  TOPLEVEL_MODULE_DIR="$TOPLEVEL_PROJECT_DIR"
+  cd "$IDEA_OUTPUT_PARENT" && cd "$RELATIVE_BUILD_DIR" && BUILD_DIR="`pwd`"
 else
   if [ "$RELATIVE_PROJECT_DIR" = "." ] ; then
     PROJECT_DIR=""
   else
     PROJECT_DIR="/$RELATIVE_PROJECT_DIR"
   fi
+  if [ "$RELATIVE_TOPLEVEL_PROJECT_DIR" = "." ] ; then
+    TOPLEVEL_PROJECT_DIR=""
+  else
+    TOPLEVEL_PROJECT_DIR="/$RELATIVE_TOPLEVEL_PROJECT_DIR"
+  fi
   MODULE_DIR="\$MODULE_DIR\$$PROJECT_DIR"
   PROJECT_DIR="\$PROJECT_DIR\$$PROJECT_DIR"
+  TOPLEVEL_MODULE_DIR="\$MODULE_DIR\$$TOPLEVEL_PROJECT_DIR"
+  TOPLEVEL_PROJECT_DIR="\$PROJECT_DIR\$$TOPLEVEL_PROJECT_DIR"
   BUILD_DIR="\$PROJECT_DIR\$/$RELATIVE_BUILD_DIR"
 fi
 if [ "$VERBOSE" = true ] ; then
@@ -185,6 +208,8 @@ add_replacement() {
 
 add_replacement "###PROJECT_DIR###" "$PROJECT_DIR"
 add_replacement "###MODULE_DIR###" "$MODULE_DIR"
+add_replacement "###TOPLEVEL_PROJECT_DIR###" "$TOPLEVEL_PROJECT_DIR"
+add_replacement "###TOPLEVEL_MODULE_DIR###" "$TOPLEVEL_MODULE_DIR"
 add_replacement "###MODULE_NAMES###" "$MODULE_NAMES"
 add_replacement "###VCS_TYPE###" "$VCS_TYPE"
 add_replacement "###BUILD_DIR###" "$BUILD_DIR"
@@ -228,15 +253,20 @@ for value in $MODULES; do
   if [ "$VERBOSE" = true ] ; then
     echo "    $module"
   fi
-  add_replacement "###MODULE_CONTENT###" "src/$module"
-  SOURCE_DIRS=""
+  MAIN_SOURCE_DIRS=""
+  CONTENT_ROOTS=""
   IFS=' '
   for dir in $moduleSrcDirs; do
-    case $dir in # Exclude generated sources to avoid module-info conflicts, see https://youtrack.jetbrains.com/issue/IDEA-185108
-      "src/"*) SOURCE_DIRS="$SOURCE_DIRS<sourceFolder url=\"file://$MODULE_DIR/$dir\" isTestSource=\"false\" /> "
+    case $dir in # See https://youtrack.jetbrains.com/issue/IDEA-185108
+      "src/"*) MAIN_SOURCE_DIRS="$MAIN_SOURCE_DIRS <sourceFolder url=\"file://$MODULE_DIR/$dir\" isTestSource=\"false\" />" ;;
+      *) CONTENT_ROOTS="$CONTENT_ROOTS <content url=\"file://$MODULE_DIR/$dir\">\
+      <sourceFolder url=\"file://$MODULE_DIR/$dir\" isTestSource=\"false\" generated=\"true\" /></content>" ;;
     esac
   done
-  add_replacement "###SOURCE_DIRS###" "$SOURCE_DIRS"
+  if [ "x$MAIN_SOURCE_DIRS" != "x" ] ; then
+    CONTENT_ROOTS="<content url=\"file://$MODULE_DIR/src/$module\">$MAIN_SOURCE_DIRS</content>$CONTENT_ROOTS"
+  fi
+  add_replacement "###MODULE_CONTENT_ROOTS###" "$CONTENT_ROOTS"
   DEPENDENCIES=""
   for dep in $moduleDependencies; do
     case $MODULE_NAMES in # Exclude skipped modules from dependencies
