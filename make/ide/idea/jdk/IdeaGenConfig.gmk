@@ -41,15 +41,21 @@ endif
 OUT := $(IDEA_OUTPUT)/env.cfg
 
 idea:
-	$(RM) $(OUT)
+	$(ECHO) "MODULES=\"$(foreach mod, $(MODULES), \
+	          module='$(mod)' \
+	          moduleSrcDirs='$(foreach m,$(call FindModuleSrcDirs,$(mod)),$(call RelativePath,$m,$(TOPDIR)))' \
+	          moduleDependencies='$(call FindTransitiveDepsForModule,$(mod))' \
+	        #)\"" > $(OUT)
 	$(ECHO) "SUPPORT=$(SUPPORT_OUTPUTDIR)" >> $(OUT)
 	$(ECHO) "MODULE_ROOTS=\"$(foreach mod, $(MODULES), $(call FindModuleSrcDirs, $(mod)))\"" >> $(OUT)
 	$(ECHO) "MODULE_NAMES=\"$(strip $(foreach mod, $(MODULES), $(mod)))\"" >> $(OUT)
-	$(ECHO) "SEL_MODULES=\"$(MODULES)\"" >> $(OUT)
-	$(ECHO) "BOOT_JDK=\"$(BOOT_JDK)\"" >> $(OUT)
-	$(ECHO) "CYGPATH=\"$(PATHTOOL)\"" >> $(OUT)
-	$(ECHO) "SPEC=\"$(SPEC)\"" >> $(OUT)
+	$(ECHO) "RELATIVE_TOPLEVEL_PROJECT_DIR=\"$(call RelativePath,$(TOPLEVEL_DIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
+	$(ECHO) "RELATIVE_PROJECT_DIR=\"$(call RelativePath,$(TOPLEVEL_DIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
+#	$(ECHO) "RELATIVE_PROJECT_DIR=\"$(call RelativePath,$(TOPDIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
+	$(ECHO) "RELATIVE_BUILD_DIR=\"$(call RelativePath,$(OUTPUTDIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
+	$(ECHO) "PATHTOOL=\"$(PATHTOOL)\"" >> $(OUT)
 	$(ECHO) "JT_HOME=\"$(JT_HOME)\"" >> $(OUT)
+	$(ECHO) "WINENV_ROOT=\"$(WINENV_ROOT)\"" >> $(OUT)
 
 all: idea
 
