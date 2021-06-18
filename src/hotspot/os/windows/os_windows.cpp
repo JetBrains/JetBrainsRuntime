@@ -4625,6 +4625,27 @@ static void file_attribute_data_to_stat(struct stat* sbuf, WIN32_FILE_ATTRIBUTE_
   }
 }
 
+static errno_t convert_to_unicode(char const* char_path, LPWSTR* unicode_path) {
+  // Get required buffer size to convert to Unicode
+  int unicode_path_len = MultiByteToWideChar(CP_ACP,
+                                             MB_ERR_INVALID_CHARS,
+                                             char_path, -1,
+                                             NULL, 0);
+  if (unicode_path_len == 0) {
+    return EINVAL;
+  }
+
+  *unicode_path = NEW_C_HEAP_ARRAY(WCHAR, unicode_path_len, mtInternal);
+
+  int result = MultiByteToWideChar(CP_ACP,
+                                   MB_ERR_INVALID_CHARS,
+                                   char_path, -1,
+                                   *unicode_path, unicode_path_len);
+  assert(result == unicode_path_len, "length already checked above");
+
+  return ERROR_SUCCESS;
+}
+
 static errno_t get_full_path(LPCWSTR unicode_path, LPWSTR* full_path) {
   // Get required buffer size to convert to full path. The return
   // value INCLUDES the terminating null character.
