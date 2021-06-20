@@ -892,6 +892,7 @@ javax/swing/JMenu/6470128/bug6470128.java                                       
 # no printer found
 java/awt/print/PrinterJob/CheckPrivilege.java                                       nobug generic-all
 java/awt/print/PrinterJob/ExceptionTest.java                                        nobug generic-all
+java/awt/print/PrinterJob/ExceptionFromPrintableIsIgnoredTest.java                  nobug generic-all
 java/awt/print/PrinterJob/ImagePrinting/NullClipARGB.java                           nobug generic-all
 java/awt/print/PrinterJob/LandscapeStackOverflow.java                               nobug generic-all
 java/awt/print/PrinterJob/PaintText.java                                            nobug generic-all
