@@ -23,7 +23,6 @@
  */
 
 #include "precompiled.hpp"
-#include "aot/aotLoader.hpp"
 #include "classfile/classFileParser.hpp"
 #include "classfile/classFileStream.hpp"
 #include "classfile/classLoadInfo.hpp"
@@ -38,7 +37,7 @@
 #include "interpreter/rewriter.hpp"
 #include "logging/logStream.hpp"
 #include "memory/metadataFactory.hpp"
-#include "memory/metaspaceShared.hpp"
+#include "cds/metaspaceShared.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/iterator.inline.hpp"
 #include "oops/fieldStreams.hpp"
@@ -156,7 +155,7 @@ bool VM_EnhancedRedefineClasses::doit_prologue() {
 
   // We first load new class versions in the prologue, because somewhere down the
   // call chain it is required that the current thread is a Java thread.
-  _res = load_new_class_versions(Thread::current());
+  _res = load_new_class_versions(JavaThread::current());
 
   // prepare GC, lock heap
   if (_res == JVMTI_ERROR_NONE && !VM_GC_Operation::doit_prologue()) {
@@ -250,7 +249,6 @@ void VM_EnhancedRedefineClasses::root_oops_do(OopClosure *oopClosure) {
   Universe::vm_global()->oops_do(oopClosure);
 
   Threads::oops_do(oopClosure, NULL);
-  AOT_ONLY(AOTLoader::oops_do(oopClosure);)
   OopStorageSet::strong_oops_do(oopClosure);
 
   CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
@@ -520,7 +518,7 @@ void VM_EnhancedRedefineClasses::doit() {
                            // before the stack walk again.
 
   for (int i = 0; i < _new_classes->length(); i++) {
-    redefine_single_class(_new_classes->at(i), thread);
+    redefine_single_class(thread, _new_classes->at(i));
   }
 
   // Update possible redefinition of vm classes (like ClassLoader)
@@ -535,7 +533,7 @@ void VM_EnhancedRedefineClasses::doit() {
 
   // Deoptimize all compiled code that depends on this class (do only once, because it clears whole cache)
   // if (_max_redefinition_flags > Klass::ModifyClass) {
-    flush_dependent_code(thread);
+    flush_dependent_code();
   // }
 
   // Adjust constantpool caches for all classes that reference methods of the evolved class.
@@ -692,7 +690,7 @@ void VM_EnhancedRedefineClasses::doit() {
     assert(new_version->super() == NULL || new_version->super()->new_version() == NULL, "Super class must be newest version");
   }
   log_trace(redefine, class, obsolete, metadata)("calling check_class");
-  ClassLoaderData::the_null_class_loader_data()->dictionary()->classes_do(check_class, thread);
+  ClassLoaderData::the_null_class_loader_data()->dictionary()->classes_do(check_class);
 #ifdef PRODUCT
   }
 #endif
@@ -702,7 +700,7 @@ void VM_EnhancedRedefineClasses::doit() {
 
 void VM_EnhancedRedefineClasses::reinitializeJDKClasses() {
   if (!_new_classes->is_empty()) {
-    ResourceMark rm(Thread::current());
+    ResourceMark rm(JavaThread::current());
 
     for (int i = 0; i < _new_classes->length(); i++) {
       InstanceKlass* cur = _new_classes->at(i);
@@ -712,7 +710,7 @@ void VM_EnhancedRedefineClasses::reinitializeJDKClasses() {
 
         if (cur == vmClasses::ClassLoader_klass()) {
           // ClassLoader.addClass method is cached in Universe, we must redefine
-          Universe::reinitialize_loader_addClass_method(Thread::current());
+          Universe::reinitialize_loader_addClass_method(JavaThread::current());
           log_trace(redefine, class, obsolete, metadata)("Reinitialize ClassLoade addClass method cache.");
         }
 
@@ -735,7 +733,7 @@ void VM_EnhancedRedefineClasses::reinitializeJDKClasses() {
                                   cur,
                                   signature,
                                   vmSymbols::void_method_signature(),
-                                  Thread::current());
+                                  JavaThread::current());
           log_trace(redefine, class, obsolete, metadata)("Reregister natives of JDK class %s", cur->external_name());
         }
       }
@@ -793,7 +791,7 @@ bool VM_EnhancedRedefineClasses::is_modifiable_class(oop klass_mirror) {
 
   // Cannot redefine or retransform an anonymous class.
   // TODO: check if is correct in j15
-  if (InstanceKlass::cast(k)->is_unsafe_anonymous() || InstanceKlass::cast(k)->is_hidden()) {
+  if (InstanceKlass::cast(k)->is_hidden()) {
     return false;
   }
   return true;
@@ -879,23 +877,15 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
 
     InstanceKlass* k;
 
-    if (the_class->is_unsafe_anonymous() || the_class->is_hidden()) {
+    if (the_class->is_hidden()) {
       InstanceKlass* dynamic_host_class = NULL;
-      InstanceKlass* unsafe_anonymous_host = NULL;
 
       if (the_class->is_hidden()) {
         log_debug(redefine, class, load)("loading hidden class %s", the_class->name()->as_C_string());
         dynamic_host_class = the_class->nest_host(THREAD);
       }
 
-      if (the_class->is_unsafe_anonymous()) {
-        log_debug(redefine, class, load)("loading usafe anonymous %s", the_class->name()->as_C_string());
-        unsafe_anonymous_host = the_class->unsafe_anonymous_host();
-      }
-
       ClassLoadInfo cl_info(protection_domain,
-                            unsafe_anonymous_host,
-                            NULL,     // cp_patches
                             dynamic_host_class,     // dynamic_nest_host
                             Handle(), // classData
                             the_class->is_hidden(),    // is_hidden
@@ -1143,7 +1133,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
   Array<Method*>* k_new_methods(new_class->methods());
   int n_old_methods = k_old_methods->length();
   int n_new_methods = k_new_methods->length();
-  Thread* thread = Thread::current();
+  JavaThread* thread = JavaThread::current();
 
   int ni = 0;
   int oi = 0;
@@ -1491,8 +1481,8 @@ void VM_EnhancedRedefineClasses::rollback() {
 // Rewrite faster byte-codes back to their slower equivalent. Undoes rewriting happening in templateTable_xxx.cpp
 // The reason is that once we zero cpool caches, we need to re-resolve all entries again. Faster bytecodes do not
 // do that, they assume that cache entry is resolved already.
-void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method, TRAPS) {
-  RawBytecodeStream bcs(methodHandle(THREAD, method));
+void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
+  RawBytecodeStream bcs(methodHandle(Thread::current(), method));
   Bytecodes::Code code;
   Bytecodes::Code java_code;
   while (!bcs.is_last_bytecode()) {
@@ -1535,10 +1525,10 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method, TRAPS) {
       assert(code2 == Bytecodes::_fast_igetfield ||
              code2 == Bytecodes::_fast_agetfield ||
              code2 == Bytecodes::_fast_fgetfield, "");
-        *(bcp + 1) = Bytecodes::java_code(code2);
-      }
+      *(bcp + 1) = Bytecodes::java_code(code2);
     }
   }
+}
 
 // Unevolving classes may point to old methods directly
 // from their constant pool caches, itables, and/or vtables. We
@@ -1559,9 +1549,11 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
   constantPoolHandle other_cp = constantPoolHandle(_thread, ik->constants());
 
   // Update host klass of anonymous classes (for example, produced by lambdas) to newest version.
+  /*
   if (ik->is_unsafe_anonymous() && ik->unsafe_anonymous_host()->new_version() != NULL) {
     ik->set_unsafe_anonymous_host(InstanceKlass::cast(ik->unsafe_anonymous_host()->newest_version()));
   }
+  */
 
   // FIXME: check new nest_host for hidden
 
@@ -1596,7 +1588,7 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
 
   // If bytecode rewriting is enabled, we also need to unpatch bytecode to force resolution of zeroed entries
   if (RewriteBytecodes) {
-    ik->methods_do(unpatch_bytecode, _thread);
+    ik->methods_do(unpatch_bytecode);
   }
 }
 
@@ -1628,7 +1620,7 @@ void VM_EnhancedRedefineClasses::MethodDataCleaner::do_klass(Klass* k) {
 }
 
 
-void VM_EnhancedRedefineClasses::update_jmethod_ids(TRAPS) {
+void VM_EnhancedRedefineClasses::update_jmethod_ids(Thread* current) {
   for (int j = 0; j < _matching_methods_length; ++j) {
     Method* old_method = _matching_old_methods[j];
     jmethodID jmid = old_method->find_jmethod_id_or_null();
@@ -1639,10 +1631,10 @@ void VM_EnhancedRedefineClasses::update_jmethod_ids(TRAPS) {
 
     if (jmid != NULL) {
       // There is a jmethodID, change it to point to the new method
-      methodHandle new_method_h(THREAD, _matching_new_methods[j]);
+      methodHandle new_method_h(current, _matching_new_methods[j]);
 
       if (old_method->new_version() == NULL) {
-        methodHandle old_method_h(THREAD, _matching_old_methods[j]);
+        methodHandle old_method_h(current, _matching_old_methods[j]);
         jmethodID new_jmethod_id = Method::make_jmethod_id(old_method_h->method_holder()->class_loader_data(), old_method_h());
         bool result = InstanceKlass::cast(old_method_h->method_holder())->update_jmethod_id(old_method_h(), new_jmethod_id);
       } else {
@@ -1864,7 +1856,7 @@ void VM_EnhancedRedefineClasses::mark_dependent_code(InstanceKlass* ik) {
 // subsequent calls to RedefineClasses need only throw away code
 // that depends on the class.
 //
-void VM_EnhancedRedefineClasses::flush_dependent_code(TRAPS) {
+void VM_EnhancedRedefineClasses::flush_dependent_code() {
   assert_locked_or_safepoint(Compile_lock);
 
   // All dependencies have been recorded from startup or this is a second or
@@ -1959,9 +1951,9 @@ void VM_EnhancedRedefineClasses::compute_added_deleted_matching_methods() {
 //      a helper method to be specified. The interesting parameters
 //      that we would like to pass to the helper method are saved in
 //      static global fields in the VM operation.
-void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_oop, TRAPS) {
+void VM_EnhancedRedefineClasses::redefine_single_class(Thread* current, InstanceKlass* new_class_oop) {
 
-  HandleMark hm(THREAD);   // make sure handles from this call are freed
+  HandleMark hm(current);   // make sure handles from this call are freed
 
   InstanceKlass* new_class = new_class_oop;
   InstanceKlass* the_class = InstanceKlass::cast(new_class_oop->old_version());
@@ -1980,7 +1972,7 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
 
   // track number of methods that are EMCP for add_previous_version() call below
   check_methods_and_mark_as_obsolete();
-  update_jmethod_ids(THREAD);
+  update_jmethod_ids(current);
 
   _any_class_has_resolved_methods = the_class->has_resolved_methods() || _any_class_has_resolved_methods;
 
@@ -2002,14 +1994,14 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
   */
 
   {
-    ResourceMark rm(THREAD);
+    ResourceMark rm(current);
     // increment the classRedefinedCount field in the_class and in any
     // direct and indirect subclasses of the_class
-    increment_class_counter(new_class, THREAD);
+    increment_class_counter(current, new_class);
     log_info(redefine, class, load)
       ("redefined name=%s, count=%d (avail_mem=" UINT64_FORMAT "K)",
        new_class->external_name(), java_lang_Class::classRedefinedCount(new_class->java_mirror()), os::available_memory() >> 10);
-    Events::log_redefinition(THREAD, "redefined class name=%s, count=%d",
+    Events::log_redefinition(current, "redefined class name=%s, count=%d",
                              new_class->external_name(),
                              java_lang_Class::classRedefinedCount(new_class->java_mirror()));
   }
@@ -2018,21 +2010,21 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
 
 // Increment the classRedefinedCount field in the specific InstanceKlass
 // and in all direct and indirect subclasses.
-void VM_EnhancedRedefineClasses::increment_class_counter(InstanceKlass *ik, TRAPS) {
+void VM_EnhancedRedefineClasses::increment_class_counter(Thread* current, InstanceKlass *ik) {
   oop class_mirror = ik->old_version()->java_mirror();
   Klass* class_oop = java_lang_Class::as_Klass(class_mirror);
   int new_count = java_lang_Class::classRedefinedCount(class_mirror) + 1;
   java_lang_Class::set_classRedefinedCount(ik->java_mirror(), new_count);
 }
 
-void VM_EnhancedRedefineClasses::check_class(InstanceKlass* ik, TRAPS) {
+void VM_EnhancedRedefineClasses::check_class(InstanceKlass* ik) {
   if (ik->is_instance_klass() && ik->old_version() != NULL) {
-    HandleMark hm(THREAD);
+    HandleMark hm(Thread::current());
 
     assert(ik->new_version() == NULL, "must be latest version in system dictionary");
 
     if (ik->vtable_length() > 0) {
-      ResourceMark rm(THREAD);
+      ResourceMark rm(Thread::current());
       assert(ik->vtable().check_no_old_or_obsolete_entries(), "old method found");
       ik->vtable().verify(tty, true);
     }
