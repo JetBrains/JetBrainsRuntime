@@ -1017,7 +1017,6 @@ public:
   void clear_update_information();
 
   void methods_do(void f(Method* method));
-  void methods_do(void f(Method* method, TRAPS), TRAPS);
   void array_klasses_do(void f(Klass* k));
   void array_klasses_do(void f(Klass* k, TRAPS), TRAPS);
 
