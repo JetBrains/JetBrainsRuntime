@@ -292,8 +292,15 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
           // Note: we might set NULL at this point, which should force AbstractMethodError at runtime
           Thread *thread = Thread::current();
           CallInfo info(new_method, newest, thread);
-          Handle objHandle(thread, obj);
-          MethodHandles::init_method_MemberName(objHandle, info);
+          oop resolved_method = ResolvedMethodTable::find_method(info.resolved_method());
+          if (resolved_method != NULL) {
+            info.set_resolved_method_name_dcevm(resolved_method, thread);
+            Handle objHandle(thread, obj);
+            MethodHandles::init_method_MemberName(objHandle, info);
+          } else {
+            assert(0, "Must be resolved");
+            java_lang_invoke_MemberName::set_method(obj, NULL);
+          }
         } else {
           java_lang_invoke_MemberName::set_method(obj, NULL);
         }
