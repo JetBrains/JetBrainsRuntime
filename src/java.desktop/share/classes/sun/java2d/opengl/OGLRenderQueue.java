@@ -25,7 +25,7 @@
 
 package sun.java2d.opengl;
 
-import sun.awt.InvokeOnToolkitHelper;
+import sun.awt.AWTThreading;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
@@ -33,6 +33,7 @@ import sun.java2d.pipe.RenderQueue;
 import static sun.java2d.pipe.BufferedOpCodes.*;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.concurrent.TimeUnit;
 
 /**
  * OGL-specific implementation of RenderQueue.  This class provides a
@@ -192,7 +193,7 @@ public class OGLRenderQueue extends RenderQueue {
             }
             if (needsFlush) {
                 // if we still wait for flush then avoid potential deadlock
-                err = InvokeOnToolkitHelper.invokeAndBlock(() -> {
+                err = AWTThreading.executeWaitToolkit(() -> {
                     synchronized (QueueFlusher.this) {
                         while (needsFlush) {
                             try {
@@ -202,7 +203,7 @@ public class OGLRenderQueue extends RenderQueue {
                         }
                         return error;
                     }
-                });
+                }, 5, TimeUnit.SECONDS);
             }
             // re-throw any error that may have occurred during the flush
             if (err != null) {
