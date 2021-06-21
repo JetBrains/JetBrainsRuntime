@@ -71,7 +71,7 @@
     self.leftInset = 0;
     self.framebufferOnly = NO;
     self.nextDrawableCount = 0;
-    self.opaque = FALSE;
+    self.opaque = TRUE;
     CVDisplayLinkCreateWithActiveCGDisplays(&displayLink);
     CVDisplayLinkSetOutputCallback(displayLink, &displayLinkCallback, (__bridge void*)self);
     return self;
@@ -118,7 +118,7 @@
             return;
         }
         self.nextDrawableCount++;
-//#define MTL_LAYER_USE_BLIT_ENC
+#define MTL_LAYER_USE_BLIT_ENC
 #ifdef MTL_LAYER_USE_BLIT_ENC
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
