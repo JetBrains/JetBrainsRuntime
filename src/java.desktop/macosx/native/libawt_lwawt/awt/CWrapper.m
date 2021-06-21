@@ -343,6 +343,7 @@ JNI_COCOA_ENTER(env);
     NSWindow *window = (NSWindow *)jlong_to_ptr(windowPtr);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         [window setOpaque:(BOOL)opaque];
+        [window.contentView.layer setOpaque:(BOOL)opaque];
     }];
 
 JNI_COCOA_EXIT(env);
