@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -468,9 +468,9 @@ public:
 
   bool do_entry(oop const& key, ClassLoaderStats* const& cls) {
     const ClassLoaderData* this_cld = cls->_class_loader != NULL ?
-      java_lang_ClassLoader::loader_data(cls->_class_loader) : (ClassLoaderData*)NULL;
+      java_lang_ClassLoader::loader_data_acquire(cls->_class_loader) : (ClassLoaderData*)NULL;
     const ClassLoaderData* parent_cld = cls->_parent != NULL ?
-      java_lang_ClassLoader::loader_data(cls->_parent) : (ClassLoaderData*)NULL;
+      java_lang_ClassLoader::loader_data_acquire(cls->_parent) : (ClassLoaderData*)NULL;
     EventClassLoaderStatistics event;
     event.set_classLoader(this_cld);
     event.set_parentClassLoader(parent_cld);
