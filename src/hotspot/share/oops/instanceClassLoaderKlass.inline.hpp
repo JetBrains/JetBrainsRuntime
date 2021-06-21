@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,7 @@ inline void InstanceClassLoaderKlass::oop_oop_iterate(oop obj, OopClosureType* c
   InstanceKlass::oop_oop_iterate<T>(obj, closure);
 
   if (Devirtualizer::do_metadata(closure)) {
-    ClassLoaderData* cld = java_lang_ClassLoader::loader_data(obj);
+    ClassLoaderData* cld = java_lang_ClassLoader::loader_data_acquire(obj);
     // cld can be null if we have a non-registered class loader.
     if (cld != NULL) {
       Devirtualizer::do_cld(closure, cld);
@@ -61,7 +61,7 @@ inline void InstanceClassLoaderKlass::oop_oop_iterate_bounded(oop obj, OopClosur
 
   if (Devirtualizer::do_metadata(closure)) {
     if (mr.contains(obj)) {
-      ClassLoaderData* cld = java_lang_ClassLoader::loader_data(obj);
+      ClassLoaderData* cld = java_lang_ClassLoader::loader_data_acquire(obj);
       // cld can be null if we have a non-registered class loader.
       if (cld != NULL) {
         Devirtualizer::do_cld(closure, cld);

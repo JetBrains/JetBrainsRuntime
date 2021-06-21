@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -183,7 +183,7 @@ void InstanceMirrorKlass::oop_pc_follow_contents(oop obj, ParCompactionManager* 
 void InstanceClassLoaderKlass::oop_pc_follow_contents(oop obj, ParCompactionManager* cm) {
   InstanceKlass::oop_pc_follow_contents(obj, cm);
 
-  ClassLoaderData * const loader_data = java_lang_ClassLoader::loader_data(obj);
+  ClassLoaderData * const loader_data = java_lang_ClassLoader::loader_data_acquire(obj);
   if (loader_data != NULL) {
     cm->follow_class_loader(loader_data);
   }

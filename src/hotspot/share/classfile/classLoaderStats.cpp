@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -139,7 +139,7 @@ void ClassLoaderStatsClosure::print() {
 
 
 void ClassLoaderStatsClosure::addEmptyParents(oop cl) {
-  while (cl != NULL && java_lang_ClassLoader::loader_data(cl) == NULL) {
+  while (cl != NULL && java_lang_ClassLoader::loader_data_acquire(cl) == NULL) {
     // This classloader has not loaded any classes
     ClassLoaderStats** cls_ptr = _stats->get(cl);
     if (cls_ptr == NULL) {
