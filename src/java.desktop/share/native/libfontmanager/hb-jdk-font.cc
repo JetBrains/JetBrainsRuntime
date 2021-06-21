@@ -102,8 +102,8 @@ hb_jdk_get_glyph_h_advance (hb_font_t *font HB_UNUSED,
     jobject fontStrike = jdkFontInfo->fontStrike;
     jobject pt = env->CallObjectMethod(fontStrike,
                                        sunFontIDs.getGlyphMetricsMID, glyph);
-
-    if (pt == NULL) {
+    if (pt == NULL || env->ExceptionOccurred()) {
+        env->ExceptionClear();
         return 0;
     }
     fadv = env->GetFloatField(pt, sunFontIDs.xFID);
@@ -130,8 +130,8 @@ hb_jdk_get_glyph_v_advance (hb_font_t *font HB_UNUSED,
     jobject fontStrike = jdkFontInfo->fontStrike;
     jobject pt = env->CallObjectMethod(fontStrike,
                                        sunFontIDs.getGlyphMetricsMID, glyph);
-
-    if (pt == NULL) {
+    if (pt == NULL || env->ExceptionOccurred()) {
+        env->ExceptionClear();
         return 0;
     }
     fadv = env->GetFloatField(pt, sunFontIDs.yFID);
@@ -226,8 +226,8 @@ hb_jdk_get_glyph_contour_point (hb_font_t *font HB_UNUSED,
     jobject pt = env->CallObjectMethod(fontStrike,
                                        sunFontIDs.getGlyphPointMID,
                                        glyph, point_index);
-
-    if (pt == NULL) {
+    if (pt == NULL || env->ExceptionOccurred()) {
+        env->ExceptionClear();
         *x = 0; *y = 0;
         return true;
     }
@@ -343,7 +343,8 @@ reference_table(hb_face_t *face HB_UNUSED, hb_tag_t tag, void *user_data) {
 
   jbyteArray tableBytes = (jbyteArray)
      env->CallObjectMethod(font2D, sunFontIDs.getTableBytesMID, tag);
-  if (tableBytes == NULL) {
+  if (tableBytes == NULL || env->ExceptionOccurred()) {
+      env->ExceptionClear();
       return NULL;
   }
   length = env->GetArrayLength(tableBytes);

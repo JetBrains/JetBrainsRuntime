@@ -337,6 +337,11 @@ static int getScreenResolution(JNIEnv *env) {
     jthrowable exc;
     jclass tk = (*env)->CallStaticObjectMethod(
         env, tkClass, getDefaultToolkitMID);
+    exc = (*env)->ExceptionOccurred(env);
+    if (exc) {
+        (*env)->ExceptionClear(env);
+        return DEFAULT_DPI;
+    }
     int dpi = (*env)->CallIntMethod(env, tk, getScreenResolutionMID);
 
     /* Test if there is no exception here (can get java.awt.HeadlessException)
@@ -396,6 +401,8 @@ static void invalidateJavaScaler(JNIEnv *env,
                                  FTScalerInfo* scalerInfo) {
     freeNativeResources(env, scalerInfo);
     (*env)->CallVoidMethod(env, scaler, invalidateScalerMID);
+    // NB: Exceptions must not be cleared (and therefore no JNI calls performed) after calling this method
+    //     because it intentionally leaves an exception pending.
 }
 
 /******************* I/O handlers ***************************/
@@ -446,7 +453,8 @@ static unsigned long ReadTTFontFileFunc(FT_Stream stream,
                                           scalerInfo->font2D,
                                           sunFontIDs.ttReadBlockMID,
                                           bBuffer, offset, numBytes);
-            if (bread < 0) {
+            if (bread < 0 || (*env)->ExceptionOccurred(env)) {
+                (*env)->ExceptionClear(env);
                 return 0;
             } else {
                return bread;
@@ -465,8 +473,9 @@ static unsigned long ReadTTFontFileFunc(FT_Stream stream,
             (*env)->CallObjectMethod(env, scalerInfo->font2D,
                                      sunFontIDs.ttReadBytesMID,
                                      offset, numBytes);
-            /* If there's an OutofMemoryError then byteArray will be null */
-            if (byteArray == NULL) {
+            /* If there's an OutOfMemoryError then byteArray will be null */
+            if (byteArray == NULL || (*env)->ExceptionOccurred(env)) {
+                (*env)->ExceptionClear(env);
                 return 0;
             } else {
                 jsize len = (*env)->GetArrayLength(env, byteArray);
@@ -498,7 +507,8 @@ static unsigned long ReadTTFontFileFunc(FT_Stream stream,
                                       sunFontIDs.ttReadBlockMID,
                                       bBuffer, offset,
                                       scalerInfo->fontDataLength);
-        if (bread <= 0) {
+        if (bread <= 0 || (*env)->ExceptionOccurred(env)) {
+            (*env)->ExceptionClear(env);
             return 0;
         } else if (bread < numBytes) {
            numBytes = bread;
@@ -610,7 +620,8 @@ Java_sun_font_FreetypeFontScaler_initNativeScaler(
             if (bBuffer != NULL) {
                 (*env)->CallVoidMethod(env, font2D,
                                    sunFontIDs.readFileMID, bBuffer);
-
+                // Ignore any pending exceptions; we have read what we could, let FT decide if that's enough or not.
+                (*env)->ExceptionClear(env);
                 error = FT_New_Memory_Face(scalerInfo->library,
                                    scalerInfo->fontData,
                                    scalerInfo->fontDataLength,

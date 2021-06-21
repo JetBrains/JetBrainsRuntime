@@ -417,6 +417,10 @@ static int JVM_GetIntProperty(const char* name,  int defaultValue) {
 
     int result = defaultValue;
     jstring jvalue = (*env)->CallStaticObjectMethod(env, systemCls, mid, jName);
+    if ((*env)->ExceptionOccurred(env)) {
+        jvalue = NULL;
+        (*env)->ExceptionClear(env);
+    }
     if (jvalue != NULL) {
         const char *utf8string = (*env)->GetStringUTFChars(env, jvalue, NULL);
         if (utf8string != NULL) {
