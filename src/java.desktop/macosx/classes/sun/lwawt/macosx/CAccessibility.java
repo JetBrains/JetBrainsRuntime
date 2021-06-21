@@ -31,6 +31,7 @@ import java.awt.Dimension;
 import java.awt.KeyboardFocusManager;
 import java.awt.Point;
 import java.awt.Window;
+import java.awt.EventQueue;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.accessibility.Accessible;
 import javax.accessibility.AccessibleAction;
@@ -65,16 +67,24 @@ import sun.lwawt.LWWindowPeer;
 @SuppressWarnings("removal")
 class CAccessibility implements PropertyChangeListener {
     private static Set<String> ignoredRoles;
+    private static final int INVOKE_TIMEOUT_SECONDS_DEFAULT = 1;
+    private static final int INVOKE_TIMEOUT_SECONDS;
 
     static {
+        AtomicInteger invokeTimeoutSecondsRef = new AtomicInteger();
         // Need to load the native library for this code.
         java.security.AccessController.doPrivileged(
             new java.security.PrivilegedAction<Void>() {
                 public Void run() {
                     System.loadLibrary("awt");
+                    invokeTimeoutSecondsRef.set(
+                            // (-1) for the infinite timeout
+                            Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds",
+                                    INVOKE_TIMEOUT_SECONDS_DEFAULT));
                     return null;
                 }
             });
+        INVOKE_TIMEOUT_SECONDS = invokeTimeoutSecondsRef.get();
     }
 
     static CAccessibility sAccessibility;
@@ -118,7 +128,7 @@ class CAccessibility implements PropertyChangeListener {
     static <T> T invokeAndWait(final Callable<T> callable, final Component c) {
         if (c != null) {
             try {
-                return LWCToolkit.invokeAndWait(callable, c);
+                return EventQueue.isDispatchThread() ? callable.call() : LWCToolkit.invokeAndWait(callable, c);
             } catch (final Exception e) { e.printStackTrace(); }
         }
         return null;
@@ -128,7 +138,7 @@ class CAccessibility implements PropertyChangeListener {
         T value = null;
         if (c != null) {
             try {
-                value = LWCToolkit.invokeAndWait(callable, c);
+                value = LWCToolkit.invokeAndWait(callable, c, INVOKE_TIMEOUT_SECONDS);
             } catch (final Exception e) { e.printStackTrace(); }
         }
 
