@@ -496,9 +496,9 @@ public final class LWCToolkit extends LWToolkit {
     public Insets getScreenInsets(final GraphicsConfiguration gc) {
         GraphicsDevice gd = gc.getDevice();
         if (!(gd instanceof CGraphicsDevice)) {
-            return InvokeOnToolkitHelper.invokeAndBlock(() -> super.getScreenInsets(gc));
+            return AWTThreading.executeWaitToolkit(() -> super.getScreenInsets(gc));
         }
-        return InvokeOnToolkitHelper.invokeAndBlock(() -> ((CGraphicsDevice)gd).getScreenInsets());
+        return AWTThreading.executeWaitToolkit(() -> ((CGraphicsDevice)gd).getScreenInsets());
     }
 
     @Override
@@ -752,7 +752,7 @@ public final class LWCToolkit extends LWToolkit {
         final long mediator = createAWTRunLoopMediator();
 
         InvocationEvent invocationEvent =
-                new InvocationEvent(component,
+                AWTThreading.createAndTrackInvocationEvent(component,
                         runnable,
                         () -> {
                             if (mediator != 0) {
@@ -767,7 +767,8 @@ public final class LWCToolkit extends LWToolkit {
 
             // 3746956 - flush events from PostEventQueue to prevent them from getting stuck and causing a deadlock
             SunToolkit.flushPendingEvents(appContext);
-        } else {
+        }
+        else {
             // This should be the equivalent to EventQueue.invokeAndWait
             ((LWCToolkit)Toolkit.getDefaultToolkit()).getSystemEventQueueForInvokeAndWait().postEvent(invocationEvent);
         }
