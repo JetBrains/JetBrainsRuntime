@@ -334,10 +334,17 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
         [self deliverJavaKeyEventHelper: event];
     }
 
-    // Workaround for 8020209: special case for "Cmd =" and "Cmd ."
-    // because Cocoa calls performKeyEquivalent twice for these keystrokes
     NSUInteger modFlags = [event modifierFlags] &
     (NSCommandKeyMask | NSAlternateKeyMask | NSShiftKeyMask | NSControlKeyMask);
+
+    // Workaround for JBR-3544
+    // When tabbing mode is on, macOS sends "Ctrl N" and "Cmd N" when "Ctrl Opt N" and "Cmd Opt N" are pressed
+    if ([event keyCode] == 45 && ((modFlags == NSControlKeyMask) || (modFlags == NSCommandKeyMask))) {
+        return NO;
+    }
+
+    // Workaround for 8020209: special case for "Cmd =" and "Cmd ."
+    // because Cocoa calls performKeyEquivalent twice for these keystrokes
     if (modFlags == NSCommandKeyMask) {
         NSString *eventChars = [event charactersIgnoringModifiers];
         if ([eventChars length] == 1) {
