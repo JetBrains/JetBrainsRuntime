@@ -110,8 +110,8 @@ reg_def R16     ( SOC, SOC, Op_RegI, 16, r16->as_VMReg()        );
 reg_def R16_H   ( SOC, SOC, Op_RegI, 16, r16->as_VMReg()->next());
 reg_def R17     ( SOC, SOC, Op_RegI, 17, r17->as_VMReg()        );
 reg_def R17_H   ( SOC, SOC, Op_RegI, 17, r17->as_VMReg()->next());
-reg_def R18     ( SOC, SOC, Op_RegI, 18, r18->as_VMReg()        );
-reg_def R18_H   ( SOC, SOC, Op_RegI, 18, r18->as_VMReg()->next());
+reg_def R18     ( SOC, SOC, Op_RegI, 18, r18_reserved->as_VMReg()        );
+reg_def R18_H   ( SOC, SOC, Op_RegI, 18, r18_reserved->as_VMReg()->next());
 reg_def R19     ( SOC, SOE, Op_RegI, 19, r19->as_VMReg()        );
 reg_def R19_H   ( SOC, SOE, Op_RegI, 19, r19->as_VMReg()->next());
 reg_def R20     ( SOC, SOE, Op_RegI, 20, r20->as_VMReg()        ); // caller esp
@@ -352,7 +352,6 @@ alloc_class chunk0(
     R15, R15_H,
     R16, R16_H,
     R17, R17_H,
-    R18, R18_H,
 
     // arg registers
     R0, R0_H,
@@ -375,7 +374,7 @@ alloc_class chunk0(
     R26, R26_H,
 
     // non-allocatable registers
-
+    R18, R18_H, // platform
     R27, R27_H, // heapbase
     R28, R28_H, // thread
     R29, R29_H, // fp
@@ -533,7 +532,8 @@ reg_class no_special_reg32_no_fp(
     R15,
     R16,
     R17,
-#ifdef __APPLE__
+#ifndef R18_RESERVED
+    // See comment in register_aarch64.hpp
     R18,
 #endif
     R19,
@@ -568,7 +568,8 @@ reg_class no_special_reg32_with_fp(
     R15,
     R16,
     R17,
-#ifdef __APPLE__
+#ifndef R18_RESERVED
+    // See comment in register_aarch64.hpp
     R18,
 #endif
     R19,
@@ -606,7 +607,8 @@ reg_class no_special_reg_no_fp(
     R15, R15_H,
     R16, R16_H,
     R17, R17_H,
-#ifdef __APPLE__
+#ifndef R18_RESERVED
+    // See comment in register_aarch64.hpp
     R18, R18_H,
 #endif
     R19, R19_H,
@@ -641,7 +643,8 @@ reg_class no_special_reg_with_fp(
     R15, R15_H,
     R16, R16_H,
     R17, R17_H,
-#ifdef __APPLE__
+#ifndef R18_RESERVED
+    // See comment in register_aarch64.hpp
     R18, R18_H,
 #endif
     R19, R19_H,
@@ -783,7 +786,10 @@ reg_class no_special_ptr_reg(
     R15, R15_H,
     R16, R16_H,
     R17, R17_H,
+#ifndef R18_RESERVED
+    // See comment in register_aarch64.hpp
     R18, R18_H,
+#endif
     R19, R19_H,
     R20, R20_H,
     R21, R21_H,
@@ -2048,11 +2054,6 @@ int HandlerImpl::emit_deopt_handler(CodeBuffer& cbuf)
 
 const bool Matcher::match_rule_supported(int opcode) {
 
-  switch (opcode) {
-  default:
-    break;
-  }
-
   if (!has_match_rule(opcode)) {
     return false;
   }
@@ -2975,7 +2976,7 @@ encode %{
 
   enc_class aarch64_enc_movw_imm(iRegI dst, immI src) %{
     MacroAssembler _masm(&cbuf);
-    u_int32_t con = (u_int32_t)$src$$constant;
+    uint32_t con = (uint32_t)$src$$constant;
     Register dst_reg = as_Register($dst$$reg);
     if (con == 0) {
       __ movw(dst_reg, zr);
@@ -2987,7 +2988,7 @@ encode %{
   enc_class aarch64_enc_mov_imm(iRegL dst, immL src) %{
     MacroAssembler _masm(&cbuf);
     Register dst_reg = as_Register($dst$$reg);
-    u_int64_t con = (u_int64_t)$src$$constant;
+    uint64_t con = (uint64_t)$src$$constant;
     if (con == 0) {
       __ mov(dst_reg, zr);
     } else {
@@ -3012,7 +3013,7 @@ encode %{
         if (con < (address)(uintptr_t)os::vm_page_size()) {
           __ mov(dst_reg, con);
         } else {
-          uint64_t offset;
+          uintptr_t offset;
           __ adrp(dst_reg, con, offset);
           __ add(dst_reg, dst_reg, offset);
         }
@@ -3029,7 +3030,7 @@ encode %{
   enc_class aarch64_enc_mov_p1(iRegP dst, immP_1 src) %{
     MacroAssembler _masm(&cbuf);
     Register dst_reg = as_Register($dst$$reg);
-    __ mov(dst_reg, (u_int64_t)1);
+    __ mov(dst_reg, (uint64_t)1);
   %}
 
   enc_class aarch64_enc_mov_poll_page(iRegP dst, immPollPage src) %{
@@ -3163,7 +3164,7 @@ encode %{
   enc_class aarch64_enc_cmpw_imm(iRegI src1, immI src2) %{
     MacroAssembler _masm(&cbuf);
     Register reg1 = as_Register($src1$$reg);
-    u_int32_t val = (u_int32_t)$src2$$constant;
+    uint32_t val = (uint32_t)$src2$$constant;
     __ movw(rscratch1, val);
     __ cmpw(reg1, rscratch1);
   %}
@@ -3185,7 +3186,7 @@ encode %{
       __ adds(zr, reg, -val);
     } else {
     // aargh, Long.MIN_VALUE is a special case
-      __ orr(rscratch1, zr, (u_int64_t)val);
+      __ orr(rscratch1, zr, (uint64_t)val);
       __ subs(zr, reg, rscratch1);
     }
   %}
@@ -3193,7 +3194,7 @@ encode %{
   enc_class aarch64_enc_cmp_imm(iRegL src1, immL src2) %{
     MacroAssembler _masm(&cbuf);
     Register reg1 = as_Register($src1$$reg);
-    u_int64_t val = (u_int64_t)$src2$$constant;
+    uint64_t val = (uint64_t)$src2$$constant;
     __ mov(rscratch1, val);
     __ cmp(reg1, rscratch1);
   %}
@@ -5411,7 +5412,7 @@ pipeline %{
 attributes %{
   // ARM instructions are of fixed length
   fixed_size_instructions;        // Fixed size instructions TODO does
-  max_instructions_per_bundle = 2;   // A53 = 2, A57 = 4
+  max_instructions_per_bundle = 4;   // A53 = 2, A57 = 4
   // ARM instructions come in 32-bit word units
   instruction_unit_size = 4;         // An instruction is 4 bytes long
   instruction_fetch_unit_size = 64;  // The processor fetches one line
@@ -9652,7 +9653,7 @@ instruct lshift_ext(iRegLNoSp dst, iRegIorL2I src, immI scale, rFlagsReg cr) %{
   ins_encode %{
     __ sbfiz(as_Register($dst$$reg),
           as_Register($src$$reg),
-          $scale$$constant & 63, MIN(32, (-$scale$$constant) & 63));
+          $scale$$constant & 63, MIN2(32, (int)((-$scale$$constant) & 63)));
   %}
 
   ins_pipe(ialu_reg_shift);
@@ -13519,8 +13520,8 @@ instruct clearArray_reg_reg(iRegL_R11 cnt, iRegP_R10 base, Universe dummy, rFlag
 
 instruct clearArray_imm_reg(immL cnt, iRegP_R10 base, Universe dummy, rFlagsReg cr)
 %{
-  predicate((u_int64_t)n->in(2)->get_long()
-            < (u_int64_t)(BlockZeroingLowLimit >> LogBytesPerWord));
+  predicate((uint64_t)n->in(2)->get_long()
+            < (uint64_t)(BlockZeroingLowLimit >> LogBytesPerWord));
   match(Set dummy (ClearArray cnt base));
   effect(USE_KILL base);
 
@@ -13528,7 +13529,7 @@ instruct clearArray_imm_reg(immL cnt, iRegP_R10 base, Universe dummy, rFlagsReg 
   format %{ "ClearArray $cnt, $base" %}
 
   ins_encode %{
-    __ zero_words($base$$Register, (u_int64_t)$cnt$$constant);
+    __ zero_words($base$$Register, (uint64_t)$cnt$$constant);
   %}
 
   ins_pipe(pipe_class_memory);

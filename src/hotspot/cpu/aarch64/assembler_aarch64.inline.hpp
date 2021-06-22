@@ -32,7 +32,7 @@
 
 
 inline bool Address::offset_ok_for_immed(int64_t offset, uint shift) {
-  uint mask = (1 << shift) - 1;
+  unsigned mask = (1 << shift) - 1;
   if (offset < 0 || (offset & mask) != 0) {
     // Unscaled signed offset, encoded in a signed imm9 field.
     return Assembler::is_simm9(offset);

@@ -40,16 +40,21 @@
 #include "oops/accessDecorators.hpp"
 #include "oops/compressedOops.inline.hpp"
 #include "oops/klass.inline.hpp"
-#include "oops/oop.hpp"
-#include "opto/compile.hpp"
-#include "opto/intrinsicnode.hpp"
-#include "opto/node.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/icache.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/thread.hpp"
+#ifdef COMPILER1
+#include "c1/c1_LIRAssembler.hpp"
+#endif
+#ifdef COMPILER2
+#include "oops/oop.hpp"
+#include "opto/compile.hpp"
+#include "opto/intrinsicnode.hpp"
+#include "opto/node.hpp"
+#endif
 
 #ifdef PRODUCT
 #define BLOCK_COMMENT(str) /* nothing */
@@ -88,7 +93,7 @@ int MacroAssembler::pd_patch_instruction_size(address branch, address target) {
     offset = target-branch;
     int shift = Instruction_aarch64::extract(insn, 31, 31);
     if (shift) {
-      u_int64_t dest = (u_int64_t)target;
+      uint64_t dest = (uint64_t)target;
       uint64_t pc_page = (uint64_t)branch >> 12;
       uint64_t adr_page = (uint64_t)target >> 12;
       unsigned offset_lo = dest & 0xfff;
@@ -141,7 +146,7 @@ int MacroAssembler::pd_patch_instruction_size(address branch, address target) {
     Instruction_aarch64::spatch(branch, 23, 5, offset);
     Instruction_aarch64::patch(branch, 30, 29, offset_lo);
   } else if (Instruction_aarch64::extract(insn, 31, 21) == 0b11010010100) {
-    u_int64_t dest = (u_int64_t)target;
+    uint64_t dest = (uint64_t)target;
     // Move wide constant
     assert(nativeInstruction_at(branch+4)->is_movk(), "wrong insns in patch");
     assert(nativeInstruction_at(branch+8)->is_movk(), "wrong insns in patch");
@@ -267,13 +272,13 @@ address MacroAssembler::target_addr_for_insn(address insn_addr, unsigned insn) {
       ShouldNotReachHere();
     }
   } else if (Instruction_aarch64::extract(insn, 31, 23) == 0b110100101) {
-    u_int32_t *insns = (u_int32_t *)insn_addr;
+    uint32_t *insns = (uint32_t *)insn_addr;
     // Move wide constant: movz, movk, movk.  See movptr().
     assert(nativeInstruction_at(insns+1)->is_movk(), "wrong insns in patch");
     assert(nativeInstruction_at(insns+2)->is_movk(), "wrong insns in patch");
-    return address(u_int64_t(Instruction_aarch64::extract(insns[0], 20, 5))
-                   + (u_int64_t(Instruction_aarch64::extract(insns[1], 20, 5)) << 16)
-                   + (u_int64_t(Instruction_aarch64::extract(insns[2], 20, 5)) << 32));
+    return address(uint64_t(Instruction_aarch64::extract(insns[0], 20, 5))
+                   + (uint64_t(Instruction_aarch64::extract(insns[1], 20, 5)) << 16)
+                   + (uint64_t(Instruction_aarch64::extract(insns[2], 20, 5)) << 32));
   } else if (Instruction_aarch64::extract(insn, 31, 22) == 0b1011100101 &&
              Instruction_aarch64::extract(insn, 4, 0) == 0b11111) {
     return 0;
@@ -735,12 +740,15 @@ address MacroAssembler::trampoline_call(Address entry, CodeBuffer *cbuf) {
 
   // We need a trampoline if branches are far.
   if (far_branches()) {
+    bool in_scratch_emit_size = false;
+#ifdef COMPILER2
     // We don't want to emit a trampoline if C2 is generating dummy
     // code during its branch shortening phase.
     CompileTask* task = ciEnv::current()->task();
-    bool in_scratch_emit_size =
+    in_scratch_emit_size =
       (task != NULL && is_c2_compile(task->comp_level()) &&
        Compile::current()->in_scratch_emit_size());
+#endif
     if (!in_scratch_emit_size) {
       address stub = emit_trampoline_stub(offset(), entry.target());
       if (stub == NULL) {
@@ -774,7 +782,9 @@ address MacroAssembler::trampoline_call(Address entry, CodeBuffer *cbuf) {
 
 address MacroAssembler::emit_trampoline_stub(int insts_call_instruction_offset,
                                              address dest) {
-  address stub = start_a_stub(Compile::MAX_stubs_size/2);
+  // Max stub size: alignment nop, TrampolineStub.
+  address stub = start_a_stub(NativeInstruction::instruction_size
+                   + NativeCallTrampolineStub::instruction_size);
   if (stub == NULL) {
     return NULL;  // CodeBuffer::expand failed
   }
@@ -1468,7 +1478,7 @@ void MacroAssembler::null_check(Register reg, int offset) {
 
 void MacroAssembler::mov(Register r, Address dest) {
   code_section()->relocate(pc(), dest.rspec());
-  u_int64_t imm64 = (u_int64_t)dest.target();
+  uint64_t imm64 = (uint64_t)dest.target();
   movptr(r, imm64);
 }
 
@@ -1480,7 +1490,7 @@ void MacroAssembler::movptr(Register r, uintptr_t imm64) {
 #ifndef PRODUCT
   {
     char buffer[64];
-    snprintf(buffer, sizeof(buffer), "0x%"PRIX64, (uint64_t)imm64);
+    snprintf(buffer, sizeof(buffer), PTR64_FORMAT, imm64);
     block_comment(buffer);
   }
 #endif
@@ -1501,20 +1511,20 @@ void MacroAssembler::movptr(Register r, uintptr_t imm64) {
 //   imm32 == hex abcdefgh  T2S:  Vd = abcdefghabcdefgh
 //   imm32 == hex abcdefgh  T4S:  Vd = abcdefghabcdefghabcdefghabcdefgh
 //   T1D/T2D: invalid
-void MacroAssembler::mov(FloatRegister Vd, SIMD_Arrangement T, u_int32_t imm32) {
+void MacroAssembler::mov(FloatRegister Vd, SIMD_Arrangement T, uint32_t imm32) {
   assert(T != T1D && T != T2D, "invalid arrangement");
   if (T == T8B || T == T16B) {
     assert((imm32 & ~0xff) == 0, "extraneous bits in unsigned imm32 (T8B/T16B)");
     movi(Vd, T, imm32 & 0xff, 0);
     return;
   }
-  u_int32_t nimm32 = ~imm32;
+  uint32_t nimm32 = ~imm32;
   if (T == T4H || T == T8H) {
     assert((imm32  & ~0xffff) == 0, "extraneous bits in unsigned imm32 (T4H/T8H)");
     imm32 &= 0xffff;
     nimm32 &= 0xffff;
   }
-  u_int32_t x = imm32;
+  uint32_t x = imm32;
   int movi_cnt = 0;
   int movn_cnt = 0;
   while (x) { if (x & 0xff) movi_cnt++; x >>= 8; }
@@ -1538,12 +1548,12 @@ void MacroAssembler::mov(FloatRegister Vd, SIMD_Arrangement T, u_int32_t imm32) 
   }
 }
 
-void MacroAssembler::mov_immediate64(Register dst, u_int64_t imm64)
+void MacroAssembler::mov_immediate64(Register dst, uint64_t imm64)
 {
 #ifndef PRODUCT
   {
     char buffer[64];
-    snprintf(buffer, sizeof(buffer), "0x%"PRIX64, (uint64_t)imm64);
+    snprintf(buffer, sizeof(buffer), PTR64_FORMAT, imm64);
     block_comment(buffer);
   }
 #endif
@@ -1552,7 +1562,7 @@ void MacroAssembler::mov_immediate64(Register dst, u_int64_t imm64)
   } else {
     // we can use a combination of MOVZ or MOVN with
     // MOVK to build up the constant
-    u_int64_t imm_h[4];
+    uint64_t imm_h[4];
     int zero_count = 0;
     int neg_count = 0;
     int i;
@@ -1573,7 +1583,7 @@ void MacroAssembler::mov_immediate64(Register dst, u_int64_t imm64)
     } else if (zero_count == 3) {
       for (i = 0; i < 4; i++) {
         if (imm_h[i] != 0L) {
-          movz(dst, (u_int32_t)imm_h[i], (i << 4));
+          movz(dst, (uint32_t)imm_h[i], (i << 4));
           break;
         }
       }
@@ -1581,7 +1591,7 @@ void MacroAssembler::mov_immediate64(Register dst, u_int64_t imm64)
       // one MOVN will do
       for (int i = 0; i < 4; i++) {
         if (imm_h[i] != 0xffffL) {
-          movn(dst, (u_int32_t)imm_h[i] ^ 0xffffL, (i << 4));
+          movn(dst, (uint32_t)imm_h[i] ^ 0xffffL, (i << 4));
           break;
         }
       }
@@ -1589,74 +1599,74 @@ void MacroAssembler::mov_immediate64(Register dst, u_int64_t imm64)
       // one MOVZ and one MOVK will do
       for (i = 0; i < 3; i++) {
         if (imm_h[i] != 0L) {
-          movz(dst, (u_int32_t)imm_h[i], (i << 4));
+          movz(dst, (uint32_t)imm_h[i], (i << 4));
           i++;
           break;
         }
       }
       for (;i < 4; i++) {
         if (imm_h[i] != 0L) {
-          movk(dst, (u_int32_t)imm_h[i], (i << 4));
+          movk(dst, (uint32_t)imm_h[i], (i << 4));
         }
       }
     } else if (neg_count == 2) {
       // one MOVN and one MOVK will do
       for (i = 0; i < 4; i++) {
         if (imm_h[i] != 0xffffL) {
-          movn(dst, (u_int32_t)imm_h[i] ^ 0xffffL, (i << 4));
+          movn(dst, (uint32_t)imm_h[i] ^ 0xffffL, (i << 4));
           i++;
           break;
         }
       }
       for (;i < 4; i++) {
         if (imm_h[i] != 0xffffL) {
-          movk(dst, (u_int32_t)imm_h[i], (i << 4));
+          movk(dst, (uint32_t)imm_h[i], (i << 4));
         }
       }
     } else if (zero_count == 1) {
       // one MOVZ and two MOVKs will do
       for (i = 0; i < 4; i++) {
         if (imm_h[i] != 0L) {
-          movz(dst, (u_int32_t)imm_h[i], (i << 4));
+          movz(dst, (uint32_t)imm_h[i], (i << 4));
           i++;
           break;
         }
       }
       for (;i < 4; i++) {
         if (imm_h[i] != 0x0L) {
-          movk(dst, (u_int32_t)imm_h[i], (i << 4));
+          movk(dst, (uint32_t)imm_h[i], (i << 4));
         }
       }
     } else if (neg_count == 1) {
       // one MOVN and two MOVKs will do
       for (i = 0; i < 4; i++) {
         if (imm_h[i] != 0xffffL) {
-          movn(dst, (u_int32_t)imm_h[i] ^ 0xffffL, (i << 4));
+          movn(dst, (uint32_t)imm_h[i] ^ 0xffffL, (i << 4));
           i++;
           break;
         }
       }
       for (;i < 4; i++) {
         if (imm_h[i] != 0xffffL) {
-          movk(dst, (u_int32_t)imm_h[i], (i << 4));
+          movk(dst, (uint32_t)imm_h[i], (i << 4));
         }
       }
     } else {
       // use a MOVZ and 3 MOVKs (makes it easier to debug)
-      movz(dst, (u_int32_t)imm_h[0], 0);
+      movz(dst, (uint32_t)imm_h[0], 0);
       for (i = 1; i < 4; i++) {
-        movk(dst, (u_int32_t)imm_h[i], (i << 4));
+        movk(dst, (uint32_t)imm_h[i], (i << 4));
       }
     }
   }
 }
 
-void MacroAssembler::mov_immediate32(Register dst, u_int32_t imm32)
+void MacroAssembler::mov_immediate32(Register dst, uint32_t imm32)
 {
 #ifndef PRODUCT
     {
       char buffer[64];
-      snprintf(buffer, sizeof(buffer), "0x%"PRIX32, imm32);
+      snprintf(buffer, sizeof(buffer), PTR32_FORMAT, imm32);
       block_comment(buffer);
     }
 #endif
@@ -1665,7 +1675,7 @@ void MacroAssembler::mov_immediate32(Register dst, u_int32_t imm32)
   } else {
     // we can use MOVZ, MOVN or two calls to MOVK to build up the
     // constant
-    u_int32_t imm_h[2];
+    uint32_t imm_h[2];
     imm_h[0] = imm32 & 0xffff;
     imm_h[1] = ((imm32 >> 16) & 0xffff);
     if (imm_h[0] == 0) {
@@ -1705,7 +1715,7 @@ Address MacroAssembler::form_address(Register Rd, Register base, int64_t byte_of
   {
     uint64_t word_offset = byte_offset >> shift;
     uint64_t masked_offset = word_offset & 0xfff000;
-    if (Address::offset_ok_for_immed(word_offset - masked_offset, 0)
+    if (Address::offset_ok_for_immed(word_offset - masked_offset)
         && Assembler::operand_valid_for_add_sub_immediate(masked_offset << shift)) {
       add(Rd, base, masked_offset << shift);
       word_offset -= masked_offset;
@@ -1820,7 +1830,7 @@ bool MacroAssembler::try_merge_ldst(Register rt, const Address &adr, size_t size
     return true;
   } else {
     assert(size_in_bytes == 8 || size_in_bytes == 4, "only 8 bytes or 4 bytes load/store is supported.");
-    const unsigned mask = size_in_bytes - 1;
+    const uint64_t mask = size_in_bytes - 1;
     if (adr.getMode() == Address::base_plus_offset &&
         (adr.offset() & mask) == 0) { // only supports base_plus_offset.
       code()->set_last_insn(pc());
@@ -2530,9 +2540,17 @@ void MacroAssembler::debug64(char* msg, int64_t pc, int64_t regs[])
   }
 }
 
+RegSet MacroAssembler::call_clobbered_registers() {
+  RegSet regs = RegSet::range(r0, r17) - RegSet::of(rscratch1, rscratch2);
+#ifndef R18_RESERVED
+  regs += r18_reserved;
+#endif
+  return regs;
+}
+
 void MacroAssembler::push_call_clobbered_registers() {
   int step = 4 * wordSize;
-  push(RegSet::range(r0, r18) - RegSet::of(rscratch1, rscratch2) BSD_ONLY(- r18), sp);
+  push(call_clobbered_registers() - RegSet::of(rscratch1, rscratch2), sp);
   sub(sp, sp, step);
   mov(rscratch1, -step);
   // Push v0-v7, v16-v31.
@@ -2552,7 +2570,7 @@ void MacroAssembler::pop_call_clobbered_registers() {
           as_FloatRegister(i+3), T1D, Address(post(sp, 4 * wordSize)));
   }
 
-  pop(RegSet::range(r0, r18) - RegSet::of(rscratch1, rscratch2) BSD_ONLY(- r18), sp);
+  pop(call_clobbered_registers() - RegSet::of(rscratch1, rscratch2), sp);
 }
 
 void MacroAssembler::push_CPU_state(bool save_vectors) {
@@ -2738,7 +2756,7 @@ void MacroAssembler::merge_ldst(Register rt,
   // Overwrite previous generated binary.
   code_section()->set_end(prev);
 
-  const int sz = prev_ldst->size_in_bytes();
+  const size_t sz = prev_ldst->size_in_bytes();
   assert(sz == 8 || sz == 4, "only supports 64/32bit merging.");
   if (!is_store) {
     BLOCK_COMMENT("merged ldr pair");
@@ -4277,6 +4295,7 @@ void MacroAssembler::remove_frame(int framesize) {
   }
 }
 
+#ifdef COMPILER2
 typedef void (MacroAssembler::* chr_insn)(Register Rt, const Address &adr);
 
 // Search for str1 in str2 and return index or -1
@@ -4782,7 +4801,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
     Register cnt1, Register cnt2, Register result, Register tmp1, Register tmp2,
     FloatRegister vtmp1, FloatRegister vtmp2, FloatRegister vtmp3, int ae) {
   Label DONE, SHORT_LOOP, SHORT_STRING, SHORT_LAST, TAIL, STUB,
-      DIFFERENCE, NEXT_WORD, SHORT_LOOP_TAIL, SHORT_LAST2, SHORT_LAST_INIT,
+      DIFF, NEXT_WORD, SHORT_LOOP_TAIL, SHORT_LAST2, SHORT_LAST_INIT,
       SHORT_LOOP_START, TAIL_CHECK;
 
   const int STUB_THRESHOLD = 64 + 8;
@@ -4869,7 +4888,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
     adds(cnt2, cnt2, isUL ? 4 : 8);
     br(GE, TAIL);
     eor(rscratch2, tmp1, tmp2);
-    cbnz(rscratch2, DIFFERENCE);
+    cbnz(rscratch2, DIFF);
     // main loop
     bind(NEXT_WORD);
     if (str1_isL == str2_isL) {
@@ -4895,10 +4914,10 @@ void MacroAssembler::string_compare(Register str1, Register str2,
 
     eor(rscratch2, tmp1, tmp2);
     cbz(rscratch2, NEXT_WORD);
-    b(DIFFERENCE);
+    b(DIFF);
     bind(TAIL);
     eor(rscratch2, tmp1, tmp2);
-    cbnz(rscratch2, DIFFERENCE);
+    cbnz(rscratch2, DIFF);
     // Last longword.  In the case where length == 4 we compare the
     // same longword twice, but that's still faster than another
     // conditional branch.
@@ -4922,7 +4941,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
 
     // Find the first different characters in the longwords and
     // compute their difference.
-    bind(DIFFERENCE);
+    bind(DIFF);
     rev(rscratch2, rscratch2);
     clz(rscratch2, rscratch2);
     andr(rscratch2, rscratch2, isLL ? -8 : -16);
@@ -5002,6 +5021,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
 
   BLOCK_COMMENT("} string_compare");
 }
+#endif // COMPILER2
 
 // This method checks if provided byte array contains byte with highest bit set.
 void MacroAssembler::has_negatives(Register ary1, Register len, Register result) {
@@ -5400,7 +5420,7 @@ void MacroAssembler::zero_words(Register ptr, Register cnt)
 // base:         Address of a buffer to be zeroed, 8 bytes aligned.
 // cnt:          Immediate count in HeapWords.
 #define SmallArraySize (18 * BytesPerLong)
-void MacroAssembler::zero_words(Register base, u_int64_t cnt)
+void MacroAssembler::zero_words(Register base, uint64_t cnt)
 {
   BLOCK_COMMENT("zero_words {");
   int i = cnt & 1;  // store any odd word to start
