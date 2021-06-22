@@ -221,7 +221,7 @@ AC_DEFUN_ONCE([HOTSPOT_ENABLE_DISABLE_AOT],
 
   if test "x$ENABLE_AOT" = "xtrue"; then
     # Only enable AOT on X64 platforms.
-    if test "x$OPENJDK_TARGET_CPU" = "xx86_64" || test "x$OPENJDK_TARGET_CPU" = "xaarch64" ; then
+    if test "x$OPENJDK_TARGET_CPU" = "xx86_64" || test "x$OPENJDK_TARGET_OS-$OPENJDK_TARGET_CPU" = "xlinux-aarch64" ; then
       if test -e "${TOPDIR}/src/jdk.aot"; then
         if test -e "${TOPDIR}/src/jdk.internal.vm.compiler"; then
           ENABLE_AOT="true"
@@ -240,7 +240,7 @@ AC_DEFUN_ONCE([HOTSPOT_ENABLE_DISABLE_AOT],
     else
       ENABLE_AOT="false"
       if test "x$enable_aot" = "xyes"; then
-        AC_MSG_ERROR([AOT is currently only supported on x86_64 and aarch64. Remove --enable-aot.])
+        AC_MSG_ERROR([AOT is currently only supported on x86_64 and linux-aarch64. Remove --enable-aot.])
       fi
     fi
   fi
@@ -364,6 +364,10 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_FEATURES],
   AC_MSG_CHECKING([if shenandoah can be built])
   if HOTSPOT_CHECK_JVM_FEATURE(shenandoahgc); then
     if test "x$OPENJDK_TARGET_CPU_ARCH" = "xx86" || test "x$OPENJDK_TARGET_CPU" = "xaarch64" ; then
+      # Filter out Shenandoah from user requested features, as it's already in non-minimal set
+      if HOTSPOT_CHECK_JVM_VARIANT(minimal); then
+        BASIC_GET_NON_MATCHING_VALUES(JVM_FEATURES, $JVM_FEATURES, shenandoahgc)
+      fi
       AC_MSG_RESULT([yes])
     else
       DISABLED_JVM_FEATURES="$DISABLED_JVM_FEATURES shenandoahgc"
@@ -371,6 +375,7 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_FEATURES],
     fi
   else
       DISABLED_JVM_FEATURES="$DISABLED_JVM_FEATURES shenandoahgc"
+      AC_MSG_RESULT([no, not enabled by default])
   fi
 
   # Only enable ZGC on supported platforms
@@ -420,7 +425,8 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_FEATURES],
     # Only enable jvmci on x86_64, sparcv9 and aarch64
     if test "x$OPENJDK_TARGET_CPU" = "xx86_64" || \
        test "x$OPENJDK_TARGET_CPU" = "xsparcv9" || \
-       test "x$OPENJDK_TARGET_CPU" = "xaarch64" ; then
+       test "x$OPENJDK_TARGET_OS-$OPENJDK_TARGET_CPU" = "xwindows-aarch64" || \
+       test "x$OPENJDK_TARGET_OS-$OPENJDK_TARGET_CPU" = "xlinux-aarch64" ; then
       AC_MSG_RESULT([yes])
       JVM_FEATURES_jvmci="jvmci"
       INCLUDE_JVMCI="true"
@@ -451,10 +457,11 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_FEATURES],
       JVM_FEATURES_graal="graal"
       INCLUDE_GRAAL="true"
     else
-      # By default enable graal build on x64 or where AOT is available.
+      # By default enable graal build on x64/aarch64 or where AOT is available.
       # graal build requires jvmci.
       if test "x$JVM_FEATURES_jvmci" = "xjvmci" && \
           (test "x$OPENJDK_TARGET_CPU" = "xx86_64" || \
+           test "x$OPENJDK_TARGET_CPU" = "xaarch64" || \
            test "x$ENABLE_AOT" = "xtrue") ; then
         AC_MSG_RESULT([yes])
         JVM_FEATURES_graal="graal"

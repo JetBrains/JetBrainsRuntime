@@ -2042,7 +2042,7 @@ void LIR_Assembler::comp_fl2i(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Op
   } else if (code == lir_cmp_l2i) {
     Label done;
     __ cmp(left->as_register_lo(), right->as_register_lo());
-    __ mov(dst->as_register(), (u_int64_t)-1L);
+    __ mov(dst->as_register(), (uint64_t)-1L);
     __ br(Assembler::LT, done);
     __ csinc(dst->as_register(), zr, zr, Assembler::EQ);
     __ bind(done);
@@ -2314,7 +2314,6 @@ void LIR_Assembler::emit_arraycopy(LIR_OpArrayCopy* op) {
   assert(default_type != NULL && default_type->is_array_klass() && default_type->is_loaded(), "must be true at this point");
 
   int elem_size = type2aelembytes(basic_type);
-  int shift_amount;
   int scale = exact_log2(elem_size);
 
   Address src_length_addr = Address(src, arrayOopDesc::length_offset_in_bytes());

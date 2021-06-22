@@ -112,7 +112,6 @@ AC_DEFUN([BASIC_FIXUP_PATH_CYGWIN],
   # unix format.
   path="[$]$1"
   new_path=`$CYGPATH -u "$path"`
-
   # Cygwin tries to hide some aspects of the Windows file system, such that binaries are
   # named .exe but called without that suffix. Therefore, "foo" and "foo.exe" are considered
   # the same file, most of the time (as in "test -f"). But not when running cygpath -s, then
@@ -402,8 +401,19 @@ AC_DEFUN_ONCE([BASIC_COMPILE_FIXPATH],
     BASIC_WINDOWS_REWRITE_AS_WINDOWS_MIXED_PATH([FIXPATH_BIN_W])
     $RM -rf $FIXPATH_BIN $FIXPATH_DIR
     $MKDIR -p $FIXPATH_DIR $CONFIGURESUPPORT_OUTPUTDIR/bin
+    # simple cross compilation solution for fixpath for aarch64
+    # Final solution should be backport of 8257679
+    if test "x$COMPILE_TYPE-$OPENJDK_TARGET_CPU" = xcross-aarch64; then
+      FIXPATH_CC=`$ECHO "$CC"|$SED 's|/arm64/cl|/x64/cl|'`
+      FIXPATH_LIB=`$ECHO "$LIB"|$SED 's|arm64|x64|gI'`
+    else
+      FIXPATH_CC=$CC
+      FIXPATH_LIB=$LIB
+    fi
+    OLDLIB=$LIB
+    export LIB="$FIXPATH_LIB"
     cd $FIXPATH_DIR
-    $CC $FIXPATH_SRC_W -Fe$FIXPATH_BIN_W > $FIXPATH_DIR/fixpath1.log 2>&1
+    $FIXPATH_CC $FIXPATH_SRC_W -Fe$FIXPATH_BIN_W > $FIXPATH_DIR/fixpath1.log 2>&1
     cd $CURDIR
 
     if test ! -x $FIXPATH_BIN; then
@@ -414,9 +424,10 @@ AC_DEFUN_ONCE([BASIC_COMPILE_FIXPATH],
     AC_MSG_RESULT([yes])
     AC_MSG_CHECKING([if fixpath.exe works])
     cd $FIXPATH_DIR
-    $FIXPATH $CC $FIXPATH_SRC -Fe$FIXPATH_DIR/fixpath2.exe \
+    $FIXPATH $FIXPATH_CC $FIXPATH_SRC -Fe$FIXPATH_DIR/fixpath2.exe \
         > $FIXPATH_DIR/fixpath2.log 2>&1
     cd $CURDIR
+    export LIB="$OLDLIB"
     if test ! -x $FIXPATH_DIR/fixpath2.exe; then
       AC_MSG_RESULT([no])
       cat $FIXPATH_DIR/fixpath2.log

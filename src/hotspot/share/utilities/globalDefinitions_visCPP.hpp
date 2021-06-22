@@ -159,9 +159,7 @@ inline int g_isfinite(jdouble f)                 { return _finite(f); }
 
 #define offset_of(klass,field) offsetof(klass,field)
 
-#ifndef USE_LIBRARY_BASED_TLS_ONLY
-#define THREAD_LOCAL_DECL __declspec( thread )
-#endif
+#define THREAD_LOCAL __declspec(thread)
 
 // Inlining support
 // MSVC has '__declspec(noinline)' but according to the official documentation
@@ -172,5 +170,9 @@ inline int g_isfinite(jdouble f)                 { return _finite(f); }
 
 // Alignment
 #define ATTRIBUTE_ALIGNED(x) __declspec(align(x))
+
+#ifdef _M_ARM64
+#define USE_VECTORED_EXCEPTION_HANDLING
+#endif
 
 #endif // SHARE_VM_UTILITIES_GLOBALDEFINITIONS_VISCPP_HPP

@@ -1125,7 +1125,7 @@ void TemplateInterpreterGenerator::bang_stack_shadow_pages(bool native_call) {
   // an interpreter frame with greater than a page of locals, so each page
   // needs to be checked.  Only true for non-native.
   if (UseStackBanging) {
-    const int n_shadow_pages = JavaThread::stack_shadow_zone_size() / os::vm_page_size();
+    const int n_shadow_pages = (int)(JavaThread::stack_shadow_zone_size() / os::vm_page_size());
     const int start_page = native_call ? n_shadow_pages : 1;
     const int page_size = os::vm_page_size();
     for (int pages = start_page; pages <= n_shadow_pages ; pages++) {
@@ -1593,9 +1593,7 @@ address TemplateInterpreterGenerator::generate_normal_entry(bool synchronized) {
   __ add(rlocals, esp, r2, ext::uxtx, 3);
   __ sub(rlocals, rlocals, wordSize);
 
-  // Make room for locals
-  __ sub(rscratch1, esp, r3, ext::uxtx, 3);
-  __ andr(sp, rscratch1, -16);
+  __ mov(rscratch1, esp);
 
   // r3 - # of additional locals
   // allocate space for locals
@@ -1605,11 +1603,15 @@ address TemplateInterpreterGenerator::generate_normal_entry(bool synchronized) {
     __ ands(zr, r3, r3);
     __ br(Assembler::LE, exit); // do nothing if r3 <= 0
     __ bind(loop);
-    __ str(zr, Address(__ post(rscratch1, wordSize)));
+    __ str(zr, Address(__ pre(rscratch1, -wordSize)));
     __ sub(r3, r3, 1); // until everything initialized
     __ cbnz(r3, loop);
     __ bind(exit);
   }
+
+  // Padding between locals and fixed part of activation frame to ensure
+  // SP is always 16-byte aligned.
+  __ andr(sp, rscratch1, -16);
 
   // And the base dispatch table
   __ get_dispatch();
