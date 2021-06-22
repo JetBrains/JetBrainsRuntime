@@ -1,0 +1,27 @@
+From 04f83f04ace679676decdf626a3ebefddaf56d7a Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Fri, 12 Feb 2021 11:38:48 +0100
+Subject: [PATCH 22/35] Fix crash on GrowableArray allocation in C_HEAP
+
+---
+ src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 071dbc6d6ad..a5264077bfe 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -750,8 +750,8 @@ bool VM_EnhancedRedefineClasses::is_modifiable_class(oop klass_mirror) {
+ //  - link new classes
+ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
+ 
+-  _affected_klasses = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<Klass*>(_class_count);
+-  _new_classes = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<InstanceKlass*>(_class_count);
++  _affected_klasses = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<Klass*>(_class_count, mtInternal);
++  _new_classes = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<InstanceKlass*>(_class_count, mtInternal);
+ 
+   ResourceMark rm(THREAD);
+ 
+-- 
+2.23.0
+

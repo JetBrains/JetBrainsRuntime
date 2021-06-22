@@ -1,0 +1,26 @@
+From 0b0f1c7ad0fe5f4d3806110e5acb7f017e6679af Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Wed, 11 Nov 2020 18:45:15 +0100
+Subject: [PATCH 11/35] Fix LoadedClassesClosure - fixes problems with remote
+ debugging
+
+---
+ src/hotspot/share/prims/jvmtiGetLoadedClasses.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiGetLoadedClasses.cpp b/src/hotspot/share/prims/jvmtiGetLoadedClasses.cpp
+index c860ee24f80..dfe0bb8d96a 100644
+--- a/src/hotspot/share/prims/jvmtiGetLoadedClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiGetLoadedClasses.cpp
+@@ -76,7 +76,7 @@ public:
+     //         the new version (SystemDictionary stores only new versions). But the LoadedClassesClosure's functionality was
+     //         changed in java8  where jvmtiLoadedClasses collects all classes from all classloaders, therefore we
+     //         must use new versions only.
+-    if (AllowEnhancedClassRedefinition && k->new_version()==NULL) {
++    if (!AllowEnhancedClassRedefinition || k->new_version()==NULL) {
+       _classStack.push((jclass) _env->jni_reference(Handle(_cur_thread, k->java_mirror())));
+       if (_dictionary_walk) {
+         // Collect array classes this way when walking the dictionary (because array classes are
+-- 
+2.23.0
+
