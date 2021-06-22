@@ -23,6 +23,7 @@
  * questions.
  */
 
+#include <comdef.h>
 #include "awt.h"
 #include "awt_FileDialog.h"
 #include "awt_Dialog.h"
