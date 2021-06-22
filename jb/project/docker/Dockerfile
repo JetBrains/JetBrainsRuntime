@@ -9,5 +9,5 @@ RUN wget https://cdn.azul.com/zulu/bin/zulu16.28.11-ca-jdk16.0.0-linux_x64.tar.g
 RUN mv /zulu16.28.11-ca-jdk16.0.0-linux_x64 /jdk16.0.0
 ENV PATH /opt/rh/devtoolset-8/root/usr/bin:$PATH
 RUN mkdir .git
-RUN git config user.email "builduser@jetbrains.com"
+RUN git config user.email "teamcity@jetbrains.com"
 RUN git config user.name "builduser"
