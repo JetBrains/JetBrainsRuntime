@@ -1,0 +1,26 @@
+From 417a51aedb2667a365632f2fcc150f50366f793c Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Tue, 6 Oct 2020 22:15:31 +0200
+Subject: [PATCH 08/35] AllowEnhancedClassRedefinition is false (disabled) by
+ default
+
+---
+ src/hotspot/share/runtime/globals.hpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
+index 2fcb02fcf49..7051b634a9b 100644
+--- a/src/hotspot/share/runtime/globals.hpp
++++ b/src/hotspot/share/runtime/globals.hpp
+@@ -2088,7 +2088,7 @@ const intx ObjectAlignmentInBytes = 8;
+   develop(bool, TraceOptimizedUpcallStubs, false,                              \
+                 "Trace optimized upcall stub generation")                      \
+                                                                             \
+-  product(bool, AllowEnhancedClassRedefinition, true,                       \
++  product(bool, AllowEnhancedClassRedefinition, false,                      \
+              "Allow enhanced class redefinition beyond swapping method "    \
+              "bodies")
+ 
+-- 
+2.23.0
+
