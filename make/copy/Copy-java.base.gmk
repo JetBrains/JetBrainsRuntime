@@ -44,37 +44,44 @@ endif
 
 ################################################################################
 # Copy the microsoft runtime libraries on windows
+################################################################################
+# Copy the microsoft runtime libraries on windows, but only if we are not
+# creating a buildjdk. If we are, the provided runtime librareis are made for
+# the target platform, not the build platform (and we should not need to bundle
+# anything with the minimalistic, locally-only buildjdk.)
 ifeq ($(OPENJDK_TARGET_OS), windows)
+  ifneq ($(CREATING_BUILDJDK), true)
 
-  # Chmod to avoid permission issues if bundles are unpacked on unix platforms.
-  define copy-and-chmod
+    # Chmod to avoid permission issues if bundles are unpacked on unix platforms.
+    define copy-and-chmod
 	$(install-file)
 	$(CHMOD) a+rx $@
-  endef
+    endef
 
-  # Use separate macro calls in case the source files are not in the same
-  # directory.
-  $(eval $(call SetupCopyFiles,COPY_MSVCR, \
+    # Use separate macro calls in case the source files are not in the same
+    # directory.
+    $(eval $(call SetupCopyFiles,COPY_MSVCR, \
       DEST := $(LIB_DST_DIR), \
       FILES := $(MSVCR_DLL), \
       MACRO := copy-and-chmod))
 
-  $(eval $(call SetupCopyFiles,COPY_MSVCP, \
+    $(eval $(call SetupCopyFiles,COPY_MSVCP, \
       DEST := $(LIB_DST_DIR), \
       FILES := $(MSVCP_DLL), \
       MACRO := copy-and-chmod))
 
-  TARGETS += $(COPY_MSVCR) $(COPY_MSVCP)
+    TARGETS += $(COPY_MSVCR) $(COPY_MSVCP)
 
-  ifneq ($(UCRT_DLL_DIR), )
-    $(eval $(call SetupCopyFiles, COPY_UCRT_DLLS, \
+    ifneq ($(UCRT_DLL_DIR), )
+      $(eval $(call SetupCopyFiles, COPY_UCRT_DLLS, \
         DEST := $(LIB_DST_DIR), \
         SRC := $(UCRT_DLL_DIR), \
         FILES := $(wildcard $(UCRT_DLL_DIR)/*.dll), \
         MACRO := copy-and-chmod, \
-    ))
+      ))
 
-    TARGETS += $(COPY_UCRT_DLLS)
+      TARGETS += $(COPY_UCRT_DLLS)
+    endif
   endif
 endif
 
