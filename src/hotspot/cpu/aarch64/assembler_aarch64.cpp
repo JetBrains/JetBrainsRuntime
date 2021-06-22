@@ -1517,7 +1517,7 @@ void Address::lea(MacroAssembler *as, Register r) const {
       break;
   }
   case base_plus_offset_reg: {
-    __ add(r, _base, _index, _ext.op(), MAX(_ext.shift(), 0));
+    __ add(r, _base, _index, _ext.op(), MAX2(_ext.shift(), 0));
     break;
   }
   case literal: {
@@ -1782,4 +1782,8 @@ static float unpack(unsigned value) {
   };
   ival = fp_immediate_for_encoding(value, 0);
   return val;
+}
+
+address Assembler::locate_next_instruction(address inst) {
+  return inst + Assembler::instruction_size;
 }
