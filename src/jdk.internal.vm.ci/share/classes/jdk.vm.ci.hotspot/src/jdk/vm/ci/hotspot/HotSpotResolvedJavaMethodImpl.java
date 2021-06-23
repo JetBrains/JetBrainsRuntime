@@ -228,7 +228,7 @@ final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSp
 
     @Override
     public boolean canBeStaticallyBound() {
-        return (isFinal() || isPrivate() || isStatic() || holder.isLeaf()) && isConcrete();
+        return (isFinal() || isPrivate() || isStatic() || holder.isLeaf() || isConstructor()) && isConcrete();
     }
 
     @Override
@@ -392,6 +392,8 @@ final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSp
 
     @Override
     public ResolvedJavaMethod uniqueConcreteMethod(HotSpotResolvedObjectType receiver) {
+        assert !canBeStaticallyBound() : this;
+
         if (receiver.isInterface()) {
             // Cannot trust interfaces. Because of:
             // interface I { void foo(); }
@@ -403,6 +405,7 @@ final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSp
             // seeing A.foo().
             return null;
         }
+        assert !receiver.isLinked() || isInVirtualMethodTable(receiver);
         if (this.isDefault()) {
             // CHA for default methods doesn't work and may crash the VM
             return null;
