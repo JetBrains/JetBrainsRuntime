@@ -374,7 +374,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
     // Workaround for JBR-3544
     // When tabbing mode is on, macOS sends "Ctrl N" and "Cmd N" when "Ctrl Opt N" and "Cmd Opt N" are pressed
-    if ([event keyCode] == 45 && (modFlags == NSControlKeyMask) || (modFlags == NSCommandKeyMask)) {
+    if ([event keyCode] == 45 && ((modFlags == NSControlKeyMask) || (modFlags == NSCommandKeyMask))) {
         return NO;
     }
     // if IM is active key events should be ignored
