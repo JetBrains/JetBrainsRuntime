@@ -1877,6 +1877,8 @@ static jlong
         width = 0;
         rowBytes = 0;
         height = 0;
+        topLeftX = 0;
+        topLeftY = 0;
      }
 
 
