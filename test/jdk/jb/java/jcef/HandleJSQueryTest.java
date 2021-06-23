@@ -6,6 +6,7 @@ import org.cef.browser.CefMessageRouter;
 import org.cef.handler.CefLoadHandlerAdapter;
 import org.cef.callback.CefQueryCallback;
 import org.cef.handler.CefMessageRouterHandlerAdapter;
+import org.cef.network.CefRequest.TransitionType;
 
 import javax.swing.*;
 import java.awt.event.WindowAdapter;
@@ -17,7 +18,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * @test
  * @key headful
- * @requires (os.arch == "amd64" | os.arch == "x86_64" | (os.arch == "aarch64" & os.family == "mac"))
  * @summary Regression test for JBR-2430. The test checks that JS Query is handled in 2nd opened browser.
  * @run main/othervm HandleJSQueryTest
  */
@@ -32,10 +32,10 @@ public class HandleJSQueryTest {
 
         try {
             SwingUtilities.invokeLater(firstBrowser::initUI);
-            firstLatch.await(3, TimeUnit.SECONDS);
+            firstLatch.await(10, TimeUnit.SECONDS);
 
             SwingUtilities.invokeLater(secondBrowser::initUI);
-            secondLatch.await(3, TimeUnit.SECONDS);
+            secondLatch.await(10, TimeUnit.SECONDS);
 
             if (CefBrowserFrame.callbackCounter < 2) {
                 throw new RuntimeException("Test FAILED. JS Query was not handled in 2nd opened browser");
@@ -54,8 +54,8 @@ public class HandleJSQueryTest {
 
 class CefBrowserFrame extends JFrame {
 
-    static int callbackCounter;
-    static int browserNumber;
+    static volatile int callbackCounter;
+    static volatile int browserNumber;
 
     private final JBCefBrowser browser = new JBCefBrowser();
 
@@ -87,8 +87,12 @@ class CefBrowserFrame extends JFrame {
 
         browser.getCefClient().addLoadHandler(new CefLoadHandlerAdapter() {
             @Override
+            public void onLoadStart(CefBrowser browser, CefFrame frame, TransitionType transitionType) {
+                System.out.println("onLoadStart: Browser " + browserNumber);
+            }
+            @Override
             public void onLoadEnd(CefBrowser browser, CefFrame frame, int httpStatusCode) {
-                System.out.println("Browser " + browserNumber + " is loaded.");
+                System.out.println("onLoadEnd: Browser " + browserNumber);
                 String jsFunc = "cef_query_" + browserNumber;
                 String jsQuery = "window." + jsFunc + "({request: '" + jsFunc + "'});";
                 browser.executeJavaScript(jsQuery, "", 0);
