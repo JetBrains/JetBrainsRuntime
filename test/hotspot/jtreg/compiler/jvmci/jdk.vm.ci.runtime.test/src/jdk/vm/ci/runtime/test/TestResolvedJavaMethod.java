@@ -214,7 +214,8 @@ public class TestResolvedJavaMethod extends MethodUniverse {
 
     private static boolean canBeStaticallyBound(Member method) {
         int modifiers = method.getModifiers();
-        return (Modifier.isFinal(modifiers) || Modifier.isPrivate(modifiers) || Modifier.isStatic(modifiers) || Modifier.isFinal(method.getDeclaringClass().getModifiers())) &&
+        boolean isConstructor = method instanceof Constructor;
+        return (Modifier.isFinal(modifiers) || Modifier.isPrivate(modifiers) || Modifier.isStatic(modifiers) || Modifier.isFinal(method.getDeclaringClass().getModifiers()) || isConstructor) &&
                         !Modifier.isAbstract(modifiers);
     }
 
