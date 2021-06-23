@@ -332,6 +332,7 @@ public class XRGlyphCache implements GlyphDisposedListener {
      */
     private static class GlyphIDAllocator {
 
+        @SuppressWarnings({"unchecked", "rawtypes"})
         private List<Integer>[] freeIDsByCapacity = new List[]{
                 new ArrayList<>(255)
         };
