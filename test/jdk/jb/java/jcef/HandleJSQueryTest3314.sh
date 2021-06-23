@@ -43,7 +43,7 @@ fi
 
 curdir=$(pwd)
 cd ${TESTSRC}
-${TESTJAVA}/bin/javac -d ${TESTCLASSES} HandleJSQueryTest.java
+${TESTJAVA}/bin/javac -d ${TESTCLASSES} JBCefApp.java JBCefBrowser.java HandleJSQueryTest.java
 cd $curdir
 
 i=0
