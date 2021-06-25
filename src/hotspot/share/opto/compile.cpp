@@ -4810,6 +4810,30 @@ bool Compile::randomized_select(int count) {
   return (os::random() & RANDOMIZED_DOMAIN_MASK) < (RANDOMIZED_DOMAIN / count);
 }
 
+Node* Compile::narrow_value(BasicType bt, Node* value, const Type* type, PhaseGVN* phase, bool transform_res) {
+  if (type != NULL && phase->type(value)->higher_equal(type)) {
+    return value;
+  }
+  Node* result = NULL;
+  if (bt == T_BYTE) {
+    result = phase->transform(new LShiftINode(value, phase->intcon(24)));
+    result = new RShiftINode(result, phase->intcon(24));
+  } else if (bt == T_BOOLEAN) {
+    result = new AndINode(value, phase->intcon(0xFF));
+  } else if (bt == T_CHAR) {
+    result = new AndINode(value,phase->intcon(0xFFFF));
+  } else {
+    assert(bt == T_SHORT, "unexpected narrow type");
+    result = phase->transform(new LShiftINode(value, phase->intcon(16)));
+    result = new RShiftINode(result, phase->intcon(16));
+  }
+  if (transform_res) {
+    result = phase->transform(result);
+  }
+  return result;
+}
+
+
 CloneMap&     Compile::clone_map()                 { return _clone_map; }
 void          Compile::set_clone_map(Dict* d)      { _clone_map._dict = d; }
 
