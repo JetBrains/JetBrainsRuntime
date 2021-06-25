@@ -187,7 +187,7 @@ size_t ShenandoahPacer::update_and_get_progress_history() {
 void ShenandoahPacer::restart_with(size_t non_taxable_bytes, double tax_rate) {
   size_t initial = (size_t)(non_taxable_bytes * tax_rate) >> LogHeapWordSize;
   STATIC_ASSERT(sizeof(size_t) <= sizeof(intptr_t));
-  Atomic::xchg((intptr_t)initial, &_budget);
+  Atomic::xchg((intptr_t)initial, &_budget, memory_order_relaxed);
   Atomic::store(tax_rate, &_tax_rate);
   Atomic::inc(&_epoch);
 
@@ -209,14 +209,14 @@ bool ShenandoahPacer::claim_for_alloc(size_t words, bool force) {
       return false;
     }
     new_val = cur - tax;
-  } while (Atomic::cmpxchg(new_val, &_budget, cur) != cur);
+  } while (Atomic::cmpxchg(new_val, &_budget, cur, memory_order_relaxed) != cur);
   return true;
 }
 
 void ShenandoahPacer::unpace_for_alloc(intptr_t epoch, size_t words) {
   assert(ShenandoahPacing, "Only be here when pacing is enabled");
 
-  if (_epoch != epoch) {
+  if (Atomic::load(&_epoch) != epoch) {
     // Stale ticket, no need to unpace.
     return;
   }
