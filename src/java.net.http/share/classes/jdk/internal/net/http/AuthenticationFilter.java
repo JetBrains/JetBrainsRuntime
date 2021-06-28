@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -240,20 +240,23 @@ class AuthenticationFilter implements HeaderFilter {
         HttpHeaders hdrs = r.headers();
         HttpRequestImpl req = r.request();
 
-        if (status != UNAUTHORIZED && status != PROXY_UNAUTHORIZED) {
-            // check if any authentication succeeded for first time
-            if (exchange.serverauth != null && !exchange.serverauth.fromcache) {
-                AuthInfo au = exchange.serverauth;
-                cache.store(au.scheme, req.uri(), false, au.credentials);
-            }
+        if (status != PROXY_UNAUTHORIZED) {
             if (exchange.proxyauth != null && !exchange.proxyauth.fromcache) {
                 AuthInfo au = exchange.proxyauth;
                 URI proxyURI = getProxyURI(req);
                 if (proxyURI != null) {
+                    exchange.proxyauth = null;
                     cache.store(au.scheme, proxyURI, true, au.credentials);
                 }
             }
+            if (status != UNAUTHORIZED) {
+            // check if any authentication succeeded for first time
+                if (exchange.serverauth != null && !exchange.serverauth.fromcache) {
+                    AuthInfo au = exchange.serverauth;
+                    cache.store(au.scheme, req.uri(), false, au.credentials);
+                }
             return null;
+            }
         }
 
         boolean proxy = status == PROXY_UNAUTHORIZED;

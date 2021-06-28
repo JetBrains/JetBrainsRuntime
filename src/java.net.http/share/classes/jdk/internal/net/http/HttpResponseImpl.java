@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -159,6 +159,26 @@ class HttpResponseImpl<T> implements HttpResponse<T>, RawChannel.Provider {
         }
         return rawchan;
     }
+
+    /**
+     * Closes the RawChannel that may have been used for WebSocket protocol.
+     *
+     * @apiNote This method should be called to close the connection
+     * if an exception occurs during the websocket handshake, in cases where
+     * {@link #rawChannel() rawChannel().close()} would have been called.
+     * An unsuccessful handshake may prevent the creation of the RawChannel:
+     * if a RawChannel has already been created, this method wil close it.
+     * Otherwise, it will close the connection.
+     *
+     * @throws IOException if an I/O exception occurs while closing
+     *         the channel.
+     */
+    public synchronized void closeRawChannel() throws IOException {
+        //  close the rawChannel, if created, or the
+        // connection, if not.
+        if (rawchan != null) rawchan.close();
+        else connection.close();
+        }
 
     @Override
     public String toString() {
