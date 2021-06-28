@@ -69,7 +69,7 @@
           "smaller TLABs until policy catches up.")                         \
                                                                             \
   experimental(bool, EpsilonElasticTLABDecay, true,                         \
-          "Use timed decays to shrik TLAB sizes. This conserves memory "    \
+          "Use timed decays to shrink TLAB sizes. This conserves memory "   \
           "for the threads that allocate in bursts of different sizes, "    \
           "for example the small/rare allocations coming after the initial "\
           "large burst.")                                                   \
