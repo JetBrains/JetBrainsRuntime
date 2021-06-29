@@ -36,7 +36,9 @@ public final class CStrike extends PhysicalStrike {
                                                      double[] glyphTx,
                                                      double[] invDevTxMatrix,
                                                      int aaHint,
-                                                     int fmHint);
+                                                     int fmHint,
+                                                     int subpixelResolutionX,
+                                                     int subpixelResolutionY);
 
     // Disposes the native strike
     private static native void disposeNativeStrikePtr(long nativeStrikePtr);
@@ -123,7 +125,9 @@ public final class CStrike extends PhysicalStrike {
             }
             nativeStrikePtr =
                 createNativeStrikePtr(nativeFont.getNativeFontPtr(),
-                                      glyphTx, invDevTxMatrix, aaHint, fmHint);
+                                      glyphTx, invDevTxMatrix, aaHint, fmHint,
+                                      FontUtilities.subpixelResolution.width,
+                                      FontUtilities.subpixelResolution.height);
         }
 
         return nativeStrikePtr;
