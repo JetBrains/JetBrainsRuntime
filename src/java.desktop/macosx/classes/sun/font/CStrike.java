@@ -27,6 +27,11 @@ package sun.font;
 
 import java.awt.Rectangle;
 import java.awt.geom.*;
+import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import sun.lwawt.macosx.CThreading;
+import static sun.awt.SunHints.*;
+
 import java.util.*;
 
 public final class CStrike extends PhysicalStrike {
@@ -36,7 +41,9 @@ public final class CStrike extends PhysicalStrike {
                                                      double[] glyphTx,
                                                      double[] invDevTxMatrix,
                                                      int aaHint,
-                                                     int fmHint);
+                                                     int fmHint,
+                                                     int subpixelResolutionX,
+                                                     int subpixelResolutionY);
 
     // Disposes the native strike
     private static native void disposeNativeStrikePtr(long nativeStrikePtr);
@@ -123,7 +130,9 @@ public final class CStrike extends PhysicalStrike {
             }
             nativeStrikePtr =
                 createNativeStrikePtr(nativeFont.getNativeFontPtr(),
-                                      glyphTx, invDevTxMatrix, aaHint, fmHint);
+                                      glyphTx, invDevTxMatrix, aaHint, fmHint,
+                                      FontUtilities.subpixelResolution.width,
+                                      FontUtilities.subpixelResolution.height);
         }
 
         return nativeStrikePtr;
@@ -197,7 +206,15 @@ public final class CStrike extends PhysicalStrike {
             return;
         }
 
-        result.setRect(floatRect.x + pt.x, floatRect.y + pt.y, floatRect.width, floatRect.height);
+        boolean subpixel = desc.aaHint == INTVAL_TEXT_ANTIALIAS_ON &&
+                desc.fmHint == INTVAL_FRACTIONALMETRICS_ON;
+        float subpixelResolutionX = subpixel ? FontUtilities.subpixelResolution.width : 1;
+        float subpixelResolutionY = subpixel ? FontUtilities.subpixelResolution.height : 1;
+        // Before rendering, glyph positions are offset by 0.5 pixels, take into consideration
+        float x = ((int) (pt.x * subpixelResolutionX + 0.5f)) / subpixelResolutionX;
+        float y = ((int) (pt.y * subpixelResolutionY + 0.5f)) / subpixelResolutionY;
+
+        result.setRect(floatRect.x + x, floatRect.y + y, floatRect.width, floatRect.height);
     }
 
     private void getGlyphImageBounds(int glyphCode, float x, float y, Rectangle2D.Float floatRect) {
