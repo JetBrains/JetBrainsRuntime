@@ -555,6 +555,7 @@ public:
   }
 
   bool is_dominator(Node *d, Node *n) { return is_dominator_helper(d, n, false); }
+  bool no_dependent_zero_check(Node* n) const;
 
 #ifndef PRODUCT
 protected:
