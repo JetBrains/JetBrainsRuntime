@@ -36,6 +36,7 @@ CGGlyphImages_GetGlyphImagePtrs(jlong glyphInfos[],
 void
 CGGlyphImages_GetGlyphMetrics(const CTFontRef font,
                               const CGAffineTransform *tx,
+                              CGFloat fontSize,
                               const JRSFontRenderingStyle style,
                               const CGGlyph glyphs[],
                               size_t count,
