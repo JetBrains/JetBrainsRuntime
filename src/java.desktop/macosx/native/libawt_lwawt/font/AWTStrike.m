@@ -42,7 +42,9 @@ static CGAffineTransform sInverseTX = { 1, 0, 0, -1, 0, 0 };
            invDevTx:(CGAffineTransform)invDevTx
               style:(JRSFontRenderingStyle)style
             aaStyle:(jint)aaStyle
-             fmHint:(jint)fmHint {
+             fmHint:(jint)fmHint
+subpixelResolutionX:(jint)subpixelResolutionX
+subpixelResolutionY:(jint)subpixelResolutionY {
 
     self = [super init];
     if (self) {
@@ -50,6 +52,8 @@ static CGAffineTransform sInverseTX = { 1, 0, 0, -1, 0, 0 };
         fStyle = style;
         fAAStyle = aaStyle;
         fFmHint = fmHint;
+        fSubpixelResolutionX = subpixelResolutionX;
+        fSubpixelResolutionY = subpixelResolutionY;
 
         fTx = tx; // composited glyph and device transform
 
@@ -80,13 +84,17 @@ static CGAffineTransform sInverseTX = { 1, 0, 0, -1, 0, 0 };
                         invDevTx:(CGAffineTransform)invDevTx
                            style:(JRSFontRenderingStyle)style
                          aaStyle:(jint)aaStyle
-                          fmHint:(jint)fmHint {
+                          fmHint:(jint)fmHint
+             subpixelResolutionX:(jint)subpixelResolutionX
+             subpixelResolutionY:(jint)subpixelResolutionY {
 
     return [[[AWTStrike alloc] initWithFont:awtFont
                                          tx:tx invDevTx:invDevTx
                                       style:style
                                     aaStyle:aaStyle
-                                     fmHint:fmHint] autorelease];
+                                     fmHint:fmHint
+                        subpixelResolutionX:subpixelResolutionX
+                        subpixelResolutionY:subpixelResolutionY] autorelease];
 }
 
 @end
@@ -409,7 +417,8 @@ JNI_COCOA_EXIT(env);
  * Signature: (J[D[DII)J
  */
 JNIEXPORT jlong JNICALL Java_sun_font_CStrike_createNativeStrikePtr
-(JNIEnv *env, jclass clazz, jlong nativeFontPtr, jdoubleArray glyphTxArray, jdoubleArray invDevTxArray, jint aaStyle, jint fmHint)
+(JNIEnv *env, jclass clazz, jlong nativeFontPtr, jdoubleArray glyphTxArray, jdoubleArray invDevTxArray,
+ jint aaStyle, jint fmHint, jint subpixelResolutionX, jint subpixelResolutionY)
 {
     AWTStrike *awtStrike = nil;
 JNI_COCOA_ENTER(env);
@@ -420,7 +429,8 @@ JNI_COCOA_ENTER(env);
     CGAffineTransform glyphTx = GetTxFromDoubles(env, glyphTxArray);
     CGAffineTransform invDevTx = GetTxFromDoubles(env, invDevTxArray);
 
-    awtStrike = [AWTStrike awtStrikeForFont:awtFont tx:glyphTx invDevTx:invDevTx style:style aaStyle:aaStyle fmHint:fmHint]; // autoreleased
+    awtStrike = [AWTStrike awtStrikeForFont:awtFont tx:glyphTx invDevTx:invDevTx style:style
+                 aaStyle:aaStyle fmHint:fmHint subpixelResolutionX:subpixelResolutionX subpixelResolutionY:subpixelResolutionY]; // autoreleased
 
     if (awtStrike)
     {
