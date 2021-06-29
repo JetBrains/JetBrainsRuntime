@@ -230,7 +230,7 @@ OGLTR_InitGlyphCache(jboolean lcdCache)
  * associated with the given OGLContext.
  */
 static void
-OGLTR_AddToGlyphCache(GlyphInfo *glyph, GLenum pixelFormat)
+OGLTR_AddToGlyphCache(GlyphInfo *glyph, GLenum pixelFormat, jint subimage)
 {
     CacheCellInfo *ccinfo;
     GlyphCacheInfo *gcinfo;
@@ -247,15 +247,16 @@ OGLTR_AddToGlyphCache(GlyphInfo *glyph, GLenum pixelFormat)
         return;
     }
 
-    AccelGlyphCache_AddGlyph(gcinfo, glyph);
-    ccinfo = (CacheCellInfo *) glyph->cellInfo;
+    ccinfo = AccelGlyphCache_AddGlyph(gcinfo, glyph);
 
     if (ccinfo != NULL) {
+        ccinfo->glyphSubimage = subimage;
         // store glyph image in texture cell
         j2d_glTexSubImage2D(GL_TEXTURE_2D, 0,
                             ccinfo->x, ccinfo->y,
                             glyph->width, glyph->height,
-                            pixelFormat, GL_UNSIGNED_BYTE, glyph->image);
+                            pixelFormat, GL_UNSIGNED_BYTE, glyph->image +
+                            (glyph->rowBytes * glyph->height) * subimage);
     }
 }
 
@@ -701,7 +702,8 @@ OGLTR_DisableGlyphModeState()
 }
 
 static jboolean
-OGLTR_DrawGrayscaleGlyphViaCache(OGLContext *oglc, GlyphInfo *ginfo, jint x, jint y, jboolean useFontSmoothing)
+OGLTR_DrawGrayscaleGlyphViaCache(OGLContext *oglc, GlyphInfo *ginfo,
+                                 jint x, jint y, jboolean useFontSmoothing, jint subimage)
 {
     CacheCellInfo *cell;
     jfloat x1, y1, x2, y2;
@@ -724,17 +726,39 @@ OGLTR_DrawGrayscaleGlyphViaCache(OGLContext *oglc, GlyphInfo *ginfo, jint x, jin
         glyphMode = MODE_USE_CACHE_GRAY;
     }
 
-    if (ginfo->cellInfo == NULL) {
-        // attempt to add glyph to accelerated glyph cache
-        OGLTR_AddToGlyphCache(ginfo, GL_LUMINANCE);
+    int rx = ginfo->subpixelResolutionX;
+    int ry = ginfo->subpixelResolutionY;
+    if (subimage == 0 && ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0)) {
+        // Subpixel rendering disabled, there must be only one cell info
+        cell = (CacheCellInfo *) (ginfo->cellInfo);
+    } else {
+        // Subpixel rendering enabled, find subimage in cell list
+        cell = NULL;
+        CacheCellInfo *c = (CacheCellInfo *) (ginfo->cellInfo);
+        while (c != NULL) {
+            if (c->glyphSubimage == subimage) {
+                cell = c;
+                break;
+            }
+            c = c->nextGCI;
+        }
+    }
 
-        if (ginfo->cellInfo == NULL) {
+    if (cell == NULL) {
+        // attempt to add glyph to accelerated glyph cache
+        OGLTR_AddToGlyphCache(ginfo, GL_LUMINANCE, subimage);
+        // Our image, added to cache will be the first, so we take it.
+        // If for whatever reason we failed to add it to our cache,
+        // take first cell anyway, it's still better to render glyph
+        // image with wrong subpixel offset than render nothing.
+        cell = (CacheCellInfo *) (ginfo->cellInfo);
+
+        if (cell == NULL) {
             // we'll just no-op in the rare case that the cell is NULL
             return JNI_TRUE;
         }
     }
 
-    cell = (CacheCellInfo *) (ginfo->cellInfo);
     cell->timesRendered++;
 
     x1 = (jfloat)x;
@@ -932,7 +956,7 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
         j2d_glActiveTextureARB(GL_TEXTURE0_ARB);
 
         // attempt to add glyph to accelerated glyph cache
-        OGLTR_AddToGlyphCache(ginfo, rgbOrder ? GL_RGB : GL_BGR);
+        OGLTR_AddToGlyphCache(ginfo, rgbOrder ? GL_RGB : GL_BGR, 0);
 
         if (ginfo->cellInfo == NULL) {
             // we'll just no-op in the rare case that the cell is NULL
@@ -999,7 +1023,8 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
 
 static jboolean
 OGLTR_DrawGrayscaleGlyphNoCache(OGLContext *oglc,
-                                GlyphInfo *ginfo, jint x, jint y)
+                                GlyphInfo *ginfo, jint x, jint y,
+                                jint subimage)
 {
     jint tw, th;
     jint sx, sy, sw, sh;
@@ -1026,7 +1051,8 @@ OGLTR_DrawGrayscaleGlyphNoCache(OGLContext *oglc,
 
             OGLVertexCache_AddMaskQuad(oglc,
                                        sx, sy, x, y, sw, sh,
-                                       w, ginfo->image);
+                                       w, ginfo->image +
+                                       (ginfo->rowBytes * ginfo->height) * subimage);
         }
     }
 
@@ -1191,6 +1217,9 @@ extern int useFontSmoothing;
 #define FLOOR_ASSIGN(l, r) \
     if ((r)<0) (l) = ((int)floor(r)); else (l) = ((int)(r))
 
+#define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
+    if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f
+
 void
 OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
                     jint totalGlyphs, jboolean usePositions,
@@ -1258,11 +1287,15 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
             jfloat posy = NEXT_FLOAT(positions);
             glyphx = glyphListOrigX + posx + ginfo->topLeftX;
             glyphy = glyphListOrigY + posy + ginfo->topLeftY;
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
             FLOOR_ASSIGN(x, glyphx);
             FLOOR_ASSIGN(y, glyphy);
         } else {
             glyphx = glyphListOrigX + ginfo->topLeftX;
             glyphy = glyphListOrigY + ginfo->topLeftY;
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
             FLOOR_ASSIGN(x, glyphx);
             FLOOR_ASSIGN(y, glyphy);
             glyphListOrigX += ginfo->advanceX;
@@ -1278,12 +1311,20 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
                 OGLContext_InitGrayRenderHints(env, oglc);
             }
             // grayscale or monochrome glyph data
+            int rx = ginfo->subpixelResolutionX;
+            int ry = ginfo->subpixelResolutionY;
+            int subimage;
+            if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
+                subimage = 0;
+            } else {
+                subimage = (jint)((glyphx - x) * rx) + (jint)((glyphy - y) * ry) * rx;
+            }
             if (ginfo->width <= OGLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= OGLTR_CACHE_CELL_HEIGHT)
             {
-                ok = OGLTR_DrawGrayscaleGlyphViaCache(oglc, ginfo, x, y, fontSmoothing);
+                ok = OGLTR_DrawGrayscaleGlyphViaCache(oglc, ginfo, x, y, fontSmoothing, subimage);
             } else {
-                ok = OGLTR_DrawGrayscaleGlyphNoCache(oglc, ginfo, x, y);
+                ok = OGLTR_DrawGrayscaleGlyphNoCache(oglc, ginfo, x, y, subimage);
             }
         } else if (ginfo->rowBytes == ginfo->width * 4) {
             // color glyph data
