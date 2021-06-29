@@ -321,6 +321,16 @@ JVM_handle_linux_signal(int sig,
       }
     }
   }
+
+  // Handle SafeFetch faults:
+  if (uc != NULL) {
+    address const pc = (address) os::Linux::ucontext_get_pc(uc);
+    if (pc && StubRoutines::is_safefetch_fault(pc)) {
+      os::Linux::ucontext_set_pc(uc, StubRoutines::continuation_for_safefetch_fault(pc));
+      return 1;
+    }
+  }
+
 /*
   NOTE: does not seem to work on linux.
   if (info == NULL || info->si_code <= 0 || info->si_code == SI_NOINFO) {
@@ -338,11 +348,6 @@ JVM_handle_linux_signal(int sig,
   //%note os_trap_1
   if (info != NULL && uc != NULL && thread != NULL) {
     pc = (address) os::Linux::ucontext_get_pc(uc);
-
-    if (StubRoutines::is_safefetch_fault(pc)) {
-      os::Linux::ucontext_set_pc(uc, StubRoutines::continuation_for_safefetch_fault(pc));
-      return 1;
-    }
 
 #ifndef AMD64
     // Halt if SI_KERNEL before more crashes get misdiagnosed as Java bugs
