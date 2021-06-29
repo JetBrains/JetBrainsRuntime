@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2018 SAP SE. All rights reserved.
+ * Copyright (c) 2018, 2019 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,14 +40,16 @@
 // contain enough detail to gain initial insight while keeping the
 // internal sttructure sizes in check.
 //
-// The CodeHeap is a living thing. Therefore, the aggregate is collected
-// under the CodeCache_lock. The subsequent print steps are only locked
-// against concurrent aggregations. That keeps the impact on
-// "normal operation" (JIT compiler and sweeper activity) to a minimum.
-//
 // The second part, which consists of several, independent steps,
 // prints the previously collected information with emphasis on
 // various aspects.
+//
+// The CodeHeap is a living thing. Therefore, protection against concurrent
+// modification (by acquiring the CodeCache_lock) is necessary. It has
+// to be provided by the caller of the analysis functions.
+// If the CodeCache_lock is not held, the analysis functions may print
+// less detailed information or may just do nothing. It is by intention
+// that an unprotected invocation is not abnormally terminated.
 //
 // Data collection and printing is done on an "on request" basis.
 // While no request is being processed, there is no impact on performance.
@@ -459,7 +461,7 @@ void CodeHeapState::aggregate(outputStream* out, CodeHeap* heap, size_t granular
   bool  done             = false;
   const int min_granules = 256;
   const int max_granules = 512*K; // limits analyzable CodeHeap (with segment_granules) to 32M..128M
-                                  // results in StatArray size of 20M (= max_granules * 40 Bytes per element)
+                                  // results in StatArray size of 24M (= max_granules * 48 Bytes per element)
                                   // For a 1GB CodeHeap, the granule size must be at least 2kB to not violate the max_granles limit.
   const char* heapName   = get_heapName(heap);
   STRINGSTREAM_DECL(ast, out)
@@ -494,6 +496,12 @@ void CodeHeapState::aggregate(outputStream* out, CodeHeap* heap, size_t granular
 
   if (seg_size == 0) {
     printBox(ast, '-', "Heap not fully initialized yet, segment size is zero for segment ", heapName);
+    STRINGSTREAM_FLUSH("")
+    return;
+  }
+
+  if (!CodeCache_lock->owned_by_self()) {
+    printBox(ast, '-', "aggregate function called without holding the CodeCache_lock for ", heapName);
     STRINGSTREAM_FLUSH("")
     return;
   }
@@ -1032,6 +1040,7 @@ void CodeHeapState::aggregate(outputStream* out, CodeHeap* heap, size_t granular
       STRINGSTREAM_FLUSH("\n")
 
       // This loop is intentionally printing directly to "out".
+      // It should not print anything, anyway.
       out->print("Verifying collected data...");
       size_t granule_segs = granule_size>>log2_seg_size;
       for (unsigned int ix = 0; ix < granules; ix++) {
@@ -1075,6 +1084,7 @@ void CodeHeapState::aggregate(outputStream* out, CodeHeap* heap, size_t granular
       }
 
       // This loop is intentionally printing directly to "out".
+      // It should not print anything, anyway.
       if (used_topSizeBlocks > 0) {
         unsigned int j = 0;
         if (TopSizeArray[0].len != currMax) {
@@ -1170,6 +1180,7 @@ void CodeHeapState::aggregate(outputStream* out, CodeHeap* heap, size_t granular
   //---<  calculate and fill remaining fields  >---
   if (FreeArray != NULL) {
     // This loop is intentionally printing directly to "out".
+    // It should not print anything, anyway.
     for (unsigned int ix = 0; ix < alloc_freeBlocks-1; ix++) {
       size_t lenSum = 0;
       FreeArray[ix].gap = (unsigned int)((address)FreeArray[ix+1].start - ((address)FreeArray[ix].start + FreeArray[ix].len));
@@ -1227,6 +1238,7 @@ void CodeHeapState::print_usedSpace(outputStream* out, CodeHeap* heap) {
   //----------------------------
   {
     char*     low_bound = heap->low_boundary();
+    bool      have_CodeCache_lock = CodeCache_lock->owned_by_self();
 
     printBox(ast, '-', "Largest Used Blocks in ", heapName);
     print_blobType_legend(ast);
@@ -1245,12 +1257,19 @@ void CodeHeapState::print_usedSpace(outputStream* out, CodeHeap* heap) {
       unsigned int printed_topSizeBlocks = 0;
       for (unsigned int i = 0; i != tsbStopper; i = TopSizeArray[i].index) {
         printed_topSizeBlocks++;
-        CodeBlob*   this_blob = (CodeBlob*)(heap->find_start(TopSizeArray[i].start));
         nmethod*           nm = NULL;
-        const char* blob_name = "unnamed blob";
-        if (this_blob != NULL) {
-          blob_name = this_blob->name();
-          nm        = this_blob->as_nmethod_or_null();
+        const char* blob_name = "unnamed blob or blob name unavailable";
+        // heap->find_start() is safe. Only works on _segmap.
+        // Returns NULL or void*. Returned CodeBlob may be uninitialized.
+        HeapBlock* heapBlock = TopSizeArray[i].start;
+        CodeBlob*  this_blob = (CodeBlob*)(heap->find_start(heapBlock));
+        bool    blob_is_safe = blob_access_is_safe(this_blob, NULL);
+        if (blob_is_safe) {
+          //---<  access these fields only if we own the CodeCache_lock  >---
+          if (have_CodeCache_lock) {
+            blob_name = this_blob->name();
+            nm        = this_blob->as_nmethod_or_null();
+          }
           //---<  blob address  >---
           ast->print(INTPTR_FORMAT, p2i(this_blob));
           ast->fill_to(19);
@@ -1266,10 +1285,18 @@ void CodeHeapState::print_usedSpace(outputStream* out, CodeHeap* heap) {
           ast->fill_to(33);
         }
 
-
         //---<  print size, name, and signature (for nMethods)  >---
-        if ((nm != NULL) && (nm->method() != NULL)) {
+        // access nmethod and Method fields only if we own the CodeCache_lock.
+        // This fact is implicitly transported via nm != NULL.
+        if (CompiledMethod::nmethod_access_is_safe(nm)) {
           ResourceMark rm;
+          Method* method = nm->method();
+          if (nm->is_in_use()) {
+            blob_name = method->name_and_sig_as_C_string();
+          }
+          if (nm->is_not_entrant()) {
+            blob_name = method->name_and_sig_as_C_string();
+          }
           //---<  nMethod size in hex  >---
           unsigned int total_size = nm->total_size();
           ast->print(PTR32_FORMAT, total_size);
@@ -1284,10 +1311,12 @@ void CodeHeapState::print_usedSpace(outputStream* out, CodeHeap* heap) {
           ast->print("%5d", nm->hotness_counter());
           //---<  name and signature  >---
           ast->fill_to(67+6);
-          if (nm->is_in_use())        {blob_name = nm->method()->name_and_sig_as_C_string(); }
-          if (nm->is_not_entrant())   {blob_name = nm->method()->name_and_sig_as_C_string(); }
-          if (nm->is_not_installed()) {ast->print("%s", " not (yet) installed method "); }
-          if (nm->is_zombie())        {ast->print("%s", " zombie method "); }
+          if (nm->is_not_installed()) {
+            ast->print(" not (yet) installed method ");
+          }
+          if (nm->is_zombie()) {
+            ast->print(" zombie method ");
+          }
           ast->print("%s", blob_name);
         } else {
           //---<  block size in hex  >---
@@ -2087,10 +2116,11 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
   }
   STRINGSTREAM_DECL(ast, out)
 
-  unsigned int granules_per_line  = 128;
-  char*        low_bound          = heap->low_boundary();
-  CodeBlob*    last_blob          = NULL;
-  bool         name_in_addr_range = true;
+  unsigned int granules_per_line   = 128;
+  char*        low_bound           = heap->low_boundary();
+  CodeBlob*    last_blob           = NULL;
+  bool         name_in_addr_range  = true;
+  bool         have_CodeCache_lock = CodeCache_lock->owned_by_self();
 
   //---<  print at least 128K per block (i.e. between headers)  >---
   if (granules_per_line*granule_size < 128*K) {
@@ -2125,16 +2155,14 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
                            StatArray[ix].stub_count + StatArray[ix].dead_count;
     if (nBlobs > 0 ) {
     for (unsigned int is = 0; is < granule_size; is+=(unsigned int)seg_size) {
-      // heap->find_start() is safe. Only working with _segmap. Returns NULL or void*. Returned CodeBlob may be uninitialized.
-      CodeBlob* this_blob = (CodeBlob *)(heap->find_start(low_bound+ix*granule_size+is));
-      bool blob_initialized = (this_blob != NULL) && (this_blob->header_size() >= 0) && (this_blob->relocation_size() >= 0) &&
-                              ((address)this_blob + this_blob->header_size() == (address)(this_blob->relocation_begin())) &&
-                              ((address)this_blob + CodeBlob::align_code_offset(this_blob->header_size() + this_blob->relocation_size()) == (address)(this_blob->content_begin())) &&
-                              os::is_readable_pointer((address)(this_blob->relocation_begin())) &&
-                              os::is_readable_pointer(this_blob->content_begin());
+      // heap->find_start() is safe. Only works on _segmap.
+      // Returns NULL or void*. Returned CodeBlob may be uninitialized.
+      char*     this_seg  = low_bound + ix*granule_size + is;
+      CodeBlob* this_blob = (CodeBlob*)(heap->find_start(this_seg));
+      bool   blob_is_safe = blob_access_is_safe(this_blob, NULL);
       // blob could have been flushed, freed, and merged.
       // this_blob < last_blob is an indicator for that.
-      if (blob_initialized && (this_blob > last_blob)) {
+      if (blob_is_safe && (this_blob > last_blob)) {
         last_blob          = this_blob;
 
         //---<  get type and name  >---
@@ -2142,12 +2170,22 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
         if (segment_granules) {
           cbType = (blobType)StatArray[ix].type;
         } else {
-          cbType = get_cbType(this_blob);
+          //---<  access these fields only if we own the CodeCache_lock  >---
+          if (have_CodeCache_lock) {
+            cbType = get_cbType(this_blob);
+          }
         }
-        // this_blob->name() could return NULL if no name was given to CTOR. Inlined, maybe invisible on stack
-        const char* blob_name = this_blob->name();
-        if ((blob_name == NULL) || !os::is_readable_pointer(blob_name)) {
-          blob_name = "<unavailable>";
+
+        //---<  access these fields only if we own the CodeCache_lock  >---
+        const char* blob_name = "<unavailable>";
+        nmethod*           nm = NULL;
+        if (have_CodeCache_lock) {
+          blob_name = this_blob->name();
+          nm        = this_blob->as_nmethod_or_null();
+          // this_blob->name() could return NULL if no name was given to CTOR. Inlined, maybe invisible on stack
+          if ((blob_name == NULL) || !os::is_readable_pointer(blob_name)) {
+            blob_name = "<unavailable>";
+          }
         }
 
         //---<  print table header for new print range  >---
@@ -2167,8 +2205,8 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
         ast->print("(+" PTR32_FORMAT ")", (unsigned int)((char*)this_blob-low_bound));
         ast->fill_to(33);
 
-        // this_blob->as_nmethod_or_null() is safe. Inlined, maybe invisible on stack.
-        nmethod*    nm     = this_blob->as_nmethod_or_null();
+        // access nmethod and Method fields only if we own the CodeCache_lock.
+        // This fact is implicitly transported via nm != NULL.
         if (CompiledMethod::nmethod_access_is_safe(nm)) {
           Method* method = nm->method();
           ResourceMark rm;
@@ -2205,14 +2243,17 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
           } else {
             ast->print("%s", blob_name);
           }
-        } else {
+        } else if (blob_is_safe) {
           ast->fill_to(62+6);
           ast->print("%s", blobTypeName[cbType]);
           ast->fill_to(82+6);
           ast->print("%s", blob_name);
+        } else {
+          ast->fill_to(62+6);
+          ast->print("<stale blob>");
         }
         STRINGSTREAM_FLUSH_LOCKED("\n")
-      } else if (!blob_initialized && (this_blob != last_blob) && (this_blob != NULL)) {
+      } else if (!blob_is_safe && (this_blob != last_blob) && (this_blob != NULL)) {
         last_blob          = this_blob;
         STRINGSTREAM_FLUSH_LOCKED("\n")
       }
@@ -2379,16 +2420,31 @@ CodeHeapState::blobType CodeHeapState::get_cbType(CodeBlob* cb) {
     if (cb->is_method_handles_adapter_blob()) return mh_adapterBlob;
     if (cb->is_buffer_blob())                 return bufferBlob;
 
-    nmethod*  nm = cb->as_nmethod_or_null();
-    if (nm != NULL) { // no is_readable check required, nm = (nmethod*)cb.
-      if (nm->is_not_installed()) return nMethod_inconstruction;
-      if (nm->is_zombie())        return nMethod_dead;
-      if (nm->is_unloaded())      return nMethod_unloaded;
-      if (nm->is_in_use())        return nMethod_inuse;
-      if (nm->is_alive() && !(nm->is_not_entrant()))   return nMethod_notused;
-      if (nm->is_alive())         return nMethod_alive;
-      return nMethod_dead;
+    //---<  access these fields only if we own the CodeCache_lock  >---
+    // Should be ensured by caller. aggregate() amd print_names() do that.
+    if (CodeCache_lock->owned_by_self()) {
+      nmethod*  nm = cb->as_nmethod_or_null();
+      if (nm != NULL) { // no is_readable check required, nm = (nmethod*)cb.
+        if (nm->is_not_installed()) return nMethod_inconstruction;
+        if (nm->is_zombie())        return nMethod_dead;
+        if (nm->is_unloaded())      return nMethod_unloaded;
+        if (nm->is_in_use())        return nMethod_inuse;
+        if (nm->is_alive() && !(nm->is_not_entrant()))   return nMethod_notused;
+        if (nm->is_alive())         return nMethod_alive;
+        return nMethod_dead;
+      }
     }
   }
   return noType;
+}
+
+bool CodeHeapState::blob_access_is_safe(CodeBlob* this_blob, CodeBlob* prev_blob) {
+  return (this_blob != NULL) && // a blob must have been found, obviously
+         ((this_blob == prev_blob) || (prev_blob == NULL)) &&  // when re-checking, the same blob must have been found
+         (this_blob->header_size() >= 0) &&
+         (this_blob->relocation_size() >= 0) &&
+         ((address)this_blob + this_blob->header_size() == (address)(this_blob->relocation_begin())) &&
+         ((address)this_blob + CodeBlob::align_code_offset(this_blob->header_size() + this_blob->relocation_size()) == (address)(this_blob->content_begin())) &&
+         os::is_readable_pointer((address)(this_blob->relocation_begin())) &&
+         os::is_readable_pointer(this_blob->content_begin());
 }
