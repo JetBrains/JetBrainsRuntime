@@ -57,6 +57,9 @@ struct _CacheCellInfo {
     // REMIND: find better name?
     // next cell info in the glyph's cell list (next Glyph Cache Info)
     CacheCellInfo    *nextGCI;
+    // Glyph subimage ID, used to distinguish between different images
+    // Only makes sense when subpixel resolution is enabled for the glyph
+    jint             glyphSubimage;
     jint             timesRendered;
     jint             x;
     jint             y;
