@@ -25,6 +25,8 @@
 
 package sun.lwawt.macosx;
 
+import sun.awt.AWTThreading;
+
 final class CWrapper {
     private CWrapper() { }
 
@@ -60,7 +62,11 @@ final class CWrapper {
          *
          * @param window the pointer of the NSWindow
          */
-        static native void orderOut(long window);
+        static void orderOut(long window) {
+            AWTThreading.executeWaitToolkit(() -> nativeOrderOut(window));
+        }
+
+        private static native void nativeOrderOut(long window);
 
         /**
          * Removes the window from the screen and releases it. According to
