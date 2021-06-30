@@ -337,6 +337,16 @@ void ClassLoaderData::classes_do(KlassClosure* klass_closure) {
   }
 }
 
+void ClassLoaderData::initialized_classes_do(KlassClosure* klass_closure) {
+  // Lock-free access requires load_acquire
+  for (Klass* k = Atomic::load_acquire(&_klasses); k != NULL; k = k->next_link()) {
+    if (k->is_instance_klass() && InstanceKlass::cast(k)->is_initialized()) {
+      klass_closure->do_klass(k);
+    }
+    assert(k != k->next_link(), "no loops!");
+  }
+}
+
 void ClassLoaderData::classes_do(void f(Klass * const)) {
   // Lock-free access requires load_acquire
   for (Klass* k = Atomic::load_acquire(&_klasses); k != NULL; k = k->next_link()) {

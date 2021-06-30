@@ -272,6 +272,7 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   void oops_do(OopClosure* f, int claim_value, bool clear_modified_oops = false);
 
   void classes_do(KlassClosure* klass_closure);
+  void initialized_classes_do(KlassClosure* klass_closure);
   Klass* klasses() { return _klasses; }
 
   JNIMethodBlock* jmethod_ids() const              { return _jmethod_ids; }
