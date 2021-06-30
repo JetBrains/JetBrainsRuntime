@@ -2170,17 +2170,12 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
   {
     MutexLocker mcld(ClassLoaderDataGraph_lock);
 
-    // 0. we can't use ClassLoaderDataGraph::classes_do since classes can be uninitialized in cld,
-    // fully initialized class is in system dictionary
+    // We can't use ClassLoaderDataGraph::classes_do since classes can be uninitialized in cld,
+    // fully initialized class is in system dictionary, but hidden classes are excluded. Therefore
+    // we use special method iterating over initialized classes only
     // ClassLoaderDataGraph::classes_do(&closure);
 
-    // 1. Scan over dictionaries
-    ClassLoaderDataGraph::dictionary_classes_do(&closure);
-
-    // 2. Anonymous or hidden class is not in dictionary, we have to iterate anonymous cld directly, but there is race cond...
-    // TODO: review ... anonymous class is added to cld before InstanceKlass initialization,
-    //                  find out how to check if the InstanceKlass is initialized
-    ClassLoaderDataGraph::anonymous_or_hidden_classes_do(&closure);
+    ClassLoaderDataGraph::initialized_classes_do(&closure);
   }
 
   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
