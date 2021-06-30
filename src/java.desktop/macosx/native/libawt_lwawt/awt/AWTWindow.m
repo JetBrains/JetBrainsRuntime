@@ -247,7 +247,6 @@ AWT_NS_WINDOW_IMPLEMENTATION
 @synthesize preFullScreenLevel;
 @synthesize standardFrame;
 @synthesize isMinimizing;
-@synthesize keyNotificationRecd;
 
 - (void) updateMinMaxSize:(BOOL)resizable {
     if (resizable) {
@@ -386,7 +385,6 @@ AWT_ASSERT_APPKIT_THREAD;
     if (self.nsWindow == nil) return nil; // no hope either
     [self.nsWindow release]; // the property retains the object already
 
-    self.keyNotificationRecd = NO;
     self.isEnabled = YES;
     self.isMinimizing = NO;
     self.javaPlatformWindow = platformWindow;
@@ -769,15 +767,8 @@ AWT_ASSERT_APPKIT_THREAD;
 AWT_ASSERT_APPKIT_THREAD;
     [AWTToolkit eventCountPlusPlus];
 #ifdef DEBUG
-    NSLog(@"became main: %d %@ %@ %d", [self.nsWindow isKeyWindow], [self.nsWindow title], [self menuBarForWindow], self.keyNotificationRecd);
+    NSLog(@"became main: %d %@ %@", [self.nsWindow isKeyWindow], [self.nsWindow title], [self menuBarForWindow]);
 #endif
-
-    // if for some reason, no KEY notification is received but this main window is also a key window
-    // then we need to execute the KEY notification functionality.
-    if(self.keyNotificationRecd != YES && [self.nsWindow isKeyWindow]) {
-        [self doWindowDidBecomeKey];
-    }
-    self.keyNotificationRecd = NO;
 
     if (![self.nsWindow isKeyWindow]) {
         [self activateWindowMenuBar];
@@ -800,12 +791,6 @@ AWT_ASSERT_APPKIT_THREAD;
 #ifdef DEBUG
     NSLog(@"became key: %d %@ %@", [self.nsWindow isMainWindow], [self.nsWindow title], [self menuBarForWindow]);
 #endif
-    [self doWindowDidBecomeKey];
-    self.keyNotificationRecd = YES;
-}
-
-- (void) doWindowDidBecomeKey {
-AWT_ASSERT_APPKIT_THREAD;
     AWTWindow *opposite = [AWTWindow lastKeyWindow];
 
     if (![self.nsWindow isMainWindow]) {
