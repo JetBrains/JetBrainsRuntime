@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@
     jint preFullScreenLevel;
     NSRect standardFrame;
     BOOL isMinimizing;
-    BOOL keyNotificationRecd;
 }
 
 // An instance of either AWTWindow_Normal or AWTWindow_Panel
@@ -62,7 +61,6 @@
 @property (nonatomic) jint preFullScreenLevel;
 @property (nonatomic) NSRect standardFrame;
 @property (nonatomic) BOOL isMinimizing;
-@property (nonatomic) BOOL keyNotificationRecd;
 
 - (id) initWithPlatformWindow:(jobject)javaPlatformWindow
                   ownerWindow:owner
