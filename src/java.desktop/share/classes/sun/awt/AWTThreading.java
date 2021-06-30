@@ -50,6 +50,16 @@ public class AWTThreading {
     }
 
     /**
+     * Same as {@link #executeWaitToolkit(Callable)}, but without returning a value.
+     */
+    public static void executeWaitToolkit(Runnable runnable) {
+        executeWaitToolkit(() -> {
+            runnable.run();
+            return null;
+        });
+    }
+
+    /**
      * Same as {@link #executeWaitToolkit(Callable)} except that the method waits no longer than the specified timeout.
      */
     public static <T> T executeWaitToolkit(Callable<T> callable, long timeout, TimeUnit unit) {
