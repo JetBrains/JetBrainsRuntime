@@ -394,6 +394,7 @@ WB_ENTRY(jobjectArray, WB_GetConcurrentGCPhases(JNIEnv* env, jobject o))
 
   ResourceMark rm(thread);
   ThreadToNativeFromVM ttn(thread);
+  Thread::WXExecFromWriteSetter wx_exec;
   jclass clazz = env->FindClass(vmSymbols::java_lang_Object()->as_C_string());
   CHECK_JNI_EXCEPTION_(env, NULL);
 
