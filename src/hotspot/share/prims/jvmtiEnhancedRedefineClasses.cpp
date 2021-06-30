@@ -920,10 +920,16 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
       }
 
     } else {
+      ClassLoadInfo cl_info(protection_domain,
+                            NULL,     // dynamic_nest_host
+                            Handle(), // classData
+                            false,    // is_hidden
+                            !the_class->is_non_strong_hidden(),    // is_strong_hidden
+                            true);    // FIXME: check if correct. can_access_vm_annotations
       k = SystemDictionary::resolve_from_stream(&st,
                                                 the_class_sym,
                                                 the_class_loader,
-                                                protection_domain,
+                                                cl_info,
                                                 the_class,
                                                 THREAD);
     }
