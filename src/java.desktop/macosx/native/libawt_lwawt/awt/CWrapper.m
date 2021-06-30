@@ -156,11 +156,11 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_CWrapper$NSWindow
- * Method:    orderOut
+ * Method:    nativeOrderOut
  * Signature: (J)V
  */
 JNIEXPORT void JNICALL
-Java_sun_lwawt_macosx_CWrapper_00024NSWindow_orderOut
+Java_sun_lwawt_macosx_CWrapper_00024NSWindow_nativeOrderOut
 (JNIEnv *env, jclass cls, jlong windowPtr)
 {
 JNI_COCOA_ENTER(env);
@@ -169,7 +169,7 @@ JNI_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThread:@selector(orderOut:)
                                       on:window
                               withObject:window
-                           waitUntilDone:NO];
+                           waitUntilDone:YES];
 
 JNI_COCOA_EXIT(env);
 }
