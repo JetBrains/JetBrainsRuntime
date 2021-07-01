@@ -1,7 +1,7 @@
-diff --git a/modules.list b/modules.list
+diff --git modules.list modules.list
 index 7896479c981..c1a5e664b86 100644
---- a/modules.list
-+++ b/modules.list
+--- modules.list
++++ modules.list
 @@ -50,4 +50,7 @@ jdk.xml.dom,
  jdk.zipfs,
  jdk.hotspot.agent,
@@ -11,10 +11,10 @@ index 7896479c981..c1a5e664b86 100644
 +jcef,
 +gluegen.rt,
 +jogl.all
-diff --git a/src/java.desktop/share/classes/module-info.java b/src/java.desktop/share/classes/module-info.java
+diff --git src/java.desktop/share/classes/module-info.java src/java.desktop/share/classes/module-info.java
 index 897647ee368..781d1809493 100644
---- a/src/java.desktop/share/classes/module-info.java
-+++ b/src/java.desktop/share/classes/module-info.java
+--- src/java.desktop/share/classes/module-info.java
++++ src/java.desktop/share/classes/module-info.java
 @@ -116,7 +116,11 @@ module java.desktop {
      // see make/GensrcModuleInfo.gmk
      exports sun.awt to
