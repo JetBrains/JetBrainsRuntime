@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,7 +109,7 @@ do {                                                                            
 #define fatal(...)                                                                \
 do {                                                                              \
   TOUCH_ASSERT_POISON;                                                            \
-  report_fatal(__FILE__, __LINE__, __VA_ARGS__);                                  \
+  report_fatal(INTERNAL_ERROR, __FILE__, __LINE__, __VA_ARGS__);                  \
   BREAKPOINT;                                                                     \
 } while (0)
 
@@ -152,7 +152,9 @@ do {                                                                            
 enum VMErrorType {
   INTERNAL_ERROR   = 0xe0000000,
   OOM_MALLOC_ERROR = 0xe0000001,
-  OOM_MMAP_ERROR   = 0xe0000002
+  OOM_MMAP_ERROR   = 0xe0000002,
+  OOM_MPROTECT_ERROR = 0xe0000003,
+  OOM_JAVA_HEAP_FATAL = 0xe0000004
 };
 
 // error reporting helper functions
@@ -174,7 +176,7 @@ void report_assert_msg(const char* msg, ...);
 #endif
 void report_vm_status_error(const char* file, int line, const char* error_msg,
                             int status, const char* detail);
-void report_fatal(const char* file, int line, const char* detail_fmt, ...) ATTRIBUTE_PRINTF(3, 4);
+void report_fatal(VMErrorType error_type, const char* file, int line, const char* detail_fmt, ...) ATTRIBUTE_PRINTF(4, 5);
 void report_vm_out_of_memory(const char* file, int line, size_t size, VMErrorType vm_err_type,
                              const char* detail_fmt, ...) ATTRIBUTE_PRINTF(5, 6);
 void report_should_not_call(const char* file, int line);
