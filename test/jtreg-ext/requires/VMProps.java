@@ -140,6 +140,7 @@ public class VMProps implements Callable<Map<String, String>> {
         map.put("vm.flagless", this::isFlagless);
         map.put("jdk.foreign.linker", this::jdkForeignLinker);
         map.put("jlink.packagedModules", this::packagedModules);
+        map.put("display.XWayland", this::displayXWayland);
         vmGC(map); // vm.gc.X = true/false
         vmGCforCDS(map); // may set vm.gc
         vmOptFinalFlags(map);
@@ -816,6 +817,13 @@ public class VMProps implements Callable<Map<String, String>> {
      */
     private String jdkForeignLinker() {
         return String.valueOf(CABI.current());
+    }
+
+    protected String displayXWayland() {
+        final boolean isXWayland =  (System.getenv("WAYLAND_DISPLAY") != null)
+                                 && (System.getenv("DISPLAY") != null);
+
+        return String.valueOf(isXWayland);
     }
 
     /**
