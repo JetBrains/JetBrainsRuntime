@@ -116,7 +116,8 @@ requires.properties= \
     jdk.foreign.linker \
     jlink.runtime.linkable \
     jlink.packagedModules \
-    jdk.static
+    jdk.static \
+    display.XWayland
 
 # Minimum jtreg version
 requiredVersion=7.5.1+1
