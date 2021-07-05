@@ -842,6 +842,11 @@ public:
     do_ptr(&ptr);
   }
 
+  void do_bool(bool *p) {
+    void* ptr = (void*)(uintx(*p));
+    do_ptr(&ptr);
+  }
+
   void do_tag(int tag) {
     _dump_region->append_intptr_t((intptr_t)tag);
   }
@@ -2002,6 +2007,11 @@ public:
   void do_u4(u4* p) {
     intptr_t obj = nextPtr();
     *p = (u4)(uintx(obj));
+  }
+
+  void do_bool(bool* p) {
+    intptr_t obj = nextPtr();
+    *p = (bool)(uintx(obj));
   }
 
   void do_tag(int tag) {
