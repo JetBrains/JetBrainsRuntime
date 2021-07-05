@@ -29,6 +29,7 @@
  *          Note: the test requires GNOME Shell window manager and will automatically
  *          pass with any other WM.
  * @requires (os.family == "linux")
+ * @requires !display.XWayland
  * @run main WindowTitleVisibleTestLinuxGnome
  */
 
