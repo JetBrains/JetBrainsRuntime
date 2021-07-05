@@ -104,7 +104,8 @@ requires.properties= \
     jdk.containerized \
     jdk.foreign.linker \
     jlink.runtime.linkable \
-    jlink.packagedModules
+    jlink.packagedModules \
+    display.XWayland
 
 # Minimum jtreg version
 requiredVersion=7.4+1
