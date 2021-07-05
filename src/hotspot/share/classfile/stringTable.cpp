@@ -324,7 +324,7 @@ oop StringTable::intern(Handle string_or_null_h, jchar* name, int len, TRAPS) {
     return found_string;
   }
   return StringTable::the_table()->do_intern(string_or_null_h, name, len,
-                                             hash, CHECK_NULL);
+                                             hash, THREAD);
 }
 
 class StringTableCreateEntry : public StackObj {
