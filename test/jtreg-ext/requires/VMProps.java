@@ -117,6 +117,7 @@ public class VMProps implements Callable<Map<String, String>> {
         map.put("vm.compiler2.enabled", this::isCompiler2Enabled);
         map.put("docker.support", this::dockerSupport);
         map.put("release.implementor", this::implementor);
+        map.put("display.XWayland", this::displayXWayland);
         vmGC(map); // vm.gc.X = true/false
         vmOptFinalFlags(map);
 
@@ -513,6 +514,13 @@ public class VMProps implements Callable<Map<String, String>> {
             e.printStackTrace();
             return errorWithMessage("Failed to read 'release' file " + e);
         }
+    }
+
+    protected String displayXWayland() {
+        final boolean isXWayland =  (System.getenv("WAYLAND_DISPLAY") != null)
+                                 && (System.getenv("DISPLAY") != null); 
+
+        return String.valueOf(isXWayland);
     }
 
     /**

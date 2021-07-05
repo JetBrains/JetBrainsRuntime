@@ -52,7 +52,8 @@ requires.properties= \
     vm.hasSAandCanAttach \
     vm.hasJFR \
     docker.support \
-    release.implementor
+    release.implementor \
+    display.XWayland
 
 # Minimum jtreg version
 requiredVersion=4.2 b12
