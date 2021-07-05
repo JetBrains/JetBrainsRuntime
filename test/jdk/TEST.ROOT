@@ -104,7 +104,8 @@ requires.properties= \
     systemd.support \
     release.implementor \
     jdk.containerized \
-    jdk.foreign.linker
+    jdk.foreign.linker \
+    display.XWayland
 
 # Minimum jtreg version
 requiredVersion=7.4+1
