@@ -64,7 +64,8 @@ requires.properties= \
     vm.jvmci \
     docker.support \
     release.implementor \
-    jdk.containerized
+    jdk.containerized \
+    display.XWayland
 
 # Minimum jtreg version
 requiredVersion=6+1
