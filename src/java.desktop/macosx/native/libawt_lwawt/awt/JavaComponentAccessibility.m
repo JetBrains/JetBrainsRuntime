@@ -362,6 +362,7 @@ static void RaiseMustOverrideException(NSString *method)
     }
 
     // otherwise, create a new instance
+    JNF_COCOA_DURING(env);
     JavaComponentAccessibility *newChild = nil;
     if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityListRole]) {
         newChild = [JavaListRowAccessibility alloc];
@@ -412,6 +413,9 @@ static void RaiseMustOverrideException(NSString *method)
 
     // return autoreleased instance
     return [newChild autorelease];
+    JNF_COCOA_HANDLE(env);
+
+    return nil;
 }
 
 - (jobject)axContextWithEnv:(JNIEnv *)env
