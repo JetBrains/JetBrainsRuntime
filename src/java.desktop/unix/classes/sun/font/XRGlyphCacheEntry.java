@@ -185,11 +185,13 @@ public class XRGlyphCacheEntry {
     }
 
     public byte getSubpixelResolutionX() {
-        return StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.subpixelResolutionXOffset);
+        byte rx = StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.subpixelResolutionXOffset);
+        return rx < 1 ? 1 : rx;
     }
 
     public byte getSubpixelResolutionY() {
-        return StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.subpixelResolutionYOffset);
+        byte ry = StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.subpixelResolutionYOffset);
+        return ry < 1 ? 1 : ry;
     }
 
     public long getGlyphInfoPtr() {
