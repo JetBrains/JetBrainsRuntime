@@ -329,11 +329,13 @@ static void RaiseMustOverrideException(NSString *method)
 {
     JavaComponentAccessibility *ret = nil;
     jobject jcomponent = [(AWTView *)view awtComponent:env];
+    JNF_COCOA_DURING(env);
     jint index = JNFCallStaticIntMethod(env, sjm_getAccessibleIndexInParent, jaccessible, jcomponent);
     NSString *javaRole = getJavaRole(env, jaccessible, jcomponent);
     if ((index >= 0) || current) {
         ret = [self createWithAccessible:jaccessible role:javaRole index:index withEnv:env withView:view];
     }
+    JNF_COCOA_HANDLE(env);
     (*env)->DeleteLocalRef(env, jcomponent);
     return ret;
 }
