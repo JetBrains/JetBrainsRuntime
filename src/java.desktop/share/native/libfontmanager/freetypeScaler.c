@@ -204,7 +204,7 @@ static FcInitLoadConfigAndFontsPtrType FcInitLoadConfigAndFontsPtr;
 static FcGetVersionPtrType FcGetVersionPtr;
 #endif
 
-static FT_UnitVector supplementarySubpixelGlyphResolution;
+static FT_UnitVector subpixelGlyphResolution;
 
 static void* openFontConfig() {
     void* libfontconfig = NULL;
@@ -248,8 +248,8 @@ Java_sun_font_FreetypeFontScaler_initIDs(
         logFFS = JNI_TRUE;
     }
 
-    supplementarySubpixelGlyphResolution.x = subpixelResolutionX;
-    supplementarySubpixelGlyphResolution.y = subpixelResolutionY;
+    subpixelGlyphResolution.x = subpixelResolutionX;
+    subpixelGlyphResolution.y = subpixelResolutionY;
 
     invalidateScalerMID =
         (*env)->GetMethodID(env, FFSClass, "invalidateScaler", "()V");
@@ -1799,8 +1799,8 @@ static jlong
          * subpixelResolutionX * subpixelResolutionY images per glyph. */
         if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_GRAY &&
             context->aaType == TEXT_AA_ON && context->fmType == TEXT_FM_ON) {
-            subpixelResolutionX = supplementarySubpixelGlyphResolution.x;
-            subpixelResolutionY = supplementarySubpixelGlyphResolution.y;
+            subpixelResolutionX = subpixelGlyphResolution.x;
+            subpixelResolutionY = subpixelGlyphResolution.y;
             if (subpixelResolutionX > 1 || subpixelResolutionY > 1) {
                 subpixelGlyph = TRUE;
                 FT_Matrix matrix;
