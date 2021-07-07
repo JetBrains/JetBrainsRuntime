@@ -34,6 +34,7 @@ import java.awt.Insets;
 import java.awt.MenuBar;
 import java.awt.Rectangle;
 import java.awt.peer.FramePeer;
+import sun.awt.SunToolkit;
 import sun.util.logging.PlatformLogger;
 import sun.awt.AWTAccessor;
 
@@ -49,9 +50,6 @@ class XFramePeer extends XDecoratedPeer implements FramePeer {
 
     private static final int MENUBAR_HEIGHT_IF_NO_MENUBAR = 0;
     private int lastAppliedMenubarHeight = MENUBAR_HEIGHT_IF_NO_MENUBAR;
-
-    // Client properties
-    public static final String WINDOW_TITLE_VISIBLE = "linux.awt.windowTitleVisible";
 
     XFramePeer(Frame target) {
         super(target);
@@ -84,9 +82,9 @@ class XFramePeer extends XDecoratedPeer implements FramePeer {
     }
 
     private void registerWindowDecorationChangeListener() {
-        if (target instanceof javax.swing.RootPaneContainer) {
+        if (SunToolkit.isInstanceOf(target, "javax.swing.RootPaneContainer")) { // avoid unnecessary class loading
             javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer) target).getRootPane();
-            rootpane.addPropertyChangeListener(WINDOW_TITLE_VISIBLE, e -> winAttr.decorations = getWindowDecorationBits() );
+            rootpane.addPropertyChangeListener(MWM_DECOR_TITLE_PROPERTY_NAME, e -> winAttr.decorations = getWindowDecorationBits() );
         }
     }
 
@@ -98,15 +96,15 @@ class XFramePeer extends XDecoratedPeer implements FramePeer {
             decorations = XWindowAttributesData.AWT_DECOR_ALL;
 
             if (!getWindowTitleVisible()) {
-                // NB: window must be [re-]mapped to make this change effective. Also, window insets will probably
+                // NB: the window must be [re-]mapped to make this change effective. Also, window insets will probably
                 // change and that'll be caught by one of the subsequent property change events in XDecoratedPeer
-                // (not necessarily the next event, though).
+                // (not necessarily the very next event, though).
                 decorations = XWindowAttributesData.AWT_DECOR_BORDER;
             }
 
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("Frame''s initial decorations affected by the client property {0}={1}",
-                         WINDOW_TITLE_VISIBLE, getWindowTitleVisibleProperty());
+                         MWM_DECOR_TITLE_PROPERTY_NAME, getMWMDecorTitleProperty());
             }
         }
 

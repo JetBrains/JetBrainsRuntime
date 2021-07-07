@@ -25,7 +25,7 @@
 /**
  * @test
  * @key headful
- * @summary Verifies client property for Linux linux.awt.windowTitleVisible.
+ * @summary Verifies the client property xawt.mwm_decor_title for Linux.
  *          Note: the test requires GNOME Shell window manager and will automatically
  *          pass with any other WM.
  * @requires (os.family == "linux")
@@ -84,7 +84,7 @@ public class WindowTitleVisibleTestLinuxGnome
         captureTitleBarNotVisible();
 
         if (imagesEqual(titleBarImageVisible, titleBarImageNotVisible)) {
-            throw new RuntimeException("Test failed: title bar shown and hidden are the same.");
+            throw new RuntimeException("Test failed: title bars shown and hidden are the same.");
         }
 
         runSwing(() -> frame.dispose());
@@ -108,23 +108,19 @@ public class WindowTitleVisibleTestLinuxGnome
     }
 
     private void captureTitleBarNotVisible() {
-        runSwing( () -> {
-            titleBarImageNotVisible = robot.createScreenCapture(titleBarBounds);
-        });
+        titleBarImageNotVisible = robot.createScreenCapture(titleBarBounds);
     }
 
     private void hideTitleBar() {
         runSwing( () -> {
-            rootPane.putClientProperty("linux.awt.windowTitleVisible", false);
+            rootPane.putClientProperty("xawt.mwm_decor_title", false);
             frame.setVisible(false);
             frame.setVisible(true);
         });
     }
 
     private void captureTitleBarVisible() {
-        runSwing( () -> {
-            titleBarImageVisible = robot.createScreenCapture(titleBarBounds);
-        });
+        titleBarImageVisible = robot.createScreenCapture(titleBarBounds);
     }
 
     private void constructAndShowFrame() {
@@ -132,7 +128,7 @@ public class WindowTitleVisibleTestLinuxGnome
             frame = new JFrame("IIIIIIIIIIIIIIII");
             frame.setBounds(100, 100, 300, 150);
             rootPane = frame.getRootPane();
-            rootPane.putClientProperty("linux.awt.windowTitleVisible", true);
+            rootPane.putClientProperty("xawt.mwm_decor_title", true);
             JComponent contentPane = (JComponent) frame.getContentPane();
             JPanel comp = new JPanel();
             contentPane.add(comp);
