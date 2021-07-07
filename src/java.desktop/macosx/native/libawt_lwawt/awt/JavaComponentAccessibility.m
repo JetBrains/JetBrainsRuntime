@@ -220,14 +220,13 @@ static void RaiseMustOverrideException(NSString *method)
 }
 
 + (jobject) getCAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env {
+    JNF_COCOA_DURING(env);
     if (JNFIsInstanceOf(env, jaccessible, &sjc_CAccessible)) {
         return jaccessible;
     } else if (JNFIsInstanceOf(env, jaccessible, &sjc_Accessible)) {
-        JNF_COCOA_DURING(env);
         return JNFCallStaticObjectMethod(env, sjm_getCAccessible, jaccessible);
-        JNF_COCOA_HANDLE(env);
-        return NULL;
     }
+    JNF_COCOA_HANDLE(env);
     return NULL;
 }
 
