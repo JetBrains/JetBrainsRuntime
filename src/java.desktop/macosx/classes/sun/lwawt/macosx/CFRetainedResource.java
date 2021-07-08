@@ -34,7 +34,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * correct AppKit threading and Objective-C GC semantics.
  */
 public class CFRetainedResource {
-    private static native void nativeCFRelease(final long ptr, final boolean disposeOnAppKitThread);
+    protected native void nativeCFRelease(final long ptr, final boolean disposeOnAppKitThread);
 
     private final boolean disposeOnAppKitThread;
     // TODO this pointer should be private and accessed via CFNativeAction class

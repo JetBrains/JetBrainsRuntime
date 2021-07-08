@@ -63,6 +63,9 @@ class CAccessible extends CFRetainedResource implements Accessible {
         return newCAX;
     }
 
+    @Override
+    protected native void nativeCFRelease(final long ptr, final boolean disposeOnAppKitThread);
+
     private static native void unregisterFromCocoaAXSystem(long ptr);
     private static native void valueChanged(long ptr);
     private static native void selectedTextChanged(long ptr);

@@ -55,6 +55,8 @@
 // for example, for AccessibleJTreeNode, whose currentComponent has index -1
 + (JavaComponentAccessibility *) createWithAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env withView:(NSView *)view isCurrent:(BOOL)current;
 
++ (bool) isAllocated:(long)ptr;
+
 @property(readonly) jobject accessible;
 @property(readonly) jobject component;
 @property(readonly) jint index;
