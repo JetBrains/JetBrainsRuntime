@@ -46,6 +46,8 @@ static JNF_MEMBER_CACHE(jm_getAccessibleContext, sjc_CAccessible, "getAccessible
 
 static jobject sAccessibilityClass = NULL;
 
+NSMutableArray *sJavaComponentAccessibilityPtrs = nil; // a list of pointers to allocated JavaComponentAccessibility objects
+
 static void RaiseMustOverrideException(NSString *method)
 {
     @throw [NSException exceptionWithName:NSInternalInconsistencyException
@@ -54,6 +56,24 @@ static void RaiseMustOverrideException(NSString *method)
 };
 
 @implementation JavaComponentAccessibility
+
+- (instancetype)init
+{
+    if (self = [super init]) {
+        if (sJavaComponentAccessibilityPtrs == nil) {
+            sJavaComponentAccessibilityPtrs = [[NSMutableArray alloc] init];
+            [sJavaComponentAccessibilityPtrs retain]; // per-process persistent
+        }
+        [sJavaComponentAccessibilityPtrs addObject:[NSNumber numberWithLong:(jlong)self]];
+    }
+    return self;
+}
+
++ (bool) isAllocated:(long)ptr
+{
+    assert([NSThread isMainThread]);
+    return [sJavaComponentAccessibilityPtrs containsObject:[NSNumber numberWithLong:ptr]];
+}
 
 - (id)initWithParent:(NSObject *)parent withEnv:(JNIEnv *)env withAccessible:(jobject)accessible withIndex:(jint)index withView:(NSView *)view withJavaRole:(NSString *)javaRole
 {
@@ -93,6 +113,8 @@ static void RaiseMustOverrideException(NSString *method)
     [self unregisterFromCocoaAXSystem];
 
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+
+    [sJavaComponentAccessibilityPtrs removeObject:[NSNumber numberWithLong:(jlong)self]];
 
     (*env)->DeleteWeakGlobalRef(env, fAccessible);
     fAccessible = NULL;
@@ -1156,9 +1178,29 @@ JNF_COCOA_EXIT(env);
  * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_unregisterFromCocoaAXSystem
-(JNIEnv *env, jclass jklass, jlong element)
+(JNIEnv *env, jclass jklass, jlong ptr)
 {
 JNF_COCOA_ENTER(env);
-[ThreadUtilities performOnMainThread:@selector(unregisterFromCocoaAXSystem) on:(JavaComponentAccessibility *)jlong_to_ptr(element) withObject:nil waitUntilDone:NO];
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
+        if ([JavaComponentAccessibility isAllocated:ptr]) {
+            [(JavaComponentAccessibility *)jlong_to_ptr(ptr) unregisterFromCocoaAXSystem];
+        }
+    }];
 JNF_COCOA_EXIT(env);
+}
+
+extern void nativeCFRelease(JNIEnv *env, jlong ptr, jboolean releaseOnAppKitThread, bool (^condition)(jlong));
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessible
+ * Method:    nativeCFRelease
+ * Signature: (IZ)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_nativeCFRelease
+(JNIEnv *env, jobject peer, jlong ptr, jboolean releaseOnAppKitThread)
+{
+    assert(releaseOnAppKitThread);
+    nativeCFRelease(env, ptr, true, ^bool (jlong ptr) {
+        return [JavaComponentAccessibility isAllocated:ptr];
+    });
 }
