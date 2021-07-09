@@ -160,7 +160,8 @@ void VM_Version::initialize() {
 
   // Use compare and branch instructions if available.
   if (has_cbcond()) {
-    if (FLAG_IS_DEFAULT(UseCBCond)) {
+    // cbcond suspected to cause issues on Athena CPUs
+    if (FLAG_IS_DEFAULT(UseCBCond) && !is_athena()) {
       FLAG_SET_DEFAULT(UseCBCond, true);
     }
   } else if (UseCBCond) {
@@ -218,7 +219,7 @@ void VM_Version::initialize() {
 
   char buf[512];
   jio_snprintf(buf, sizeof(buf),
-               "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s"
+               "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s"
                "%s%s%s%s%s%s%s%s%s" "%s%s%s%s%s%s%s%s%s"
                "%s%s%s%s%s%s%s",
                (has_v9()          ? "v9" : ""),
@@ -228,6 +229,7 @@ void VM_Version::initialize() {
                (has_blk_init()    ? ", blk_init" : ""),
                (has_fmaf()        ? ", fmaf" : ""),
                (has_hpc()         ? ", hpc" : ""),
+               (has_athena()      ? ", athena" : ""),
                (has_ima()         ? ", ima" : ""),
                (has_aes()         ? ", aes" : ""),
                (has_des()         ? ", des" : ""),
