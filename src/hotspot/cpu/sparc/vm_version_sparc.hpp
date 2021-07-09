@@ -42,6 +42,7 @@ protected:
     ISA_FMAF,
     ISA_VIS3,
     ISA_HPC,
+    ISA_FJATHHPC,
     ISA_IMA,
     ISA_AES,
     ISA_DES,
@@ -104,6 +105,7 @@ private:
     ISA_fmaf_msk        = UINT64_C(1) << ISA_FMAF,
     ISA_vis3_msk        = UINT64_C(1) << ISA_VIS3,
     ISA_hpc_msk         = UINT64_C(1) << ISA_HPC,
+    ISA_fjathhpc_msk    = UINT64_C(1) << ISA_FJATHHPC,
     ISA_ima_msk         = UINT64_C(1) << ISA_IMA,
     ISA_aes_msk         = UINT64_C(1) << ISA_AES,
     ISA_des_msk         = UINT64_C(1) << ISA_DES,
@@ -253,6 +255,7 @@ public:
   static bool has_fmaf()         { return (_features & ISA_fmaf_msk) != 0; }
   static bool has_vis3()         { return (_features & ISA_vis3_msk) != 0; }
   static bool has_hpc()          { return (_features & ISA_hpc_msk) != 0; }
+  static bool has_athena()       { return (_features & ISA_fjathhpc_msk) != 0; }
   static bool has_ima()          { return (_features & ISA_ima_msk) != 0; }
   static bool has_aes()          { return (_features & ISA_aes_msk) != 0; }
   static bool has_des()          { return (_features & ISA_des_msk) != 0; }
@@ -304,6 +307,10 @@ public:
   // FIXME: To be removed.
   static bool is_post_niagara()  {
     return (_features & niagara2_msk) == niagara2_msk;
+  }
+
+  static bool is_athena() {
+    return has_athena() || has_athena_plus() || has_athena_plus2();
   }
 
   // Default prefetch block size on SPARC.

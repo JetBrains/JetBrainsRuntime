@@ -357,10 +357,15 @@ void VM_Version::platform_features() {
 #define AV_SPARC_FMAF         0x00000100 // Fused Multiply-Add
 #endif
 
+#ifndef AV_SPARC_FJATHHPC
+#define AV_SPARC_FJATHHPC     0x00001000 // Fujitsu HPC (Athena) instrs
+#endif
+
   if (av & AV_SPARC_ASI_BLK_INIT) features |= ISA_blk_init_msk;
   if (av & AV_SPARC_FMAF)         features |= ISA_fmaf_msk;
   if (av & AV_SPARC_VIS3)         features |= ISA_vis3_msk;
   if (av & AV_SPARC_HPC)          features |= ISA_hpc_msk;
+  if (av & AV_SPARC_FJATHHPC)     features |= ISA_fjathhpc_msk;
   if (av & AV_SPARC_IMA)          features |= ISA_ima_msk;
   if (av & AV_SPARC_AES)          features |= ISA_aes_msk;
   if (av & AV_SPARC_DES)          features |= ISA_des_msk;
@@ -460,14 +465,13 @@ void VM_Version::platform_features() {
 
   Sysinfo machine(SI_MACHINE);
 
-  bool is_sun4v = machine.match("sun4v");   // All Oracle SPARC + Fujitsu Athena+/++
+  bool is_sun4v = machine.match("sun4v");   // All Oracle SPARC + Fujitsu Athena(+/++)
   bool is_sun4u = machine.match("sun4u");   // All other Fujitsu
 
-  // Handle Athena+/++ conservatively (simply because we are lacking info.).
+  // Handle Athena(+/++) conservatively (simply because we are lacking info.).
 
-  bool an_athena = has_athena_plus() || has_athena_plus2();
-  bool do_sun4v  = is_sun4v && !an_athena;
-  bool do_sun4u  = is_sun4u ||  an_athena;
+  bool do_sun4v  = is_sun4v && !is_athena();
+  bool do_sun4u  = is_sun4u ||  is_athena();
 
   uint64_t synthetic = 0;
 
