@@ -1076,7 +1076,7 @@ static bool merge_point_safe(Node* region) {
 // For inner loop uses move it to the preheader area.
 Node *PhaseIdealLoop::place_near_use(Node *useblock) const {
   IdealLoopTree *u_loop = get_loop( useblock );
-  if (u_loop->_irreducible) {
+  if (u_loop->_irreducible || !u_loop->_head->is_Loop()) {
     return useblock;
   }
   if (u_loop->_child) {
