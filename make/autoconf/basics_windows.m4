@@ -404,7 +404,7 @@ AC_DEFUN_ONCE([BASIC_COMPILE_FIXPATH],
     # simple cross compilation solution for fixpath for aarch64
     # Final solution should be backport of 8257679
     if test "x$COMPILE_TYPE-$OPENJDK_TARGET_CPU" = xcross-aarch64; then
-      FIXPATH_CC=`$ECHO "$CC"|$SED 's|/arm64/cl|/x64/cl|'`
+      FIXPATH_CC=`$ECHO "$CC"|$SED 's|/arm64/cl|/x64/cl|I'`
       FIXPATH_LIB=`$ECHO "$LIB"|$SED 's|arm64|x64|gI'`
     else
       FIXPATH_CC=$CC
