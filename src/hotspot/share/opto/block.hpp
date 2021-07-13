@@ -507,6 +507,8 @@ class PhaseCFG : public Phase {
   bool _trace_opto_pipelining;  // tracing flag
   #endif
 
+  bool unrelated_load_in_store_null_block(Node* store, Node* load);
+
  public:
   PhaseCFG(Arena* arena, RootNode* root, Matcher& matcher);
 
