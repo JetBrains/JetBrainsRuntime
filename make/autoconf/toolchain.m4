@@ -961,12 +961,12 @@ AC_DEFUN_ONCE([TOOLCHAIN_SETUP_BUILD_COMPILERS],
         if test "x$OPENJDK_TARGET_CPU" = "xaarch64"; then
           # try to guess compiler layout. Final solution should be
           # backport of 8257679. Try primitive approach for now 
-          BUILD_CC=`$ECHO "$CC"|$SED 's|/arm64/cl|/x64/cl|'`
-          BUILD_CXX=`$ECHO "$CXX"|$SED 's|/arm64/cl|/x64/cl|'`
-          BUILD_AR=`$ECHO "$AR"|$SED 's|/arm64/lib|/x64/lib|'`
-          BUILD_LD=`$ECHO "$LD"|$SED 's|/arm64/link|/x64/link|'`
-          BUILD_SYSROOT_CFLAGS=`$ECHO "$SYSROOT_CFLAGS"|$SED 's|/arm64|/x64|g'`
-          BUILD_SYSROOT_LDFLAGS=`$ECHO "$SYSROOT_LDFLAGS"|$SED 's|/arm64|/x64|g'`
+          BUILD_CC=`$ECHO "$CC"|$SED 's|/arm64/cl|/x64/cl|I'`
+          BUILD_CXX=`$ECHO "$CXX"|$SED 's|/arm64/cl|/x64/cl|I'`
+          BUILD_AR=`$ECHO "$AR"|$SED 's|/arm64/lib|/x64/lib|I'`
+          BUILD_LD=`$ECHO "$LD"|$SED 's|/arm64/link|/x64/link|I'`
+          BUILD_SYSROOT_CFLAGS=`$ECHO "$SYSROOT_CFLAGS"|$SED 's|/arm64|/x64|gI'`
+          BUILD_SYSROOT_LDFLAGS=`$ECHO "$SYSROOT_LDFLAGS"|$SED 's|/arm64|/x64|gI'`
         else
           AC_MSG_ERROR([only windows-aarch64 cross compilation is supported so far])
         fi
