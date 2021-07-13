@@ -134,6 +134,28 @@ PVOID  topLevelVectoredExceptionHandler = NULL;
 LPTOP_LEVEL_EXCEPTION_FILTER previousUnhandledExceptionFilter = NULL;
 #endif
 
+
+// JBR11-specific workaround of using old Windows SDK.
+// Constant value is taken from https://docs.microsoft.com/en-us/windows/win32/sysinfo/image-file-machine-constants.
+#if defined(IMAGE_FILE_MACHINE_ARM64)
+  #if IMAGE_FILE_MACHINE_ARM64 != 0xAA64
+    #error "IMAGE_FILE_MACHINE_ARM64 must be equal to \"0xAA64\" but it has value \"" IMAGE_FILE_MACHINE_ARM64 "\""
+  #endif // IMAGE_FILE_MACHINE_ARM64 != 0xAA64
+#else
+  #define IMAGE_FILE_MACHINE_ARM64 0xAA64
+#endif // defined(IMAGE_FILE_MACHINE_ARM64)
+
+// JBR11-specific workaround of using old Windows SDK.
+// Constant value is taken from https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/ns-sysinfoapi-system_info.
+#if defined(PROCESSOR_ARCHITECTURE_ARM64)
+  #if PROCESSOR_ARCHITECTURE_ARM64 != 12
+    #error "PROCESSOR_ARCHITECTURE_ARM64 must be equal to \"12\" but it has value \"" PROCESSOR_ARCHITECTURE_ARM64 "\""
+  #endif // PROCESSOR_ARCHITECTURE_ARM64 != 12
+#else
+  #define PROCESSOR_ARCHITECTURE_ARM64 12
+#endif // defined(PROCESSOR_ARCHITECTURE_ARM64)
+
+
 // save DLL module handle, used by GetModuleFileName
 
 HINSTANCE vm_lib_handle;
