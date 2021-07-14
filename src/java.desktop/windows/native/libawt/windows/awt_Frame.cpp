@@ -40,6 +40,15 @@
 #include <sun_awt_windows_WEmbeddedFrame.h>
 #include <sun_awt_windows_WEmbeddedFramePeer.h>
 
+#pragma comment (lib,"Gdiplus.lib")
+#pragma comment(lib, "UXTheme")
+#pragma comment (lib, "Dwmapi.lib")
+#pragma comment (lib, "Shcore.lib")
+
+#define DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 19
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
 
 /* IMPORTANT! Read the README.JNI file for notes on JNI converted AWT code.
  */
@@ -1834,6 +1843,73 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
     }
     retVal = 0L;
     return mrConsume;
+}
+
+void AwtFrame::UpdateFrameMargins()
+{
+    MARGINS margins = {};
+    Devices::InstanceAccess devices;
+    HMONITOR hmon;
+    if (::IsZoomed(GetHWnd())) {
+        WINDOWPLACEMENT wp;
+        ::GetWindowPlacement(GetHWnd(), &wp);
+        hmon = ::MonitorFromRect(&wp.rcNormalPosition, MONITOR_DEFAULTTONEAREST);
+    } else {
+        // this method can return wrong monitor in a zoomed state in multi-dpi env
+        hmon = ::MonitorFromWindow(GetHWnd(), MONITOR_DEFAULTTONEAREST);
+    }
+    AwtWin32GraphicsDevice* device = devices->GetDevice(AwtWin32GraphicsDevice::GetScreenFromHMONITOR(hmon));
+    int dpi = device ? device->GetScaleX() * 96 : 96;
+    RECT frame = {};
+    AwtToolkit::AdjustWindowRectExForDpi(&frame, WS_OVERLAPPEDWINDOW & ~WS_CAPTION, FALSE, NULL, dpi);
+
+    // We removed the whole top part of the frame (see handling of
+    // WM_NCCALCSIZE) so the top border is missing now. We add it back here.
+    // Note #1: You might wonder why we don't remove just the title bar instead
+    //  of removing the whole top part of the frame and then adding the little
+    //  top border back. I tried to do this but it didn't work: DWM drew the
+    //  whole title bar anyways on top of the window. It seems that DWM only
+    //  wants to draw either nothing or the whole top part of the frame.
+    // Note #2: For some reason if you try to set the top margin to just the
+    //  top border height (what we want to do), then there is a transparency
+    //  bug when the window is inactive, so I've decided to add the whole top
+    //  part of the frame instead and then we will hide everything that we
+    //  don't need (that is, the whole thing but the little 1 pixel wide border
+    //  at the top) in the WM_PAINT handler. This eliminates the transparency
+    //  bug and it's what a lot of Win32 apps that customize the title bar do
+    //  so it should work fine.
+
+    margins.cyTopHeight = -frame.top;
+    DwmExtendFrameIntoClientArea(GetHWnd(), &margins);
+}
+
+MsgRouting AwtFrame::WmPaint(HDC hDC)
+{
+    BOOL isUseImmersiveDarkMode{ TRUE };
+    HRESULT result1 = DwmSetWindowAttribute(GetHWnd(), DWMWA_USE_IMMERSIVE_DARK_MODE, &isUseImmersiveDarkMode, sizeof(isUseImmersiveDarkMode));
+    if (FAILED(result1))
+        DwmSetWindowAttribute(GetHWnd(), DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, &isUseImmersiveDarkMode, sizeof(isUseImmersiveDarkMode));
+
+    UpdateFrameMargins();
+
+    HRGN rgn = ::CreateRectRgn(0,0,1,1);
+    int updated = ::GetUpdateRgn(GetHWnd(), rgn, FALSE);
+
+    PAINTSTRUCT ps;
+    auto dc = BeginPaint(GetHWnd(), &ps);
+    const int topBorderHeight = 1;
+    if (ps.rcPaint.top < topBorderHeight)
+    {
+        RECT rcTopBorder = ps.rcPaint;
+        rcTopBorder.bottom = topBorderHeight;
+        ::FillRect(dc, &rcTopBorder, GetStockBrush(BLACK_BRUSH));
+    }
+    EndPaint(GetHWnd(), &ps);
+
+    ::InvalidateRgn(GetHWnd(), rgn, FALSE);
+
+    auto result = AwtWindow::WmPaint(dc);
+    return result;
 }
 
 MsgRouting AwtFrame::WmNcHitTest(int x, int y, LRESULT& retVal)

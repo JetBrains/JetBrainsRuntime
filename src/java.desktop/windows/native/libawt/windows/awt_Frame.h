@@ -115,6 +115,7 @@ public:
     MsgRouting WmShowWindow(BOOL show, UINT status);
     MsgRouting WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds);
     MsgRouting WmNcCalcSize(BOOL fCalcValidRects, LPNCCALCSIZE_PARAMS lpncsp, LRESULT& retVal);
+    MsgRouting WmPaint(HDC hDC);
     MsgRouting WmNcHitTest(int x, int y, LRESULT& retVal);
     MsgRouting WmWindowPosChanging(LPARAM windowPos);
 
@@ -170,6 +171,8 @@ protected:
 
 private:
     LRESULT ProxyWindowProc(UINT message, WPARAM wParam, LPARAM lParam, MsgRouting &mr);
+
+    void UpdateFrameMargins();
 
     /* The frame's embedding parent (if any) */
     HWND m_parentWnd;
