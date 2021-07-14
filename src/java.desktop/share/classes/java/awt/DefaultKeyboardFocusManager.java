@@ -870,7 +870,9 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
      * @see Component#dispatchEvent
      */
     public boolean dispatchKeyEvent(KeyEvent e) {
-        Component focusOwner = (((AWTEvent)e).isPosted && e.getID() != KeyEvent.KEY_TYPED) ? getFocusOwner() : e.getComponent();
+        Component focusOwner = (((AWTEvent)e).isPosted &&
+                !(e.getID() == KeyEvent.KEY_TYPED && SunToolkit.isSystemGenerated(e)))
+                ? getFocusOwner() : e.getComponent();
 
         if (focusOwner != null && focusOwner.isShowing() && focusOwner.canBeFocusOwner()) {
             if (!e.isConsumed()) {
