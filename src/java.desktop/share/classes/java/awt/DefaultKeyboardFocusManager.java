@@ -1098,14 +1098,18 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
     private boolean preDispatchKeyEvent(KeyEvent ke) {
         getOnTypeaheadFinishedHandler().accept(ke);
         if (((AWTEvent) ke).isPosted) {
+            boolean typedEvent = ke.getID() == KeyEvent.KEY_TYPED;
+            boolean systemEvent = SunToolkit.isSystemGenerated(ke);
             Component focusOwner;
-            if (ke.getID() == KeyEvent.KEY_TYPED) {
+            if (typedEvent && systemEvent) {
                 focusOwner = lastKeyPressedOrReleasedTarget.get();
             } else {
                 focusOwner = getFocusOwner();
                 if (focusOwner == null) {
                     focusOwner = getFocusedWindow();
                 }
+            }
+            if (!typedEvent && systemEvent) {
                 lastKeyPressedOrReleasedTarget = new WeakReference<>(focusOwner);
             }
             ke.setSource(focusOwner);
