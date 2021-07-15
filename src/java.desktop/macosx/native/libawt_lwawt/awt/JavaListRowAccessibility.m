@@ -27,7 +27,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
                                                                           withEnv:[ThreadUtilities getJNIEnv]
                                                                          withView:self->fView
                                                                         isWrapped:YES];
-        return [NSArray arrayWithObject:[newChild autorelease]];
+        return [NSArray arrayWithObject:newChild];
     } else {
         return children;
     }

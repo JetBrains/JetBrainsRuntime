@@ -21,7 +21,7 @@
                                                                             index:self->fIndex
                                                                           withEnv:[ThreadUtilities getJNIEnv]
                                                                          withView:self->fView
-                                                                        isWrapped:YES];
+                                                                                  isWrapped:NO];
         return [NSArray arrayWithObject:newChild];
     } else {
         return children;
