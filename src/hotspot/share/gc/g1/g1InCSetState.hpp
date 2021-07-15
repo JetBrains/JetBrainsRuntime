@@ -42,7 +42,14 @@ struct InCSetState {
   typedef intptr_t in_cset_state_t;
 #else
   #define CSETSTATE_FORMAT "%d"
-  typedef int8_t in_cset_state_t;
+
+  #if defined(_M_ARM64) && defined(_MSC_VER) && _MSC_VER <= 1927
+    // workaround for MSCV ARM64 bug
+    // https://developercommunity.visualstudio.com/content/problem/1079221/arm64-bad-code-generation-around-signed-char-arith.html
+    typedef int32_t in_cset_state_t;
+  #else
+    typedef int8_t in_cset_state_t;
+  #endif
 #endif
  private:
   in_cset_state_t _value;
