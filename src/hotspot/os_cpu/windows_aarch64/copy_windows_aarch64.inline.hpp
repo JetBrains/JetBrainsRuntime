@@ -46,7 +46,7 @@ static void pd_disjoint_words(const HeapWord* from, HeapWord* to, size_t count) 
     (void)memcpy(to, from, count * HeapWordSize);
     break;
   }
-}  
+}
 
 static void pd_disjoint_words_atomic(const HeapWord* from, HeapWord* to, size_t count) {
   switch (count) {
