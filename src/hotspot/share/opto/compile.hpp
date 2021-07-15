@@ -45,6 +45,7 @@
 #include "runtime/vmThread.hpp"
 #include "utilities/ticks.hpp"
 
+class AbstractLockNode;
 class AddPNode;
 class Block;
 class Bundle;
@@ -63,6 +64,7 @@ class MachOper;
 class MachSafePointNode;
 class Node;
 class Node_Array;
+class Node_List;
 class Node_Notes;
 class NodeCloneInfo;
 class OptoReg;
@@ -364,6 +366,7 @@ class Compile : public Phase {
   const bool            _subsume_loads;         // Load can be matched as part of a larger op.
   const bool            _do_escape_analysis;    // Do escape analysis.
   const bool            _eliminate_boxing;      // Do boxing elimination.
+  const bool            _do_locks_coarsening;   // Do locks coarsening
   ciMethod*             _method;                // The method being compiled.
   int                   _entry_bci;             // entry bci for osr methods.
   const TypeFunc*       _tf;                    // My kind of signature
@@ -431,6 +434,7 @@ class Compile : public Phase {
   GrowableArray<Node*>* _expensive_nodes;       // List of nodes that are expensive to compute and that we'd better not let the GVN freely common
   GrowableArray<Node*>* _range_check_casts;     // List of CastII nodes with a range check dependency
   GrowableArray<Node*>* _opaque4_nodes;         // List of Opaque4 nodes that have a default value
+  GrowableArray<Node_List*> _coarsened_locks;   // List of coarsened Lock and Unlock nodes
   ConnectionGraph*      _congraph;
 #ifndef PRODUCT
   IdealGraphPrinter*    _printer;
@@ -637,6 +641,8 @@ class Compile : public Phase {
   bool              aggressive_unboxing() const { return _eliminate_boxing && AggressiveUnboxing; }
   bool              save_argument_registers() const { return _save_argument_registers; }
 
+  /** Do locks coarsening. */
+  bool              do_locks_coarsening() const { return _do_locks_coarsening; }
 
   // Other fixed compilation parameters.
   ciMethod*         method() const              { return _method; }
@@ -786,6 +792,7 @@ class Compile : public Phase {
   int           macro_count()             const { return _macro_nodes->length(); }
   int           predicate_count()         const { return _predicate_opaqs->length();}
   int           expensive_count()         const { return _expensive_nodes->length(); }
+  int           coarsened_count()         const { return _coarsened_locks.length(); }
   Node*         macro_node(int idx)       const { return _macro_nodes->at(idx); }
   Node*         predicate_opaque1_node(int idx) const { return _predicate_opaqs->at(idx);}
   Node*         expensive_node(int idx)   const { return _expensive_nodes->at(idx); }
@@ -804,6 +811,10 @@ class Compile : public Phase {
     // remove from _predicate_opaqs list also if it is there
     if (predicate_count() > 0 && _predicate_opaqs->contains(n)){
       _predicate_opaqs->remove(n);
+    }
+    // Remove from coarsened locks list if present
+    if (coarsened_count() > 0) {
+      remove_coarsened_lock(n);
     }
   }
   void add_expensive_node(Node * n);
@@ -829,6 +840,9 @@ class Compile : public Phase {
   int   range_check_cast_count()       const { return _range_check_casts->length(); }
   // Remove all range check dependent CastIINodes.
   void  remove_range_check_casts(PhaseIterGVN &igvn);
+  void add_coarsened_locks(GrowableArray<AbstractLockNode*>& locks);
+  void remove_coarsened_lock(Node* n);
+  bool coarsened_locks_consistent();
 
   void add_opaque4_node(Node* n);
   void remove_opaque4_node(Node* n) {
@@ -1080,6 +1094,8 @@ class Compile : public Phase {
 
   void remove_useless_late_inlines(GrowableArray<CallGenerator*>* inlines, Unique_Node_List &useful);
 
+  void remove_useless_coarsened_locks(Unique_Node_List& useful);
+
   void process_print_inlining();
   void dump_print_inlining();
 
@@ -1186,7 +1202,8 @@ class Compile : public Phase {
   // continuation.
   Compile(ciEnv* ci_env, C2Compiler* compiler, ciMethod* target,
           int entry_bci, bool subsume_loads, bool do_escape_analysis,
-          bool eliminate_boxing, DirectiveSet* directive);
+          bool eliminate_boxing, bool do_locks_coarsening,
+          DirectiveSet* directive);
 
   // Second major entry point.  From the TypeFunc signature, generate code
   // to pass arguments from the Java calling convention to the C calling
