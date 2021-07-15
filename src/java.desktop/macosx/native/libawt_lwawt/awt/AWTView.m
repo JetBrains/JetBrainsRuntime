@@ -867,7 +867,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
 - (void)setAccessibilitySelectedText:(NSString *)accessibilitySelectedText {
     id focused = [self accessibilityFocusedUIElement];
-    if ([focused respondsToSelector:@selector(setAccessibilitySelectedText)]) {
+    if ([focused respondsToSelector:@selector(setAccessibilitySelectedText:)]) {
     [focused setAccessibilitySelectedText:accessibilitySelectedText];
 }
 }

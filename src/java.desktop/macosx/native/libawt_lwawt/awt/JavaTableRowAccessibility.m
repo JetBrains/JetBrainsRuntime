@@ -55,7 +55,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
                                                                                withIndex:childIndex
                                                                                 withView:self->fView
                                                                             withJavaRole:childJavaRole];
-            [childrenCells addObject:[child autorelease]];
+            [childrenCells addObject:[[child retain] autorelease]];
 
             (*env)->DeleteLocalRef(env, jchild);
             (*env)->DeleteLocalRef(env, jchildJavaRole);
@@ -70,7 +70,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 }
 
 - (NSInteger)accessibilityIndex {
-    return [[self accessibilityParent] accessibilityIndexOfChild:self];
+    return fIndex;
 }
 
 - (NSString *)accessibilityLabel {
