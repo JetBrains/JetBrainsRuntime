@@ -323,9 +323,10 @@ AWT_NS_WINDOW_IMPLEMENTATION
 
     if (IS(mask, FULLSCREENABLE) && [self.nsWindow respondsToSelector:@selector(toggleFullScreen:)]) {
         if (IS(bits, FULLSCREENABLE)) {
-            [self.nsWindow setCollectionBehavior:(1 << 7) /*NSWindowCollectionBehaviorFullScreenPrimary*/];
+            [self.nsWindow setCollectionBehavior:
+                NSWindowCollectionBehaviorFullScreenPrimary | NSWindowCollectionBehaviorManaged];
         } else {
-            [self.nsWindow setCollectionBehavior:NSWindowCollectionBehaviorDefault];
+            [self.nsWindow setCollectionBehavior: NSWindowCollectionBehaviorManaged];
         }
     }
 
@@ -393,10 +394,6 @@ AWT_ASSERT_APPKIT_THREAD;
     self.styleBits = bits;
     self.ownerWindow = owner;
     [self setPropertiesForStyleBits:styleBits mask:MASK(_METHOD_PROP_BITMASK)];
-
-    if (IS(self.styleBits, IS_POPUP)) {
-        [self.nsWindow setCollectionBehavior:(1 << 8) /*NSWindowCollectionBehaviorFullScreenAuxiliary*/];
-    }
 
     if (IS(bits, SHEET) && owner != nil) {
         [self.nsWindow setStyleMask: NSWindowStyleMaskDocModalWindow];
@@ -564,9 +561,11 @@ AWT_ASSERT_APPKIT_THREAD;
                         // back to normal window level
                         [window setLevel:NSNormalWindowLevel];
                     }
-                    // The childWindow should be displayed in front of
-                    // its nearest parentWindow
-                    [window orderWindow:NSWindowAbove relativeTo:[owner.nsWindow windowNumber]];
+                    if (window.onActiveSpace) {
+                        // The childWindow should be displayed in front of
+                        // its nearest parentWindow
+                        [window orderWindow:NSWindowAbove relativeTo:[owner.nsWindow windowNumber]];
+                    }
                     break;
                 }
                 awtWindow = awtWindow.ownerWindow;
