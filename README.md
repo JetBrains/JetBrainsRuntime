@@ -5,6 +5,14 @@
 JetBrains Runtime is a fork of [OpenJDK](https://github.com/openjdk/jdk) available for Windows, Mac OS X, and Linux.
 It includes a number enhancements in font rendering, HiDPI support, ligatures, performance improvements, and bugfixes.
 
+> **_NOTE_**: This is a **development** branch that is periodically synhronized with 
+> the [OpenJDK master](https://github.com/openjdk/jdk/tree/master) branch.
+> 
+> Release builds are based on these branches:
+> * [master](https://github.com/JetBrains/JetBrainsRuntime/tree/master) (JDK 11)
+> * [master17](https://github.com/JetBrains/JetBrainsRuntime/tree/master17) (JDK 17)
+
+
 ## Contents
 - [Welcome to JetBrains Runtime](#jetbrains-runtime)
   - [Products Built on JetBrains Runtime](#products-built-on-jetbrains-runtime)
@@ -49,7 +57,7 @@ git clone git@github.com:JetBrains/JetBrainsRuntime.git
 
 ## Configuring the Build Environment
 Here are quick per-platform instructions for those who can't wait to get started. 
-Please refer to [OpenJDK build docs](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html) for in-depth
+Please refer to [OpenJDK build docs](https://openjdk.java.net/groups/build/doc/building.html) for in-depth
 coverage of all the details.
 
 > **_TIP:_**  To get a preliminary report of what's missing, run `./configure` and check its output. 
@@ -75,14 +83,17 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 Install the necessary tools, libraries, and headers with:
 ```
 $ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
-       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev 
+       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev \
+       java-16-amazon-corretto-jdk
 ```
 Then run the following:
 ```
 $ cd JetBrainsRuntime
-$ sh ./configure --disable-warnings-as-errors
+$ git checkout jbr-dev
+$ sh ./configure
 $ make images
 ```
+This will build the release configuration under `./build/linux-x86_64-server-release/`.
 
 ### Windows
 <a name="build-windows"></a>
@@ -92,13 +103,13 @@ Install the following:
   Install those together with Cygwin.
 * [Visual Studio compiler toolset](https://visualstudio.microsoft.com/downloads/).
   Install with the desktop development kit, which includes Windows SDK and compilers.
-  Visual Studio 2015 is supported by default.
-* [Java 11](http://www.oracle.com/technetwork/java/javase/downloads/index.html). 
+  Visual Studio 2019 is supported by default.
+* Java 16 (for instance, from [AdoptOpenJDK](https://adoptopenjdk.net/installation.html?variant=openjdk16&jvmVariant=hotspot#)).
   If you have problems while configuring, read [Java tips on Cygwin](http://horstmann.com/articles/cygwin-tips.html).
 
 From the command line: 
 ```
-"c:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64
 "c:\Program_Files\cygwin64\bin\mintty.exe" /bin/bash -l
 ```
 The first command sets up environment variables, the second starts a Cygwin shell with the proper environment.  
@@ -106,27 +117,32 @@ The first command sets up environment variables, the second starts a Cygwin shel
 In the Cygwin shell: 
 ```
 $ cd JetBrainsRuntime
-$ bash configure --enable-option-checking=fatal --with-toolchain-version=2015 \
-                 --with-boot-jdk="/cygdrive/c/Program Files/Java/jdk-11.0.5" --disable-warnings-as-errors
+$ git checkout jbr-dev
+$ bash configure --with-toolchain-version=2019
 $ make images
 ```
+This will build the release configuration under `./build/windows-x86_64-server-release/`.
 
 ### macOS
-Install Xcode command line developer tools and `autoconf` via [Homebrew](getDpiInfo).
+Install the following:
+* Xcode command line developer tools and `autoconf` via [Homebrew](getDpiInfo).
+* Java 16 (for instance, from [AdoptOpenJDK](https://adoptopenjdk.net/installation.html?variant=openjdk16&jvmVariant=hotspot#)).
 
 From the command line:
 ```
 $ cd JetBrainsRuntime
-$ sh ./configure --prefix=$(pwd)/build  --disable-warnings-as-errors
+$ git checkout jbr-dev
+$ sh ./configure
 $ make images
 ```
+This will build the release configuration under `./build/macosx-x86_64-server-release/`.
 
 ## Contributing
 We are happy to receive your pull requests! 
 Before you submit one, please sign our [Contributor License Agreement (CLA)](https://www.jetbrains.com/agreements/cla/).
 
 ## Resources
-* [JetBrains Runtime on github](https://github.com/JetBrains/JetBrainsRuntime)
-* [OpenJDK build instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html)
-* [OpenJDK test instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html#running-tests)
-* [How to develop OpenJDK with CLion](https://blog.jetbrains.com/clion/2020/03/openjdk-with-clion/)
+* [JetBrains Runtime on github](https://github.com/JetBrains/JetBrainsRuntime).
+* [OpenJDK build instructions](https://openjdk.java.net/groups/build/doc/building.html).
+* [OpenJDK test instructions](https://htmlpreview.github.io/?https://raw.githubusercontent.com/openjdk/jdk/master/doc/building.html#running-tests).
+* [How to develop OpenJDK with CLion](https://blog.jetbrains.com/clion/2020/03/openjdk-with-clion/).
