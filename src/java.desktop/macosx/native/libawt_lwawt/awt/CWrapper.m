@@ -156,6 +156,25 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_CWrapper$NSWindow
+ * Method:    orderFrontIfOnActiveSpace
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL
+Java_sun_lwawt_macosx_CWrapper_00024NSWindow_orderFrontIfOnActiveSpace
+(JNIEnv *env, jclass cls, jlong windowPtr)
+{
+JNI_COCOA_ENTER(env);
+
+    NSWindow *window = (NSWindow *)jlong_to_ptr(windowPtr);
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        if (window.onActiveSpace) [window orderFront:window];
+    }];
+
+JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CWrapper$NSWindow
  * Method:    nativeOrderOut
  * Signature: (JZ)V
  */
@@ -226,6 +245,26 @@ JNI_COCOA_ENTER(env);
     NSWindow *relativeTo = (NSWindow *)jlong_to_ptr(relativeToPtr);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         [window orderWindow:(NSWindowOrderingMode)order relativeTo:[relativeTo windowNumber]];
+    }];
+
+JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CWrapper$NSWindow
+ * Method:    orderWindowIfOnActiveSpace
+ * Signature: (JIJ)V
+ */
+JNIEXPORT void JNICALL
+Java_sun_lwawt_macosx_CWrapper_00024NSWindow_orderWindowIfOnActiveSpace
+(JNIEnv *env, jclass cls, jlong windowPtr, jint order, jlong relativeToPtr)
+{
+JNI_COCOA_ENTER(env);
+
+    NSWindow *window = (NSWindow *)jlong_to_ptr(windowPtr);
+    NSWindow *relativeTo = (NSWindow *)jlong_to_ptr(relativeToPtr);
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        if (window.onActiveSpace) [window orderWindow:(NSWindowOrderingMode)order relativeTo:[relativeTo windowNumber]];
     }];
 
 JNI_COCOA_EXIT(env);
