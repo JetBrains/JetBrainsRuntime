@@ -37,6 +37,7 @@
 #import "ThreadUtilities.h"
 #import "NSApplicationAWT.h"
 #import "JNIUtilities.h"
+#import "AWTWindow.h"
 
 #pragma mark App Menu helpers
 
@@ -278,6 +279,11 @@ AWT_ASSERT_APPKIT_THREAD;
     [ctr addObserver:clz selector:@selector(_appDidHide) name:NSApplicationDidHideNotification object:nil];
     [ctr addObserver:clz selector:@selector(_appDidUnhide) name:NSApplicationDidUnhideNotification object:nil];
     [ctr addObserver:clz selector:@selector(_didChangeScreenParameters) name:NSApplicationDidChangeScreenParametersNotification object:nil];
+
+    [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:[AWTWindow class]
+                                                           selector:@selector(activeSpaceDidChange)
+                                                               name:NSWorkspaceActiveSpaceDidChangeNotification
+                                                             object:nil];
 
     return self;
 }
