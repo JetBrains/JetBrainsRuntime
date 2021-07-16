@@ -35,6 +35,7 @@ import java.awt.FontMetrics;
 import java.awt.Frame;
 import java.awt.GraphicsDevice;
 import java.awt.Insets;
+import java.awt.KeyboardFocusManager;
 import java.awt.MenuBar;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -43,6 +44,7 @@ import java.awt.Window;
 import java.awt.event.FocusEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowStateListener;
+import java.awt.peer.ComponentPeer;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.lang.reflect.InvocationTargetException;
@@ -99,6 +101,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private static native void nativeExitFullScreenMode(long nsWindowPtr);
     static native CPlatformWindow nativeGetTopmostPlatformWindowUnderMouse();
     private static native void nativeRaiseLevel(long nsWindowPtr, boolean popup, boolean onlyIfParentIsActive);
+    private static native boolean nativeDelayShowing(long nsWindowPtr);
 
     // Logger to report issues happened during execution but that do not affect functionality
     private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.CPlatformWindow");
@@ -686,6 +689,16 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return this.visible;
     }
 
+    private static LWWindowPeer getBlockerFor(Window window) {
+        if (window != null) {
+            ComponentPeer peer = AWTAccessor.getComponentAccessor().getPeer(window);
+            if (peer instanceof LWWindowPeer) {
+                return ((LWWindowPeer)peer).getBlocker();
+            }
+        }
+        return null;
+    }
+
     @Override // PlatformWindow
     public void setVisible(boolean visible) {
         // Configure stuff
@@ -738,7 +751,17 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
         // Actually show or hide the window
         LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
-        if (blocker == null || !visible) {
+        if (visible && delayShowing()) {
+            if (blocker == null) {
+                Window focusedWindow = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusedWindow();
+                LWWindowPeer focusedWindowBlocker = getBlockerFor(focusedWindow);
+                if (focusedWindowBlocker == peer) {
+                    // try to switch to target space if we're adding a modal dialog
+                    // that would block currently focused window
+                    owner.execute(CWrapper.NSWindow::orderFront);
+                }
+            }
+        } else if (blocker == null || !visible) {
             // If it ain't blocked, or is being hidden, go regular way
             if (visible) {
                 contentView.execute(viewPtr -> {
@@ -805,7 +828,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         // Manage parent-child relationship when showing
         final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
 
-        if (visible) {
+        if (visible && !delayShowing()) {
             // Order myself above my parent
             if (owner != null && owner.isVisible()) {
                 owner.execute(ownerPtr -> {
@@ -837,7 +860,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         // Deal with the blocker of the window being shown
         if (blocker != null && visible) {
             // Make sure the blocker is above its siblings
-            ((CPlatformWindow)blocker.getPlatformWindow()).orderAboveSiblings();
+            CPlatformWindow blockerWindow = (CPlatformWindow) blocker.getPlatformWindow();
+            if (!blockerWindow.delayShowing()) {
+                blockerWindow.orderAboveSiblings();
+            }
         }
     }
 
@@ -872,6 +898,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     @Override  // PlatformWindow
     public void toFront() {
+        if (delayShowing()) return;
         LWCToolkit lwcToolkit = (LWCToolkit) Toolkit.getDefaultToolkit();
         Window w = DefaultKeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
         final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
@@ -925,6 +952,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     @Override
     public boolean requestWindowFocus() {
+        if (delayShowing()) return false;
         execute(ptr -> {
             if (CWrapper.NSWindow.canBecomeMainWindow(ptr)) {
                 CWrapper.NSWindow.makeMainWindow(ptr);
@@ -940,6 +968,17 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         execute(ptr -> {
             ref.set(CWrapper.NSWindow.isKeyWindow(ptr));
         });
+        return ref.get();
+    }
+
+    // We want a window to be always shown at the same space as its owning window.
+    // But macOS doesn't have an API to control the target space for a window -
+    // it's always shown at the active space. So if the target space isn't active now,
+    // the only way to achieve our goal seems to be delaying the appearance of the
+    // window till the target space becomes active.
+    private boolean delayShowing() {
+        AtomicBoolean ref = new AtomicBoolean(false);
+        execute(ptr -> ref.set(nativeDelayShowing(ptr)));
         return ref.get();
     }
 
@@ -1262,29 +1301,32 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 isFocusable ? focusableStyleBits : 0); // set both bits at once
     }
 
-    private boolean checkBlockingAndOrder() {
+    private void checkBlockingAndOrder() {
         LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
         if (blocker == null) {
-            return false;
+            // If it's not blocked, make sure it's above its siblings
+            orderAboveSiblings();
+            return;
         }
 
         if (blocker instanceof CPrinterDialogPeer) {
-            return true;
+            return;
         }
 
         CPlatformWindow pWindow = (CPlatformWindow)blocker.getPlatformWindow();
 
-        pWindow.orderAboveSiblings();
+        if (!pWindow.delayShowing()) {
+            pWindow.orderAboveSiblings();
 
-        pWindow.execute(ptr -> {
-            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                logger.fine("Focus blocker " + Long.toHexString(ptr));
-            }
-            CWrapper.NSWindow.orderFrontRegardless(ptr);
-            CWrapper.NSWindow.makeKeyAndOrderFront(ptr);
-            CWrapper.NSWindow.makeMainWindow(ptr);
-        });
-        return true;
+            pWindow.execute(ptr -> {
+                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                    logger.fine("Focus blocker " + Long.toHexString(ptr));
+                }
+                CWrapper.NSWindow.orderFrontRegardless(ptr);
+                CWrapper.NSWindow.makeKeyAndOrderFront(ptr);
+                CWrapper.NSWindow.makeMainWindow(ptr);
+            });
+        }
     }
 
     private boolean isIconified() {
@@ -1322,7 +1364,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         // which is going to become 'main window', are placed above their siblings.
         CPlatformWindow rootOwner = getRootOwner();
         if (rootOwner.isVisible() && !rootOwner.isIconified() && !rootOwner.isActive()) {
-            rootOwner.execute(CWrapper.NSWindow::orderFront);
+            rootOwner.execute(CWrapper.NSWindow::orderFrontIfOnActiveSpace);
         }
 
         // Do not order child windows of iconified owner.
@@ -1346,7 +1388,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             if (p instanceof LWWindowPeer) {
                 CPlatformWindow pw = (CPlatformWindow)((LWWindowPeer)p).getPlatformWindow();
                 iconified = isIconified();
-                if (pw != null && pw.isVisible() && !iconified) {
+                if (pw != null && pw.isVisible() && !iconified && !pw.delayShowing()) {
                     // If the window is one of ancestors of 'main window' or is going to become main by itself,
                     // the window should be ordered above its siblings; otherwise the window is just ordered
                     // above its nearest parent.
@@ -1358,7 +1400,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                         }
                         pwUnder.execute(underPtr -> {
                             pw.execute(ptr -> {
-                                CWrapper.NSWindow.orderWindow(ptr, CWrapper.NSWindow.NSWindowAbove, underPtr);
+                                CWrapper.NSWindow.orderWindowIfOnActiveSpace(ptr, CWrapper.NSWindow.NSWindowAbove, underPtr);
                             });
                         });
                         pwUnder = pw;
@@ -1418,9 +1460,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     private void windowDidBecomeMain() {
         lastBecomeMainTime = System.currentTimeMillis();
-        if (checkBlockingAndOrder()) return;
-        // If it's not blocked, make sure it's above its siblings
-        orderAboveSiblings();
+        checkBlockingAndOrder();
     }
 
     private void windowWillEnterFullScreen() {
