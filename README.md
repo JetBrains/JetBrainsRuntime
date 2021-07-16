@@ -5,6 +5,27 @@
 JetBrains Runtime is a fork of [OpenJDK](https://github.com/openjdk/jdk) available for Windows, Mac OS X, and Linux.
 It includes a number enhancements in font rendering, HiDPI support, ligatures, performance improvements, and bugfixes.
 
+## Releases
+Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. The full list
+can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntime/releases).
+
+### For 2021.2 IDEs
+
+| Release/tag | Date |
+| --- | --- |
+| [jb11_0_11-b1504.12](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jb11_0_11-b1504.12) | 12-Jul-2021 |
+| [jb11_0_11-b1504.8](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jb11_0_11-b1504.8) | 06-Jul-2021 |
+| [jb11_0_11-b1504.5](https://confluence.jetbrains.com/pages/viewpage.action?pageId=221478946) | 29-Jun-2021 |
+| [jb11_0_11-b1504.3](https://confluence.jetbrains.com/pages/viewpage.action?pageId=218857540) | 15-Jun-2021 |
+
+### For 2020.3 IDEs
+
+| Release/tag | Date |
+| --- | --- |
+| [jb11_0_11-b1145.115](https://confluence.jetbrains.com/pages/viewpage.action?pageId=219349001) | 21-Jun-2021 |
+| [jb11_0_11-b1145.96](https://confluence.jetbrains.com/pages/viewpage.action?pageId=207519955) | 18-Feb-2021 |
+| [jb11_0_11-b1145.77](https://confluence.jetbrains.com/pages/viewpage.action?pageId=205389940) | 19-Jan-2021 |
+
 ## Contents
 - [Welcome to JetBrains Runtime](#jetbrains-runtime)
   - [Products Built on JetBrains Runtime](#products-built-on-jetbrains-runtime)
@@ -75,7 +96,8 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 Install the necessary tools, libraries, and headers with:
 ```
 $ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
-       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev 
+       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev \
+       openjdk-11-jdk
 ```
 Then run the following:
 ```
@@ -93,7 +115,7 @@ Install the following:
 * [Visual Studio compiler toolset](https://visualstudio.microsoft.com/downloads/).
   Install with the desktop development kit, which includes Windows SDK and compilers.
   Visual Studio 2015 is supported by default.
-* [Java 11](http://www.oracle.com/technetwork/java/javase/downloads/index.html). 
+* [Java 11](https://docs.aws.amazon.com/corretto/latest/corretto-11-ug/downloads-list.html). 
   If you have problems while configuring, read [Java tips on Cygwin](http://horstmann.com/articles/cygwin-tips.html).
 
 From the command line: 
@@ -112,7 +134,9 @@ $ make images
 ```
 
 ### macOS
-Install Xcode command line developer tools and `autoconf` via [Homebrew](getDpiInfo).
+Install the following:
+* Xcode command line developer tools and `autoconf` via [Homebrew](getDpiInfo).
+* [Java 11](https://docs.aws.amazon.com/corretto/latest/corretto-11-ug/downloads-list.html).
 
 From the command line:
 ```
@@ -126,7 +150,7 @@ We are happy to receive your pull requests!
 Before you submit one, please sign our [Contributor License Agreement (CLA)](https://www.jetbrains.com/agreements/cla/).
 
 ## Resources
-* [JetBrains Runtime on github](https://github.com/JetBrains/JetBrainsRuntime)
-* [OpenJDK build instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html)
-* [OpenJDK test instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html#running-tests)
-* [How to develop OpenJDK with CLion](https://blog.jetbrains.com/clion/2020/03/openjdk-with-clion/)
+* [JetBrains Runtime on github](https://github.com/JetBrains/JetBrainsRuntime).
+* [OpenJDK build instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html).
+* [OpenJDK test instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html#running-tests).
+* [How to develop OpenJDK with CLion](https://blog.jetbrains.com/clion/2020/03/openjdk-with-clion/).
