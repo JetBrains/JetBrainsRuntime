@@ -24,7 +24,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
         /* Since the row was created based on the same accessible element,
          * there is no need to remove the reference to accessible,
          * just as there is no need to return the one found by accessible NSAccessibilityElement, since it will be the same row.
-         * in order to return an element with its corresponding role but based on the same accessible. the parameter is set to YES.
+         * in order to return an element with its corresponding role but based on the same accessible. the "isWrapped" is set to YES.
          */
         JavaComponentAccessibility *newChild = [JavaComponentAccessibility createWithParent:self
                                                                                  accessible:self->fAccessible
