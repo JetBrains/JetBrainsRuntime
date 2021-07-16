@@ -323,9 +323,10 @@ AWT_NS_WINDOW_IMPLEMENTATION
 
     if (IS(mask, FULLSCREENABLE) && [self.nsWindow respondsToSelector:@selector(toggleFullScreen:)]) {
         if (IS(bits, FULLSCREENABLE)) {
-            [self.nsWindow setCollectionBehavior:(1 << 7) /*NSWindowCollectionBehaviorFullScreenPrimary*/];
+            [self.nsWindow setCollectionBehavior:
+                NSWindowCollectionBehaviorFullScreenPrimary | NSWindowCollectionBehaviorManaged];
         } else {
-            [self.nsWindow setCollectionBehavior:NSWindowCollectionBehaviorDefault];
+            [self.nsWindow setCollectionBehavior: NSWindowCollectionBehaviorManaged];
         }
     }
 
@@ -393,10 +394,6 @@ AWT_ASSERT_APPKIT_THREAD;
     self.styleBits = bits;
     self.ownerWindow = owner;
     [self setPropertiesForStyleBits:styleBits mask:MASK(_METHOD_PROP_BITMASK)];
-
-    if (IS(self.styleBits, IS_POPUP)) {
-        [self.nsWindow setCollectionBehavior:(1 << 8) /*NSWindowCollectionBehaviorFullScreenAuxiliary*/];
-    }
 
     if (IS(bits, SHEET) && owner != nil) {
         [self.nsWindow setStyleMask: NSWindowStyleMaskDocModalWindow];
@@ -533,6 +530,63 @@ AWT_ASSERT_APPKIT_THREAD;
     return isVisible;
 }
 
+- (BOOL) delayShowing {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    return ownerWindow != nil && ([ownerWindow delayShowing] || !ownerWindow.nsWindow.onActiveSpace)
+           && !nsWindow.visible;
+}
+
+- (BOOL) checkBlockingAndOrder {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
+    if (platformWindow != NULL) {
+        GET_CPLATFORM_WINDOW_CLASS_RETURN(NO);
+        DECLARE_METHOD_RETURN(jm_checkBlockingAndOrder, jc_CPlatformWindow, "checkBlockingAndOrder", "()V", NO);
+        (*env)->CallVoidMethod(env, platformWindow, jm_checkBlockingAndOrder);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, platformWindow);
+    }
+    return YES;
+}
+
++ (void)activeSpaceDidChange {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    for (NSWindow* window in [NSApp windows]) {
+        if (window.onActiveSpace && window.mainWindow && [AWTWindow isJavaPlatformWindowVisible:window]) {
+            AWTWindow *awtWindow = (AWTWindow *)[window delegate];
+             // there can be only one current blocker per window hierarchy,
+             // so we're checking just hierarchy root
+            if (awtWindow.ownerWindow == nil) {
+                // this should ensure that delayed blocking windows
+                // show up on space activation
+                [awtWindow checkBlockingAndOrder];
+            }
+        }
+    }
+}
+
+- (void) processVisibleChildren:(void(^)(AWTWindow*))action {
+    NSEnumerator *windowEnumerator = [[NSApp windows]objectEnumerator];
+    NSWindow *window;
+    while ((window = [windowEnumerator nextObject]) != nil) {
+        if ([AWTWindow isJavaPlatformWindowVisible:window]) {
+            AWTWindow *awtWindow = (AWTWindow *)[window delegate];
+            AWTWindow *parent = awtWindow.ownerWindow;
+            while (parent != nil) {
+                if (parent == self) {
+                    action(awtWindow);
+                    break;
+                }
+                parent = parent.ownerWindow;
+            }
+        }
+    }
+}
+
 // Orders window's childs based on the current focus state
 - (void) orderChildWindows:(BOOL)focus {
 AWT_ASSERT_APPKIT_THREAD;
@@ -542,37 +596,28 @@ AWT_ASSERT_APPKIT_THREAD;
         return;
     }
 
-    NSEnumerator *windowEnumerator = [[NSApp windows]objectEnumerator];
-    NSWindow *window;
-    while ((window = [windowEnumerator nextObject]) != nil) {
-        if ([AWTWindow isJavaPlatformWindowVisible:window]) {
-            AWTWindow *awtWindow = (AWTWindow *)[window delegate];
-            AWTWindow *owner = awtWindow.ownerWindow;
-            if (IS(awtWindow.styleBits, ALWAYS_ON_TOP)) {
-                // Do not order 'always on top' windows
-                continue;
+    [self processVisibleChildren:^void(AWTWindow* child){
+        // Do not order 'always on top' windows
+        if (!IS(child.styleBits, ALWAYS_ON_TOP)) {
+            NSWindow *window = child.nsWindow;
+            NSWindow *owner = child.ownerWindow.nsWindow;
+            if (focus) {
+                // Move the childWindow to floating level
+                // so it will appear in front of its
+                // parent which owns the focus
+                [window setLevel:NSFloatingWindowLevel];
+            } else {
+                // Focus owner has changed, move the childWindow
+                // back to normal window level
+                [window setLevel:NSNormalWindowLevel];
             }
-            while (awtWindow.ownerWindow != nil) {
-                if (awtWindow.ownerWindow == self) {
-                    if (focus) {
-                        // Move the childWindow to floating level
-                        // so it will appear in front of its
-                        // parent which owns the focus
-                        [window setLevel:NSFloatingWindowLevel];
-                    } else {
-                        // Focus owner has changed, move the childWindow
-                        // back to normal window level
-                        [window setLevel:NSNormalWindowLevel];
-                    }
-                    // The childWindow should be displayed in front of
-                    // its nearest parentWindow
-                    [window orderWindow:NSWindowAbove relativeTo:[owner.nsWindow windowNumber]];
-                    break;
-                }
-                awtWindow = awtWindow.ownerWindow;
+            if (window.onActiveSpace && owner.onActiveSpace) {
+                // The childWindow should be displayed in front of
+                // its nearest parentWindow
+                [window orderWindow:NSWindowAbove relativeTo:[owner windowNumber]];
             }
         }
-    }
+    }];
 }
 
 // NSWindow overrides
@@ -600,15 +645,7 @@ AWT_ASSERT_APPKIT_THREAD;
         // We should bring up the modal dialog manually
         [AWTToolkit eventCountPlusPlus];
 
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
-        jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
-        if (platformWindow != NULL) {
-            GET_CPLATFORM_WINDOW_CLASS_RETURN(NO);
-            DECLARE_METHOD_RETURN(jm_checkBlockingAndOrder, jc_CPlatformWindow, "checkBlockingAndOrder", "()Z", NO);
-            (*env)->CallBooleanMethod(env, platformWindow, jm_checkBlockingAndOrder);
-            CHECK_EXCEPTION();
-            (*env)->DeleteLocalRef(env, platformWindow);
-        }
+        if (![self checkBlockingAndOrder]) return NO;
     }
 
     return self.isEnabled && IS(self.styleBits, SHOULD_BECOME_MAIN);
@@ -683,24 +720,14 @@ AWT_ASSERT_APPKIT_THREAD;
 - (void) iconifyChildWindows:(BOOL)iconify {
 AWT_ASSERT_APPKIT_THREAD;
 
-    NSEnumerator *windowEnumerator = [[NSApp windows]objectEnumerator];
-    NSWindow *window;
-    while ((window = [windowEnumerator nextObject]) != nil) {
-        if ([AWTWindow isJavaPlatformWindowVisible:window]) {
-            AWTWindow *awtWindow = (AWTWindow *)[window delegate];
-            while (awtWindow.ownerWindow != nil) {
-                if (awtWindow.ownerWindow == self) {
-                    if (iconify) {
-                        [window orderOut:window];
-                    } else {
-                        [window orderFront:window];
-                    }
-                    break;
-                }
-                awtWindow = awtWindow.ownerWindow;
-            }
+    [self processVisibleChildren:^void(AWTWindow* child){
+        NSWindow *window = child.nsWindow;
+        if (iconify) {
+            [window orderOut:window];
+        } else {
+            [window orderFront:window];
         }
-    }
+    }];
 }
 
 - (void) _deliverIconify:(BOOL)iconify {
@@ -933,8 +960,20 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 }
 
+// this is required to move owned windows to the full-screen space when owner goes to full-screen mode
+- (void)allowMovingChildrenBetweenSpaces:(BOOL)allow {
+    [self processVisibleChildren:^void(AWTWindow* child){
+        NSWindow *window = child.nsWindow;
+        NSWindowCollectionBehavior behavior = window.collectionBehavior;
+        behavior &= !(NSWindowCollectionBehaviorManaged | NSWindowCollectionBehaviorTransient);
+        behavior |= allow ? NSWindowCollectionBehaviorTransient : NSWindowCollectionBehaviorManaged;
+        window.collectionBehavior = behavior;
+    }];
+}
 
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
+    [self allowMovingChildrenBetweenSpaces:YES];
+
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowWillEnterFullScreen, jc_CPlatformWindow, "windowWillEnterFullScreen", "()V");
@@ -948,6 +987,8 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 - (void)windowDidEnterFullScreen:(NSNotification *)notification {
+    [self allowMovingChildrenBetweenSpaces:NO];
+
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowDidEnterFullScreen, jc_CPlatformWindow, "windowDidEnterFullScreen", "()V");
@@ -1781,4 +1822,27 @@ JNI_COCOA_ENTER(env);
     }];
 
 JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CPlatformWindow
+ * Method:    nativeDelayShowing
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeDelayShowing
+(JNIEnv *env, jclass clazz, jlong windowPtr)
+{
+    __block jboolean result = JNI_FALSE;
+
+    JNI_COCOA_ENTER(env);
+
+    NSWindow *nsWindow = (NSWindow *)jlong_to_ptr(windowPtr);
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        AWTWindow *window = (AWTWindow*)[nsWindow delegate];
+        result = [window delayShowing];
+    }];
+
+    JNI_COCOA_EXIT(env);
+
+    return result;
 }
