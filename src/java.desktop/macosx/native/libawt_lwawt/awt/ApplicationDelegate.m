@@ -265,6 +265,11 @@ AWT_ASSERT_APPKIT_THREAD;
                                                                name:NSWorkspaceActiveSpaceDidChangeNotification
                                                              object:nil];
 
+    [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:[AWTWindow class]
+                                                           selector:@selector(activeSpaceDidChange)
+                                                               name:NSWorkspaceActiveSpaceDidChangeNotification
+                                                             object:nil];
+
     return self;
 }
 
