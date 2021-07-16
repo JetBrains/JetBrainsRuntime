@@ -20,19 +20,13 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 - (NSArray *)accessibilityChildren {
     NSArray *children = [super accessibilityChildren];
     if (children == NULL) {
-        
-        /* Since the row was created based on the same accessible element,
-         * there is no need to remove the reference to accessible,
-         * just as there is no need to return the one found by accessible NSAccessibilityElement, since it will be the same row.
-         * in order to return an element with its corresponding role but based on the same accessible. the "isWrapped" is set to YES.
-         */
         JavaComponentAccessibility *newChild = [JavaComponentAccessibility createWithParent:self
                                                                                  accessible:self->fAccessible
                                                                                        role:self->fJavaRole
                                                                                       index:self->fIndex
                                                                                     withEnv:[ThreadUtilities getJNIEnv]
                                                                                    withView:self->fView
-                                                                                  isWrapped:YES];
+                                                                                  isWrapped:YES]; // Since the row element has already been created, we should no create it again, but just retrieve it by a pointer, that's why isWrapped is set to YES.
         return [NSArray arrayWithObject:newChild];
     } else {
         return children;
