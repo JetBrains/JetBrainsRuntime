@@ -67,6 +67,7 @@ Run these commands in the new container:
 ```
 $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 # cd /JetBrainsRuntime
+# git checkout master17
 # sh ./configure
 # make images CONF=linux-x86_64-normal-server-release
 ```
@@ -75,14 +76,17 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 Install the necessary tools, libraries, and headers with:
 ```
 $ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
-       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev 
+       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev \
+       java-16-amazon-corretto-jdk
 ```
 Then run the following:
 ```
 $ cd JetBrainsRuntime
-$ sh ./configure --disable-warnings-as-errors
+$ git checkout master17
+$ sh ./configure
 $ make images
 ```
+This will build the release configuration under `./build/linux-x86_64-server-release/`.
 
 ### Windows
 <a name="build-windows"></a>
@@ -92,13 +96,13 @@ Install the following:
   Install those together with Cygwin.
 * [Visual Studio compiler toolset](https://visualstudio.microsoft.com/downloads/).
   Install with the desktop development kit, which includes Windows SDK and compilers.
-  Visual Studio 2015 is supported by default.
-* [Java 11](http://www.oracle.com/technetwork/java/javase/downloads/index.html). 
+  Visual Studio 2019 is supported by default.
+* [Java 16](https://www.oracle.com/java/technologies/javase-jdk16-downloads.html). 
   If you have problems while configuring, read [Java tips on Cygwin](http://horstmann.com/articles/cygwin-tips.html).
 
 From the command line: 
 ```
-"c:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64
 "c:\Program_Files\cygwin64\bin\mintty.exe" /bin/bash -l
 ```
 The first command sets up environment variables, the second starts a Cygwin shell with the proper environment.  
@@ -106,27 +110,32 @@ The first command sets up environment variables, the second starts a Cygwin shel
 In the Cygwin shell: 
 ```
 $ cd JetBrainsRuntime
-$ bash configure --enable-option-checking=fatal --with-toolchain-version=2015 \
-                 --with-boot-jdk="/cygdrive/c/Program Files/Java/jdk-11.0.5" --disable-warnings-as-errors
+$ git checkout master17
+$ bash configure --with-toolchain-version=2019
 $ make images
 ```
+This will build the release configuration under `./build/windows-x86_64-server-release/`.
 
 ### macOS
-Install Xcode command line developer tools and `autoconf` via [Homebrew](getDpiInfo).
+Install the following:
+* Xcode command line developer tools and `autoconf` via [Homebrew](getDpiInfo).
+* [Java 16](https://www.oracle.com/java/technologies/javase-jdk16-downloads.html).
 
 From the command line:
 ```
 $ cd JetBrainsRuntime
-$ sh ./configure --prefix=$(pwd)/build  --disable-warnings-as-errors
+$ git checkout master17
+$ sh ./configure
 $ make images
 ```
+This will build the release configuration under `./build/macosx-x86_64-server-release/`.
 
 ## Contributing
 We are happy to receive your pull requests! 
 Before you submit one, please sign our [Contributor License Agreement (CLA)](https://www.jetbrains.com/agreements/cla/).
 
 ## Resources
-* [JetBrains Runtime on github](https://github.com/JetBrains/JetBrainsRuntime)
-* [OpenJDK build instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html)
-* [OpenJDK test instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html#running-tests)
-* [How to develop OpenJDK with CLion](https://blog.jetbrains.com/clion/2020/03/openjdk-with-clion/)
+* [JetBrains Runtime on github](https://github.com/JetBrains/JetBrainsRuntime).
+* [OpenJDK build instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html).
+* [OpenJDK test instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html#running-tests).
+* [How to develop OpenJDK with CLion](https://blog.jetbrains.com/clion/2020/03/openjdk-with-clion/).
