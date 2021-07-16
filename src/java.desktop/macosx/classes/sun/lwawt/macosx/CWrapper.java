@@ -56,8 +56,10 @@ final class CWrapper {
         static native boolean isKeyWindow(long window);
 
         static native void orderFront(long window);
+        static native void orderFrontIfOnActiveSpace(long window);
         static native void orderFrontRegardless(long window);
         static native void orderWindow(long window, int ordered, long relativeTo);
+        static native void orderWindowIfOnActiveSpace(long window, int ordered, long relativeTo);
 
         /**
          * Removes the window from the screen.
