@@ -49,7 +49,7 @@ git clone git@github.com:JetBrains/JetBrainsRuntime.git
 
 ## Configuring the Build Environment
 Here are quick per-platform instructions for those who can't wait to get started. 
-Please refer to [OpenJDK build docs](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html) for in-depth
+Please refer to [OpenJDK build docs](https://openjdk.java.net/groups/build/doc/building.html) for in-depth
 coverage of all the details.
 
 > **_TIP:_**  To get a preliminary report of what's missing, run `./configure` and check its output. 
@@ -97,7 +97,7 @@ Install the following:
 * [Visual Studio compiler toolset](https://visualstudio.microsoft.com/downloads/).
   Install with the desktop development kit, which includes Windows SDK and compilers.
   Visual Studio 2019 is supported by default.
-* [Java 16](https://www.oracle.com/java/technologies/javase-jdk16-downloads.html). 
+* Java 16 (for instance, from [AdoptOpenJDK](https://adoptopenjdk.net/installation.html?variant=openjdk16&jvmVariant=hotspot#)).
   If you have problems while configuring, read [Java tips on Cygwin](http://horstmann.com/articles/cygwin-tips.html).
 
 From the command line: 
@@ -119,7 +119,7 @@ This will build the release configuration under `./build/windows-x86_64-server-r
 ### macOS
 Install the following:
 * Xcode command line developer tools and `autoconf` via [Homebrew](getDpiInfo).
-* [Java 16](https://www.oracle.com/java/technologies/javase-jdk16-downloads.html).
+* Java 16 (for instance, from [AdoptOpenJDK](https://adoptopenjdk.net/installation.html?variant=openjdk16&jvmVariant=hotspot#)).
 
 From the command line:
 ```
@@ -136,6 +136,6 @@ Before you submit one, please sign our [Contributor License Agreement (CLA)](htt
 
 ## Resources
 * [JetBrains Runtime on github](https://github.com/JetBrains/JetBrainsRuntime).
-* [OpenJDK build instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html).
-* [OpenJDK test instructions](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html#running-tests).
+* [OpenJDK build instructions](https://openjdk.java.net/groups/build/doc/building.html).
+* [OpenJDK test instructions](https://htmlpreview.github.io/?https://raw.githubusercontent.com/openjdk/jdk/master/doc/building.html#running-tests).
 * [How to develop OpenJDK with CLion](https://blog.jetbrains.com/clion/2020/03/openjdk-with-clion/).
