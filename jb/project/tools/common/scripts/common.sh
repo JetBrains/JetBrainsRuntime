@@ -52,3 +52,13 @@ function get_mods_list() {
   __mods=$1
   echo $(ls $__mods) | sed s/\.jmod/,/g | sed s/,$//g | sed s/' '//g
 }
+
+function copy_jmods() {
+  __mods_list=$1
+  __jmods_from=$2
+  __jmods_to=$3
+
+  mkdir -p $__jmods_to
+
+  echo "${__mods_list}," | while read -d, mod; do cp $__jmods_from/$mod.jmod $__jmods_to/; done
+}
