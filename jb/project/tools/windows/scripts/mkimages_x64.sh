@@ -47,6 +47,7 @@ function create_image_bundle {
   if [ "$__bundle_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' $__bundle_name/release > release
     mv release $__bundle_name/release
+    copy_jmods "$__modules" "$__modules_path" "$__bundle_name"/jmods
   fi
 }
 
