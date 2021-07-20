@@ -49,6 +49,7 @@ function create_image_bundle {
   if [ "$__bundle_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' "$IMAGES_DIR"/"$__arch_name"/release > release
     mv release "$IMAGES_DIR"/"$__arch_name"/release
+    copy_jmods "$__modules" "$__modules_path" "$IMAGES_DIR"/"$__arch_name"/jmods
   fi
 
   # jmod does not preserve file permissions (JDK-8173610)
