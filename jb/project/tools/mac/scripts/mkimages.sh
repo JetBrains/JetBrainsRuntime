@@ -66,6 +66,7 @@ function create_image_bundle {
   if [ "$__bundle_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' $JRE_CONTENTS/Home/release > release
     mv release $JRE_CONTENTS/Home/release
+    copy_jmods "$__modules" "$__modules_path" "$JRE_CONTENTS"/Home/jmods
   fi
 
   cp -R "$JSDK"/../MacOS "$JRE_CONTENTS"
