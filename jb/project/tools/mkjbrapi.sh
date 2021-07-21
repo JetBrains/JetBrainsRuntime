@@ -25,8 +25,8 @@ make jetbrains.api 1>&2 || exit $?
 
 # Get JBR API version from compiled class
 JSHELL_COMMAND='
-System.out.println("VERSION_MAJOR=" + com.jetbrains.JBRApi.getMajorVersion());
-System.out.println("VERSION_MINOR=" + com.jetbrains.JBRApi.getMinorVersion());
+System.out.println("\nVERSION_MAJOR=" + com.jetbrains.JBRApi.getMajorVersion());
+System.out.println("\nVERSION_MINOR=" + com.jetbrains.JBRApi.getMinorVersion());
 /exit'
 VERSION_VARIABLES=$("$BOOT_JDK/bin/jshell" -s --module-path "$BUILD_DIR/jdk/modules/jetbrains.api" \
 --add-modules jetbrains.api <<< "$JSHELL_COMMAND" | grep "^VERSION\|^|") || exit $?
