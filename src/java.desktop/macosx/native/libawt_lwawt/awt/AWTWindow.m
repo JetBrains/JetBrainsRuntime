@@ -530,6 +530,45 @@ AWT_ASSERT_APPKIT_THREAD;
     return isVisible;
 }
 
+- (BOOL) delayShowing {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    return ownerWindow != nil && ([ownerWindow delayShowing] || !ownerWindow.nsWindow.onActiveSpace)
+           && !nsWindow.visible;
+}
+
+- (BOOL) checkBlockingAndOrder {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
+    if (platformWindow != NULL) {
+        GET_CPLATFORM_WINDOW_CLASS_RETURN(NO);
+        DECLARE_METHOD_RETURN(jm_checkBlockingAndOrder, jc_CPlatformWindow, "checkBlockingAndOrder", "()Z", NO);
+        (*env)->CallBooleanMethod(env, platformWindow, jm_checkBlockingAndOrder);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, platformWindow);
+    }
+    return YES;
+}
+
++ (void)activeSpaceDidChange {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    for (NSWindow* window in [NSApp windows]) {
+        if (window.onActiveSpace && [AWTWindow isJavaPlatformWindowVisible:window]) {
+            AWTWindow *awtWindow = (AWTWindow *)[window delegate];
+             // there can be only one current blocker per window hierarchy,
+             // so we're checking just hierarchy root
+            if (awtWindow.ownerWindow == nil) {
+                // this should ensure that delayed blocking windows
+                // show up on space activation
+                [awtWindow checkBlockingAndOrder];
+            }
+        }
+    }
+}
+
 // Orders window's childs based on the current focus state
 - (void) orderChildWindows:(BOOL)focus {
 AWT_ASSERT_APPKIT_THREAD;
@@ -599,15 +638,7 @@ AWT_ASSERT_APPKIT_THREAD;
         // We should bring up the modal dialog manually
         [AWTToolkit eventCountPlusPlus];
 
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
-        jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
-        if (platformWindow != NULL) {
-            GET_CPLATFORM_WINDOW_CLASS_RETURN(NO);
-            DECLARE_METHOD_RETURN(jm_checkBlockingAndOrder, jc_CPlatformWindow, "checkBlockingAndOrder", "()Z", NO);
-            (*env)->CallBooleanMethod(env, platformWindow, jm_checkBlockingAndOrder);
-            CHECK_EXCEPTION();
-            (*env)->DeleteLocalRef(env, platformWindow);
-        }
+        if (![self checkBlockingAndOrder]) return NO;
     }
 
     return self.isEnabled && IS(self.styleBits, SHOULD_BECOME_MAIN);
@@ -1759,3 +1790,25 @@ JNI_COCOA_ENTER(env);
 JNI_COCOA_EXIT(env);
 }
 
+/*
+ * Class:     sun_lwawt_macosx_CPlatformWindow
+ * Method:    nativeDelayShowing
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeDelayShowing
+(JNIEnv *env, jclass clazz, jlong windowPtr)
+{
+    __block jboolean result = JNI_FALSE;
+
+    JNI_COCOA_ENTER(env);
+
+    NSWindow *nsWindow = (NSWindow *)jlong_to_ptr(windowPtr);
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        AWTWindow *window = (AWTWindow*)[nsWindow delegate];
+        result = [window delayShowing];
+    }];
+
+    JNI_COCOA_EXIT(env);
+
+    return result;
+}
