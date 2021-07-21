@@ -40,6 +40,8 @@ import java.util.concurrent.TimeUnit;
  * @summary Regression test for JBR-3611 Unexpected workspace switch with dialog in full-screen mode on macOS
  * @key headful
  * @requires (os.family == "mac")
+ * @modules java.desktop/com.apple.eawt
+ *          java.desktop/com.apple.eawt.event
  */
 
 public class FullScreenChildWindow {
