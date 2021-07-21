@@ -165,7 +165,10 @@ class CFileDialog implements FileDialogPeer {
         if (!fileObj.isDirectory()) {
             File directoryObj = new File(fileObj.getParent());
             String nameOnly = fileObj.getName();
-            ret = ff.accept(directoryObj, nameOnly);
+            try {
+                ret = ff.accept(directoryObj, nameOnly);
+            } catch (Throwable ignored) {
+            }
         }
         return ret;
     }
