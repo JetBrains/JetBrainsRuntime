@@ -113,6 +113,7 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_t
   cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
 
   jbr_name_postfix="_${bundle_type}"
+  [ "$bundle_type" != "fd" ] && jbrsdk_name_postfix="_${bundle_type}"
 fi
 
 # create runtime image bundle
