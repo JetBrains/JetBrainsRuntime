@@ -42,7 +42,10 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
 // NSAccessibilityElement protocol methods
 
 - (NSAccessibilitySubrole)accessibilitySubrole {
-    return NSAccessibilityTabButtonSubrole;
+    if (@available(macOS 10.13, *)) {
+        return NSAccessibilityTabButtonSubrole;
+    }
+    return NSAccessibilityUnknownSubrole;
 }
 
 - (id)accessibilityValue {
