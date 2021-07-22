@@ -56,7 +56,7 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     static JNF_STATIC_MEMBER_CACHE(jm_getLineNumberForIndex, sjc_CAccessibleText, "getLineNumberForIndex", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;I)I");
     jint row = JNFCallStaticIntMethod(env, jm_getLineNumberForIndex, fAccessible, fComponent, index); // AWT_THREADING Safe (AWTRunLoop)
-    if (row < 0) return nil;
+    if (row < 0) return 0;
     return row;
 }
 
@@ -168,7 +168,7 @@ static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAc
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     static JNF_STATIC_MEMBER_CACHE(jm_getLineNumberForInsertionPoint, sjc_CAccessibleText, "getLineNumberForInsertionPoint", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)I");
     jint row = JNFCallStaticIntMethod(env, jm_getLineNumberForInsertionPoint, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
-    if (row < 0) return nil;
+    if (row < 0) return 0;
     return row;
 }
 

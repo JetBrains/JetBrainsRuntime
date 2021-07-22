@@ -33,8 +33,7 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
         NSUInteger childIndex = [self columnNumberInTable];
 
         int inc = [(JavaTableAccessibility *)[self accessibilityParent] accessibleColCount] * 2;
-        NSInteger i = childIndex * 2;
-        for(NSInteger i; i < arrayLen; i += inc)
+        for(NSInteger i = childIndex * 2; i < arrayLen; i += inc)
         {
             jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
             jobject /* String */ jchildJavaRole = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+1);

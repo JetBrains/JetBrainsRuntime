@@ -545,11 +545,6 @@ static void RaiseMustOverrideException(NSString *method)
     return size;
 }
 
-- (id)getFocusedElement
-{
-
-}
-
 - (jobject)accessible {
     return fAccessible;
 }
@@ -590,13 +585,13 @@ static void RaiseMustOverrideException(NSString *method)
     if (axAction != NULL) {
         JNF_CLASS_CACHE(jc_AccessibleAction, "javax/accessibility/AccessibleAction");
         JNF_MEMBER_CACHE(jm_getAccessibleActionCount, jc_AccessibleAction, "getAccessibleActionCount", "()I");
-        jint count = JNFCallObjectMethod(env, axAction, jm_getAccessibleActionCount);
+        jint count = JNFCallIntMethod(env, axAction, jm_getAccessibleActionCount);
         fActions = [[NSMutableDictionary alloc] initWithCapacity:count];
         fActionSElectors = [[NSMutableArray alloc] initWithCapacity:count];
         for (int i =0; i < count; i++) {
             JavaAxAction *action = [[JavaAxAction alloc] initWithEnv:env withAccessibleAction:axAction withIndex:i withComponent:fComponent];
             if ([fParent isKindOfClass:[JavaComponentAccessibility class]] &&
-                [fParent isMenu] &&
+                [(JavaComponentAccessibility *)fParent isMenu] &&
                 [[sActions objectForKey:[action getDescription]] isEqualToString:NSAccessibilityPressAction]) {
                 [fActions setObject:action forKey:NSAccessibilityPickAction];
                 [fActionSElectors addObject:[sActionSelectores objectForKey:NSAccessibilityPickAction]];
@@ -878,16 +873,16 @@ static void RaiseMustOverrideException(NSString *method)
     // cmcnote - should batch these two calls into one that returns an array of two bools, one for vertical and one for horiz
     if (isVertical(env, axContext, fComponent)) {
         (*env)->DeleteLocalRef(env, axContext);
-        return NSAccessibilityVerticalOrientationValue;
+        return NSAccessibilityOrientationVertical;
     }
 
     if (isHorizontal(env, axContext, fComponent)) {
         (*env)->DeleteLocalRef(env, axContext);
-        return NSAccessibilityHorizontalOrientationValue;
+        return NSAccessibilityOrientationHorizontal;
     }
 
     (*env)->DeleteLocalRef(env, axContext);
-    return nil;
+    return NSAccessibilityOrientationUnknown;
 }
 
 - (NSPoint)accessibilityActivationPoint
