@@ -26,49 +26,40 @@ build_number=$3
 bundle_type=$4
 
 function pack_jbr {
+  __bundle_name=$1
+
+  fastdebug_infix=""
+  [ "$bundle_type" == "fd" ] && [ "$__bundle_name" == "jbrsdk" ] && fastdebug_infix="fastdebug-"
 
   if [ -z "${bundle_type}" ]; then
-    JBR_BUNDLE=jbr
+    JBR_BUNDLE=$__bundle_name
   else
-    JBR_BUNDLE=jbr_${bundle_type}
-    [ -d ${BASE_DIR}/jbr ] && rm -rf ${BASE_DIR}/jbr
-    cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
+    JBR_BUNDLE="${__bundle_name}_${bundle_type}"
+    [ -d ${BASE_DIR}/$__bundle_name ] && rm -rf ${BASE_DIR}/$__bundle_name
+    cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/$__bundle_name
   fi
-  JBR_BASE_NAME=${JBR_BUNDLE}-${JBSDK_VERSION}
+  if [ "${bundle_type}" == "fd" ]; then
+    JBR_BASE_NAME=${__bundle_name}-${JBSDK_VERSION}
+  else
+    JBR_BASE_NAME=${JBR_BUNDLE}-${JBSDK_VERSION}
+  fi
 
-  JBR=$JBR_BASE_NAME-windows-x64-b$build_number
+  JBR=$JBR_BASE_NAME-windows-x64-${fastdebug_infix}b$build_number
   echo Creating $JBR.tar.gz ...
 
-  /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR jbr || do_exit $?
+  /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR $__bundle_name || do_exit $?
 }
 
-JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
-JBR_BASE_NAME=jbr-$JBSDK_VERSION
-RELEASE_NAME=windows-x86_64-server-release
-JBSDK=${JBRSDK_BASE_NAME}-osx-x64-b${build_number}
-case "$bundle_type" in
-  "nomod" | "")
-    bundle_type=""
-    ;;
-  "fd")
-    RELEASE_NAME=macosx-x86_64-server-fastdebug
-    JBSDK=${JBRSDK_BASE_NAME}-osx-x64-fastdebug-b${build_number}
-    ;;
-esac
+[ "$bundle_type" == "nomod" ] && bundle_type=""
 
+JBRSDK_BUNDLE=jbrsdk
+RELEASE_NAME=windows-x86_64-server-release
 IMAGES_DIR=build/$RELEASE_NAME/images
-JSDK=$IMAGES_DIR/jdk
 JBSDK=$JBRSDK_BASE_NAME-windows-x64-b$build_number
 BASE_DIR=.
 
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ]; then
-  JBRSDK_BUNDLE=jbrsdk
-  echo Creating $JBSDK.tar.gz ...
-  [ -f "$JBSDK.tar.gz" ] && rm "$JBSDK.tar.gz"
-  /usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || do_exit $?
-fi
-
-pack_jbr $bundle_type
+pack_jbr jbr
+pack_jbr jbrsdk
 
 if [ -z "$bundle_type" ]; then
   JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number

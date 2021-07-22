@@ -63,7 +63,7 @@ function create_image_bundle {
     --add-modules "$__modules" --output "$JRE_CONTENTS/Home" || do_exit $?
 
   grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$JRE_CONTENTS/Home/release"
-  if [ "$__bundle_name" == "$JBRSDK_BUNDLE" ]; then
+  if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' $JRE_CONTENTS/Home/release > release
     mv release $JRE_CONTENTS/Home/release
     copy_jmods "$__modules" "$__modules_path" "$JRE_CONTENTS"/Home/jmods
@@ -154,6 +154,7 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_t
   cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
 
   jbr_name_postfix="_${bundle_type}"
+  [ "$bundle_type" != "fd" ] && jbrsdk_name_postfix="_${bundle_type}"
 fi
 
 # create runtime image bundle
@@ -165,7 +166,7 @@ modules=$(cat "$JSDK"/release | grep MODULES | sed s/MODULES=//g | sed s/' '/','
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
   modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
 fi
-create_image_bundle "$JBRSDK_BUNDLE" "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
+create_image_bundle "$JBRSDK_BUNDLE${jbr_name_postfix}" "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
 
 if [ -z "$bundle_type" ]; then
     JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-osx-test-${architecture}-b${build_number}
