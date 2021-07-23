@@ -71,7 +71,7 @@ class HeapDumper : public StackObj {
   ~HeapDumper();
 
   // dumps the heap to the specified file, returns 0 if success.
-  int dump(const char* path);
+  int dump(const char* path, bool overwrite = false);
 
   // returns error message (resource allocated), or NULL if no error
   char* error_as_C_string() const;
