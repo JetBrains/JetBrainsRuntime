@@ -586,20 +586,16 @@ class XDnDDropTargetProtocol extends XDropTargetProtocol {
             return false;
         }
 
-        x = (int)(xclient.get_data(2) >> 16);
-        y = (int)(xclient.get_data(2) & 0xFFFF);
-
         XWindow xwindow = null;
         {
             XBaseWindow xbasewindow = XToolkit.windowToXWindow(xclient.get_window());
             if (xbasewindow instanceof XWindow) {
                 xwindow = (XWindow)xbasewindow;
-                // xclient can be a system-generated or a sent event (see XDragSourceContextPeer)
-                // so x/y is expected to be presented in device space
-                x = xbasewindow.scaleDown(x);
-                y = xbasewindow.scaleDown(y);
             }
         }
+
+        x = (int)(xclient.get_data(2) >> 16);
+        y = (int)(xclient.get_data(2) & 0xFFFF);
 
         if (xwindow == null) {
             long receiver =
