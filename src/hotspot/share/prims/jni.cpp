@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2012 Red Hat, Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -37,6 +37,7 @@
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "gc/shared/gcLocker.inline.hpp"
+#include "gc/shared/stringdedup/stringDedup.hpp"
 #include "interpreter/linkResolver.hpp"
 #include "jfr/jfrEvents.hpp"
 #include "jfr/support/jfrThreadId.hpp"
@@ -3212,30 +3213,62 @@ JNI_ENTRY(void, jni_ReleasePrimitiveArrayCritical(JNIEnv *env, jarray array, voi
 HOTSPOT_JNI_RELEASEPRIMITIVEARRAYCRITICAL_RETURN();
 JNI_END
 
+// If a copy of string value should be returned instead
+static bool should_copy_string_value(oop str) {
+  return java_lang_String::is_latin1(str) ||
+    // To prevent deduplication from replacing the value array while setting up or in
+    // the critical section. That would lead to the release operation
+    // unpinning the wrong object.
+    (Universe::heap()->supports_object_pinning() && StringDedup::is_enabled());
+}
+
+static typeArrayOop lock_gc_or_pin_string_value(JavaThread* thread, oop str) {
+  if (Universe::heap()->supports_object_pinning()) {
+    typeArrayOop s_value = java_lang_String::value(str);
+    return (typeArrayOop) Universe::heap()->pin_object(thread, s_value);
+  } else {
+    Handle h(thread, str);      // Handlize across potential safepoint.
+    GCLocker::lock_critical(thread);
+    return java_lang_String::value(h());
+  }
+}
+
+static void unlock_gc_or_unpin_string_value(JavaThread* thread, oop str) {
+  if (Universe::heap()->supports_object_pinning()) {
+    typeArrayOop s_value = java_lang_String::value(str);
+    Universe::heap()->unpin_object(thread, s_value);
+  } else {
+    GCLocker::unlock_critical(thread);
+  }
+}
 
 JNI_ENTRY(const jchar*, jni_GetStringCritical(JNIEnv *env, jstring string, jboolean *isCopy))
   JNIWrapper("GetStringCritical");
   HOTSPOT_JNI_GETSTRINGCRITICAL_ENTRY(env, string, (uintptr_t *) isCopy);
-  oop s = lock_gc_or_pin_object(thread, string);
-  typeArrayOop s_value = java_lang_String::value(s);
-  bool is_latin1 = java_lang_String::is_latin1(s);
-  if (isCopy != NULL) {
-    *isCopy = is_latin1 ? JNI_TRUE : JNI_FALSE;
-  }
+  oop s = JNIHandles::resolve_non_null(string);
   jchar* ret;
-  if (!is_latin1) {
-    ret = (jchar*) s_value->base(T_CHAR);
-  } else {
-    // Inflate latin1 encoded string to UTF16
+  if (should_copy_string_value(s)) {
+    typeArrayOop s_value = java_lang_String::value(s);
     int s_len = java_lang_String::length(s);
     ret = NEW_C_HEAP_ARRAY_RETURN_NULL(jchar, s_len + 1, mtInternal);  // add one for zero termination
     /* JNI Specification states return NULL on OOM */
     if (ret != NULL) {
-      for (int i = 0; i < s_len; i++) {
-        ret[i] = ((jchar) s_value->byte_at(i)) & 0xff;
+      bool is_latin1 = java_lang_String::is_latin1(s);
+      // Inflate latin1 encoded string to UTF16
+      if (is_latin1) {
+        for (int i = 0; i < s_len; i++) {
+          ret[i] = ((jchar) s_value->byte_at(i)) & 0xff;
+        }
+      } else {
+        memcpy(ret, s_value->char_at_addr(0), s_len * sizeof(jchar));
       }
       ret[s_len] = 0;
     }
+    if (isCopy != NULL) *isCopy = JNI_TRUE;
+  } else {
+    typeArrayOop s_value = lock_gc_or_pin_string_value(thread, s);
+    ret = (jchar*) s_value->base(T_CHAR);
+    if (isCopy != NULL) *isCopy = JNI_FALSE;
   }
  HOTSPOT_JNI_GETSTRINGCRITICAL_RETURN((uint16_t *) ret);
   return ret;
@@ -3247,13 +3280,14 @@ JNI_ENTRY(void, jni_ReleaseStringCritical(JNIEnv *env, jstring str, const jchar 
   HOTSPOT_JNI_RELEASESTRINGCRITICAL_ENTRY(env, str, (uint16_t *) chars);
   // The str and chars arguments are ignored for UTF16 strings
   oop s = JNIHandles::resolve_non_null(str);
-  bool is_latin1 = java_lang_String::is_latin1(s);
-  if (is_latin1) {
-    // For latin1 string, free jchar array allocated by earlier call to GetStringCritical.
+  if (should_copy_string_value(s)) {
+    // For copied string value, free jchar array allocated by earlier call to GetStringCritical.
     // This assumes that ReleaseStringCritical bookends GetStringCritical.
     FREE_C_HEAP_ARRAY(jchar, chars);
+  } else {
+    // For not copied string value, drop the associated gc-locker/pin.
+    unlock_gc_or_unpin_string_value(thread, s);
   }
-  unlock_gc_or_unpin_object(thread, str);
 HOTSPOT_JNI_RELEASESTRINGCRITICAL_RETURN();
 JNI_END
 
