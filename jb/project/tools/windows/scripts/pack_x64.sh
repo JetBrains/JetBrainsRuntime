@@ -27,24 +27,10 @@ bundle_type=$4
 
 function pack_jbr {
   __bundle_name=$1
+  __arch_name=$2
 
-  fastdebug_infix=""
-  [ "$bundle_type" == "fd" ] && [ "$__bundle_name" == "jbrsdk" ] && fastdebug_infix="fastdebug-"
-
-  if [ -z "${bundle_type}" ]; then
-    JBR_BUNDLE=$__bundle_name
-  else
-    JBR_BUNDLE="${__bundle_name}_${bundle_type}"
-    [ -d ${BASE_DIR}/$__bundle_name ] && rm -rf ${BASE_DIR}/$__bundle_name
-    cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/$__bundle_name
-  fi
-  if [ "${bundle_type}" == "fd" ]; then
-    JBR_BASE_NAME=${__bundle_name}-${JBSDK_VERSION}
-  else
-    JBR_BASE_NAME=${JBR_BUNDLE}-${JBSDK_VERSION}
-  fi
-
-  JBR=$JBR_BASE_NAME-windows-x64-${fastdebug_infix}b$build_number
+  [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
+  JBR=${__bundle_name}-${JBSDK_VERSION}-windows-x64-${fastdebug_infix}b${build_number}
   echo Creating $JBR.tar.gz ...
 
   /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR $__bundle_name || do_exit $?
@@ -58,8 +44,12 @@ IMAGES_DIR=build/$RELEASE_NAME/images
 JBSDK=$JBRSDK_BASE_NAME-windows-x64-b$build_number
 BASE_DIR=.
 
-pack_jbr jbr
-pack_jbr jbrsdk
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ]; then
+  jbr_name_postfix="_${bundle_type}"
+fi
+
+pack_jbr jbr${jbr_name_postfix} jbr
+pack_jbr jbrsdk${jbr_name_postfix} jbrsdk
 
 if [ -z "$bundle_type" ]; then
   JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number
