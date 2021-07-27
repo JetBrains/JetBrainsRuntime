@@ -37,18 +37,18 @@ function create_image_bundle {
   __modules_path=$3
   __modules=$4
 
-  [ -d $__bundle_name ] && rm -rf $__bundle_name
+  [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
 
   echo Running jlink ...
   ${JSDK}/bin/jlink \
     --module-path $__modules_path --no-man-pages --compress=2 \
-    --add-modules $__modules --output $__bundle_name || do_exit $?
+    --add-modules $__modules --output $__arch_name || do_exit $?
 
-  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__bundle_name/release
+  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__arch_name/release
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
-    sed 's/JBR/JBRSDK/g' $__bundle_name/release > release
-    mv release $__bundle_name/release
-    copy_jmods "$__modules" "$__modules_path" "$__bundle_name"/jmods
+    sed 's/JBR/JBRSDK/g' $__arch_name/release > release
+    mv release $__arch_name/release
+    copy_jmods "$__modules" "$__modules_path" "$__arch_name"/jmods
   fi
 }
 
@@ -57,19 +57,19 @@ RELEASE_NAME=windows-x86_64-server-release
 
 case "$bundle_type" in
   "jcef")
-    do_reset_changes=1
+    do_reset_changes=0
     ;;
   "dcevm")
     HEAD_REVISION=$(git rev-parse HEAD)
     git am jb/project/tools/patches/dcevm/*.patch || do_exit $?
-    do_reset_dcevm=1
-    do_reset_changes=1
+    do_reset_dcevm=0
+    do_reset_changes=0
     ;;
   "nomod" | "")
     bundle_type=""
     ;;
   "fd")
-    do_reset_changes=1
+    do_reset_changes=0
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=windows-x86_64-server-fastdebug
     ;;
