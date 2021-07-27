@@ -76,4 +76,8 @@ public class Logger {
     public void warn(String s, Throwable e) {
         impl.log(java.util.logging.Level.WARNING, s, e);
     }
+
+    public void warn(String s, Object... o) {
+        impl.log(java.util.logging.Level.WARNING, s, o);
+    }
 }
