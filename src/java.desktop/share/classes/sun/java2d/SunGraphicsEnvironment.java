@@ -71,6 +71,9 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
         uiScaleEnabled = FontUtilities.isMacOSX ||
             ("true".equals(System.getProperty("sun.java2d.uiScale.enabled", "true")) && isWindows_8_1_orUpper());
 
+        if (uiScaleEnabled && FontUtilities.isWindows) {
+            System.setProperty("swing.bufferPerWindow", "false"); // todo: until JRE-489 is fixed
+        }
         debugScale = uiScaleEnabled ? getScaleFactor("sun.java2d.uiScale") : -1;
     }
 
