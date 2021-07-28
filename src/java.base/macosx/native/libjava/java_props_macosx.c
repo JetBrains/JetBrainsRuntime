@@ -259,14 +259,15 @@ void setOSNameAndVersion(java_props_t *sprops) {
     // Mac OS 10.9 includes the [NSProcessInfo operatingSystemVersion] function,
     // but it's not in the 10.9 SDK.  So, call it via NSInvocation.
     if ([[NSProcessInfo processInfo] respondsToSelector:@selector(operatingSystemVersion)]) {
-	OSVerStruct osVer;
-	NSMethodSignature *sig = [[NSProcessInfo processInfo] methodSignatureForSelector:
-		@selector(operatingSystemVersion)];
-	NSInvocation *invoke = [NSInvocation invocationWithMethodSignature:sig];
-	invoke.selector = @selector(operatingSystemVersion);
-	[invoke invokeWithTarget:[NSProcessInfo processInfo]];
-	[invoke getReturnValue:&osVer];
+        OSVerStruct osVer;
+        NSMethodSignature *sig = [[NSProcessInfo processInfo] methodSignatureForSelector:
+                @selector(operatingSystemVersion)];
+        NSInvocation *invoke = [NSInvocation invocationWithMethodSignature:sig];
+        invoke.selector = @selector(operatingSystemVersion);
+        [invoke invokeWithTarget:[NSProcessInfo processInfo]];
+        [invoke getReturnValue:&osVer];
 
+        NSString *nsVerStr;
         // Copy out the char* if running on version other than 10.16 Mac OS (10.16 == 11.x)
         // or explicitly requesting version compatibility
         if (!((long)osVer.majorVersion == 10 && (long)osVer.minorVersion >= 16) ||
