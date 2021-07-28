@@ -1405,7 +1405,7 @@ public class LWWindowPeer
         WindowEvent windowEvent = new TimedWindowEvent(getTarget(), eventID, opposite, System.currentTimeMillis());
 
         // TODO: wrap in SequencedEvent
-        postEvent(windowEvent);
+        SunToolkit.postPriorityEvent(windowEvent);
     }
 
     /*
