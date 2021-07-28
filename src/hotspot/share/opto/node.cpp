@@ -503,6 +503,10 @@ Node *Node::clone() const {
     C->add_macro_node(n);
   if (is_expensive())
     C->add_expensive_node(n);
+  if (n->is_reduction()) {
+    // Do not copy reduction information. This must be explicitly set by the calling code.
+    n->remove_flag(Node::Flag_is_reduction);
+  }
   BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
   bs->register_potential_barrier_node(n);
   // If the cloned node is a range check dependent CastII, add it to the list.
