@@ -1,7 +1,7 @@
-From 66a0c556f984e809875ca01bea09e3965727643f Mon Sep 17 00:00:00 2001
+From f42115a3d488c93a2d163aebd030530f060dcef8 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sat, 20 Feb 2021 15:47:47 +0100
-Subject: [PATCH 26/38] Add ClassLoaderDataGraph_lock to define new class in
+Subject: [PATCH 26/39] Add ClassLoaderDataGraph_lock to define new class in
  enhanced redefiniton
 
 ClassLoaderDataGraph locking for introduced in redefinition in

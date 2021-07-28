@@ -1,7 +1,7 @@
-From bbd6f9477ca90b67ade77447c925f9dce63fc3e4 Mon Sep 17 00:00:00 2001
+From ed546016ead6064d8b95a9c1e4cdc6bc192f8d67 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 29 Nov 2020 20:05:03 +0100
-Subject: [PATCH 17/38] dcevm15 - fix hidded classes
+Subject: [PATCH 17/39] dcevm15 - fix hidded classes
 
 ---
  .../prims/jvmtiEnhancedRedefineClasses.cpp    | 41 ++++++++++++++-----

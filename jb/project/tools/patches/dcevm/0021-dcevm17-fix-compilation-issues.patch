@@ -1,7 +1,7 @@
-From d40ea5f57500b14254e5a1413f48e7f28af92646 Mon Sep 17 00:00:00 2001
+From e560b33cdec3ef0e4ce91714663d3befa87ff4e5 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 09:44:28 +0100
-Subject: [PATCH 21/38] dcevm17 - fix compilation issues
+Subject: [PATCH 21/39] dcevm17 - fix compilation issues
 
 ---
  .../share/classfile/classLoaderData.cpp       |   2 +-
@@ -26,7 +26,7 @@ Subject: [PATCH 21/38] dcevm17 - fix compilation issues
  create mode 100644 src/hotspot/share/classfile/lambdaFormInvokers.cpp
 
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index 63089614e84..975a41c534f 100644
+index 2a826ff50a7..65ce4c4af8c 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
 @@ -603,7 +603,7 @@ void ClassLoaderData::exchange_holders(ClassLoaderData* cld) {

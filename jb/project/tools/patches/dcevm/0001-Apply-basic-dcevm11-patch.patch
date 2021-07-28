@@ -1,7 +1,7 @@
-From 31b99ed2ae522245da54b85065e0f5f92f99afe6 Mon Sep 17 00:00:00 2001
+From 621bd4318f792891d26387eb149415fb6454f439 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 14 Nov 2018 21:09:39 +0100
-Subject: [PATCH 01/38] Apply basic dcevm11 patch
+Subject: [PATCH 01/39] Apply basic dcevm11 patch
 
 ---
  src/hotspot/share/ci/ciObjectFactory.cpp      |   25 +
@@ -6016,10 +6016,10 @@ index 33ac08e5fe4..030ddd1f675 100644
    Symbol* signature() const                      { return constants()->symbol_at(signature_index()); }
    int signature_index() const                    { return constMethod()->signature_index();         }
 diff --git a/src/hotspot/share/prims/jni.cpp b/src/hotspot/share/prims/jni.cpp
-index 1bcd2be1327..ea6c501109e 100644
+index 44327768465..9a81ffc9ea9 100644
 --- a/src/hotspot/share/prims/jni.cpp
 +++ b/src/hotspot/share/prims/jni.cpp
-@@ -290,6 +290,7 @@ JNI_ENTRY(jclass, jni_DefineClass(JNIEnv *env, const char *name, jobject loaderR
+@@ -291,6 +291,7 @@ JNI_ENTRY(jclass, jni_DefineClass(JNIEnv *env, const char *name, jobject loaderR
    Klass* k = SystemDictionary::resolve_from_stream(&st, class_name,
                                                     class_loader,
                                                     cl_info,
@@ -6028,7 +6028,7 @@ index 1bcd2be1327..ea6c501109e 100644
  
    if (log_is_enabled(Debug, class, resolve)) {
 diff --git a/src/hotspot/share/prims/jvm.cpp b/src/hotspot/share/prims/jvm.cpp
-index 91da785714b..2fcbbc10451 100644
+index 575ebed679e..a7fe090ba01 100644
 --- a/src/hotspot/share/prims/jvm.cpp
 +++ b/src/hotspot/share/prims/jvm.cpp
 @@ -870,6 +870,7 @@ static jclass jvm_define_class_common(const char *name,
@@ -8509,7 +8509,7 @@ index 00000000000..b712d69a193
 +};
 +#endif // SHARE_VM_PRIMS_JVMTIREDEFINECLASSES2_HPP
 diff --git a/src/hotspot/share/prims/jvmtiEnv.cpp b/src/hotspot/share/prims/jvmtiEnv.cpp
-index b8b408b4133..072d0085037 100644
+index 2107b186c5e..6d1692949cb 100644
 --- a/src/hotspot/share/prims/jvmtiEnv.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnv.cpp
 @@ -54,6 +54,7 @@

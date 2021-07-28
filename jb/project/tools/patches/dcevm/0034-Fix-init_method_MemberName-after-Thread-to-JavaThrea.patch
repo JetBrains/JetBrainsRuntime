@@ -1,7 +1,7 @@
-From 300ea1122dfc6d36f6bc55a626162b86dcb9bcc1 Mon Sep 17 00:00:00 2001
+From db2d7cd0cd956f297c58baa7500c1440092648bf Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 20 Jun 2021 19:42:51 +0200
-Subject: [PATCH 34/38] Fix init_method_MemberName after Thread to JavaThread
+Subject: [PATCH 34/39] Fix init_method_MemberName after Thread to JavaThread
  refactorization
 
 ---

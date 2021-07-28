@@ -1,7 +1,7 @@
-From f075929d4e8f64385058633dd1bb53281d87ca46 Mon Sep 17 00:00:00 2001
+From 5c41ecc9f48d22b81b3ac610e5655f1a74d25614 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 10:11:10 +0100
-Subject: [PATCH 20/38] Disable AllowEnhancedClassRedefinition in flight
+Subject: [PATCH 20/39] Disable AllowEnhancedClassRedefinition in flight
  recorder
 
 ---

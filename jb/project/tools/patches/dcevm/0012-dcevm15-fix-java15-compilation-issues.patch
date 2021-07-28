@@ -1,7 +1,7 @@
-From c6a0608dad39442366635536e823862444fcf694 Mon Sep 17 00:00:00 2001
+From 2dd09ce40a545a4256f990346e5cebf23dbf0b56 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 10:10:02 +0100
-Subject: [PATCH 12/38] dcevm15 - fix java15 compilation issues
+Subject: [PATCH 12/39] dcevm15 - fix java15 compilation issues
 
 ---
  .../share/classfile/classFileParser.hpp       |   8 +-
@@ -65,7 +65,7 @@ index 0f94bc2501a..52ad6faa443 100644
    ReferenceType reference_type() const { return _rt; }
    AccessFlags access_flags() const { return _access_flags; }
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index 66963dc0892..63089614e84 100644
+index db50b3edee8..2a826ff50a7 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
 @@ -603,7 +603,7 @@ void ClassLoaderData::exchange_holders(ClassLoaderData* cld) {
@@ -391,7 +391,7 @@ index 17c1b27af7d..55ea76a8558 100644
    CDS_JAVA_HEAP_ONLY(_archived_mirror_index = -1;)
    _primary_supers[0] = this;
 diff --git a/src/hotspot/share/prims/jvm.cpp b/src/hotspot/share/prims/jvm.cpp
-index 2fcbbc10451..6acfd0b72fc 100644
+index a7fe090ba01..2966343c835 100644
 --- a/src/hotspot/share/prims/jvm.cpp
 +++ b/src/hotspot/share/prims/jvm.cpp
 @@ -958,6 +958,7 @@ static jclass jvm_lookup_define_class(jclass lookup, const char *name,
@@ -902,7 +902,7 @@ index 4c0412d343d..bd5e7d153be 100644
    // Modifiable test must be shared between IsModifiableClass query
    // and redefine implementation
 diff --git a/src/hotspot/share/prims/jvmtiEnv.cpp b/src/hotspot/share/prims/jvmtiEnv.cpp
-index 072d0085037..69393bc68c8 100644
+index 6d1692949cb..8970d7991b7 100644
 --- a/src/hotspot/share/prims/jvmtiEnv.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnv.cpp
 @@ -454,20 +454,23 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {

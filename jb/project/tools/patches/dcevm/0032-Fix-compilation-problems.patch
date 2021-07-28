@@ -1,7 +1,7 @@
-From 86d907a166219e35f6a289df6b1052aa6696600f Mon Sep 17 00:00:00 2001
+From 5356c4dbbcc2564e401fc92b7680b870ee7070ec Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sat, 15 May 2021 13:01:25 +0200
-Subject: [PATCH 32/38] Fix compilation problems
+Subject: [PATCH 32/39] Fix compilation problems
 
 ---
  src/hotspot/share/oops/instanceKlass.cpp                 | 2 +-

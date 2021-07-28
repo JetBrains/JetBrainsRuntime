@@ -1,7 +1,7 @@
-From c4b9c48ca30af7a1ccbb15c39603d101fdb1fa05 Mon Sep 17 00:00:00 2001
+From 886db15df7d9a8cd45e2b539141a9ab823396203 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 14 Nov 2018 21:18:22 +0100
-Subject: [PATCH 02/38] dcevm11 fixes
+Subject: [PATCH 02/39] dcevm11 fixes
 
 1. We need to set classRedefinitionCount on new class, not old class.
 

@@ -1,7 +1,7 @@
-From 479791304c68ff53c64d75632450163f7b2c953e Mon Sep 17 00:00:00 2001
+From 5bb6ef0fc266a748232c7c51191deab47d4f3857 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 30 Jun 2021 18:30:00 +0200
-Subject: [PATCH 36/38] Fix, pass SystemDictionary::resolve_from_stream cl_info
+Subject: [PATCH 36/39] Fix, pass SystemDictionary::resolve_from_stream cl_info
  param
 
 ---

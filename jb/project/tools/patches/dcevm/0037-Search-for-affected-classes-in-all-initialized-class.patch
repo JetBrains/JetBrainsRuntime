@@ -1,7 +1,7 @@
-From be8135ae36c87f4a9d63a93c420cd0e8c705e65b Mon Sep 17 00:00:00 2001
+From 563e06d1c56cfc3f4e93e3975cd6c2dab8183c98 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 30 Jun 2021 18:50:38 +0200
-Subject: [PATCH 37/38] Search for affected classes in all initialized classes
+Subject: [PATCH 37/39] Search for affected classes in all initialized classes
  in cld
 
 Fix also case when lambda interface is redefined. Lambda class is
@@ -15,7 +15,7 @@ missing in cld dictionary since it is hidden since j17
  5 files changed, 20 insertions(+), 17 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index 975a41c534f..8c5e7d74569 100644
+index 65ce4c4af8c..1c51e83e86e 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
 @@ -337,6 +337,16 @@ void ClassLoaderData::classes_do(KlassClosure* klass_closure) {

@@ -1,7 +1,7 @@
-From 3c2b51217b30ef8187caa4104584e28b10479444 Mon Sep 17 00:00:00 2001
+From c40cd307310822e6e60c61931c14f97a8501f975 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 24 May 2020 12:07:42 +0200
-Subject: [PATCH 06/38] Replace deleted method with
+Subject: [PATCH 06/39] Replace deleted method with
  Universe::throw_no_such_method_error
 
 + Change log level in advanced redefinition

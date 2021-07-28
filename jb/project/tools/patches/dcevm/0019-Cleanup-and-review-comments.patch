@@ -1,7 +1,7 @@
-From 33a4a1f90187557cb96d142769aac9de1d45b46f Mon Sep 17 00:00:00 2001
+From 3b09df69c007285ea6c258388532a8e5f9fe3d45 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 22 Nov 2020 12:03:32 +0100
-Subject: [PATCH 19/38] Cleanup and review comments
+Subject: [PATCH 19/39] Cleanup and review comments
 
 ---
  src/hotspot/share/classfile/classLoaderDataGraph.hpp     | 2 +-

@@ -1,7 +1,7 @@
-From dfc84494147277e0a8dbc23cce405953d4e5f740 Mon Sep 17 00:00:00 2001
+From 6cde71e353f823f2df2d0875cd03b656fe060d5c Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sat, 15 May 2021 10:31:28 +0200
-Subject: [PATCH 29/38] Fix fastdebug compilation issues - cast_to_oop
+Subject: [PATCH 29/39] Fix fastdebug compilation issues - cast_to_oop
 
 ---
  .../share/gc/g1/g1FullGCCompactTask.cpp       | 12 +++++-----

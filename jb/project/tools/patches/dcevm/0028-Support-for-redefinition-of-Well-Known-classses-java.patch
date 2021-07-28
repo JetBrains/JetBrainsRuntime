@@ -1,7 +1,7 @@
-From ce8df9ebb914f9bb72adb95341e702131f372df8 Mon Sep 17 00:00:00 2001
+From 51f0036ff15d39330b787512af9e38d15c748e4b Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 7 Mar 2021 20:22:54 +0100
-Subject: [PATCH 28/38] Support for redefinition of Well Known classses
+Subject: [PATCH 28/39] Support for redefinition of Well Known classses
  (java.*,jdk.*, sun.*)
 
 ---

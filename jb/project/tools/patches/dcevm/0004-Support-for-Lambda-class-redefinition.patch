@@ -1,7 +1,7 @@
-From 81de9c8af45ece3bf559d2841283d72400fb6d95 Mon Sep 17 00:00:00 2001
+From 53d50b53f83aa5135ff5092d0d566424024b8b4b Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 4 Oct 2020 21:12:12 +0200
-Subject: [PATCH 04/38] Support for Lambda class redefinition
+Subject: [PATCH 04/39] Support for Lambda class redefinition
 
 ---
  .../share/classfile/classLoaderData.cpp       |  9 +++
@@ -13,7 +13,7 @@ Subject: [PATCH 04/38] Support for Lambda class redefinition
  6 files changed, 80 insertions(+), 9 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index 897f61e0e44..66963dc0892 100644
+index 340ffadf837..db50b3edee8 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
 @@ -599,6 +599,15 @@ Dictionary* ClassLoaderData::create_dictionary() {
