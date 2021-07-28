@@ -85,7 +85,7 @@ private:
   ShenandoahAllRootScanner* _rp;
 public:
   ShenandoahInitMarkRootsTask(ShenandoahAllRootScanner* rp) :
-    AbstractGangTask("Shenandoah init mark roots task"),
+    AbstractGangTask("Shenandoah Init Mark Roots"),
     _rp(rp) {
   }
 
@@ -127,7 +127,7 @@ private:
   ShenandoahRootUpdater*  _root_updater;
 public:
   ShenandoahUpdateRootsTask(ShenandoahRootUpdater* root_updater) :
-    AbstractGangTask("Shenandoah update roots task"),
+    AbstractGangTask("Shenandoah Update Roots"),
     _root_updater(root_updater) {
   }
 
@@ -149,7 +149,7 @@ private:
 
 public:
   ShenandoahConcurrentMarkingTask(ShenandoahConcurrentMark* cm, ShenandoahTaskTerminator* terminator) :
-    AbstractGangTask("Root Region Scan"), _cm(cm), _terminator(terminator) {
+    AbstractGangTask("Shenandoah Concurrent Mark"), _cm(cm), _terminator(terminator) {
   }
 
   void work(uint worker_id) {
@@ -219,7 +219,7 @@ private:
 
 public:
   ShenandoahFinalMarkingTask(ShenandoahConcurrentMark* cm, ShenandoahTaskTerminator* terminator, bool dedup_string) :
-    AbstractGangTask("Shenandoah Final Marking"), _cm(cm), _terminator(terminator), _dedup_string(dedup_string) {
+    AbstractGangTask("Shenandoah Final Mark"), _cm(cm), _terminator(terminator), _dedup_string(dedup_string) {
   }
 
   void work(uint worker_id) {
@@ -602,7 +602,7 @@ private:
 public:
   ShenandoahRefProcTaskProxy(AbstractRefProcTaskExecutor::ProcessTask& proc_task,
                              ShenandoahTaskTerminator* t) :
-    AbstractGangTask("Process reference objects in parallel"),
+    AbstractGangTask("Shenandoah Process Weak References"),
     _proc_task(proc_task),
     _terminator(t) {
   }
@@ -761,7 +761,7 @@ private:
 
 public:
   ShenandoahPrecleanTask(ReferenceProcessor* rp) :
-          AbstractGangTask("Precleaning task"),
+          AbstractGangTask("Shenandoah Precleaning"),
           _rp(rp) {}
 
   void work(uint worker_id) {

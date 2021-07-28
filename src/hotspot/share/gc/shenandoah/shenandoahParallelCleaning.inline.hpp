@@ -35,7 +35,7 @@ ShenandoahParallelWeakRootsCleaningTask<IsAlive, KeepAlive>::ShenandoahParallelW
                                                                                                      IsAlive* is_alive,
                                                                                                      KeepAlive* keep_alive,
                                                                                                      uint num_workers) :
-  AbstractGangTask("Parallel Weak Root Cleaning Task"),
+  AbstractGangTask("Shenandoah Weak Root Cleaning"),
   _phase(phase), _weak_roots(phase, num_workers),
   _is_alive(is_alive), _keep_alive(keep_alive) {
   assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");

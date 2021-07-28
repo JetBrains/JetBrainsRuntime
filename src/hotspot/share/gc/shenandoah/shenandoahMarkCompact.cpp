@@ -327,7 +327,7 @@ private:
 
 public:
   ShenandoahPrepareForCompactionTask(PreservedMarksSet *preserved_marks, ShenandoahHeapRegionSet **worker_slices) :
-    AbstractGangTask("Shenandoah Prepare For Compaction Task"),
+    AbstractGangTask("Shenandoah Prepare For Compaction"),
     _preserved_marks(preserved_marks),
     _heap(ShenandoahHeap::heap()), _worker_slices(worker_slices) {
   }
@@ -719,7 +719,7 @@ private:
 
 public:
   ShenandoahAdjustPointersTask() :
-    AbstractGangTask("Shenandoah Adjust Pointers Task"),
+    AbstractGangTask("Shenandoah Adjust Pointers"),
     _heap(ShenandoahHeap::heap()) {
   }
 
@@ -741,7 +741,7 @@ private:
   PreservedMarksSet* _preserved_marks;
 public:
   ShenandoahAdjustRootPointersTask(ShenandoahRootAdjuster* rp, PreservedMarksSet* preserved_marks) :
-    AbstractGangTask("Shenandoah Adjust Root Pointers Task"),
+    AbstractGangTask("Shenandoah Adjust Root Pointers"),
     _rp(rp),
     _preserved_marks(preserved_marks) {}
 
@@ -805,7 +805,7 @@ private:
 
 public:
   ShenandoahCompactObjectsTask(ShenandoahHeapRegionSet** worker_slices) :
-    AbstractGangTask("Shenandoah Compact Objects Task"),
+    AbstractGangTask("Shenandoah Compact Objects"),
     _heap(ShenandoahHeap::heap()),
     _worker_slices(worker_slices) {
   }
@@ -953,7 +953,7 @@ private:
 
 public:
   ShenandoahMCResetCompleteBitmapTask() :
-    AbstractGangTask("Parallel Reset Bitmap Task") {
+    AbstractGangTask("Shenandoah Reset Bitmap") {
   }
 
   void work(uint worker_id) {
