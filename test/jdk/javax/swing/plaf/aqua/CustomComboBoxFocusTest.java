@@ -245,20 +245,23 @@ public class CustomComboBoxFocusTest {
             System.out.println("Request focus on " + target);
             final Component c = target.getEditor().getEditorComponent();
 
-            c.addFocusListener(new FocusListener() {
-                @Override
-                public void focusGained(FocusEvent e) {
-                    SwingUtilities.invokeLater(focusHandler);
-                }
+            if (c.isFocusOwner()) {
+                SwingUtilities.invokeLater(focusHandler);
+            } else {
+                c.addFocusListener(new FocusListener() {
+                    @Override
+                    public void focusGained(FocusEvent e) {
+                        SwingUtilities.invokeLater(focusHandler);
+                    }
 
-                @Override
-                public void focusLost(FocusEvent e) {
+                    @Override
+                    public void focusLost(FocusEvent e) {
 
-                }
-            });
+                    }
+                });
 
-            c.requestFocus();
-
+                c.requestFocus();
+            }
         }
 
         public Step nextStep() {
