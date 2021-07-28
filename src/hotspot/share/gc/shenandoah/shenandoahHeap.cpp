@@ -518,7 +518,7 @@ private:
 
 public:
   ShenandoahResetBitmapTask() :
-    AbstractGangTask("Parallel Reset Bitmap Task") {}
+    AbstractGangTask("Shenandoah Reset Bitmap") {}
 
   void work(uint worker_id) {
     ShenandoahHeapRegion* region = _regions.next();
@@ -960,7 +960,7 @@ public:
   ShenandoahEvacuationTask(ShenandoahHeap* sh,
                            ShenandoahCollectionSet* cs,
                            bool concurrent) :
-    AbstractGangTask("Parallel Evacuation Task"),
+    AbstractGangTask("Shenandoah Evacuation"),
     _sh(sh),
     _cs(cs),
     _concurrent(concurrent)
@@ -1078,7 +1078,7 @@ private:
 
 public:
   ShenandoahEvacuateUpdateRootsTask(ShenandoahRootEvacuator* rp) :
-    AbstractGangTask("Shenandoah evacuate and update roots"),
+    AbstractGangTask("Shenandoah Evacuate/Update Roots"),
     _rp(rp) {}
 
   void work(uint worker_id) {
@@ -1355,7 +1355,7 @@ private:
 
 public:
   ShenandoahParallelHeapRegionTask(ShenandoahHeapRegionClosure* blk) :
-          AbstractGangTask("Parallel Region Task"),
+          AbstractGangTask("Shenandoah Parallel Region Operation"),
           _heap(ShenandoahHeap::heap()), _blk(blk), _index(0) {}
 
   void work(uint worker_id) {
@@ -2159,7 +2159,7 @@ private:
   bool _concurrent;
 public:
   ShenandoahUpdateHeapRefsTask(ShenandoahRegionIterator* regions, bool concurrent) :
-    AbstractGangTask("Concurrent Update References Task"),
+    AbstractGangTask("Shenandoah Update References"),
     cl(T()),
     _heap(ShenandoahHeap::heap()),
     _regions(regions),
