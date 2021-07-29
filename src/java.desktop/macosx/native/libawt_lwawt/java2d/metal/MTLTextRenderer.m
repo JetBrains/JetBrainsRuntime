@@ -399,7 +399,7 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                            GlyphInfo *ginfo, jint x, jint y,
                            jboolean rgbOrder, jint contrast)
 {
-    CacheCellInfo *cell;
+    MTLCacheCellInfo *cell;
     jfloat tx1, ty1, tx2, ty2;
     jint w = ginfo->width;
     jint h = ginfo->height;
@@ -441,7 +441,7 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
             return JNI_TRUE;
         }
     }
-    cell = (CacheCellInfo *) (ginfo->cellInfo);
+    cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
     cell->timesRendered++;
 
     MTLTR_SetLCDContrast(mtlc, contrast, lcdCacheEncoder);
