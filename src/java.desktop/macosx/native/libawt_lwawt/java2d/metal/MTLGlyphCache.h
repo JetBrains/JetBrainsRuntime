@@ -39,8 +39,8 @@ typedef void (MTLFlushFunc)();
 typedef struct _MTLCacheCellInfo MTLCacheCellInfo;
 
 typedef struct {
-    CacheCellInfo *head;
-    CacheCellInfo *tail;
+    MTLCacheCellInfo *head;
+    MTLCacheCellInfo *tail;
     id<MTLTexture> texture;
     jint          width;
     jint          height;
