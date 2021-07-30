@@ -544,8 +544,8 @@ AWT_ASSERT_APPKIT_THREAD;
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         GET_CPLATFORM_WINDOW_CLASS_RETURN(NO);
-        DECLARE_METHOD_RETURN(jm_checkBlockingAndOrder, jc_CPlatformWindow, "checkBlockingAndOrder", "()Z", NO);
-        (*env)->CallBooleanMethod(env, platformWindow, jm_checkBlockingAndOrder);
+        DECLARE_METHOD_RETURN(jm_checkBlockingAndOrder, jc_CPlatformWindow, "checkBlockingAndOrder", "()V", NO);
+        (*env)->CallVoidMethod(env, platformWindow, jm_checkBlockingAndOrder);
         CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, platformWindow);
     }
@@ -600,7 +600,7 @@ AWT_ASSERT_APPKIT_THREAD;
                         // back to normal window level
                         [window setLevel:NSNormalWindowLevel];
                     }
-                    if (window.onActiveSpace) {
+                    if (window.onActiveSpace && owner.nsWindow.onActiveSpace) {
                         // The childWindow should be displayed in front of
                         // its nearest parentWindow
                         [window orderWindow:NSWindowAbove relativeTo:[owner.nsWindow windowNumber]];
