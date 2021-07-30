@@ -84,6 +84,7 @@ public class ResponseSubscribers {
 
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
+            Objects.requireNonNull(subscription);
             if (!subscribed.compareAndSet(false, true)) {
                 subscription.cancel();
             } else {
@@ -94,6 +95,7 @@ public class ResponseSubscribers {
 
         @Override
         public void onNext(List<ByteBuffer> items) {
+            Objects.requireNonNull(items);
             for (ByteBuffer item : items) {
                 byte[] buf = new byte[item.remaining()];
                 item.get(buf);
@@ -104,6 +106,7 @@ public class ResponseSubscribers {
 
         @Override
         public void onError(Throwable throwable) {
+            Objects.requireNonNull(throwable);
             result.completeExceptionally(throwable);
         }
 
@@ -131,6 +134,7 @@ public class ResponseSubscribers {
         private final FilePermission[] filePermissions;
         private final CompletableFuture<Path> result = new MinimalFuture<>();
 
+        private final AtomicBoolean subscribed = new AtomicBoolean();
         private volatile Flow.Subscription subscription;
         private volatile FileChannel out;
 
@@ -170,6 +174,12 @@ public class ResponseSubscribers {
 
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
+            Objects.requireNonNull(subscription);
+            if (!subscribed.compareAndSet(false, true)) {
+                subscription.cancel();
+                return;
+            }
+
             this.subscription = subscription;
             if (System.getSecurityManager() == null) {
                 try {
@@ -411,6 +421,7 @@ public class ResponseSubscribers {
 
         @Override
         public void onSubscribe(Flow.Subscription s) {
+            Objects.requireNonNull(s);
             try {
                 if (!subscribed.compareAndSet(false, true)) {
                     s.cancel();
@@ -539,6 +550,7 @@ public class ResponseSubscribers {
 
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
+            Objects.requireNonNull(subscription);
             if (!subscribed.compareAndSet(false, true)) {
                 subscription.cancel();
             } else {
@@ -553,6 +565,7 @@ public class ResponseSubscribers {
 
         @Override
         public void onError(Throwable throwable) {
+            Objects.requireNonNull(throwable);
             cf.completeExceptionally(throwable);
         }
 
@@ -819,13 +832,21 @@ public class ResponseSubscribers {
             }
         }
 
+        private final AtomicBoolean subscribed = new AtomicBoolean();
+
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
-            subscriptionCF.complete(subscription);
+            Objects.requireNonNull(subscription);
+            if (!subscribed.compareAndSet(false, true)) {
+                subscription.cancel();
+            } else {
+                subscriptionCF.complete(subscription);
+            }
         }
 
         @Override
         public void onNext(List<ByteBuffer> item) {
+            Objects.requireNonNull(item);
             try {
                 // cannot be called before onSubscribe()
                 assert subscriptionCF.isDone();
@@ -853,6 +874,7 @@ public class ResponseSubscribers {
             // onError can be called before request(1), and therefore can
             // be called before subscriberRef is set.
             signalError(throwable);
+            Objects.requireNonNull(throwable);
         }
 
         @Override
