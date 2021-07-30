@@ -345,20 +345,20 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFamilyMap.put("Roboto-Light", "Roboto Light");
         jreFamilyMap.put("Roboto-Thin", "Roboto Thin");
 
-        jreFontMap.put("JetBrainsMono-Bold.ttf", new BundledFontInfo("JetBrainsMono-Bold", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-BoldItalic.ttf", new BundledFontInfo("JetBrainsMono-BoldItalic", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-ExtraBold.ttf", new BundledFontInfo("JetBrainsMono-ExtraBold", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-ExtraBoldItalic.ttf", new BundledFontInfo("JetBrainsMono-ExtraBoldItalic", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-ExtraLight.ttf", new BundledFontInfo("JetBrainsMono-ExtraLight", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-ExtraLightItalic.ttf", new BundledFontInfo("JetBrainsMono-ExtraLightItalic", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-Italic.ttf", new BundledFontInfo("JetBrainsMono-Italic", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-Light.ttf", new BundledFontInfo("JetBrainsMono-Light", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-LightItalic.ttf", new BundledFontInfo("JetBrainsMono-LightItalic", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-Medium.ttf", new BundledFontInfo("JetBrainsMono-Medium", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-MediumItalic.ttf", new BundledFontInfo("JetBrainsMono-MediumItalic", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-Regular.ttf", new BundledFontInfo("JetBrainsMono-Regular", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-Thin.ttf", new BundledFontInfo("JetBrainsMono-Thin", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-ThinItalic.ttf", new BundledFontInfo("JetBrainsMono-ThinItalic", 2, 225, 0));
+        jreFontMap.put("JetBrainsMono-Bold.ttf", new BundledFontInfo("JetBrainsMono-Bold", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-BoldItalic.ttf", new BundledFontInfo("JetBrainsMono-BoldItalic", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-ExtraBold.ttf", new BundledFontInfo("JetBrainsMono-ExtraBold", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-ExtraBoldItalic.ttf", new BundledFontInfo("JetBrainsMono-ExtraBoldItalic", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-ExtraLight.ttf", new BundledFontInfo("JetBrainsMono-ExtraLight", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-ExtraLightItalic.ttf", new BundledFontInfo("JetBrainsMono-ExtraLightItalic", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-Italic.ttf", new BundledFontInfo("JetBrainsMono-Italic", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-Light.ttf", new BundledFontInfo("JetBrainsMono-Light", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-LightItalic.ttf", new BundledFontInfo("JetBrainsMono-LightItalic", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-Medium.ttf", new BundledFontInfo("JetBrainsMono-Medium", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-MediumItalic.ttf", new BundledFontInfo("JetBrainsMono-MediumItalic", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-Regular.ttf", new BundledFontInfo("JetBrainsMono-Regular", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-Thin.ttf", new BundledFontInfo("JetBrainsMono-Thin", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-ThinItalic.ttf", new BundledFontInfo("JetBrainsMono-ThinItalic", 2, 242, 0));
 
         jreFontMap.put("Inter-Bold.otf", new BundledFontInfo("Inter-Bold", 3, 19, 0));
         jreFontMap.put("Inter-Regular.otf", new BundledFontInfo("Inter-Regular", 3, 19, 0));
