@@ -483,8 +483,8 @@ AWT_ASSERT_APPKIT_THREAD;
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         // extract the target AWT Window object out of the CPlatformWindow
-        GET_CPLATFORM_WINDOW_CLASS_RETURN(nil);
-        DECLARE_FIELD_RETURN(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;", nil);
+        GET_CPLATFORM_WINDOW_CLASS_RETURN(NSWindowTabbingModeDisallowed);
+        DECLARE_FIELD_RETURN(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;", NSWindowTabbingModeDisallowed);
         jobject awtWindow = (*env)->GetObjectField(env, platformWindow, jf_target);
         if (awtWindow != NULL) {
             DECLARE_CLASS(jc_Window, "java/awt/Window");
