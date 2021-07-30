@@ -99,6 +99,11 @@ JSDK=$IMAGES_DIR/jdk
 JSDK_MODS_DIR=$IMAGES_DIR/jmods
 JBRSDK_BUNDLE=jbrsdk
 
+where cygpath
+if [ $? -eq 0 ]; then
+  JCEF_PATH="$(cygpath -w $JCEF_PATH)"
+fi
+
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ]; then
   git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
   update_jsdk_mods "$JSDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
