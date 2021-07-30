@@ -1316,14 +1316,16 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 isFocusable ? focusableStyleBits : 0); // set both bits at once
     }
 
-    private boolean checkBlockingAndOrder() {
+    private void checkBlockingAndOrder() {
         LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
         if (blocker == null) {
-            return false;
+            // If it's not blocked, make sure it's above its siblings
+            orderAboveSiblings();
+            return;
         }
 
         if (blocker instanceof CPrinterDialogPeer) {
-            return true;
+            return;
         }
 
         CPlatformWindow pWindow = (CPlatformWindow)blocker.getPlatformWindow();
@@ -1340,7 +1342,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 CWrapper.NSWindow.makeMainWindow(ptr);
             });
         }
-        return true;
     }
 
     private boolean isIconified() {
@@ -1402,7 +1403,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             if (p instanceof LWWindowPeer) {
                 CPlatformWindow pw = (CPlatformWindow)((LWWindowPeer)p).getPlatformWindow();
                 iconified = isIconified();
-                if (pw != null && pw.isVisible() && !iconified) {
+                if (pw != null && pw.isVisible() && !iconified && !pw.delayShowing()) {
                     // If the window is one of ancestors of 'main window' or is going to become main by itself,
                     // the window should be ordered above its siblings; otherwise the window is just ordered
                     // above its nearest parent.
@@ -1474,9 +1475,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     private void windowDidBecomeMain() {
         lastBecomeMainTime = System.currentTimeMillis();
-        if (checkBlockingAndOrder()) return;
-        // If it's not blocked, make sure it's above its siblings
-        orderAboveSiblings();
+        checkBlockingAndOrder();
     }
 
     private void windowWillEnterFullScreen() {

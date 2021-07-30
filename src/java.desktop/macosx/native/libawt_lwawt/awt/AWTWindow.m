@@ -612,8 +612,8 @@ AWT_ASSERT_APPKIT_THREAD;
     jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
     if (platformWindow != NULL) {
         static JNF_MEMBER_CACHE(jm_checkBlockingAndOrder, jc_CPlatformWindow,
-                                "checkBlockingAndOrder", "()Z");
-        JNFCallBooleanMethod(env, platformWindow, jm_checkBlockingAndOrder);
+                                "checkBlockingAndOrder", "()V");
+        JNFCallVoidMethod(env, platformWindow, jm_checkBlockingAndOrder);
         (*env)->DeleteLocalRef(env, platformWindow);
     }
 }
@@ -666,7 +666,7 @@ AWT_ASSERT_APPKIT_THREAD;
                         // back to normal window level
                         [window setLevel:NSNormalWindowLevel];
                     }
-                    if (window.onActiveSpace) {
+                    if (window.onActiveSpace && owner.nsWindow.onActiveSpace) {
                         // The childWindow should be displayed in front of
                         // its nearest parentWindow
                         [window orderWindow:NSWindowAbove relativeTo:[owner.nsWindow windowNumber]];
