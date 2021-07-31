@@ -49,9 +49,9 @@ static jclass sjc_CAccessibleText = NULL;
 
 - (NSRange)accessibilityVisibleCharacterRange {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    GET_CACCESSIBLETEXT_CLASS_RETURN(nil);
+    GET_CACCESSIBLETEXT_CLASS_RETURN(NSRangeFromString(@""));
     DECLARE_STATIC_METHOD_RETURN(jm_getVisibleCharacterRange, sjc_CAccessibleText, "getVisibleCharacterRange",
-                          "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)[I", nil);
+                          "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)[I", NSRangeFromString(@""));
     jintArray axTextRange = (*env)->CallStaticObjectMethod(env, sjc_CAccessibleText,
                  jm_getVisibleCharacterRange, fAccessible, fComponent);
     CHECK_EXCEPTION();

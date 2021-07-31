@@ -582,7 +582,7 @@ static void RaiseMustOverrideException(NSString *method)
 - (NSSize)getSize
 {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
-    GET_ACCESSIBLECOMPONENT_STATIC_METHOD_RETURN(nil);
+    GET_ACCESSIBLECOMPONENT_STATIC_METHOD_RETURN(NSMakeSize(0, 0));
     jobject axComponent = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
                            sjm_getAccessibleComponent, fAccessible, fComponent);
     CHECK_EXCEPTION();
@@ -726,7 +726,7 @@ static void RaiseMustOverrideException(NSString *method)
     DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleDescription, sjc_CAccessibility, "getAccessibleDescription",
                                  "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;", nil);
     jobject axName = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
-                                   sjm_getAccessibleDescription, , self->fAccessible, self->fComponent);
+                                   sjm_getAccessibleDescription, self->fAccessible, self->fComponent);
     CHECK_EXCEPTION();
     NSString* str = JavaStringToNSString(env, axName);
     (*env)->DeleteLocalRef(env, axName);
@@ -777,7 +777,7 @@ static void RaiseMustOverrideException(NSString *method)
 - (NSRect)accessibilityFrame
 {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
-    GET_ACCESSIBLECOMPONENT_STATIC_METHOD_RETURN(nil);
+    GET_ACCESSIBLECOMPONENT_STATIC_METHOD_RETURN(NSMakeRect(0, 0, 0, 0));
     jobject axComponent = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleComponent,
                            fAccessible, fComponent);
     CHECK_EXCEPTION();

@@ -18,7 +18,7 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return 0;
-    static jclass cls = (*env)->GetObjectClass(env, axContext);
+    jclass cls = (*env)->GetObjectClass(env, axContext);
     DECLARE_METHOD_RETURN(jm_getAccessibleRowCount, cls, "getAccessibleRowCount", "()I", 0);
     jint javaRowsCount = (*env)->CallIntMethod(env, axContext, jm_getAccessibleRowCount);
     CHECK_EXCEPTION();
@@ -30,7 +30,7 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return 0;
-    static jclass cls = (*env)->GetObjectClass(env, axContext);
+    jclass cls = (*env)->GetObjectClass(env, axContext);
     DECLARE_METHOD_RETURN(jm_getAccessibleColumnCount, cls, "getAccessibleColumnCount", "()I", 0);
     jint javaColsCount = (*env)->CallIntMethod(env, axContext, jm_getAccessibleColumnCount);
     CHECK_EXCEPTION();
@@ -42,7 +42,7 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return nil;
-    static jclass cls = (*env)->GetObjectClass(env, axContext);
+    jclass cls = (*env)->GetObjectClass(env, axContext);
     DECLARE_METHOD_RETURN(jm_getSelectedAccessibleRows, cls, "getSelectedAccessibleRows", "()[I", nil);
     jintArray selectidRowNumbers = (*env)->CallObjectMethod(env, axContext, jm_getSelectedAccessibleRows);
     CHECK_EXCEPTION();
@@ -64,7 +64,7 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return nil;
-    static jclass cls = (*env)->GetObjectClass(env, axContext);
+    jclass cls = (*env)->GetObjectClass(env, axContext);
     DECLARE_METHOD_RETURN(jm_getSelectedAccessibleColumns, cls, "getSelectedAccessibleColumns", "()[I", nil);
     jintArray selectidColumnNumbers = (*env)->CallObjectMethod(env, axContext, jm_getSelectedAccessibleColumns);
     CHECK_EXCEPTION();
@@ -86,7 +86,7 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return 0;
-    static jclass cls = (*env)->GetObjectClass(env, axContext);
+    jclass cls = (*env)->GetObjectClass(env, axContext);
     DECLARE_METHOD_RETURN(jm_getAccessibleRowAtIndex, cls, "getAccessibleRowAtIndex", "(I)I", 0);
     jint rowAtIndex = (*env)->CallIntMethod(env, axContext, jm_getAccessibleRowAtIndex, (jint)index);
     CHECK_EXCEPTION();
@@ -98,7 +98,7 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return 0;
-    static jclass cls = (*env)->GetObjectClass(env, axContext);
+    jclass cls = (*env)->GetObjectClass(env, axContext);
     DECLARE_METHOD_RETURN(jm_getAccessibleColumnAtIndex, cls, "getAccessibleColumnAtIndex", "(I)I", 0);
     jint columnAtIndex = (*env)->CallIntMethod(env, axContext, jm_getAccessibleColumnAtIndex, (jint)index);
     CHECK_EXCEPTION();
@@ -110,7 +110,7 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return NO;
-    static jclass cls = (*env)->GetObjectClass(env, axContext);
+    jclass cls = (*env)->GetObjectClass(env, axContext);
     DECLARE_METHOD_RETURN(jm_isAccessibleChildSelected, cls, "isAccessibleChildSelected", "(I)Z", NO);
     jboolean isAccessibleChildSelected = (*env)->CallBooleanMethod(env, axContext, jm_isAccessibleChildSelected, (jint)index);
     CHECK_EXCEPTION();

@@ -260,4 +260,6 @@ JNIEXPORT NSString* NormalizedPathNSStringFromJavaString(JNIEnv *env, jstring pa
 
 JNIEXPORT jstring NormalizedPathJavaStringFromNSString(JNIEnv* env, NSString *str);
 
+JNIEXPORT NSString* JNIObjectToNSString(JNIEnv *env, jobject obj);
+
 #endif /* __JNIUTILITIES_H */

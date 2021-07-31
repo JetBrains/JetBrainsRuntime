@@ -16,7 +16,7 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return nil;
-    static jclass cls = (*env)->GetObjectClass(env, axContext);
+    jclass cls = (*env)->GetObjectClass(env, axContext);
     DECLARE_METHOD_RETURN(jm_getAccessibleSelection, cls, "getAccessibleSelection", "(I)Ljavax/accessibility/Accessible;", nil);
     jobject axSelectedChild = (*env)->CallObjectMethod(env, axContext, jm_getAccessibleSelection, 0);
     CHECK_EXCEPTION();
@@ -24,7 +24,7 @@
     if (axSelectedChild == NULL) {
         return nil;
     }
-    DECLARE_CLASS_RETURN(sjc_CAccessible, "sun/lwawt/macosx/CAccessible", nil);
+    DECLARE_CLASS_RETURN(sjc_CAccessibility, "sun/lwawt/macosx/CAccessibility", nil);
     DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName",
                           "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;", nil);
     jobject childName = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleName, axSelectedChild, fComponent);
@@ -33,7 +33,7 @@
         (*env)->DeleteLocalRef(env, axSelectedChild);
         return nil;
     }
-    NSString *selectedText = JNFObjectToString(env, childName);
+    NSString *selectedText = JNIObjectToNSString(env, childName);
     (*env)->DeleteLocalRef(env, axSelectedChild);
     (*env)->DeleteLocalRef(env, childName);
     return selectedText;
