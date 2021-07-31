@@ -17,7 +17,7 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject jAxContext = getAxContext(env, fAccessible, fComponent);
     if (jAxContext == NULL) return nil;
-    static jclass cls = (*env)->GetObjectClass(env, jAxContext);
+    jclass cls = (*env)->GetObjectClass(env, jAxContext);
     DECLARE_METHOD_RETURN(jm_getCurrentComponent, cls, "getCurrentComponent", "()Ljava/awt/Component;", nil);
     jobject newComponent = (*env)->CallObjectMethod(env, jAxContext, jm_getCurrentComponent);
     CHECK_EXCEPTION();

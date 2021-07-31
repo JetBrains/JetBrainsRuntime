@@ -106,3 +106,14 @@ jstring NormalizedPathJavaStringFromNSString(JNIEnv* env, NSString *str) {
     NSString *normStr = [str precomposedStringWithCanonicalMapping];
     return NSStringToJavaString(env, normStr);
 }
+
+NSString *JNIObjectToNSString(JNIEnv *env, jobject obj)
+{
+    DECLARE_CLASS_RETURN(sjc_Object, "java/lang/Object", nil);
+    DECLARE_METHOD_RETURN(jm_toString, sjc_Object, "toString", "()Ljava/lang/String;", nil);
+    jobject name = (*env)->CallObjectMethod(env, obj, jm_toString);
+
+    NSString* result = JavaStringToNSString(env, name);
+    (*env)->DeleteLocalRef(env, name);
+    return result;
+}

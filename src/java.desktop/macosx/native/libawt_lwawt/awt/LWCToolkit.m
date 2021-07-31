@@ -601,7 +601,7 @@ JNI_COCOA_ENTER(env);
     // Don't use acceptInputForMode because that doesn't setup autorelease pools properly
     BOOL isRunning = true;
     while (![mediatorObject shouldEndRunLoop] && isRunning) {
-        isRunning = [[NSRunLoop currentRunLoop] runMode:(inAWT ? [JNFRunLoop javaRunLoopMode] : NSDefaultRunLoopMode)
+        isRunning = [[NSRunLoop currentRunLoop] runMode:(inAWT ? [ThreadUtilities javaRunLoopMode] : NSDefaultRunLoopMode)
                                              beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.010]];
         if (difftime(timeThreshold, time(NULL)) < 0) {
             result = JNI_FALSE;
@@ -694,7 +694,7 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isApplicationActive
 AWT_ASSERT_NOT_APPKIT_THREAD;
 JNI_COCOA_ENTER(env);
 
-        [JNFRunLoop performOnMainThreadWaiting:YES withBlock:^() {
+        [ThreadUtilities performOnMainThreadWaiting:YES withBlock:^() {
                 active = (jboolean)[NSRunningApplication currentApplication].active;
         }];
 

@@ -487,8 +487,8 @@ AWT_ASSERT_APPKIT_THREAD;
         DECLARE_FIELD_RETURN(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;", NSWindowTabbingModeDisallowed);
         jobject awtWindow = (*env)->GetObjectField(env, platformWindow, jf_target);
         if (awtWindow != NULL) {
-            DECLARE_CLASS(jc_Window, "java/awt/Window");
-            DECLARE_METHOD(jm_hasTabbingMode, jc_Window, "hasTabbingMode", "()Z");
+            DECLARE_CLASS_RETURN(jc_Window, "java/awt/Window", NSWindowTabbingModeDisallowed);
+            DECLARE_METHOD_RETURN(jm_hasTabbingMode, jc_Window, "hasTabbingMode", "()Z", NSWindowTabbingModeDisallowed);
             result = (*env)->CallBooleanMethod(env, awtWindow, jm_hasTabbingMode) == JNI_TRUE ? YES : NO;
             CHECK_EXCEPTION();
             (*env)->DeleteLocalRef(env, awtWindow);
@@ -1205,8 +1205,8 @@ JNI_COCOA_ENTER(env);
     DECLARE_FIELD_RETURN(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;", ptr_to_jlong(nil));
     jobject awtWindow = (*env)->GetObjectField(env, obj, jf_target);
     if (awtWindow != NULL) {
-        DECLARE_CLASS(jc_Window, "java/awt/Window");
-        DECLARE_METHOD(jm_isIgnoreMouseEvents, jc_Window, "isIgnoreMouseEvents", "()Z");
+        DECLARE_CLASS_RETURN(jc_Window, "java/awt/Window", ptr_to_jlong(nil));
+        DECLARE_METHOD_RETURN(jm_isIgnoreMouseEvents, jc_Window, "isIgnoreMouseEvents", "()Z", ptr_to_jlong(nil));
         isIgnoreMouseEvents = (*env)->CallBooleanMethod(env, awtWindow, jm_isIgnoreMouseEvents) == JNI_TRUE ? YES : NO;
         CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, awtWindow);

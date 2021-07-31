@@ -7,6 +7,9 @@
 #import "JNIUtilities.h"
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
+// GET* macros defined in JavaAccessibilityUtilities.h, so they can be shared.
+static jclass sjc_CAccessibility = NULL;
+
 static jmethodID jm_getChildrenAndRoles = NULL;
 #define GET_CHILDRENANDROLES_METHOD_RETURN(ret) \
     GET_CACCESSIBILITY_CLASS_RETURN(ret); \
@@ -57,6 +60,8 @@ static jmethodID jm_getChildrenAndRoles = NULL;
         (*env)->DeleteLocalRef(env, jtabsAndRoles);
         return nil;
     }
+    DECLARE_CLASS_RETURN(sjc_AccessibleRole, "javax/accessibility/AccessibleRole", nil);
+    DECLARE_FIELD_RETURN(sjf_key, sjc_AccessibleRole, "key", "Ljava/lang/String;", nil);
     jobject jkey = (*env)->GetObjectField(env, jtabJavaRole, sjf_key);
     NSString *tabJavaRole = JavaStringToNSString(env, jkey);
     (*env)->DeleteLocalRef(env, jkey);

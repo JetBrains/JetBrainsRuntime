@@ -205,7 +205,7 @@ BOOL isExpanded(JNIEnv *env, jobject axContext, jobject component)
     DECLARE_STATIC_FIELD_RETURN(jm_EXPANDED,
                                     sjc_AccessibleState,
                                     "EXPANDED",
-                                    "Ljavax/accessibility/AccessibleState;" );
+                                    "Ljavax/accessibility/AccessibleState;", NO);
     jobject axExpandedState = (*env)->GetStaticObjectField(env, sjc_AccessibleState, jm_EXPANDED);
     CHECK_EXCEPTION_NULL_RETURN(axExpandedState, NO);
     BOOL expanded = containsAxState(env, axContext, axExpandedState, component);
@@ -219,7 +219,7 @@ BOOL isExpandable(JNIEnv *env, jobject axContext, jobject component)
     DECLARE_STATIC_FIELD_RETURN(jm_EXPANDABLE,
                                     sjc_AccessibleState,
                                     "EXPANDABLE",
-                                    "Ljavax/accessibility/AccessibleState;" );
+                                    "Ljavax/accessibility/AccessibleState;", NO);
     jobject axExpandableState = (*env)->GetStaticObjectField(env, sjc_AccessibleState, jm_EXPANDABLE);
     CHECK_EXCEPTION_NULL_RETURN(axExpandableState, NO);
     BOOL expandable = containsAxState(env, axContext, axExpandableState, component);
@@ -233,7 +233,7 @@ BOOL isCollapsed(JNIEnv *env, jobject axContext, jobject component)
     DECLARE_STATIC_FIELD_RETURN(jm_COLLAPSED,
                                     sjc_AccessibleState,
                                     "COLLAPSED",
-                                    "Ljavax/accessibility/AccessibleState;" );
+                                    "Ljavax/accessibility/AccessibleState;", NO);
     jobject axCollapsedState = (*env)->GetStaticObjectField(env, sjc_AccessibleState, jm_COLLAPSED);
     CHECK_EXCEPTION_NULL_RETURN(axCollapsedState, NO);
     BOOL collapsed = containsAxState(env, axContext, axCollapsedState, component);
