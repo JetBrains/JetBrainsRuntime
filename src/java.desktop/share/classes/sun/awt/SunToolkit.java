@@ -234,15 +234,38 @@ public abstract class SunToolkit extends Toolkit
     private static final ReentrantLock AWT_LOCK = new ReentrantLock();
     private static final Condition AWT_LOCK_COND = AWT_LOCK.newCondition();
 
+    public interface AwtLockListener {
+        void afterAwtLocked();
+        void beforeAwtUnlocked();
+    }
+
+    private static java.util.List<AwtLockListener> awtLockListeners;
+    public static synchronized void addAwtLockListener(AwtLockListener l) {
+        if (awtLockListeners == null) {
+             awtLockListeners = Collections.synchronizedList(new ArrayList<>());
+        }
+        awtLockListeners.add(l);
+    }
+
     public static final void awtLock() {
         AWT_LOCK.lock();
+        if (awtLockListeners != null) {
+            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+        }
     }
 
     public static final boolean awtTryLock() {
-        return AWT_LOCK.tryLock();
+        final boolean wasLocked = AWT_LOCK.tryLock();
+        if (wasLocked && awtLockListeners != null) {
+            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+        }
+        return wasLocked;
     }
 
     public static final void awtUnlock() {
+        if (awtLockListeners != null) {
+            awtLockListeners.forEach(AwtLockListener::beforeAwtUnlocked);
+        }
         AWT_LOCK.unlock();
     }
 
