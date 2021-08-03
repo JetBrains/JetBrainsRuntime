@@ -1342,7 +1342,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
     public Point windowToLocal(Point p, LWWindowPeer wp) {
         LWComponentPeer<?, ?> cp = this;
-        while (cp != wp) {
+        while (cp != wp && cp != null) {
             Rectangle cpb = cp.getBounds();
             p.x -= cpb.x;
             p.y -= cpb.y;
