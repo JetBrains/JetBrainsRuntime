@@ -111,6 +111,9 @@ import java.awt.peer.TextFieldPeer;
 import java.awt.peer.TrayIconPeer;
 import java.awt.peer.WindowPeer;
 import java.beans.PropertyChangeListener;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -123,6 +126,12 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.TimeUnit;
+import java.util.Deque;
+import java.util.ArrayDeque;
+import java.util.AbstractMap;
+import java.util.StringTokenizer;
+import java.util.Optional;
+import java.util.Set;
 
 import javax.swing.LookAndFeel;
 import javax.swing.UIDefaults;
@@ -153,6 +162,280 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     private static final PlatformLogger timeoutTaskLog = PlatformLogger.getLogger("sun.awt.X11.timeoutTask.XToolkit");
     private static final PlatformLogger keyEventLog = PlatformLogger.getLogger("sun.awt.X11.kye.XToolkit");
     private static final PlatformLogger backingStoreLog = PlatformLogger.getLogger("sun.awt.X11.backingStore.XToolkit");
+
+    public static final class Tracer {
+        private static int flags;               // what to trace (see TRACE... below)
+        private static String fileName;         // where to trace to (file or stderr if null)
+        private static String pattern;          // limit tracing to method names containing this pattern (ignore case)
+        private static PrintStream outStream;   // stream to trace to
+        private static long threshold = 0;      // minimum time delta to record the event
+        private static boolean verbose = false; // verbose tracing
+
+        private static final int TRACELOG       = 1;
+        private static final int TRACETIMESTAMP = 1 << 1;
+        private static final int TRACESTATS     = 1 << 2;
+
+        private static void showTraceUsage() {
+            System.err.println("usage: -Dsun.awt.x11.trace=" +
+                    "[log[,timestamp]],[stats],[name:<substr pattern>]," +
+                    "[out:<filename>],[td=<threshold>],[help],[verbose]");
+        }
+
+        static {
+            final String trace = System.getProperty("sun.awt.x11.trace");
+            if (trace != null) {
+                int traceFlags = 0;
+                final StringTokenizer st = new StringTokenizer(trace, ",");
+                while (st.hasMoreTokens()) {
+                    final String tok = st.nextToken();
+                    if (tok.equalsIgnoreCase("stats")) {
+                        traceFlags |= TRACESTATS;
+                    } else if (tok.equalsIgnoreCase("log")) {
+                        traceFlags |= TRACELOG;
+                    } else if (tok.equalsIgnoreCase("timestamp")) {
+                        traceFlags |= TRACETIMESTAMP;
+                    } else if (tok.regionMatches(true, 0, "name:", 0, 5)) {
+                        pattern = tok.substring(5).toUpperCase();
+                    } else if (tok.equalsIgnoreCase("verbose")) {
+                        verbose = true;
+                    } else if (tok.regionMatches(true, 0, "out:", 0, 4)) {
+                        fileName = tok.substring(4);
+                    } else if (tok.regionMatches(true, 0, "td=", 0, 3)) {
+                        try {
+                            threshold = Long.max(Long.parseLong(tok.substring(3)), 0);
+                        } catch (NumberFormatException e) {
+                            showTraceUsage();
+                        }
+                    } else {
+                        if (!tok.equalsIgnoreCase("help")) {
+                            System.err.println("unrecognized token: " + tok);
+                        }
+                        showTraceUsage();
+                    }
+                }
+
+                if (verbose) {
+                    System.err.print("XToolkit logging ");
+                    if ((traceFlags & TRACELOG) != 0) {
+                        System.err.println("enabled");
+                        System.err.print("XToolkit timestamps ");
+                        if ((traceFlags & TRACETIMESTAMP) != 0) {
+                            System.err.println("enabled");
+                        } else {
+                            System.err.println("disabled");
+                        }
+                    } else {
+                        System.err.println("[and timestamps] disabled");
+                    }
+                    System.err.print("XToolkit invocation statistics at exit ");
+                    if ((traceFlags & TRACESTATS) != 0) {
+                        System.err.println("enabled");
+                    } else {
+                        System.err.println("disabled");
+                    }
+                    System.err.print("XToolkit trace output to ");
+                    if (fileName == null) {
+                        System.err.println("System.err");
+                    } else {
+                        System.err.println("file '" + fileName + "'");
+                    }
+                    if (pattern != null) {
+                        System.err.println("XToolkit trace limited to " + pattern);
+                    }
+                }
+
+                Tracer.flags = traceFlags;
+            }
+        }
+
+        public static boolean tracingEnabled() {
+            return (flags != 0);
+        }
+
+        private static synchronized PrintStream getTraceOutputFile() {
+            if (outStream == null) {
+                outStream = System.err;
+                if (fileName != null) {
+                    try {
+                        outStream = new PrintStream(new FileOutputStream(fileName), true);
+                    } catch (FileNotFoundException e) {
+                    }
+                }
+            }
+            return outStream;
+        }
+
+        private static long lastTimeMs = System.currentTimeMillis();
+
+        private static synchronized void outputTraceLine(String prefix, String line) {
+            final StringBuilder outStr = new StringBuilder(prefix);
+            outStr.append(' ');
+            if ((flags & TRACETIMESTAMP) != 0) {
+                final long curTimeMs = System.currentTimeMillis();
+                outStr.append(String.format("+ %1$03dms ", curTimeMs - lastTimeMs));
+                lastTimeMs = curTimeMs;
+            }
+            outStr.append(line);
+            getTraceOutputFile().println(outStr);
+        }
+
+        public static void traceRawLine(String line) {
+            getTraceOutputFile().println(line);
+        }
+
+        public static void traceLine(String line) {
+            outputTraceLine("[LOG] ", line);
+        }
+
+        public static void traceError(String msg) {
+            outputTraceLine("[ERR] ", msg);
+        }
+
+        private static boolean isInterestedInMethod(String mname) {
+            return (pattern == null || mname.toUpperCase().contains(pattern));
+        }
+
+        private static final class AwtLockerDescriptor {
+            public long startTimeMs;             // when the locking has occurred
+            public StackWalker.StackFrame frame; // the frame that called awtLock()
+
+            public AwtLockerDescriptor(StackWalker.StackFrame frame, long start) {
+                this.startTimeMs = start;
+                this.frame       = frame;
+            }
+        }
+
+        private static final Deque<AwtLockerDescriptor> awtLockersStack = new ArrayDeque<>();
+
+        private static void pushAwtLockCaller(StackWalker.StackFrame frame, long startTimeMs) {
+            // accessed under AWT lock so no need for additional synchronization
+            awtLockersStack.push(new AwtLockerDescriptor(frame, startTimeMs));
+        }
+
+        private static long popAwtLockCaller(StackWalker.StackFrame frame, long finishTimeMs) {
+            // accessed under AWT lock so no need for additional synchronization
+            try {
+                final AwtLockerDescriptor descr = awtLockersStack.pop();
+                if (descr.frame.getMethodName().compareTo(frame.getMethodName()) != 0) {
+                    // Note: this often happens with XToolkit.waitForEvents()/XToolkit.run().
+                    // traceError("Mismatching awtLock()/awtUnlock(): locked by " + descr.frame + ", unlocked by " + frame);
+                }
+                return finishTimeMs - descr.startTimeMs;
+            } catch(NoSuchElementException e) {
+                traceError("No matching awtLock() for awtUnlock(): " + frame);
+            }
+
+            return -1;
+        }
+
+        private static class AwtLockTracer implements SunToolkit.AwtLockListener {
+            private static final Set<String> awtLockerMethods = Set.of("awtLock", "awtUnlock", "awtTryLock");
+
+            private static StackWalker.StackFrame getLockCallerFrame() {
+                Optional<StackWalker.StackFrame> frame = StackWalker.getInstance().walk(
+                        s -> s.dropWhile(stackFrame -> !awtLockerMethods.contains(stackFrame.getMethodName()))
+                                .dropWhile(stackFrame -> awtLockerMethods.contains( stackFrame.getMethodName()))
+                                .findFirst() );
+
+                return frame.orElse(null);
+            }
+
+            public void afterAwtLocked() {
+                final StackWalker.StackFrame awtLockerFrame = getLockCallerFrame();
+                if (awtLockerFrame != null) {
+                    final String mname = awtLockerFrame.getMethodName();
+                    if (isInterestedInMethod(mname)) {
+                        pushAwtLockCaller(awtLockerFrame, System.currentTimeMillis());
+                    }
+                }
+            }
+
+            public void beforeAwtUnlocked() {
+                final StackWalker.StackFrame awtLockerFrame = getLockCallerFrame();
+                if (awtLockerFrame != null) {
+                    final String mname = awtLockerFrame.getMethodName();
+                    if (isInterestedInMethod(mname)) {
+                        final long timeSpentMs = popAwtLockCaller(awtLockerFrame, System.currentTimeMillis());
+                        if (timeSpentMs >= threshold) {
+                            updateStatistics(awtLockerFrame.toString(), timeSpentMs);
+                            traceLine(String.format("%s held AWT lock for %dms", awtLockerFrame, timeSpentMs));
+                        }
+                    }
+                }
+            }
+        }
+
+        private static final class MethodStats implements Comparable<MethodStats> {
+            public  long minTimeMs;
+            public  long maxTimeMs;
+            public  long count;
+            private long totalTimeMs;
+
+            MethodStats() {
+                this.minTimeMs = Long.MAX_VALUE;
+            }
+
+            public void update(long timeSpentMs) {
+                count++;
+                minTimeMs    = Math.min(minTimeMs, timeSpentMs);
+                maxTimeMs    = Math.max(maxTimeMs, timeSpentMs);
+                totalTimeMs += timeSpentMs;
+            }
+
+            public long averageTimeMs() {
+                return (long)((double)totalTimeMs / count);
+            }
+
+            @Override
+            public int compareTo(MethodStats other) {
+                return Long.compare(other.averageTimeMs(), this.averageTimeMs());
+            }
+
+            @Override
+            public String toString() {
+                return String.format("%dms (%dx[%d-%d]ms)",  averageTimeMs(), count, minTimeMs, maxTimeMs);
+            }
+        }
+
+        private static HashMap<String, MethodStats> methodTimingTable;
+
+        private static synchronized void updateStatistics(String mname, long timeSpentMs) {
+            if ((flags & TRACESTATS) != 0) {
+                if (methodTimingTable == null) {
+                    methodTimingTable = new HashMap<>(1024);
+                    TraceReporter.setShutdownHook();
+                }
+
+                final MethodStats descr = methodTimingTable.computeIfAbsent(mname, k -> new MethodStats());
+                descr.update(timeSpentMs);
+            }
+        }
+
+        private static class TraceReporter implements Runnable {
+            public static void setShutdownHook() {
+                final Tracer.TraceReporter t = new Tracer.TraceReporter();
+                final Thread thread = new Thread(ThreadGroupUtils.getRootThreadGroup(), t,
+                                                 "XToolkit TraceReporter", 0, false);
+                thread.setContextClassLoader(null);
+                Runtime.getRuntime().addShutdownHook(thread);
+            }
+
+            public void run() {
+                traceRawLine("");
+                traceRawLine("AWT Lock usage statistics");
+                traceRawLine("=========================");
+                final ArrayList<AbstractMap.SimpleImmutableEntry<String, MethodStats>> l;
+                synchronized(Tracer.class) { // in order to avoid methodTimingTable modifications during the traversal
+                    l = new ArrayList<>(methodTimingTable.size());
+                    methodTimingTable.forEach((fname, fdescr)
+                            -> l.add(new AbstractMap.SimpleImmutableEntry<>(fname, fdescr)));
+                }
+                l.sort(Map.Entry.comparingByValue());
+                l.forEach(item -> traceRawLine(item.getValue() + " --- " + item.getKey()));
+                traceRawLine("Legend: <avg time> ( <times called> x [ <fastest time> - <slowest time> ] ms) --- <caller of XToolkit.awtUnlock()>");
+            }
+        }
+    }
 
     //There is 400 ms is set by default on Windows and 500 by default on KDE and GNOME.
     //We use the same hardcoded constant.
@@ -394,6 +677,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         super();
         if (PerformanceLogger.loggingEnabled()) {
             PerformanceLogger.setTime("XToolkit construction");
+        }
+
+        if (Tracer.tracingEnabled()) {
+            addAwtLockListener(new Tracer.AwtLockTracer());
         }
 
         if (!GraphicsEnvironment.isHeadless()) {
