@@ -1138,7 +1138,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             }
             nativeSetEnabled(ptr, !blocked);
         });
-        checkBlockingAndOrder();
     }
 
     public final void invalidateShadow() {
