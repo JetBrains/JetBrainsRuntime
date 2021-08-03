@@ -4533,6 +4533,8 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 // to translate to client area.
                 g.translate(insets.left, insets.top);
                 for (int i = 0; i < backBuffers.length; i++) {
+                    if (backBuffers[i] == null) continue;
+
                     g.drawImage(backBuffers[i],
                                 x1, y1, x2, y2,
                                 x1, y1, x2, y2,
