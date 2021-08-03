@@ -3201,6 +3201,7 @@ bool IdealLoopTree::iteration_split_impl( PhaseIdealLoop *phase, Node_List &old_
       phase->do_peeling(this,old_new);
     } else if (should_unswitch) {
       phase->do_unswitching(this, old_new);
+      return false; // need to recalculate idom data
     }
     return true;
   }
@@ -3219,7 +3220,7 @@ bool IdealLoopTree::iteration_split_impl( PhaseIdealLoop *phase, Node_List &old_
   if (cl->is_normal_loop()) {
     if (should_unswitch) {
       phase->do_unswitching(this, old_new);
-      return true;
+      return false; // need to recalculate idom data
     }
     bool should_maximally_unroll =  policy_maximally_unroll(phase);
     if (should_maximally_unroll) {
@@ -3344,6 +3345,7 @@ bool IdealLoopTree::iteration_split( PhaseIdealLoop *phase, Node_List &old_new )
         }
     } else if (policy_unswitching(phase)) {
       phase->do_unswitching(this, old_new);
+      return false; // need to recalculate idom data
     }
   }
 
