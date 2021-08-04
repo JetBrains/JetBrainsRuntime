@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -99,7 +99,7 @@ AC_DEFUN([TOOLCHAIN_CHECK_POSSIBLE_VISUAL_STUDIO_ROOT],
     METHOD="$3"
 
     BASIC_WINDOWS_REWRITE_AS_UNIX_PATH(VS_BASE)
-    # In VS 2017, the default installation is in a subdir named after the edition.
+    # In VS 2017 and VS 2019, the default installation is in a subdir named after the edition.
     # Find the first one present and use that.
     if test "x$VS_EDITIONS" != x; then
       for edition in $VS_EDITIONS; do
