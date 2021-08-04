@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,32 +58,30 @@ class TestDependencyContext {
     return ctx.has_stale_entries();
   }
 
-#ifndef PRODUCT
   static bool find_stale_entries(DependencyContext ctx) {
     return ctx.find_stale_entries();
   }
-#endif
 };
 
 static void test_remove_dependent_nmethod(int id, bool delete_immediately) {
   TestDependencyContext c;
   DependencyContext depContext = c.dependencies();
-  NOT_PRODUCT(ASSERT_FALSE(TestDependencyContext::find_stale_entries(depContext)));
+  ASSERT_FALSE(TestDependencyContext::find_stale_entries(depContext));
   ASSERT_FALSE(TestDependencyContext::has_stale_entries(depContext));
 
   nmethod* nm = c._nmethods[id];
   depContext.remove_dependent_nmethod(nm, delete_immediately);
 
   if (!delete_immediately) {
-    NOT_PRODUCT(ASSERT_TRUE(TestDependencyContext::find_stale_entries(depContext)));
+    ASSERT_TRUE(TestDependencyContext::find_stale_entries(depContext));
     ASSERT_TRUE(TestDependencyContext::has_stale_entries(depContext));
-    NOT_PRODUCT(ASSERT_TRUE(depContext.is_dependent_nmethod(nm)));
+    ASSERT_TRUE(depContext.is_dependent_nmethod(nm));
     depContext.expunge_stale_entries();
   }
 
-  NOT_PRODUCT(ASSERT_FALSE(TestDependencyContext::find_stale_entries(depContext)));
+  ASSERT_FALSE(TestDependencyContext::find_stale_entries(depContext));
   ASSERT_FALSE(TestDependencyContext::has_stale_entries(depContext));
-  NOT_PRODUCT(ASSERT_FALSE(depContext.is_dependent_nmethod(nm)));
+  ASSERT_FALSE(depContext.is_dependent_nmethod(nm));
 }
 
 TEST_VM(code, dependency_context) {
