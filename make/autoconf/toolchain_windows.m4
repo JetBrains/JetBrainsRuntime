@@ -87,6 +87,7 @@ VS_SDK_INSTALLDIR_2017=
 VS_VS_PLATFORM_NAME_2017="v141"
 VS_SDK_PLATFORM_NAME_2017=
 VS_SUPPORTED_2017=true
+VS_TOOLSET_SUPPORTED_2017=true
 
 VS_DESCRIPTION_2019="Microsoft Visual Studio 2019"
 VS_VERSION_INTERNAL_2019=142
@@ -196,6 +197,15 @@ AC_DEFUN([TOOLCHAIN_CHECK_POSSIBLE_WIN_SDK_ROOT],
 # build environment and assigns it to VS_ENV_CMD
 AC_DEFUN([TOOLCHAIN_FIND_VISUAL_STUDIO_BAT_FILE],
 [
+  # VS2017 provides the option to install previous minor versions of the MSVC
+  # toolsets. It is not possible to directly download earlier minor versions of
+  # VS2017 and in order to build with a previous minor compiler toolset version,
+  # it is now possible to compile with earlier minor versions by passing
+  # -vcvars_ver=<toolset_version> argument to vcvarsall.bat.
+  AC_ARG_WITH(msvc-toolset-version, [AS_HELP_STRING([--with-msvc-toolset-version],
+      [specific MSVC toolset version to use, passed as -vcvars_ver argument to
+       pass to vcvarsall.bat (Windows only)])])
+
   VS_VERSION="$1"
   eval VS_COMNTOOLS_VAR="\${VS_ENVVAR_${VS_VERSION}}"
   eval VS_COMNTOOLS="\$${VS_COMNTOOLS_VAR}"
@@ -203,6 +213,7 @@ AC_DEFUN([TOOLCHAIN_FIND_VISUAL_STUDIO_BAT_FILE],
   eval VS_EDITIONS="\${VS_EDITIONS_${VS_VERSION}}"
   eval SDK_INSTALL_DIR="\${VS_SDK_INSTALLDIR_${VS_VERSION}}"
   eval VS_ENV_ARGS="\${VS_ENV_ARGS_${VS_VERSION}}"
+  eval VS_TOOLSET_SUPPORTED="\${VS_TOOLSET_SUPPORTED_${VS_VERSION}}"
 
   VS_ENV_CMD=""
 
@@ -259,6 +270,12 @@ AC_DEFUN([TOOLCHAIN_FIND_VISUAL_STUDIO_BAT_FILE],
         [C:/Program Files/$SDK_INSTALL_DIR], [well-known name])
     TOOLCHAIN_CHECK_POSSIBLE_WIN_SDK_ROOT([${VS_VERSION}],
         [C:/Program Files (x86)/$SDK_INSTALL_DIR], [well-known name])
+  fi
+
+  if test "x$VS_TOOLSET_SUPPORTED" != x; then
+    if test "x$with_msvc_toolset_version" != x; then
+      VS_ENV_ARGS="$VS_ENV_ARGS -vcvars_ver=$with_msvc_toolset_version"
+    fi
   fi
 ])
 
@@ -416,6 +433,8 @@ AC_DEFUN([TOOLCHAIN_SETUP_VISUAL_STUDIO_ENV],
           >> $EXTRACT_VC_ENV_BAT_FILE
       $ECHO "$WINPATH_BASH -c 'echo VCINSTALLDIR="'\"$VCINSTALLDIR \" >> set-vs-env.sh' \
           >> $EXTRACT_VC_ENV_BAT_FILE
+      $ECHO "$WINPATH_BASH -c 'echo VCToolsRedistDir="'\"$VCToolsRedistDir \" >> set-vs-env.sh' \
+          >> $EXTRACT_VC_ENV_BAT_FILE
       $ECHO "$WINPATH_BASH -c 'echo WindowsSdkDir="'\"$WindowsSdkDir \" >> set-vs-env.sh' \
           >> $EXTRACT_VC_ENV_BAT_FILE
       $ECHO "$WINPATH_BASH -c 'echo WINDOWSSDKDIR="'\"$WINDOWSSDKDIR \" >> set-vs-env.sh' \
@@ -461,6 +480,7 @@ AC_DEFUN([TOOLCHAIN_SETUP_VISUAL_STUDIO_ENV],
       VS_INCLUDE=`$ECHO "$VS_INCLUDE" | $SED -e 's/\\\\*;* *$//'`
       VS_LIB=`$ECHO "$VS_LIB" | $SED 's/\\\\*;* *$//'`
       VCINSTALLDIR=`$ECHO "$VCINSTALLDIR" | $SED 's/\\\\* *$//'`
+      VCToolsRedistDir=`$ECHO "$VCToolsRedistDir" | $SED 's/\\\\* *$//'`
       WindowsSdkDir=`$ECHO "$WindowsSdkDir" | $SED 's/\\\\* *$//'`
       WINDOWSSDKDIR=`$ECHO "$WINDOWSSDKDIR" | $SED 's/\\\\* *$//'`
       if test -z "$WINDOWSSDKDIR"; then
@@ -555,6 +575,8 @@ AC_DEFUN([TOOLCHAIN_SETUP_MSVC_DLL],
         # Probe: Using well-known location from Visual Studio 12.0 and older
         POSSIBLE_MSVC_DLL="$CYGWIN_VC_INSTALL_DIR/redist/$vs_target_cpu/Microsoft.VC${VS_VERSION_INTERNAL}.CRT/$DLL_NAME"
       else
+        CYGWIN_VC_TOOLS_REDIST_DIR="$VCToolsRedistDir"
+        BASIC_FIXUP_PATH(CYGWIN_VC_TOOLS_REDIST_DIR)
         # Probe: Using well-known location from VS 2017
         POSSIBLE_MSVC_DLL="`ls $CYGWIN_VC_INSTALL_DIR/Redist/MSVC/*/$vs_target_cpu/Microsoft.VC${VS_VERSION_INTERNAL}.CRT/$DLL_NAME`"
       fi
