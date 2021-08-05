@@ -47,6 +47,8 @@
 #include "awt_p.h"
 #include "awt_GraphicsEnv.h"
 
+#include "keycode_cache.h"
+
 #define XK_KATAKANA
 #include <X11/keysym.h>     /* standard X keysyms */
 #include <X11/DECkeysym.h>  /* DEC vendor-specific */
@@ -812,6 +814,7 @@ isXKBenabled(Display *display) {
     return awt_UseXKB;
 }
 
+#ifndef USE_KEYCODE_CACHE
 /*
  * Map a keycode to the corresponding keysym.
  * This replaces the deprecated X11 function XKeycodeToKeysym
@@ -836,6 +839,7 @@ keycodeToKeysym(Display *display, KeyCode keycode, int index) {
     XFree(key_syms);
     return ks;
 }
+#endif // USE_KEYCODE_CACHE
 
 static Boolean
 isKPevent(XEvent *event)
