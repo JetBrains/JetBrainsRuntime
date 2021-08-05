@@ -360,8 +360,7 @@ static void nsPrintInfoToJavaPrinterJob(JNIEnv* env, NSPrintInfo* src, jobject d
     DECLARE_METHOD(jm_setPageRangeAttribute, sjc_CPrinterJob, "setPageRangeAttribute", "(IIZ)V");
     DECLARE_METHOD(jm_setPrintToFile, sjc_CPrinterJob, "setPrintToFile", "(Z)V");
 
-    NSPrintJobDispositionValue jobDisposition = [src jobDisposition];
-    if (jobDisposition == NSPrintSaveJob) {
+    if (src.jobDisposition == NSPrintSaveJob) {
         (*env)->CallVoidMethod(env, dstPrinterJob, jm_setPrintToFile, true);
     } else {
         (*env)->CallVoidMethod(env, dstPrinterJob, jm_setPrintToFile, false);
