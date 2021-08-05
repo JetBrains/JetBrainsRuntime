@@ -635,6 +635,24 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 }
 
+- (void) processVisibleChildren:(void(^)(AWTWindow*))action {
+    NSEnumerator *windowEnumerator = [[NSApp windows]objectEnumerator];
+    NSWindow *window;
+    while ((window = [windowEnumerator nextObject]) != nil) {
+        if ([AWTWindow isJavaPlatformWindowVisible:window]) {
+            AWTWindow *awtWindow = (AWTWindow *)[window delegate];
+            AWTWindow *parent = awtWindow.ownerWindow;
+            while (parent != nil) {
+                if (parent == self) {
+                    action(awtWindow);
+                    break;
+                }
+                parent = parent.ownerWindow;
+            }
+        }
+    }
+}
+
 // Orders window's childs based on the current focus state
 - (void) orderChildWindows:(BOOL)focus {
 AWT_ASSERT_APPKIT_THREAD;
@@ -644,39 +662,28 @@ AWT_ASSERT_APPKIT_THREAD;
         return;
     }
 
-    NSEnumerator *windowEnumerator = [[NSApp windows]objectEnumerator];
-    NSWindow *window;
-    while ((window = [windowEnumerator nextObject]) != nil) {
-        if ([AWTWindow isJavaPlatformWindowVisible:window]) {
-            AWTWindow *awtWindow = (AWTWindow *)[window delegate];
-            AWTWindow *owner = awtWindow.ownerWindow;
-            if (IS(awtWindow.styleBits, ALWAYS_ON_TOP)) {
-                // Do not order 'always on top' windows
-                continue;
+    [self processVisibleChildren:^void(AWTWindow* child){
+        // Do not order 'always on top' windows
+        if (!IS(child.styleBits, ALWAYS_ON_TOP)) {
+            NSWindow *window = child.nsWindow;
+            NSWindow *owner = child.ownerWindow.nsWindow;
+            if (focus) {
+                // Move the childWindow to floating level
+                // so it will appear in front of its
+                // parent which owns the focus
+                [window setLevel:NSFloatingWindowLevel];
+            } else {
+                // Focus owner has changed, move the childWindow
+                // back to normal window level
+                [window setLevel:NSNormalWindowLevel];
             }
-            while (awtWindow.ownerWindow != nil) {
-                if (awtWindow.ownerWindow == self) {
-                    if (focus) {
-                        // Move the childWindow to floating level
-                        // so it will appear in front of its
-                        // parent which owns the focus
-                        [window setLevel:NSFloatingWindowLevel];
-                    } else {
-                        // Focus owner has changed, move the childWindow
-                        // back to normal window level
-                        [window setLevel:NSNormalWindowLevel];
-                    }
-                    if (window.onActiveSpace && owner.nsWindow.onActiveSpace) {
-                        // The childWindow should be displayed in front of
-                        // its nearest parentWindow
-                        [window orderWindow:NSWindowAbove relativeTo:[owner.nsWindow windowNumber]];
-                    }
-                    break;
-                }
-                awtWindow = awtWindow.ownerWindow;
+            if (window.onActiveSpace && owner.onActiveSpace) {
+                // The childWindow should be displayed in front of
+                // its nearest parentWindow
+                [window orderWindow:NSWindowAbove relativeTo:[owner windowNumber]];
             }
         }
-    }
+    }];
 }
 
 // NSWindow overrides
@@ -783,24 +790,14 @@ AWT_ASSERT_APPKIT_THREAD;
 - (void) iconifyChildWindows:(BOOL)iconify {
 AWT_ASSERT_APPKIT_THREAD;
 
-    NSEnumerator *windowEnumerator = [[NSApp windows]objectEnumerator];
-    NSWindow *window;
-    while ((window = [windowEnumerator nextObject]) != nil) {
-        if ([AWTWindow isJavaPlatformWindowVisible:window]) {
-            AWTWindow *awtWindow = (AWTWindow *)[window delegate];
-            while (awtWindow.ownerWindow != nil) {
-                if (awtWindow.ownerWindow == self) {
-                    if (iconify) {
-                        [window orderOut:window];
-                    } else {
-                        [window orderFront:window];
-                    }
-                    break;
-                }
-                awtWindow = awtWindow.ownerWindow;
-            }
+    [self processVisibleChildren:^void(AWTWindow* child){
+        NSWindow *window = child.nsWindow;
+        if (iconify) {
+            [window orderOut:window];
+        } else {
+            [window orderFront:window];
         }
-    }
+    }];
 }
 
 - (void) _deliverIconify:(BOOL)iconify {
@@ -1003,10 +1000,22 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 }
 
+// this is required to move owned windows to the full-screen space when owner goes to full-screen mode
+- (void)allowMovingChildrenBetweenSpaces:(BOOL)allow {
+    [self processVisibleChildren:^void(AWTWindow* child){
+        NSWindow *window = child.nsWindow;
+        NSWindowCollectionBehavior behavior = window.collectionBehavior;
+        behavior &= !(NSWindowCollectionBehaviorManaged | NSWindowCollectionBehaviorTransient);
+        behavior |= allow ? NSWindowCollectionBehaviorTransient : NSWindowCollectionBehaviorManaged;
+        window.collectionBehavior = behavior;
+    }];
+}
 
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
     self.isEnterFullScreen = YES;
-    
+
+    [self allowMovingChildrenBetweenSpaces:YES];
+
     static JNF_MEMBER_CACHE(jm_windowWillEnterFullScreen, jc_CPlatformWindow, "windowWillEnterFullScreen", "()V");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
@@ -1019,7 +1028,9 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)windowDidEnterFullScreen:(NSNotification *)notification {
     self.isEnterFullScreen = YES;
-    
+
+    [self allowMovingChildrenBetweenSpaces:NO];
+
     static JNF_MEMBER_CACHE(jm_windowDidEnterFullScreen, jc_CPlatformWindow, "windowDidEnterFullScreen", "()V");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
