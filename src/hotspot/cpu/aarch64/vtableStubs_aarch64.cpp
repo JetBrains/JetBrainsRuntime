@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2014, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -70,7 +70,7 @@ VtableStub* VtableStubs::create_vtable_stub(int vtable_index) {
 #if (!defined(PRODUCT) && defined(COMPILER2))
   if (CountCompiledCalls) {
     __ lea(r16, ExternalAddress((address) SharedRuntime::nof_megamorphic_calls_addr()));
-    __ incrementw(Address(r16));
+    __ increment(Address(r16));
   }
 #endif
 
@@ -145,6 +145,7 @@ VtableStub* VtableStubs::create_itable_stub(int itable_index) {
   if (s == NULL) {
     return NULL;
   }
+
   // Count unused bytes in instruction sequences of variable size.
   // We add them to the computed buffer size in order to avoid
   // overflow in subsequently generated stubs.
@@ -159,7 +160,7 @@ VtableStub* VtableStubs::create_itable_stub(int itable_index) {
 #if (!defined(PRODUCT) && defined(COMPILER2))
   if (CountCompiledCalls) {
     __ lea(r10, ExternalAddress((address) SharedRuntime::nof_megamorphic_calls_addr()));
-    __ incrementw(Address(r10));
+    __ increment(Address(r10));
   }
 #endif
 
@@ -170,11 +171,13 @@ VtableStub* VtableStubs::create_itable_stub(int itable_index) {
   //  rscratch2: CompiledICHolder
   //  j_rarg0: Receiver
 
-  // Most registers are in use; we'll use r16, rmethod, r10, r11
+  // This stub is called from compiled code which has no callee-saved registers,
+  // so all registers except arguments are free at this point.
   const Register recv_klass_reg     = r10;
   const Register holder_klass_reg   = r16; // declaring interface klass (DECC)
   const Register resolved_klass_reg = rmethod; // resolved interface klass (REFC)
   const Register temp_reg           = r11;
+  const Register temp_reg2          = r15;
   const Register icholder_reg       = rscratch2;
 
   Label L_no_such_interface;
@@ -189,11 +192,10 @@ VtableStub* VtableStubs::create_itable_stub(int itable_index) {
   __ load_klass(recv_klass_reg, j_rarg0);
 
   // Receiver subtype check against REFC.
-  // Destroys recv_klass_reg value.
   __ lookup_interface_method(// inputs: rec. class, interface
                              recv_klass_reg, resolved_klass_reg, noreg,
                              // outputs:  scan temp. reg1, scan temp. reg2
-                             recv_klass_reg, temp_reg,
+                             temp_reg2, temp_reg,
                              L_no_such_interface,
                              /*return_method=*/false);
 
@@ -201,7 +203,6 @@ VtableStub* VtableStubs::create_itable_stub(int itable_index) {
   start_pc = __ pc();
 
   // Get selected method from declaring class and itable index
-  __ load_klass(recv_klass_reg, j_rarg0);   // restore recv_klass_reg
   __ lookup_interface_method(// inputs: rec. class, interface, itable index
                              recv_klass_reg, holder_klass_reg, itable_index,
                              // outputs: method, scan temp. reg
@@ -211,7 +212,7 @@ VtableStub* VtableStubs::create_itable_stub(int itable_index) {
   const ptrdiff_t lookupSize = __ pc() - start_pc;
 
   // Reduce "estimate" such that "padding" does not drop below 8.
-  const ptrdiff_t estimate = 152;
+  const ptrdiff_t estimate = 124;
   const ptrdiff_t codesize = typecheckSize + lookupSize;
   slop_delta  = (int)(estimate - codesize);
   slop_bytes += slop_delta;

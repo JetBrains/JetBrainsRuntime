@@ -26,12 +26,10 @@
 #ifndef CGLLayer_h_Included
 #define CGLLayer_h_Included
 
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
-
 @interface CGLLayer : CAOpenGLLayer
 {
 @private
-    JNFWeakJObjectWrapper *javaLayer;
+    jobject javaLayer;
 
     // intermediate buffer, used the RQ lock to synchronize
     GLuint textureID;
@@ -45,7 +43,7 @@
 #endif /* REMOTELAYER */
 }
 
-@property (nonatomic, retain) JNFWeakJObjectWrapper *javaLayer;
+@property (nonatomic) jobject javaLayer;
 @property (readwrite, assign) GLuint textureID;
 @property (readwrite, assign) GLenum target;
 @property (readwrite, assign) float textureWidth;
@@ -57,7 +55,7 @@
 @property (nonatomic, retain) NSObject<JRSRemoteLayer> *jrsRemoteLayer;
 #endif
 
-- (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)javaLayer;
+- (id) initWithJavaLayer:(jobject)javaLayer;
 - (void) blitTexture;
 @end
 

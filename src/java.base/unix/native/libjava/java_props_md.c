@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
  * questions.
  */
 
-#if defined(__linux__) || defined(_ALLBSD_SOURCE)
+#if defined(__linux__) || defined(_ALLBSD_SOURCE) || defined(_AIX)
 #include <stdio.h>
 #include <ctype.h>
 #endif
@@ -361,6 +361,45 @@ static int ParseLocale(JNIEnv* env, int cat, char ** std_language, char ** std_s
     return 1;
 }
 
+#ifdef _AIX
+
+/*
+ * AIX doesn't have strcasestr. Implement it locally in this file.
+ *
+ * Finds string 'needle' in 'haystack'. Returns a pointer to the
+ * first occurrance of 'needle' or NULL if not found. If string
+ * needle is of length 0, a pointer to haystack is returned.
+ */
+static const char*
+strcasestr(const char* haystack, const char* needle) {
+    if (haystack == NULL || needle == NULL) {
+        return NULL;
+    }
+    if (strlen(needle) == 0) {
+        return haystack;
+    }
+    int i, j, k;
+    i = j = k = 0;
+    int haystack_len = strlen(haystack);
+    int needle_len = strlen(needle);
+    while (i < (haystack_len - needle_len + 1)) {
+        j = 0;
+        k = i;
+        while (k < haystack_len && j < needle_len &&
+               tolower(haystack[k]) == tolower(needle[j])) {
+            j++; k++;
+        }
+        if (j == needle_len) {
+            // found the substring
+            return &haystack[i];
+        }
+        i++;
+    }
+    return NULL;
+}
+
+#endif // _AIX
+
 /* This function gets called very early, before VM_CALLS are setup.
  * Do not use any of the VM_CALLS entries!!!
  */
@@ -457,8 +496,10 @@ GetJavaProperties(JNIEnv *env)
 #endif /* MACOSX */
 
         sprops.os_arch = ARCHPROPNAME;
+        char* curr_desktop = getenv("XDG_CURRENT_DESKTOP");
 
-        if (getenv("GNOME_DESKTOP_SESSION_ID") != NULL) {
+        if (getenv("GNOME_DESKTOP_SESSION_ID") != NULL
+            || (curr_desktop != NULL && strcasestr(curr_desktop, "gnome") != NULL)) {
             sprops.desktop = "gnome";
         }
         else {

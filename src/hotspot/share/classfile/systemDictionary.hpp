@@ -215,6 +215,9 @@ class OopStorage;
   do_klass(Integer_klass,                               java_lang_Integer,                         Pre                 ) \
   do_klass(Long_klass,                                  java_lang_Long,                            Pre                 ) \
                                                                                                                          \
+  /* force inline of iterators */                                                                                        \
+  do_klass(Iterator_klass,                              java_util_Iterator,                        Pre                 ) \
+                                                                                                                         \
   /* JVMCI classes. These are loaded on-demand. */                                                                       \
   JVMCI_WK_KLASSES_DO(do_klass)                                                                                          \
                                                                                                                          \

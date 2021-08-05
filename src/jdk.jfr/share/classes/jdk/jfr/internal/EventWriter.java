@@ -216,6 +216,10 @@ public final class EventWriter {
         notified = false;
     }
 
+    private void resetStringPool() {
+        StringPool.reset();
+    }
+
     private int usedSize() {
         return (int) (currentPosition - startPosition);
     }
@@ -253,6 +257,7 @@ public final class EventWriter {
         Bits.putInt(startPosition, makePaddedInt(eventSize));
         if (isNotified()) {
             resetNotified();
+            resetStringPool();
             reset();
             // returning false will trigger restart of the event write attempt
             return false;

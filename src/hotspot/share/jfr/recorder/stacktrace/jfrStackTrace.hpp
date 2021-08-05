@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ class JfrStackFrame {
   u1 _type;
 
  public:
+  JfrStackFrame(const traceid& id, int bci, int type, int lineno, const Method* method);
   JfrStackFrame(const traceid& id, int bci, int type, const Method* method);
   JfrStackFrame(const traceid& id, int bci, int type, int lineno);
 

@@ -916,7 +916,6 @@ class JNI_ArgumentPusher : public SignatureIterator {
 
 
 class JNI_ArgumentPusherVaArg : public JNI_ArgumentPusher {
- protected:
   va_list _ap;
 
   inline void get_bool()   {
@@ -951,6 +950,10 @@ class JNI_ArgumentPusherVaArg : public JNI_ArgumentPusher {
   JNI_ArgumentPusherVaArg(jmethodID method_id, va_list rap)
       : JNI_ArgumentPusher(Method::resolve_jmethod_id(method_id)->signature()) {
     set_ap(rap);
+  }
+
+  ~JNI_ArgumentPusherVaArg() {
+    va_end(_ap);
   }
 
   // Optimized path if we have the bitvector form of signature
