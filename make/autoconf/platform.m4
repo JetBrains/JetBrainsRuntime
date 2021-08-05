@@ -209,6 +209,33 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_OS],
   esac
 ])
 
+# Support macro for PLATFORM_EXTRACT_TARGET_AND_BUILD.
+# Converts autoconf style OS name to OpenJDK style, into
+# VAR_ABI.
+AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_ABI],
+[
+  case "$1" in
+    *linux*-musl)
+      VAR_ABI=musl
+      ;;
+    *linux*-gnu)
+      VAR_ABI=gnu
+      ;;
+    *linux*-gnueabi)
+      VAR_ABI=gnueabi
+      ;;
+    *linux*-gnueabihf)
+      VAR_ABI=gnueabihf
+      ;;
+    *linux*-gnuabi64)
+      VAR_ABI=gnuabi64
+      ;;
+    *)
+      VAR_ABI=default
+      ;;
+  esac
+])
+
 # Expects $host_os $host_cpu $build_os and $build_cpu
 # and $with_target_bits to have been setup!
 #
@@ -229,6 +256,7 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   # Convert the autoconf OS/CPU value to our own data, into the VAR_OS/CPU variables.
   PLATFORM_EXTRACT_VARS_FROM_OS($build_os)
   PLATFORM_EXTRACT_VARS_FROM_CPU($build_cpu, $build_os)
+  PLATFORM_EXTRACT_VARS_FROM_ABI($build_os)
   # ..and setup our own variables. (Do this explicitly to facilitate searching)
   OPENJDK_BUILD_OS="$VAR_OS"
   if test "x$VAR_OS_TYPE" != x; then
@@ -245,6 +273,8 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   OPENJDK_BUILD_CPU_ARCH="$VAR_CPU_ARCH"
   OPENJDK_BUILD_CPU_BITS="$VAR_CPU_BITS"
   OPENJDK_BUILD_CPU_ENDIAN="$VAR_CPU_ENDIAN"
+  OPENJDK_BUILD_CPU_AUTOCONF="$build_cpu"
+  OPENJDK_BUILD_ABI="$VAR_ABI"
   AC_SUBST(OPENJDK_BUILD_OS)
   AC_SUBST(OPENJDK_BUILD_OS_TYPE)
   AC_SUBST(OPENJDK_BUILD_OS_ENV)
@@ -252,6 +282,8 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   AC_SUBST(OPENJDK_BUILD_CPU_ARCH)
   AC_SUBST(OPENJDK_BUILD_CPU_BITS)
   AC_SUBST(OPENJDK_BUILD_CPU_ENDIAN)
+  AC_SUBST(OPENJDK_BUILD_CPU_AUTOCONF)
+  AC_SUBST(OPENJDK_BUILD_ABI)
 
   AC_MSG_CHECKING([openjdk-build os-cpu])
   AC_MSG_RESULT([$OPENJDK_BUILD_OS-$OPENJDK_BUILD_CPU])
@@ -259,6 +291,7 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   # Convert the autoconf OS/CPU value to our own data, into the VAR_OS/CPU variables.
   PLATFORM_EXTRACT_VARS_FROM_OS($host_os)
   PLATFORM_EXTRACT_VARS_FROM_CPU($host_cpu, $host_os)
+  PLATFORM_EXTRACT_VARS_FROM_ABI($host_os)
   # ... and setup our own variables. (Do this explicitly to facilitate searching)
   OPENJDK_TARGET_OS="$VAR_OS"
   if test "x$VAR_OS_TYPE" != x; then
@@ -275,7 +308,9 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   OPENJDK_TARGET_CPU_ARCH="$VAR_CPU_ARCH"
   OPENJDK_TARGET_CPU_BITS="$VAR_CPU_BITS"
   OPENJDK_TARGET_CPU_ENDIAN="$VAR_CPU_ENDIAN"
+  OPENJDK_TARGET_CPU_AUTOCONF="$host_cpu"
   OPENJDK_TARGET_OS_UPPERCASE=`$ECHO $OPENJDK_TARGET_OS | $TR 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'`
+  OPENJDK_TARGET_ABI="$VAR_ABI"
 
   AC_SUBST(OPENJDK_TARGET_OS)
   AC_SUBST(OPENJDK_TARGET_OS_TYPE)
@@ -285,6 +320,8 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   AC_SUBST(OPENJDK_TARGET_CPU_ARCH)
   AC_SUBST(OPENJDK_TARGET_CPU_BITS)
   AC_SUBST(OPENJDK_TARGET_CPU_ENDIAN)
+  AC_SUBST(OPENJDK_TARGET_CPU_AUTOCONF)
+  AC_SUBST(OPENJDK_TARGET_ABI)
 
   AC_MSG_CHECKING([openjdk-target os-cpu])
   AC_MSG_RESULT([$OPENJDK_TARGET_OS-$OPENJDK_TARGET_CPU])
