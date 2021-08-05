@@ -36,6 +36,7 @@
 #include "utility/rect.h"
 
 #include "sun_awt_X11_XlibWrapper.h"
+#include "keycode_cache.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -55,9 +56,6 @@
 #undef X_HAVE_UTF8_STRING
 extern Bool statusWindowEventHandler(XEvent event);
 #endif
-
-// From XWindow.c
-extern KeySym keycodeToKeysym(Display *display, KeyCode keycode, int index);
 
 #if defined(DEBUG)
 static jmethodID lockIsHeldMID = NULL;
@@ -179,6 +177,11 @@ JNIEXPORT void JNICALL
 Java_sun_awt_X11_XlibWrapper_XCloseDisplay(JNIEnv *env, jclass clazz,
                        jlong display) {
     AWT_CHECK_HAVE_LOCK();
+
+#ifdef USE_KEYCODE_CACHE
+    resetKeyCodeCache();
+#endif
+
     XCloseDisplay((Display*) jlong_to_ptr(display));
 }
 
@@ -2023,6 +2026,11 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XlibWrapper_XRefreshKeyboardMapping
 (JNIEnv *env, jclass clazz, jlong event_ptr)
 {
     AWT_CHECK_HAVE_LOCK();
+
+#ifdef USE_KEYCODE_CACHE
+    resetKeyCodeCache();
+#endif
+
     XRefreshKeyboardMapping((XMappingEvent*) jlong_to_ptr(event_ptr));
 }
 
