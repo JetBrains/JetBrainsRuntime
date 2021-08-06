@@ -24,6 +24,7 @@
  */
 
 #import <Cocoa/Cocoa.h>
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 #import "AWTWindow.h"
 #import "AWTView.h"
@@ -59,15 +60,15 @@ JNIEXPORT jlong JNICALL Java_sun_lwawt_macosx_CPopupMenu_nativeCreatePopupMenu
 
     __block CPopupMenu *aCPopupMenu = nil;
 
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
-    jobject cPeerObjGlobal = (*env)->NewGlobalRef(env, peer);
+    jobject cPeerObjGlobal = JNFNewGlobalRef(env, peer);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         aCPopupMenu = [[CPopupMenu alloc] initWithPeer:cPeerObjGlobal];
     }];
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
 
     return ptr_to_jlong(aCPopupMenu);
 }
@@ -75,7 +76,7 @@ JNI_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPopupMenu_nativeShowPopupMenu
 (JNIEnv *env, jobject peer, jlong menuPtr, jint x, jint y) {
 
-    JNI_COCOA_ENTER(env);
+    JNF_COCOA_ENTER(env);
 
     CPopupMenu* cPopupMenu = (CPopupMenu*)jlong_to_ptr(menuPtr);
 
@@ -87,7 +88,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPopupMenu_nativeShowPopupMenu
                                              inView: nil];
     }];
 
-    JNI_COCOA_EXIT(env);
+    JNF_COCOA_EXIT(env);
 
 }
 

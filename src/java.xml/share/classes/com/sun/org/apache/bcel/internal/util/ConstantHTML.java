@@ -40,6 +40,7 @@ import com.sun.org.apache.bcel.internal.classfile.Utility;
 /**
  * Convert constant pool into HTML file.
  *
+ * @version $Id$
  *
  */
 final class ConstantHTML {

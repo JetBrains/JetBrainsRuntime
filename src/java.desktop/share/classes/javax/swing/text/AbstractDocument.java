@@ -2966,12 +2966,11 @@ public abstract class AbstractDocument implements Document, Serializable {
 
     }
 
-    class DefaultDocumentEventUndoableWrapper extends DefaultDocumentEvent implements
+    static class DefaultDocumentEventUndoableWrapper implements
             UndoableEdit, UndoableEditLockSupport
     {
         final DefaultDocumentEvent dde;
         public DefaultDocumentEventUndoableWrapper(DefaultDocumentEvent dde) {
-            super(dde.getOffset(),dde.getLength(),dde.type);
             this.dde = dde;
         }
 

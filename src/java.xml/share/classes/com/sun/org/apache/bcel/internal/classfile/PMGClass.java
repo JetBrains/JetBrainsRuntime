@@ -31,6 +31,7 @@ import com.sun.org.apache.bcel.internal.Const;
  * This class is derived from <em>Attribute</em> and represents a reference
  * to a PMG attribute.
  *
+ * @version $Id$
  * @see     Attribute
  */
 public final class PMGClass extends Attribute {
@@ -87,7 +88,7 @@ public final class PMGClass extends Attribute {
      */
     @Override
     public void accept( final Visitor v ) {
-        println("Visiting non-standard PMGClass object");
+        System.err.println("Visiting non-standard PMGClass object");
     }
 
 
@@ -98,7 +99,7 @@ public final class PMGClass extends Attribute {
      * @throws IOException
      */
     @Override
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         super.dump(file);
         file.writeShort(pmg_index);
         file.writeShort(pmg_class_index);
@@ -108,7 +109,7 @@ public final class PMGClass extends Attribute {
     /**
      * @return Index in constant pool of source file name.
      */
-    public int getPMGClassIndex() {
+    public final int getPMGClassIndex() {
         return pmg_class_index;
     }
 
@@ -116,7 +117,7 @@ public final class PMGClass extends Attribute {
     /**
      * @param pmg_class_index
      */
-    public void setPMGClassIndex( final int pmg_class_index ) {
+    public final void setPMGClassIndex( final int pmg_class_index ) {
         this.pmg_class_index = pmg_class_index;
     }
 
@@ -124,7 +125,7 @@ public final class PMGClass extends Attribute {
     /**
      * @return Index in constant pool of source file name.
      */
-    public int getPMGIndex() {
+    public final int getPMGIndex() {
         return pmg_index;
     }
 
@@ -132,7 +133,7 @@ public final class PMGClass extends Attribute {
     /**
      * @param pmg_index
      */
-    public void setPMGIndex( final int pmg_index ) {
+    public final void setPMGIndex( final int pmg_index ) {
         this.pmg_index = pmg_index;
     }
 
@@ -140,7 +141,7 @@ public final class PMGClass extends Attribute {
     /**
      * @return PMG name.
      */
-    public String getPMGName() {
+    public final String getPMGName() {
         final ConstantUtf8 c = (ConstantUtf8) super.getConstantPool().getConstant(pmg_index,
                 Const.CONSTANT_Utf8);
         return c.getBytes();
@@ -150,7 +151,7 @@ public final class PMGClass extends Attribute {
     /**
      * @return PMG class name.
      */
-    public String getPMGClassName() {
+    public final String getPMGClassName() {
         final ConstantUtf8 c = (ConstantUtf8) super.getConstantPool().getConstant(pmg_class_index,
                 Const.CONSTANT_Utf8);
         return c.getBytes();
@@ -161,7 +162,7 @@ public final class PMGClass extends Attribute {
      * @return String representation
      */
     @Override
-    public String toString() {
+    public final String toString() {
         return "PMGClass(" + getPMGName() + ", " + getPMGClassName() + ")";
     }
 

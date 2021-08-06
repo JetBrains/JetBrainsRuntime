@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -420,13 +420,7 @@ class JarFile extends ZipFile {
                 if (verify) {
                     byte[] b = getBytes(manEntry);
                     if (!jvInitialized) {
-                        if (JUZFA.getManifestNum(this) == 1) {
-                            jv = new JarVerifier(manEntry.getName(), b);
-                        } else {
-                            if (JarVerifier.debug != null) {
-                                JarVerifier.debug.println("Multiple MANIFEST.MF found. Treat JAR file as unsigned");
-                            }
-                        }
+                        jv = new JarVerifier(b);
                     }
                     man = new Manifest(jv, new ByteArrayInputStream(b));
                 } else {

@@ -28,11 +28,11 @@
 #import "CGLGraphicsConfig.h"
 #import "CGLSurfaceData.h"
 #import "ThreadUtilities.h"
-#import "JNIUtilities.h"
 
 #import <stdlib.h>
 #import <string.h>
 #import <ApplicationServices/ApplicationServices.h>
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 #pragma mark -
 #pragma mark "--- Mac OS X specific methods for GL pipeline ---"
@@ -194,7 +194,7 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_getCGLConfigInfo
      jint displayID, jint pixfmt, jint swapInterval)
 {
   jlong ret = 0L;
-  JNI_COCOA_ENTER(env);
+  JNF_COCOA_ENTER(env);
   NSMutableArray * retArray = [NSMutableArray arrayWithCapacity:3];
   [retArray addObject: [NSNumber numberWithInt: (int)displayID]];
   [retArray addObject: [NSNumber numberWithInt: (int)pixfmt]];
@@ -206,7 +206,7 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_getCGLConfigInfo
   }
   NSNumber * num = (NSNumber *)[retArray objectAtIndex: 0];
   ret = (jlong)[num longValue];
-  JNI_COCOA_EXIT(env);
+  JNF_COCOA_EXIT(env);
   return ret;
 }
 

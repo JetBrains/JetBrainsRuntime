@@ -19,8 +19,9 @@
 #ifndef T1CMAP_H_
 #define T1CMAP_H_
 
-#include <freetype/internal/ftobjs.h>
-#include <freetype/internal/t1types.h>
+#include <ft2build.h>
+#include FT_INTERNAL_OBJECTS_H
+#include FT_INTERNAL_TYPE1_TYPES_H
 
 FT_BEGIN_HEADER
 

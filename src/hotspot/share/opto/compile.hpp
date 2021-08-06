@@ -504,23 +504,24 @@ class Compile : public Phase {
   // Inlining may not happen in parse order which would make
   // PrintInlining output confusing. Keep track of PrintInlining
   // pieces in order.
-  class PrintInliningBuffer : public CHeapObj<mtCompiler> {
+  class PrintInliningBuffer : public ResourceObj {
    private:
     CallGenerator* _cg;
-    stringStream   _ss;
-    static const size_t default_stream_buffer_size = 128;
+    stringStream* _ss;
 
    public:
     PrintInliningBuffer()
-      : _cg(NULL), _ss(default_stream_buffer_size) {}
+      : _cg(NULL) { _ss = new stringStream(); }
 
-    stringStream* ss()             { return &_ss; }
-    CallGenerator* cg()            { return _cg; }
+    void freeStream() { _ss->~stringStream(); _ss = NULL; }
+
+    stringStream* ss() const { return _ss; }
+    CallGenerator* cg() const { return _cg; }
     void set_cg(CallGenerator* cg) { _cg = cg; }
   };
 
   stringStream* _print_inlining_stream;
-  GrowableArray<PrintInliningBuffer*>* _print_inlining_list;
+  GrowableArray<PrintInliningBuffer>* _print_inlining_list;
   int _print_inlining_idx;
   char* _print_inlining_output;
 
@@ -540,10 +541,9 @@ class Compile : public Phase {
   void print_inlining_reinit();
   void print_inlining_commit();
   void print_inlining_push();
-  PrintInliningBuffer* print_inlining_current();
+  PrintInliningBuffer& print_inlining_current();
 
   void log_late_inline_failure(CallGenerator* cg, const char* msg);
-  DEBUG_ONLY(bool _exception_backedge;)
 
  public:
 
@@ -1367,7 +1367,7 @@ class Compile : public Phase {
                               Node* ctrl = NULL);
 
   // Convert integer value to a narrowed long type dependent on ctrl (for example, a range check)
-  static Node* constrained_convI2L(PhaseGVN* phase, Node* value, const TypeInt* itype, Node* ctrl, bool carry_dependency = false);
+  static Node* constrained_convI2L(PhaseGVN* phase, Node* value, const TypeInt* itype, Node* ctrl);
 
   // Auxiliary method for randomized fuzzing/stressing
   static bool randomized_select(int count);
@@ -1379,10 +1379,7 @@ class Compile : public Phase {
   bool is_compiling_clinit_for(ciKlass* k);
 #ifdef ASSERT
   bool _type_verify_symmetry;
-  void set_exception_backedge() { _exception_backedge = true; }
-  bool has_exception_backedge() const { return _exception_backedge; }
 #endif
-
   static Node* narrow_value(BasicType bt, Node* value, const Type* type, PhaseGVN* phase, bool transform_res);
 };
 

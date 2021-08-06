@@ -25,6 +25,7 @@ package com.sun.org.apache.bcel.internal.generic;
  * L2F - Convert long to float
  * <PRE>Stack: ..., value.word1, value.word2 -&gt; ..., result</PRE>
  *
+ * @version $Id$
  */
 public class L2F extends ConversionInstruction {
 

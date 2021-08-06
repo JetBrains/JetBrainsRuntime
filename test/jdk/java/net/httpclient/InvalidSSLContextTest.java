@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.net.SocketException;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
@@ -174,8 +173,8 @@ public class InvalidSSLContextTest {
                         s.startHandshake();
                         s.close();
                         Assert.fail("SERVER: UNEXPECTED ");
-                    } catch (SSLException | SocketException se) {
-                        System.out.println("SERVER: caught expected " + se);
+                    } catch (SSLException he) {
+                        System.out.println("SERVER: caught expected " + he);
                     } catch (IOException e) {
                         System.out.println("SERVER: caught: " + e);
                         if (!sslServerSocket.isClosed()) {

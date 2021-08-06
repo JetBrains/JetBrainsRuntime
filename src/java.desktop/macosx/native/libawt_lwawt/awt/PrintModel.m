@@ -26,9 +26,10 @@
 
 #import "PrintModel.h"
 
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
+
 #import "PrinterView.h"
 #import "ThreadUtilities.h"
-#import "JNIUtilities.h"
 
 @implementation PrintModel
 
@@ -51,7 +52,7 @@
 - (BOOL)runPageSetup {
     __block BOOL fResult = NO;
 
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    [JNFRunLoop performOnMainThreadWaiting:YES withBlock:^(){
         NSPageLayout* pageLayout = [NSPageLayout pageLayout];
         fResult = ([pageLayout runModalWithPrintInfo:fPrintInfo] == NSOKButton);
     }];
@@ -62,7 +63,7 @@
 - (BOOL)runJobSetup {
     __block BOOL fResult = NO;
 
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    [JNFRunLoop performOnMainThreadWaiting:YES withBlock:^(){
         NSPrintPanel* printPanel = [NSPrintPanel printPanel];
         fResult = ([printPanel runModalWithPrintInfo:fPrintInfo] == NSOKButton);
     }];
@@ -87,10 +88,9 @@ AWT_ASSERT_NOT_APPKIT_THREAD;
         [self retain];
         [printerView retain];
 
-        DECLARE_CLASS_RETURN(jc_CPrinterJob, "sun/lwawt/macosx/CPrinterJob", NO);
-        DECLARE_STATIC_METHOD_RETURN(jm_detachPrintLoop, jc_CPrinterJob, "detachPrintLoop", "(JJ)V", NO);
-        (*env)->CallStaticVoidMethod(env, jc_CPrinterJob, jm_detachPrintLoop, ptr_to_jlong(self), ptr_to_jlong(printerView)); // AWT_THREADING Safe (known object)
-        CHECK_EXCEPTION();
+        static JNF_CLASS_CACHE(jc_CPrinterJob, "sun/lwawt/macosx/CPrinterJob");
+        static JNF_STATIC_MEMBER_CACHE(jm_detachPrintLoop, jc_CPrinterJob, "detachPrintLoop", "(JJ)V");
+        JNFCallStaticVoidMethod(env, jm_detachPrintLoop, ptr_to_jlong(self), ptr_to_jlong(printerView)); // AWT_THREADING Safe (known object)
     }
 
     return fResult;
@@ -125,7 +125,7 @@ AWT_ASSERT_NOT_APPKIT_THREAD;
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPrinterJob__1safePrintLoop
 (JNIEnv *env, jclass clz, jlong target, jlong view)
 {
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     PrintModel *model = (PrintModel *)jlong_to_ptr(target);
     PrinterView *arg = (PrinterView *)jlong_to_ptr(view);
@@ -136,6 +136,6 @@ JNI_COCOA_ENTER(env);
     [model release];
     [arg release];
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
 }
 

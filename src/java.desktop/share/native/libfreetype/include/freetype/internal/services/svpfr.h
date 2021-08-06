@@ -19,8 +19,8 @@
 #ifndef SVPFR_H_
 #define SVPFR_H_
 
-#include <freetype/ftpfr.h>
-#include <freetype/internal/ftserv.h>
+#include FT_PFR_H
+#include FT_INTERNAL_SERVICE_H
 
 
 FT_BEGIN_HEADER
@@ -56,6 +56,7 @@ FT_BEGIN_HEADER
 
   };
 
+ /* */
 
 FT_END_HEADER
 

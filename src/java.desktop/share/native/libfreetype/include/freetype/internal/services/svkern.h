@@ -19,8 +19,8 @@
 #ifndef SVKERN_H_
 #define SVKERN_H_
 
-#include <freetype/internal/ftserv.h>
-#include <freetype/tttables.h>
+#include FT_INTERNAL_SERVICE_H
+#include FT_TRUETYPE_TABLES_H
 
 
 FT_BEGIN_HEADER

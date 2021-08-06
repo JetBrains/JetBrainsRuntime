@@ -45,6 +45,6 @@ public class FailOverExecutionControlHangingListenTest extends ExecutionControlT
         String loopback = InetAddress.getLoopbackAddress().getHostAddress();
          setUp(builder -> builder.executionEngine(
                 "failover:0(jdi:remoteAgent(HangingRemoteAgent),hostname(" + loopback + ")),"
-                        + standardSpecs()));
+                 + "1(jdi:hostname(" + loopback + "))"));
     }
 }

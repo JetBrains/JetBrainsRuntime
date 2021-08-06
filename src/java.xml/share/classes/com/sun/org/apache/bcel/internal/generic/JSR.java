@@ -27,6 +27,7 @@ import java.io.IOException;
 /**
  * JSR - Jump to subroutine
  *
+ * @version $Id$
  */
 public class JSR extends JsrInstruction implements VariableLengthInstruction {
 

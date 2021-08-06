@@ -30,6 +30,7 @@ import com.sun.org.apache.bcel.internal.Const;
  * This class is derived from the abstract {@link Constant}
  * and represents a reference to a float object.
  *
+ * @version $Id$
  * @see     Constant
  * @LastModified: Jun 2019
  */
@@ -87,7 +88,7 @@ public final class ConstantFloat extends Constant implements ConstantObject {
      * @throws IOException
      */
     @Override
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         file.writeByte(super.getTag());
         file.writeFloat(bytes);
     }
@@ -96,7 +97,7 @@ public final class ConstantFloat extends Constant implements ConstantObject {
     /**
      * @return data, i.e., 4 bytes.
      */
-    public float getBytes() {
+    public final float getBytes() {
         return bytes;
     }
 
@@ -104,7 +105,7 @@ public final class ConstantFloat extends Constant implements ConstantObject {
     /**
      * @param bytes the raw bytes that represent this float
      */
-    public void setBytes( final float bytes ) {
+    public final void setBytes( final float bytes ) {
         this.bytes = bytes;
     }
 
@@ -113,7 +114,7 @@ public final class ConstantFloat extends Constant implements ConstantObject {
      * @return String representation.
      */
     @Override
-    public String toString() {
+    public final String toString() {
         return super.toString() + "(bytes = " + bytes + ")";
     }
 

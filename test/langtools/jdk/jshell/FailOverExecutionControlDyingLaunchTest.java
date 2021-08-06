@@ -42,7 +42,6 @@ public class FailOverExecutionControlDyingLaunchTest extends ExecutionControlTes
     @Override
     public void setUp() {
         setUp(builder -> builder.executionEngine(
-                "failover:0(jdi:remoteAgent(DyingRemoteAgent),launch(true)), "
-                    + standardSpecs()));
+                "failover:0(jdi:remoteAgent(DyingRemoteAgent),launch(true)), 4(jdi:launch(true))"));
     }
 }

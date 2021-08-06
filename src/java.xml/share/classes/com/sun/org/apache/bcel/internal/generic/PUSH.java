@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -26,7 +26,8 @@ import com.sun.org.apache.bcel.internal.Const;
  * Wrapper class for push operations, which are implemented either as BIPUSH,
  * LDC or xCONST_n instructions.
  *
- * @LastModified: Jan 2020
+ * @version $Id$
+ * @LastModified: Jun 2019
  */
 public final class PUSH implements CompoundInstruction, VariableLengthInstruction {
 
@@ -175,12 +176,12 @@ public final class PUSH implements CompoundInstruction, VariableLengthInstructio
 
 
     @Override
-    public InstructionList getInstructionList() {
+    public final InstructionList getInstructionList() {
         return new InstructionList(instruction);
     }
 
 
-    public Instruction getInstruction() {
+    public final Instruction getInstruction() {
         return instruction;
     }
 

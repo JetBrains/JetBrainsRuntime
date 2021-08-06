@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -39,15 +39,16 @@ import com.sun.org.apache.bcel.internal.util.ClassQueue;
 import com.sun.org.apache.bcel.internal.util.SyntheticRepository;
 
 /**
- * Represents a Java class, i.e., the data structures, constant pool,
- * fields, methods and commands contained in a Java .class file.
- * See <a href="http://docs.oracle.com/javase/specs/">JVM specification</a> for details.
- * The intent of this class is to represent a parsed or otherwise existing
- * class file.  Those interested in programatically generating classes
+ * Represents a Java class, i.e., the data structures, constant pool, fields,
+ * methods and commands contained in a Java .class file. See <a
+ * href="http://docs.oracle.com/javase/specs/">JVM specification</a> for
+ * details. The intent of this class is to represent a parsed or otherwise
+ * existing class file. Those interested in programatically generating classes
  * should see the <a href="../generic/ClassGen.html">ClassGen</a> class.
 
+ * @version $Id$
  * @see com.sun.org.apache.bcel.internal.generic.ClassGen
- * @LastModified: Jan 2020
+ * @LastModified: Jun 2019
  */
 public class JavaClass extends AccessFlags implements Cloneable, Node, Comparable<JavaClass> {
 
@@ -74,7 +75,6 @@ public class JavaClass extends AccessFlags implements Cloneable, Node, Comparabl
     public static final byte HEAP = 1;
     public static final byte FILE = 2;
     public static final byte ZIP = 3;
-    private static final boolean debug = false;
 
     private static BCELComparator bcelComparator = new BCELComparator() {
 
@@ -217,16 +217,6 @@ public class JavaClass extends AccessFlags implements Cloneable, Node, Comparabl
     public void accept( final Visitor v ) {
         v.visitJavaClass(this);
     }
-
-
-    /* Print debug information depending on `JavaClass.debug'
-     */
-    static void Debug( final String str ) {
-        if (debug) {
-            System.out.println(str);
-        }
-    }
-
 
     /**
      * Dump class to a file.
@@ -616,7 +606,7 @@ public class JavaClass extends AccessFlags implements Cloneable, Node, Comparabl
             }
             buf.append('\n');
         }
-        buf.append("file name\t\t").append(file_name).append('\n');
+        buf.append("filename\t\t").append(file_name).append('\n');
         buf.append("compiled from\t\t").append(source_file_name).append('\n');
         buf.append("compiler version\t").append(major).append(".").append(minor).append('\n');
         buf.append("access flags\t\t").append(super.getAccessFlags()).append('\n');
@@ -726,7 +716,7 @@ public class JavaClass extends AccessFlags implements Cloneable, Node, Comparabl
                       boolean innerClassAttributeRefersToMe = false;
                       String inner_class_name = constant_pool.getConstantString(innerClasse.getInnerClassIndex(),
                                  Const.CONSTANT_Class);
-                      inner_class_name = Utility.compactClassName(inner_class_name, false);
+                      inner_class_name = Utility.compactClassName(inner_class_name);
                       if (inner_class_name.equals(getClassName())) {
                           innerClassAttributeRefersToMe = true;
                       }
@@ -764,7 +754,7 @@ public class JavaClass extends AccessFlags implements Cloneable, Node, Comparabl
      * Sets the ClassRepository which loaded the JavaClass.
      * Should be called immediately after parsing is done.
      */
-    public void setRepository( final com.sun.org.apache.bcel.internal.util.Repository repository ) { // TODO make protected?
+    public void setRepository(final com.sun.org.apache.bcel.internal.util.Repository repository) {
         this.repository = repository;
     }
 

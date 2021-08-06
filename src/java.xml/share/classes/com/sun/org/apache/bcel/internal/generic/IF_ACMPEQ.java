@@ -26,6 +26,7 @@ package com.sun.org.apache.bcel.internal.generic;
  *
  * <PRE>Stack: ..., value1, value2 -&gt; ...</PRE>
  *
+ * @version $Id$
  */
 public class IF_ACMPEQ extends IfInstruction {
 

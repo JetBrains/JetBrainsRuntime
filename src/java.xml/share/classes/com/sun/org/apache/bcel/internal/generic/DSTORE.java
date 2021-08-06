@@ -25,6 +25,7 @@ package com.sun.org.apache.bcel.internal.generic;
  * DSTORE - Store double into local variable
  * <pre>Stack: ..., value.word1, value.word2 -&gt; ... </PRE>
  *
+ * @version $Id$
  */
 public class DSTORE extends StoreInstruction {
 

@@ -20,8 +20,9 @@
 #define FTBITMAP_H_
 
 
-#include <freetype/freetype.h>
-#include <freetype/ftcolor.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_COLOR_H
 
 #ifdef FREETYPE_H
 #error "freetype.h of FreeType 1 has been loaded!"

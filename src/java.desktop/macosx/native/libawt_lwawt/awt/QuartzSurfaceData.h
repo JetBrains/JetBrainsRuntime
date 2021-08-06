@@ -27,7 +27,6 @@
 #import "BufImgSurfaceData.h"
 #import "AWTFont.h"
 #import <Cocoa/Cocoa.h>
-#import "JNIUtilities.h"
 
 // these flags are not defined on Tiger on PPC, so we need to make them a no-op
 #if !defined(kCGBitmapByteOrder32Host)
@@ -151,5 +150,10 @@ void CompleteCGContext(JNIEnv *env, QuartzSDOps *qsdo);
 
 NSColor* ByteParametersToNSColor(JNIEnv* env, jint *javaGraphicsStates, NSColor* defColor);
 
-#define JNI_COCOA_RENDERER_EXIT(env) \
- JNI_COCOA_EXIT_WITH_ACTION(env, qsdo->FinishSurface(env, qsdo))
+#define JNF_COCOA_RENDERER_EXIT(env) \
+} @catch(NSException *localException) { \
+    qsdo->FinishSurface(env, qsdo); \
+    [JNFException throwToJava:env exception:localException]; \
+} \
+        if (_token) JNFNativeMethodExit(_token); \
+}

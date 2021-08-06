@@ -211,11 +211,6 @@ int isOptSep(char c) {
   *
   */
 
-#if !defined(__clang_major__) && defined(__GNUC__) && (__GNUC__ >= 8)
-_Pragma("GCC diagnostic push")
-_Pragma("GCC diagnostic ignored \"-Wstringop-truncation\"")
-#endif
-
 int nsk_jvmti_parseOptions(const char options[]) {
     size_t len;
     const char* opt;
@@ -296,9 +291,6 @@ int nsk_jvmti_parseOptions(const char options[]) {
     return success;
 }
 
-#if !defined(__clang_major__) && defined(__GNUC__) && (__GNUC__ >= 8)
-_Pragma("GCC diagnostic pop")
-#endif
 
 /*************************************************************/
 

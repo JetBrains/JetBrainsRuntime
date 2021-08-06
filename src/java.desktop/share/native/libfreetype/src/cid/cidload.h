@@ -20,7 +20,8 @@
 #define CIDLOAD_H_
 
 
-#include <freetype/internal/ftstream.h>
+#include <ft2build.h>
+#include FT_INTERNAL_STREAM_H
 #include "cidparse.h"
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,40 +25,7 @@
 
 package sun.awt;
 
-import java.awt.AWTEvent;
-import java.awt.AWTException;
-import java.awt.Button;
-import java.awt.Canvas;
-import java.awt.Checkbox;
-import java.awt.Choice;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.DefaultKeyboardFocusManager;
-import java.awt.Dialog;
-import java.awt.Dimension;
-import java.awt.EventQueue;
-import java.awt.FocusTraversalPolicy;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsDevice;
-import java.awt.GraphicsEnvironment;
-import java.awt.HeadlessException;
-import java.awt.Image;
-import java.awt.KeyboardFocusManager;
-import java.awt.Label;
-import java.awt.MenuComponent;
-import java.awt.Panel;
-import java.awt.RenderingHints;
-import java.awt.ScrollPane;
-import java.awt.Scrollbar;
-import java.awt.SystemTray;
-import java.awt.TextArea;
-import java.awt.TextField;
-import java.awt.Toolkit;
-import java.awt.TrayIcon;
-import java.awt.Window;
+import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
@@ -68,10 +35,10 @@ import java.awt.image.DataBuffer;
 import java.awt.image.DataBufferInt;
 import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
-import java.awt.image.MultiResolutionImage;
 import java.awt.image.Raster;
 import java.awt.peer.FramePeer;
 import java.awt.peer.KeyboardFocusManagerPeer;
+import java.awt.peer.MouseInfoPeer;
 import java.awt.peer.SystemTrayPeer;
 import java.awt.peer.TrayIconPeer;
 import java.io.File;
@@ -88,7 +55,6 @@ import java.util.Map;
 import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -96,6 +62,7 @@ import sun.awt.im.InputContext;
 import sun.awt.image.ByteArrayImageSource;
 import sun.awt.image.FileImageSource;
 import sun.awt.image.ImageRepresentation;
+import java.awt.image.MultiResolutionImage;
 import sun.awt.image.MultiResolutionToolkitImage;
 import sun.awt.image.ToolkitImage;
 import sun.awt.image.URLImageSource;
@@ -105,13 +72,7 @@ import sun.security.action.GetBooleanAction;
 import sun.security.action.GetPropertyAction;
 import sun.util.logging.PlatformLogger;
 
-import static java.awt.RenderingHints.KEY_TEXT_ANTIALIASING;
-import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_GASP;
-import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HBGR;
-import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB;
-import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_VBGR;
-import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_VRGB;
-import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON;
+import static java.awt.RenderingHints.*;
 
 public abstract class SunToolkit extends Toolkit
     implements ComponentFactory, InputMethodSupport, KeyboardFocusManagerPeerProvider {
@@ -1444,6 +1405,10 @@ public abstract class SunToolkit extends Toolkit
     }
 
     @SuppressWarnings("serial")
+    public static class InfiniteLoop extends RuntimeException {
+    }
+
+    @SuppressWarnings("serial")
     public static class IllegalThreadException extends RuntimeException {
         public IllegalThreadException(String msg) {
             super(msg);
@@ -1453,14 +1418,14 @@ public abstract class SunToolkit extends Toolkit
     }
 
     public static final int DEFAULT_WAIT_TIME = 10000;
-    private static final int MAX_ITERS = 100;
-    private static final int MIN_ITERS = 1;
-    private static final int MINIMAL_DELAY = 5;
+    private static final int MAX_ITERS = 20;
+    private static final int MIN_ITERS = 0;
+    private static final int MINIMAL_EDELAY = 0;
 
     /**
      * Parameterless version of realsync which uses default timout (see DEFAUL_WAIT_TIME).
      */
-    public void realSync() throws OperationTimedOut {
+    public void realSync() throws OperationTimedOut, InfiniteLoop {
         realSync(DEFAULT_WAIT_TIME);
     }
 
@@ -1509,21 +1474,13 @@ public abstract class SunToolkit extends Toolkit
      *
      * @param timeout the maximum time to wait in milliseconds, negative means "forever".
      */
-    public void realSync(final long timeout) throws OperationTimedOut {
+    public void realSync(final long timeout) throws OperationTimedOut, InfiniteLoop
+    {
         if (EventQueue.isDispatchThread()) {
             throw new IllegalThreadException("The SunToolkit.realSync() method cannot be used on the event dispatch thread (EDT).");
         }
-        try {
-            // We should wait unconditionally for the first event on EDT
-            EventQueue.invokeAndWait(() -> {/*dummy implementation*/});
-        } catch (InterruptedException | InvocationTargetException ignored) {
-        }
         int bigLoop = 0;
-        long end = TimeUnit.NANOSECONDS.toMillis(System.nanoTime()) + timeout;
         do {
-            if (timeout(end) < 0) {
-                return;
-            }
             // Let's do sync first
             sync();
 
@@ -1534,11 +1491,14 @@ public abstract class SunToolkit extends Toolkit
             // to dispatch.
             int iters = 0;
             while (iters < MIN_ITERS) {
-                syncNativeQueue(timeout(end));
+                syncNativeQueue(timeout);
                 iters++;
             }
-            while (syncNativeQueue(timeout(end)) && iters < MAX_ITERS) {
+            while (syncNativeQueue(timeout) && iters < MAX_ITERS) {
                 iters++;
+            }
+            if (iters >= MAX_ITERS) {
+                throw new InfiniteLoop();
             }
 
             // native requests were dispatched by X/Window Manager or Windows
@@ -1550,23 +1510,21 @@ public abstract class SunToolkit extends Toolkit
             // waitForIdle, we may end up with full EventQueue
             iters = 0;
             while (iters < MIN_ITERS) {
-                waitForIdle(timeout(end));
+                waitForIdle(timeout);
                 iters++;
             }
-            while (waitForIdle(end) && iters < MAX_ITERS) {
+            while (waitForIdle(timeout) && iters < MAX_ITERS) {
                 iters++;
+            }
+            if (iters >= MAX_ITERS) {
+                throw new InfiniteLoop();
             }
 
             bigLoop++;
             // Again, for Java events, it was simple to check for new Java
             // events by checking event queue, but what if Java events
             // resulted in native requests?  Therefor, check native events again.
-        } while ((syncNativeQueue(timeout(end)) || waitForIdle(end))
-                && bigLoop < MAX_ITERS);
-    }
-
-    private long timeout(long end){
-        return end - TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
+        } while ((syncNativeQueue(timeout) || waitForIdle(timeout)) && bigLoop < MAX_ITERS);
     }
 
     /**
@@ -1577,8 +1535,10 @@ public abstract class SunToolkit extends Toolkit
      * {@code true} if some events were processed,
      * {@code false} otherwise.
      */
-    protected abstract boolean syncNativeQueue(long timeout);
+    protected abstract boolean syncNativeQueue(final long timeout);
 
+    private boolean eventDispatched;
+    private boolean queueEmpty;
     private final Object waitLock = new Object();
 
     private boolean isEQEmpty() {
@@ -1594,13 +1554,13 @@ public abstract class SunToolkit extends Toolkit
      * necessary, {@code false} otherwise.
      */
     @SuppressWarnings("serial")
-    private final boolean waitForIdle(final long end) {
+    protected final boolean waitForIdle(final long timeout) {
         flushPendingEvents();
         final boolean queueWasEmpty;
-        final AtomicBoolean queueEmpty = new AtomicBoolean();
-        final AtomicBoolean eventDispatched = new AtomicBoolean();
         synchronized (waitLock) {
             queueWasEmpty = isEQEmpty();
+            queueEmpty = false;
+            eventDispatched = false;
             postEvent(AppContext.getAppContext(),
                       new PeerEvent(getSystemEventQueueImpl(), null, PeerEvent.LOW_PRIORITY_EVENT) {
                           @Override
@@ -1612,24 +1572,24 @@ public abstract class SunToolkit extends Toolkit
                               // flush Java events again.
                               int iters = 0;
                               while (iters < MIN_ITERS) {
-                                  syncNativeQueue(timeout(end));
+                                  syncNativeQueue(timeout);
                                   iters++;
                               }
-                              while (syncNativeQueue(timeout(end)) && iters < MAX_ITERS) {
+                              while (syncNativeQueue(timeout) && iters < MAX_ITERS) {
                                   iters++;
                               }
                               flushPendingEvents();
 
                               synchronized(waitLock) {
-                                  queueEmpty.set(isEQEmpty());
-                                  eventDispatched.set(true);
+                                  queueEmpty = isEQEmpty();
+                                  eventDispatched = true;
                                   waitLock.notifyAll();
                               }
                           }
                       });
             try {
-                while (!eventDispatched.get() && timeout(end) > 0) {
-                    waitLock.wait(timeout(end));
+                while (!eventDispatched) {
+                    waitLock.wait();
                 }
             } catch (InterruptedException ie) {
                 return false;
@@ -1637,7 +1597,7 @@ public abstract class SunToolkit extends Toolkit
         }
 
         try {
-            Thread.sleep(MINIMAL_DELAY);
+            Thread.sleep(MINIMAL_EDELAY);
         } catch (InterruptedException ie) {
             throw new RuntimeException("Interrupted");
         }
@@ -1646,7 +1606,7 @@ public abstract class SunToolkit extends Toolkit
 
         // Lock to force write-cache flush for queueEmpty.
         synchronized (waitLock) {
-            return !(queueEmpty.get() && isEQEmpty() && queueWasEmpty);
+            return !(queueEmpty && isEQEmpty() && queueWasEmpty);
         }
     }
 

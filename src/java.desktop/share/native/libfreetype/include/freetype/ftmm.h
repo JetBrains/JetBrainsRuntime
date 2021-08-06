@@ -20,7 +20,8 @@
 #define FTMM_H_
 
 
-#include <freetype/t1tables.h>
+#include <ft2build.h>
+#include FT_TYPE1_TABLES_H
 
 
 FT_BEGIN_HEADER

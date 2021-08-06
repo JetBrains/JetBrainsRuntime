@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -30,8 +30,8 @@ import com.sun.org.apache.bcel.internal.Const;
  * This class is derived from the abstract {@link Constant}
  * and represents a reference to a long object.
  *
+ * @version $Id$
  * @see     Constant
- * @LastModified: Jan 2020
  */
 public final class ConstantLong extends Constant implements ConstantObject {
 
@@ -86,7 +86,7 @@ public final class ConstantLong extends Constant implements ConstantObject {
      * @throws IOException
      */
     @Override
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         file.writeByte(super.getTag());
         file.writeLong(bytes);
     }
@@ -95,7 +95,7 @@ public final class ConstantLong extends Constant implements ConstantObject {
     /**
      * @return data, i.e., 8 bytes.
      */
-    public long getBytes() {
+    public final long getBytes() {
         return bytes;
     }
 
@@ -103,7 +103,7 @@ public final class ConstantLong extends Constant implements ConstantObject {
     /**
      * @param bytes the raw bytes that represent this long
      */
-    public void setBytes( final long bytes ) {
+    public final void setBytes( final long bytes ) {
         this.bytes = bytes;
     }
 
@@ -112,7 +112,7 @@ public final class ConstantLong extends Constant implements ConstantObject {
      * @return String representation.
      */
     @Override
-    public String toString() {
+    public final String toString() {
         return super.toString() + "(bytes = " + bytes + ")";
     }
 
@@ -121,6 +121,6 @@ public final class ConstantLong extends Constant implements ConstantObject {
      */
     @Override
     public Object getConstantValue( final ConstantPool cp ) {
-        return bytes;
+        return Long.valueOf(bytes);
     }
 }

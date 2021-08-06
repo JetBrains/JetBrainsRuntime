@@ -4,9 +4,11 @@
 #import "JavaAccessibilityAction.h"
 #import "JavaAccessibilityUtilities.h"
 #import "ThreadUtilities.h"
-#import "JNIUtilities.h"
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
+static JNF_STATIC_MEMBER_CACHE(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;");
+
+static const char* ACCESSIBLE_JCOMBOBOX_NAME = "javax.swing.JComboBox$AccessibleJComboBox";
 
 @implementation JavaComboBoxAccessibility
 
@@ -16,24 +18,21 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return nil;
-    jclass cls = (*env)->GetObjectClass(env, axContext);
-    DECLARE_METHOD_RETURN(jm_getAccessibleSelection, cls, "getAccessibleSelection", "(I)Ljavax/accessibility/Accessible;", nil);
-    jobject axSelectedChild = (*env)->CallObjectMethod(env, axContext, jm_getAccessibleSelection, 0);
-    CHECK_EXCEPTION();
+    JNFClassInfo clsInfo;
+    clsInfo.name = ACCESSIBLE_JCOMBOBOX_NAME;
+    clsInfo.cls = (*env)->GetObjectClass(env, axContext);
+    JNF_MEMBER_CACHE(jm_getAccessibleSelection, clsInfo, "getAccessibleSelection", "(I)Ljavax/accessibility/Accessible;");
+    jobject axSelectedChild = JNFCallObjectMethod(env, axContext, jm_getAccessibleSelection, 0);
     (*env)->DeleteLocalRef(env, axContext);
     if (axSelectedChild == NULL) {
         return nil;
     }
-    DECLARE_CLASS_RETURN(sjc_CAccessibility, "sun/lwawt/macosx/CAccessibility", nil);
-    DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName",
-                          "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;", nil);
-    jobject childName = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleName, axSelectedChild, fComponent);
-    CHECK_EXCEPTION();
+    jobject childName = JNFCallStaticObjectMethod(env, sjm_getAccessibleName, axSelectedChild, fComponent);
     if (childName == NULL) {
         (*env)->DeleteLocalRef(env, axSelectedChild);
         return nil;
     }
-    NSString *selectedText = JNIObjectToNSString(env, childName);
+    NSString *selectedText = JNFObjectToString(env, childName);
     (*env)->DeleteLocalRef(env, axSelectedChild);
     (*env)->DeleteLocalRef(env, childName);
     return selectedText;

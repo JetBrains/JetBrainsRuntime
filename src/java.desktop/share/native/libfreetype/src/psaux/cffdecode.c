@@ -16,10 +16,11 @@
  */
 
 
-#include <freetype/freetype.h>
-#include <freetype/internal/ftdebug.h>
-#include <freetype/internal/ftserv.h>
-#include <freetype/internal/services/svcfftl.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_INTERNAL_DEBUG_H
+#include FT_INTERNAL_SERVICE_H
+#include FT_SERVICE_CFF_TABLE_LOAD_H
 
 #include "cffdecode.h"
 #include "psobjs.h"

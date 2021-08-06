@@ -38,6 +38,7 @@ import com.sun.org.apache.bcel.internal.Const;
  * {@link Attribute#addAttributeReader(String, UnknownAttributeReader)}.
 
  *
+ * @version $Id$
  * @see Attribute
  * @see UnknownAttributeReader
  */
@@ -123,7 +124,7 @@ public final class Unknown extends Attribute {
      * @throws IOException
      */
     @Override
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         super.dump(file);
         if (super.getLength() > 0) {
             file.write(bytes, 0, super.getLength());
@@ -134,7 +135,7 @@ public final class Unknown extends Attribute {
     /**
      * @return data bytes.
      */
-    public byte[] getBytes() {
+    public final byte[] getBytes() {
         return bytes;
     }
 
@@ -143,7 +144,7 @@ public final class Unknown extends Attribute {
      * @return name of attribute.
      */
     @Override
-    public String getName() {
+    public final String getName() {
         return name;
     }
 
@@ -151,7 +152,7 @@ public final class Unknown extends Attribute {
     /**
      * @param bytes the bytes to set
      */
-    public void setBytes( final byte[] bytes ) {
+    public final void setBytes( final byte[] bytes ) {
         this.bytes = bytes;
     }
 
@@ -160,7 +161,7 @@ public final class Unknown extends Attribute {
      * @return String representation.
      */
     @Override
-    public String toString() {
+    public final String toString() {
         if (super.getLength() == 0 || bytes == null) {
             return "(Unknown attribute " + name + ")";
         }

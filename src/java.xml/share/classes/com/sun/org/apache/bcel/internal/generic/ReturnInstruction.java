@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -26,7 +26,8 @@ import com.sun.org.apache.bcel.internal.ExceptionConst;
 /**
  * Super class for the xRETURN family of instructions.
  *
- * @LastModified: Jan 2020
+ * @version $Id$
+ * @LastModified: Jun 2019
  */
 public abstract class ReturnInstruction extends Instruction implements ExceptionThrower,
         TypedInstruction, StackConsumer {

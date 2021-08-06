@@ -20,8 +20,9 @@
 #define PSOBJS_H_
 
 
-#include <freetype/internal/psaux.h>
-#include <freetype/internal/cffotypes.h>
+#include <ft2build.h>
+#include FT_INTERNAL_POSTSCRIPT_AUX_H
+#include FT_INTERNAL_CFF_OBJECTS_TYPES_H
 
 
 FT_BEGIN_HEADER

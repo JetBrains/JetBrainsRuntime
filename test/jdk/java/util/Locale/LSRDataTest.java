@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8204938 8242010
+ * @bug 8204938
  * @summary Checks the IANA language subtag registry data update
  *          with Locale.LanguageRange parse method.
  * @run main LSRDataTest
@@ -100,8 +100,7 @@ public class LSRDataTest {
     private static void loadLSRData(Path path) throws IOException {
         String type = null;
         String tag = null;
-        String preferred = null;
-        String prefix = null;
+        String preferred;
 
         for (String line : Files.readAllLines(path, Charset.forName("UTF-8"))) {
             line = line.toLowerCase(Locale.ROOT);
@@ -110,36 +109,20 @@ public class LSRDataTest {
                 type = line.substring(index);
             } else if (line.startsWith("tag:") || line.startsWith("subtag:")) {
                 tag = line.substring(index);
-            } else if (line.startsWith("preferred-value:")) {
+            } else if (line.startsWith("preferred-value:") && !type.equals("extlang")) {
                 preferred = line.substring(index);
-            } else if (line.startsWith("prefix:")) {
-                prefix = line.substring(index);
+                processDataAndGenerateMaps(type, tag, preferred);
             } else if (line.equals("%%")) {
-                processDataAndGenerateMaps(type, tag, preferred, prefix);
                 type = null;
                 tag = null;
-                preferred = null;
-                prefix = null;
             }
         }
-
-        // Last entry
-        processDataAndGenerateMaps(type, tag, preferred, prefix);
     }
 
     private static void processDataAndGenerateMaps(String type,
             String tag,
-            String preferred,
-            String prefix) {
-
-        if (type == null || tag == null || preferred == null) {
-            return;
-        }
-
-        if (type.equals("extlang") && prefix != null) {
-            tag = prefix + "-" + tag;
-        }
-
+            String preferred) {
+        StringBuilder sb;
         if (type.equals("region") || type.equals("variant")) {
             if (!regionVariantEquivMap.containsKey(preferred)) {
                 String tPref = HYPHEN + preferred;
@@ -151,7 +134,7 @@ public class LSRDataTest {
                         + " A region/variant subtag \"" + preferred
                         + "\" is registered for more than one subtags.");
             }
-        } else { // language, extlang, grandfathered, and redundant
+        } else { // language, grandfathered, and redundant
             if (!singleLangEquivMap.containsKey(preferred)
                     && !multiLangEquivsMap.containsKey(preferred)) {
                 // new entry add it into single equiv map

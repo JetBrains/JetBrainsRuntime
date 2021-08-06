@@ -31,6 +31,7 @@ import com.sun.org.apache.bcel.internal.util.ByteSequence;
  *
  * <PRE>Stack: ... -&gt; ...</PRE>
  *
+ * @version $Id$
  */
 public class RET extends Instruction implements IndexedInstruction, TypedInstruction {
 

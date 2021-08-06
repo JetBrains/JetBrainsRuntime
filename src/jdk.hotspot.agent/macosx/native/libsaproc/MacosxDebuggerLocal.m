@@ -24,6 +24,8 @@
 
 #include <objc/objc-runtime.h>
 #import <Foundation/Foundation.h>
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
+#import <JavaRuntimeSupport/JavaRuntimeSupport.h>
 
 #include <jni.h>
 
@@ -263,39 +265,6 @@ jlong lookupByNameIncore(
   return addr;
 }
 
-/* Create a pool and initiate a try block to catch any exception */
-#define JNI_COCOA_ENTER(env) \
- NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init]; \
- @try {
-
-/* Don't allow NSExceptions to escape to Java.
- * If there is a Java exception that has been thrown that should escape.
- * And ensure we drain the auto-release pool.
- */
-#define JNI_COCOA_EXIT(env) \
- } \
- @catch (NSException *e) { \
-     NSLog(@"%@", [e callStackSymbols]); \
- } \
- @finally { \
-    [pool drain]; \
- };
-
-static NSString* JavaStringToNSString(JNIEnv *env, jstring jstr) {
-
-    if (jstr == NULL) {
-        return NULL;
-    }
-    jsize len = (*env)->GetStringLength(env, jstr);
-    const jchar *chars = (*env)->GetStringChars(env, jstr, NULL);
-    if (chars == NULL) {
-        return NULL;
-    }
-    NSString *result = [NSString stringWithCharacters:(UniChar *)chars length:len];
-    (*env)->ReleaseStringChars(env, jstr, chars);
-    return result;
-}
-
 /*
  * Class:     sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal
  * Method:    lookupByName0
@@ -313,9 +282,8 @@ Java_sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal_lookupByName0(
 
   jlong address = 0;
 
-  JNI_COCOA_ENTER(env);
-
-  NSString *symbolNameString = JavaStringToNSString(env, symbolName);
+JNF_COCOA_ENTER(env);
+  NSString *symbolNameString = JNFJavaToNSString(env, symbolName);
 
   print_debug("lookupInProcess called for %s\n", [symbolNameString UTF8String]);
 
@@ -326,7 +294,7 @@ Java_sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal_lookupByName0(
   }
 
   print_debug("address of symbol %s = %llx\n", [symbolNameString UTF8String], address);
-  JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
 
   return address;
 }
@@ -430,7 +398,7 @@ Java_sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal_readBytesFromProcess0(
   // Try to read each of the pages.
   for (i = 0; i < pageCount; i++) {
     result = vm_read(gTask, alignedAddress + i*vm_page_size, vm_page_size,
-                     &pages[i], &byteCount);
+		     &pages[i], &byteCount);
     mapped[i] = (result == KERN_SUCCESS);
     // assume all failures are unmapped pages
   }
@@ -938,7 +906,7 @@ Java_sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal_attach0__I(
 {
   print_debug("attach0 called for jpid=%d\n", (int)jpid);
 
-  JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
   kern_return_t result;
   task_t gTask = 0;
@@ -1052,7 +1020,7 @@ Java_sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal_attach0__I(
     THROW_NEW_DEBUGGER_EXCEPTION("Can't attach symbolicator to the process");
   }
 
-  JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
 }
 
 /** For core file,
@@ -1146,8 +1114,7 @@ Java_sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal_detach0(
      Prelease(ph);
      return;
   }
-
-  JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
   task_t gTask = getTask(env, this_obj);
   kern_return_t k_res = 0;
@@ -1198,5 +1165,5 @@ Java_sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal_detach0(
 
   detach_cleanup(gTask, env, this_obj, false);
 
-  JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
 }

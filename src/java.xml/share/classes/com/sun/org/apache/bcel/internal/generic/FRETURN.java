@@ -25,6 +25,7 @@ package com.sun.org.apache.bcel.internal.generic;
  * FRETURN -  Return float from method
  * <PRE>Stack: ..., value -&gt; &lt;empty&gt;</PRE>
  *
+ * @version $Id$
  */
 public class FRETURN extends ReturnInstruction {
 

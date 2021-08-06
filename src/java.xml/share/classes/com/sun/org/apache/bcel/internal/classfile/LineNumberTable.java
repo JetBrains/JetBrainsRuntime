@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -30,9 +30,10 @@ import jdk.xml.internal.SecuritySupport;
  * purposes. This attribute is used by the <em>Code</em> attribute. It
  * contains pairs of PCs and line numbers.
  *
+ * @version $Id$
  * @see     Code
  * @see LineNumber
- * @LastModified: Jan 2020
+ * @LastModified: Jun 2019
  */
 public final class LineNumberTable extends Attribute {
 
@@ -67,7 +68,7 @@ public final class LineNumberTable extends Attribute {
      * @param length Content length in bytes
      * @param input Input stream
      * @param constant_pool Array of constants
-     * @throws IOException if an I/O Exception occurs in readUnsignedShort
+     * @throws IOEXception if an I/O Exception occurs in readUnsignedShort
      */
     LineNumberTable(final int name_index, final int length, final DataInput input, final ConstantPool constant_pool)
             throws IOException {
@@ -95,10 +96,10 @@ public final class LineNumberTable extends Attribute {
      * Dump line number table attribute to file stream in binary format.
      *
      * @param file Output file stream
-     * @throws IOException if an I/O Exception occurs in writeShort
+     * @throws IOEXception if an I/O Exception occurs in writeShort
      */
     @Override
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         super.dump(file);
         file.writeShort(line_number_table.length);
         for (final LineNumber lineNumber : line_number_table) {
@@ -109,14 +110,14 @@ public final class LineNumberTable extends Attribute {
     /**
      * @return Array of (pc offset, line number) pairs.
      */
-    public LineNumber[] getLineNumberTable() {
+    public final LineNumber[] getLineNumberTable() {
         return line_number_table;
     }
 
     /**
      * @param line_number_table the line number entries for this table
      */
-    public void setLineNumberTable( final LineNumber[] line_number_table ) {
+    public final void setLineNumberTable( final LineNumber[] line_number_table ) {
         this.line_number_table = line_number_table;
     }
 
@@ -124,7 +125,7 @@ public final class LineNumberTable extends Attribute {
      * @return String representation.
      */
     @Override
-    public String toString() {
+    public final String toString() {
         final StringBuilder buf = new StringBuilder();
         final StringBuilder line = new StringBuilder();
 
@@ -160,7 +161,7 @@ public final class LineNumberTable extends Attribute {
         /* Do a binary search since the array is ordered.
          */
         do {
-            final int i = (l + r) >>> 1;
+            final int i = (l + r) / 2;
             final int j = line_number_table[i].getStartPC();
             if (j == pos) {
                 return line_number_table[i].getLineNumber();
@@ -203,7 +204,7 @@ public final class LineNumberTable extends Attribute {
         return c;
     }
 
-    public int getTableLength() {
+    public final int getTableLength() {
         return line_number_table == null ? 0 : line_number_table.length;
     }
 }

@@ -524,6 +524,7 @@ public final class XDragSourceContextPeer
         updateTargetWindow(xmotion);
 
         if (dragProtocol != null) {
+            // XDnDDropTargetProtocol.processXdndPosition will scale x/y
             dragProtocol.sendMoveMessage(xmotion.get_x_root(),
                                          xmotion.get_y_root(),
                                          sourceAction, sourceActions,
@@ -533,6 +534,7 @@ public final class XDragSourceContextPeer
 
     private void processDrop(XButtonEvent xbutton) {
         try {
+            // XDnDDropTargetProtocol.processXdndPosition will scale x/y
             dragProtocol.initiateDrop(xbutton.get_x_root(),
                                       xbutton.get_y_root(),
                                       sourceAction, sourceActions,

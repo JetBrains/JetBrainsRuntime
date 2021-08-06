@@ -80,7 +80,7 @@ public final class ConstantInvokeDynamic extends ConstantCP {
      * for use by ConstantInvokeDynamic.
      * @since 6.0
      */
-    public int getBootstrapMethodAttrIndex() {
+    public final int getBootstrapMethodAttrIndex() {
         return super.getClassIndex();  // AKA bootstrap_method_attr_index
     }
 
@@ -88,7 +88,7 @@ public final class ConstantInvokeDynamic extends ConstantCP {
      * @return String representation
      */
     @Override
-    public String toString() {
+    public final String toString() {
         return super.toString().replace("class_index", "bootstrap_method_attr_index");
     }
 }

@@ -37,7 +37,6 @@ import jdk.internal.net.http.frame.HeadersFrame;
 
 public class Http2TestExchangeImpl implements Http2TestExchange {
 
-    static final String HEAD = "HEAD";
     final HttpHeaders reqheaders;
     final HttpHeadersBuilder rspheadersBuilder;
     final URI uri;
@@ -130,7 +129,7 @@ public class Http2TestExchangeImpl implements Http2TestExchange {
     @Override
     public void sendResponseHeaders(int rCode, long responseLength) throws IOException {
         this.responseLength = responseLength;
-        if (responseLength !=0 && rCode != 204 && !isHeadRequest()) {
+        if (responseLength !=0 && rCode != 204) {
                 long clen = responseLength > 0 ? responseLength : 0;
             rspheadersBuilder.setHeader("Content-length", Long.toString(clen));
         }
@@ -198,9 +197,5 @@ public class Http2TestExchangeImpl implements Http2TestExchange {
         } catch (IOException ex) {
             System.err.println("TestServer: pushPromise exception: " + ex);
         }
-    }
-
-    private boolean isHeadRequest() {
-        return HEAD.equalsIgnoreCase(getRequestMethod());
     }
 }

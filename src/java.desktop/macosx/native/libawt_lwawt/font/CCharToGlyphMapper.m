@@ -23,7 +23,7 @@
  * questions.
  */
 
-#import "JNIUtilities.h"
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 #import "AWTFont.h"
 #import "CoreTextSupport.h"
@@ -42,12 +42,12 @@ Java_sun_font_CCharToGlyphMapper_countGlyphs
 {
     jint numGlyphs = 0;
 
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
     numGlyphs = [awtFont->fFont numberOfGlyphs];
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
 
     return numGlyphs;
 }
@@ -91,7 +91,7 @@ Java_sun_font_CCharToGlyphMapper_nativeCharsToGlyphs
     (JNIEnv *env, jclass clazz,
      jlong awtFontPtr, jint count, jcharArray unicodes, jintArray glyphs)
 {
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
 
@@ -112,7 +112,7 @@ JNI_COCOA_ENTER(env);
                                               unicodesAsChars, JNI_ABORT);
     }
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
 }
 
 /*
@@ -124,18 +124,18 @@ JNIEXPORT jint JNICALL
 Java_sun_font_CCompositeGlyphMapper_nativeCodePointToGlyph
 (JNIEnv *env, jclass clazz, jlong awtFontPtr, jint codePoint, jobjectArray resultArray)
 {
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
     CFStringRef fontNames[] = {NULL, NULL};
     CGGlyph glyph = CTS_CopyGlyphAndFontNamesForCodePoint(awtFont, (UnicodeScalarValue)codePoint, fontNames);
     if (glyph > 0) {
-        jstring fontName = (jstring)NSStringToJavaString(env, (NSString *)fontNames[0]);
+        jstring fontName = (jstring)JNFNSToJavaString(env, (NSString *)fontNames[0]);
         (*env)->SetObjectArrayElement(env, resultArray, 0, fontName);
-        jstring fontFamilyName = (jstring)NSStringToJavaString(env, (NSString *)fontNames[1]);
+        jstring fontFamilyName = (jstring)JNFNSToJavaString(env, (NSString *)fontNames[1]);
         (*env)->SetObjectArrayElement(env, resultArray, 1, fontFamilyName);
     }
     if (fontNames[0]) CFRelease(fontNames[0]);
     if (fontNames[1]) CFRelease(fontNames[1]);
     return glyph;
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
 }

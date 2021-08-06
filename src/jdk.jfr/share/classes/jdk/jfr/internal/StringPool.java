@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,20 +35,23 @@ public final class StringPool {
 
     static final int MIN_LIMIT = 16;
     static final int MAX_LIMIT = 128; /* 0 MAX means disabled */
-    private static final long DO_NOT_POOL = -1;
+    private static final long epochAddress;
     private static final SimpleStringIdPool sp = new SimpleStringIdPool();
-
-    static long addString(String s) {
-        return sp.addString(s);
-    }
-
-    static void reset() {
+    static {
+        epochAddress = JVM.getJVM().getEpochAddress();
         sp.reset();
     }
-
+    public static long addString(String s) {
+        return sp.addString(s);
+    }
+    private static boolean getCurrentEpoch() {
+        return unsafe.getByte(epochAddress) == 1;
+    }
     private static class SimpleStringIdPool {
         /* string id index */
-        private final AtomicLong sidIdx = new AtomicLong(1);
+        private final AtomicLong sidIdx = new AtomicLong();
+        /* epoch of cached strings */
+        private boolean poolEpoch;
         /* the cache */
         private final ConcurrentHashMap<String, Long> cache;
         /* max size */
@@ -57,6 +60,7 @@ public final class StringPool {
         private final long MAX_SIZE_UTF16 = 16*1024*1024;
         /* max size bytes*/
         private long currentSizeUTF16;
+
         /* looking at a biased data set 4 is a good value */
         private final String[] preCache = new String[]{"", "" , "" ,""};
         /* index of oldest */
@@ -65,28 +69,35 @@ public final class StringPool {
         private static final int preCacheMask = 0x03;
 
         SimpleStringIdPool() {
-            this.cache = new ConcurrentHashMap<>(MAX_SIZE, 0.75f);
+            cache = new ConcurrentHashMap<>(MAX_SIZE, 0.75f);
         }
-
-        private void reset() {
+        void reset() {
+            reset(getCurrentEpoch());
+        }
+        private void reset(boolean epoch) {
             this.cache.clear();
-            synchronized(SimpleStringIdPool.class) {
-                this.currentSizeUTF16 = 0;
-            }
+            this.poolEpoch = epoch;
+            this.currentSizeUTF16 = 0;
         }
-
         private long addString(String s) {
-            Long lsid = this.cache.get(s);
-            if (lsid != null) {
-                return lsid.longValue();
+            boolean currentEpoch = getCurrentEpoch();
+            if (poolEpoch == currentEpoch) {
+                /* pool is for current chunk */
+                Long lsid = this.cache.get(s);
+                if (lsid != null) {
+                    return lsid.longValue();
+                }
+            } else {
+                /* pool is for an old chunk */
+                reset(currentEpoch);
             }
             if (!preCache(s)) {
                 /* we should not pool this string */
-                return DO_NOT_POOL;
+                return -1;
             }
             if (cache.size() > MAX_SIZE || currentSizeUTF16 > MAX_SIZE_UTF16) {
                 /* pool was full */
-                reset();
+                reset(currentEpoch);
             }
             return storeString(s);
         }
@@ -95,13 +106,14 @@ public final class StringPool {
             long sid = this.sidIdx.getAndIncrement();
             /* we can race but it is ok */
             this.cache.put(s, sid);
+            boolean currentEpoch;
             synchronized(SimpleStringIdPool.class) {
-                JVM.addStringConstant(sid, s);
+                currentEpoch = JVM.addStringConstant(poolEpoch, sid, s);
                 currentSizeUTF16 += s.length();
             }
-            return sid;
+            /* did we write in chunk that this pool represent */
+            return currentEpoch == poolEpoch ? sid : -1;
         }
-
         private boolean preCache(String s) {
             if (preCache[0].equals(s)) {
                 return true;

@@ -20,7 +20,8 @@
 #define TTPLOAD_H_
 
 
-#include <freetype/internal/tttypes.h>
+#include <ft2build.h>
+#include FT_INTERNAL_TRUETYPE_TYPES_H
 
 
 FT_BEGIN_HEADER

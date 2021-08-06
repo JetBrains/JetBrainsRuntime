@@ -24,6 +24,7 @@ package com.sun.org.apache.bcel.internal.generic;
 /**
  * NOP - Do nothing
  *
+ * @version $Id$
  */
 public class NOP extends Instruction {
 

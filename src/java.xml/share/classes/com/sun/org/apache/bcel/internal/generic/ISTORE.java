@@ -25,6 +25,7 @@ package com.sun.org.apache.bcel.internal.generic;
  * ISTORE - Store int from stack into local variable
  * <PRE>Stack: ..., value -&gt; ... </PRE>
  *
+ * @version $Id$
  */
 public class ISTORE extends StoreInstruction {
 

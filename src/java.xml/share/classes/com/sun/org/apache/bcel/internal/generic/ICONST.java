@@ -24,6 +24,7 @@ package com.sun.org.apache.bcel.internal.generic;
  *
  * <PRE>Stack: ... -&gt; ..., </PRE>
  *
+ * @version $Id$
  */
 public class ICONST extends Instruction implements ConstantPushInstruction {
 

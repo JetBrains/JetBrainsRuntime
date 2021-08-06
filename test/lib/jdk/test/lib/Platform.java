@@ -262,7 +262,7 @@ public class Platform {
         if (isAix()) {
             return false; // SA not implemented.
         } else if (isLinux()) {
-            if (isS390x() || isARM()) {
+            if (isS390x()) {
                 return false; // SA not implemented.
             }
         }

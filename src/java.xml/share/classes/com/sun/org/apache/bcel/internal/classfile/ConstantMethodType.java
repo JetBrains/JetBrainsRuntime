@@ -84,7 +84,7 @@ public final class ConstantMethodType extends Constant {
      * @throws IOException
      */
     @Override
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         file.writeByte(super.getTag());
         file.writeShort(descriptor_index);
     }
@@ -104,7 +104,7 @@ public final class ConstantMethodType extends Constant {
      * @return String representation
      */
     @Override
-    public String toString() {
+    public final String toString() {
         return super.toString() + "(descriptor_index = " + descriptor_index + ")";
     }
 }

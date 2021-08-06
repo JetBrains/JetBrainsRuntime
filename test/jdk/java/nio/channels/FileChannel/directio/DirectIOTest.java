@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,37 +47,30 @@ import com.sun.nio.file.ExtendedOpenOption;
 
 public class DirectIOTest {
 
-    private static final int BASE_SIZE = 4096;
-    private static long blockSize;
+    private static final int SIZE = 4096;
 
-    private static int testWrite(Path p) throws Exception {
+    private static void testWrite(Path p) throws Exception {
         try (FileChannel fc = FileChannel.open(p, StandardOpenOption.WRITE,
              ExtendedOpenOption.DIRECT)) {
-            int bs = (int)blockSize;
-            int size = Math.max(BASE_SIZE, bs);
-            int alignment = bs;
-            ByteBuffer src = ByteBuffer.allocateDirect(size + alignment - 1)
+            FileStore fs = Files.getFileStore(p);
+            int alignment = (int)fs.getBlockSize();
+            ByteBuffer src = ByteBuffer.allocateDirect(SIZE + alignment - 1)
                                        .alignedSlice(alignment);
-            assert src.capacity() != 0;
-            for (int j = 0; j < size; j++) {
+            for (int j = 0; j < SIZE; j++) {
                 src.put((byte)0);
             }
             src.flip();
             fc.write(src);
-            return size;
         }
     }
 
-    private static int testRead(Path p) throws Exception {
+    private static void testRead(Path p) throws Exception {
         try (FileChannel fc = FileChannel.open(p, ExtendedOpenOption.DIRECT)) {
-            int bs = (int)blockSize;
-            int size = Math.max(BASE_SIZE, bs);
-            int alignment = bs;
-            ByteBuffer dest = ByteBuffer.allocateDirect(size + alignment - 1)
+            FileStore fs = Files.getFileStore(p);
+            int alignment = (int)fs.getBlockSize();
+            ByteBuffer dest = ByteBuffer.allocateDirect(SIZE + alignment - 1)
                                         .alignedSlice(alignment);
-            assert dest.capacity() != 0;
             fc.read(dest);
-            return size;
         }
     }
 
@@ -100,16 +93,15 @@ public class DirectIOTest {
         return supported;
     }
 
-    private static boolean isFileInCache(int size, Path p) {
+    private static boolean isFileInCache(Path p) {
         String path = p.toString();
-        return isFileInCache0(size, path);
+        return isFileInCache0(SIZE, path);
     }
 
     private static native boolean isFileInCache0(int size, String path);
 
     public static void main(String[] args) throws Exception {
         Path p = createTempFile();
-        blockSize = Files.getFileStore(p).getBlockSize();
 
         if (!isDirectIOSupportedByFS(p)) {
             Files.delete(p);
@@ -119,13 +111,13 @@ public class DirectIOTest {
         System.loadLibrary("DirectIO");
 
         try {
-            int size = testWrite(p);
-            if (isFileInCache(size, p)) {
+            testWrite(p);
+            if (isFileInCache(p)) {
                 throw new RuntimeException("DirectIO is not working properly with "
                     + "write. File still exists in cache!");
             }
-            size = testRead(p);
-            if (isFileInCache(size, p)) {
+            testRead(p);
+            if (isFileInCache(p)) {
                 throw new RuntimeException("DirectIO is not working properly with "
                     + "read. File still exists in cache!");
             }

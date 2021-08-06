@@ -22,9 +22,8 @@
 
 #include <ft2build.h>
 #include FT_CONFIG_CONFIG_H
-#include <freetype/ftimage.h>
+#include FT_IMAGE_H
 
-#include <freetype/internal/compiler-macros.h>
 
 FT_BEGIN_HEADER
 

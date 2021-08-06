@@ -40,8 +40,7 @@ public class FailOverExecutionControlTest extends ExecutionControlTestBase {
     @BeforeMethod
     @Override
     public void setUp() {
-        setUp(builder -> builder.executionEngine("failover:0(expectedFailureNonExistent1), 1(expectedFailureNonExistent2), "
-                + standardSpecs()));
+        setUp(builder -> builder.executionEngine("failover:0(nonExistent), 1(nonExistent), 2(jdi:launch(true))"));
     }
 
 }

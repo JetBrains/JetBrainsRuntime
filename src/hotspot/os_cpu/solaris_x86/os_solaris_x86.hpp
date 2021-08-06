@@ -45,7 +45,6 @@
 #endif // AMD64
 
   static bool supports_sse();
-  static juint cpu_microcode_revision();
 
   static jlong rdtsc();
 

@@ -14,8 +14,7 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
     self = [super initWithParent:parent withEnv:env withAccessible:accessible withIndex:index withView:view withJavaRole:javaRole];
     if (self) {
         if (tabGroup != NULL) {
-            fTabGroupAxContext = (*env)->NewWeakGlobalRef(env, tabGroup);
-            CHECK_EXCEPTION();
+            fTabGroupAxContext = JNFNewWeakGlobalRef(env, tabGroup);
         } else {
             fTabGroupAxContext = NULL;
         }
@@ -27,8 +26,7 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
     if (fTabGroupAxContext == NULL) {
         JNIEnv* env = [ThreadUtilities getJNIEnv];
         jobject tabGroupAxContext = [(JavaComponentAccessibility *)[self parent] axContextWithEnv:env];
-        fTabGroupAxContext = (*env)->NewWeakGlobalRef(env, tabGroupAxContext);
-        CHECK_EXCEPTION();
+        fTabGroupAxContext = JNFNewWeakGlobalRef(env, tabGroupAxContext);
         (*env)->DeleteLocalRef(env, tabGroupAxContext);
     }
     return fTabGroupAxContext;
@@ -70,23 +68,19 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
 
 @end
 
+static JNF_CLASS_CACHE(sjc_Object, "java/lang/Object");
 static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject component) {
-    DECLARE_CLASS_RETURN(sjc_Object, "java/lang/Object", NO);
-    DECLARE_METHOD_RETURN(jm_equals, sjc_Object, "equals", "(Ljava/lang/Object;)Z", NO);
+    static JNF_MEMBER_CACHE(jm_equals, sjc_Object, "equals", "(Ljava/lang/Object;)Z");
 
     if ((a == NULL) && (b == NULL)) return YES;
     if ((a == NULL) || (b == NULL)) return NO;
 
     if (pthread_main_np() != 0) {
         // If we are on the AppKit thread
-        DECLARE_CLASS_RETURN(sjc_LWCToolkit, "sun/lwawt/macosx/LWCToolkit", NO);
-        DECLARE_STATIC_METHOD_RETURN(jm_doEquals, sjc_LWCToolkit, "doEquals",
-                                     "(Ljava/lang/Object;Ljava/lang/Object;Ljava/awt/Component;)Z", NO);
-        return (*env)->CallStaticBooleanMethod(env, sjc_LWCToolkit, jm_doEquals, a, b, component);
-        CHECK_EXCEPTION();
+        static JNF_CLASS_CACHE(sjc_LWCToolkit, "sun/lwawt/macosx/LWCToolkit");
+        static JNF_STATIC_MEMBER_CACHE(jm_doEquals, sjc_LWCToolkit, "doEquals", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/awt/Component;)Z");
+        return JNFCallStaticBooleanMethod(env, jm_doEquals, a, b, component); // AWT_THREADING Safe (AWTRunLoopMode)
     }
 
-    jboolean jb = (*env)->CallBooleanMethod(env, a, jm_equals, b);
-    CHECK_EXCEPTION();
-    return jb;
+    return JNFCallBooleanMethod(env, a, jm_equals, b); // AWT_THREADING Safe (!appKit)
 }

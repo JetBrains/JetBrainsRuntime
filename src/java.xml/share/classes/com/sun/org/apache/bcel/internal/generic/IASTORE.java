@@ -25,6 +25,7 @@ package com.sun.org.apache.bcel.internal.generic;
  * IASTORE -  Store into int array
  * <PRE>Stack: ..., arrayref, index, value -&gt; ...</PRE>
  *
+ * @version $Id$
  */
 public class IASTORE extends ArrayInstruction implements StackConsumer {
 

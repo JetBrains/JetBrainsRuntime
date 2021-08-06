@@ -27,6 +27,7 @@ import java.io.IOException;
 /**
  * GOTO - Branch always (to relative offset, not absolute address)
  *
+ * @version $Id$
  */
 public class GOTO extends GotoInstruction implements VariableLengthInstruction {
 

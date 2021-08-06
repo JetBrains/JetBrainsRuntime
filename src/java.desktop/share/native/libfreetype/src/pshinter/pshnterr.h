@@ -25,7 +25,7 @@
 #ifndef PSHNTERR_H_
 #define PSHNTERR_H_
 
-#include <freetype/ftmoderr.h>
+#include FT_MODULE_ERRORS_H
 
 #undef FTERRORS_H_
 
@@ -33,7 +33,7 @@
 #define FT_ERR_PREFIX  PSH_Err_
 #define FT_ERR_BASE    FT_Mod_Err_PShinter
 
-#include <freetype/fterrors.h>
+#include FT_ERRORS_H
 
 #endif /* PSHNTERR_H_ */
 

@@ -62,7 +62,7 @@ public class ProbingFailure {
 
         kt("-list -keystore mks")
                 .shouldHaveExitValue(1)
-                .shouldContain("Unrecognized keystore format");
+                .shouldContain("This keystore does not support probing");
 
         // importkeystore
         kt("-importkeystore -srckeystore mks -srcstoretype MYKS -destkeystore p12")
@@ -70,7 +70,7 @@ public class ProbingFailure {
 
         kt("-importkeystore -srckeystore mks -destkeystore p12a")
                 .shouldHaveExitValue(1)
-                .shouldContain("Unrecognized keystore format");
+                .shouldContain("This keystore does not support probing");
 
         // in-place importkeystore
         kt("-importkeystore -srckeystore mks -srcstoretype MYKS -destkeystore mks -deststoretype myks")

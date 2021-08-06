@@ -729,17 +729,10 @@ void SplashFreeLibrary() {
 }
 
 /*
- * Signature adapter for pthread_create() or thr_create().
- */
-static void* ThreadJavaMain(void* args) {
-    return (void*)(intptr_t)JavaMain(args);
-}
-
-/*
- * Block current thread and continue execution in a new thread.
+ * Block current thread and continue execution in a new thread
  */
 int
-CallJavaMainInNewThread(jlong stack_size, void* args) {
+ContinueInNewThread0(int (JNICALL *continuation)(void *), jlong stack_size, void * args) {
     int rslt;
 #ifndef __solaris__
     pthread_t tid;
@@ -748,35 +741,35 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     if (stack_size > 0) {
-        pthread_attr_setstacksize(&attr, stack_size);
+      pthread_attr_setstacksize(&attr, stack_size);
     }
     pthread_attr_setguardsize(&attr, 0); // no pthread guard page on java threads
 
-    if (pthread_create(&tid, &attr, ThreadJavaMain, args) == 0) {
-        void* tmp;
-        pthread_join(tid, &tmp);
-        rslt = (int)(intptr_t)tmp;
+    if (pthread_create(&tid, &attr, (void *(*)(void*))continuation, (void*)args) == 0) {
+      void * tmp;
+      pthread_join(tid, &tmp);
+      rslt = (int)(intptr_t)tmp;
     } else {
-       /*
-        * Continue execution in current thread if for some reason (e.g. out of
-        * memory/LWP)  a new thread can't be created. This will likely fail
-        * later in JavaMain as JNI_CreateJavaVM needs to create quite a
-        * few new threads, anyway, just give it a try..
-        */
-        rslt = JavaMain(args);
+     /*
+      * Continue execution in current thread if for some reason (e.g. out of
+      * memory/LWP)  a new thread can't be created. This will likely fail
+      * later in continuation as JNI_CreateJavaVM needs to create quite a
+      * few new threads, anyway, just give it a try..
+      */
+      rslt = continuation(args);
     }
 
     pthread_attr_destroy(&attr);
 #else /* __solaris__ */
     thread_t tid;
     long flags = 0;
-    if (thr_create(NULL, stack_size, ThreadJavaMain, args, flags, &tid) == 0) {
-        void* tmp;
-        thr_join(tid, NULL, &tmp);
-        rslt = (int)(intptr_t)tmp;
+    if (thr_create(NULL, stack_size, (void *(*)(void *))continuation, args, flags, &tid) == 0) {
+      void * tmp;
+      thr_join(tid, NULL, &tmp);
+      rslt = (int)(intptr_t)tmp;
     } else {
-        /* See above. Continue in current thread if thr_create() failed */
-        rslt = JavaMain(args);
+      /* See above. Continue in current thread if thr_create() failed */
+      rslt = continuation(args);
     }
 #endif /* !__solaris__ */
     return rslt;

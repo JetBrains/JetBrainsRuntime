@@ -16,10 +16,10 @@
  */
 
 
-#include <freetype/internal/ftobjs.h>
+#include <ft2build.h>
+#include FT_INTERNAL_OBJECTS_H
 #include "pshrec.h"
 #include "pshalgo.h"
-#include "pshmod.h"
 
 
   /* the Postscript Hinter module structure */

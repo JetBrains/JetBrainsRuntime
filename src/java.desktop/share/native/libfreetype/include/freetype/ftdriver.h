@@ -19,8 +19,9 @@
 #ifndef FTDRIVER_H_
 #define FTDRIVER_H_
 
-#include <freetype/freetype.h>
-#include <freetype/ftparams.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_PARAMETER_TAGS_H
 
 #ifdef FREETYPE_H
 #error "freetype.h of FreeType 1 has been loaded!"
@@ -425,6 +426,10 @@ FT_BEGIN_HEADER
    *   coverage of filled-in outlines and are therefore 'blacker'.  This
    *   counteracts the 'thinning out' of glyphs, making text remain readable
    *   at smaller sizes.
+   *
+   *   By default, the Adobe engines for CFF, Type~1, and CID fonts darken
+   *   stems at smaller sizes, regardless of hinting, to enhance contrast.
+   *   Setting this property, stem darkening gets switched off.
    *
    *   For the auto-hinter, stem-darkening is experimental currently and thus
    *   switched off by default (this is, `no-stem-darkening` is set to TRUE

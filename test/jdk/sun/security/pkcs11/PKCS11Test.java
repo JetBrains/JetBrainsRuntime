@@ -200,7 +200,7 @@ public abstract class PKCS11Test {
                     test.enableSM = true;
                 } else {
                     throw new RuntimeException("Unknown Command, use 'sm' as "
-                            + "first argument to enable security manager");
+                            + "first arguemtn to enable security manager");
                 }
             }
             if (test.enableSM) {
@@ -690,8 +690,7 @@ public abstract class PKCS11Test {
                 "/usr/lib/arm-linux-gnueabihf/nss/" });
         osMap.put("Linux-aarch64-64", new String[] {
                 "/usr/lib/aarch64-linux-gnu/",
-                "/usr/lib/aarch64-linux-gnu/nss/",
-                "/usr/lib64/" });
+                "/usr/lib/aarch64-linux-gnu/nss/" });
         return osMap;
     }
 

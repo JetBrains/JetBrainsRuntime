@@ -40,21 +40,16 @@
 #include "oops/accessDecorators.hpp"
 #include "oops/compressedOops.inline.hpp"
 #include "oops/klass.inline.hpp"
+#include "oops/oop.hpp"
+#include "opto/compile.hpp"
+#include "opto/intrinsicnode.hpp"
+#include "opto/node.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/icache.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/thread.hpp"
-#ifdef COMPILER1
-#include "c1/c1_LIRAssembler.hpp"
-#endif
-#ifdef COMPILER2
-#include "oops/oop.hpp"
-#include "opto/compile.hpp"
-#include "opto/intrinsicnode.hpp"
-#include "opto/node.hpp"
-#endif
 
 #ifdef PRODUCT
 #define BLOCK_COMMENT(str) /* nothing */
@@ -700,11 +695,6 @@ void MacroAssembler::call_VM_base(Register oop_result,
   // do the call, remove parameters
   MacroAssembler::call_VM_leaf_base(entry_point, number_of_arguments, &l);
 
-  // lr could be poisoned with PAC signature during throw_pending_exception
-  // if it was tail-call optimized by compiler, since lr is not callee-saved
-  // reload it with proper value
-  adr(lr, l);
-
   // reset last Java frame
   // Only interpreter should have to clear fp
   reset_last_Java_frame(true);
@@ -745,19 +735,15 @@ address MacroAssembler::trampoline_call(Address entry, CodeBuffer *cbuf) {
 
   // We need a trampoline if branches are far.
   if (far_branches()) {
-    bool in_scratch_emit_size = false;
-#ifdef COMPILER2
     // We don't want to emit a trampoline if C2 is generating dummy
     // code during its branch shortening phase.
     CompileTask* task = ciEnv::current()->task();
-    in_scratch_emit_size =
+    bool in_scratch_emit_size =
       (task != NULL && is_c2_compile(task->comp_level()) &&
        Compile::current()->in_scratch_emit_size());
-#endif
     if (!in_scratch_emit_size) {
       address stub = emit_trampoline_stub(offset(), entry.target());
       if (stub == NULL) {
-        postcond(pc() == badAddress);
         return NULL; // CodeCache is full
       }
     }
@@ -771,7 +757,6 @@ address MacroAssembler::trampoline_call(Address entry, CodeBuffer *cbuf) {
     bl(pc());
   }
   // just need to return a non-null address
-  postcond(pc() != badAddress);
   return pc();
 }
 
@@ -789,9 +774,7 @@ address MacroAssembler::trampoline_call(Address entry, CodeBuffer *cbuf) {
 
 address MacroAssembler::emit_trampoline_stub(int insts_call_instruction_offset,
                                              address dest) {
-  // Max stub size: alignment nop, TrampolineStub.
-  address stub = start_a_stub(NativeInstruction::instruction_size
-                   + NativeCallTrampolineStub::instruction_size);
+  address stub = start_a_stub(Compile::MAX_stubs_size/2);
   if (stub == NULL) {
     return NULL;  // CodeBuffer::expand failed
   }
@@ -1031,22 +1014,27 @@ void MacroAssembler::lookup_interface_method(Register recv_klass,
   // }
   Label search, found_method;
 
-  ldr(method_result, Address(scan_temp, itableOffsetEntry::interface_offset_in_bytes()));
-  cmp(intf_klass, method_result);
-  br(Assembler::EQ, found_method);
-  bind(search);
-  // Check that the previous entry is non-null.  A null entry means that
-  // the receiver class doesn't implement the interface, and wasn't the
-  // same as when the caller was compiled.
-  cbz(method_result, L_no_such_interface);
-  if (itableOffsetEntry::interface_offset_in_bytes() != 0) {
-    add(scan_temp, scan_temp, scan_step);
+  for (int peel = 1; peel >= 0; peel--) {
     ldr(method_result, Address(scan_temp, itableOffsetEntry::interface_offset_in_bytes()));
-  } else {
-    ldr(method_result, Address(pre(scan_temp, scan_step)));
+    cmp(intf_klass, method_result);
+
+    if (peel) {
+      br(Assembler::EQ, found_method);
+    } else {
+      br(Assembler::NE, search);
+      // (invert the test to fall through to found_method...)
+    }
+
+    if (!peel)  break;
+
+    bind(search);
+
+    // Check that the previous entry is non-null.  A null entry means that
+    // the receiver class doesn't implement the interface, and wasn't the
+    // same as when the caller was compiled.
+    cbz(method_result, L_no_such_interface);
+    add(scan_temp, scan_temp, scan_step);
   }
-  cmp(intf_klass, method_result);
-  br(Assembler::NE, search);
 
   bind(found_method);
 
@@ -2470,8 +2458,6 @@ void MacroAssembler::atomic_##OP(Register prev, Register newv, Register addr) { 
 
 ATOMIC_XCHG(xchg, swp, ldxr, stxr, Assembler::xword)
 ATOMIC_XCHG(xchgw, swp, ldxrw, stxrw, Assembler::word)
-ATOMIC_XCHG(xchgl, swpl, ldxr, stlxr, Assembler::xword)
-ATOMIC_XCHG(xchglw, swpl, ldxrw, stlxrw, Assembler::word)
 ATOMIC_XCHG(xchgal, swpal, ldaxr, stlxr, Assembler::xword)
 ATOMIC_XCHG(xchgalw, swpal, ldaxrw, stlxrw, Assembler::word)
 
@@ -4291,7 +4277,6 @@ void MacroAssembler::remove_frame(int framesize) {
   }
 }
 
-#ifdef COMPILER2
 typedef void (MacroAssembler::* chr_insn)(Register Rt, const Address &adr);
 
 // Search for str1 in str2 and return index or -1
@@ -5017,10 +5002,9 @@ void MacroAssembler::string_compare(Register str1, Register str2,
 
   BLOCK_COMMENT("} string_compare");
 }
-#endif // COMPILER2
 
 // This method checks if provided byte array contains byte with highest bit set.
-address MacroAssembler::has_negatives(Register ary1, Register len, Register result) {
+void MacroAssembler::has_negatives(Register ary1, Register len, Register result) {
     // Simple and most common case of aligned small array which is not at the
     // end of memory page is placed here. All other cases are in stub.
     Label LOOP, END, STUB, STUB_LONG, SET_RESULT, DONE;
@@ -5057,38 +5041,27 @@ address MacroAssembler::has_negatives(Register ary1, Register len, Register resu
     b(SET_RESULT);
 
   BIND(STUB);
-    RuntimeAddress has_neg = RuntimeAddress(StubRoutines::aarch64::has_negatives());
+    RuntimeAddress has_neg =  RuntimeAddress(StubRoutines::aarch64::has_negatives());
     assert(has_neg.target() != NULL, "has_negatives stub has not been generated");
-    address tpc1 = trampoline_call(has_neg);
-    if (tpc1 == NULL) {
-      DEBUG_ONLY(reset_labels3(STUB_LONG, SET_RESULT, DONE));
-      postcond(pc() == badAddress);
-      return NULL;
-    }
+    trampoline_call(has_neg);
     b(DONE);
 
   BIND(STUB_LONG);
-    RuntimeAddress has_neg_long = RuntimeAddress(StubRoutines::aarch64::has_negatives_long());
+    RuntimeAddress has_neg_long =  RuntimeAddress(
+            StubRoutines::aarch64::has_negatives_long());
     assert(has_neg_long.target() != NULL, "has_negatives stub has not been generated");
-    address tpc2 = trampoline_call(has_neg_long);
-    if (tpc2 == NULL) {
-      DEBUG_ONLY(reset_labels2(SET_RESULT, DONE));
-      postcond(pc() == badAddress);
-      return NULL;
-    }
+    trampoline_call(has_neg_long);
     b(DONE);
 
   BIND(SET_RESULT);
     cset(result, NE); // set true or false
 
   BIND(DONE);
-  postcond(pc() != badAddress);
-  return pc();
 }
 
-address MacroAssembler::arrays_equals(Register a1, Register a2, Register tmp3,
-                                      Register tmp4, Register tmp5, Register result,
-                                      Register cnt1, int elem_size) {
+void MacroAssembler::arrays_equals(Register a1, Register a2, Register tmp3,
+                                   Register tmp4, Register tmp5, Register result,
+                                   Register cnt1, int elem_size) {
   Label DONE, SAME;
   Register tmp1 = rscratch1;
   Register tmp2 = rscratch2;
@@ -5192,7 +5165,7 @@ address MacroAssembler::arrays_equals(Register a1, Register a2, Register tmp3,
       }
     }
   } else {
-    Label NEXT_DWORD, SHORT, TAIL, TAIL2, STUB,
+    Label NEXT_DWORD, SHORT, TAIL, TAIL2, STUB, EARLY_OUT,
         CSET_EQ, LAST_CHECK;
     mov(result, false);
     cbz(a1, DONE);
@@ -5251,14 +5224,10 @@ address MacroAssembler::arrays_equals(Register a1, Register a2, Register tmp3,
     cbnz(tmp5, DONE);
     RuntimeAddress stub = RuntimeAddress(StubRoutines::aarch64::large_array_equals());
     assert(stub.target() != NULL, "array_equals_long stub has not been generated");
-    address tpc = trampoline_call(stub);
-    if (tpc == NULL) {
-      DEBUG_ONLY(reset_labels5(SHORT, LAST_CHECK, CSET_EQ, SAME, DONE));
-      postcond(pc() == badAddress);
-      return NULL;
-    }
+    trampoline_call(stub);
     b(DONE);
 
+    bind(EARLY_OUT);
     // (a1 != null && a2 == null) || (a1 != null && a2 != null && a1 == a2)
     // so, if a2 == null => return false(0), else return true, so we can return a2
     mov(result, a2);
@@ -5285,8 +5254,6 @@ address MacroAssembler::arrays_equals(Register a1, Register a2, Register tmp3,
   bind(DONE);
 
   BLOCK_COMMENT("} array_equals");
-  postcond(pc() != badAddress);
-  return pc();
 }
 
 // Compare Strings
@@ -5394,7 +5361,7 @@ const int MacroAssembler::zero_words_block_size = 8;
 // cnt:   Count in HeapWords.
 //
 // ptr, cnt, rscratch1, and rscratch2 are clobbered.
-address MacroAssembler::zero_words(Register ptr, Register cnt)
+void MacroAssembler::zero_words(Register ptr, Register cnt)
 {
   assert(is_power_of_2(zero_words_block_size), "adjust this");
   assert(ptr == r10 && cnt == r11, "mismatch in register usage");
@@ -5404,15 +5371,10 @@ address MacroAssembler::zero_words(Register ptr, Register cnt)
   Label around, done, done16;
   br(LO, around);
   {
-    RuntimeAddress zero_blocks = RuntimeAddress(StubRoutines::aarch64::zero_blocks());
+    RuntimeAddress zero_blocks =  RuntimeAddress(StubRoutines::aarch64::zero_blocks());
     assert(zero_blocks.target() != NULL, "zero_blocks stub has not been generated");
     if (StubRoutines::aarch64::complete()) {
-      address tpc = trampoline_call(zero_blocks);
-      if (tpc == NULL) {
-        DEBUG_ONLY(reset_labels1(around));
-        postcond(pc() == badAddress);
-        return NULL;
-      }
+      trampoline_call(zero_blocks);
     } else {
       bl(zero_blocks);
     }
@@ -5433,8 +5395,6 @@ address MacroAssembler::zero_words(Register ptr, Register cnt)
     bind(l);
   }
   BLOCK_COMMENT("} zero_words");
-  postcond(pc() != badAddress);
-  return pc();
 }
 
 // base:         Address of a buffer to be zeroed, 8 bytes aligned.
@@ -5447,15 +5407,14 @@ void MacroAssembler::zero_words(Register base, u_int64_t cnt)
   if (i) str(zr, Address(base));
 
   if (cnt <= SmallArraySize / BytesPerLong) {
-    for (; i < (int)cnt; i += 2) {
+    for (; i < (int)cnt; i += 2)
       stp(zr, zr, Address(base, i * wordSize));
-    }
   } else {
     const int unroll = 4; // Number of stp(zr, zr) instructions we'll unroll
     int remainder = cnt % (2 * unroll);
-    for (; i < remainder; i += 2) {
+    for (; i < remainder; i += 2)
       stp(zr, zr, Address(base, i * wordSize));
-    }
+
     Label loop;
     Register cnt_reg = rscratch1;
     Register loop_base = rscratch2;
@@ -5465,9 +5424,8 @@ void MacroAssembler::zero_words(Register base, u_int64_t cnt)
     add(loop_base, base, (remainder - 2) * wordSize);
     bind(loop);
     sub(cnt_reg, cnt_reg, 2 * unroll);
-    for (i = 1; i < unroll; i++) {
+    for (i = 1; i < unroll; i++)
       stp(zr, zr, Address(loop_base, 2 * i * wordSize));
-    }
     stp(zr, zr, Address(pre(loop_base, 2 * unroll * wordSize)));
     cbnz(cnt_reg, loop);
   }
@@ -5683,9 +5641,9 @@ void MacroAssembler::encode_iso_array(Register src, Register dst,
 
 
 // Inflate byte[] array to char[].
-address MacroAssembler::byte_array_inflate(Register src, Register dst, Register len,
-                                           FloatRegister vtmp1, FloatRegister vtmp2,
-                                           FloatRegister vtmp3, Register tmp4) {
+void MacroAssembler::byte_array_inflate(Register src, Register dst, Register len,
+                                        FloatRegister vtmp1, FloatRegister vtmp2, FloatRegister vtmp3,
+                                        Register tmp4) {
   Label big, done, after_init, to_stub;
 
   assert_different_registers(src, dst, len, tmp4, rscratch1);
@@ -5722,14 +5680,9 @@ address MacroAssembler::byte_array_inflate(Register src, Register dst, Register 
 
   if (SoftwarePrefetchHintDistance >= 0) {
     bind(to_stub);
-      RuntimeAddress stub = RuntimeAddress(StubRoutines::aarch64::large_byte_array_inflate());
+      RuntimeAddress stub =  RuntimeAddress(StubRoutines::aarch64::large_byte_array_inflate());
       assert(stub.target() != NULL, "large_byte_array_inflate stub has not been generated");
-      address tpc = trampoline_call(stub);
-      if (tpc == NULL) {
-        DEBUG_ONLY(reset_labels2(big, done));
-        postcond(pc() == badAddress);
-        return NULL;
-      }
+      trampoline_call(stub);
       b(after_init);
   }
 
@@ -5783,8 +5736,6 @@ address MacroAssembler::byte_array_inflate(Register src, Register dst, Register 
   strq(vtmp3, Address(dst, -16));
 
   bind(done);
-  postcond(pc() != badAddress);
-  return pc();
 }
 
 // Compress char[] array to byte[].

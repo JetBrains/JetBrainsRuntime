@@ -20,8 +20,9 @@
 #define CFFPARSE_H_
 
 
-#include <freetype/internal/cfftypes.h>
-#include <freetype/internal/ftobjs.h>
+#include <ft2build.h>
+#include FT_INTERNAL_CFF_TYPES_H
+#include FT_INTERNAL_OBJECTS_H
 
 
 FT_BEGIN_HEADER

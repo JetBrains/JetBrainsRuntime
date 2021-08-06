@@ -30,6 +30,7 @@ import com.sun.org.apache.bcel.internal.Const;
  * Represents a parameter annotation that is represented in the class file
  * and is provided to the JVM.
  *
+ * @version $Id: RuntimeVisibleParameterAnnotations
  * @since 6.0
  */
 public class RuntimeVisibleParameterAnnotations extends ParameterAnnotations {

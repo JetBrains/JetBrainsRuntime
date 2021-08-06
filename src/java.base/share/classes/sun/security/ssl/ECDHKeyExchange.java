@@ -36,6 +36,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.ECPoint;
 import java.security.spec.ECPublicKeySpec;
@@ -43,7 +44,7 @@ import java.util.EnumSet;
 import javax.crypto.KeyAgreement;
 import javax.crypto.SecretKey;
 import javax.net.ssl.SSLHandshakeException;
-import sun.security.ssl.NamedGroup.NamedGroupSpec;
+import sun.security.ssl.NamedGroup.NamedGroupType;
 import sun.security.ssl.SupportedGroupsExtension.SupportedGroups;
 import sun.security.ssl.X509Authentication.X509Credentials;
 import sun.security.ssl.X509Authentication.X509Possession;
@@ -87,7 +88,7 @@ final class ECDHKeyExchange {
         static ECDHECredentials valueOf(NamedGroup namedGroup,
             byte[] encodedPoint) throws IOException, GeneralSecurityException {
 
-            if (namedGroup.spec != NamedGroupSpec.NAMED_GROUP_ECDHE) {
+            if (namedGroup.type != NamedGroupType.NAMED_GROUP_ECDHE) {
                 throw new RuntimeException(
                     "Credentials decoding:  Not ECDHE named group");
             }
@@ -97,7 +98,10 @@ final class ECDHKeyExchange {
             }
 
             ECParameterSpec parameters =
-                    (ECParameterSpec)namedGroup.keAlgParamSpec;
+                    JsseJce.getECParameterSpec(namedGroup.oid);
+            if (parameters == null) {
+                return null;
+            }
 
             ECPoint point = JsseJce.decodePoint(
                     encodedPoint, parameters.getCurve());
@@ -116,7 +120,9 @@ final class ECDHKeyExchange {
         ECDHEPossession(NamedGroup namedGroup, SecureRandom random) {
             try {
                 KeyPairGenerator kpg = JsseJce.getKeyPairGenerator("EC");
-                kpg.initialize(namedGroup.keAlgParamSpec, random);
+                ECGenParameterSpec params =
+                        (ECGenParameterSpec)namedGroup.getParameterSpec();
+                kpg.initialize(params, random);
                 KeyPair kp = kpg.generateKeyPair();
                 privateKey = kp.getPrivate();
                 publicKey = (ECPublicKey)kp.getPublic();
@@ -242,17 +248,17 @@ final class ECDHKeyExchange {
                 preferableNamedGroup = SupportedGroups.getPreferredGroup(
                         context.negotiatedProtocol,
                         context.algorithmConstraints,
-                        new NamedGroupSpec[] {
-                            NamedGroupSpec.NAMED_GROUP_ECDHE,
-                            NamedGroupSpec.NAMED_GROUP_XDH },
+                        new NamedGroupType[] {
+                            NamedGroupType.NAMED_GROUP_ECDHE,
+                            NamedGroupType.NAMED_GROUP_XDH },
                         context.clientRequestedNamedGroups);
             } else {
                 preferableNamedGroup = SupportedGroups.getPreferredGroup(
                         context.negotiatedProtocol,
                         context.algorithmConstraints,
-                        new NamedGroupSpec[] {
-                            NamedGroupSpec.NAMED_GROUP_ECDHE,
-                            NamedGroupSpec.NAMED_GROUP_XDH });
+                        new NamedGroupType[] {
+                            NamedGroupType.NAMED_GROUP_ECDHE,
+                            NamedGroupType.NAMED_GROUP_XDH });
             }
 
             if (preferableNamedGroup != null) {
@@ -302,8 +308,7 @@ final class ECDHKeyExchange {
 
                 NamedGroup ng = NamedGroup.valueOf(params);
                 if (ng == null) {
-                    // unlikely, have been checked during cipher suite
-                    // negotiation.
+                    // unlikely, have been checked during cipher suite negotiation.
                     throw shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                         "Unsupported EC server cert for ECDH key exchange");
                 }
@@ -475,7 +480,7 @@ final class ECDHKeyExchange {
             }
 
             String alg;
-            switch (namedGroup.spec) {
+            switch (namedGroup.type) {
                 case NAMED_GROUP_ECDHE:
                     alg = "ECDH";
                     break;

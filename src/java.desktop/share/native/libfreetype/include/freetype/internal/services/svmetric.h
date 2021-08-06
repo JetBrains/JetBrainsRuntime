@@ -19,7 +19,7 @@
 #ifndef SVMETRIC_H_
 #define SVMETRIC_H_
 
-#include <freetype/internal/ftserv.h>
+#include FT_INTERNAL_SERVICE_H
 
 
 FT_BEGIN_HEADER

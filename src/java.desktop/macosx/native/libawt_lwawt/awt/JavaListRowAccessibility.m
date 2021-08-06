@@ -7,6 +7,8 @@
 #import "JavaListAccessibility.h"
 #import "ThreadUtilities.h"
 
+static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;");
+
 @implementation JavaListRowAccessibility
 
 // NSAccessibilityElement protocol methods

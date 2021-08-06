@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,12 +42,6 @@
 #define MAXLEN_MESSAGE          256
 #define MAXLEN_EXEC             (MAXLEN_FILENAME*2+MAXLEN_INTEGER+16)
 
-#define TIMESTAMP_SIZE          (MAXLEN_TIMESTAMP+1)
-#define MAXLEN_DT               19 // "DD.MM.YYYY HH:MM:SS"
-#define MAXLEN_MS               5 // ".mmm "
-#define DT_SIZE                 (MAXLEN_DT+1)
-#define TZ_SIZE                 (TIMESTAMP_SIZE-MAXLEN_DT-MAXLEN_MS)
-
 static MUTEX_T my_mutex = MUTEX_INIT;
 
 /* Static variables (should be protected with mutex) */
@@ -58,14 +52,12 @@ static char location_stamp[MAXLEN_LOCATION+1];
 static PID_T processPid;
 static int open_count;
 
-/*
- * "DD.MM.YYYY HH:MM:SS.mmm <TZ>"
- */
+/* Ascii id of current native thread. */
 static void
 get_time_stamp(char *tbuf, size_t ltbuf)
 {
-    char timestamp_date_time[DT_SIZE];
-    char timestamp_timezone[TZ_SIZE];
+    char timestamp_prefix[MAXLEN_TIMESTAMP+1];
+    char timestamp_postfix[MAXLEN_TIMESTAMP+1];
     unsigned millisecs = 0;
     time_t t = 0;
 
@@ -73,14 +65,15 @@ get_time_stamp(char *tbuf, size_t ltbuf)
     if ( time(&t) == (time_t)(-1) ) {
         t = 0;
     }
-
-    (void)strftime(timestamp_date_time, DT_SIZE,
+    /* Break this up so that the format strings are string literals
+       and we avoid a compiler warning. */
+    (void)strftime(timestamp_prefix, sizeof(timestamp_prefix),
                 "%d.%m.%Y %T", localtime(&t));
-    (void)strftime(timestamp_timezone, TZ_SIZE,
+    (void)strftime(timestamp_postfix, sizeof(timestamp_postfix),
                 "%Z", localtime(&t));
     (void)snprintf(tbuf, ltbuf,
-                   "%s.%.3d %s", timestamp_date_time,
-                   (int)(millisecs), timestamp_timezone);
+                   "%s.%.3d %s", timestamp_prefix,
+                   (int)(millisecs), timestamp_postfix);
 }
 
 /* Get basename of filename */

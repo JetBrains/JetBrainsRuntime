@@ -20,8 +20,9 @@
 #define SFWOFF2_H_
 
 
-#include <freetype/internal/sfnt.h>
-#include <freetype/internal/ftobjs.h>
+#include <ft2build.h>
+#include FT_INTERNAL_SFNT_H
+#include FT_INTERNAL_OBJECTS_H
 
 
 FT_BEGIN_HEADER

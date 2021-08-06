@@ -28,6 +28,7 @@
 #import "sun_java2d_OSXSurfaceData.h"
 
 #import <stdio.h>
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 #import "ImageSurfaceData.h"
 
@@ -635,7 +636,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_CRenderer_doLine
 {
 PRINT("Java_sun_java2d_CRenderer_doLine")
     QuartzSDOps *qsdo = (QuartzSDOps*)SurfaceData_GetOps(env, jsurfacedata);
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     SDRenderType renderType = SD_Stroke;
     qsdo->BeginSurface(env, qsdo, renderType);
     if (qsdo->cgRef != NULL)
@@ -643,7 +644,7 @@ JNI_COCOA_ENTER(env);
         doLine(qsdo, x1, y1, x2, y2);
     }
     qsdo->FinishSurface(env, qsdo);
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }
 
 /*
@@ -656,7 +657,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_CRenderer_doRect
 {
 PRINT("Java_sun_java2d_CRenderer_doRect")
     QuartzSDOps *qsdo = (QuartzSDOps*)SurfaceData_GetOps(env, jsurfacedata);
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     SDRenderType renderType    = (isfill? SD_Fill : SD_Stroke);
     qsdo->BeginSurface(env, qsdo, renderType);
     if (qsdo->cgRef != NULL)
@@ -664,7 +665,7 @@ JNI_COCOA_ENTER(env);
         doRect(qsdo, x, y, w, h, isfill);
     }
     qsdo->FinishSurface(env, qsdo);
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }
 
 /*
@@ -677,7 +678,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_CRenderer_doRoundRect
 {
 PRINT("Java_sun_java2d_CRenderer_doRoundRect")
     QuartzSDOps *qsdo = (QuartzSDOps*)SurfaceData_GetOps(env, jsurfacedata);
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     SDRenderType renderType    = (isfill? SD_Fill : SD_Stroke);
     qsdo->BeginSurface(env, qsdo, renderType);
     if (qsdo->cgRef != NULL)
@@ -685,7 +686,7 @@ JNI_COCOA_ENTER(env);
         doRoundRect(qsdo, x, y, w, h, arcWidth, arcHeight, isfill);
     }
     qsdo->FinishSurface(env, qsdo);
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }
 
 /*
@@ -698,7 +699,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_CRenderer_doOval
 {
 PRINT("Java_sun_java2d_CRenderer_doOval")
     QuartzSDOps *qsdo = (QuartzSDOps*)SurfaceData_GetOps(env, jsurfacedata);
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     SDRenderType renderType    = (isfill? SD_Fill : SD_Stroke);
     qsdo->BeginSurface(env, qsdo, renderType);
     if (qsdo->cgRef != NULL)
@@ -706,7 +707,7 @@ JNI_COCOA_ENTER(env);
         doOval(qsdo, x, y, w, h, isfill);
     }
     qsdo->FinishSurface(env, qsdo);
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }
 
 /*
@@ -719,7 +720,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_CRenderer_doArc
 {
 PRINT("Java_sun_java2d_CRenderer_doArc")
     QuartzSDOps *qsdo = (QuartzSDOps*)SurfaceData_GetOps(env, jsurfacedata);
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     SDRenderType renderType    = (isfill? SD_Fill : SD_Stroke);
     qsdo->BeginSurface(env, qsdo, renderType);
     if (qsdo->cgRef != NULL)
@@ -727,7 +728,7 @@ JNI_COCOA_ENTER(env);
         doArc(qsdo, x, y, w, h, angleStart, angleExtent, arcType, isfill);
     }
     qsdo->FinishSurface(env, qsdo);
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }
 
 /*
@@ -740,7 +741,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_CRenderer_doPoly
 {
 PRINT("Java_sun_java2d_CRenderer_doPoly")
     QuartzSDOps *qsdo = (QuartzSDOps*)SurfaceData_GetOps(env, jsurfacedata);
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     BOOL eoFill = YES; // polys are WIND_EVEN_ODD by definition
     SDRenderType renderType    = (isfill? (eoFill ? SD_EOFill : SD_Fill) : SD_Stroke);
     qsdo->BeginSurface(env, qsdo, renderType);
@@ -749,7 +750,7 @@ JNI_COCOA_ENTER(env);
         doPoly(env, qsdo, xpointsarray, ypointsarray, npoints, ispolygon, isfill);
     }
     qsdo->FinishSurface(env, qsdo);
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }
 
 /*
@@ -762,7 +763,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_CRenderer_doShape
 {
 PRINT("Java_sun_java2d_CRenderer_doShape")
     QuartzSDOps *qsdo = (QuartzSDOps*)SurfaceData_GetOps(env, jsurfacedata);
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     BOOL eoFill = (windingRule == java_awt_geom_PathIterator_WIND_EVEN_ODD);
     SDRenderType renderType    = (isfill? (eoFill ? SD_EOFill : SD_Fill) : SD_Stroke);
     qsdo->BeginSurface(env, qsdo, renderType);
@@ -773,7 +774,7 @@ JNI_COCOA_ENTER(env);
         doShape(qsdo, types, coordinates, length, isfill, shouldApplyOffset);
     }
     qsdo->FinishSurface(env, qsdo);
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }
 
 #define invalidContext(c) \
@@ -789,12 +790,12 @@ JNIEXPORT void JNICALL Java_sun_java2d_CRenderer_doImage
 {
 PRINT("Java_sun_java2d_CRenderer_doImage")
     QuartzSDOps *qsdo = (QuartzSDOps*)SurfaceData_GetOps(env, jsurfacedata);
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     qsdo->BeginSurface(env, qsdo, SD_Image);
     if (qsdo->cgRef != NULL)
     {
         doImage(env, qsdo, imageSurfaceData, fliph, flipv, w, h, sx, sy, sw, sh, dx, dy, dw, dh);
     }
     qsdo->FinishSurface(env, qsdo);
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }

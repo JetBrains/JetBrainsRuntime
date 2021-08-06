@@ -558,10 +558,9 @@ void Emit1Gamma(cmsIOHANDLER* m, cmsToneCurve* Table, const char* name)
 // Compare gamma table
 
 static
-cmsBool GammaTableEquals(cmsUInt16Number* g1, cmsUInt16Number* g2, cmsUInt32Number nG1, cmsUInt32Number nG2)
+cmsBool GammaTableEquals(cmsUInt16Number* g1, cmsUInt16Number* g2, cmsUInt32Number nEntries)
 {
-    if (nG1 != nG2) return FALSE;
-    return memcmp(g1, g2, nG1 * sizeof(cmsUInt16Number)) == 0;
+    return memcmp(g1, g2, nEntries* sizeof(cmsUInt16Number)) == 0;
 }
 
 
@@ -577,12 +576,12 @@ void EmitNGamma(cmsIOHANDLER* m, cmsUInt32Number n, cmsToneCurve* g[], const cha
     {
         if (g[i] == NULL) return; // Error
 
-        if (i > 0 && GammaTableEquals(g[i-1]->Table16, g[i]->Table16, g[i-1]->nEntries, g[i]->nEntries)) {
+        if (i > 0 && GammaTableEquals(g[i-1]->Table16, g[i]->Table16, g[i]->nEntries)) {
 
             _cmsIOPrintf(m, "/%s%d /%s%d load def\n", nameprefix, i, nameprefix, i-1);
         }
         else {
-            snprintf(buffer, sizeof(buffer), "%s%d", nameprefix, (int) i);
+            snprintf(buffer, sizeof(buffer), "%s%d", nameprefix, i);
             buffer[sizeof(buffer)-1] = '\0';
             Emit1Gamma(m, g[i], buffer);
         }
@@ -837,7 +836,7 @@ int EmitCIEBasedDEF(cmsIOHANDLER* m, cmsPipeline* Pipeline, cmsUInt32Number Inte
 
     if (cmsStageType(mpe) == cmsSigCurveSetElemType) {
 
-        numchans = (int) cmsStageOutputChannels(mpe);
+        numchans = cmsStageOutputChannels(mpe);
         for (i = 0; i < numchans; ++i) {
             snprintf(buffer, sizeof(buffer), "lcms2gammaproc%d", i);
             buffer[sizeof(buffer) - 1] = '\0';

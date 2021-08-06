@@ -142,7 +142,7 @@ public class JdkServer extends AbstractServer {
 
     @Override
     public void close() throws IOException {
-        if (!serverSocket.isClosed()) {
+        if (isAlive()) {
             serverSocket.close();
         }
     }

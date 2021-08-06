@@ -27,10 +27,11 @@
    */
 
 
-#include <freetype/internal/ftdebug.h>
-#include <freetype/internal/ftstream.h>
-#include <freetype/tttags.h>
-#include <freetype/ftcolor.h>
+#include <ft2build.h>
+#include FT_INTERNAL_DEBUG_H
+#include FT_INTERNAL_STREAM_H
+#include FT_TRUETYPE_TAGS_H
+#include FT_COLOR_H
 
 
 #ifdef TT_CONFIG_OPTION_COLOR_LAYERS
@@ -39,8 +40,8 @@
 
 
   /* NOTE: These are the table sizes calculated through the specs. */
-#define CPAL_V0_HEADER_BASE_SIZE  12U
-#define COLOR_SIZE                 4U
+#define CPAL_V0_HEADER_BASE_SIZE  12
+#define COLOR_SIZE                 4
 
 
   /* all data from `CPAL' not covered in FT_Palette_Data */
@@ -139,7 +140,7 @@
            3U * 4                               > table_size )
         goto InvalidTable;
 
-      p += face->palette_data.num_palettes * 2U;
+      p += face->palette_data.num_palettes * 2;
 
       type_offset        = FT_NEXT_ULONG( p );
       label_offset       = FT_NEXT_ULONG( p );
@@ -149,7 +150,7 @@
       {
         if ( type_offset >= table_size )
           goto InvalidTable;
-        if ( face->palette_data.num_palettes * 2U >
+        if ( face->palette_data.num_palettes * 2 >
                table_size - type_offset )
           goto InvalidTable;
 
@@ -170,7 +171,7 @@
       {
         if ( label_offset >= table_size )
           goto InvalidTable;
-        if ( face->palette_data.num_palettes * 2U >
+        if ( face->palette_data.num_palettes * 2 >
                table_size - label_offset )
           goto InvalidTable;
 
@@ -191,7 +192,7 @@
       {
         if ( entry_label_offset >= table_size )
           goto InvalidTable;
-        if ( face->palette_data.num_palette_entries * 2U >
+        if ( face->palette_data.num_palette_entries * 2 >
                table_size - entry_label_offset )
           goto InvalidTable;
 

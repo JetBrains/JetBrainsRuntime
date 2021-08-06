@@ -86,7 +86,7 @@ public final class ConstantMethodHandle extends Constant {
      * @throws IOException
      */
     @Override
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         file.writeByte(super.getTag());
         file.writeByte(reference_kind);
         file.writeShort(reference_index);
@@ -117,7 +117,7 @@ public final class ConstantMethodHandle extends Constant {
      * @return String representation
      */
     @Override
-    public String toString() {
+    public final String toString() {
         return super.toString() + "(reference_kind = " + reference_kind +
                 ", reference_index = " + reference_index + ")";
     }

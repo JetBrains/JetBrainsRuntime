@@ -727,17 +727,10 @@ void SplashFreeLibrary() {
 }
 
 /*
- * Signature adapter for _beginthreadex().
- */
-static unsigned __stdcall ThreadJavaMain(void* args) {
-    return (unsigned)JavaMain(args);
-}
-
-/*
- * Block current thread and continue execution in a new thread.
+ * Block current thread and continue execution in a new thread
  */
 int
-CallJavaMainInNewThread(jlong stack_size, void* args) {
+ContinueInNewThread0(int (JNICALL *continuation)(void *), jlong stack_size, void * args) {
     int rslt = 0;
     unsigned thread_id;
 
@@ -752,20 +745,20 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
      * source (os_win32.cpp) for details.
      */
     HANDLE thread_handle =
-        (HANDLE)_beginthreadex(NULL,
-                               (unsigned)stack_size,
-                               ThreadJavaMain,
-                               args,
-                               STACK_SIZE_PARAM_IS_A_RESERVATION,
-                               &thread_id);
+      (HANDLE)_beginthreadex(NULL,
+                             (unsigned)stack_size,
+                             continuation,
+                             args,
+                             STACK_SIZE_PARAM_IS_A_RESERVATION,
+                             &thread_id);
     if (thread_handle == NULL) {
-        thread_handle =
-        (HANDLE)_beginthreadex(NULL,
-                               (unsigned)stack_size,
-                               ThreadJavaMain,
-                               args,
-                               0,
-                               &thread_id);
+      thread_handle =
+      (HANDLE)_beginthreadex(NULL,
+                             (unsigned)stack_size,
+                             continuation,
+                             args,
+                             0,
+                             &thread_id);
     }
 
     /* AWT preloading (AFTER main thread start) */
@@ -802,11 +795,11 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
 #endif /* ENABLE_AWT_PRELOAD */
 
     if (thread_handle) {
-        WaitForSingleObject(thread_handle, INFINITE);
-        GetExitCodeThread(thread_handle, &rslt);
-        CloseHandle(thread_handle);
+      WaitForSingleObject(thread_handle, INFINITE);
+      GetExitCodeThread(thread_handle, &rslt);
+      CloseHandle(thread_handle);
     } else {
-        rslt = JavaMain(args);
+      rslt = continuation(args);
     }
 
 #ifdef ENABLE_AWT_PRELOAD

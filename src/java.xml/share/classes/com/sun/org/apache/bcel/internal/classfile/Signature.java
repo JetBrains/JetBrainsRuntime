@@ -32,6 +32,7 @@ import com.sun.org.apache.bcel.internal.Const;
  * This class is derived from <em>Attribute</em> and represents a reference
  * to a GJ attribute.
  *
+ * @version $Id$
  * @see     Attribute
  */
 public final class Signature extends Attribute {
@@ -95,7 +96,7 @@ public final class Signature extends Attribute {
      * @throws IOException
      */
     @Override
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         super.dump(file);
         file.writeShort(signature_index);
     }
@@ -104,7 +105,7 @@ public final class Signature extends Attribute {
     /**
      * @return Index in constant pool of source file name.
      */
-    public int getSignatureIndex() {
+    public final int getSignatureIndex() {
         return signature_index;
     }
 
@@ -112,7 +113,7 @@ public final class Signature extends Attribute {
     /**
      * @param signature_index the index info the constant pool of this signature
      */
-    public void setSignatureIndex( final int signature_index ) {
+    public final void setSignatureIndex( final int signature_index ) {
         this.signature_index = signature_index;
     }
 
@@ -120,7 +121,7 @@ public final class Signature extends Attribute {
     /**
      * @return GJ signature.
      */
-    public String getSignature() {
+    public final String getSignature() {
         final ConstantUtf8 c = (ConstantUtf8) super.getConstantPool().getConstant(signature_index,
                 Const.CONSTANT_Utf8);
         return c.getBytes();
@@ -136,12 +137,12 @@ public final class Signature extends Attribute {
         }
 
 
-        String getData() {
+        final String getData() {
             return new String(buf);
         }
 
 
-        void unread() {
+        final void unread() {
             if (pos > 0) {
                 pos--;
             }
@@ -257,7 +258,7 @@ public final class Signature extends Attribute {
      * @return String representation
      */
     @Override
-    public String toString() {
+    public final String toString() {
         final String s = getSignature();
         return "Signature: " + s;
     }

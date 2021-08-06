@@ -45,11 +45,6 @@ void copyFromJString(JNIEnv * pEnv, jstring src, char ** dst) {
     NSK_CPP_STUB3(ReleaseStringUTFChars, pEnv, src, pStr);
 }
 
-#if !defined(__clang_major__) && defined(__GNUC__) && (__GNUC__ >= 8)
-_Pragma("GCC diagnostic push")
-_Pragma("GCC diagnostic ignored \"-Wstringop-truncation\"")
-#endif
-
 struct MethodName * getMethodName(jvmtiEnv * pJvmtiEnv, jmethodID method) {
     char * szName;
     char * szSignature;
@@ -78,10 +73,6 @@ struct MethodName * getMethodName(jvmtiEnv * pJvmtiEnv, jmethodID method) {
     NSK_JVMTI_VERIFY(NSK_CPP_STUB2(Deallocate, pJvmtiEnv, (void *) szSignature));
     return mn;
 }
-
-#if !defined(__clang_major__) && defined(__GNUC__) && (__GNUC__ >= 8)
-_Pragma("GCC diagnostic pop")
-#endif
 
 char * locationToString(jvmtiEnv * pJvmtiEnv, jmethodID method, jlocation location) {
     struct MethodName * pMN;

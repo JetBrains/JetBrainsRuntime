@@ -19,7 +19,7 @@
 #ifndef FTTRIGON_H_
 #define FTTRIGON_H_
 
-#include <freetype/freetype.h>
+#include FT_FREETYPE_H
 
 #ifdef FREETYPE_H
 #error "freetype.h of FreeType 1 has been loaded!"

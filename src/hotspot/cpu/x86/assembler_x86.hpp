@@ -1830,9 +1830,6 @@ private:
   void sqrtsd(XMMRegister dst, Address src);
   void sqrtsd(XMMRegister dst, XMMRegister src);
 
-  void roundsd(XMMRegister dst, Address src, int32_t rmode);
-  void roundsd(XMMRegister dst, XMMRegister src, int32_t rmode);
-
   // Compute Square Root of Scalar Single-Precision Floating-Point Value
   void sqrtss(XMMRegister dst, Address src);
   void sqrtss(XMMRegister dst, XMMRegister src);
@@ -1942,11 +1939,6 @@ private:
   void vsubss(XMMRegister dst, XMMRegister nds, Address src);
   void vsubss(XMMRegister dst, XMMRegister nds, XMMRegister src);
 
-  void vmaxss(XMMRegister dst, XMMRegister nds, XMMRegister src);
-  void vmaxsd(XMMRegister dst, XMMRegister nds, XMMRegister src);
-  void vminss(XMMRegister dst, XMMRegister nds, XMMRegister src);
-  void vminsd(XMMRegister dst, XMMRegister nds, XMMRegister src);
-
   void shlxl(Register dst, Register src1, Register src2);
   void shlxq(Register dst, Register src1, Register src2);
 
@@ -1996,12 +1988,6 @@ private:
   void vsqrtpd(XMMRegister dst, Address src, int vector_len);
   void vsqrtps(XMMRegister dst, XMMRegister src, int vector_len);
   void vsqrtps(XMMRegister dst, Address src, int vector_len);
-
-  // Round Packed Double precision value.
-  void vroundpd(XMMRegister dst, XMMRegister src, int32_t rmode, int vector_len);
-  void vroundpd(XMMRegister dst, Address src, int32_t rmode, int vector_len);
-  void vrndscalepd(XMMRegister dst,  XMMRegister src,  int32_t rmode, int vector_len);
-  void vrndscalepd(XMMRegister dst, Address src, int32_t rmode, int vector_len);
 
   // Bitwise Logical AND of Packed Floating-Point Values
   void andpd(XMMRegister dst, XMMRegister src);

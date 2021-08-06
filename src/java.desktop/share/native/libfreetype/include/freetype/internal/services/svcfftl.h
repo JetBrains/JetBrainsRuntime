@@ -19,8 +19,8 @@
 #ifndef SVCFFTL_H_
 #define SVCFFTL_H_
 
-#include <freetype/internal/ftserv.h>
-#include <freetype/internal/cfftypes.h>
+#include FT_INTERNAL_SERVICE_H
+#include FT_INTERNAL_CFF_TYPES_H
 
 
 FT_BEGIN_HEADER

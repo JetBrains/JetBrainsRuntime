@@ -16,12 +16,13 @@
  */
 
 
-#include <freetype/ftstroke.h>
-#include <freetype/fttrigon.h>
-#include <freetype/ftoutln.h>
-#include <freetype/internal/ftmemory.h>
-#include <freetype/internal/ftdebug.h>
-#include <freetype/internal/ftobjs.h>
+#include <ft2build.h>
+#include FT_STROKER_H
+#include FT_TRIGONOMETRY_H
+#include FT_OUTLINE_H
+#include FT_INTERNAL_MEMORY_H
+#include FT_INTERNAL_DEBUG_H
+#include FT_INTERNAL_OBJECTS_H
 
 
   /* declare an extern to access `ft_outline_glyph_class' globally */

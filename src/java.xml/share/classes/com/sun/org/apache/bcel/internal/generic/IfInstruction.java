@@ -24,6 +24,7 @@ package com.sun.org.apache.bcel.internal.generic;
 /**
  * Super class for the IFxxx family of instructions.
  *
+ * @version $Id$
  */
 public abstract class IfInstruction extends BranchInstruction implements StackConsumer {
 

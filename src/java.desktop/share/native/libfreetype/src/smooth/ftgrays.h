@@ -28,7 +28,7 @@
 #include "ftimage.h"
 #else
 #include <ft2build.h>
-#include <freetype/ftimage.h>
+#include FT_IMAGE_H
 #endif
 
 

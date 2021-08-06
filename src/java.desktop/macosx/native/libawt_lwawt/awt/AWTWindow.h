@@ -32,10 +32,11 @@
 #import "LWCToolkit.h"
 
 @class AWTView;
+@class JNFWeakJObjectWrapper;
 
 @interface AWTWindow : NSObject <NSWindowDelegate> {
 @private
-    jobject javaPlatformWindow; /* This is a weak ref. Always copy to a local ref before using */
+    JNFWeakJObjectWrapper *javaPlatformWindow;
     CMenuBar *javaMenuBar;
     NSSize javaMinSize;
     NSSize javaMaxSize;
@@ -54,7 +55,7 @@
 // An instance of either AWTWindow_Normal or AWTWindow_Panel
 @property (nonatomic, retain) NSWindow *nsWindow;
 
-@property (nonatomic) jobject javaPlatformWindow;
+@property (nonatomic, retain) JNFWeakJObjectWrapper *javaPlatformWindow;
 @property (nonatomic, retain) CMenuBar *javaMenuBar;
 @property (nonatomic, retain) AWTWindow *ownerWindow;
 @property (nonatomic) NSSize javaMinSize;
@@ -68,7 +69,7 @@
 @property (nonatomic) BOOL isEnterFullScreen;
 @property (nonatomic) BOOL isJustCreated;
 
-- (id) initWithPlatformWindow:(jobject)javaPlatformWindow
+- (id) initWithPlatformWindow:(JNFWeakJObjectWrapper *)javaPlatformWindow
                   ownerWindow:owner
                     styleBits:(jint)styleBits
                     frameRect:(NSRect)frameRect

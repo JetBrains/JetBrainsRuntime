@@ -37,14 +37,6 @@ import sun.util.logging.PlatformLogger;
 
 import jdk.internal.misc.Unsafe;
 
-import java.awt.Rectangle;
-
-import java.awt.GraphicsDevice;
-
-import java.awt.GraphicsEnvironment;
-
-import sun.awt.X11GraphicsConfig;
-
 /**
  * XDropTargetProtocol implementation for XDnD protocol.
  *
@@ -594,36 +586,22 @@ class XDnDDropTargetProtocol extends XDropTargetProtocol {
             return false;
         }
 
+        x = (int)(xclient.get_data(2) >> 16);
+        y = (int)(xclient.get_data(2) & 0xFFFF);
+
         XWindow xwindow = null;
         {
             XBaseWindow xbasewindow = XToolkit.windowToXWindow(xclient.get_window());
             if (xbasewindow instanceof XWindow) {
                 xwindow = (XWindow)xbasewindow;
+                // xclient can be a system-generated or a sent event (see XDragSourceContextPeer)
+                // so x/y is expected to be presented in device space
+                x = xbasewindow.scaleDown(x);
+                y = xbasewindow.scaleDown(y);
             }
         }
 
-        x = (int)(xclient.get_data(2) >> 16);
-        y = (int)(xclient.get_data(2) & 0xFFFF);
-
-        if (xwindow != null) {
-            x = xwindow.scaleDown(x);
-            y = xwindow.scaleDown(y);
-        } else {
-            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            for (GraphicsDevice gd : ge.getScreenDevices()) {
-                X11GraphicsConfig gc = (X11GraphicsConfig)gd.getDefaultConfiguration();
-                Rectangle rt = gc.getBounds();
-                rt.x      = gc.scaleUp(rt.x);
-                rt.y      = gc.scaleUp(rt.y);
-                rt.width  = gc.scaleUp(rt.width);
-                rt.height = gc.scaleUp(rt.height);
-                if (rt.contains(x, y)) {
-                    x = gc.scaleDown(x);
-                    y = gc.scaleDown(y);
-                    break;
-                }
-            }
-
+        if (xwindow == null) {
             long receiver =
                 XDropTargetRegistry.getRegistry().getEmbeddedDropSite(
                     xclient.get_window(), x, y);

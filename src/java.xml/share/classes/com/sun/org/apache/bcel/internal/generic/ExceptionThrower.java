@@ -38,6 +38,7 @@ package com.sun.org.apache.bcel.internal.generic;
  * "Throwable" object; so this term is equally used for "Exception"
  * and "Error" objects.
  *
+ * @version $Id$
  */
 public interface ExceptionThrower {
 

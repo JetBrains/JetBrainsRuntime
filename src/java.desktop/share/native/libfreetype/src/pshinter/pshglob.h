@@ -20,8 +20,8 @@
 #define PSHGLOB_H_
 
 
-#include <freetype/freetype.h>
-#include <freetype/internal/pshints.h>
+#include FT_FREETYPE_H
+#include FT_INTERNAL_POSTSCRIPT_HINTS_H
 
 
 FT_BEGIN_HEADER

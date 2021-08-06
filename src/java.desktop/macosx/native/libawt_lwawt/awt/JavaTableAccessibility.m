@@ -10,7 +10,10 @@
 #import "JavaCellAccessibility.h"
 #import "JavaColumnAccessibility.h"
 #import "ThreadUtilities.h"
-#import "JNIUtilities.h"
+
+static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;");
+
+static const char* ACCESSIBLE_JTABLE_NAME = "javax.swing.JTable$AccessibleJTable";
 
 @implementation JavaTableAccessibility
 
@@ -18,10 +21,11 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return 0;
-    jclass cls = (*env)->GetObjectClass(env, axContext);
-    DECLARE_METHOD_RETURN(jm_getAccessibleRowCount, cls, "getAccessibleRowCount", "()I", 0);
-    jint javaRowsCount = (*env)->CallIntMethod(env, axContext, jm_getAccessibleRowCount);
-    CHECK_EXCEPTION();
+    JNFClassInfo clsInfo;
+    clsInfo.name = ACCESSIBLE_JTABLE_NAME;
+    clsInfo.cls = (*env)->GetObjectClass(env, axContext);
+    JNF_MEMBER_CACHE(jm_getAccessibleRowCount, clsInfo, "getAccessibleRowCount", "()I");
+    jint javaRowsCount = JNFCallIntMethod(env, axContext, jm_getAccessibleRowCount);
     (*env)->DeleteLocalRef(env, axContext);
     return (int)javaRowsCount;
 }
@@ -30,10 +34,11 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return 0;
-    jclass cls = (*env)->GetObjectClass(env, axContext);
-    DECLARE_METHOD_RETURN(jm_getAccessibleColumnCount, cls, "getAccessibleColumnCount", "()I", 0);
-    jint javaColsCount = (*env)->CallIntMethod(env, axContext, jm_getAccessibleColumnCount);
-    CHECK_EXCEPTION();
+    JNFClassInfo clsInfo;
+    clsInfo.name = ACCESSIBLE_JTABLE_NAME;
+    clsInfo.cls = (*env)->GetObjectClass(env, axContext);
+    JNF_MEMBER_CACHE(jm_getAccessibleColumnCount, clsInfo, "getAccessibleColumnCount", "()I");
+    jint javaColsCount = JNFCallIntMethod(env, axContext, jm_getAccessibleColumnCount);
     (*env)->DeleteLocalRef(env, axContext);
     return (int)javaColsCount;
 }
@@ -42,10 +47,11 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return nil;
-    jclass cls = (*env)->GetObjectClass(env, axContext);
-    DECLARE_METHOD_RETURN(jm_getSelectedAccessibleRows, cls, "getSelectedAccessibleRows", "()[I", nil);
-    jintArray selectidRowNumbers = (*env)->CallObjectMethod(env, axContext, jm_getSelectedAccessibleRows);
-    CHECK_EXCEPTION();
+    JNFClassInfo clsInfo;
+    clsInfo.name = ACCESSIBLE_JTABLE_NAME;
+    clsInfo.cls = (*env)->GetObjectClass(env, axContext);
+    JNF_MEMBER_CACHE(jm_getSelectedAccessibleRows, clsInfo, "getSelectedAccessibleRows", "()[I");
+    jintArray selectidRowNumbers = JNFCallObjectMethod(env, axContext, jm_getSelectedAccessibleRows);
     (*env)->DeleteLocalRef(env, axContext);
     if (selectidRowNumbers == NULL) {
         return nil;
@@ -64,10 +70,11 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return nil;
-    jclass cls = (*env)->GetObjectClass(env, axContext);
-    DECLARE_METHOD_RETURN(jm_getSelectedAccessibleColumns, cls, "getSelectedAccessibleColumns", "()[I", nil);
-    jintArray selectidColumnNumbers = (*env)->CallObjectMethod(env, axContext, jm_getSelectedAccessibleColumns);
-    CHECK_EXCEPTION();
+    JNFClassInfo clsInfo;
+    clsInfo.name = ACCESSIBLE_JTABLE_NAME;
+    clsInfo.cls = (*env)->GetObjectClass(env, axContext);
+    JNF_MEMBER_CACHE(jm_getSelectedAccessibleColumns, clsInfo, "getSelectedAccessibleColumns", "()[I");
+    jintArray selectidColumnNumbers = JNFCallObjectMethod(env, axContext, jm_getSelectedAccessibleColumns);
     (*env)->DeleteLocalRef(env, axContext);
     if (selectidColumnNumbers == NULL) {
         return nil;
@@ -86,10 +93,11 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return 0;
-    jclass cls = (*env)->GetObjectClass(env, axContext);
-    DECLARE_METHOD_RETURN(jm_getAccessibleRowAtIndex, cls, "getAccessibleRowAtIndex", "(I)I", 0);
-    jint rowAtIndex = (*env)->CallIntMethod(env, axContext, jm_getAccessibleRowAtIndex, (jint)index);
-    CHECK_EXCEPTION();
+    JNFClassInfo clsInfo;
+    clsInfo.name = ACCESSIBLE_JTABLE_NAME;
+    clsInfo.cls = (*env)->GetObjectClass(env, axContext);
+    JNF_MEMBER_CACHE(jm_getAccessibleRowAtIndex, clsInfo, "getAccessibleRowAtIndex", "(I)I");
+    jint rowAtIndex = JNFCallIntMethod(env, axContext, jm_getAccessibleRowAtIndex, (jint)index);
     (*env)->DeleteLocalRef(env, axContext);
     return (int)rowAtIndex;
 }
@@ -98,10 +106,11 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return 0;
-    jclass cls = (*env)->GetObjectClass(env, axContext);
-    DECLARE_METHOD_RETURN(jm_getAccessibleColumnAtIndex, cls, "getAccessibleColumnAtIndex", "(I)I", 0);
-    jint columnAtIndex = (*env)->CallIntMethod(env, axContext, jm_getAccessibleColumnAtIndex, (jint)index);
-    CHECK_EXCEPTION();
+    JNFClassInfo clsInfo;
+    clsInfo.name = ACCESSIBLE_JTABLE_NAME;
+    clsInfo.cls = (*env)->GetObjectClass(env, axContext);
+    JNF_MEMBER_CACHE(jm_getAccessibleColumnAtIndex, clsInfo, "getAccessibleColumnAtIndex", "(I)I");
+    jint columnAtIndex = JNFCallIntMethod(env, axContext, jm_getAccessibleColumnAtIndex, (jint)index);
     (*env)->DeleteLocalRef(env, axContext);
     return (int)columnAtIndex;
 }
@@ -110,10 +119,11 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return NO;
-    jclass cls = (*env)->GetObjectClass(env, axContext);
-    DECLARE_METHOD_RETURN(jm_isAccessibleChildSelected, cls, "isAccessibleChildSelected", "(I)Z", NO);
-    jboolean isAccessibleChildSelected = (*env)->CallBooleanMethod(env, axContext, jm_isAccessibleChildSelected, (jint)index);
-    CHECK_EXCEPTION();
+    JNFClassInfo clsInfo;
+    clsInfo.name = ACCESSIBLE_JTABLE_NAME;
+    clsInfo.cls = (*env)->GetObjectClass(env, axContext);
+    JNF_MEMBER_CACHE(jm_isAccessibleChildSelected, clsInfo, "isAccessibleChildSelected", "(I)Z");
+    jboolean isAccessibleChildSelected = JNFCallIntMethod(env, axContext, jm_isAccessibleChildSelected, (jint)index);
     (*env)->DeleteLocalRef(env, axContext);
     return isAccessibleChildSelected;
 }

@@ -36,9 +36,6 @@
 
 #define __ _masm.
 address CompiledStaticCall::emit_to_interp_stub(CodeBuffer &cbuf, address mark) {
-  precond(cbuf.stubs()->start() != badAddress);
-  precond(cbuf.stubs()->end() != badAddress);
-
   // Stub is fixed up when the corresponding call is converted from
   // calling compiled code to calling interpreted code.
   // mov rmethod, 0

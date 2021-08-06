@@ -29,6 +29,7 @@ import com.sun.org.apache.bcel.internal.util.ByteSequence;
 /**
  * TABLESWITCH - Switch within given range of values, i.e., low..high
  *
+ * @version $Id$
  * @see SWITCH
  */
 public class TABLESWITCH extends Select {

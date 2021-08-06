@@ -16,11 +16,12 @@
  */
 
 
-#include <freetype/internal/ftdebug.h>
+#include <ft2build.h>
+#include FT_INTERNAL_DEBUG_H
 
-#include <freetype/ftlcdfil.h>
-#include <freetype/ftimage.h>
-#include <freetype/internal/ftobjs.h>
+#include FT_LCD_FILTER_H
+#include FT_IMAGE_H
+#include FT_INTERNAL_OBJECTS_H
 
 
 #ifdef FT_CONFIG_OPTION_SUBPIXEL_RENDERING

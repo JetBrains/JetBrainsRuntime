@@ -25,6 +25,7 @@ package com.sun.org.apache.bcel.internal.generic;
  * L2I - Convert long to int
  * <PRE>Stack: ..., value.word1, value.word2 -&gt; ..., result</PRE>
  *
+ * @version $Id$
  */
 public class L2I extends ConversionInstruction {
 

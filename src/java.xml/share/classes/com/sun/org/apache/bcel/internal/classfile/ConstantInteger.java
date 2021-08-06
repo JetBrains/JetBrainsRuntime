@@ -30,6 +30,7 @@ import com.sun.org.apache.bcel.internal.Const;
  * This class is derived from the abstract {@link Constant}
  * and represents a reference to an int object.
  *
+ * @version $Id$
  * @see     Constant
  * @LastModified: Jun 2019
  */
@@ -86,7 +87,7 @@ public final class ConstantInteger extends Constant implements ConstantObject {
      * @throws IOException
      */
     @Override
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         file.writeByte(super.getTag());
         file.writeInt(bytes);
     }
@@ -95,7 +96,7 @@ public final class ConstantInteger extends Constant implements ConstantObject {
     /**
      * @return data, i.e., 4 bytes.
      */
-    public int getBytes() {
+    public final int getBytes() {
         return bytes;
     }
 
@@ -103,7 +104,7 @@ public final class ConstantInteger extends Constant implements ConstantObject {
     /**
      * @param bytes the raw bytes that represent this integer
      */
-    public void setBytes( final int bytes ) {
+    public final void setBytes( final int bytes ) {
         this.bytes = bytes;
     }
 
@@ -112,7 +113,7 @@ public final class ConstantInteger extends Constant implements ConstantObject {
      * @return String representation.
      */
     @Override
-    public String toString() {
+    public final String toString() {
         return super.toString() + "(bytes = " + bytes + ")";
     }
 

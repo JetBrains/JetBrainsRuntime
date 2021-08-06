@@ -24,6 +24,7 @@ package com.sun.org.apache.bcel.internal.generic;
 /**
  * Super class for JSR - Jump to subroutine
  *
+ * @version $Id$
  */
 public abstract class JsrInstruction extends BranchInstruction implements UnconditionalBranch,
         TypedInstruction, StackProducer {

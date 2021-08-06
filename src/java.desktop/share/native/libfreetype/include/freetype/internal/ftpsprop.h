@@ -20,7 +20,8 @@
 #define FTPSPROP_H_
 
 
-#include <freetype/freetype.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 
 FT_BEGIN_HEADER

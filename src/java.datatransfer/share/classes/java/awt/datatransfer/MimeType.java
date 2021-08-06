@@ -25,7 +25,6 @@
 
 package java.awt.datatransfer;
 
-import java.io.ByteArrayOutputStream;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -321,12 +320,9 @@ MimeTypeParameterList(rawdata.substring(semIndex));
 ClassNotFoundException {
         String s = in.readUTF();
         if (s == null || s.length() == 0) { // long mime type
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            int len = in.readInt();
-            while (len-- > 0) {
-                baos.write(in.readByte());
-            }
-            s = baos.toString();
+            byte[] ba = new byte[in.readInt()];
+            in.readFully(ba);
+            s = new String(ba);
         }
         try {
             parse(s);

@@ -24,6 +24,7 @@ package com.sun.org.apache.bcel.internal.util;
 /**
  * Used for BCEL comparison strategy
  *
+ * @version $Id$
  * @since 5.2
  */
 public interface BCELComparator {

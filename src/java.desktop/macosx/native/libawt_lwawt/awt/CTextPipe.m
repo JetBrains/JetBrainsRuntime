@@ -30,10 +30,11 @@
 #import "sun_lwawt_macosx_CTextPipe.h"
 #import "sun_java2d_OSXSurfaceData.h"
 
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
+
 #import "CoreTextSupport.h"
 #import "QuartzSurfaceData.h"
 #include "AWTStrike.h"
-#import "JNIUtilities.h"
 
 static const CGAffineTransform sInverseTX = { 1, 0, 0, -1, 0, 0 };
 
@@ -241,10 +242,10 @@ void JavaCT_DrawTextUsingQSD(JNIEnv *env, const QuartzSDOps *qsdo, const AWTStri
 
     NSString *string = [NSString stringWithCharacters:chars length:length];
     /*
-       The calls below were used previously but for unknown reason did not
-       render using the right font (see bug 7183516) when attribString is not
-       initialized with font dictionary attributes.  It seems that "options"
-       in CTTypesetterCreateWithAttributedStringAndOptions which contains the
+       The calls below were used previously but for unknown reason did not 
+       render using the right font (see bug 7183516) when attribString is not 
+       initialized with font dictionary attributes.  It seems that "options" 
+       in CTTypesetterCreateWithAttributedStringAndOptions which contains the 
        font dictionary is ignored.
 
     NSAttributedString *attribString = [[NSAttributedString alloc] initWithString:string];
@@ -254,7 +255,7 @@ void JavaCT_DrawTextUsingQSD(JNIEnv *env, const QuartzSDOps *qsdo, const AWTStri
     NSAttributedString *attribString = [[NSAttributedString alloc]
         initWithString:string
         attributes:ctsDictionaryFor(nsFont, JRSFontStyleUsesFractionalMetrics(strike->fStyle))];
-
+    
     CTTypesetterRef typeSetterRef = CTTypesetterCreateWithAttributedString((CFAttributedStringRef) attribString);
 
     CFRange range = {0, length};
@@ -321,8 +322,7 @@ static void DrawTextContext
 
 -----------------------------------*/
 
-static jclass jc_StandardGlyphVector = NULL;
-#define GET_SGV_CLASS() GET_CLASS(jc_StandardGlyphVector, "sun/font/StandardGlyphVector");
+static JNF_CLASS_CACHE(jc_StandardGlyphVector, "sun/font/StandardGlyphVector");
 
 // Checks the GlyphVector Java object for any transforms that were applied to individual characters. If none are present,
 // strike the glyphs immediately in Core Graphics. Otherwise, obtain the arrays, and defer to above.
@@ -330,9 +330,8 @@ static inline void doDrawGlyphsPipe_checkForPerGlyphTransforms
 (JNIEnv *env, QuartzSDOps *qsdo, const AWTStrike *strike, jobject gVector, BOOL useSubstituion, int *uniChars, CGGlyph *glyphs, CGSize *advances, size_t length)
 {
     // if we have no character substitution, and no per-glyph transformations - strike now!
-    GET_SGV_CLASS();
-    DECLARE_FIELD(jm_StandardGlyphVector_gti, jc_StandardGlyphVector, "gti", "Lsun/font/StandardGlyphVector$GlyphTransformInfo;");
-    jobject gti = (*env)->GetObjectField(env, gVector, jm_StandardGlyphVector_gti);
+    static JNF_MEMBER_CACHE(jm_StandardGlyphVector_gti, jc_StandardGlyphVector, "gti", "Lsun/font/StandardGlyphVector$GlyphTransformInfo;");
+    jobject gti = JNFGetObjectField(env, gVector, jm_StandardGlyphVector_gti);
     if (gti == 0)
     {
         if (useSubstituion)
@@ -348,20 +347,20 @@ static inline void doDrawGlyphsPipe_checkForPerGlyphTransforms
         return;
     }
 
-    DECLARE_CLASS(jc_StandardGlyphVector_GlyphTransformInfo, "sun/font/StandardGlyphVector$GlyphTransformInfo");
-    DECLARE_FIELD(jm_StandardGlyphVector_GlyphTransformInfo_transforms, jc_StandardGlyphVector_GlyphTransformInfo, "transforms", "[D");
-    jdoubleArray g_gtiTransformsArray = (*env)->GetObjectField(env, gti, jm_StandardGlyphVector_GlyphTransformInfo_transforms); //(*env)->GetObjectField(env, gti, g_gtiTransforms);
+    static JNF_CLASS_CACHE(jc_StandardGlyphVector_GlyphTransformInfo, "sun/font/StandardGlyphVector$GlyphTransformInfo");
+    static JNF_MEMBER_CACHE(jm_StandardGlyphVector_GlyphTransformInfo_transforms, jc_StandardGlyphVector_GlyphTransformInfo, "transforms", "[D");
+    jdoubleArray g_gtiTransformsArray = JNFGetObjectField(env, gti, jm_StandardGlyphVector_GlyphTransformInfo_transforms); //(*env)->GetObjectField(env, gti, g_gtiTransforms);
     if (g_gtiTransformsArray == NULL) {
         return;
-    }
+    } 
     jdouble *g_gvTransformsAsDoubles = (*env)->GetPrimitiveArrayCritical(env, g_gtiTransformsArray, NULL);
     if (g_gvTransformsAsDoubles == NULL) {
         (*env)->DeleteLocalRef(env, g_gtiTransformsArray);
         return;
-    }
+    } 
 
-    DECLARE_FIELD(jm_StandardGlyphVector_GlyphTransformInfo_indices, jc_StandardGlyphVector_GlyphTransformInfo, "indices", "[I");
-    jintArray g_gtiTXIndicesArray = (*env)->GetObjectField(env, gti, jm_StandardGlyphVector_GlyphTransformInfo_indices);
+    static JNF_MEMBER_CACHE(jm_StandardGlyphVector_GlyphTransformInfo_indices, jc_StandardGlyphVector_GlyphTransformInfo, "indices", "[I");
+    jintArray g_gtiTXIndicesArray = JNFGetObjectField(env, gti, jm_StandardGlyphVector_GlyphTransformInfo_indices);
     jint *g_gvTXIndicesAsInts = (*env)->GetPrimitiveArrayCritical(env, g_gtiTXIndicesArray, NULL);
     if (g_gvTXIndicesAsInts == NULL) {
         (*env)->ReleasePrimitiveArrayCritical(env, g_gtiTransformsArray, g_gvTransformsAsDoubles, JNI_ABORT);
@@ -438,9 +437,8 @@ static inline void doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers
     (*env)->ReleasePrimitiveArrayCritical(env, glyphsArray, glyphsAsInts, JNI_ABORT);
 
     // fill the advance buffer
-    GET_SGV_CLASS();
-    DECLARE_FIELD(jm_StandardGlyphVector_positions, jc_StandardGlyphVector, "positions", "[F");
-    jfloatArray posArray = (*env)->GetObjectField(env, gVector, jm_StandardGlyphVector_positions);
+    static JNF_MEMBER_CACHE(jm_StandardGlyphVector_positions, jc_StandardGlyphVector, "positions", "[F");
+    jfloatArray posArray = JNFGetObjectField(env, gVector, jm_StandardGlyphVector_positions);
     jfloat *positions = NULL;
     if (posArray != NULL) {
         // in this case, the positions have already been pre-calculated for us on the Java side
@@ -499,9 +497,8 @@ static inline void doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers
 static inline void doDrawGlyphsPipe_getGlyphVectorLengthAndAlloc
 (JNIEnv *env, QuartzSDOps *qsdo, const AWTStrike *strike, jobject gVector)
 {
-    GET_SGV_CLASS();
-    DECLARE_FIELD(jm_StandardGlyphVector_glyphs, jc_StandardGlyphVector, "glyphs", "[I");
-    jintArray glyphsArray = (*env)->GetObjectField(env, gVector, jm_StandardGlyphVector_glyphs);
+    static JNF_MEMBER_CACHE(jm_StandardGlyphVector_glyphs, jc_StandardGlyphVector, "glyphs", "[I");
+    jintArray glyphsArray = JNFGetObjectField(env, gVector, jm_StandardGlyphVector_glyphs);
     jsize length = (*env)->GetArrayLength(env, glyphsArray);
 
     if (length == 0)
@@ -584,13 +581,10 @@ static inline void doDrawGlyphsPipe_applyFontTransforms
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CTextPipe_doDrawString
 (JNIEnv *env, jobject jthis, jobject jsurfacedata, jlong awtStrikePtr, jstring str, jdouble x, jdouble y)
 {
-    if (str == NULL) {
-        return;
-    }
     QuartzSDOps *qsdo = (QuartzSDOps *)SurfaceData_GetOps(env, jsurfacedata);
     AWTStrike *awtStrike = (AWTStrike *)jlong_to_ptr(awtStrikePtr);
 
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     jsize len = (*env)->GetStringLength(env, str);
 
@@ -598,7 +592,7 @@ JNI_COCOA_ENTER(env);
     {
         jchar unichars[len];
         (*env)->GetStringRegion(env, str, 0, len, unichars);
-        CHECK_EXCEPTION();
+        JNF_CHECK_AND_RETHROW_EXCEPTION(env);
 
         // Draw the text context
         DrawTextContext(env, qsdo, awtStrike, unichars, len, x, y);
@@ -606,19 +600,15 @@ JNI_COCOA_ENTER(env);
     else
     {
         // Get string to draw and the length
-        const jchar *unichars = (*env)->GetStringChars(env, str, NULL);
-        if (unichars == NULL) {
-            JNU_ThrowOutOfMemoryError(env, "Could not get string chars");
-            return;
-        }
+        const jchar *unichars = JNFGetStringUTF16UniChars(env, str);
 
         // Draw the text context
         DrawTextContext(env, qsdo, awtStrike, unichars, len, x, y);
 
-        (*env)->ReleaseStringChars(env, str, unichars);
+        JNFReleaseStringUTF16UniChars(env, str, unichars);
     }
 
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }
 
 
@@ -633,34 +623,33 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CTextPipe_doUnicodes
     QuartzSDOps *qsdo = (QuartzSDOps *)SurfaceData_GetOps(env, jsurfacedata);
     AWTStrike *awtStrike = (AWTStrike *)jlong_to_ptr(awtStrikePtr);
 
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     // Setup the text context
     if (length < MAX_STACK_ALLOC_GLYPH_BUFFER_SIZE) // optimized for stack allocation
     {
         jchar copyUnichars[length];
         (*env)->GetCharArrayRegion(env, unicodes, offset, length, copyUnichars);
-        CHECK_EXCEPTION();
+        JNF_CHECK_AND_RETHROW_EXCEPTION(env);
         DrawTextContext(env, qsdo, awtStrike, copyUnichars, length, x, y);
     }
     else
     {
         jchar *copyUnichars = malloc(length * sizeof(jchar));
         if (!copyUnichars) {
-            JNU_ThrowOutOfMemoryError(env, "Failed to malloc memory to create the glyphs for string drawing");
-            return;
+            [JNFException raise:env as:kOutOfMemoryError reason:"Failed to malloc memory to create the glyphs for string drawing"];
         }
 
         @try {
             (*env)->GetCharArrayRegion(env, unicodes, offset, length, copyUnichars);
-            CHECK_EXCEPTION();
+            JNF_CHECK_AND_RETHROW_EXCEPTION(env);
             DrawTextContext(env, qsdo, awtStrike, copyUnichars, length, x, y);
         } @finally {
             free(copyUnichars);
         }
     }
 
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }
 
 /*
@@ -674,11 +663,11 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CTextPipe_doOneUnicode
     QuartzSDOps *qsdo = (QuartzSDOps *)SurfaceData_GetOps(env, jsurfacedata);
     AWTStrike *awtStrike = (AWTStrike *)jlong_to_ptr(awtStrikePtr);
 
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     DrawTextContext(env, qsdo, awtStrike, &aUnicode, 1, x, y);
 
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }
 
 /*
@@ -692,7 +681,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CTextPipe_doDrawGlyphs
     QuartzSDOps *qsdo = (QuartzSDOps *)SurfaceData_GetOps(env, jsurfacedata);
     AWTStrike *awtStrike = (AWTStrike *)jlong_to_ptr(awtStrikePtr);
 
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     qsdo->BeginSurface(env, qsdo, SD_Text);
     if (qsdo->cgRef == NULL)
@@ -710,5 +699,5 @@ JNI_COCOA_ENTER(env);
 
     qsdo->FinishSurface(env, qsdo);
 
-JNI_COCOA_RENDERER_EXIT(env);
+JNF_COCOA_RENDERER_EXIT(env);
 }

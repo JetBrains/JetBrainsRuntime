@@ -138,17 +138,10 @@ public class BootstrapMethods extends Attribute {
         final StringBuilder buf = new StringBuilder();
         buf.append("BootstrapMethods(");
         buf.append(bootstrap_methods.length);
-        buf.append("):");
+        buf.append("):\n");
         for (int i = 0; i < bootstrap_methods.length; i++) {
-            buf.append("\n");
-            final int start = buf.length();
             buf.append("  ").append(i).append(": ");
-            final int indent_count = buf.length() - start;
-            final String[] lines = (bootstrap_methods[i].toString(super.getConstantPool())).split("\\r?\\n");
-            buf.append(lines[0]);
-            for (int j = 1; j < lines.length; j++) {
-                buf.append("\n").append("          ".substring(0,indent_count)).append(lines[j]);
-            }
+            buf.append(bootstrap_methods[i].toString(super.getConstantPool())).append("\n");
         }
         return buf.toString();
     }

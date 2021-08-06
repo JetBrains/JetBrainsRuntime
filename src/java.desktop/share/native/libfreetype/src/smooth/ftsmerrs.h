@@ -26,7 +26,7 @@
 #ifndef FTSMERRS_H_
 #define FTSMERRS_H_
 
-#include <freetype/ftmoderr.h>
+#include FT_MODULE_ERRORS_H
 
 #undef FTERRORS_H_
 
@@ -34,7 +34,7 @@
 #define FT_ERR_PREFIX  Smooth_Err_
 #define FT_ERR_BASE    FT_Mod_Err_Smooth
 
-#include <freetype/fterrors.h>
+#include FT_ERRORS_H
 
 #endif /* FTSMERRS_H_ */
 

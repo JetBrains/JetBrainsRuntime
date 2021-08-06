@@ -28,15 +28,20 @@ package sun.security.ssl;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.AlgorithmConstraints;
+import java.security.AlgorithmParameters;
+import java.security.CryptoPrimitive;
+import java.security.spec.ECGenParameterSpec;
+import java.security.spec.InvalidParameterSpecException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import javax.net.ssl.SSLProtocolException;
 import sun.security.action.GetPropertyAction;
-import sun.security.ssl.NamedGroup.NamedGroupSpec;
+import sun.security.ssl.NamedGroup.NamedGroupType;
 import static sun.security.ssl.SSLExtension.CH_SUPPORTED_GROUPS;
 import static sun.security.ssl.SSLExtension.EE_SUPPORTED_GROUPS;
 import sun.security.ssl.SSLExtension.ExtensionConsumer;
@@ -187,7 +192,7 @@ final class SupportedGroupsExtension {
                         NamedGroup namedGroup = NamedGroup.nameOf(group);
                         if (namedGroup != null &&
                             (!requireFips || namedGroup.isFips)) {
-                            if (namedGroup.isAvailable) {
+                            if (isAvailableGroup(namedGroup)) {
                                 groupList.add(namedGroup);
                             }
                         }   // ignore unknown groups
@@ -242,7 +247,7 @@ final class SupportedGroupsExtension {
 
                 groupList = new ArrayList<>(groups.length);
                 for (NamedGroup group : groups) {
-                    if (group.isAvailable) {
+                    if (isAvailableGroup(group)) {
                         groupList.add(group);
                     }
                 }
@@ -260,19 +265,48 @@ final class SupportedGroupsExtension {
             }
         }
 
+        // check whether the group is supported by the underlying providers
+        private static boolean isAvailableGroup(NamedGroup namedGroup) {
+            return namedGroup.isAvailableGroup();
+        }
+
+        static ECGenParameterSpec getECGenParamSpec(NamedGroup ng) {
+            if (ng.type != NamedGroupType.NAMED_GROUP_ECDHE) {
+                 throw new RuntimeException(
+                         "Not a named EC group: " + ng);
+            }
+
+            // parameters are non-null
+            AlgorithmParameters params = ng.getParameters();
+            try {
+                return params.getParameterSpec(ECGenParameterSpec.class);
+            } catch (InvalidParameterSpecException ipse) {
+                // should be unlikely
+                return new ECGenParameterSpec(ng.oid);
+            }
+        }
+
+        static AlgorithmParameters getParameters(NamedGroup ng) {
+            return ng.getParameters();
+        }
+
         // Is there any supported group permitted by the constraints?
         static boolean isActivatable(
-                AlgorithmConstraints constraints, NamedGroupSpec type) {
+                AlgorithmConstraints constraints, NamedGroupType type) {
 
             boolean hasFFDHEGroups = false;
             for (NamedGroup namedGroup : supportedNamedGroups) {
-                if (namedGroup.isAvailable && namedGroup.spec == type) {
-                    if (namedGroup.isPermitted(constraints)) {
+                if (namedGroup.type == type) {
+                    if (constraints.permits(
+                            EnumSet.of(CryptoPrimitive.KEY_AGREEMENT),
+                            namedGroup.algorithm,
+                            getParameters(namedGroup))) {
+
                         return true;
                     }
 
                     if (!hasFFDHEGroups &&
-                            (type == NamedGroupSpec.NAMED_GROUP_FFDHE)) {
+                            (type == NamedGroupType.NAMED_GROUP_FFDHE)) {
                         hasFFDHEGroups = true;
                     }
                 }
@@ -284,17 +318,20 @@ final class SupportedGroupsExtension {
             //
             // Note that the constraints checking on DHE parameters will be
             // performed during key exchanging in a handshake.
-            return !hasFFDHEGroups && type == NamedGroupSpec.NAMED_GROUP_FFDHE;
+            return !hasFFDHEGroups && type == NamedGroupType.NAMED_GROUP_FFDHE;
         }
 
         // Is the named group permitted by the constraints?
         static boolean isActivatable(
                 AlgorithmConstraints constraints, NamedGroup namedGroup) {
-            if (!namedGroup.isAvailable || !isSupported(namedGroup)) {
+            if (!isSupported(namedGroup)) {
                 return false;
             }
 
-            return namedGroup.isPermitted(constraints);
+            return constraints.permits(
+                            EnumSet.of(CryptoPrimitive.KEY_AGREEMENT),
+                            namedGroup.algorithm,
+                            getParameters(namedGroup));
         }
 
         // Is the named group supported?
@@ -310,13 +347,16 @@ final class SupportedGroupsExtension {
 
         static NamedGroup getPreferredGroup(
                 ProtocolVersion negotiatedProtocol,
-                AlgorithmConstraints constraints, NamedGroupSpec[] types,
+                AlgorithmConstraints constraints, NamedGroupType[] types,
                 List<NamedGroup> requestedNamedGroups) {
             for (NamedGroup namedGroup : requestedNamedGroups) {
-                if ((NamedGroupSpec.arrayContains(types, namedGroup.spec)) &&
+                if ((NamedGroupType.arrayContains(types, namedGroup.type)) &&
                         namedGroup.isAvailable(negotiatedProtocol) &&
                         isSupported(namedGroup) &&
-                        namedGroup.isPermitted(constraints)) {
+                        constraints.permits(
+                                EnumSet.of(CryptoPrimitive.KEY_AGREEMENT),
+                                namedGroup.algorithm,
+                                getParameters(namedGroup))) {
                     return namedGroup;
                 }
             }
@@ -326,11 +366,14 @@ final class SupportedGroupsExtension {
 
         static NamedGroup getPreferredGroup(
                 ProtocolVersion negotiatedProtocol,
-                AlgorithmConstraints constraints, NamedGroupSpec[] types) {
+                AlgorithmConstraints constraints, NamedGroupType[] types) {
             for (NamedGroup namedGroup : supportedNamedGroups) {
-                if ((NamedGroupSpec.arrayContains(types, namedGroup.spec)) &&
+                if ((NamedGroupType.arrayContains(types, namedGroup.type)) &&
                         namedGroup.isAvailable(negotiatedProtocol) &&
-                        namedGroup.isPermitted(constraints)) {
+                        constraints.permits(
+                                EnumSet.of(CryptoPrimitive.KEY_AGREEMENT),
+                                namedGroup.algorithm,
+                                getParameters(namedGroup))) {
                     return namedGroup;
                 }
             }
@@ -370,13 +413,15 @@ final class SupportedGroupsExtension {
                 new ArrayList<>(SupportedGroups.supportedNamedGroups.length);
             for (NamedGroup ng : SupportedGroups.supportedNamedGroups) {
                 if ((!SupportedGroups.enableFFDHE) &&
-                    (ng.spec == NamedGroupSpec.NAMED_GROUP_FFDHE)) {
+                    (ng.type == NamedGroupType.NAMED_GROUP_FFDHE)) {
                     continue;
                 }
 
                 if (ng.isAvailable(chc.activeProtocols) &&
                         ng.isSupported(chc.activeCipherSuites) &&
-                        ng.isPermitted(chc.algorithmConstraints)) {
+                        chc.algorithmConstraints.permits(
+                            EnumSet.of(CryptoPrimitive.KEY_AGREEMENT),
+                            ng.algorithm, getParameters(ng))) {
                     namedGroups.add(ng);
                 } else if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                     SSLLogger.fine(
@@ -524,13 +569,15 @@ final class SupportedGroupsExtension {
                     SupportedGroups.supportedNamedGroups.length);
             for (NamedGroup ng : SupportedGroups.supportedNamedGroups) {
                 if ((!SupportedGroups.enableFFDHE) &&
-                    (ng.spec == NamedGroupSpec.NAMED_GROUP_FFDHE)) {
+                    (ng.type == NamedGroupType.NAMED_GROUP_FFDHE)) {
                     continue;
                 }
 
                 if (ng.isAvailable(shc.activeProtocols) &&
                         ng.isSupported(shc.activeCipherSuites) &&
-                        ng.isPermitted(shc.algorithmConstraints)) {
+                        shc.algorithmConstraints.permits(
+                            EnumSet.of(CryptoPrimitive.KEY_AGREEMENT),
+                            ng.algorithm, getParameters(ng))) {
                     namedGroups.add(ng);
                 } else if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                     SSLLogger.fine(

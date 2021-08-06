@@ -20,7 +20,8 @@
 #define AFSHAPER_H_
 
 
-#include <freetype/freetype.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 
 #ifdef FT_CONFIG_OPTION_USE_HARFBUZZ

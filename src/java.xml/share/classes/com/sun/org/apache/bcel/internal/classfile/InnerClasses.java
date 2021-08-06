@@ -33,6 +33,7 @@ import com.sun.org.apache.bcel.internal.Const;
  * to the source file of this class.
  * It is instantiated from the <em>Attribute.readAttribute()</em> method.
  *
+ * @version $Id$
  * @see     Attribute
  */
 public final class InnerClasses extends Attribute {
@@ -102,7 +103,7 @@ public final class InnerClasses extends Attribute {
      * @throws IOException
      */
     @Override
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         super.dump(file);
         file.writeShort(inner_classes.length);
         for (final InnerClass inner_class : inner_classes) {
@@ -114,7 +115,7 @@ public final class InnerClasses extends Attribute {
     /**
      * @return array of inner class "records"
      */
-    public InnerClass[] getInnerClasses() {
+    public final InnerClass[] getInnerClasses() {
         return inner_classes;
     }
 
@@ -122,7 +123,7 @@ public final class InnerClasses extends Attribute {
     /**
      * @param inner_classes the array of inner classes
      */
-    public void setInnerClasses( final InnerClass[] inner_classes ) {
+    public final void setInnerClasses( final InnerClass[] inner_classes ) {
         this.inner_classes = inner_classes != null ? inner_classes : new InnerClass[0];
     }
 
@@ -131,7 +132,7 @@ public final class InnerClasses extends Attribute {
      * @return String representation.
      */
     @Override
-    public String toString() {
+    public final String toString() {
         final StringBuilder buf = new StringBuilder();
         buf.append("InnerClasses(");
         buf.append(inner_classes.length);
@@ -139,7 +140,7 @@ public final class InnerClasses extends Attribute {
         for (final InnerClass inner_class : inner_classes) {
             buf.append(inner_class.toString(super.getConstantPool())).append("\n");
         }
-        return buf.substring(0, buf.length()-1); // remove the last newline
+        return buf.toString();
     }
 
 

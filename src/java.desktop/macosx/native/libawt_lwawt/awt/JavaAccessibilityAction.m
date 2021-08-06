@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@
 #import "JavaAccessibilityUtilities.h"
 
 #import "ThreadUtilities.h"
-#import "JNIUtilities.h"
 
 NSMutableDictionary *sActions = nil;
 NSMutableDictionary *sActionSelectores = nil;
@@ -43,11 +42,9 @@ void initializeActions();
     }
     self = [super init];
     if (self) {
-        fAccessibleAction = (*env)->NewWeakGlobalRef(env, accessibleAction);
-        CHECK_EXCEPTION();
+        fAccessibleAction = JNFNewWeakGlobalRef(env, accessibleAction);
         fIndex = index;
-        fComponent = (*env)->NewWeakGlobalRef(env, component);
-        CHECK_EXCEPTION();
+        fComponent = JNFNewWeakGlobalRef(env, component);
     }
     return self;
 }
@@ -56,10 +53,10 @@ void initializeActions();
 {
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
 
-    (*env)->DeleteWeakGlobalRef(env, fAccessibleAction);
+    JNFDeleteWeakGlobalRef(env, fAccessibleAction);
     fAccessibleAction = NULL;
 
-    (*env)->DeleteWeakGlobalRef(env, fComponent);
+    JNFDeleteWeakGlobalRef(env, fComponent);
     fComponent = NULL;
 
     [super dealloc];
@@ -67,48 +64,35 @@ void initializeActions();
 
 - (NSString *)getDescription
 {
-    JNIEnv* env = [ThreadUtilities getJNIEnv];
-    DECLARE_CLASS_RETURN(sjc_CAccessibility, "sun/lwawt/macosx/CAccessibility", nil);
-    DECLARE_STATIC_METHOD_RETURN(jm_getAccessibleActionDescription, sjc_CAccessibility,
-                          "getAccessibleActionDescription",
-                          "(Ljavax/accessibility/AccessibleAction;ILjava/awt/Component;)Ljava/lang/String;", nil);
+    static JNF_STATIC_MEMBER_CACHE(jm_getAccessibleActionDescription, sjc_CAccessibility, "getAccessibleActionDescription", "(Ljavax/accessibility/AccessibleAction;ILjava/awt/Component;)Ljava/lang/String;");
 
-    /* WeakGlobalRefs can be cleared at any time, so first get strong local refs and use those */
+    JNIEnv* env = [ThreadUtilities getJNIEnv];
+
     jobject fCompLocal = (*env)->NewLocalRef(env, fComponent);
     if ((*env)->IsSameObject(env, fCompLocal, NULL)) {
         return nil;
     }
-    jobject fAccessibleActionLocal = (*env)->NewLocalRef(env, fAccessibleAction);
-    if ((*env)->IsSameObject(env, fAccessibleActionLocal, NULL)) {
-        (*env)->DeleteLocalRef(env, fCompLocal);
-        return nil;
-    }
     NSString *str = nil;
-    jstring jstr = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
+    jstring jstr = JNFCallStaticObjectMethod( env,
                                               jm_getAccessibleActionDescription,
-                                              fAccessibleActionLocal,
+                                              fAccessibleAction,
                                               fIndex,
                                               fCompLocal );
-    CHECK_EXCEPTION();
     if (jstr != NULL) {
-        str = JavaStringToNSString(env, jstr);
+        str = JNFJavaToNSString(env, jstr); // AWT_THREADING Safe (AWTRunLoopMode)
         (*env)->DeleteLocalRef(env, jstr);
     }
     (*env)->DeleteLocalRef(env, fCompLocal);
-    (*env)->DeleteLocalRef(env, fAccessibleActionLocal);
     return str;
 }
 
 - (void)perform
 {
-    JNIEnv* env = [ThreadUtilities getJNIEnv];
-    DECLARE_CLASS(sjc_CAccessibility, "sun/lwawt/macosx/CAccessibility");
-    DECLARE_STATIC_METHOD(jm_doAccessibleAction, sjc_CAccessibility, "doAccessibleAction",
-                    "(Ljavax/accessibility/AccessibleAction;ILjava/awt/Component;)V");
+    static JNF_STATIC_MEMBER_CACHE(jm_doAccessibleAction, sjc_CAccessibility, "doAccessibleAction", "(Ljavax/accessibility/AccessibleAction;ILjava/awt/Component;)V");
 
-    (*env)->CallStaticVoidMethod(env, sjc_CAccessibility, jm_doAccessibleAction,
-             fAccessibleAction, fIndex, fComponent);
-    CHECK_EXCEPTION();
+    JNIEnv* env = [ThreadUtilities getJNIEnv];
+
+    JNFCallStaticVoidMethod(env, jm_doAccessibleAction, fAccessibleAction, fIndex, fComponent); // AWT_THREADING Safe (AWTRunLoopMode)
 }
 
 @end
@@ -120,11 +104,9 @@ void initializeActions();
 {
     self = [super init];
     if (self) {
-        fTabGroup = (*env)->NewWeakGlobalRef(env, tabGroup);
-        CHECK_EXCEPTION();
+        fTabGroup = JNFNewWeakGlobalRef(env, tabGroup);
         fIndex = index;
-        fComponent = (*env)->NewWeakGlobalRef(env, component);
-        CHECK_EXCEPTION();
+        fComponent = JNFNewWeakGlobalRef(env, component);
     }
     return self;
 }
@@ -133,10 +115,10 @@ void initializeActions();
 {
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
 
-    (*env)->DeleteWeakGlobalRef(env, fTabGroup);
+    JNFDeleteWeakGlobalRef(env, fTabGroup);
     fTabGroup = NULL;
 
-    (*env)->DeleteWeakGlobalRef(env, fComponent);
+    JNFDeleteWeakGlobalRef(env, fComponent);
     fComponent = NULL;
 
     [super dealloc];

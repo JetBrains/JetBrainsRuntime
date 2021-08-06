@@ -31,6 +31,7 @@
 #import "sun_lwawt_macosx_CDropTarget.h"
 #import "java_awt_dnd_DnDConstants.h"
 
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
 #include <objc/objc-runtime.h>
 
@@ -39,7 +40,6 @@
 #import "CDataTransferer.h"
 #import "DnDUtilities.h"
 #import "ThreadUtilities.h"
-#import "JNIUtilities.h"
 
 
 static NSInteger        sDraggingSequenceNumber = -1;
@@ -57,12 +57,7 @@ static jlongArray        sDraggingFormats = nil;
 
 static CDropTarget*        sCurrentDropTarget;
 
-extern jclass jc_CDropTargetContextPeer;
-#define GET_DTCP_CLASS() \
-    GET_CLASS(jc_CDropTargetContextPeer, "sun/lwawt/macosx/CDropTargetContextPeer");
-
-#define GET_DTCP_CLASS_RETURN(ret) \
-    GET_CLASS_RETURN(jc_CDropTargetContextPeer, "sun/lwawt/macosx/CDropTargetContextPeer", ret);
+extern JNFClassInfo jc_CDropTargetContextPeer;
 
 @implementation CDropTarget
 
@@ -83,8 +78,8 @@ extern jclass jc_CDropTargetContextPeer;
 
     if (control != nil) {
         JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-        fComponent = (*env)->NewGlobalRef(env, jcomponent);
-        fDropTarget = (*env)->NewGlobalRef(env, jdropTarget);
+        fComponent = JNFNewGlobalRef(env, jcomponent);
+        fDropTarget = JNFNewGlobalRef(env, jdropTarget);
 
         fView = [((AWTView *) control) retain];
         [fView setDropTarget:self];
@@ -147,7 +142,7 @@ extern jclass jc_CDropTargetContextPeer;
 
     if (sDraggingFormats != NULL) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
-        (*env)->DeleteGlobalRef(env, sDraggingFormats);
+        JNFDeleteGlobalRef(env, sDraggingFormats);
         sDraggingFormats = NULL;
     }
 
@@ -164,15 +159,15 @@ extern jclass jc_CDropTargetContextPeer;
 
     // Clean up JNI refs
     if (fComponent != NULL) {
-        (*env)->DeleteGlobalRef(env, fComponent);
+        JNFDeleteGlobalRef(env, fComponent);
         fComponent = NULL;
     }
     if (fDropTarget != NULL) {
-        (*env)->DeleteGlobalRef(env, fDropTarget);
+        JNFDeleteGlobalRef(env, fDropTarget);
         fDropTarget = NULL;
     }
     if (fDropTargetContextPeer != NULL) {
-        (*env)->DeleteGlobalRef(env, fDropTargetContextPeer);
+        JNFDeleteGlobalRef(env, fDropTargetContextPeer);
         fDropTargetContextPeer = NULL;
     }
 
@@ -238,7 +233,7 @@ extern jclass jc_CDropTargetContextPeer;
     if (formats == nil)
         return FALSE;
 
-    sDraggingFormats = (jlongArray) (*env)->NewGlobalRef(env, formats);
+    sDraggingFormats = (jlongArray) JNFNewGlobalRef(env, formats);
     (*env)->DeleteLocalRef(env, formats);
     if (sDraggingFormats == nil)
         return FALSE;
@@ -355,7 +350,7 @@ extern jclass jc_CDropTargetContextPeer;
     jbyteArray lbyteArray = (*env)->NewByteArray(env, dataLength);
     if (lbyteArray == nil)
         return nil;
-    jbyteArray gbyteArray = (jbyteArray) (*env)->NewGlobalRef(env, lbyteArray);
+    jbyteArray gbyteArray = (jbyteArray) JNFNewGlobalRef(env, lbyteArray);
     (*env)->DeleteLocalRef(env, lbyteArray);
     if (gbyteArray == nil)
         return nil;
@@ -458,21 +453,18 @@ extern jclass jc_CDropTargetContextPeer;
 
         // Delete any drop target context peer left over from a previous drag:
         if (fDropTargetContextPeer != NULL) {
-            (*env)->DeleteGlobalRef(env, fDropTargetContextPeer);
+            JNFDeleteGlobalRef(env, fDropTargetContextPeer);
             fDropTargetContextPeer = NULL;
         }
 
         // Look up the CDropTargetContextPeer class:
-        GET_DTCP_CLASS_RETURN(dragOp);
-        DECLARE_STATIC_METHOD_RETURN(getDropTargetContextPeerMethod, jc_CDropTargetContextPeer,
-                                     "getDropTargetContextPeer", "()Lsun/lwawt/macosx/CDropTargetContextPeer;", dragOp)
+        JNF_STATIC_MEMBER_CACHE(getDropTargetContextPeerMethod, jc_CDropTargetContextPeer, "getDropTargetContextPeer", "()Lsun/lwawt/macosx/CDropTargetContextPeer;");
         if (sDraggingError == FALSE) {
             // Create a new drop target context peer:
-            jobject dropTargetContextPeer = (*env)->CallStaticObjectMethod(env, jc_CDropTargetContextPeer, getDropTargetContextPeerMethod);
-            CHECK_EXCEPTION();
+            jobject dropTargetContextPeer = JNFCallStaticObjectMethod(env, getDropTargetContextPeerMethod);
 
             if (dropTargetContextPeer != nil) {
-                fDropTargetContextPeer = (*env)->NewGlobalRef(env, dropTargetContextPeer);
+                fDropTargetContextPeer = JNFNewGlobalRef(env, dropTargetContextPeer);
                 (*env)->DeleteLocalRef(env, dropTargetContextPeer);
             }
         }
@@ -501,16 +493,13 @@ extern jclass jc_CDropTargetContextPeer;
 
         jlongArray formats = sDraggingFormats;
 
-        GET_DTCP_CLASS_RETURN(dragOp);
-        DECLARE_METHOD_RETURN(handleEnterMessageMethod, jc_CDropTargetContextPeer,
-                              "handleEnterMessage", "(Ljava/awt/Component;IIII[JJ)I", dragOp);
+        JNF_MEMBER_CACHE(handleEnterMessageMethod, jc_CDropTargetContextPeer, "handleEnterMessage", "(Ljava/awt/Component;IIII[JJ)I");
         if (sDraggingError == FALSE) {
             // Double-casting self gets rid of 'different size' compiler warning:
             // AWT_THREADING Safe (CToolkitThreadBlockedHandler)
-            actions = (*env)->CallIntMethod(env, fDropTargetContextPeer, handleEnterMessageMethod,
+            actions = JNFCallIntMethod(env, fDropTargetContextPeer, handleEnterMessageMethod,
                                        fComponent, (jint) javaLocation.x, (jint) javaLocation.y,
                                        dropAction, actions, formats, ptr_to_jlong(self));
-            CHECK_EXCEPTION();
         }
 
         if (sDraggingError == FALSE) {
@@ -589,13 +578,10 @@ extern jclass jc_CDropTargetContextPeer;
 
         jlongArray formats = sDraggingFormats;
 
-        GET_DTCP_CLASS_RETURN(dragOp);
-        DECLARE_METHOD_RETURN(handleMotionMessageMethod, jc_CDropTargetContextPeer, "handleMotionMessage", "(Ljava/awt/Component;IIII[JJ)I", dragOp);
+        JNF_MEMBER_CACHE(handleMotionMessageMethod, jc_CDropTargetContextPeer, "handleMotionMessage", "(Ljava/awt/Component;IIII[JJ)I");
         if (sDraggingError == FALSE) {
             DLog3(@"  >> posting handleMotionMessage, point %f, %f", javaLocation.x, javaLocation.y);
-            userAction = (*env)->CallIntMethod(env, fDropTargetContextPeer, handleMotionMessageMethod, fComponent,
-                         (jint) javaLocation.x, (jint) javaLocation.y, dropAction, actions, formats, ptr_to_jlong(self)); // AWT_THREADING Safe (CToolkitThreadBlockedHandler)
-        CHECK_EXCEPTION();
+            userAction = JNFCallIntMethod(env, fDropTargetContextPeer, handleMotionMessageMethod, fComponent, (jint) javaLocation.x, (jint) javaLocation.y, dropAction, actions, formats, ptr_to_jlong(self)); // AWT_THREADING Safe (CToolkitThreadBlockedHandler)
         }
 
         if (sDraggingError == FALSE) {
@@ -622,14 +608,12 @@ extern jclass jc_CDropTargetContextPeer;
     JNIEnv* env = [ThreadUtilities getJNIEnv];
 
     if (sDraggingExited == FALSE && sDraggingError == FALSE) {
-        GET_DTCP_CLASS();
-        DECLARE_METHOD(handleExitMessageMethod, jc_CDropTargetContextPeer, "handleExitMessage", "(Ljava/awt/Component;J)V");
+        JNF_MEMBER_CACHE(handleExitMessageMethod, jc_CDropTargetContextPeer, "handleExitMessage", "(Ljava/awt/Component;J)V");
         if (sDraggingError == FALSE) {
             DLog3(@"  - dragExit: loc native %f, %f\n", sDraggingLocation.x, sDraggingLocation.y);
-             // AWT_THREADING Safe (CToolkitThreadBlockedHandler)
-            (*env)->CallVoidMethod(env, fDropTargetContextPeer,
+             // AWT_THREADING Safe (CToolkitThreadBlockedHandler) 
+            JNFCallVoidMethod(env, fDropTargetContextPeer,
                               handleExitMessageMethod, fComponent, ptr_to_jlong(self));
-            CHECK_EXCEPTION();
         }
 
         // 5-27-03 Note: [Radar 3270455]
@@ -674,13 +658,10 @@ extern jclass jc_CDropTargetContextPeer;
 
         jlongArray formats = sDraggingFormats;
 
-        GET_DTCP_CLASS_RETURN(NO);
-        DECLARE_METHOD_RETURN(handleDropMessageMethod, jc_CDropTargetContextPeer, "handleDropMessage", "(Ljava/awt/Component;IIII[JJ)V", NO);
+        JNF_MEMBER_CACHE(handleDropMessageMethod, jc_CDropTargetContextPeer, "handleDropMessage", "(Ljava/awt/Component;IIII[JJ)V");
 
         if (sDraggingError == FALSE) {
-            (*env)->CallVoidMethod(env, fDropTargetContextPeer, handleDropMessageMethod, fComponent,
-                     (jint) javaLocation.x, (jint) javaLocation.y, dropAction, actions, formats, ptr_to_jlong(self)); // AWT_THREADING Safe (event)
-            CHECK_EXCEPTION();
+            JNFCallVoidMethod(env, fDropTargetContextPeer, handleDropMessageMethod, fComponent, (jint) javaLocation.x, (jint) javaLocation.y, dropAction, actions, formats, ptr_to_jlong(self)); // AWT_THREADING Safe (event)
         }
     } else {
         // 8-19-03 Note: [Radar 3368754]
@@ -730,10 +711,10 @@ JNIEXPORT jlong JNICALL Java_sun_lwawt_macosx_CDropTarget_createNativeDropTarget
 {
     CDropTarget* dropTarget = nil;
 
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     id controlObj = (id) jlong_to_ptr(jnativepeer);
     dropTarget = [[CDropTarget alloc] init:jdroptarget component:jcomponent control:controlObj];
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
 
     return ptr_to_jlong(dropTarget);
 }
@@ -748,7 +729,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CDropTarget_releaseNativeDropTarget
 {
     id dropTarget = (id)jlong_to_ptr(nativeDropTargetVal);
 
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     [dropTarget removeFromView:env];
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
 }

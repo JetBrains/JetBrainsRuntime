@@ -28,6 +28,7 @@ import com.sun.org.apache.bcel.internal.classfile.JavaClass;
 /**
  * Utility class implementing a (typesafe) stack of JavaClass objects.
  *
+ * @version $Id$
  * @see Stack
  */
 public class ClassStack {

@@ -759,9 +759,6 @@ cmsPipeline*  BlackPreservingKOnlyIntents(cmsContext     ContextID,
     cmsUInt32Number ICCIntents[256];
     cmsStage*         CLUT;
     cmsUInt32Number i, nGridPoints;
-    cmsUInt32Number lastProfilePos;
-    cmsUInt32Number preservationProfilesCount;
-    cmsHPROFILE hLastProfile;
 
 
     // Sanity check
@@ -771,36 +768,20 @@ cmsPipeline*  BlackPreservingKOnlyIntents(cmsContext     ContextID,
     for (i=0; i < nProfiles; i++)
         ICCIntents[i] = TranslateNonICCIntents(TheIntents[i]);
 
-
-    // Trim all CMYK devicelinks at the end
-    lastProfilePos = nProfiles - 1;
-    hLastProfile = hProfiles[lastProfilePos];
-
-    while (lastProfilePos > 1)
-    {
-        hLastProfile = hProfiles[--lastProfilePos];
-        if (cmsGetColorSpace(hLastProfile) != cmsSigCmykData ||
-            cmsGetDeviceClass(hLastProfile) != cmsSigLinkClass)
-            break;
-    }
-
-    preservationProfilesCount = lastProfilePos + 1;
-
     // Check for non-cmyk profiles
     if (cmsGetColorSpace(hProfiles[0]) != cmsSigCmykData ||
-        !(cmsGetColorSpace(hLastProfile) == cmsSigCmykData ||
-        cmsGetDeviceClass(hLastProfile) == cmsSigOutputClass))
+        cmsGetColorSpace(hProfiles[nProfiles-1]) != cmsSigCmykData)
            return DefaultICCintents(ContextID, nProfiles, ICCIntents, hProfiles, BPC, AdaptationStates, dwFlags);
+
+    memset(&bp, 0, sizeof(bp));
 
     // Allocate an empty LUT for holding the result
     Result = cmsPipelineAlloc(ContextID, 4, 4);
     if (Result == NULL) return NULL;
 
-    memset(&bp, 0, sizeof(bp));
-
     // Create a LUT holding normal ICC transform
     bp.cmyk2cmyk = DefaultICCintents(ContextID,
-                                     preservationProfilesCount,
+        nProfiles,
         ICCIntents,
         hProfiles,
         BPC,
@@ -812,7 +793,7 @@ cmsPipeline*  BlackPreservingKOnlyIntents(cmsContext     ContextID,
     // Now, compute the tone curve
     bp.KTone = _cmsBuildKToneCurve(ContextID,
         4096,
-                                    preservationProfilesCount,
+        nProfiles,
         ICCIntents,
         hProfiles,
         BPC,
@@ -836,19 +817,6 @@ cmsPipeline*  BlackPreservingKOnlyIntents(cmsContext     ContextID,
     // Sample it. We cannot afford pre/post linearization this time.
     if (!cmsStageSampleCLut16bit(CLUT, BlackPreservingGrayOnlySampler, (void*) &bp, 0))
         goto Error;
-
-
-    // Insert possible devicelinks at the end
-    for (i = lastProfilePos + 1; i < nProfiles; i++)
-    {
-        cmsPipeline* devlink = _cmsReadDevicelinkLUT(hProfiles[i], ICCIntents[i]);
-        if (devlink == NULL)
-            goto Error;
-
-        if (!cmsPipelineCat(Result, devlink))
-            goto Error;
-    }
-
 
     // Get rid of xform and tone curve
     cmsPipelineFree(bp.cmyk2cmyk);
@@ -968,8 +936,6 @@ int BlackPreservingSampler(CMSREGISTER const cmsUInt16Number In[], CMSREGISTER c
     return TRUE;
 }
 
-
-
 // This is the entry for black-plane preserving, which are non-ICC
 static
 cmsPipeline* BlackPreservingKPlaneIntents(cmsContext     ContextID,
@@ -981,14 +947,10 @@ cmsPipeline* BlackPreservingKPlaneIntents(cmsContext     ContextID,
                                           cmsUInt32Number dwFlags)
 {
     PreserveKPlaneParams bp;
-
     cmsPipeline*    Result = NULL;
     cmsUInt32Number ICCIntents[256];
     cmsStage*         CLUT;
     cmsUInt32Number i, nGridPoints;
-    cmsUInt32Number lastProfilePos;
-    cmsUInt32Number preservationProfilesCount;
-    cmsHPROFILE hLastProfile;
     cmsHPROFILE hLab;
 
     // Sanity check
@@ -998,45 +960,32 @@ cmsPipeline* BlackPreservingKPlaneIntents(cmsContext     ContextID,
     for (i=0; i < nProfiles; i++)
         ICCIntents[i] = TranslateNonICCIntents(TheIntents[i]);
 
-    // Trim all CMYK devicelinks at the end
-    lastProfilePos = nProfiles - 1;
-    hLastProfile = hProfiles[lastProfilePos];
-
-    while (lastProfilePos > 1)
-    {
-        hLastProfile = hProfiles[--lastProfilePos];
-        if (cmsGetColorSpace(hLastProfile) != cmsSigCmykData ||
-            cmsGetDeviceClass(hLastProfile) != cmsSigLinkClass)
-            break;
-    }
-
-    preservationProfilesCount = lastProfilePos + 1;
-
     // Check for non-cmyk profiles
     if (cmsGetColorSpace(hProfiles[0]) != cmsSigCmykData ||
-        !(cmsGetColorSpace(hLastProfile) == cmsSigCmykData ||
-        cmsGetDeviceClass(hLastProfile) == cmsSigOutputClass))
+        !(cmsGetColorSpace(hProfiles[nProfiles-1]) == cmsSigCmykData ||
+        cmsGetDeviceClass(hProfiles[nProfiles-1]) == cmsSigOutputClass))
            return  DefaultICCintents(ContextID, nProfiles, ICCIntents, hProfiles, BPC, AdaptationStates, dwFlags);
 
     // Allocate an empty LUT for holding the result
     Result = cmsPipelineAlloc(ContextID, 4, 4);
     if (Result == NULL) return NULL;
 
+
     memset(&bp, 0, sizeof(bp));
 
     // We need the input LUT of the last profile, assuming this one is responsible of
     // black generation. This LUT will be searched in inverse order.
-    bp.LabK2cmyk = _cmsReadInputLUT(hLastProfile, INTENT_RELATIVE_COLORIMETRIC);
+    bp.LabK2cmyk = _cmsReadInputLUT(hProfiles[nProfiles-1], INTENT_RELATIVE_COLORIMETRIC);
     if (bp.LabK2cmyk == NULL) goto Cleanup;
 
     // Get total area coverage (in 0..1 domain)
-    bp.MaxTAC = cmsDetectTAC(hLastProfile) / 100.0;
+    bp.MaxTAC = cmsDetectTAC(hProfiles[nProfiles-1]) / 100.0;
     if (bp.MaxTAC <= 0) goto Cleanup;
 
 
     // Create a LUT holding normal ICC transform
     bp.cmyk2cmyk = DefaultICCintents(ContextID,
-                                         preservationProfilesCount,
+                                         nProfiles,
                                          ICCIntents,
                                          hProfiles,
                                          BPC,
@@ -1045,7 +994,7 @@ cmsPipeline* BlackPreservingKPlaneIntents(cmsContext     ContextID,
     if (bp.cmyk2cmyk == NULL) goto Cleanup;
 
     // Now the tone curve
-    bp.KTone = _cmsBuildKToneCurve(ContextID, 4096, preservationProfilesCount,
+    bp.KTone = _cmsBuildKToneCurve(ContextID, 4096, nProfiles,
                                    ICCIntents,
                                    hProfiles,
                                    BPC,
@@ -1055,14 +1004,14 @@ cmsPipeline* BlackPreservingKPlaneIntents(cmsContext     ContextID,
 
     // To measure the output, Last profile to Lab
     hLab = cmsCreateLab4ProfileTHR(ContextID, NULL);
-    bp.hProofOutput = cmsCreateTransformTHR(ContextID, hLastProfile,
+    bp.hProofOutput = cmsCreateTransformTHR(ContextID, hProfiles[nProfiles-1],
                                          CHANNELS_SH(4)|BYTES_SH(2), hLab, TYPE_Lab_DBL,
                                          INTENT_RELATIVE_COLORIMETRIC,
                                          cmsFLAGS_NOCACHE|cmsFLAGS_NOOPTIMIZE);
     if ( bp.hProofOutput == NULL) goto Cleanup;
 
     // Same as anterior, but lab in the 0..1 range
-    bp.cmyk2Lab = cmsCreateTransformTHR(ContextID, hLastProfile,
+    bp.cmyk2Lab = cmsCreateTransformTHR(ContextID, hProfiles[nProfiles-1],
                                          FLOAT_SH(1)|CHANNELS_SH(4)|BYTES_SH(4), hLab,
                                          FLOAT_SH(1)|CHANNELS_SH(3)|BYTES_SH(4),
                                          INTENT_RELATIVE_COLORIMETRIC,
@@ -1085,18 +1034,6 @@ cmsPipeline* BlackPreservingKPlaneIntents(cmsContext     ContextID,
 
     cmsStageSampleCLut16bit(CLUT, BlackPreservingSampler, (void*) &bp, 0);
 
-    // Insert possible devicelinks at the end
-    for (i = lastProfilePos + 1; i < nProfiles; i++)
-    {
-        cmsPipeline* devlink = _cmsReadDevicelinkLUT(hProfiles[i], ICCIntents[i]);
-        if (devlink == NULL)
-            goto Cleanup;
-
-        if (!cmsPipelineCat(Result, devlink))
-            goto Cleanup;
-    }
-
-
 Cleanup:
 
     if (bp.cmyk2cmyk) cmsPipelineFree(bp.cmyk2cmyk);
@@ -1108,8 +1045,6 @@ Cleanup:
 
     return Result;
 }
-
-
 
 // Link routines ------------------------------------------------------------------------------------------------------
 

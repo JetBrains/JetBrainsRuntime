@@ -16,11 +16,12 @@
  */
 
 
-#include <freetype/internal/ftcalc.h>
-#include <freetype/internal/ftdebug.h>
-#include <freetype/internal/ftstream.h>
-#include <freetype/ttnameid.h>
-#include <freetype/ftdriver.h>
+#include <ft2build.h>
+#include FT_INTERNAL_CALC_H
+#include FT_INTERNAL_DEBUG_H
+#include FT_INTERNAL_STREAM_H
+#include FT_TRUETYPE_IDS_H
+#include FT_DRIVER_H
 
 #include "t1gload.h"
 #include "t1load.h"
@@ -31,8 +32,8 @@
 #include "t1afm.h"
 #endif
 
-#include <freetype/internal/services/svpscmap.h>
-#include <freetype/internal/psaux.h>
+#include FT_SERVICE_POSTSCRIPT_CMAPS_H
+#include FT_INTERNAL_POSTSCRIPT_AUX_H
 
 
   /**************************************************************************
@@ -346,8 +347,8 @@
     if ( error )
       goto Exit;
 
-    FT_TRACE2(( "T1_Face_Init: %p (index %d)\n",
-                (void *)face,
+    FT_TRACE2(( "T1_Face_Init: %08p (index %d)\n",
+                face,
                 face_index ));
 
     /* if we just wanted to check the format, leave successfully now */

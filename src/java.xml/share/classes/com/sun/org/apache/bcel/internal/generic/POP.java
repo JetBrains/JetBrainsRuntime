@@ -26,6 +26,7 @@ package com.sun.org.apache.bcel.internal.generic;
  *
  * <PRE>Stack: ..., word -&gt; ...</PRE>
  *
+ * @version $Id$
  */
 public class POP extends StackInstruction implements PopInstruction {
 

@@ -24,9 +24,9 @@
  */
 
 
-#import "JNIUtilities.h"
 #import <CoreFoundation/CoreFoundation.h>
 #import <ApplicationServices/ApplicationServices.h>
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 /*
  * Class:     sun_lwawt_macosx_CDesktopPeer
@@ -37,19 +37,19 @@ JNIEXPORT jint JNICALL Java_sun_lwawt_macosx_CDesktopPeer__1lsOpenURI
 (JNIEnv *env, jclass clz, jstring uri)
 {
     OSStatus status = noErr;
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     // I would love to use NSWorkspace here, but it's not thread safe. Why? I don't know.
     // So we use LaunchServices directly.
 
-    NSURL *url = [NSURL URLWithString:JavaStringToNSString(env, uri)];
+    NSURL *url = [NSURL URLWithString:JNFJavaToNSString(env, uri)];
 
     LSLaunchFlags flags = kLSLaunchDefaults;
 
     LSApplicationParameters params = {0, flags, NULL, NULL, NULL, NULL, NULL};
     status = LSOpenURLsWithRole((CFArrayRef)[NSArray arrayWithObject:url], kLSRolesAll, NULL, &params, NULL, 0);
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
     return status;
 }
 
@@ -62,12 +62,12 @@ JNIEXPORT jint JNICALL Java_sun_lwawt_macosx_CDesktopPeer__1lsOpenFile
 (JNIEnv *env, jclass clz, jstring jpath, jboolean print)
 {
     OSStatus status = noErr;
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     // I would love to use NSWorkspace here, but it's not thread safe. Why? I don't know.
     // So we use LaunchServices directly.
 
-    NSString *path  = NormalizedPathNSStringFromJavaString(env, jpath);
+    NSString *path  = JNFNormalizedNSStringForPath(env, jpath);
 
     NSURL *url = [NSURL fileURLWithPath:(NSString *)path];
 
@@ -81,7 +81,7 @@ JNI_COCOA_ENTER(env);
     status = LSOpenURLsWithRole((CFArrayRef)[NSArray arrayWithObject:url], kLSRolesAll, NULL, &params, NULL, 0);
     [url release];
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
     return status;
 }
 

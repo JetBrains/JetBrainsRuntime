@@ -24,6 +24,7 @@
  */
 
 #import "CMenuComponent.h"
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 #import "ThreadUtilities.h"
 
@@ -42,7 +43,7 @@
 
 - (void)dealloc {
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-    (*env)->DeleteGlobalRef(env, fPeer);
+    JNFDeleteGlobalRef(env, fPeer);
     fPeer = NULL;
 
     [super dealloc];

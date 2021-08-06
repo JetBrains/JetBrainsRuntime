@@ -19,8 +19,8 @@
 #ifndef SVTTENG_H_
 #define SVTTENG_H_
 
-#include <freetype/internal/ftserv.h>
-#include <freetype/ftmodapi.h>
+#include FT_INTERNAL_SERVICE_H
+#include FT_MODULE_H
 
 
 FT_BEGIN_HEADER

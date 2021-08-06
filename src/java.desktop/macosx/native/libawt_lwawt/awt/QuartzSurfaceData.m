@@ -35,6 +35,8 @@
 #import "sun_lwawt_macosx_CPrinterSurfaceData.h"
 #import "ImageSurfaceData.h"
 
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
+
 #import <AppKit/AppKit.h>
 #import "ThreadUtilities.h"
 
@@ -46,12 +48,6 @@
 #endif
 
 #define kOffset (0.5f)
-
-#define JNI_COCOA_THROW_OOME(env, msg) \
-    if ([NSThread isMainThread] == NO) { \
-         JNU_ThrowOutOfMemoryError(env, msg); \
-    } \
-    [NSException raise:@"Java Exception" reason:@"Java OutOfMemoryException" userInfo:nil]
 
 BOOL gAdjustForJavaDrawing;
 
@@ -279,7 +275,7 @@ PRINT("    contextQuartzLinearGradientPath");
 
     CGContextRef cgRef = qsdo->cgRef;
     StateGradientInfo *gradientInfo = qsdo->gradientInfo;
-
+   
     CGColorSpaceRef colorspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
     size_t num_locations = gradientInfo->fractionsLength;
     CGFloat *locations = (CGFloat *) malloc(sizeof(CGFloat) * num_locations);
@@ -293,7 +289,7 @@ PRINT("    contextQuartzLinearGradientPath");
     }
     for (i = 0; i < component_size; i++) {
         components[i] = gradientInfo->colordata[i];
-    }
+    } 
     CGContextSaveGState(cgRef);
     gradient = CGGradientCreateWithColorComponents(colorspace, components, locations, num_locations);
     if (qsdo->isEvenOddFill) {
@@ -301,7 +297,7 @@ PRINT("    contextQuartzLinearGradientPath");
     } else {
         CGContextClip(cgRef);
     }
-    CGContextDrawLinearGradient(cgRef, gradient, gradientInfo->start, gradientInfo->end, kCGGradientDrawsAfterEndLocation);
+    CGContextDrawLinearGradient(cgRef, gradient, gradientInfo->start, gradientInfo->end, kCGGradientDrawsAfterEndLocation);    
 
     CGContextRestoreGState(cgRef);
     CGColorSpaceRelease(colorspace);
@@ -318,7 +314,7 @@ PRINT("    contextQuartzRadialGradientPath");
 
     CGContextRef cgRef = qsdo->cgRef;
     StateGradientInfo *gradientInfo = qsdo->gradientInfo;
-
+   
     CGColorSpaceRef colorspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
     size_t num_locations = gradientInfo->fractionsLength;
     CGFloat *locations = (CGFloat *) malloc(sizeof(CGFloat) * num_locations);
@@ -334,7 +330,7 @@ PRINT("    contextQuartzRadialGradientPath");
     }
     for (i = 0; i < component_size; i++) {
         components[i] = gradientInfo->colordata[i];
-    }
+    } 
     CGContextSaveGState(cgRef);
     gradient = CGGradientCreateWithColorComponents(colorspace, components, locations, num_locations);
     if (qsdo->isEvenOddFill) {
@@ -342,8 +338,8 @@ PRINT("    contextQuartzRadialGradientPath");
     } else {
         CGContextClip(cgRef);
     }
-    CGContextDrawRadialGradient(cgRef, gradient, gradientInfo->start, 0, gradientInfo->end, endRadius, kCGGradientDrawsAfterEndLocation);
-
+    CGContextDrawRadialGradient(cgRef, gradient, gradientInfo->start, 0, gradientInfo->end, endRadius, kCGGradientDrawsAfterEndLocation);    
+    
     CGContextRestoreGState(cgRef);
     CGColorSpaceRelease(colorspace);
     CGGradientRelease(gradient);
@@ -355,7 +351,7 @@ PRINT("    contextQuartzRadialGradientPath");
 static inline void contextGradientPath(QuartzSDOps* qsdo)
 {
 PRINT("    ContextGradientPath")
-
+ 
     CGContextRef cgRef = qsdo->cgRef;
     StateShadingInfo* shadingInfo = qsdo->shadingInfo;
 
@@ -918,7 +914,7 @@ void setupGradient(JNIEnv *env, QuartzSDOps* qsdo, jfloat* javaFloatGraphicsStat
     qsdo->gradientInfo = (StateGradientInfo*)malloc(sizeof(StateGradientInfo));
     if (qsdo->gradientInfo == NULL)
     {
-        JNI_COCOA_THROW_OOME(env, "Failed to malloc memory for gradient paint");
+        [JNFException raise:env as:kOutOfMemoryError reason:"Failed to malloc memory for gradient paint"];
     }
 
     qsdo->graphicsStateInfo.simpleStroke = NO;
@@ -929,7 +925,7 @@ void setupGradient(JNIEnv *env, QuartzSDOps* qsdo, jfloat* javaFloatGraphicsStat
     qsdo->gradientInfo->end.x    = javaFloatGraphicsStates[sun_java2d_OSXSurfaceData_kColorx2Index];
     qsdo->gradientInfo->end.y    = javaFloatGraphicsStates[sun_java2d_OSXSurfaceData_kColory2Index];
 
-    jobject colorArray  = ((*env)->GetObjectArrayElement(env, qsdo->javaGraphicsStatesObjects, sun_java2d_OSXSurfaceData_kColorArrayIndex));
+    jobject colorArray  = ((*env)->GetObjectArrayElement(env, qsdo->javaGraphicsStatesObjects, sun_java2d_OSXSurfaceData_kColorArrayIndex)); 
     if (colorArray != NULL)
     {
         jint length = (*env)->GetArrayLength(env, colorArray);
@@ -953,7 +949,7 @@ void setupGradient(JNIEnv *env, QuartzSDOps* qsdo, jfloat* javaFloatGraphicsStat
         }
         (*env)->ReleasePrimitiveArrayCritical(env, colorArray, jcolorData, 0);
     }
-    jobject fractionsArray  = ((*env)->GetObjectArrayElement(env, qsdo->javaGraphicsStatesObjects, sun_java2d_OSXSurfaceData_kFractionsArrayIndex));
+    jobject fractionsArray  = ((*env)->GetObjectArrayElement(env, qsdo->javaGraphicsStatesObjects, sun_java2d_OSXSurfaceData_kFractionsArrayIndex)); 
     if (fractionsArray != NULL)
     {
         jint length = (*env)->GetArrayLength(env, fractionsArray);
@@ -971,7 +967,7 @@ void setupGradient(JNIEnv *env, QuartzSDOps* qsdo, jfloat* javaFloatGraphicsStat
             }
             (*env)->ReleasePrimitiveArrayCritical(env, fractionsArray, jfractionsData, 0);
         }
-    }
+    }    
 }
 
 SDRenderType SetUpPaint(JNIEnv *env, QuartzSDOps *qsdo, SDRenderType renderType)
@@ -1019,7 +1015,7 @@ SDRenderType SetUpPaint(JNIEnv *env, QuartzSDOps *qsdo, SDRenderType renderType)
             qsdo->shadingInfo = (StateShadingInfo*)malloc(sizeof(StateShadingInfo));
             if (qsdo->shadingInfo == NULL)
             {
-                JNI_COCOA_THROW_OOME(env, "Failed to malloc memory for gradient paint");
+                [JNFException raise:env as:kOutOfMemoryError reason:"Failed to malloc memory for gradient paint"];
             }
 
             qsdo->graphicsStateInfo.simpleStroke = NO;
@@ -1065,7 +1061,7 @@ SDRenderType SetUpPaint(JNIEnv *env, QuartzSDOps *qsdo, SDRenderType renderType)
             qsdo->patternInfo = (StatePatternInfo*)malloc(sizeof(StatePatternInfo));
             if (qsdo->patternInfo == NULL)
             {
-                JNI_COCOA_THROW_OOME(env, "Failed to malloc memory for texture paint");
+                [JNFException raise:env as:kOutOfMemoryError reason:"Failed to malloc memory for texture paint"];
             }
 
             qsdo->graphicsStateInfo.simpleStroke = NO;

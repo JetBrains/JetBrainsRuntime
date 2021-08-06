@@ -588,7 +588,6 @@ final class CertificateVerify {
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
             Map.Entry<SignatureScheme, Signature> schemeAndSigner =
                     SignatureScheme.getSignerOfPreferableAlgorithm(
-                    chc.algorithmConstraints,
                     chc.peerRequestedSignatureSchemes,
                     x509Possession,
                     chc.negotiatedProtocol);
@@ -898,7 +897,6 @@ final class CertificateVerify {
 
             Map.Entry<SignatureScheme, Signature> schemeAndSigner =
                      SignatureScheme.getSignerOfPreferableAlgorithm(
-                     context.algorithmConstraints,
                      context.peerRequestedSignatureSchemes,
                      x509Possession,
                      context.negotiatedProtocol);

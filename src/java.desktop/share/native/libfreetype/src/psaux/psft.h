@@ -40,17 +40,17 @@
 #define PSFT_H_
 
 
-#include <freetype/internal/compiler-macros.h>
 #include "pstypes.h"
+
 
   /* TODO: disable asserts for now */
 #define CF2_NDEBUG
 
 
-#include <freetype/ftsystem.h>
+#include FT_SYSTEM_H
 
 #include "psglue.h"
-#include <freetype/internal/psaux.h>    /* for PS_Decoder */
+#include FT_INTERNAL_POSTSCRIPT_AUX_H    /* for PS_Decoder */
 
 
 FT_BEGIN_HEADER

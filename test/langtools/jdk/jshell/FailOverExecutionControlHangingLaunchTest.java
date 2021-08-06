@@ -41,7 +41,6 @@ public class FailOverExecutionControlHangingLaunchTest extends ExecutionControlT
     @Override
     public void setUp() {
         setUp(builder -> builder.executionEngine(
-                "failover:0(jdi:remoteAgent(HangingRemoteAgent),launch(true)), "
-                        + standardSpecs()));
+                "failover:0(jdi:remoteAgent(HangingRemoteAgent),launch(true)), 1(jdi:launch(true))"));
     }
 }

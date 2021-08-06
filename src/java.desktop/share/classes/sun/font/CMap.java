@@ -449,6 +449,7 @@ abstract class CMap {
             try {
                 this.uvs = new UVS(buffer, offset);
             } catch (Throwable t) {
+                t.printStackTrace();
             }
         }
         return;

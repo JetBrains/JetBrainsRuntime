@@ -19,11 +19,12 @@
  */
 
 
-#include <freetype/internal/ftdebug.h>
+#include <ft2build.h>
+#include FT_INTERNAL_DEBUG_H
 
-#include <freetype/ftsnames.h>
-#include <freetype/internal/tttypes.h>
-#include <freetype/internal/ftstream.h>
+#include FT_SFNT_NAMES_H
+#include FT_INTERNAL_TRUETYPE_TYPES_H
+#include FT_INTERNAL_STREAM_H
 
 
 #ifdef TT_CONFIG_OPTION_SFNT_NAMES

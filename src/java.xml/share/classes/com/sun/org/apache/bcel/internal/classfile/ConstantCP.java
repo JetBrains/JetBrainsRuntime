@@ -29,6 +29,7 @@ import com.sun.org.apache.bcel.internal.Const;
  * Abstract super class for Fieldref, Methodref, InterfaceMethodref and
  *                          InvokeDynamic constants.
  *
+ * @version $Id$
  * @see     ConstantFieldref
  * @see     ConstantMethodref
  * @see     ConstantInterfaceMethodref

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  */
 
 /*
@@ -39,8 +39,6 @@ import java.io.IOException;
  *
  * @author Michael Glavassevich, IBM
  * @author Neil Graham, IBM
- *
- * @LastModified: Apr 2021
  */
 
 public class XML11EntityScanner
@@ -698,7 +696,7 @@ public class XML11EntityScanner
                     sawIncompleteSurrogatePair)){
                     fErrorReporter.reportError(XMLMessageFormatter.XML_DOMAIN,
                                                "IllegalQName",
-                                               new Object[]{rawname},
+                                               null,
                                                XMLErrorReporter.SEVERITY_FATAL_ERROR);
                 }
                 //check the result: localpart

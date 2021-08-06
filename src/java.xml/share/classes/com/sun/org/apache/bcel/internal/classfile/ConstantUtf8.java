@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -29,180 +29,185 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Extends the abstract {@link Constant} to represent a reference to a UTF-8 encoded string.
+ * This class is derived from the abstract {@link Constant}
+ * and represents a reference to a Utf8 encoded string.
  *
- * @see Constant
- * @LastModified: Jan 2020
+ * @version $Id$
+ * @see     Constant
+ * @LastModified: Jun 2019
  */
 public final class ConstantUtf8 extends Constant {
 
-    private static class Cache {
+    private final String bytes;
 
-        private static final boolean BCEL_STATISTICS = false;
-        private static final int MAX_ENTRIES = 20000;
-        private static final int INITIAL_CAPACITY = (int) (MAX_ENTRIES / 0.75);
+    // TODO these should perhaps be AtomicInt?
+    private static volatile int considered = 0;
+    private static volatile int hits = 0;
+    private static volatile int skipped = 0;
+    private static volatile int created = 0;
 
-        private static final HashMap<String, ConstantUtf8> CACHE = new LinkedHashMap<String, ConstantUtf8>(
-            INITIAL_CAPACITY, 0.75f, true) {
+    // Set the size to 0 or below to skip caching entirely
+    private static final int MAX_CACHED_SIZE = 200;
+    private static final boolean BCEL_STATISTICS = false;
 
+
+    private static class CACHE_HOLDER {
+
+        private static final int MAX_CACHE_ENTRIES = 20000;
+        private static final int INITIAL_CACHE_CAPACITY = (int)(MAX_CACHE_ENTRIES/0.75);
+
+        private static final HashMap<String, ConstantUtf8> CACHE =
+                new LinkedHashMap<String, ConstantUtf8>(INITIAL_CACHE_CAPACITY, 0.75f, true) {
             private static final long serialVersionUID = -8506975356158971766L;
 
             @Override
             protected boolean removeEldestEntry(final Map.Entry<String, ConstantUtf8> eldest) {
-                return size() > MAX_ENTRIES;
+                 return size() > MAX_CACHE_ENTRIES;
             }
         };
 
-        // Set the size to 0 or below to skip caching entirely
-        private static final int MAX_ENTRY_SIZE = 200;
+    }
 
-        static boolean isEnabled() {
-            return Cache.MAX_ENTRIES > 0 && MAX_ENTRY_SIZE > 0;
+    // for accesss by test code
+    static void printStats() {
+        System.err.println("Cache hit " + hits + "/" + considered +", " + skipped + " skipped");
+        System.err.println("Total of " + created + " ConstantUtf8 objects created");
+    }
+
+    // for accesss by test code
+    static void clearStats() {
+        hits = considered = skipped = created = 0;
+    }
+
+    static {
+        if (BCEL_STATISTICS) {
+            Runtime.getRuntime().addShutdownHook(new Thread() {
+                @Override
+                public void run() {
+                    printStats();
+                }
+            });
         }
-
     }
 
     /**
-     * Clears the cache.
-     *
-     * @since 6.4.0
-     */
-    public static synchronized void clearCache() {
-        Cache.CACHE.clear();
-    }
-
-    /**
-     * Gets a new or cached instance of the given value.
-     * <p>
-     * See {@link ConstantUtf8} class Javadoc for details.
-     * </p>
-     *
-     * @param value the value.
-     * @return a new or cached instance of the given value.
      * @since 6.0
      */
-    public static ConstantUtf8 getCachedInstance(final String value) {
-        if (value.length() > Cache.MAX_ENTRY_SIZE) {
-            return new ConstantUtf8(value);
+    public static ConstantUtf8 getCachedInstance(final String s) {
+        if (s.length() > MAX_CACHED_SIZE) {
+            skipped++;
+            return  new ConstantUtf8(s);
         }
-
+        considered++;
         synchronized (ConstantUtf8.class) { // might be better with a specific lock object
-            ConstantUtf8 result = Cache.CACHE.get(value);
+            ConstantUtf8 result = CACHE_HOLDER.CACHE.get(s);
             if (result != null) {
-                return result;
-            }
-            result = new ConstantUtf8(value);
-            Cache.CACHE.put(value, result);
+                    hits++;
+                    return result;
+                }
+            result = new ConstantUtf8(s);
+            CACHE_HOLDER.CACHE.put(s, result);
             return result;
         }
     }
 
     /**
-     * Gets a new or cached instance of the given value.
-     * <p>
-     * See {@link ConstantUtf8} class Javadoc for details.
-     * </p>
-     *
-     * @param dataInput the value.
-     * @return a new or cached instance of the given value.
-     * @throws IOException if an I/O error occurs.
      * @since 6.0
      */
-    public static ConstantUtf8 getInstance(final DataInput dataInput) throws IOException {
-        return getInstance(dataInput.readUTF());
+    public static ConstantUtf8 getInstance(final String s) {
+        return new ConstantUtf8(s);
     }
 
     /**
-     * Gets a new or cached instance of the given value.
-     * <p>
-     * See {@link ConstantUtf8} class Javadoc for details.
-     * </p>
-     *
-     * @param value the value.
-     * @return a new or cached instance of the given value.
      * @since 6.0
      */
-    public static ConstantUtf8 getInstance(final String value) {
-        return Cache.isEnabled() ? getCachedInstance(value) : new ConstantUtf8(value);
+    public static ConstantUtf8 getInstance (final DataInput input)  throws IOException {
+        return getInstance(input.readUTF());
     }
 
-    private final String value;
-
     /**
-     * Initializes from another object.
-     *
-     * @param constantUtf8 the value.
+     * Initialize from another object.
      */
-    public ConstantUtf8(final ConstantUtf8 constantUtf8) {
-        this(constantUtf8.getBytes());
+    public ConstantUtf8(final ConstantUtf8 c) {
+        this(c.getBytes());
     }
 
+
     /**
-     * Initializes instance from file data.
+     * Initialize instance from file data.
      *
-     * @param dataInput Input stream
+     * @param file Input stream
      * @throws IOException
      */
-    ConstantUtf8(final DataInput dataInput) throws IOException {
+    ConstantUtf8(final DataInput file) throws IOException {
         super(Const.CONSTANT_Utf8);
-        value = dataInput.readUTF();
+        bytes = file.readUTF();
+        created++;
     }
 
+
     /**
-     * @param value Data
+     * @param bytes Data
      */
-    public ConstantUtf8(final String value) {
+    public ConstantUtf8(final String bytes) {
         super(Const.CONSTANT_Utf8);
-        if (value == null) {
-            throw new IllegalArgumentException("Value must not be null.");
+        if (bytes == null) {
+            throw new IllegalArgumentException("bytes must not be null!");
         }
-        this.value = value;
+        this.bytes = bytes;
+        created++;
     }
 
+
     /**
-     * Called by objects that are traversing the nodes of the tree implicitely defined by the contents of a Java class.
-     * I.e., the hierarchy of methods, fields, attributes, etc. spawns a tree of objects.
+     * Called by objects that are traversing the nodes of the tree implicitely
+     * defined by the contents of a Java class. I.e., the hierarchy of methods,
+     * fields, attributes, etc. spawns a tree of objects.
      *
      * @param v Visitor object
      */
     @Override
-    public void accept(final Visitor v) {
+    public void accept( final Visitor v ) {
         v.visitConstantUtf8(this);
     }
 
+
     /**
-     * Dumps String in Utf8 format to file stream.
+     * Dump String in Utf8 format to file stream.
      *
      * @param file Output file stream
      * @throws IOException
      */
     @Override
-    public void dump(final DataOutputStream file) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         file.writeByte(super.getTag());
-        file.writeUTF(value);
+        file.writeUTF(bytes);
     }
+
 
     /**
      * @return Data converted to string.
      */
-    public String getBytes() {
-        return value;
+    public final String getBytes() {
+        return bytes;
     }
 
+
     /**
-     * @param bytes the raw bytes of this UTF-8
+     * @param bytes the raw bytes of this Utf-8
      * @deprecated (since 6.0)
      */
     @java.lang.Deprecated
-    public void setBytes(final String bytes) {
+    public final void setBytes( final String bytes ) {
         throw new UnsupportedOperationException();
     }
+
 
     /**
      * @return String representation
      */
     @Override
-    public String toString() {
-        return super.toString() + "(\"" + Utility.replace(value, "\n", "\\n") + "\")";
+    public final String toString() {
+        return super.toString() + "(\"" + Utility.replace(bytes, "\n", "\\n") + "\")";
     }
 }

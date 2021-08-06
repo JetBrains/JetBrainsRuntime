@@ -1104,7 +1104,7 @@ void Compile::Init(int aliaslevel) {
 
   _fixed_slots = 0;
   set_has_split_ifs(false);
-  set_has_loops(false); // first approximation
+  set_has_loops(has_method() && method()->has_loops()); // first approximation
   set_has_stringbuilder(false);
   set_has_boxed_value(false);
   _trap_can_recompile = false;  // no traps emitted yet
@@ -1200,7 +1200,6 @@ void Compile::Init(int aliaslevel) {
   register_library_intrinsics();
 #ifdef ASSERT
   _type_verify_symmetry = true;
-  _exception_backedge = false;
 #endif
 }
 
@@ -3379,8 +3378,6 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
   case Op_MulReductionVL:
   case Op_MulReductionVF:
   case Op_MulReductionVD:
-  case Op_MinReductionV:
-  case Op_MaxReductionV:
     break;
 
   case Op_PackB:
@@ -4371,10 +4368,10 @@ Node* Compile::conv_I2X_index(PhaseGVN* phase, Node* idx, const TypeInt* sizetyp
 }
 
 // Convert integer value to a narrowed long type dependent on ctrl (for example, a range check)
-Node* Compile::constrained_convI2L(PhaseGVN* phase, Node* value, const TypeInt* itype, Node* ctrl, bool carry_dependency) {
+Node* Compile::constrained_convI2L(PhaseGVN* phase, Node* value, const TypeInt* itype, Node* ctrl) {
   if (ctrl != NULL) {
     // Express control dependency by a CastII node with a narrow type.
-    value = new CastIINode(value, itype, carry_dependency, true /* range check dependency */);
+    value = new CastIINode(value, itype, false, true /* range check dependency */);
     // Make the CastII node dependent on the control input to prevent the narrowed ConvI2L
     // node from floating above the range check during loop optimizations. Otherwise, the
     // ConvI2L node may be eliminated independently of the range check, causing the data path
@@ -4408,7 +4405,12 @@ void Compile::print_inlining_init() {
     // print_inlining_init is actually called several times.
     print_inlining_stream_free();
     _print_inlining_stream = new stringStream();
-    _print_inlining_list = new (comp_arena())GrowableArray<PrintInliningBuffer*>(comp_arena(), 1, 1, new PrintInliningBuffer());
+    // Watch out: The memory initialized by the constructor call PrintInliningBuffer()
+    // will be copied into the only initial element. The default destructor of
+    // PrintInliningBuffer will be called when leaving the scope here. If it
+    // would destuct the  enclosed stringStream _print_inlining_list[0]->_ss
+    // would be destructed, too!
+    _print_inlining_list = new (comp_arena())GrowableArray<PrintInliningBuffer>(comp_arena(), 1, 1, PrintInliningBuffer());
   }
 }
 
@@ -4428,35 +4430,35 @@ void Compile::print_inlining_commit() {
   assert(print_inlining() || print_intrinsics(), "PrintInlining off?");
   // Transfer the message from _print_inlining_stream to the current
   // _print_inlining_list buffer and clear _print_inlining_stream.
-  _print_inlining_list->at(_print_inlining_idx)->ss()->write(_print_inlining_stream->base(), _print_inlining_stream->size());
+  _print_inlining_list->at(_print_inlining_idx).ss()->write(_print_inlining_stream->base(), _print_inlining_stream->size());
   print_inlining_reset();
 }
 
 void Compile::print_inlining_push() {
   // Add new buffer to the _print_inlining_list at current position
   _print_inlining_idx++;
-  _print_inlining_list->insert_before(_print_inlining_idx, new PrintInliningBuffer());
+  _print_inlining_list->insert_before(_print_inlining_idx, PrintInliningBuffer());
 }
 
-Compile::PrintInliningBuffer* Compile::print_inlining_current() {
+Compile::PrintInliningBuffer& Compile::print_inlining_current() {
   return _print_inlining_list->at(_print_inlining_idx);
 }
 
 void Compile::print_inlining_update(CallGenerator* cg) {
   if (print_inlining() || print_intrinsics()) {
     if (!cg->is_late_inline()) {
-      if (print_inlining_current()->cg() != NULL) {
+      if (print_inlining_current().cg() != NULL) {
         print_inlining_push();
       }
       print_inlining_commit();
     } else {
-      if (print_inlining_current()->cg() != cg &&
-          (print_inlining_current()->cg() != NULL ||
-           print_inlining_current()->ss()->size() != 0)) {
+      if (print_inlining_current().cg() != cg &&
+          (print_inlining_current().cg() != NULL ||
+           print_inlining_current().ss()->size() != 0)) {
         print_inlining_push();
       }
       print_inlining_commit();
-      print_inlining_current()->set_cg(cg);
+      print_inlining_current().set_cg(cg);
     }
   }
 }
@@ -4466,7 +4468,7 @@ void Compile::print_inlining_move_to(CallGenerator* cg) {
   // corresponding inlining buffer so that we can update it.
   if (print_inlining()) {
     for (int i = 0; i < _print_inlining_list->length(); i++) {
-      if (_print_inlining_list->at(i)->cg() == cg) {
+      if (_print_inlining_list->adr_at(i)->cg() == cg) {
         _print_inlining_idx = i;
         return;
       }
@@ -4478,11 +4480,11 @@ void Compile::print_inlining_move_to(CallGenerator* cg) {
 void Compile::print_inlining_update_delayed(CallGenerator* cg) {
   if (print_inlining()) {
     assert(_print_inlining_stream->size() > 0, "missing inlining msg");
-    assert(print_inlining_current()->cg() == cg, "wrong entry");
+    assert(print_inlining_current().cg() == cg, "wrong entry");
     // replace message with new message
-    _print_inlining_list->at_put(_print_inlining_idx, new PrintInliningBuffer());
+    _print_inlining_list->at_put(_print_inlining_idx, PrintInliningBuffer());
     print_inlining_commit();
-    print_inlining_current()->set_cg(cg);
+    print_inlining_current().set_cg(cg);
   }
 }
 
@@ -4511,10 +4513,8 @@ void Compile::process_print_inlining() {
     stringStream ss;
     assert(_print_inlining_list != NULL, "process_print_inlining should be called only once.");
     for (int i = 0; i < _print_inlining_list->length(); i++) {
-      PrintInliningBuffer* pib = _print_inlining_list->at(i);
-      ss.print("%s", pib->ss()->as_string());
-      delete pib;
-      DEBUG_ONLY(_print_inlining_list->at_put(i, NULL));
+      ss.print("%s", _print_inlining_list->adr_at(i)->ss()->as_string());
+      _print_inlining_list->at(i).freeStream();
     }
     // Reset _print_inlining_list, it only contains destructed objects.
     // It is on the arena, so it will be freed when the arena is reset.

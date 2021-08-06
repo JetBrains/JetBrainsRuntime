@@ -4,17 +4,9 @@
 #import "JavaTabButtonAccessibility.h"
 #import "JavaAccessibilityUtilities.h"
 #import "ThreadUtilities.h"
-#import "JNIUtilities.h"
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
-// GET* macros defined in JavaAccessibilityUtilities.h, so they can be shared.
-static jclass sjc_CAccessibility = NULL;
-
-static jmethodID jm_getChildrenAndRoles = NULL;
-#define GET_CHILDRENANDROLES_METHOD_RETURN(ret) \
-    GET_CACCESSIBILITY_CLASS_RETURN(ret); \
-    GET_STATIC_METHOD_RETURN(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles",\
-                      "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;", ret);
+static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;");
 
 @implementation JavaTabGroupAccessibility
 
@@ -41,10 +33,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
 }
 
 - (NSArray *)tabButtonsWithEnv:(JNIEnv *)env withTabGroupAxContext:(jobject)axContext withTabCode:(NSInteger)whichTabs allowIgnored:(BOOL)allowIgnored {
-    GET_CHILDRENANDROLES_METHOD_RETURN(nil);
-    jobjectArray jtabsAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getChildrenAndRoles,
-                                  fAccessible, fComponent, whichTabs, allowIgnored);
-    CHECK_EXCEPTION();
+    jobjectArray jtabsAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, fAccessible, fComponent, whichTabs, allowIgnored); // AWT_THREADING Safe (AWTRunLoop)
     if(jtabsAndRoles == NULL) return nil;
 
     jsize arrayLen = (*env)->GetArrayLength(env, jtabsAndRoles);
@@ -60,10 +49,8 @@ static jmethodID jm_getChildrenAndRoles = NULL;
         (*env)->DeleteLocalRef(env, jtabsAndRoles);
         return nil;
     }
-    DECLARE_CLASS_RETURN(sjc_AccessibleRole, "javax/accessibility/AccessibleRole", nil);
-    DECLARE_FIELD_RETURN(sjf_key, sjc_AccessibleRole, "key", "Ljava/lang/String;", nil);
-    jobject jkey = (*env)->GetObjectField(env, jtabJavaRole, sjf_key);
-    NSString *tabJavaRole = JavaStringToNSString(env, jkey);
+    jobject jkey = JNFGetObjectField(env, jtabJavaRole, sjf_key);
+    NSString *tabJavaRole = JNFJavaToNSString(env, jkey);
     (*env)->DeleteLocalRef(env, jkey);
 
     NSInteger i;

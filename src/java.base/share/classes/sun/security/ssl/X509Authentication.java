@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -230,14 +230,12 @@ enum X509Authentication implements SSLAuthentication {
             if (chc.conContext.transport instanceof SSLSocketImpl) {
                 clientAlias = km.chooseClientAlias(
                         new String[] { keyType },
-                        chc.peerSupportedAuthorities == null ? null :
-                                chc.peerSupportedAuthorities.clone(),
+                        chc.peerSupportedAuthorities,
                         (SSLSocket)chc.conContext.transport);
             } else if (chc.conContext.transport instanceof SSLEngineImpl) {
                 clientAlias = km.chooseEngineClientAlias(
                         new String[] { keyType },
-                        chc.peerSupportedAuthorities == null ? null :
-                                chc.peerSupportedAuthorities.clone(),
+                        chc.peerSupportedAuthorities,
                         (SSLEngine)chc.conContext.transport);
             }
 
@@ -286,14 +284,10 @@ enum X509Authentication implements SSLAuthentication {
             String serverAlias = null;
             if (shc.conContext.transport instanceof SSLSocketImpl) {
                 serverAlias = km.chooseServerAlias(keyType,
-                        shc.peerSupportedAuthorities == null ? null :
-                                shc.peerSupportedAuthorities.clone(),
-                        (SSLSocket)shc.conContext.transport);
+                        null, (SSLSocket)shc.conContext.transport);
             } else if (shc.conContext.transport instanceof SSLEngineImpl) {
                 serverAlias = km.chooseEngineServerAlias(keyType,
-                        shc.peerSupportedAuthorities == null ? null :
-                                shc.peerSupportedAuthorities.clone(),
-                        (SSLEngine)shc.conContext.transport);
+                        null, (SSLEngine)shc.conContext.transport);
             }
 
             if (serverAlias == null) {

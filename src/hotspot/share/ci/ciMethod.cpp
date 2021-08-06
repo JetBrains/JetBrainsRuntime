@@ -975,7 +975,8 @@ bool ciMethod::ensure_method_data(const methodHandle& h_m) {
   }
   if (h_m()->method_data() != NULL) {
     _method_data = CURRENT_ENV->get_method_data(h_m()->method_data());
-    return _method_data->load_data();
+    _method_data->load_data();
+    return true;
   } else {
     _method_data = CURRENT_ENV->get_empty_methodData();
     return false;

@@ -19,7 +19,7 @@
 #ifndef SVPOSTNM_H_
 #define SVPOSTNM_H_
 
-#include <freetype/internal/ftserv.h>
+#include FT_INTERNAL_SERVICE_H
 
 
 FT_BEGIN_HEADER

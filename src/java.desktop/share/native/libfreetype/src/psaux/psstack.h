@@ -39,7 +39,6 @@
 #ifndef PSSTACK_H_
 #define PSSTACK_H_
 
-#include <freetype/internal/compiler-macros.h>
 
 FT_BEGIN_HEADER
 

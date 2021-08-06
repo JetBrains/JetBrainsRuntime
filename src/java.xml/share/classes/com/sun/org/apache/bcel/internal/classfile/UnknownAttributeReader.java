@@ -27,6 +27,7 @@ package com.sun.org.apache.bcel.internal.classfile;
  * method. These factory objects should implement this interface.
  *
  * @see Attribute
+ * @version $Id$
  * @since 6.0
  */
 public interface UnknownAttributeReader {

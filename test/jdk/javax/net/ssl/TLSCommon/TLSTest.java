@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.PrivateKey;
@@ -208,11 +206,8 @@ public class TLSTest {
                     keyType.getTrustedCert(), keyType.getEndCert(),
                     keyType.getPrivateKey(), keyType.getKeyType());
             SSLServerSocketFactory sslssf = ctx.getServerSocketFactory();
-            InetSocketAddress socketAddress =
-                    new InetSocketAddress(InetAddress.getLoopbackAddress(), port);
             SSLServerSocket sslServerSocket
-                    = (SSLServerSocket) sslssf.createServerSocket();
-            sslServerSocket.bind(socketAddress);
+                    = (SSLServerSocket) sslssf.createServerSocket(port);
             port = sslServerSocket.getLocalPort();
             System.out.println("Server listining on port: " + port);
             // specify the enabled server cipher suites

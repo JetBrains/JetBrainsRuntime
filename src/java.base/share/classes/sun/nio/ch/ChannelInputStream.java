@@ -119,21 +119,20 @@ public class ChannelInputStream
 
     public synchronized long skip(long n) throws IOException {
         // special case where the channel is to a file
-        if (ch instanceof SeekableByteChannel) {
+        if (ch instanceof SeekableByteChannel && n > 0) {
             SeekableByteChannel sbc = (SeekableByteChannel)ch;
-            long pos = sbc.position();
-            long newPos;
-            if (n > 0) {
-                newPos = pos + n;
+            try {
+                long pos = sbc.position();
                 long size = sbc.size();
-                if (newPos < 0 || newPos > size) {
-                    newPos = size;
+                if (pos >= size) {
+                   return 0L;
                 }
-            } else {
-                newPos = Long.max(pos + n, 0);
+                n = Math.min(n, size - pos);
+                sbc.position(pos + n);
+                return sbc.position() - pos;
+            } catch (ClosedChannelException cce) {
+                throw new IOException(cce);
             }
-            sbc.position(newPos);
-            return newPos - pos;
         }
         return super.skip(n);
     }

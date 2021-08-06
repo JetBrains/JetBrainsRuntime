@@ -30,12 +30,10 @@
   /*    encapsulated in an `extern "C" { .. }` block when included from a  */
   /*    C++ compiler.                                                      */
   /*                                                                       */
-#ifndef FT_BEGIN_HEADER
-#  ifdef __cplusplus
-#    define FT_BEGIN_HEADER  extern "C" {
-#  else
-#  define FT_BEGIN_HEADER  /* nothing */
-#  endif
+#ifdef __cplusplus
+#define FT_BEGIN_HEADER  extern "C" {
+#else
+#define FT_BEGIN_HEADER  /* nothing */
 #endif
 
 
@@ -50,12 +48,10 @@
   /*    encapsulated in an `extern "C" { .. }` block when included from a  */
   /*    C++ compiler.                                                      */
   /*                                                                       */
-#ifndef FT_END_HEADER
-#  ifdef __cplusplus
-#    define FT_END_HEADER  }
-#  else
-#   define FT_END_HEADER  /* nothing */
-#  endif
+#ifdef __cplusplus
+#define FT_END_HEADER  }
+#else
+#define FT_END_HEADER  /* nothing */
 #endif
 
 
@@ -77,16 +73,9 @@
    *   Macro definitions used to `#include` specific header files.
    *
    * @description:
-   *   In addition to the normal scheme of including header files like
-   *
-   *   ```
-   *     #include <freetype/freetype.h>
-   *     #include <freetype/ftmm.h>
-   *     #include <freetype/ftglyph.h>
-   *   ```
-   *
-   *   it is possible to used named macros instead.  They can be used
-   *   directly in `#include` statements as in
+   *   The following macros are defined to the name of specific FreeType~2
+   *   header files.  They can be used directly in `#include` statements as
+   *   in:
    *
    *   ```
    *     #include FT_FREETYPE_H
@@ -94,9 +83,13 @@
    *     #include FT_GLYPH_H
    *   ```
    *
-   *   These macros were introduced to overcome the infamous 8.3~naming rule
-   *   required by DOS (and `FT_MULTIPLE_MASTERS_H` is a lot more meaningful
-   *   than `ftmm.h`).
+   *   There are several reasons why we are now using macros to name public
+   *   header files.  The first one is that such macros are not limited to
+   *   the infamous 8.3~naming rule required by DOS (and
+   *   `FT_MULTIPLE_MASTERS_H` is a lot more meaningful than `ftmm.h`).
+   *
+   *   The second reason is that it allows for more flexibility in the way
+   *   FreeType~2 is installed on a given system.
    *
    */
 
@@ -804,19 +797,16 @@
 #define FT_CACHE_INTERNAL_IMAGE_H    FT_CACHE_H
 #define FT_CACHE_INTERNAL_SBITS_H    FT_CACHE_H
 
-/* TODO(david): Move this section below to a different header */
+
+  /*
+   * Include internal headers definitions from `<internal/...>` only when
+   * building the library.
+   */
 #ifdef FT2_BUILD_LIBRARY
-#if defined( _MSC_VER )      /* Visual C++ (and Intel C++) */
-
-  /* We disable the warning `conditional expression is constant' here */
-  /* in order to compile cleanly with the maximum level of warnings.  */
-  /* In particular, the warning complains about stuff like `while(0)' */
-  /* which is very useful in macro definitions.  There is no benefit  */
-  /* in having it enabled.                                            */
-#pragma warning( disable : 4127 )
-
-#endif /* _MSC_VER */
+#define  FT_INTERNAL_INTERNAL_H  <freetype/internal/internal.h>
+#include FT_INTERNAL_INTERNAL_H
 #endif /* FT2_BUILD_LIBRARY */
+
 
 #endif /* FTHEADER_H_ */
 

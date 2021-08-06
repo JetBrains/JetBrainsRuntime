@@ -23,16 +23,14 @@
  * questions.
  */
 
-#import "JNIUtilities.h"
-#import "ThreadUtilities.h"
-
 #import <Cocoa/Cocoa.h>
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 #import "sun_lwawt_macosx_CFRetainedResource.h"
 
 void nativeCFRelease(JNIEnv *env, jlong ptr, jboolean releaseOnAppKitThread, bool (^condition)(jlong))
 {
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
     if (releaseOnAppKitThread) {
         // Releasing resources on the main AppKit message loop only
         // Releasing resources on the nested loops may cause dangling
@@ -43,14 +41,14 @@ JNI_COCOA_ENTER(env);
             }];
         } else {
             // could happen if we are embedded inside SWT/FX application,
-            [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
+            [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
                 if (condition(ptr)) CFRelease(jlong_to_ptr(ptr));
             }];
         }
     } else {
         if (condition(ptr)) CFRelease(jlong_to_ptr(ptr));
     }
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
 }
 
 /*

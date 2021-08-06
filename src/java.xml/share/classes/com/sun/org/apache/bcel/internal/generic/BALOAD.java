@@ -24,6 +24,7 @@ package com.sun.org.apache.bcel.internal.generic;
  * BALOAD - Load byte or boolean from array
  * <PRE>Stack: ..., arrayref, index -&gt; ..., value</PRE>
  *
+ * @version $Id$
  */
 public class BALOAD extends ArrayInstruction implements StackProducer {
 

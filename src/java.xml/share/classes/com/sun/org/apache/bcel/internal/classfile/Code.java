@@ -39,6 +39,7 @@ import com.sun.org.apache.bcel.internal.Const;
  * is used for debugging purposes and <em>LocalVariableTable</em> which
  * contains information about the local variables.
  *
+ * @version $Id$
  * @see     Attribute
  * @see     CodeException
  * @see     LineNumberTable
@@ -143,7 +144,7 @@ public final class Code extends Attribute {
      * @throws IOException
      */
     @Override
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         super.dump(file);
         file.writeShort(max_stack);
         file.writeShort(max_locals);
@@ -164,7 +165,7 @@ public final class Code extends Attribute {
      * @return Collection of code attributes.
      * @see Attribute
      */
-    public Attribute[] getAttributes() {
+    public final Attribute[] getAttributes() {
         return attributes;
     }
 
@@ -198,7 +199,7 @@ public final class Code extends Attribute {
     /**
      * @return Actual byte code of the method.
      */
-    public byte[] getCode() {
+    public final byte[] getCode() {
         return code;
     }
 
@@ -207,7 +208,7 @@ public final class Code extends Attribute {
      * @return Table of handled exceptions.
      * @see CodeException
      */
-    public CodeException[] getExceptionTable() {
+    public final CodeException[] getExceptionTable() {
         return exception_table;
     }
 
@@ -215,7 +216,7 @@ public final class Code extends Attribute {
     /**
      * @return Number of local variables.
      */
-    public int getMaxLocals() {
+    public final int getMaxLocals() {
         return max_locals;
     }
 
@@ -223,7 +224,7 @@ public final class Code extends Attribute {
     /**
      * @return Maximum size of stack used by this method.
      */
-    public int getMaxStack() {
+    public final int getMaxStack() {
         return max_stack;
     }
 
@@ -259,7 +260,7 @@ public final class Code extends Attribute {
     /**
      * @param attributes the attributes to set for this Code
      */
-    public void setAttributes( final Attribute[] attributes ) {
+    public final void setAttributes( final Attribute[] attributes ) {
         this.attributes = attributes != null ? attributes : new Attribute[0];
         super.setLength(calculateLength()); // Adjust length
     }
@@ -268,7 +269,7 @@ public final class Code extends Attribute {
     /**
      * @param code byte code
      */
-    public void setCode( final byte[] code ) {
+    public final void setCode( final byte[] code ) {
         this.code = code != null ? code : new byte[0];
         super.setLength(calculateLength()); // Adjust length
     }
@@ -277,7 +278,7 @@ public final class Code extends Attribute {
     /**
      * @param exception_table exception table
      */
-    public void setExceptionTable( final CodeException[] exception_table ) {
+    public final void setExceptionTable( final CodeException[] exception_table ) {
         this.exception_table = exception_table != null ? exception_table : new CodeException[0];
         super.setLength(calculateLength()); // Adjust length
     }
@@ -286,7 +287,7 @@ public final class Code extends Attribute {
     /**
      * @param max_locals maximum number of local variables
      */
-    public void setMaxLocals( final int max_locals ) {
+    public final void setMaxLocals( final int max_locals ) {
         this.max_locals = max_locals;
     }
 
@@ -294,7 +295,7 @@ public final class Code extends Attribute {
     /**
      * @param max_stack maximum stack size
      */
-    public void setMaxStack( final int max_stack ) {
+    public final void setMaxStack( final int max_stack ) {
         this.max_stack = max_stack;
     }
 
@@ -302,7 +303,7 @@ public final class Code extends Attribute {
     /**
      * @return String representation of code chunk.
      */
-    public String toString( final boolean verbose ) {
+    public final String toString( final boolean verbose ) {
         final StringBuilder buf = new StringBuilder(100); // CHECKSTYLE IGNORE MagicNumber
         buf.append("Code(max_stack = ").append(max_stack).append(", max_locals = ").append(
                 max_locals).append(", code_length = ").append(code.length).append(")\n").append(
@@ -327,7 +328,7 @@ public final class Code extends Attribute {
      * @return String representation of code chunk.
      */
     @Override
-    public String toString() {
+    public final String toString() {
         return toString(true);
     }
 

@@ -296,9 +296,6 @@ void VM_Version::initialize() {
     Tier3MinInvocationThreshold = 500;
   }
 
-  UNSUPPORTED_OPTION(TypeProfileLevel);
-  UNSUPPORTED_OPTION(CriticalJNINatives);
-
   FLAG_SET_DEFAULT(TypeProfileLevel, 0); // unsupported
 
   // This machine does not allow unaligned memory accesses

@@ -20,7 +20,8 @@
 #define AFMPARSE_H_
 
 
-#include <freetype/internal/psaux.h>
+#include <ft2build.h>
+#include FT_INTERNAL_POSTSCRIPT_AUX_H
 
 
 FT_BEGIN_HEADER

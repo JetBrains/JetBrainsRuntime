@@ -318,9 +318,7 @@ void Arena::destruct_contents() {
   // reset size before chop to avoid a rare racing condition
   // that can have total arena memory exceed total chunk memory
   set_size_in_bytes(0);
-  if (_first != NULL) {
-    _first->chop();
-  }
+  _first->chop();
   reset();
 }
 
@@ -375,14 +373,7 @@ void* Arena::grow(size_t x, AllocFailType alloc_failmode) {
 
 // Reallocate storage in Arena.
 void *Arena::Arealloc(void* old_ptr, size_t old_size, size_t new_size, AllocFailType alloc_failmode) {
-  if (new_size == 0) {
-    Afree(old_ptr, old_size); // like realloc(3)
-    return NULL;
-  }
-  if (old_ptr == NULL) {
-    assert(old_size == 0, "sanity");
-    return Amalloc(new_size, alloc_failmode); // as with realloc(3), a NULL old ptr is equivalent to malloc(3)
-  }
+  if (new_size == 0) return NULL;
 #ifdef ASSERT
   if (UseMallocOnly) {
     // always allocate a new object  (otherwise we'll free this one twice)

@@ -24,6 +24,7 @@ package com.sun.org.apache.bcel.internal.generic;
 /**
  * Super class for stack operations like DUP and POP.
  *
+ * @version $Id$
  */
 public abstract class StackInstruction extends Instruction {
 

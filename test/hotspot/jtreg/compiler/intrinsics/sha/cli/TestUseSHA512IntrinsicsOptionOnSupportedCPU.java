@@ -25,7 +25,6 @@
  * @test
  * @bug 8035968
  * @summary Verify UseSHA512Intrinsics option processing on supported CPU.
- * @requires os.arch!="x86" & os.arch!="i386"
  * @library /test/lib testcases /
  * @modules java.base/jdk.internal.misc
  *          java.management

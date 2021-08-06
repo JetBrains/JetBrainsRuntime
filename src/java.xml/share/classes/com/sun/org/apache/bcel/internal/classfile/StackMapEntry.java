@@ -31,6 +31,7 @@ import com.sun.org.apache.bcel.internal.Const;
  * local variables and the the of stack items at a given byte code offset.
  * See CLDC specification 5.3.1.2
  *
+ * @version $Id$
  * @see     StackMap
  * @see     StackMapType
  */
@@ -141,7 +142,7 @@ public final class StackMapEntry implements Node, Cloneable
      * @param file Output file stream
      * @throws IOException
      */
-    public void dump( final DataOutputStream file ) throws IOException {
+    public final void dump( final DataOutputStream file ) throws IOException {
         file.write(frame_type);
         if (frame_type >= Const.SAME_FRAME && frame_type <= Const.SAME_FRAME_MAX) {
             // nothing to be done
@@ -181,7 +182,7 @@ public final class StackMapEntry implements Node, Cloneable
      * @return String representation.
      */
     @Override
-    public String toString() {
+    public final String toString() {
         final StringBuilder buf = new StringBuilder(64);
         buf.append("(");
         if (frame_type >= Const.SAME_FRAME && frame_type <= Const.SAME_FRAME_MAX) {
@@ -425,7 +426,7 @@ public final class StackMapEntry implements Node, Cloneable
     /**
      * @return Constant pool used by this object.
      */
-    public ConstantPool getConstantPool() {
+    public final ConstantPool getConstantPool() {
         return constant_pool;
     }
 
@@ -433,7 +434,7 @@ public final class StackMapEntry implements Node, Cloneable
     /**
      * @param constant_pool Constant pool to be used for this object.
      */
-    public void setConstantPool( final ConstantPool constant_pool ) {
+    public final void setConstantPool( final ConstantPool constant_pool ) {
         this.constant_pool = constant_pool;
     }
 }

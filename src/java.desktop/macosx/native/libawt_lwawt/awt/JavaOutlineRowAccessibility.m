@@ -5,7 +5,9 @@
 #import "JavaOutlineRowAccessibility.h"
 #import "JavaAccessibilityUtilities.h"
 #import "ThreadUtilities.h"
-#import "JNIUtilities.h"
+
+static JNF_CLASS_CACHE(sjc_CAccessible, "sun/lwawt/macosx/CAccessible");
+static JNF_STATIC_MEMBER_CACHE(sjm_getCAccessible, sjc_CAccessible, "getCAccessible", "(Ljavax/accessibility/Accessible;)Lsun/lwawt/macosx/CAccessible;");
 
 @implementation JavaOutlineRowAccessibility
 
@@ -17,17 +19,15 @@
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject jAxContext = getAxContext(env, fAccessible, fComponent);
     if (jAxContext == NULL) return nil;
-    jclass cls = (*env)->GetObjectClass(env, jAxContext);
-    DECLARE_METHOD_RETURN(jm_getCurrentComponent, cls, "getCurrentComponent", "()Ljava/awt/Component;", nil);
-    jobject newComponent = (*env)->CallObjectMethod(env, jAxContext, jm_getCurrentComponent);
-    CHECK_EXCEPTION();
+    JNFClassInfo clsInfo;
+    clsInfo.name = [JNFObjectClassName(env, jAxContext) UTF8String];
+    clsInfo.cls = (*env)->GetObjectClass(env, jAxContext);
+    JNF_MEMBER_CACHE(jm_getCurrentComponent, clsInfo, "getCurrentComponent", "()Ljava/awt/Component;");
+    jobject newComponent = JNFCallObjectMethod(env, jAxContext, jm_getCurrentComponent);
     (*env)->DeleteLocalRef(env, jAxContext);
     jobject currentAccessible = NULL;
     if (newComponent != NULL) {
-        DECLARE_CLASS_RETURN(sjc_CAccessible, "sun/lwawt/macosx/CAccessible", nil);
-        DECLARE_STATIC_METHOD_RETURN(sjm_getCAccessible, sjc_CAccessible, "getCAccessible", "(Ljavax/accessibility/Accessible;)Lsun/lwawt/macosx/CAccessible;", nil);
-        currentAccessible =  (*env)->CallStaticObjectMethod(env, sjc_CAccessible, sjm_getCAccessible, newComponent);
-        CHECK_EXCEPTION();
+        currentAccessible = JNFCallStaticObjectMethod(env, sjm_getCAccessible, newComponent);
         (*env)->DeleteLocalRef(env, newComponent);
     } else {
         return nil;

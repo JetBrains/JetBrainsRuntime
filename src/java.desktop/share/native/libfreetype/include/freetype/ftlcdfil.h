@@ -20,8 +20,9 @@
 #ifndef FTLCDFIL_H_
 #define FTLCDFIL_H_
 
-#include <freetype/freetype.h>
-#include <freetype/ftparams.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_PARAMETER_TAGS_H
 
 #ifdef FREETYPE_H
 #error "freetype.h of FreeType 1 has been loaded!"
@@ -46,7 +47,7 @@ FT_BEGIN_HEADER
    * @description:
    *   FreeType provides two alternative subpixel rendering technologies.
    *   Should you define `FT_CONFIG_OPTION_SUBPIXEL_RENDERING` in your
-   *   `ftoption.h` file, this enables ClearType-style rendering.
+   *   `ftoption.h` file, this enables patented ClearType-style rendering.
    *   Otherwise, Harmony LCD rendering is enabled.  These technologies are
    *   controlled differently and API described below, although always
    *   available, performs its function when appropriate method is enabled
@@ -176,7 +177,7 @@ FT_BEGIN_HEADER
    *   FT_Library_SetLcdFilter
    *
    * @description:
-   *   This function is used to change filter applied to LCD decimated
+   *   This function is used to apply color filtering to LCD decimated
    *   bitmaps, like the ones used when calling @FT_Render_Glyph with
    *   @FT_RENDER_MODE_LCD or @FT_RENDER_MODE_LCD_V.
    *
@@ -195,14 +196,15 @@ FT_BEGIN_HEADER
    *   FreeType error code.  0~means success.
    *
    * @note:
-   *   Since 2.10.3 the LCD filtering is enabled with @FT_LCD_FILTER_DEFAULT.
-   *   It is no longer necessary to call this function explicitly except
-   *   to choose a different filter or disable filtering altogether with
-   *   @FT_LCD_FILTER_NONE.
+   *   This feature is always disabled by default.  Clients must make an
+   *   explicit call to this function with a `filter` value other than
+   *   @FT_LCD_FILTER_NONE in order to enable it.
    *
-   *   This function does nothing but returns `FT_Err_Unimplemented_Feature`
-   *   if the configuration macro `FT_CONFIG_OPTION_SUBPIXEL_RENDERING` is
-   *   not defined in your build of the library.
+   *   Due to **PATENTS** covering subpixel rendering, this function doesn't
+   *   do anything except returning `FT_Err_Unimplemented_Feature` if the
+   *   configuration macro `FT_CONFIG_OPTION_SUBPIXEL_RENDERING` is not
+   *   defined in your build of the library, which should correspond to all
+   *   default builds of FreeType.
    *
    * @since:
    *   2.3.0
@@ -233,9 +235,11 @@ FT_BEGIN_HEADER
    *   FreeType error code.  0~means success.
    *
    * @note:
-   *   This function does nothing but returns `FT_Err_Unimplemented_Feature`
-   *   if the configuration macro `FT_CONFIG_OPTION_SUBPIXEL_RENDERING` is
-   *   not defined in your build of the library.
+   *   Due to **PATENTS** covering subpixel rendering, this function doesn't
+   *   do anything except returning `FT_Err_Unimplemented_Feature` if the
+   *   configuration macro `FT_CONFIG_OPTION_SUBPIXEL_RENDERING` is not
+   *   defined in your build of the library, which should correspond to all
+   *   default builds of FreeType.
    *
    *   LCD filter weights can also be set per face using @FT_Face_Properties
    *   with @FT_PARAM_TAG_LCD_FILTER_WEIGHTS.

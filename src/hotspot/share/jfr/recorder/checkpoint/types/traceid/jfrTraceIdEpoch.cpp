@@ -37,4 +37,3 @@ void JfrTraceIdEpoch::shift_epoch() {
     OrderAccess::fence();
   }
 }
-

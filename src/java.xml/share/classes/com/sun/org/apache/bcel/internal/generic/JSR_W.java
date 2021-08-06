@@ -29,6 +29,7 @@ import com.sun.org.apache.bcel.internal.util.ByteSequence;
 /**
  * JSR_W - Jump to subroutine
  *
+ * @version $Id$
  */
 public class JSR_W extends JsrInstruction {
 

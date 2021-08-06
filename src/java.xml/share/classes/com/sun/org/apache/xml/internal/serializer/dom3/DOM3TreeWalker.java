@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -33,7 +33,6 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import jdk.xml.internal.JdkXmlUtils;
 import org.w3c.dom.Attr;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Comment;
@@ -63,7 +62,7 @@ import org.xml.sax.helpers.LocatorImpl;
  * parameters and filters if any during serialization.
  *
  * @xsl.usage internal
- * @LastModified: Apr 2021
+ * @LastModified: Oct 2017
  */
 final class DOM3TreeWalker {
 
@@ -502,7 +501,7 @@ final class DOM3TreeWalker {
                     // DOCTYPE internal subset via an event call, so we write it
                     // out here.
                     Writer writer = fSerializer.getWriter();
-                    StringBuilder dtd = new StringBuilder();
+                    StringBuffer dtd = new StringBuffer();
 
                     dtd.append("<!DOCTYPE ");
                     dtd.append(docTypeName);
@@ -513,14 +512,13 @@ final class DOM3TreeWalker {
                     }
 
                     if (null != systemId) {
-                        char quote = JdkXmlUtils.getQuoteChar(systemId);
                         if (null == publicId) {
-                            dtd.append(" SYSTEM ").append(quote);
+                            dtd.append(" SYSTEM \"");
                         } else {
-                            dtd.append(" ").append(quote);
+                            dtd.append(" \"");
                         }
                         dtd.append(systemId);
-                        dtd.append(quote);
+                        dtd.append('\"');
                     }
 
                     dtd.append(" [ ");

@@ -25,7 +25,7 @@
 #ifndef CFFERRS_H_
 #define CFFERRS_H_
 
-#include <freetype/ftmoderr.h>
+#include FT_MODULE_ERRORS_H
 
 #undef FTERRORS_H_
 
@@ -34,7 +34,7 @@
 #define FT_ERR_BASE    FT_Mod_Err_CFF
 
 
-#include <freetype/fterrors.h>
+#include FT_ERRORS_H
 
 #endif /* CFFERRS_H_ */
 

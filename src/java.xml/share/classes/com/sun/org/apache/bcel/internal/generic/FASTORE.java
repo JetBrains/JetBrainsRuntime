@@ -25,6 +25,7 @@ package com.sun.org.apache.bcel.internal.generic;
  * FASTORE -  Store into float array
  * <PRE>Stack: ..., arrayref, index, value -&gt; ...</PRE>
  *
+ * @version $Id$
  */
 public class FASTORE extends ArrayInstruction implements StackConsumer {
 

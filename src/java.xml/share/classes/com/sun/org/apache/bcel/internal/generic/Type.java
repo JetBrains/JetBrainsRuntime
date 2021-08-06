@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -30,7 +30,8 @@ import com.sun.org.apache.bcel.internal.classfile.Utility;
  * Abstract super class for all possible java types, namely basic types
  * such as int, object types like String and array types, e.g. int[]
  *
- * @LastModified: Jan 2020
+ * @version $Id$
+ * @LastModified: Jun 2019
  */
 public abstract class Type {
 
@@ -206,8 +207,9 @@ public abstract class Type {
             wrap(consumed_chars, _temp);
             return new ArrayType(t, dim);
         } else { // type == T_REFERENCE
-            // Utility.typeSignatureToString understands how to parse generic types.
-            final String parsedSignature = Utility.typeSignatureToString(signature, false);
+            // Utility.signatureToString understands how to parse
+            // generic types.
+            final String parsedSignature = Utility.signatureToString(signature, false);
             wrap(consumed_chars, parsedSignature.length() + 2); // "Lblabla;" `L' and `;' are removed
             return ObjectType.getInstance(parsedSignature.replace('/', '.'));
         }
@@ -240,12 +242,11 @@ public abstract class Type {
         final List<Type> vec = new ArrayList<>();
         int index;
         Type[] types;
-        try {
-            // Skip any type arguments to read argument declarations between `(' and `)'
-            index = signature.indexOf('(') + 1;
-            if (index <= 0) {
+        try { // Read all declarations between for `(' and `)'
+            if (signature.charAt(0) != '(') {
                 throw new ClassFormatException("Invalid method signature: " + signature);
             }
+            index = 1; // current string position
             while (signature.charAt(index) != ')') {
                 vec.add(getType(signature.substring(index)));
                 //corrected concurrent private static field acess
@@ -343,12 +344,11 @@ public abstract class Type {
     static int getArgumentTypesSize( final String signature ) {
         int res = 0;
         int index;
-        try {
-            // Skip any type arguments to read argument declarations between `(' and `)'
-            index = signature.indexOf('(') + 1;
-            if (index <= 0) {
+        try { // Read all declarations between for `(' and `)'
+            if (signature.charAt(0) != '(') {
                 throw new ClassFormatException("Invalid method signature: " + signature);
             }
+            index = 1; // current string position
             while (signature.charAt(index) != ')') {
                 final int coded = getTypeSize(signature.substring(index));
                 res += size(coded);

@@ -29,6 +29,7 @@ import com.sun.org.apache.bcel.internal.ExceptionConst;
  * OR
  * <PRE>Stack: ..., objectref -&gt; ..., value.word1, value.word2</PRE>
  *
+ * @version $Id$
  */
 public class GETFIELD extends FieldInstruction implements ExceptionThrower, StackConsumer,
         StackProducer {

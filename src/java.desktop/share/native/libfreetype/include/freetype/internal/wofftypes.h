@@ -21,8 +21,9 @@
 #define WOFFTYPES_H_
 
 
-#include <freetype/tttables.h>
-#include <freetype/internal/ftobjs.h>
+#include <ft2build.h>
+#include FT_TRUETYPE_TABLES_H
+#include FT_INTERNAL_OBJECTS_H
 
 
 FT_BEGIN_HEADER

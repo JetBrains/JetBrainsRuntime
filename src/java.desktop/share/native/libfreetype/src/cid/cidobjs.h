@@ -21,9 +21,9 @@
 
 
 #include <ft2build.h>
-#include <freetype/internal/ftobjs.h>
+#include FT_INTERNAL_OBJECTS_H
 #include FT_CONFIG_CONFIG_H
-#include <freetype/internal/t1types.h>
+#include FT_INTERNAL_TYPE1_TYPES_H
 
 
 FT_BEGIN_HEADER

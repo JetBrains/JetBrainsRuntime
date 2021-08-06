@@ -128,13 +128,16 @@ BufferPtr JfrStringPool::lease_buffer(Thread* thread, size_t size /* 0 */) {
   return buffer;
 }
 
-jboolean JfrStringPool::add(jlong id, jstring string, JavaThread* jt) {
+bool JfrStringPool::add(bool epoch, jlong id, jstring string, JavaThread* jt) {
   assert(jt != NULL, "invariant");
-  JfrStringPoolWriter writer(jt);
-  writer.write(id);
-  writer.write(string);
-  writer.inc_nof_strings();
-  return JNI_TRUE;
+  const bool current_epoch = JfrTraceIdEpoch::epoch();
+  if (current_epoch == epoch) {
+    JfrStringPoolWriter writer(jt);
+    writer.write(id);
+    writer.write(string);
+    writer.inc_nof_strings();
+  }
+  return current_epoch;
 }
 
 template <template <typename> class Operation>
@@ -186,6 +189,11 @@ size_t JfrStringPool::write() {
   assert(_free_list_mspace->is_full_empty(), "invariant");
   process_free_list(spwo, _free_list_mspace);
   return wo.processed();
+}
+
+size_t JfrStringPool::write_at_safepoint() {
+  assert(SafepointSynchronize::is_at_safepoint(), "invariant");
+  return write();
 }
 
 size_t JfrStringPool::clear() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -268,7 +268,7 @@ void JfrRecorderService::clear() {
 }
 
 void JfrRecorderService::pre_safepoint_clear() {
-  JfrStackTraceRepository::clear();
+  _stack_trace_repository.clear();
   _string_pool.clear();
   _storage.clear();
 }
@@ -289,7 +289,7 @@ void JfrRecorderService::invoke_safepoint_clear() {
 //
 void JfrRecorderService::safepoint_clear() {
   assert(SafepointSynchronize::is_at_safepoint(), "invariant");
-  JfrStackTraceRepository::clear();
+  _stack_trace_repository.clear();
   _string_pool.clear();
   _storage.clear();
   _checkpoint_manager.shift_epoch();
@@ -387,8 +387,10 @@ void JfrRecorderService::write() {
 }
 
 typedef ServiceFunctor<JfrStringPool, &JfrStringPool::write> WriteStringPool;
+typedef ServiceFunctor<JfrStringPool, &JfrStringPool::write_at_safepoint> WriteStringPoolSafepoint;
 typedef WriteCheckpointEvent<WriteStackTraceRepository> WriteStackTraceCheckpoint;
 typedef WriteCheckpointEvent<WriteStringPool> WriteStringPoolCheckpoint;
+typedef WriteCheckpointEvent<WriteStringPoolSafepoint> WriteStringPoolCheckpointSafepoint;
 
 static void write_stacktrace_checkpoint(JfrStackTraceRepository& stack_trace_repo, JfrChunkWriter& chunkwriter, bool clear) {
   WriteStackTraceRepository write_stacktrace_repo(stack_trace_repo, chunkwriter, clear);
@@ -398,6 +400,12 @@ static void write_stacktrace_checkpoint(JfrStackTraceRepository& stack_trace_rep
 static void write_stringpool_checkpoint(JfrStringPool& string_pool, JfrChunkWriter& chunkwriter) {
   WriteStringPool write_string_pool(string_pool);
   WriteStringPoolCheckpoint write_string_pool_checkpoint(chunkwriter, TYPE_STRING, write_string_pool);
+  write_string_pool_checkpoint.process();
+}
+
+static void write_stringpool_checkpoint_safepoint(JfrStringPool& string_pool, JfrChunkWriter& chunkwriter) {
+  WriteStringPoolSafepoint write_string_pool(string_pool);
+  WriteStringPoolCheckpointSafepoint write_string_pool_checkpoint(chunkwriter, TYPE_STRING, write_string_pool);
   write_string_pool_checkpoint.process();
 }
 
@@ -423,7 +431,7 @@ void JfrRecorderService::pre_safepoint_write() {
   if (LeakProfiler::is_running()) {
     // Exclusive access to the object sampler instance.
     // The sampler is released (unlocked) later in post_safepoint_write.
-    ObjectSampleCheckpoint::on_rotation(ObjectSampler::acquire());
+    ObjectSampleCheckpoint::on_rotation(ObjectSampler::acquire(), _stack_trace_repository);
   }
   _storage.write();
 }
@@ -449,9 +457,8 @@ void JfrRecorderService::invoke_safepoint_write() {
 void JfrRecorderService::safepoint_write() {
   assert(SafepointSynchronize::is_at_safepoint(), "invariant");
   MutexLockerEx stream_lock(JfrStream_lock, Mutex::_no_safepoint_check_flag);
-  JfrStackTraceRepository::clear_leak_profiler();
   write_stacktrace_checkpoint(_stack_trace_repository, _chunkwriter, true);
-  write_stringpool_checkpoint(_string_pool, _chunkwriter);
+  write_stringpool_checkpoint_safepoint(_string_pool, _chunkwriter);
   _checkpoint_manager.write_safepoint_types();
   _storage.write_at_safepoint();
   _checkpoint_manager.shift_epoch();

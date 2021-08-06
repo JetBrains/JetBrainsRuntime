@@ -24,12 +24,13 @@
  */
 
 
-#include <JNIUtilities.h>
+#include <jni_util.h>
 
 #import "com_apple_laf_AquaFileView.h"
 
 #import <sys/param.h> // for MAXPATHLEN
 #import <CoreFoundation/CoreFoundation.h>
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 /*
  * Class:     com_apple_laf_AquaFileView
@@ -41,11 +42,11 @@
 (JNIEnv *env, jclass clazz)
 {
     jstring returnValue = NULL;
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
-    returnValue = NSStringToJavaString(env, getRunningJavaBundle());
+    returnValue = JNFNSToJavaString(env, getRunningJavaBundle());
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
     return returnValue;
 }*/
 
@@ -58,11 +59,11 @@ JNIEXPORT jstring JNICALL Java_com_apple_laf_AquaFileView_getNativePathToSharedJ
 (JNIEnv *env, jclass clazz)
 {
     jstring returnValue = NULL;
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
-    returnValue = NSStringToJavaString(env, [[NSBundle bundleWithIdentifier:@"com.apple.JavaVM"] bundlePath]);
+    returnValue = JNFNSToJavaString(env, [[NSBundle bundleWithIdentifier:@"com.apple.JavaVM"] bundlePath]);
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
     return returnValue;
 }
 
@@ -75,16 +76,16 @@ JNIEXPORT jstring JNICALL Java_com_apple_laf_AquaFileView_getNativeMachineName
 (JNIEnv *env, jclass clazz)
 {
     jstring returnValue = NULL;
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     CFStringRef machineName = CSCopyMachineName();
-    returnValue = NSStringToJavaString(env, (NSString*)machineName);
+    returnValue = JNFNSToJavaString(env, (NSString*)machineName);
 
     if (machineName != NULL) {
         CFRelease(machineName);
     }
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
     return returnValue;
 }
 
@@ -97,7 +98,7 @@ JNIEXPORT jint JNICALL Java_com_apple_laf_AquaFileView_getNativeLSInfo
 (JNIEnv *env, jclass clazz, jbyteArray absolutePath, jboolean isDir)
 {
     jint returnValue = com_apple_laf_AquaFileView_UNINITALIZED_LS_INFO;
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     jbyte *byteArray = (*env)->GetByteArrayElements(env, absolutePath, NULL);
     CHECK_NULL_RETURN(byteArray, returnValue);
@@ -125,7 +126,7 @@ JNI_COCOA_ENTER(env);
         }
     }
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
     return returnValue;
 }
 
@@ -138,7 +139,7 @@ JNIEXPORT jstring JNICALL Java_com_apple_laf_AquaFileView_getNativeDisplayName
 (JNIEnv *env, jclass clazz, jbyteArray absolutePath, jboolean isDir)
 {
     jstring returnValue = NULL;
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     jbyte *byteArray = (*env)->GetByteArrayElements(env, absolutePath, NULL);
     CHECK_NULL_RETURN(byteArray, returnValue);
@@ -168,7 +169,7 @@ JNI_COCOA_ENTER(env);
         if (theErr == noErr) {
             CFMutableStringRef mutableDisplayName = CFStringCreateMutableCopy(NULL, 0, displayName);
             CFStringNormalize(mutableDisplayName, kCFStringNormalizationFormC);
-            returnValue = NSStringToJavaString(env, (NSString *)mutableDisplayName);
+            returnValue = JNFNSToJavaString(env, (NSString *)mutableDisplayName);
             CFRelease(mutableDisplayName);
         }
 
@@ -177,7 +178,7 @@ JNI_COCOA_ENTER(env);
         }
     }
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
     return returnValue;
 }
 
@@ -190,7 +191,7 @@ JNIEXPORT jstring JNICALL Java_com_apple_laf_AquaFileView_getNativePathForResolv
 (JNIEnv *env, jclass clazz, jbyteArray pathToAlias, jboolean isDir)
 {
     jstring returnValue = NULL;
-JNI_COCOA_ENTER(env);
+JNF_COCOA_ENTER(env);
 
     UInt8 pathCString[MAXPATHLEN + 1];
     size_t maxPathLen = sizeof(pathCString) - 1;
@@ -223,6 +224,6 @@ JNI_COCOA_ENTER(env);
         }
     }
 
-JNI_COCOA_EXIT(env);
+JNF_COCOA_EXIT(env);
     return returnValue;
 }

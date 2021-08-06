@@ -657,7 +657,7 @@ Dictionary* ClassLoaderData::create_dictionary() {
     size = _default_loader_dictionary_size;
     resizable = true;
   }
-  if (!DynamicallyResizeSystemDictionaries || DumpSharedSpaces) {
+  if (!DynamicallyResizeSystemDictionaries || DumpSharedSpaces || UseSharedSpaces) {
     resizable = false;
   }
   return new Dictionary(this, size, resizable);

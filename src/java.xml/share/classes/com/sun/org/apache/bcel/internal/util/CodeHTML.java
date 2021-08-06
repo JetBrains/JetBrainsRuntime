@@ -44,6 +44,7 @@ import com.sun.org.apache.bcel.internal.classfile.Utility;
 /**
  * Convert code into HTML file.
  *
+ * @version $Id$
  *
  */
 final class CodeHTML {
