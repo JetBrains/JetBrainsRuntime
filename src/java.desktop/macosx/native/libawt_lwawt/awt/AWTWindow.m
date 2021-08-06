@@ -556,7 +556,7 @@ AWT_ASSERT_APPKIT_THREAD;
     AWT_ASSERT_APPKIT_THREAD;
 
     for (NSWindow* window in [NSApp windows]) {
-        if (window.onActiveSpace && [AWTWindow isJavaPlatformWindowVisible:window]) {
+        if (window.onActiveSpace && window.mainWindow && [AWTWindow isJavaPlatformWindowVisible:window]) {
             AWTWindow *awtWindow = (AWTWindow *)[window delegate];
              // there can be only one current blocker per window hierarchy,
              // so we're checking just hierarchy root
