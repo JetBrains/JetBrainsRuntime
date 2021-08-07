@@ -41,7 +41,7 @@ public class ZeroArgPremainAgentTest {
     // Verify that we get the correct exception.
     public static void main(String[] a) throws Exception {
         String testArgs = String.format(
-                "-javaagent:ZeroArgPremainAgent.jar -classpath %s DummyMain",
+                "-javaagent:ZeroArgPremainAgent.jar -Xmx128m -XX:-CreateCoredumpOnCrash -classpath %s DummyMain",
                 System.getProperty("test.classes", "."));
 
         ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(

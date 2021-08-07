@@ -152,14 +152,14 @@ bool PhaseCFG::is_CFG(Node* n) {
   return n->is_block_proj() || n->is_block_start() || is_control_proj_or_safepoint(n);
 }
 
-bool PhaseCFG::is_control_proj_or_safepoint(Node* n) {
+bool PhaseCFG::is_control_proj_or_safepoint(Node* n) const {
   bool result = (n->is_Mach() && n->as_Mach()->ideal_Opcode() == Op_SafePoint) || (n->is_Proj() && n->as_Proj()->bottom_type() == Type::CONTROL);
   assert(!result || (n->is_Mach() && n->as_Mach()->ideal_Opcode() == Op_SafePoint)
           || (n->is_Proj() && n->as_Proj()->_con == 0), "If control projection, it must be projection 0");
   return result;
 }
 
-Block* PhaseCFG::find_block_for_node(Node* n) {
+Block* PhaseCFG::find_block_for_node(Node* n) const {
   if (n->is_block_start() || n->is_block_proj()) {
     return get_block_for_node(n);
   } else {
@@ -804,7 +804,24 @@ Block* PhaseCFG::insert_anti_dependences(Block* LCA, Node* load, bool verify) {
       // Add an anti-dep edge, and squeeze 'load' into the highest block.
       assert(store != load->find_exact_control(load->in(0)), "dependence cycle found");
       if (verify) {
-        assert(store->find_edge(load) != -1, "missing precedence edge");
+#ifdef ASSERT
+        // We expect an anti-dependence edge from 'load' to 'store', except when
+        // implicit_null_check() has hoisted 'store' above its early block to
+        // perform an implicit null check, and 'load' is placed in the null
+        // block. In this case it is safe to ignore the anti-dependence, as the
+        // null block is only reached if 'store' tries to write to null.
+        Block* store_null_block = NULL;
+        Node* store_null_check = store->find_out_with(Op_MachNullCheck);
+        if (store_null_check != NULL) {
+          Node* if_true = store_null_check->find_out_with(Op_IfTrue);
+          assert(if_true != NULL, "null check without null projection");
+          Node* null_block_region = if_true->find_out_with(Op_Region);
+          assert(null_block_region != NULL, "null check without null region");
+          store_null_block = get_block_for_node(null_block_region);
+        }
+#endif
+        assert(LCA == store_null_block || store->find_edge(load) != -1,
+               "missing precedence edge");
       } else {
         store->add_prec(load);
       }
@@ -1307,6 +1324,46 @@ void PhaseCFG::schedule_late(VectorSet &visited, Node_Stack &stack) {
       }
       default:
         break;
+      }
+      if (C->has_irreducible_loop() && self->bottom_type()->has_memory()) {
+        // If the CFG is irreducible, keep memory-writing nodes as close as
+        // possible to their original block (given by the control input). This
+        // prevents PhaseCFG::hoist_to_cheaper_block() from placing such nodes
+        // into descendants of their original loop, as in the following example:
+        //
+        // Original placement of store in B1 (loop L1):
+        //
+        // B1 (L1):
+        //   m1 <- ..
+        //   m2 <- store m1, ..
+        // B2 (L2):
+        //   jump B2
+        // B3 (L1):
+        //   .. <- .. m2, ..
+        //
+        // Wrong "hoisting" of store to B2 (in loop L2, child of L1):
+        //
+        // B1 (L1):
+        //   m1 <- ..
+        // B2 (L2):
+        //   m2 <- store m1, ..
+        //   # Wrong: m1 and m2 interfere at this point.
+        //   jump B2
+        // B3 (L1):
+        //   .. <- .. m2, ..
+        //
+        // This "hoist inversion" can happen due to CFGLoop::compute_freq()'s
+        // inaccurate estimation of frequencies for irreducible CFGs, which can
+        // lead to for example assigning B1 and B3 a higher frequency than B2.
+#ifndef PRODUCT
+        if (trace_opto_pipelining()) {
+          tty->print_cr("# Irreducible loops: schedule in earliest block B%d:",
+                        early->_pre_order);
+          self->dump();
+        }
+#endif
+        schedule_node_into_block(self, early);
+        continue;
       }
     }
 

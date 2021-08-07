@@ -374,6 +374,11 @@ bool os::supports_sse() {
 #endif // AMD64
 }
 
+juint os::cpu_microcode_revision() {
+  // Stubbed out for now to get the Solaris x86 build working.
+  return 0;
+}
+
 bool os::is_allocatable(size_t bytes) {
 #ifdef AMD64
   return true;

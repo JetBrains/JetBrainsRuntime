@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,9 @@ static void copy_frames(JfrStackFrame** lhs_frames, u4 length, const JfrStackFra
     memcpy(*lhs_frames, rhs_frames, length * sizeof(JfrStackFrame));
   }
 }
+
+JfrStackFrame::JfrStackFrame(const traceid& id, int bci, int type, int lineno, const Method* method) :
+  _method(method), _methodid(id), _line(lineno), _bci(bci), _type(type) {}
 
 JfrStackFrame::JfrStackFrame(const traceid& id, int bci, int type, const Method* method) :
   _method(method), _methodid(id), _line(0), _bci(bci), _type(type) {}
@@ -185,7 +188,7 @@ bool JfrStackTrace::record_thread(JavaThread& thread, frame& frame) {
       break;
     }
     const Method* method = st.method();
-    if (!method->is_valid_method()) {
+    if (!Method::is_valid_method(method)) {
       // we throw away everything we've gathered in this sample since
       // none of it is safe
       return false;
@@ -203,7 +206,7 @@ bool JfrStackTrace::record_thread(JavaThread& thread, frame& frame) {
     _hash = (_hash * 31) + mid;
     _hash = (_hash * 31) + bci;
     _hash = (_hash * 31) + type;
-    _frames[count] = JfrStackFrame(mid, bci, type, method);
+    _frames[count] = JfrStackFrame(mid, bci, type, lineno, method);
     st.samples_next();
     count++;
   }

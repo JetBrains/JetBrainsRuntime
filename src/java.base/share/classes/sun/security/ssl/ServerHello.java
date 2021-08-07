@@ -546,11 +546,6 @@ final class ServerHello {
 
                 setUpPskKD(shc,
                         shc.resumingSession.consumePreSharedKey());
-
-                // The session can't be resumed again---remove it from cache
-                SSLSessionContextImpl sessionCache = (SSLSessionContextImpl)
-                    shc.sslContext.engineGetServerSessionContext();
-                sessionCache.remove(shc.resumingSession.getSessionId());
             }
 
             // update the responders

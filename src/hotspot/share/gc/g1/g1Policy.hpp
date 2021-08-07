@@ -30,6 +30,7 @@
 #include "gc/g1/g1InCSetState.hpp"
 #include "gc/g1/g1InitialMarkToMixedTimeTracker.hpp"
 #include "gc/g1/g1MMUTracker.hpp"
+#include "gc/g1/g1OldGenAllocationTracker.hpp"
 #include "gc/g1/g1RemSetTrackingPolicy.hpp"
 #include "gc/g1/g1Predictions.hpp"
 #include "gc/g1/g1YoungGenSizer.hpp"
@@ -54,10 +55,10 @@ class STWGCTimer;
 class G1Policy: public CHeapObj<mtGC> {
  private:
 
-  static G1IHOPControl* create_ihop_control(const G1Predictions* predictor);
+  static G1IHOPControl* create_ihop_control(const G1OldGenAllocationTracker* old_gen_alloc_tracker,
+                                            const G1Predictions* predictor);
   // Update the IHOP control with necessary statistics.
   void update_ihop_prediction(double mutator_time_s,
-                              size_t mutator_alloc_bytes,
                               size_t young_gen_size,
                               bool this_gc_was_young_only);
   void report_ihop_statistics();
@@ -66,6 +67,10 @@ class G1Policy: public CHeapObj<mtGC> {
   G1Analytics* _analytics;
   G1RemSetTrackingPolicy _remset_tracker;
   G1MMUTracker* _mmu_tracker;
+
+  // Tracking the allocation in the old generation between
+  // two GCs.
+  G1OldGenAllocationTracker _old_gen_alloc_tracker;
   G1IHOPControl* _ihop_control;
 
   GCPolicyCounters* _policy_counters;
@@ -101,10 +106,6 @@ class G1Policy: public CHeapObj<mtGC> {
 
   size_t _pending_cards;
 
-  // The amount of allocated bytes in old gen during the last mutator and the following
-  // young GC phase.
-  size_t _bytes_allocated_in_old_since_last_gc;
-
   G1InitialMarkToMixedTimeTracker _initial_mark_to_mixed;
 
   bool should_update_surv_rate_group_predictors() {
@@ -116,8 +117,7 @@ public:
 
   G1RemSetTrackingPolicy* remset_tracker() { return &_remset_tracker; }
 
-  // Add the given number of bytes to the total number of allocated bytes in the old gen.
-  void add_bytes_allocated_in_old_since_last_gc(size_t bytes) { _bytes_allocated_in_old_since_last_gc += bytes; }
+  G1OldGenAllocationTracker* old_gen_alloc_tracker() { return &_old_gen_alloc_tracker; }
 
   void set_region_eden(HeapRegion* hr) {
     hr->set_eden();

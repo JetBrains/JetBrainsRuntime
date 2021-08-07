@@ -23,13 +23,13 @@
  * questions.
  */
 
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
 #include <Carbon/Carbon.h>
 #import "CMenuItem.h"
 #import "CMenu.h"
 #import "AWTEvent.h"
 #import "AWTWindow.h"
 #import "ThreadUtilities.h"
+#import "JNIUtilities.h"
 #import "LWCToolkit.h"
 
 #import "java_awt_Event.h"
@@ -341,7 +341,7 @@ static NSColor * customBg = nil;
 - (void)handleAction:(NSMenuItem *)sender {
     AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
 
     // If we are called as a result of user pressing a shortcut, do nothing,
     // because AVTView has already sent corresponding key event to the Java
@@ -361,14 +361,14 @@ static NSColor * customBg = nil;
     }
 
     if (fIsCheckbox) {
-        static JNF_CLASS_CACHE(jc_CCheckboxMenuItem, "sun/lwawt/macosx/CCheckboxMenuItem");
-        static JNF_MEMBER_CACHE(jm_ckHandleAction, jc_CCheckboxMenuItem, "handleAction", "(Z)V");
+        DECLARE_CLASS(jc_CCheckboxMenuItem, "sun/lwawt/macosx/CCheckboxMenuItem");
+        DECLARE_METHOD(jm_ckHandleAction, jc_CCheckboxMenuItem, "handleAction", "(Z)V");
 
         // Send the opposite of what's currently checked -- the action
         // indicates what state we're going to.
         NSInteger state = [sender state];
         jboolean newState = (state == NSOnState ? JNI_FALSE : JNI_TRUE);
-        JNFCallVoidMethod(env, fPeer, jm_ckHandleAction, newState);
+        (*env)->CallVoidMethod(env, fPeer, jm_ckHandleAction, newState);
     }
     else {
         if ([currEvent type] == NSKeyDown) {
@@ -399,15 +399,16 @@ static NSColor * customBg = nil;
             }
 		}
 
-        static JNF_CLASS_CACHE(jc_CMenuItem, "sun/lwawt/macosx/CMenuItem");
-        static JNF_MEMBER_CACHE(jm_handleAction, jc_CMenuItem, "handleAction", "(JI)V"); // AWT_THREADING Safe (event)
+        DECLARE_CLASS(jc_CMenuItem, "sun/lwawt/macosx/CMenuItem");
+        DECLARE_METHOD(jm_handleAction, jc_CMenuItem, "handleAction", "(JI)V"); // AWT_THREADING Safe (event)
 
         NSUInteger modifiers = [currEvent modifierFlags];
         jint javaModifiers = NsKeyModifiersToJavaModifiers(modifiers, NO);
 
-        JNFCallVoidMethod(env, fPeer, jm_handleAction, UTC(currEvent), javaModifiers); // AWT_THREADING Safe (event)
+        (*env)->CallVoidMethod(env, fPeer, jm_handleAction, UTC(currEvent), javaModifiers); // AWT_THREADING Safe (event)
     }
-    JNF_COCOA_EXIT(env);
+    CHECK_EXCEPTION();
+    JNI_COCOA_EXIT(env);
 
 }
 
@@ -458,6 +459,7 @@ static NSColor * customBg = nil;
 }
 
 - (void) setJavaImage:(NSImage *)theImage {
+
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         [fMenuItem setImage:theImage];
         if ([fMenuItem.view isKindOfClass:CustomMenuItemView.class]) {
@@ -627,8 +629,8 @@ Java_sun_lwawt_macosx_CMenuItem_nativeSetLabel
  jlong menuItemObj, jstring label,
  jchar shortcutKey, jint shortcutKeyCode, jint mods)
 {
-    JNF_COCOA_ENTER(env);
-    NSString *theLabel = JNFJavaToNSString(env, label);
+    JNI_COCOA_ENTER(env);
+    NSString *theLabel = JavaStringToNSString(env, label);
     NSString *theKeyEquivalent = nil;
     unichar macKey = shortcutKey;
 
@@ -644,7 +646,7 @@ Java_sun_lwawt_macosx_CMenuItem_nativeSetLabel
     }
 
     [((CMenuItem *)jlong_to_ptr(menuItemObj)) setJavaLabel:theLabel shortcut:theKeyEquivalent modifierMask:mods];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -656,10 +658,10 @@ JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_CMenuItem_nativeSetAcceleratorText
 (JNIEnv *env, jobject peer, jlong menuItemObj, jstring acceleratorText)
 {
-    JNF_COCOA_ENTER(env);
-    NSString *theText = JNFJavaToNSString(env, acceleratorText);
+    JNI_COCOA_ENTER(env);
+    NSString *theText = JavaStringToNSString(env, acceleratorText);
     [((CMenuItem *)jlong_to_ptr(menuItemObj)) setAcceleratorText:theText];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -671,10 +673,10 @@ JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_CMenuItem_nativeSetTooltip
 (JNIEnv *env, jobject peer, jlong menuItemObj, jstring tooltip)
 {
-    JNF_COCOA_ENTER(env);
-    NSString *theTooltip = JNFJavaToNSString(env, tooltip);
+    JNI_COCOA_ENTER(env);
+    NSString *theTooltip = JavaStringToNSString(env, tooltip);
     [((CMenuItem *)jlong_to_ptr(menuItemObj)) setJavaToolTipText:theTooltip];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -686,9 +688,9 @@ JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_CMenuItem_nativeSetImage
 (JNIEnv *env, jobject peer, jlong menuItemObj, jlong image)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     [((CMenuItem *)jlong_to_ptr(menuItemObj)) setJavaImage:(NSImage*)jlong_to_ptr(image)];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -704,7 +706,7 @@ Java_sun_lwawt_macosx_CMenuItem_nativeCreate
     __block CMenuItem *aCMenuItem = nil;
     BOOL asSeparator = (isSeparator == JNI_TRUE) ? YES: NO;
     CMenu *parentCMenu = (CMenu *)jlong_to_ptr(parentCMenuObj);
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
 
     jobject cPeerObjGlobal = (*env)->NewGlobalRef(env, peer);
 
@@ -723,7 +725,7 @@ Java_sun_lwawt_macosx_CMenuItem_nativeCreate
 
     // setLabel will be called after creation completes.
 
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
     return ptr_to_jlong(aCMenuItem);
 }
 
@@ -736,10 +738,10 @@ JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_CMenuItem_nativeSetEnabled
 (JNIEnv *env, jobject peer, jlong menuItemObj, jboolean enable)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     CMenuItem *item = (CMenuItem *)jlong_to_ptr(menuItemObj);
     [item setJavaEnabled: (enable == JNI_TRUE)];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -751,10 +753,10 @@ JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_CCheckboxMenuItem_nativeSetState
 (JNIEnv *env, jobject peer, jlong menuItemObj, jboolean state)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     CMenuItem *item = (CMenuItem *)jlong_to_ptr(menuItemObj);
     [item setJavaState: (state == JNI_TRUE)];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -766,8 +768,8 @@ JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_CCheckboxMenuItem_nativeSetIsCheckbox
 (JNIEnv *env, jobject peer, jlong menuItemObj)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     CMenuItem *item = (CMenuItem *)jlong_to_ptr(menuItemObj);
     [item setIsCheckbox];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }

@@ -137,6 +137,9 @@ jint ShenandoahHeap::initialize() {
   Universe::check_alignment(init_byte_size, reg_size_bytes, "Shenandoah heap");
 
   _num_regions = ShenandoahHeapRegion::region_count();
+  assert(_num_regions == (max_byte_size / reg_size_bytes),
+         "Regions should cover entire heap exactly: " SIZE_FORMAT " != " SIZE_FORMAT "/" SIZE_FORMAT,
+         _num_regions, max_byte_size, reg_size_bytes);
 
   // Now we know the number of regions, initialize the heuristics.
   initialize_heuristics();
@@ -1713,6 +1716,15 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
       // changing the cycle parameters mid-cycle during concurrent -> degenerated handover.
       set_process_references(heuristics()->can_process_references());
       set_unload_classes(heuristics()->can_unload_classes());
+
+      if (_heap->process_references()) {
+        ReferenceProcessor* rp = _heap->ref_processor();
+        rp->set_active_mt_degree(_heap->workers()->active_workers());
+
+        // enable ("weak") refs discovery
+        rp->enable_discovery(true /*verify_no_refs*/);
+        rp->setup_policy(_heap->soft_ref_policy()->should_clear_all_soft_refs());
+      }
 
       op_reset();
 

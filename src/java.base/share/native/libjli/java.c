@@ -388,8 +388,8 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
     } while (JNI_FALSE)
 
 
-int JNICALL
-JavaMain(void * _args)
+int
+JavaMain(void* _args)
 {
     JavaMainArgs *args = (JavaMainArgs *)_args;
     int argc = args->argc;
@@ -2346,7 +2346,7 @@ ContinueInNewThread(InvocationFunctions* ifn, jlong threadStackSize,
       args.what = what;
       args.ifn = *ifn;
 
-      rslt = ContinueInNewThread0(JavaMain, threadStackSize, (void*)&args);
+      rslt = CallJavaMainInNewThread(threadStackSize, (void*)&args);
       /* If the caller has deemed there is an error we
        * simply return that, otherwise we return the value of
        * the callee
