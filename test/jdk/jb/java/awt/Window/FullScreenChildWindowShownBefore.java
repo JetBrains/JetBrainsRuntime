@@ -25,10 +25,14 @@ import com.apple.eawt.Application;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @test
@@ -62,13 +66,11 @@ public class FullScreenChildWindowShownBefore {
 
     private static void initUI() {
         frame = new JFrame("FullScreenChildWindowShownBefore");
-        frame.getContentPane().setBackground(Color.green);
         frame.setSize(100, 100);
         frame.setLocation(100, 100);
         frame.setVisible(true);
 
         dialog = new JDialog(frame, false);
-        dialog.getContentPane().setBackground(Color.red);
         dialog.addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent e) {
@@ -84,16 +86,38 @@ public class FullScreenChildWindowShownBefore {
         if (frame != null) frame.dispose();
     }
 
-    private static void ensureVisible(Window window) {
-        Rectangle bounds = window.getBounds();
-        Insets insets = window.getInsets();
-        bounds.x += insets.left;
-        bounds.y += insets.top;
-        bounds.width -= insets.left + insets.right;
-        bounds.height -= insets.top + insets.bottom;
-        Color colorAtCenter = robot.getPixelColor((int) bounds.getCenterX(), (int) bounds.getCenterY());
-        if (!colorAtCenter.equals(((RootPaneContainer)window).getContentPane().getBackground())) {
-            throw new RuntimeException(window + " isn't visible: unexpected color " + colorAtCenter);
+    private static void ensureVisible(Window window) throws Exception {
+        AtomicReference<Point> location = new AtomicReference<>();
+        AtomicBoolean movementDetected = new AtomicBoolean();
+        SwingUtilities.invokeAndWait(() -> {
+            if (window.isVisible()) {
+                Rectangle bounds = window.getBounds();
+                Insets insets = window.getInsets();
+                bounds.x += insets.left;
+                bounds.y += insets.top;
+                bounds.width -= insets.left + insets.right;
+                bounds.height -= insets.top + insets.bottom;
+                if (!bounds.isEmpty()) {
+                    location.set(new Point((int) bounds.getCenterX(), (int) bounds.getCenterY()));
+                    window.addMouseMotionListener(new MouseMotionAdapter() {
+                        @Override
+                        public void mouseMoved(MouseEvent e) {
+                            movementDetected.set(true);
+                        }
+                    });
+                }
+            }
+        });
+        Point target = location.get();
+        if (target != null) {
+            robot.mouseMove(target.x, target.y);
+            robot.delay(100);
+            robot.mouseMove(target.x + 1, target.y + 1);
+            robot.delay(1000);
+            if (movementDetected.get()) {
+                return;
+            }
         }
+        throw new RuntimeException(window + " isn't visible");
     }
 }
