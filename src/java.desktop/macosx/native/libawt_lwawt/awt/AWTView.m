@@ -27,8 +27,7 @@
 #import "CGLGraphicsConfig.h"
 #import "AWTView.h"
 #import "AWTWindow.h"
-#import "JavaComponentAccessibility.h"
-#import "JavaTextAccessibility.h"
+#import "a11y/CommonComponentAccessibility.h"
 #import "JavaAccessibilityUtilities.h"
 #import "GeomUtilities.h"
 #import "ThreadUtilities.h"
@@ -698,42 +697,29 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 - (id)getAxData:(JNIEnv*)env
 {
     jobject jcomponent = [self awtComponent:env];
-    id ax = [[[JavaComponentAccessibility alloc] initWithParent:self withEnv:env withAccessible:jcomponent withIndex:-1 withView:self withJavaRole:nil] autorelease];
+    id ax = [[[CommonComponentAccessibility alloc] initWithParent:self withEnv:env withAccessible:jcomponent withIndex:-1 withView:self withJavaRole:nil] autorelease];
     (*env)->DeleteLocalRef(env, jcomponent);
     return ax;
 }
 
-- (NSArray *)accessibilityAttributeNames
-{
-    return [[super accessibilityAttributeNames] arrayByAddingObject:NSAccessibilityChildrenAttribute];
-}
-
 // NSAccessibility messages
-// attribute methods
-- (id)accessibilityAttributeValue:(NSString *)attribute
+- (id)accessibilityChildren
 {
     AWT_ASSERT_APPKIT_THREAD;
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
 
-    if ([attribute isEqualToString:NSAccessibilityChildrenAttribute])
-    {
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
+    (*env)->PushLocalFrame(env, 4);
 
-        (*env)->PushLocalFrame(env, 4);
+    id result = NSAccessibilityUnignoredChildrenForOnlyChild([self getAxData:env]);
 
-        id result = NSAccessibilityUnignoredChildrenForOnlyChild([self getAxData:env]);
+    (*env)->PopLocalFrame(env, NULL);
 
-        (*env)->PopLocalFrame(env, NULL);
-
-        return result;
-    }
-    else
-    {
-        return [super accessibilityAttributeValue:attribute];
-    }
+    return result;
 }
-- (BOOL)accessibilityIsIgnored
+
+- (BOOL)isAccessibilityElement
 {
-    return YES;
+    return NO;
 }
 
 - (id)accessibilityHitTest:(NSPoint)point
@@ -743,7 +729,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
     (*env)->PushLocalFrame(env, 4);
 
-    id result = [[self getAxData:env] accessibilityHitTest:point withEnv:env];
+    id result = [[self getAxData:env] accessibilityHitTest:point];
 
     (*env)->PopLocalFrame(env, NULL);
 
@@ -768,17 +754,24 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 // --- Services menu support for lightweights ---
 
 // finds the focused accessible element, and if it is a text element, obtains the text from it
-- (NSString *)accessibleSelectedText
+- (NSString *)accessibilitySelectedText
 {
     id focused = [self accessibilityFocusedUIElement];
-    if (![focused isKindOfClass:[JavaTextAccessibility class]]) return nil;
-    return [(JavaTextAccessibility *)focused accessibilitySelectedTextAttribute];
+    if (![focused respondsToSelector:@selector(accessibilitySelectedText)]) return nil;
+    return [focused accessibilitySelectedText];
+}
+
+- (void)setAccessibilitySelectedText:(NSString *)accessibilitySelectedText {
+    id focused = [self accessibilityFocusedUIElement];
+    if ([focused respondsToSelector:@selector(setAccessibilitySelectedText:)]) {
+    [focused setAccessibilitySelectedText:accessibilitySelectedText];
+}
 }
 
 // same as above, but converts to RTFD
 - (NSData *)accessibleSelectedTextAsRTFD
 {
-    NSString *selectedText = [self accessibleSelectedText];
+    NSString *selectedText = [self accessibilitySelectedText];
     NSAttributedString *styledText = [[NSAttributedString alloc] initWithString:selectedText];
     NSData *rtfdData = [styledText RTFDFromRange:NSMakeRange(0, [styledText length])
                               documentAttributes:
@@ -791,8 +784,8 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 - (BOOL)replaceAccessibleTextSelection:(NSString *)text
 {
     id focused = [self accessibilityFocusedUIElement];
-    if (![focused isKindOfClass:[JavaTextAccessibility class]]) return NO;
-    [(JavaTextAccessibility *)focused accessibilitySetSelectedTextAttribute:text];
+    if (![focused respondsToSelector:@selector(setAccessibilitySelectedText)]) return NO;
+    [focused setAccessibilitySelectedText:text];
     return YES;
 }
 
@@ -802,7 +795,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     if ([[self window] firstResponder] != self) return nil; // let AWT components handle themselves
 
     if ([sendType isEqual:NSStringPboardType] || [returnType isEqual:NSStringPboardType]) {
-        NSString *selectedText = [self accessibleSelectedText];
+        NSString *selectedText = [self accessibilitySelectedText];
         if (selectedText) return self;
     }
 
@@ -815,7 +808,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     if ([types containsObject:NSStringPboardType])
     {
         [pboard declareTypes:[NSArray arrayWithObject:NSStringPboardType] owner:nil];
-        return [pboard setString:[self accessibleSelectedText] forType:NSStringPboardType];
+        return [pboard setString:[self accessibilitySelectedText] forType:NSStringPboardType];
     }
 
     if ([types containsObject:NSRTFDPboardType])
