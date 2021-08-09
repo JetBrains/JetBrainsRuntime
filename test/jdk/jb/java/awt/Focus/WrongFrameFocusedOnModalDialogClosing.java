@@ -34,11 +34,12 @@ import java.util.concurrent.TimeUnit;
  */
 
 public class WrongFrameFocusedOnModalDialogClosing {
-    private static final CompletableFuture<Boolean> dialogShown = new CompletableFuture<>();
     private static CompletableFuture<Boolean> result;
+
     private static Robot robot;
     private static JFrame frame1;
     private static JFrame frame2;
+    private static JDialog dialog;
     private static JButton button;
 
     public static void main(String[] args) throws Exception {
@@ -47,7 +48,11 @@ public class WrongFrameFocusedOnModalDialogClosing {
             SwingUtilities.invokeAndWait(WrongFrameFocusedOnModalDialogClosing::initUI);
             robot.delay(1000); // wait for frames to appear
             clickOn(button);
-            dialogShown.get(5, TimeUnit.SECONDS);
+            robot.delay(1000); // wait for dialog to appear
+            SwingUtilities.invokeAndWait(() -> {
+                result = new CompletableFuture<>();
+                dialog.dispose();
+            });
             if (result.get(5, TimeUnit.SECONDS)) {
                 throw new RuntimeException("Wrong frame focused");
             }
@@ -64,19 +69,9 @@ public class WrongFrameFocusedOnModalDialogClosing {
                 if (result != null) result.complete(false);
             }
         });
+        dialog = new JDialog(frame1, true);
         button = new JButton("Open dialog");
-        button.addActionListener(e -> {
-            JDialog d = new JDialog(frame1, true);
-            d.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowOpened(WindowEvent e) {
-                    result = new CompletableFuture<>();
-                    dialogShown.complete(true);
-                    d.dispose();
-                }
-            });
-            d.setVisible(true);
-        });
+        button.addActionListener(e -> dialog.setVisible(true));
         frame1.add(button);
         frame1.setSize(100, 100);
         frame1.setLocation(100, 100);
