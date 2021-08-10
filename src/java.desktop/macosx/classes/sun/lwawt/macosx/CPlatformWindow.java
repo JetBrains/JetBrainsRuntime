@@ -87,6 +87,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private static native void nativeSetNSWindowMinMax(long nsWindowPtr, double minW, double minH, double maxW, double maxH);
     private static native void nativePushNSWindowToBack(long nsWindowPtr);
     private static native void nativePushNSWindowToFront(long nsWindowPtr, boolean wait);
+    private static native void nativeHideWindow(long nsWindowPtr, boolean wait);
     private static native void nativeSetNSWindowTitle(long nsWindowPtr, String title);
     private static native void nativeRevalidateNSWindowShadow(long nsWindowPtr);
     private static native void nativeSetNSWindowMinimizedIcon(long nsWindowPtr, long nsImage);
@@ -749,7 +750,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
         // Actually show or hide the window
         LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
-        if (visible && delayShowing()) {
+        if (!visible) {
+            execute(ptr -> AWTThreading.executeWaitToolkit(wait -> nativeHideWindow(ptr, wait)));
+        } else if (delayShowing()) {
             if (blocker == null) {
                 Window focusedWindow = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusedWindow();
                 LWWindowPeer focusedWindowBlocker = getBlockerFor(focusedWindow);
@@ -759,50 +762,41 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                     owner.execute(CWrapper.NSWindow::orderFront);
                 }
             }
-        } else if (blocker == null || !visible) {
+        } else if (blocker == null) {
             // If it ain't blocked, or is being hidden, go regular way
-            if (visible) {
-                contentView.execute(viewPtr -> {
-                    execute(ptr -> CWrapper.NSWindow.makeFirstResponder(ptr,
-                                                                        viewPtr));
-                });
+            contentView.execute(viewPtr -> {
+                execute(ptr -> CWrapper.NSWindow.makeFirstResponder(ptr,
+                                                                    viewPtr));
+            });
 
-                boolean isPopup = (target.getType() == Window.Type.POPUP);
-                execute(ptr -> {
-                    if (isPopup) {
-                        CWrapper.NSWindow.orderFrontRegardless(ptr);
-                    } else {
-                        CWrapper.NSWindow.orderFront(ptr);
+            boolean isPopup = (target.getType() == Window.Type.POPUP);
+            execute(ptr -> {
+                if (isPopup) {
+                    CWrapper.NSWindow.orderFrontRegardless(ptr);
+                } else {
+                    CWrapper.NSWindow.orderFront(ptr);
+                }
+
+                boolean isKeyWindow = CWrapper.NSWindow.isKeyWindow(ptr);
+                if (!isKeyWindow) {
+                    logger.fine("setVisible: makeKeyWindow");
+                    CWrapper.NSWindow.makeKeyWindow(ptr);
+                }
+
+                if (owner != null
+                        && owner.getPeer() instanceof LWLightweightFramePeer) {
+                    LWLightweightFramePeer peer =
+                            (LWLightweightFramePeer) owner.getPeer();
+
+                    long ownerWindowPtr = peer.getOverriddenWindowHandle();
+                    if (ownerWindowPtr != 0) {
+                        //Place window above JavaFX stage
+                        CWrapper.NSWindow.addChildWindow(
+                                ownerWindowPtr, ptr,
+                                CWrapper.NSWindow.NSWindowAbove);
                     }
-
-                    boolean isKeyWindow = CWrapper.NSWindow.isKeyWindow(ptr);
-                    if (!isKeyWindow) {
-                        logger.fine("setVisible: makeKeyWindow");
-                        CWrapper.NSWindow.makeKeyWindow(ptr);
-                    }
-
-                    if (owner != null
-                            && owner.getPeer() instanceof LWLightweightFramePeer) {
-                        LWLightweightFramePeer peer =
-                                (LWLightweightFramePeer) owner.getPeer();
-
-                        long ownerWindowPtr = peer.getOverriddenWindowHandle();
-                        if (ownerWindowPtr != 0) {
-                            //Place window above JavaFX stage
-                            CWrapper.NSWindow.addChildWindow(
-                                    ownerWindowPtr, ptr,
-                                    CWrapper.NSWindow.NSWindowAbove);
-                        }
-                    }
-                });
-            } else {
-                execute(ptr->{
-                    // immediately hide the window
-                    CWrapper.NSWindow.orderOut(ptr);
-                    // process the close
-                    CWrapper.NSWindow.close(ptr);
-                });
-            }
+                }
+            });
         } else {
             // otherwise, put it in a proper z-order
             CPlatformWindow bw
