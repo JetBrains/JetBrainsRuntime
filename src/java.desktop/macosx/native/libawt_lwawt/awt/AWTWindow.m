@@ -1558,6 +1558,38 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
+ * Method:    nativeHideWindow
+ * Signature: (JZ)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeHideWindow
+(JNIEnv *env, jclass clazz, jlong windowPtr, jboolean wait)
+{
+JNI_COCOA_ENTER(env);
+
+    NSWindow *nsWindow = OBJC(windowPtr);
+    [ThreadUtilities performOnMainThreadWaiting:(BOOL)wait block:^(){
+        if (nsWindow.keyWindow) {
+            // When 'windowDidResignKey' is called during 'orderOut', current key window
+            // is reported as 'nil', so it's impossible to create WINDOW_FOCUS_LOST event
+            // with correct 'opposite' window.
+            // So, as a workaround, we perform focus transfer to a parent window explicitly here.
+            NSWindow *parentWindow = nsWindow;
+            while ((parentWindow = ((AWTWindow*)parentWindow.delegate).ownerWindow.nsWindow) != nil) {
+                if (parentWindow.canBecomeKeyWindow) {
+                    [parentWindow makeKeyWindow];
+                    break;
+                }
+            }
+        }
+        [nsWindow orderOut:nsWindow];
+        [nsWindow close];
+    }];
+
+JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CPlatformWindow
  * Method:    nativeSetNSWindowTitle
  * Signature: (JLjava/lang/String;)V
  */
