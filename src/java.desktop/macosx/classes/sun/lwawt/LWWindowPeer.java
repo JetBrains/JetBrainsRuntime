@@ -301,23 +301,6 @@ public class LWWindowPeer
             }
         }
         platformWindow.setVisible(visible);
-        if (isSimpleWindow()) {
-            KeyboardFocusManagerPeer kfmPeer = LWKeyboardFocusManagerPeer.getInstance();
-            if (visible) {
-                if (!getTarget().isAutoRequestFocus()) {
-                    return;
-                } else {
-                    requestWindowFocus(FocusEvent.Cause.ACTIVATION);
-                }
-            // Focus the owner in case this window is focused.
-            } else if (kfmPeer.getCurrentFocusedWindow() == getTarget()) {
-                // Transfer focus to the owner.
-                LWWindowPeer owner = getOwnerFrameDialog(LWWindowPeer.this);
-                if (owner != null) {
-                    owner.requestWindowFocus(FocusEvent.Cause.ACTIVATION);
-                }
-            }
-        }
     }
 
     @Override
