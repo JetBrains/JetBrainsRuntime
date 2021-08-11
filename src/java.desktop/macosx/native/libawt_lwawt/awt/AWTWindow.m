@@ -629,8 +629,8 @@ AWT_ASSERT_APPKIT_THREAD;
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         GET_CPLATFORM_WINDOW_CLASS();
-        DECLARE_METHOD(jm_checkBlockingAndOrder, jc_CPlatformWindow, "checkBlockingAndOrder", "()Z");
-        (*env)->CallBooleanMethod(env, platformWindow, jm_checkBlockingAndOrder);
+        DECLARE_METHOD(jm_checkBlockingAndOrder, jc_CPlatformWindow, "checkBlockingAndOrder", "()V");
+        (*env)->CallVoidMethod(env, platformWindow, jm_checkBlockingAndOrder);
         CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, platformWindow);
     }
@@ -710,7 +710,7 @@ AWT_ASSERT_APPKIT_THREAD;
     // restores the correct cursor to the frame context specific one.
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     DECLARE_CLASS(jc_CCursorManager, "sun/lwawt/macosx/CCursorManager");
-    DECLARE_METHOD(sjm_resetCurrentCursor, jc_CCursorManager, "resetCurrentCursor", "()V");
+    DECLARE_STATIC_METHOD(sjm_resetCurrentCursor, jc_CCursorManager, "resetCurrentCursor", "()V");
     (*env)->CallStaticVoidMethod(env, jc_CCursorManager, sjm_resetCurrentCursor);
     CHECK_EXCEPTION();
 }
