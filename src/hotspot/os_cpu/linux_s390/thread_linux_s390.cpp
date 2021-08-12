@@ -67,7 +67,7 @@ bool JavaThread::pd_get_top_frame_for_profiling(frame* fr_addr, void* ucontext, 
         return false;
       }
       const Method *m = (const Method*)(istate->method);
-      if (m == NULL || !m->is_valid_method()) return false;
+      if (!Method::is_valid_method(m)) return false;
       if (!Metaspace::contains((const void*)m->constMethod())) return false;
 
       uint64_t reg_bcp = uc->uc_mcontext.gregs[13/*Z_BCP*/];

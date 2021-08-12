@@ -1657,6 +1657,11 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     __ restore_default_fp_mode();
   }
 
+  // Ensure a Boolean result is mapped to 0..1
+  if (ret_type == T_BOOLEAN) {
+    __ c2bool(R0);
+  }
+
   // Do a safepoint check while thread is in transition state
   InlinedAddress safepoint_state(SafepointSynchronize::address_of_state());
   Label call_safepoint_runtime, return_to_java;
@@ -2113,9 +2118,9 @@ void SharedRuntime::generate_deopt_blob() {
   __ mov(R0, Rthread);
   __ mov(R1, Rkind);
 
-  pc_offset = __ set_last_Java_frame(SP, FP, false, Rtemp);
+  pc_offset = __ set_last_Java_frame(SP, FP, true, Rtemp);
   assert(((__ pc()) - start) == __ offset(), "warning: start differs from code_begin");
-  __ call(CAST_FROM_FN_PTR(address, Deoptimization::unpack_frames));
+  __ call_VM_leaf(CAST_FROM_FN_PTR(address, Deoptimization::unpack_frames));
   if (pc_offset == -1) {
     pc_offset = __ offset();
   }
@@ -2330,8 +2335,8 @@ void SharedRuntime::generate_uncommon_trap_blob() {
   // Call unpack_frames with proper arguments
   __ mov(R0, Rthread);
   __ mov(R1, Deoptimization::Unpack_uncommon_trap);
-  __ set_last_Java_frame(SP, FP, false, Rtemp);
-  __ call(CAST_FROM_FN_PTR(address, Deoptimization::unpack_frames));
+  __ set_last_Java_frame(SP, FP, true, Rtemp);
+  __ call_VM_leaf(CAST_FROM_FN_PTR(address, Deoptimization::unpack_frames));
   //  oop_maps->add_gc_map(__ pc() - start, new OopMap(frame_size_in_words, 0));
   __ reset_last_Java_frame(Rtemp);
 

@@ -548,8 +548,17 @@ static void print_basic_switches(outputStream* out, size_t scale) {
   if (Metaspace::using_class_space()) {
     out->print("CompressedClassSpaceSize: ");
     print_human_readable_size(out, CompressedClassSpaceSize, scale);
+  } else {
+    out->print("No class space");
   }
   out->cr();
+  out->print("Initial GC threshold: ");
+  print_human_readable_size(out, MetaspaceSize, scale);
+  out->cr();
+  out->print("Current GC threshold: ");
+  print_human_readable_size(out, MetaspaceGC::capacity_until_GC(), scale);
+  out->cr();
+  out->print_cr("CDS: %s", (UseSharedSpaces ? "on" : (DumpSharedSpaces ? "dump" : "off")));
 }
 
 // This will print out a basic metaspace usage report but
@@ -1046,12 +1055,13 @@ void Metaspace::allocate_metaspace_compressed_klass_ptrs(char* requested_addr, a
   // Don't use large pages for the class space.
   bool large_pages = false;
 
-#if !(defined(AARCH64) || defined(AIX))
+#if !(defined(AARCH64) || defined(PPC64))
   ReservedSpace metaspace_rs = ReservedSpace(compressed_class_space_size(),
                                              _reserve_alignment,
                                              large_pages,
                                              requested_addr);
-#else // AARCH64
+#else // AARCH64 || PPC64
+
   ReservedSpace metaspace_rs;
 
   // Our compressed klass pointers may fit nicely into the lower 32
@@ -1069,6 +1079,13 @@ void Metaspace::allocate_metaspace_compressed_klass_ptrs(char* requested_addr, a
     // compressed class base is a multiple of 4G.
     // Aix: Search for a place where we can find memory. If we need to load
     // the base, 4G alignment is helpful, too.
+    // PPC64: smaller heaps up to 2g will be mapped just below 4g. Then the
+    // attempt to place the compressed class space just after the heap fails on
+    // Linux 4.1.42 and higher because the launcher is loaded at 4g
+    // (ELF_ET_DYN_BASE). In that case we reach here and search the address space
+    // below 32g to get a zerobased CCS. For simplicity we reuse the search
+    // strategy for AARCH64.
+
     size_t increment = AARCH64_ONLY(4*)G;
     for (char *a = align_up(requested_addr, increment);
          a < (char*)(1024*G);
@@ -1100,7 +1117,7 @@ void Metaspace::allocate_metaspace_compressed_klass_ptrs(char* requested_addr, a
     }
   }
 
-#endif // AARCH64
+#endif // AARCH64 || PPC64
 
   if (!metaspace_rs.is_reserved()) {
 #if INCLUDE_CDS

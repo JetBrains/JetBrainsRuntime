@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -200,14 +200,13 @@ final class CertificateRequest {
         }
 
         X500Principal[] getAuthorities() {
-            List<X500Principal> principals =
-                    new ArrayList<>(authorities.size());
+            X500Principal[] principals = new X500Principal[authorities.size()];
+            int i = 0;
             for (byte[] encoded : authorities) {
-                X500Principal principal = new X500Principal(encoded);
-                principals.add(principal);
+                principals[i++] = new X500Principal(encoded);
             }
 
-            return principals.toArray(new X500Principal[0]);
+            return principals;
         }
 
         @Override
@@ -504,14 +503,13 @@ final class CertificateRequest {
         }
 
         X500Principal[] getAuthorities() {
-            List<X500Principal> principals =
-                    new ArrayList<>(authorities.size());
+            X500Principal[] principals = new X500Principal[authorities.size()];
+            int i = 0;
             for (byte[] encoded : authorities) {
-                X500Principal principal = new X500Principal(encoded);
-                principals.add(principal);
+                principals[i++] = new X500Principal(encoded);
             }
 
-            return principals.toArray(new X500Principal[0]);
+            return principals;
         }
 
         @Override
@@ -737,6 +735,7 @@ final class CertificateRequest {
                 // Don't select a signature scheme unless we will be able to
                 // produce a CertificateVerify message later
                 if (SignatureScheme.getPreferableAlgorithm(
+                        hc.algorithmConstraints,
                         hc.peerRequestedSignatureSchemes,
                         ss, hc.negotiatedProtocol) == null) {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,12 +133,25 @@ static jobjectArray getPrinterNames(JNIEnv *env, DWORD flags) {
     jobjectArray nameArray;
 
     try {
-        ::EnumPrinters(flags,
-                       NULL, 4, NULL, 0, &cbNeeded, &cReturned);
-        pPrinterEnum = new BYTE[cbNeeded];
-        ::EnumPrinters(flags,
-                       NULL, 4, pPrinterEnum, cbNeeded, &cbNeeded,
-                       &cReturned);
+        ::EnumPrinters(flags, NULL, 4, NULL,
+                       0, &cbNeeded, &cReturned);
+
+        BOOL bResult;
+        int nCount = 0;
+        do {
+            if (pPrinterEnum != NULL) {
+                delete [] pPrinterEnum;
+            }
+            pPrinterEnum = new BYTE[cbNeeded];
+
+            bResult = ::EnumPrinters(flags, NULL, 4, pPrinterEnum,
+                                     cbNeeded, &cbNeeded, &cReturned);
+        } while (!bResult && ++nCount < 5);
+
+        if (!bResult) {
+            // No printers in case of error
+            cReturned = 0;
+        }
 
         if (cReturned > 0) {
             nameArray = env->NewObjectArray(cReturned, clazz, NULL);
@@ -178,35 +191,21 @@ Java_sun_print_PrintServiceLookupProvider_getAllPrinterNames(JNIEnv *env,
     return getPrinterNames(env, PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS);
 }
 
-JNIEXPORT jobjectArray JNICALL
-Java_sun_print_PrintServiceLookupProvider_getRemotePrintersNames(JNIEnv *env,
-                                                                 jobject peer)
+
+JNIEXPORT void JNICALL
+Java_sun_print_PrintServiceLookupProvider_notifyLocalPrinterChange(JNIEnv *env,
+                                                                   jobject peer)
 {
-    return getPrinterNames(env, PRINTER_ENUM_CONNECTIONS);
-}
+    jclass cls = env->GetObjectClass(peer);
+    CHECK_NULL(cls);
+    jmethodID refresh = env->GetMethodID(cls, "refreshServices", "()V");
+    CHECK_NULL(refresh);
 
-
-JNIEXPORT jlong JNICALL
-Java_sun_print_PrintServiceLookupProvider_notifyFirstPrinterChange(JNIEnv *env,
-                                                                jobject peer,
-                                                                jstring printer) {
     HANDLE hPrinter;
-
-    LPTSTR printerName = NULL;
-    if (printer != NULL) {
-        printerName = (LPTSTR)JNU_GetStringPlatformChars(env,
-                                                         printer,
-                                                         NULL);
-        JNU_ReleaseStringPlatformChars(env, printer, printerName);
+    LPTSTR printerName = NULL; // NULL indicates the local printer server
+    if (!::OpenPrinter(printerName, &hPrinter, NULL)) {
+        return;
     }
-
-    // printerName - "Win NT/2K/XP: If NULL, it indicates the local printer
-    // server" - MSDN.   Win9x : OpenPrinter returns 0.
-    BOOL ret = OpenPrinter(printerName, &hPrinter, NULL);
-    if (!ret) {
-      return (jlong)-1;
-    }
-
     // PRINTER_CHANGE_PRINTER = PRINTER_CHANGE_ADD_PRINTER |
     //                          PRINTER_CHANGE_SET_PRINTER |
     //                          PRINTER_CHANGE_DELETE_PRINTER |
@@ -215,32 +214,54 @@ Java_sun_print_PrintServiceLookupProvider_notifyFirstPrinterChange(JNIEnv *env,
                                                        PRINTER_CHANGE_PRINTER,
                                                        0,
                                                        NULL);
-    return (chgObj == INVALID_HANDLE_VALUE) ? (jlong)-1 : (jlong)chgObj;
+    if (chgObj != INVALID_HANDLE_VALUE) {
+        BOOL keepMonitoring;
+        do {
+            keepMonitoring = FALSE;
+            if (WaitForSingleObject(chgObj, INFINITE) == WAIT_OBJECT_0) {
+                DWORD dwChange;
+                keepMonitoring = FindNextPrinterChangeNotification(
+                                                 chgObj, &dwChange, NULL, NULL);
+            }
+            if (keepMonitoring) {
+                env->CallVoidMethod(peer, refresh);
+            }
+        } while (keepMonitoring && !env->ExceptionCheck());
+
+        FindClosePrinterChangeNotification(chgObj);
+    }
+    ::ClosePrinter(hPrinter);
 }
-
-
 
 JNIEXPORT void JNICALL
-Java_sun_print_PrintServiceLookupProvider_notifyClosePrinterChange(JNIEnv *env,
-                                                                jobject peer,
-                                                                jlong chgObject) {
-    FindClosePrinterChangeNotification((HANDLE)chgObject);
-}
+Java_sun_print_PrintServiceLookupProvider_notifyRemotePrinterChange(JNIEnv *env,
+                                                                    jobject peer)
+{
+    jclass cls = env->GetObjectClass(peer);
+    CHECK_NULL(cls);
+    jmethodID refresh = env->GetMethodID(cls, "refreshServices", "()V");
+    CHECK_NULL(refresh);
 
-
-JNIEXPORT jint JNICALL
-Java_sun_print_PrintServiceLookupProvider_notifyPrinterChange(JNIEnv *env,
-                                                           jobject peer,
-                                                           jlong chgObject) {
-    DWORD dwChange;
-
-    DWORD ret = WaitForSingleObject((HANDLE)chgObject, INFINITE);
-    if (ret == WAIT_OBJECT_0) {
-        return(FindNextPrinterChangeNotification((HANDLE)chgObject,
-                                                  &dwChange, NULL, NULL));
-    } else {
-        return 0;
+    HKEY hKey;
+    if (ERROR_SUCCESS != RegOpenKeyEx(HKEY_CURRENT_USER,
+                                      _T("Printers\\Connections"),
+                                      0, KEY_NOTIFY, &hKey)) {
+        return;
     }
+
+    BOOL keepMonitoring;
+    do {
+        keepMonitoring =
+                ERROR_SUCCESS == RegNotifyChangeKeyValue(hKey, TRUE,
+                                                         REG_NOTIFY_CHANGE_NAME,
+                                                         NULL,
+                                                         FALSE);
+        if (keepMonitoring) {
+            env->CallVoidMethod(peer, refresh);
+        }
+    } while (keepMonitoring && !env->ExceptionCheck());
+
+    RegCloseKey(hKey);
 }
 
 

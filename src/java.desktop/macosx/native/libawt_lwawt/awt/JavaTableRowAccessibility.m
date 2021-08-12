@@ -7,8 +7,17 @@
 #import "JavaTableAccessibility.h"
 #import "JavaCellAccessibility.h"
 #import "ThreadUtilities.h"
+#import "JNIUtilities.h"
 
-static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;");
+// GET* macros defined in JavaAccessibilityUtilities.h, so they can be shared.
+static jclass sjc_CAccessibility = NULL;
+
+static jmethodID jm_getChildrenAndRoles = NULL;
+#define GET_CHILDRENANDROLES_METHOD_RETURN(ret) \
+    GET_CACCESSIBILITY_CLASS_RETURN(ret); \
+    GET_STATIC_METHOD_RETURN(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles",\
+                      "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;", ret);
+
 
 @implementation JavaTableRowAccessibility
 
@@ -28,7 +37,9 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
         JNIEnv *env = [ThreadUtilities getJNIEnv];
         JavaComponentAccessibility *parent = [self accessibilityParent];
         if (parent->fAccessible == NULL) return nil;
-        jobjectArray jchildrenAndRoles = (jobjectArray)JNFCallStaticObjectMethod(env, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, JAVA_AX_ALL_CHILDREN, NO);
+        GET_CHILDRENANDROLES_METHOD_RETURN(nil);
+        jobjectArray jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, JAVA_AX_ALL_CHILDREN, NO);
+        CHECK_EXCEPTION();
         if (jchildrenAndRoles == NULL) return nil;
 
         jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
@@ -43,8 +54,10 @@ static JNF_STATIC_MEMBER_CACHE(jm_getChildrenAndRoles, sjc_CAccessibility, "getC
 
             NSString *childJavaRole = nil;
             if (jchildJavaRole != NULL) {
-                jobject jkey = JNFGetObjectField(env, jchildJavaRole, sjf_key);
-                childJavaRole = JNFJavaToNSString(env, jkey);
+                DECLARE_CLASS_RETURN(sjc_AccessibleRole, "javax/accessibility/AccessibleRole", nil);
+                DECLARE_FIELD_RETURN(sjf_key, sjc_AccessibleRole, "key", "Ljava/lang/String;", nil);
+                jobject jkey = (*env)->GetObjectField(env, jchildJavaRole, sjf_key);
+                childJavaRole = JavaStringToNSString(env, jkey);
                 (*env)->DeleteLocalRef(env, jkey);
             }
 

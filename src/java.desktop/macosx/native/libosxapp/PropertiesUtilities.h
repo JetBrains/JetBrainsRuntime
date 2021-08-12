@@ -23,8 +23,10 @@
  * questions.
  */
 
+#include "jni.h"
+#include "jni_util.h"
+
 #import <Cocoa/Cocoa.h>
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 
 @interface PropertiesUtilities : NSObject

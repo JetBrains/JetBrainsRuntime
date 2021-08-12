@@ -67,6 +67,7 @@ class VectorNode : public TypeNode {
   static int  opcode(int opc, BasicType bt);
   static bool implemented(int opc, uint vlen, BasicType bt);
   static bool is_shift(Node* n);
+  static bool is_roundopD(Node * n);
   static bool is_invariant_vector(Node* n);
   // [Start, end) half-open range defining which operands are vectors
   static void vector_operands(Node* n, uint* start, uint* end);
@@ -436,6 +437,13 @@ class SqrtVFNode : public VectorNode {
   SqrtVFNode(Node* in, const TypeVect* vt) : VectorNode(in,vt) {}
   virtual int Opcode() const;
 };
+//------------------------------RoundDoubleVNode--------------------------------
+// Vector round double
+class RoundDoubleModeVNode : public VectorNode {
+ public:
+  RoundDoubleModeVNode(Node* in1, Node* in2, const TypeVect* vt) : VectorNode(in1, in2, vt) {}
+  virtual int Opcode() const;
+};
 
 //------------------------------SqrtVDNode--------------------------------------
 // Vector Sqrt double
@@ -582,6 +590,78 @@ class XorVNode : public VectorNode {
  public:
   XorVNode(Node* in1, Node* in2, const TypeVect* vt) : VectorNode(in1,in2,vt) {}
   virtual int Opcode() const;
+};
+
+//------------------------------MinVNode--------------------------------------
+// Vector min
+class MinVNode : public VectorNode {
+public:
+  MinVNode(Node* in1, Node* in2, const TypeVect* vt) : VectorNode(in1, in2, vt) {}
+  virtual int Opcode() const;
+};
+
+//------------------------------MaxVNode--------------------------------------
+// Vector max
+class MaxVNode : public VectorNode {
+public:
+  MaxVNode(Node* in1, Node* in2, const TypeVect* vt) : VectorNode(in1, in2, vt) {}
+  virtual int Opcode() const;
+};
+
+//------------------------------MinReductionVNode--------------------------------------
+// Vector min as a reduction
+class MinReductionVNode : public ReductionNode {
+public:
+  MinReductionVNode(Node *ctrl, Node* in1, Node* in2) : ReductionNode(ctrl, in1, in2) {}
+  virtual int Opcode() const;
+  virtual const Type* bottom_type() const {
+    BasicType bt = in(1)->bottom_type()->basic_type();
+    if (bt == T_FLOAT) {
+      return Type::FLOAT;
+    } else if (bt == T_DOUBLE) {
+      return Type::DOUBLE;
+    }
+    assert(false, "unsupported basic type");
+    return NULL;
+  }
+  virtual uint ideal_reg() const {
+    BasicType bt = in(1)->bottom_type()->basic_type();
+    if (bt == T_FLOAT) {
+      return Op_RegF;
+    } else if (bt == T_DOUBLE) {
+      return Op_RegD;
+    }
+    assert(false, "unsupported basic type");
+    return 0;
+  }
+};
+
+//------------------------------MaxReductionVNode--------------------------------------
+// Vector max as a reduction
+class MaxReductionVNode : public ReductionNode {
+public:
+  MaxReductionVNode(Node *ctrl, Node* in1, Node* in2) : ReductionNode(ctrl, in1, in2) {}
+  virtual int Opcode() const;
+  virtual const Type* bottom_type() const {
+    BasicType bt = in(1)->bottom_type()->basic_type();
+    if (bt == T_FLOAT) {
+      return Type::FLOAT;
+    } else {
+      return Type::DOUBLE;
+    }
+    assert(false, "unsupported basic type");
+    return NULL;
+  }
+  virtual uint ideal_reg() const {
+    BasicType bt = in(1)->bottom_type()->basic_type();
+    if (bt == T_FLOAT) {
+      return Op_RegF;
+    } else {
+      return Op_RegD;
+    }
+    assert(false, "unsupported basic type");
+    return 0;
+  }
 };
 
 //================================= M E M O R Y ===============================

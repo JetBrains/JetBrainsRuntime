@@ -23,9 +23,8 @@
  * questions.
  */
 
-#import "jni_util.h"
+#import "JNIUtilities.h"
 
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <ApplicationServices/ApplicationServices.h>
 
 #import "CRobotKeyCode.h"
@@ -170,7 +169,7 @@ Java_sun_lwawt_macosx_CRobot_mouseEvent
 (JNIEnv *env, jobject peer, jint mouseLastX, jint mouseLastY, jint buttonsState,
  jboolean isButtonsDownState, jboolean isMouseMove)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     autoDelay(isMouseMove);
 
     // This is the native method called when Robot mouse events occur.
@@ -256,7 +255,7 @@ Java_sun_lwawt_macosx_CRobot_mouseEvent
 
     PostMouseEvent(point, button, type, clickCount, eventNumber);
 
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -318,7 +317,7 @@ Java_sun_lwawt_macosx_CRobot_nativeGetScreenPixels
 (JNIEnv *env, jobject peer,
  jint x, jint y, jint width, jint height, jdouble scale, jintArray pixels)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
 
     jint picX = x;
     jint picY = y;
@@ -326,7 +325,7 @@ Java_sun_lwawt_macosx_CRobot_nativeGetScreenPixels
     jint picHeight = height;
 
     CGRect screenRect = CGRectMake(picX / scale, picY / scale,
-    				picWidth / scale, picHeight / scale);
+                                picWidth / scale, picHeight / scale);
     CGImageRef screenPixelsImage = CGWindowListCreateImage(screenRect,
                                         kCGWindowListOptionOnScreenOnly,
                                         kCGNullWindowID, kCGWindowImageBestResolution);
@@ -364,7 +363,7 @@ Java_sun_lwawt_macosx_CRobot_nativeGetScreenPixels
     // release the Java int array back up to the JVM
     (*env)->ReleasePrimitiveArrayCritical(env, pixels, jPixelData, 0);
 
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /****************************************************

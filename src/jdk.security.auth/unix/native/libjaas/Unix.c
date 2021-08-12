@@ -49,7 +49,7 @@ Java_com_sun_security_auth_module_UnixSystem_getUnixInfo
 
     int i;
     char pwd_buf[1024];
-    struct passwd *pwd;
+    struct passwd *pwd = NULL;
     struct passwd resbuf;
     jfieldID userNameID;
     jfieldID userID;

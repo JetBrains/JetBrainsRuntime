@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -428,7 +428,7 @@ private:
     u4* _offsets_table;  // Location offset table
     u1* _location_bytes; // Location attributes
     u1* _string_bytes;   // String table
-    ImageModuleData *module_data;       // The ImageModuleData for this image
+    ImageModuleData *_module_data;       // The ImageModuleData for this image
 
     ImageFileReader(const char* name, bool big_endian);
     ~ImageFileReader();
@@ -568,9 +568,6 @@ public:
     // Returns the location index and size if the location is found,
     // ImageFileReader::NOT_FOUND otherwise.
     u4 find_location_index(const char* path, u8 *size) const;
-
-    // Assemble the location path.
-    void location_path(ImageLocation& location, char* path, size_t max) const;
 
     // Verify that a found location matches the supplied path.
     bool verify_location(ImageLocation& location, const char* path) const;

@@ -32,7 +32,28 @@
 #import "com_apple_concurrent_LibDispatchNative.h"
 
 #import <dispatch/dispatch.h>
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
+#import "JNIUtilities.h"
+
+enum {
+    JNIThreadDetachImmediately = (1 << 1),
+    JNIThreadDetachOnThreadDeath = (1 << 2),
+    JNIThreadSetSystemClassLoaderOnAttach = (1 << 3),
+    JNIThreadAttachAsDaemon = (1 << 4)
+};
+
+typedef jlong JNIThreadContext;
+
+// Deprecated API in MacOs 10.10 and 10.16
+JNIEXPORT JNIEnv *JNIObtainEnv(JNIThreadContext *context)
+{
+    NSLog(@"Corresponding JNFObtainEnv functionality is no longer supported.");
+}
+
+// Deprecated API in MacOs 10.10 and 10.16
+JNIEXPORT void JNIReleaseEnv(JNIEnv *env, JNIThreadContext *context)
+{
+    NSLog(@"Corresponding JNFReleaseEnv functionality is no longer supported.");
+}
 
 /*
  * Declare library specific JNI_Onload entry if static build
@@ -109,42 +130,42 @@ JNIEXPORT void JNICALL Java_com_apple_concurrent_LibDispatchNative_nativeRelease
 }
 
 
-static JNF_CLASS_CACHE(jc_Runnable, "java/lang/Runnable");
-static JNF_MEMBER_CACHE(jm_run, jc_Runnable, "run", "()V");
-
 static void perform_dispatch(JNIEnv *env, jlong nativeQueue, jobject runnable, void (*dispatch_fxn)(dispatch_queue_t, dispatch_block_t))
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
         dispatch_queue_t queue = (dispatch_queue_t)jlong_to_ptr(nativeQueue);
         if (queue == NULL) return; // shouldn't happen
 
+        DECLARE_CLASS(jc_Runnable, "java/lang/Runnable");
+        DECLARE_METHOD(jm_run, jc_Runnable, "run", "()V");
+
         // create a global-ref around the Runnable, so it can be safely passed to the dispatch thread
-        JNFJObjectWrapper *wrappedRunnable = [[JNFJObjectWrapper alloc] initWithJObject:runnable withEnv:env];
+        jobject wrappedRunnable = (*env)->NewGlobalRef(env, runnable);
 
         dispatch_fxn(queue, ^{
                 // attach the dispatch thread to the JVM if necessary, and get an env
-                JNFThreadContext ctx = JNFThreadDetachOnThreadDeath | JNFThreadSetSystemClassLoaderOnAttach | JNFThreadAttachAsDaemon;
-                JNIEnv *blockEnv = JNFObtainEnv(&ctx);
+                JNIThreadContext ctx = JNIThreadDetachOnThreadDeath | JNIThreadSetSystemClassLoaderOnAttach | JNIThreadAttachAsDaemon;
+                JNIEnv *blockEnv = JNIObtainEnv(&ctx);
 
-        JNF_COCOA_ENTER(blockEnv);
+        JNI_COCOA_ENTER(blockEnv);
 
                 // call the user's runnable
-                JNFCallObjectMethod(blockEnv, [wrappedRunnable jObject], jm_run);
+                (*env)->CallObjectMethod(blockEnv, [wrappedRunnable jObject], jm_run);
 
                 // explicitly clear object while we have an env (it's cheaper that way)
                 [wrappedRunnable setJObject:NULL withEnv:blockEnv];
 
-        JNF_COCOA_EXIT(blockEnv);
+        JNI_COCOA_EXIT(blockEnv);
 
                 // let the env go, but leave the thread attached as a daemon
-                JNFReleaseEnv(blockEnv, &ctx);
+                JNIReleaseEnv(blockEnv, &ctx);
         });
 
         // release this thread's interest in the Runnable, the block
         // will have retained the it's own interest above
         [wrappedRunnable release];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 
