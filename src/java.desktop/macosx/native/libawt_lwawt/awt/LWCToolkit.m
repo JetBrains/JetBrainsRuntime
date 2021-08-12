@@ -694,7 +694,7 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isApplicationActive
 AWT_ASSERT_NOT_APPKIT_THREAD;
 JNI_COCOA_ENTER(env);
 
-        [ThreadUtilities performOnMainThreadWaiting:YES withBlock:^() {
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
                 active = (jboolean)[NSRunningApplication currentApplication].active;
         }];
 
