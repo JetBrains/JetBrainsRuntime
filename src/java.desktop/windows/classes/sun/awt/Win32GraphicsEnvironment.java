@@ -52,9 +52,10 @@ import sun.java2d.windows.WindowsFlags;
 public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
 
     // [tav] the values match the native ones
-    private final static int PROCESS_DPI_UNAWARE            = 0;
-    private final static int PROCESS_SYSTEM_DPI_AWARE       = 1;
-    private final static int PROCESS_PER_MONITOR_DPI_AWARE  = 2;
+    private final static int PROCESS_DPI_UNAWARE               = 0;
+    private final static int PROCESS_SYSTEM_DPI_AWARE          = 1;
+    private final static int PROCESS_PER_MONITOR_DPI_AWARE     = 2;
+    private final static int PROCESS_PER_MONITOR_DPI_AWARE_V2  = 3;
 
     static final float debugScaleX;
     static final float debugScaleY;
@@ -97,7 +98,7 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
     public static void initDisplayWrapper() {
         if (!displayInitialized) {
             displayInitialized = true;
-            setProcessDPIAwareness(isUIScaleEnabled() ? PROCESS_PER_MONITOR_DPI_AWARE : PROCESS_SYSTEM_DPI_AWARE);
+            setProcessDPIAwareness(isUIScaleEnabled() ? PROCESS_PER_MONITOR_DPI_AWARE_V2 : PROCESS_SYSTEM_DPI_AWARE);
             initDisplay();
         }
     }

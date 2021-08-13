@@ -94,7 +94,12 @@ SetProcessDPIAwareness(PROCESS_DPI_AWARENESS level)
     }
 
     if (lpSetProcessDpiAwareness != NULL) {
-        lpSetProcessDpiAwareness(level);
+        if (lpSetProcessDpiAwareness(level) == FALSE &&
+            level == PROCESS_PER_MONITOR_DPI_AWARE_V2) {
+            // Probably PROCESS_PER_MONITOR_DPI_AWARE_V2 isn't supported
+            // fallback to PROCESS_PER_MONITOR_DPI_AWARE in this case
+            lpSetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+        }
     }
 }
 
