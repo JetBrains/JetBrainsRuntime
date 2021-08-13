@@ -1571,7 +1571,7 @@ JNI_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeHideWindow
 (JNIEnv *env, jclass clazz, jlong windowPtr, jboolean wait)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     NSWindow *nsWindow = OBJC(windowPtr);
     [ThreadUtilities performOnMainThreadWaiting:(BOOL)wait block:^(){
@@ -1592,7 +1592,7 @@ JNF_COCOA_ENTER(env);
         [nsWindow close];
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
