@@ -1746,6 +1746,19 @@ JNF_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         if ((([nsWindow styleMask] & NSFullScreenWindowMask) != NSFullScreenWindowMask)) {
+            if (!NSApp.active) {
+                // use undocumented approach to avoid focus stealing
+                NSKeyedArchiver *coder = [[NSKeyedArchiver alloc] init];
+                [nsWindow encodeRestorableStateWithCoder:coder];
+                [coder encodeBool:YES forKey:@"NSIsFullScreen"];
+                NSKeyedUnarchiver *decoder = [[NSKeyedUnarchiver alloc] initForReadingWithData:coder.encodedData];
+                [nsWindow restoreStateWithCoder:decoder];
+                [decoder finishDecoding];
+                [decoder release];
+                [coder release];
+                if (nsWindow.styleMask & NSWindowStyleMaskFullScreen) return; // success
+                // otherwise fall back to standard approach
+            }
             [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
         }
     }];
