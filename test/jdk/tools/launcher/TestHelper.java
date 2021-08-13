@@ -186,8 +186,7 @@ public class TestHelper {
             return jvmFile.exists();
         } else {
             File vmDir = new File(JAVA_LIB, type);
-            File vmArchDir = new File(vmDir, getJreArch());
-            File jvmFile = new File(vmArchDir, LIBJVM);
+            File jvmFile = new File(vmDir, LIBJVM);
             return jvmFile.exists();
         }
     }
