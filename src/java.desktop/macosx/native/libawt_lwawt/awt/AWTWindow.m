@@ -1717,6 +1717,18 @@ JNI_COCOA_ENTER(env);
 JNI_COCOA_EXIT(env);
 }
 
+// undocumented approach which avoids focus stealing
+void enableFullScreenSpecial(NSWindow *nsWindow) {
+    NSKeyedArchiver *coder = [[NSKeyedArchiver alloc] init];
+    [nsWindow encodeRestorableStateWithCoder:coder];
+    [coder encodeBool:YES forKey:@"NSIsFullScreen"];
+    NSKeyedUnarchiver *decoder = [[NSKeyedUnarchiver alloc] initForReadingWithData:coder.encodedData];
+    [nsWindow restoreStateWithCoder:decoder];
+    [decoder finishDecoding];
+    [decoder release];
+    [coder release];
+}
+
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
  * Method:    _toggleFullScreenMode
@@ -1732,6 +1744,11 @@ JNI_COCOA_ENTER(env);
     if (![nsWindow respondsToSelector:toggleFullScreenSelector]) return;
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        if ((nsWindow.styleMask & NSWindowStyleMaskFullScreen) != NSWindowStyleMaskFullScreen && !NSApp.active) {
+            enableFullScreenSpecial(nsWindow);
+            if ((nsWindow.styleMask & NSWindowStyleMaskFullScreen) == NSWindowStyleMaskFullScreen) return; // success
+            // otherwise fall back to standard approach
+        }
         [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
     }];
 
