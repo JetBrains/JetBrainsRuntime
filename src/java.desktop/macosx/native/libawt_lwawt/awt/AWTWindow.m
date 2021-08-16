@@ -1771,9 +1771,7 @@ JNI_COCOA_ENTER(env);
     if (![nsWindow respondsToSelector:toggleFullScreenSelector]) return;
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-        if ((([nsWindow styleMask] & NSFullScreenWindowMask) != NSFullScreenWindowMask)) {
-            [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
-        }
+        [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
     }];
 
 JNI_COCOA_EXIT(env);
