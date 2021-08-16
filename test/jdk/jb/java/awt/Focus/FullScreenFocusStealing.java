@@ -44,7 +44,7 @@ public class FullScreenFocusStealing {
         try {
             SwingUtilities.invokeAndWait(FullScreenFocusStealing::initUI);
             launchProcessWithWindow();
-            toggleFullScreen();
+            Application.getApplication().requestToggleFullScreen(frame);
             Thread.sleep(1000);
             assertProcessWindowIsStillFocused();
         }
@@ -62,11 +62,6 @@ public class FullScreenFocusStealing {
     private static void disposeUI() {
         if (frame != null) frame.dispose();
         if (otherProcess != null) otherProcess.destroyForcibly();
-    }
-
-    private static void toggleFullScreen() throws Exception {
-        Application.class.getDeclaredMethod("requestEnterFullScreen", Window.class)
-                .invoke(Application.getApplication(), frame);
     }
 
     private static void assertProcessWindowIsStillFocused() throws Exception {
