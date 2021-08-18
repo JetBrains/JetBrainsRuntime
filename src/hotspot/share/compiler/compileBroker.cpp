@@ -333,7 +333,7 @@ bool CompileBroker::can_remove(CompilerThread *ct, bool do_it) {
   // We only allow the last compiler thread of each type to get removed.
   jobject last_compiler = c1 ? compiler1_object(compiler_count - 1)
                              : compiler2_object(compiler_count - 1);
-  if (oopDesc::equals(ct->threadObj(), JNIHandles::resolve_non_null(last_compiler))) {
+  if (ct->threadObj() == JNIHandles::resolve_non_null(last_compiler)) {
     if (do_it) {
       assert_locked_or_safepoint(CompileThread_lock); // Update must be consistent.
       compiler->set_num_compiler_threads(compiler_count - 1);
@@ -1765,7 +1765,7 @@ CompileLog* CompileBroker::get_log(CompilerThread* ct) {
   int compiler_number = 0;
   bool found = false;
   for (; compiler_number < count; compiler_number++) {
-    if (oopDesc::equals(JNIHandles::resolve_non_null(compiler_objects[compiler_number]), compiler_obj)) {
+    if (JNIHandles::resolve_non_null(compiler_objects[compiler_number]) == compiler_obj) {
       found = true;
       break;
     }
