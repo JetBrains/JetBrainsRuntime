@@ -243,7 +243,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
   $(eval $(call SetupJdkLibrary, BUILD_LIBAWT_HEADLESS, \
       NAME := awt_headless, \
       EXTRA_SRC := $(LIBAWT_HEADLESS_EXTRA_SRC), \
-      EXCLUDES := medialib, \
+      EXCLUDES := medialib wl vulkan, \
       ONLY_EXPORTED := $(LIBAWT_HEADLESS_ONLY_EXPORTED), \
       OPTIMIZATION := LOW, \
       CFLAGS := -DHEADLESS=true $(CUPS_CFLAGS) $(FONTCONFIG_CFLAGS) \
@@ -323,7 +323,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       NAME := awt_xawt, \
       EXTRA_SRC := $(LIBAWT_XAWT_EXTRA_SRC), \
       EXTRA_HEADER_DIRS := $(LIBAWT_XAWT_EXTRA_HEADER_DIRS), \
-      EXCLUDES := medialib debug, \
+      EXCLUDES := medialib debug wl vulkan, \
       OPTIMIZATION := LOW, \
       CFLAGS := -DXAWT -DXAWT_HACK $(LIBAWT_XAWT_CFLAGS) $(DBUS_CFLAGS) \
           $(FONTCONFIG_CFLAGS) $(CUPS_CFLAGS) $(X_CFLAGS), \
@@ -373,6 +373,95 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
   ))
 
   TARGETS += $(BUILD_LIBAWT_XAWT)
+endif
+
+ifeq ($(call isTargetOs, windows macosx), false)
+  ifeq ($(ENABLE_HEADLESS_ONLY), false)
+
+    LIBAWT_WLAWT_EXTRA_SRC := \
+        common/awt \
+        common/java2d \
+        common/font \
+        #
+
+    LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11
+    LIBAWT_WLAWT_EXCLUDE_FILES := common/awt/X11Color.c common/awt/awt_Font.c
+
+    # Substitute Vulkan with stubs if disabled.
+    ifeq ($(VULKAN_ENABLED), false)
+      LIBAWT_WLAWT_EXCLUDES += vulkan
+      LIBAWT_WLAWT_EXTRA_FILES += $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan/VKStubs.c
+    endif
+
+    LIBAWT_WLAWT_EXTRA_HEADER_DIRS := \
+        $(LIBAWT_DEFAULT_HEADER_DIRS) \
+        libawt_wlawt/awt \
+        include \
+        common/awt/debug \
+        common/awt/systemscale \
+        common/font \
+        common/java2d/wl \
+        common/java2d/vulkan \
+        java.base:libjvm \
+        java.base:libjava \
+        #
+
+    # Enable 'wakefield' extension for java.awt.Robot support
+    WAKEFIELD_ROBOT_CFLAGS=-DWAKEFIELD_ROBOT
+
+    LIBAWT_WLAWT_CFLAGS += -DWLAWT \
+        $(WAKEFIELD_ROBOT_CFLAGS) \
+        $(FONTCONFIG_CFLAGS) \
+        $(VULKAN_FLAGS) \
+        $(CUPS_CFLAGS)
+
+    LIBAWT_WLAWT_CXXFLAGS += $(VULKAN_FLAGS)
+
+    ifeq ($(TOOLCHAIN_TYPE), gcc)
+      # Turn off all warnings for the following files since they contain warnings
+      # that cannot be turned of individually.
+      # redefining a macro
+      BUILD_LIBAWT_WLAWT_awt_Font.c_CFLAGS := -w
+      # initializing a declared 'extern'
+      BUILD_LIBAWT_WLAWT_debug_mem.c_CFLAGS := -w
+    endif
+
+    $(eval $(call SetupJdkLibrary, BUILD_LIBAWT_WLAWT, \
+        NAME := awt_wlawt, \
+        EXCLUDE_FILES := $(LIBAWT_WLAWT_EXCLUDE_FILES), \
+        EXTRA_FILES := $(LIBAWT_WLAWT_EXTRA_FILES), \
+        EXTRA_SRC := $(LIBAWT_WLAWT_EXTRA_SRC), \
+        EXTRA_HEADER_DIRS := $(LIBAWT_WLAWT_EXTRA_HEADER_DIRS), \
+        EXCLUDES := $(LIBAWT_WLAWT_EXCLUDES), \
+        OPTIMIZATION := LOW, \
+        LINK_TYPE := C++, \
+        CFLAGS := $(CFLAGS_JDKLIB) $(LIBAWT_WLAWT_CFLAGS), \
+        CXXFLAGS := $(CXXFLAGS_JDKLIB) $(LIBAWT_WLAWT_CXXFLAGS), \
+        WARNINGS_AS_ERRORS_xlc := false, \
+        DISABLED_WARNINGS_C_gcc := type-limits pointer-to-int-cast \
+            unused-result maybe-uninitialized format unused-variable \
+            format-security int-to-pointer-cast parentheses \
+            implicit-fallthrough undef unused-function, \
+        DISABLED_WARNINGS_CXX_gcc := undef, \
+        DISABLED_WARNINGS_clang := parentheses format undef \
+            logical-op-parentheses format-nonliteral int-conversion, \
+        DISABLED_WARNINGS_gcc_awt_InputMethod.c := unused-label, \
+        DISABLED_WARNINGS_gcc_CUPSfuncs.c := unused-variable, \
+        DISABLED_WARNINGS_clang_awt_InputMethod.c := unused-label, \
+        DISABLED_WARNINGS_clang_CUPSfuncs.c := unused-variable, \
+        JDK_LIBS := libawt java.base:libjava java.base:libjvm, \
+        LIBS := $(WAYLAND_LIBS), \
+        LIBS_unix := $(LIBDL) $(LIBM), \
+        LIBS_linux := -lpthread -lrt, \
+    ))
+
+    $(BUILD_LIBAWT_WLAWT): $(call FindLib, java.base, java)
+
+    $(BUILD_LIBAWT_WLAWT): $(BUILD_LIBAWT)
+
+    TARGETS += $(BUILD_LIBAWT_WLAWT)
+
+  endif
 endif
 
 ifeq ($(call isTargetOs, macosx), true)
