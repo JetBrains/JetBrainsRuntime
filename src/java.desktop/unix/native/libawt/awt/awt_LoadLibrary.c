@@ -31,6 +31,7 @@
 #include <jni_util.h>
 #include <jvm.h>
 #include "gdefs.h"
+#include "sun_awt_PlatformGraphicsInfo.h"
 
 #if defined(_WIN32) || defined(MACOSX)
 #define DISABLE_FONTCONFIG
@@ -90,6 +91,34 @@ JNIEXPORT jboolean JNICALL AWTIsHeadless() {
     return isHeadless;
 }
 
+JNIEXPORT jint JNICALL AWTGetToolkitID() {
+    static JNIEnv *env = NULL;
+    static jint toolkitID;
+    jmethodID toolkitIDFn;
+    jclass platformGraphicsInfoClass;
+
+    if (env == NULL) {
+        env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+        platformGraphicsInfoClass = (*env)->FindClass(env,
+                                             "sun/awt/PlatformGraphicsInfo");
+        if (platformGraphicsInfoClass == NULL) {
+            return 0;
+        }
+        toolkitIDFn = (*env)->GetStaticMethodID(env,
+                                                platformGraphicsInfoClass, "getToolkitID", "()I");
+        if (toolkitIDFn == NULL) {
+            return 0;
+        }
+        toolkitID = (*env)->CallStaticBooleanMethod(env, platformGraphicsInfoClass,
+                                                    toolkitIDFn);
+        if ((*env)->ExceptionCheck(env)) {
+            (*env)->ExceptionClear(env);
+            return JNI_TRUE;
+        }
+    }
+    return toolkitID;
+}
+
 /*
  * Pathnames to the various awt toolkits
  */
@@ -99,6 +128,7 @@ JNIEXPORT jboolean JNICALL AWTIsHeadless() {
   #define DEFAULT_PATH LWAWT_PATH
 #else
   #define XAWT_PATH "/libawt_xawt.so"
+  #define WLAWT_PATH "/libawt_wlawt.so"
   #define DEFAULT_PATH XAWT_PATH
   #define HEADLESS_PATH "/libawt_headless.so"
 #endif
@@ -114,6 +144,7 @@ AWT_OnLoad(JavaVM *vm, void *reserved)
     struct utsname name;
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(vm, JNI_VERSION_1_2);
     void *v;
+    jint tkID = 0;
 
     if (awtHandle != NULL) {
         /* Avoid several loading attempts */
@@ -127,10 +158,16 @@ AWT_OnLoad(JavaVM *vm, void *reserved)
      * loading appropriate awt library, i.e. libawt_xawt or libawt_headless
      */
 
+    tkID = AWTGetToolkitID();
+
 #ifdef MACOSX
     tk = LWAWT_PATH;
 #else
-    tk = XAWT_PATH;
+    if (tkID == sun_awt_PlatformGraphicsInfo_TK_WAYLAND) {
+        tk = WLAWT_PATH;
+    } else {
+        tk = XAWT_PATH;
+    }
 
     if (AWTIsHeadless()) {
         tk = HEADLESS_PATH;
