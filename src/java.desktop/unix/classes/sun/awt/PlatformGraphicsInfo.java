@@ -28,17 +28,45 @@ package sun.awt;
 import java.io.File;
 import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
+import java.lang.annotation.Native;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import sun.security.action.GetPropertyAction;
 
 public class PlatformGraphicsInfo {
+    @Native
+    public static final int TK_UNDEF   = 0;
+    @Native
+    public static final int TK_X11     = 1;
+    @Native
+    public static final int TK_WAYLAND = 2;
+
+    private static int toolkitID = TK_UNDEF;
+
+    private static int getToolkitID() {
+        if (toolkitID == TK_UNDEF) {
+            @SuppressWarnings("removal")
+            String name = AccessController.doPrivileged(
+                new GetPropertyAction("awt.toolkit.name"));
+            if ("XToolkit".equals(name)) {
+                toolkitID = TK_X11;
+            } if ("WLToolkit".equals(name)) {
+                toolkitID = TK_WAYLAND;
+            } else {
+                toolkitID = TK_X11;
+            }
+        }
+        return toolkitID;
+    }
 
     public static GraphicsEnvironment createGE() {
         return new X11GraphicsEnvironment();
     }
 
     public static Toolkit createToolkit() {
-        return new sun.awt.X11.XToolkit();
+        return  (getToolkitID() == TK_X11)?
+            new sun.awt.X11.XToolkit() :
+            new sun.awt.wl.WLToolkit();
     }
 
     /**
