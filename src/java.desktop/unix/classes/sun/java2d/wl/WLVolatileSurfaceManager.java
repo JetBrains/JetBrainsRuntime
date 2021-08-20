@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2003, 2005, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,31 +24,34 @@
  * questions.
  */
 
-#ifndef BlittingIncludesDefined
-#define BlittingIncludesDefined
+package sun.java2d.wl;
 
-#include "jni.h"
-#include "GlyphImageRef.h"
-#include "SurfaceData.h"
+import java.awt.GraphicsConfiguration;
+import java.awt.ImageCapabilities;
+import java.awt.Transparency;
+import java.awt.image.ColorModel;
+import sun.awt.wl.WLGraphicsConfig;
+import sun.awt.image.SunVolatileImage;
+import sun.awt.image.VolatileSurfaceManager;
+import sun.java2d.SurfaceData;
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
+public class WLVolatileSurfaceManager extends VolatileSurfaceManager {
+    public WLVolatileSurfaceManager(SunVolatileImage vImg, Object context) {
+        super(vImg, context);
+    }
 
-typedef struct {
-  int numGlyphs;
-  ImageRef *glyphs;
-} GlyphBlitVector;
+    protected boolean isAccelerationEnabled() {
+        return false;
+    }
 
-JNIEXPORT jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds);
-JNIEXPORT GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
-                                           jint fromGlyph, jint toGlyph);
-JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
-                                              jint fromGlyph, jint toGlyph);
+    @Override
+    protected SurfaceData initAcceleratedSurface() {
+        throw new UnsupportedOperationException("accelerated surface not supported");
+    }
 
-#ifdef  __cplusplus
+    @Override
+    public ImageCapabilities getCapabilities(GraphicsConfiguration gc) {
+        // neither accelerated nor volatile
+        return new ImageCapabilities(false);
+    }
 }
-#endif
-
-
-#endif
