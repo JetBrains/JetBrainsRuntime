@@ -69,6 +69,20 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     private static final double debugScale =
             uiScaleEnabled ? getScaleFactor("sun.java2d.uiScale") : -1;
 
+    protected enum LogDisplay {
+        ADDED,
+        REMOVED,
+        CHANGED;
+
+        public static final boolean ENABLED = Boolean.getBoolean("sun.java2d.logDisplays");
+
+        public void log(int id, Object bounds, double scale) {
+            if (!ENABLED) return;
+            System.out.println("DISPLAY " + this + ": #" + id +
+                    ", " + bounds + ", scale=" + scale);
+        }
+    }
+
     protected GraphicsDevice[] screens;
 
     /**

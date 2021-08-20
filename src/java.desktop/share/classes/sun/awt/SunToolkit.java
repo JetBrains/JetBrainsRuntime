@@ -483,6 +483,14 @@ public abstract class SunToolkit extends Toolkit
      * Post AWTEvent of high priority.
      */
     public static void postPriorityEvent(final AWTEvent e) {
+        if (e.getID() == WindowEvent.WINDOW_LOST_FOCUS &&
+                e instanceof TimedWindowEvent)
+        {
+            TimedWindowEvent twe = (TimedWindowEvent)e;
+            ((SunToolkit)Toolkit.getDefaultToolkit()).
+                    setWindowDeactivationTime((Window)twe.getSource(), twe.getWhen());
+        }
+
         PeerEvent pe = new PeerEvent(Toolkit.getDefaultToolkit(), new Runnable() {
                 @Override
                 public void run() {
@@ -1832,8 +1840,12 @@ public abstract class SunToolkit extends Toolkit
      *
      * @return true if running on Wayland, false otherwise
      */
-    public boolean isRunningOnWayland() {
+    public boolean isRunningOnXWayland() {
         return false;
+    }
+
+    public boolean isRunningOnWayland() {
+        return isRunningOnXWayland();
     }
 
     public void dismissPopupOnFocusLostIfNeeded(Window invoker) {}
@@ -1900,6 +1912,10 @@ public abstract class SunToolkit extends Toolkit
         return false;
     }
 
+    public boolean popupMenusAreSpecial() {
+        return false;
+    }
+
     /**
      * Returns whether or not a containing top level window for the passed
      * component is
@@ -1940,6 +1956,10 @@ public abstract class SunToolkit extends Toolkit
      * to return true.
      */
     public boolean needUpdateWindow() {
+        return false;
+    }
+
+    public boolean needUpdateWindowAfterPaint() {
         return false;
     }
 

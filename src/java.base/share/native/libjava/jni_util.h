@@ -304,6 +304,9 @@ JNU_GetStaticFieldByName(JNIEnv *env,
     } while (0)
 #endif /* __cplusplus */
 
+#define JNU_RUNTIME_ASSERT(env, cond, msg)
+#define JNU_LOG_EVENT(env, fmt, ...)
+
 /************************************************************************
  * Debugging utilities
  */

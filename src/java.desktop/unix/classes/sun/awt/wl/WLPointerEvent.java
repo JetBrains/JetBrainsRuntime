@@ -1,0 +1,380 @@
+/*
+ * Copyright (c) 2022-2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022-2024, JetBrains s.r.o.. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+package sun.awt.wl;
+
+import java.awt.event.InputEvent;
+import java.awt.event.MouseEvent;
+
+/**
+ * A wayland "pointer" (mouse/surface/trackpad) event received from the native code.
+ * It accumulates one or more events that occurred since the last time and gets sent
+ * when Wayland generates the "frame" event denoting some sort of finished state
+ * of the pointer input.
+ * Therefore, not all fields are valid at all times and the many 'hasXXX()' methods
+ * have to be consulted prior to calling any of the 'getXXX()' ones.
+ * For example, the event with only 'has_leave_event' will not have 'surface_x'
+ * or 'timestamp' set.
+ * The unset fields are initialized to their default values (0 or false).
+ * Refer to wayland.xml for the full documentation.
+ */
+class WLPointerEvent {
+    private boolean has_enter_event;
+    private boolean has_leave_event;
+    private boolean has_motion_event;
+    private boolean has_button_event;
+
+    private long    surface; /// 'struct wl_surface *' this event appertains to
+    private long    serial;
+    private long    timestamp;
+
+    private int     surface_x;
+    private int     surface_y;
+
+    private int     buttonCode; // pointer button code corresponding to PointerButtonCodes.linuxCode
+    private boolean isButtonPressed; // true if button was pressed, false if released
+
+    private boolean xAxis_hasVectorValue;   // whether xAxis_vectorValue is valid
+    private boolean xAxis_hasStopEvent;     // whether wl_pointer::axis_stop event has been received for this axis
+    private boolean xAxis_hasSteps120Value; // whether xAxis_steps120Value is valid
+    private double  xAxis_vectorValue;      // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private int     xAxis_steps120Value;    // "high-resolution wheel scroll information, with each multiple of 120
+                                            //  representing one logical scroll step (a wheel detent)" (source: wayland.xml)
+
+    private boolean yAxis_hasVectorValue;   // whether yAxis_vectorValue is valid
+    private boolean yAxis_hasStopEvent;     // whether wl_pointer::axis_stop event has been received for this axis
+    private boolean yAxis_hasSteps120Value; // whether yAxis_steps120Value is valid
+    private double  yAxis_vectorValue;      // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private int     yAxis_steps120Value;    // "high-resolution wheel scroll information, with each multiple of 120
+                                            //  representing one logical scroll step (a wheel detent)" (source: wayland.xml)
+
+    private WLPointerEvent() {}
+
+    static WLPointerEvent newInstance() {
+        // Invoked from the native code
+        return new WLPointerEvent();
+    }
+
+    public enum PointerButtonCodes {
+        // see <linux/input-event-codes.h>
+        LEFT(0x110, MouseEvent.BUTTON1),
+        MIDDLE(0x112, MouseEvent.BUTTON2),
+        RIGHT(0x111, MouseEvent.BUTTON3),
+
+        // Extra mouse buttons
+        // Most mice use BTN_SIDE for backward, BTN_EXTRA for forward.
+        // There are also BTN_FORWARD and BTN_BACK, but they are different buttons, it seems.
+        // On Logitech MX Master 3S, BTN_FORWARD is the thumb button.
+        // The default X11 configuration has them as mouse button 8 and 9 respectfully,
+        // XToolkit converts them to Java codes by subtracting 2.
+        // Then, IDEA converts them to its internal codes by also subtracting 2
+        // This is because on X11 the mouse button numbering is as follows:
+        //   - 1: Left
+        //   - 2: Middle
+        //   - 3: Right
+        //   - 4: Vertical scroll up
+        //   - 5: Vertical scroll down
+        //   - 6: Horizontal scroll left
+        //   - 7: Horizontal scroll right
+        //   - 8: Backwards
+        //   - 9: Forwards
+        // Since the buttons 4-7 are not actually buttons, they are ignored
+        // They will be skipped in WLToolkit
+
+        FORWARD(0x115, 6),
+        BACK(0x116, 7),
+        SIDE(0x113, 4),
+        EXTRA(0x114, 5),
+
+        ;
+
+        public final int linuxCode; // The code from <linux/input-event-codes.h>
+        public final int javaCode;  // The code from MouseEvents.BUTTONx
+
+        PointerButtonCodes(int linuxCode, int javaCode) {
+            this.linuxCode = linuxCode;
+            this.javaCode  = javaCode;
+        }
+
+        public int mask() {
+            return InputEvent.getMaskForButton(javaCode);
+        }
+
+        static PointerButtonCodes recognizedOrNull(int linuxCode) {
+            for (var e : values()) {
+                if (e.linuxCode == linuxCode) {
+                    return e;
+                }
+            }
+            return null;
+        }
+
+        static boolean anyMatchMask(int mask) {
+            for (var c : values()) {
+                if ((mask & c.mask()) != 0) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        static int combinedMask() {
+            int mask = 0;
+            for (var c : values()) {
+                mask |= c.mask();
+            }
+            return mask;
+        }
+
+        public String toString() {
+            return switch (this) {
+                case LEFT   -> "left";
+                case MIDDLE -> "middle";
+                case RIGHT  -> "right";
+                case FORWARD -> "forward";
+                case BACK -> "back";
+                case SIDE -> "side";
+                case EXTRA -> "extra";
+            };
+        }
+
+        public boolean isPopupTrigger() {
+            // TODO: this should probably be configurable for left- and right-handed?
+            return this == RIGHT;
+        }
+    }
+
+    public boolean hasEnterEvent() {
+        return has_enter_event;
+    }
+
+    public boolean hasLeaveEvent() {
+        return has_leave_event;
+    }
+
+    public boolean hasMotionEvent() {
+        return has_motion_event;
+    }
+
+    public boolean hasButtonEvent() {
+        return has_button_event;
+    }
+
+    public boolean hasAxisEvent() {
+        return xAxisHasEvents() || yAxisHasEvents();
+    }
+
+    /**
+     * @return true if this event's field 'surface' is valid.
+     */
+    public boolean hasSurface() {
+        return hasEnterEvent() || hasLeaveEvent();
+    }
+
+    /**
+     * @return true if this event's field 'serial' is valid.
+     */
+    public boolean hasSerial() {
+        return hasEnterEvent() || hasLeaveEvent() || hasButtonEvent();
+    }
+
+    /**
+     * @return true if this event's field 'timestamp' is valid.
+     */
+    public boolean hasTimestamp() {
+        return hasMotionEvent() || hasButtonEvent();
+    }
+
+    /**
+     * @return true if this event's fields 'surface_x' and 'surface_y' are valid.
+     */
+    public boolean hasCoordinates() {
+        return hasMotionEvent() || hasEnterEvent();
+    }
+
+    public long getSurface() {
+        assert hasSurface() : "The event must have a valid surface";
+        return surface;
+    }
+
+    public long getSerial() {
+        assert hasSerial() : "The event must have a valid serial";
+        return serial;
+    }
+
+    public long getTimestamp() {
+        assert hasTimestamp() : "The event must have a valid timestamp";
+        return timestamp;
+    }
+
+    public int getSurfaceX() {
+        assert hasCoordinates() : "The event must have valid coordinates";
+        return surface_x;
+    }
+
+    public int getSurfaceY() {
+        assert hasCoordinates() : "The event must have valid coordinates";
+        return surface_y;
+    }
+
+    public int getButtonCode() {
+        assert hasButtonEvent() : "Must have a button event to get the button code";
+        return buttonCode;
+    }
+
+    public boolean getIsButtonPressed() {
+        assert hasButtonEvent() : "Must have a button event to get the button state";
+        return isButtonPressed;
+    }
+
+    public boolean xAxisHasEvents() {
+        return xAxisHasVectorValue() ||
+               xAxisHasStopEvent()   ||
+               xAxisHasSteps120Value();
+    }
+
+    public boolean xAxisHasVectorValue() {
+        return xAxis_hasVectorValue;
+    }
+
+    public boolean xAxisHasStopEvent() {
+        return xAxis_hasStopEvent;
+    }
+
+    public boolean xAxisHasSteps120Value() {
+        return xAxis_hasSteps120Value;
+    }
+
+    public double getXAxisVectorValue() {
+        assert xAxisHasVectorValue() : "Must have an X axis vector value";
+        return xAxis_vectorValue;
+    }
+
+    public int getXAxisSteps120Value() {
+        assert xAxisHasSteps120Value() : "Must have an X axis steps120 value";
+        return xAxis_steps120Value;
+    }
+
+    public boolean yAxisHasEvents() {
+        return yAxisHasVectorValue() ||
+               yAxisHasStopEvent()   ||
+               yAxisHasSteps120Value();
+    }
+
+    public boolean yAxisHasVectorValue() {
+        return yAxis_hasVectorValue;
+    }
+
+    public boolean yAxisHasStopEvent() {
+        return yAxis_hasStopEvent;
+    }
+
+    public boolean yAxisHasSteps120Value() {
+        return yAxis_hasSteps120Value;
+    }
+
+    public double getYAxisVectorValue() {
+        assert yAxisHasVectorValue()  : "Must have an Y axis vector value";
+        return yAxis_vectorValue;
+    }
+
+    public int getYAxisSteps120Value() {
+        assert yAxisHasSteps120Value(): "Must have an Y axis steps120 value";
+        return yAxis_steps120Value;
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder builder = new StringBuilder();
+        builder.append("WLPointerEvent(");
+        if (hasSurface()) {
+            builder.append("surface: 0x").append(Long.toHexString(getSurface()));
+        }
+
+        if (hasSerial()) {
+            builder.append(", serial: ").append(getSerial());
+        }
+
+        if (hasTimestamp()) {
+            builder.append(", timestamp: ").append(getTimestamp());
+        }
+
+        if (hasEnterEvent()) builder.append(" enter");
+        if (hasLeaveEvent()) builder.append(" leave");
+
+        if (hasMotionEvent()) {
+            builder.append(" motion ");
+            builder.append("x: ").append(getSurfaceX()).append(", y: ").append(getSurfaceY());
+
+        }
+        if (hasButtonEvent()) {
+            builder.append(" button ");
+
+            builder.append(buttonCodeToString(getButtonCode())).append(" ");
+            builder.append(getIsButtonPressed() ? "pressed" : "released");
+        }
+
+        if (hasAxisEvent()) {
+            builder.append(" axis");
+            if (yAxisHasEvents()) {
+                builder.append(" vertical-scroll:");
+
+                if (yAxisHasVectorValue()) {
+                    builder.append(" ").append(getYAxisVectorValue());
+                }
+                if (yAxisHasSteps120Value()) {
+                    builder.append(" ").append(getYAxisSteps120Value()).append("/120 steps");
+                }
+                if (yAxisHasStopEvent()) {
+                    builder.append(" stop");
+                }
+            }
+            if (xAxisHasEvents()) {
+                builder.append(" horizontal-scroll:");
+
+                if (xAxisHasVectorValue()) {
+                    builder.append(" ").append(getXAxisVectorValue());
+                }
+                if (xAxisHasSteps120Value()) {
+                    builder.append(" ").append(getXAxisSteps120Value()).append("/120 steps");
+                }
+                if (xAxisHasStopEvent()) {
+                    builder.append(" stop");
+                }
+            }
+        }
+
+        builder.append(")");
+
+        return builder.toString();
+    }
+
+    private static String buttonCodeToString(int code) {
+        final PointerButtonCodes recognizedCode = PointerButtonCodes.recognizedOrNull(code);
+        return String.valueOf(recognizedCode);
+    }
+}

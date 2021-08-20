@@ -234,6 +234,10 @@ public class PopupFactory {
      */
     private int getPopupType(Component owner, Component contents,
                              int ownerX, int ownerY) {
+        if (PopupFactory.isPopupPositionedRelatively()) {
+            return HEAVY_WEIGHT_POPUP;
+        }
+
         int popupType = getPopupType();
 
         if (owner == null || invokerInHeavyWeightPopup(owner)) {
@@ -280,6 +284,11 @@ public class PopupFactory {
             return getMediumWeightPopup(owner, contents, ownerX, ownerY);
         case HEAVY_WEIGHT_POPUP:
             Popup popup = getHeavyWeightPopup(owner, contents, ownerX, ownerY);
+            if (isPopupPositionedRelatively()) {
+                // Or else there are positioning artifacts when moving between monitors
+                // with a different scale and -Dsun.java2d.uiScale=N was specified.
+                ((HeavyWeightPopup)popup).setCacheEnabled(false);
+            }
             return popup;
         }
         return null;
@@ -983,5 +992,10 @@ public class PopupFactory {
                 super(new BorderLayout());
             }
         }
+    }
+
+    static boolean isPopupPositionedRelatively() {
+        final Toolkit toolkit = Toolkit.getDefaultToolkit();
+        return toolkit != null && toolkit.getClass().getName().equals("sun.awt.wl.WLToolkit");
     }
 }

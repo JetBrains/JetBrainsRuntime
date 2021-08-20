@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011–2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.awt.Dialog.ModalityType;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Frame;
+import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.Insets;
 import java.awt.MenuBar;
@@ -62,12 +63,14 @@ import com.apple.laf.ClientPropertyApplicator.Property;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
+import sun.awt.CGraphicsDevice;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWKeyboardFocusManagerPeer;
 import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.LWWindowPeer.PeerType;
+import sun.lwawt.LWWindowPeerAPI;
 import sun.lwawt.PlatformWindow;
 import sun.util.logging.PlatformLogger;
 
@@ -324,8 +327,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
      * related resources).
      */
     @Override // PlatformWindow
-    public void initialize(Window _target, LWWindowPeer _peer, PlatformWindow _owner) {
-        initializeBase(_target, _peer, _owner);
+    public void initialize(Window _target, LWWindowPeerAPI _peer, PlatformWindow _owner) {
+        initializeBase(_target, (LWWindowPeer) _peer, _owner);
 
         final int styleBits = getInitialStyleBits();
 
@@ -338,7 +341,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             // so we need to set a stub location to force an initial move/resize. Real bounds would be set later.
             bounds = new Rectangle(0, 0, 1, 1);
         } else {
-            bounds = _peer.constrainBounds(_target.getBounds());
+            bounds = peer.constrainBounds(_target.getBounds());
         }
         AtomicLong ref = new AtomicLong();
         contentView.execute(viewPtr -> {
@@ -608,6 +611,17 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         execute(ptr -> nativeSetNSWindowStandardFrame(ptr, x, y, w, h));
     }
 
+    @Override
+    public Rectangle getDefaultMaximizedBounds(GraphicsConfiguration config) {
+        Insets screenInsets = ((CGraphicsDevice) config.getDevice()).getScreenInsets();
+        Rectangle gcBounds = config.getBounds();
+        return new Rectangle(
+                gcBounds.x + screenInsets.left,
+                gcBounds.y + screenInsets.top,
+                gcBounds.width - screenInsets.left - screenInsets.right,
+                gcBounds.height - screenInsets.top - screenInsets.bottom);
+    }
+
     private boolean isMaximized() {
         return undecorated ? this.normalBounds != null
                 : isZoomed;
@@ -702,7 +716,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         }
 
         // Actually show or hide the window
-        LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
+        LWWindowPeerAPI blocker = (peer == null)? null : peer.getBlocker();
         if (blocker == null || !visible) {
             // If it ain't blocked, or is being hidden, go regular way
             if (visible) {
@@ -1218,7 +1232,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     }
 
     private boolean isBlocked() {
-        LWWindowPeer blocker = (peer != null) ? peer.getBlocker() : null;
+        LWWindowPeerAPI blocker = (peer != null) ? peer.getBlocker() : null;
         return (blocker != null);
     }
 
@@ -1233,7 +1247,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     }
 
     private boolean checkBlockingAndOrder() {
-        LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
+        LWWindowPeerAPI blocker = (peer == null)? null : peer.getBlocker();
         if (blocker == null) {
             return false;
         }
@@ -1401,5 +1415,12 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private void windowDidExitFullScreen() {
         isInFullScreen = false;
         isFullScreenAnimationOn = false;
+    }
+
+    @Override
+    public long getWindowHandle() {
+        final long[] handle = new long[1];
+        execute(ptr -> handle[0] = ptr);
+        return handle[0];
     }
 }

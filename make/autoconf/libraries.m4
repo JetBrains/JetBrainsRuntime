@@ -33,7 +33,8 @@ m4_include([lib-freetype.m4])
 m4_include([lib-hsdis.m4])
 m4_include([lib-std.m4])
 m4_include([lib-x11.m4])
-
+m4_include([lib-vulkan.m4])
+m4_include([lib-wayland.m4])
 m4_include([lib-tests.m4])
 
 ################################################################################
@@ -41,15 +42,20 @@ m4_include([lib-tests.m4])
 ################################################################################
 AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
 [
-  # Check if X11 is needed
+  # Check if X11, wayland and vulkan is needed
   if test "x$OPENJDK_TARGET_OS" = xwindows ||
      test "x$OPENJDK_TARGET_OS" = xmacosx ||
      test "x$ENABLE_HEADLESS_ONLY" = xtrue; then
     NEEDS_LIB_X11=false
+    NEEDS_LIB_WAYLAND=false
   else
     # All other instances need X11 for libawt.
     NEEDS_LIB_X11=true
+    NEEDS_LIB_WAYLAND=true
   fi
+
+  # Vulkan is not built by default
+  NEEDS_LIB_VULKAN=false
 
   # Check if fontconfig is needed
   if test "x$OPENJDK_TARGET_OS" = xwindows || test "x$OPENJDK_TARGET_OS" = xmacosx; then
@@ -120,7 +126,8 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBRARIES],
   LIB_SETUP_LIBFFI
   LIB_SETUP_MISC_LIBS
   LIB_SETUP_X11
-
+  LIB_SETUP_VULKAN
+  LIB_SETUP_WAYLAND
   LIB_TESTS_SETUP_GTEST
 
   # Math library

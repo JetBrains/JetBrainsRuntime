@@ -2519,6 +2519,11 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         return ((X11GraphicsConfig)gc).isTranslucencyCapable();
     }
 
+    @Override
+    public boolean popupMenusAreSpecial() {
+        return false;
+    }
+
     /**
      * Returns the value of "sun.awt.disablegrab" property. Default
      * value is {@code false}.

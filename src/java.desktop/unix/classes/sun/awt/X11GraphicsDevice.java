@@ -30,6 +30,7 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Window;
 import java.util.ArrayList;
@@ -118,12 +119,45 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return TYPE_RASTER_SCREEN;
     }
 
-    public int scaleUp(int x) {
-        return Region.clipRound(x * (double)getScaleFactor());
+    public int scaleUp(int i) {
+        return Region.clipRound(i * (double)getScaleFactor());
     }
 
-    public int scaleDown(int x) {
-        return Region.clipRound(x / (double)getScaleFactor());
+    public int scaleDown(int i) {
+        return Region.clipRound(i / (double)getScaleFactor());
+    }
+
+    public Point scaleUp(int x, int y) {
+        double ls = getScaleFactor(), lx = (x - bounds.x) * ls, ly = (y - bounds.y) * ls;
+        return new Point(
+                Region.clipRound(bounds.x + lx),
+                Region.clipRound(bounds.y + ly));
+    }
+
+    public Point scaleUpChecked(int x, int y) {
+        double ls = getScaleFactor(), lx = (x - bounds.x) * ls, ly = (y - bounds.y) * ls;
+        if (lx >= 0 && ly >= 0 && lx <= bounds.width && ly <= bounds.height) {
+            return new Point(
+                    Region.clipRound(bounds.x + lx),
+                    Region.clipRound(bounds.y + ly));
+        } else return null;
+    }
+
+    public Point scaleDown(int x, int y) {
+        double lx = x - bounds.x, ly = y - bounds.y, ls = getScaleFactor();
+        return new Point(
+                Region.clipRound(bounds.x + lx / ls),
+                Region.clipRound(bounds.y + ly / ls));
+    }
+
+    public Point scaleDownChecked(int x, int y) {
+        double lx = x - bounds.x, ly = y - bounds.y;
+        if (lx >= 0 && ly >= 0 && lx <= bounds.width && ly <= bounds.height) {
+            double ls = getScaleFactor();
+            return new Point(
+                    Region.clipRound(bounds.x + lx / ls),
+                    Region.clipRound(bounds.y + ly / ls));
+        } else return null;
     }
 
     private Rectangle getBoundsImpl() {

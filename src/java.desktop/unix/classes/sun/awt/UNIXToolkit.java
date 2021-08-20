@@ -51,9 +51,11 @@ import java.awt.image.WritableRaster;
 import java.io.BufferedReader;
 import java.io.IOException;
 
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.X11.XBaseWindow;
 import com.sun.java.swing.plaf.gtk.GTKConstants.TextDirection;
 import sun.java2d.opengl.OGLRenderQueue;
+import sun.util.logging.PlatformLogger;
 
 public abstract class UNIXToolkit extends SunToolkit
 {
@@ -63,6 +65,7 @@ public abstract class UNIXToolkit extends SunToolkit
     private static final int[] BAND_OFFSETS = { 0, 1, 2 };
     private static final int[] BAND_OFFSETS_ALPHA = { 0, 1, 2, 3 };
     private static final int DEFAULT_DATATRANSFER_TIMEOUT = 10000;
+
 
     // Allowed GTK versions
     public enum GtkVersions {
@@ -97,6 +100,12 @@ public abstract class UNIXToolkit extends SunToolkit
     private Boolean nativeGTKAvailable;
     private Boolean nativeGTKLoaded;
     private BufferedImage tmpImage = null;
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.UNIXToolkit");
+
+    private static void printError(String str) {
+        log.fine(str);
+    }
+
 
     public static int getDatatransferTimeout() {
         Integer dt = Integer.getInteger("sun.awt.datatransfer.timeout");
@@ -481,27 +490,29 @@ public abstract class UNIXToolkit extends SunToolkit
         return Boolean.getBoolean("jdk.gtk.verbose");
     }
 
-    private static volatile Boolean isOnWayland = null;
+    private static volatile Boolean isOnXWayland = null;
 
-    public static boolean isOnWayland() {
-        Boolean result = isOnWayland;
+    private static boolean isOnXWayland() {
+        Boolean result = isOnXWayland;
         if (result == null) {
             synchronized (GTK_LOCK) {
-                result = isOnWayland;
+                result = isOnXWayland;
                 if (result == null) {
                     final String display = System.getenv("WAYLAND_DISPLAY");
-                    isOnWayland
-                            = result
-                            = (display != null && !display.trim().isEmpty());
+                    isOnXWayland = result = (display != null && !display.trim().isEmpty());
                 }
             }
         }
         return result;
     }
 
+    public static boolean isOnWayland() {
+        return isOnXWayland;
+    }
+
     @Override
-    public boolean isRunningOnWayland() {
-        return isOnWayland();
+    public boolean isRunningOnXWayland() {
+        return isOnXWayland();
     }
 
     // We rely on the X11 input grab mechanism, but for the Wayland session
@@ -532,7 +543,7 @@ public abstract class UNIXToolkit extends SunToolkit
     }
 
     static {
-        if (isOnWayland()) {
+        if (isOnXWayland()) {
             waylandWindowFocusListener = new WindowAdapter() {
                 @Override
                 public void windowLostFocus(WindowEvent e) {
@@ -586,7 +597,7 @@ public abstract class UNIXToolkit extends SunToolkit
 
     @Override
     public void dismissPopupOnFocusLostIfNeeded(Window invoker) {
-        if (!isOnWayland() || invoker == null) {
+        if (!isRunningOnXWayland() || invoker == null) {
             return;
         }
 
@@ -595,7 +606,7 @@ public abstract class UNIXToolkit extends SunToolkit
 
     @Override
     public void dismissPopupOnFocusLostIfNeededCleanUp(Window invoker) {
-        if (!isOnWayland() || invoker == null) {
+        if (!isRunningOnXWayland() || invoker == null) {
             return;
         }
 

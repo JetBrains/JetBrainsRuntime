@@ -26,9 +26,18 @@
 #ifndef SPLASHSCREEN_IMPL_H
 #define SPLASHSCREEN_IMPL_H
 
+#if !defined(WITH_WIN32)
+#include "splashscreen_config_common.h"
+#include "systemScale.h"
+#include <pthread.h>
+#endif
+
 #include "splashscreen_config.h"
 #include "splashscreen_gfx.h"
 #include "jni.h"
+
+#include <string.h>
+#include <stdbool.h>
 
 JNIEXPORT int
 SplashLoadMemory(void *pdata, int size); /* requires preloading the file */
@@ -79,6 +88,7 @@ typedef struct Splash
     int width;                  /* in pixels */
     int height;                 /* in pixels */
     int frameCount;
+    bool initialized;
     SplashImage *frames;        /* dynamically allocated array of frame descriptors */
     unsigned time;              /* in msec, origin is not important */
     rgbquad_t *overlayData;     /* overlay image data, always rgbquads */
@@ -111,6 +121,14 @@ typedef struct Splash
     pthread_mutex_t lock;
     Cursor cursor;
     XWMHints* wmHints;
+#elif defined(WITH_WL)
+    int controlpipe[2];
+    Buffer *main_buffer;
+    Buffer *buffers;
+    wayland_state *wl_state;
+    int window_width;
+    int window_height;
+    pthread_mutex_t lock;
 #elif defined(WITH_MACOSX)
     pthread_mutex_t lock;
     int controlpipe[2];
@@ -151,7 +169,7 @@ void SplashNextFrame(Splash * splash);
 void SplashStart(Splash * splash);
 void SplashDone(Splash * splash);
 
-void SplashUpdateScreenData(Splash * splash);
+void SplashUpdateScreenData(Splash * splash, bool reuseData);
 
 void SplashCleanup(Splash * splash);
 

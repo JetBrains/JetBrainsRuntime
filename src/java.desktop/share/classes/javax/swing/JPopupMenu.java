@@ -149,6 +149,13 @@ public class JPopupMenu extends JComponent implements Accessible,MenuElement {
 
     private static boolean defaultLWPopupEnabled = true;
 
+    static {
+        Toolkit toolkit = Toolkit.getDefaultToolkit();
+        if (toolkit != null && "sun.awt.wl.WLToolkit".equals(toolkit.getClass().getName())) {
+            JPopupMenu.setDefaultLightWeightPopupEnabled(false);
+        }
+    }
+
     /**
      *  Sets the default value of the <code>lightWeightPopupEnabled</code>
      *  property.

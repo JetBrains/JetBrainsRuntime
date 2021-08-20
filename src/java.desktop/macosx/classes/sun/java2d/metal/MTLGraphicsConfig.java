@@ -303,6 +303,10 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         }
     }
 
+    public void flush(LWComponentPeer<?, ?> peer) {
+        MTLSurfaceData.flushBuffer(peer.getPlatformWindow().getLayerPtr());
+    }
+
     private static final class MTLBufferCaps extends BufferCapabilities {
         public MTLBufferCaps(boolean dblBuf) {
             super(imageCaps, imageCaps,

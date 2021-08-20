@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ package sun.java2d.marlin;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
+import jdk.internal.misc.InnocuousThread;
 import jdk.internal.ref.CleanerFactory;
 import sun.java2d.marlin.ArrayCacheConst.CacheStats;
 import static sun.java2d.marlin.MarlinUtils.logInfo;
@@ -356,21 +358,13 @@ public final class RendererStats implements MarlinConst {
             = new ConcurrentLinkedQueue<>();
 
         private RendererStatsHolder() {
-            final Thread hook = new Thread(
-                        MarlinUtils.getRootThreadGroup(),
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                dump();
-                            }
-                        },
-                        "MarlinStatsHook"
-                    );
+            final Thread hook = InnocuousThread.newSystemThread("MarlinStatsHook", () -> dump());
+            hook.setDaemon(true);
             hook.setContextClassLoader(null);
             Runtime.getRuntime().addShutdownHook(hook);
 
             if (USE_DUMP_THREAD) {
-                final Timer statTimer = new Timer("RendererStats");
+                final Timer statTimer = new Timer("RendererStats", true);
                 statTimer.scheduleAtFixedRate(new TimerTask() {
                     @Override
                     public void run() {

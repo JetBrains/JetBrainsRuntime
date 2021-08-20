@@ -1,0 +1,281 @@
+/*
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright 2026 JetBrains s.r.o.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+package sun.lwawt;
+
+import java.awt.Component;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Window;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+
+public class LWMouseEventDispatcher {
+    private final LWWindowPeerAPI windowPeer;
+
+    // check that the mouse is over the window
+    private volatile boolean isMouseOver;
+
+    // A peer where the last mouse event came to. Used by cursor manager to
+    // find the component under cursor
+    private static volatile LWComponentPeerAPI lastCommonMouseEventPeer;
+
+    // A peer where the last mouse event came to. Used to generate
+    // MOUSE_ENTERED/EXITED notifications
+    private volatile LWComponentPeerAPI lastMouseEventPeer;
+
+    // Peers where all dragged/released events should come to,
+    // depending on what mouse button is being dragged.
+    // The size of this array is set to fit all known buttons in existing implementations.
+    // If a new implementation with more buttons is added, the size should be increased.
+    protected static final LWComponentPeerAPI[] mouseDownTarget = new LWComponentPeerAPI[6];
+
+    // A bitmask that indicates what mouse buttons produce MOUSE_CLICKED events
+    // on MOUSE_RELEASE. Click events are only generated if there were no drag
+    // events between MOUSE_PRESSED and MOUSE_RELEASED for particular button
+    private static int mouseClickButtons = 0;
+
+    public LWMouseEventDispatcher(LWWindowPeerAPI windowPeer) {
+        this.windowPeer = windowPeer;
+    }
+
+    public static LWComponentPeerAPI getLastCommonMouseEventPeer() {
+        return lastCommonMouseEventPeer;
+    }
+
+    public void notifyMouseEvent(int id, long when, int button,
+                                 int x, int y, int absX, int absY,
+                                 int modifiers, int clickCount, boolean popupTrigger) {
+        // TODO: fill "bdata" member of AWTEvent
+        Rectangle r = windowPeer.getBounds();
+        // findPeerAt() expects parent coordinates
+        LWComponentPeerAPI targetPeer = windowPeer.findPeerAt(r.x + x, r.y + y);
+
+        if (id == MouseEvent.MOUSE_EXITED) {
+            isMouseOver = false;
+            if (lastMouseEventPeer != null) {
+                if (lastMouseEventPeer.isEnabled()) {
+                    Point lp = lastMouseEventPeer.windowToLocal(x, y,
+                            windowPeer);
+                    Component target = lastMouseEventPeer.getTarget();
+                    postMouseExitedEvent(target, when, modifiers, lp,
+                            absX, absY, clickCount, popupTrigger, button);
+                }
+
+                // Sometimes we may get MOUSE_EXITED after lastCommonMouseEventPeer is switched
+                // to a peer from another window. So we must first check if this peer is
+                // the same as lastWindowPeer
+                if (lastCommonMouseEventPeer != null && lastCommonMouseEventPeer.getWindowPeerOrSelf() == windowPeer) {
+                    lastCommonMouseEventPeer = null;
+                }
+                lastMouseEventPeer = null;
+            }
+        } else if (id == MouseEvent.MOUSE_ENTERED) {
+            isMouseOver = true;
+            if (targetPeer != null) {
+                if (targetPeer.isEnabled()) {
+                    Point lp = targetPeer.windowToLocal(x, y, windowPeer);
+                    Component target = targetPeer.getTarget();
+                    postMouseEnteredEvent(target, when, modifiers, lp,
+                            absX, absY, clickCount, popupTrigger, button);
+                }
+                lastCommonMouseEventPeer = targetPeer;
+                lastMouseEventPeer = targetPeer;
+            }
+        } else {
+            LWWindowPeerAPI topmostWindowPeer = ToolkitAPI.getDefaultToolkit().getWindowPeerUnderMouse();
+            // topmostWindowPeer == null condition is added for the backward compatibility.
+            // It can be removed when the getWindowPeerUnderMouse() method will be properly implemented.
+            if (topmostWindowPeer == windowPeer || topmostWindowPeer == null) {
+                generateMouseEnterExitEventsForComponents(when, button, x, y,
+                        absX, absY, modifiers, clickCount, popupTrigger,
+                        targetPeer);
+            } else {
+                LWComponentPeerAPI topmostTargetPeer = topmostWindowPeer.findPeerAt(r.x + x, r.y + y);
+                topmostWindowPeer.getMouseEventDispatcher().generateMouseEnterExitEventsForComponents(when, button, x, y,
+                        absX, absY, modifiers, clickCount, popupTrigger,
+                        topmostTargetPeer);
+            }
+
+            // TODO: fill "bdata" member of AWTEvent
+
+            int eventButtonMask = (button > 0) ? MouseEvent.getMaskForButton(button) : 0;
+            int otherButtonsPressed = modifiers & ~eventButtonMask;
+
+            // MOUSE_ENTERED/EXITED are generated for the components strictly under
+            // mouse even when dragging. That's why we first update lastMouseEventPeer
+            // based on initial targetPeer value and only then recalculate targetPeer
+            // for MOUSE_DRAGGED/RELEASED events
+            if (id == MouseEvent.MOUSE_PRESSED) {
+                onMousePressed();
+                if (otherButtonsPressed == 0) {
+                    mouseClickButtons = eventButtonMask;
+                } else {
+                    mouseClickButtons |= eventButtonMask;
+                }
+                storeMouseDownTarget(button, targetPeer);
+            } else if (id == MouseEvent.MOUSE_DRAGGED) {
+                // Cocoa dragged event has the information about which mouse
+                // button is being dragged. Use it to determine the peer that
+                // should receive the dragged event.
+                targetPeer = getMouseDownTarget(button);
+                mouseClickButtons &= ~modifiers;
+            } else if (id == MouseEvent.MOUSE_RELEASED) {
+                // TODO: currently, mouse released event goes to the same component
+                // that received corresponding mouse pressed event. For most cases,
+                // it's OK, however, we need to make sure that our behavior is consistent
+                // with 1.6 for cases where component in question have been
+                // hidden/removed in between of mouse pressed/released events.
+                targetPeer = getMouseDownTarget(button);
+
+                if ((modifiers & eventButtonMask) == 0) {
+                    storeMouseDownTarget(button, null);
+                }
+
+                // mouseClickButtons is updated below, after MOUSE_CLICK is sent
+            }
+
+            if (targetPeer == null) {
+                //TODO This can happen if this window is invisible. this is correct behavior in this case?
+                targetPeer = windowPeer;
+            }
+
+            Point lp = targetPeer.windowToLocal(x, y, windowPeer);
+            if (targetPeer.isEnabled()) {
+                MouseEvent event = new MouseEvent(targetPeer.getTarget(), id,
+                        when, modifiers, lp.x, lp.y,
+                        absX, absY, clickCount,
+                        popupTrigger, button);
+                windowPeer.postMouseEvent(event);
+            }
+
+            if (id == MouseEvent.MOUSE_RELEASED) {
+                if ((mouseClickButtons & eventButtonMask) != 0
+                        && targetPeer.isEnabled()) {
+                    windowPeer.postMouseEvent(new MouseEvent(targetPeer.getTarget(),
+                            MouseEvent.MOUSE_CLICKED,
+                            when, modifiers,
+                            lp.x, lp.y, absX, absY,
+                            clickCount, popupTrigger, button));
+                }
+                mouseClickButtons &= ~eventButtonMask;
+            }
+        }
+        ToolkitAPI.getDefaultToolkit().updateCursorLater(windowPeer.getTarget());
+    }
+
+    void generateMouseEnterExitEventsForComponents(long when,
+                                                   int button, int x, int y, int screenX, int screenY,
+                                                   int modifiers, int clickCount, boolean popupTrigger,
+                                                   final LWComponentPeerAPI targetPeer) {
+
+        if (!isMouseOver || targetPeer == lastMouseEventPeer) {
+            return;
+        }
+
+        // Generate Mouse Exit for components
+        if (lastMouseEventPeer != null && lastMouseEventPeer.isEnabled()) {
+            Point oldp = lastMouseEventPeer.windowToLocal(x, y, windowPeer);
+            Component target = lastMouseEventPeer.getTarget();
+            postMouseExitedEvent(target, when, modifiers, oldp, screenX, screenY,
+                    clickCount, popupTrigger, button);
+        }
+        lastCommonMouseEventPeer = targetPeer;
+        lastMouseEventPeer = targetPeer;
+
+        // Generate Mouse Enter for components
+        if (targetPeer != null && targetPeer.isEnabled()) {
+            Point newp = targetPeer.windowToLocal(x, y, windowPeer);
+            Component target = targetPeer.getTarget();
+            postMouseEnteredEvent(target, when, modifiers, newp, screenX, screenY, clickCount, popupTrigger, button);
+        }
+    }
+
+    private void postMouseEnteredEvent(Component target, long when, int modifiers,
+                                       Point loc, int xAbs, int yAbs,
+                                       int clickCount, boolean popupTrigger, int button) {
+
+        windowPeer.postMouseEvent(new MouseEvent(target,
+                MouseEvent.MOUSE_ENTERED,
+                when, modifiers,
+                loc.x, loc.y, xAbs, yAbs,
+                clickCount, popupTrigger, button));
+    }
+
+    private void postMouseExitedEvent(Component target, long when, int modifiers,
+                                      Point loc, int xAbs, int yAbs,
+                                      int clickCount, boolean popupTrigger, int button) {
+
+        windowPeer.postMouseEvent(new MouseEvent(target,
+                MouseEvent.MOUSE_EXITED,
+                when, modifiers,
+                loc.x, loc.y, xAbs, yAbs,
+                clickCount, popupTrigger, button));
+    }
+
+    public void notifyMouseWheelEvent(long when, int x, int y, int absX, int absY,
+                                      int modifiers, int clickCount, boolean popupTrigger,
+                                      int scrollType, int scrollAmount,
+                                      int wheelRotation, double preciseWheelRotation) {
+        // TODO: could we just use the last mouse event target here?
+        Rectangle r = windowPeer.getBounds();
+        // findPeerAt() expects parent coordinates
+        final LWComponentPeerAPI targetPeer = windowPeer.findPeerAt(r.x + x, r.y + y);
+        if (targetPeer == null || !targetPeer.isEnabled()) {
+            return;
+        }
+
+        Point lp = targetPeer.windowToLocal(x, y, windowPeer);
+        // TODO: fill "bdata" member of AWTEvent
+        windowPeer.postMouseEvent(new MouseWheelEvent(targetPeer.getTarget(),
+                MouseEvent.MOUSE_WHEEL,
+                when, modifiers,
+                lp.x, lp.y,
+                absX, absY,
+                clickCount, popupTrigger,
+                scrollType, scrollAmount,
+                wheelRotation, preciseWheelRotation));
+
+    }
+
+    /**
+     * Called when a mouse press event is being processed, before dispatching.
+     */
+    protected void onMousePressed() {
+    }
+
+    protected void storeMouseDownTarget(int button, LWComponentPeerAPI peer) {
+        assert button > 0 && button <= mouseDownTarget.length
+                : "Unexpected button index: " + button + ", expected values: 1-" + mouseDownTarget.length;
+        mouseDownTarget[button - 1] = peer;
+    }
+
+    protected LWComponentPeerAPI getMouseDownTarget(int button) {
+        assert button > 0 && button <= mouseDownTarget.length
+                : "Unexpected button index: " + button + ", expected values: 1-" + mouseDownTarget.length;
+        return mouseDownTarget[button - 1];
+    }
+}

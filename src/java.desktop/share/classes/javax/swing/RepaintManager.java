@@ -39,6 +39,7 @@ import sun.java2d.SunGraphicsEnvironment;
 
 import com.sun.java.swing.SwingUtilities3;
 import java.awt.geom.AffineTransform;
+
 import sun.java2d.SunGraphics2D;
 import sun.java2d.pipe.Region;
 import sun.swing.SwingAccessor;
@@ -700,28 +701,24 @@ public class RepaintManager
     }
 
     private void updateWindows(Map<Component,Rectangle> dirtyComponents) {
-        Toolkit toolkit = Toolkit.getDefaultToolkit();
-        if (!(toolkit instanceof SunToolkit &&
-              ((SunToolkit)toolkit).needUpdateWindow()))
-        {
-            return;
-        }
-
-        Set<Window> windows = new HashSet<Window>();
-        Set<Component> dirtyComps = dirtyComponents.keySet();
-        for (Component dirty : dirtyComps) {
-            Window window = dirty instanceof Window ?
-                (Window)dirty :
-                SwingUtilities.getWindowAncestor(dirty);
-            if (window != null &&
-                !window.isOpaque())
-            {
-                windows.add(window);
+        if (Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit &&
+            sunToolkit.needUpdateWindow()) {
+            Set<Window> windows = new HashSet<Window>();
+            Set<Component> dirtyComps = dirtyComponents.keySet();
+            for (Component dirty : dirtyComps) {
+                Window window = dirty instanceof Window ?
+                        (Window) dirty :
+                        SwingUtilities.getWindowAncestor(dirty);
+                if (window != null &&
+                    (!window.isOpaque() || sunToolkit.needUpdateWindowAfterPaint()))
+                {
+                    windows.add(window);
+                }
             }
-        }
 
-        for (Window window : windows) {
-            AWTAccessor.getWindowAccessor().updateWindow(window);
+            for (Window window : windows) {
+                AWTAccessor.getWindowAccessor().updateWindow(window);
+            }
         }
     }
 
@@ -1236,6 +1233,12 @@ public class RepaintManager
                                 x, y, w, h)) {
             g.setClip(x, y, w, h);
             paintingComponent.paintToOffscreen(g, x, y, w, h, x + w, y + h);
+        }
+        if (Toolkit.getDefaultToolkit() instanceof SunToolkit tk) {
+            final Window window = SwingUtilities.getWindowAncestor(paintingComponent);
+            if (window != null && tk.needUpdateWindowAfterPaint()) {
+                AWTAccessor.getWindowAccessor().updateWindow(window);
+            }
         }
     }
 

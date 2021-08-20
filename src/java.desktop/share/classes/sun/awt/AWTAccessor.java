@@ -409,7 +409,8 @@ public final class AWTAccessor {
                                            boolean temporary,
                                            boolean focusedWindowChangeAllowed,
                                            long time,
-                                           Cause cause);
+                                           Cause cause,
+                                           boolean highPriorityEvents);
         /**
          * Delivers focus for the lightweight descendant of the heavyweight
          * synchronously.
@@ -573,9 +574,19 @@ public final class AWTAccessor {
      */
     public interface CursorAccessor {
         /**
+         * Returns pData of the Cursor class according to scale or 0 otherwise
+         */
+        long getPData(Cursor cursor, int scale);
+
+        /**
          * Returns pData of the Cursor class
          */
         long getPData(Cursor cursor);
+
+        /**
+         * Sets pData to the Cursor class according to scale
+         */
+        void setPData(Cursor cursor, int scale, long pData);
 
         /**
          * Sets pData to the Cursor class

@@ -125,6 +125,12 @@ public class GTKLookAndFeel extends SynthLookAndFeel {
         return IS_3;
     }
 
+    private final static boolean isWayland;
+
+    static {
+        isWayland = "sun.awt.wl.WLToolkit".equals(Toolkit.getDefaultToolkit().getClass().getName());
+    }
+
     /**
      * Maps a swing constant to a GTK constant.
      */
@@ -284,12 +290,16 @@ public class GTKLookAndFeel extends SynthLookAndFeel {
     private void installPropertyChangeListeners() {
         if(!pclInstalled) {
             Toolkit kit = Toolkit.getDefaultToolkit();
-            WeakPCL pcl = new WeakPCL(this, kit, "gnome.Net/ThemeName");
-            kit.addPropertyChangeListener(pcl.getKey(), pcl);
-            pcl = new WeakPCL(this, kit, "gnome.Gtk/FontName");
-            kit.addPropertyChangeListener(pcl.getKey(), pcl);
-            pcl = new WeakPCL(this, kit, "gnome.Xft/DPI");
-            kit.addPropertyChangeListener(pcl.getKey(), pcl);
+            WeakPCL pcl;
+            if (!isWayland) {
+                // These properties are only available from the X server
+                pcl = new WeakPCL(this, kit, "gnome.Net/ThemeName");
+                kit.addPropertyChangeListener(pcl.getKey(), pcl);
+                pcl = new WeakPCL(this, kit, "gnome.Gtk/FontName");
+                kit.addPropertyChangeListener(pcl.getKey(), pcl);
+                pcl = new WeakPCL(this, kit, "gnome.Xft/DPI");
+                kit.addPropertyChangeListener(pcl.getKey(), pcl);
+            }
 
             flushUnreferenced();
             pclInstalled = true;

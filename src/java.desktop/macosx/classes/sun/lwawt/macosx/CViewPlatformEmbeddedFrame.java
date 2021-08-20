@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012–2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.awt.Window;
 import java.awt.event.FocusEvent.Cause;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWWindowPeer;
+import sun.lwawt.LWWindowPeerAPI;
 import sun.lwawt.PlatformWindow;
 
 public final class CViewPlatformEmbeddedFrame implements PlatformWindow {
@@ -45,13 +46,13 @@ public final class CViewPlatformEmbeddedFrame implements PlatformWindow {
     private CPlatformResponder responder;
 
     @Override // PlatformWindow
-    public void initialize(Window target, final LWWindowPeer peer, PlatformWindow owner) {
-        this.peer = peer;
+    public void initialize(Window target, final LWWindowPeerAPI peer, PlatformWindow owner) {
+        this.peer = (LWWindowPeer) peer;
         this.target = (CViewEmbeddedFrame) target;
-        responder = new CPlatformResponder(peer, false);
+        responder = new CPlatformResponder(this.peer, false);
 
         view = new CPlatformView();
-        view.initialize(peer, responder);
+        view.initialize(this.peer, responder);
 
         CWrapper.NSView.addSubview(this.target.getEmbedderHandle(), view.getAWTView());
         view.setAutoResizable(true);
@@ -201,5 +202,10 @@ public final class CViewPlatformEmbeddedFrame implements PlatformWindow {
     @Override
     public boolean isUnderMouse() {
         return view.isUnderMouse();
+    }
+
+    @Override
+    public long getWindowHandle() {
+        return 0;
     }
 }
