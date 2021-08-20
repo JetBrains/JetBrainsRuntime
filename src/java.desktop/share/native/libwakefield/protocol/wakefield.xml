@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<protocol name="wakefield">
+    <copyright>
+         Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+         Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
+         DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+
+         This code is free software; you can redistribute it and/or modify it
+         under the terms of the GNU General Public License version 2 only, as
+         published by the Free Software Foundation.
+
+         This code is distributed in the hope that it will be useful, but WITHOUT
+         ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+         FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+         version 2 for more details (a copy is included in the LICENSE file that
+         accompanied this code).
+
+         You should have received a copy of the GNU General Public License version
+         2 along with this work; if not, write to the Free Software Foundation,
+         Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+
+         Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+         or visit www.oracle.com if you need additional information or have any
+         questions.
+    </copyright>
+
+    <interface name="wakefield" version="1">
+        <description summary="provides capabilities necessary to for java.awt.Robot and such"></description>
+
+        <request name="destroy" type="destructor">
+        </request>
+
+        <request name="move_surface">
+            <description summary="facilitates implementation of Frame.setLocation()">
+                This instructs the window manager to position the given wl_surface
+                at the given absolute coordinates. The subsequent get_surface_location
+                request will return these coordinates unless the surface was moved by
+                a third party.
+            </description>
+            <arg name="surface" type="object" interface="wl_surface"/>
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+        </request>
+
+        <request name="get_surface_location">
+            <description summary="facilitates implementation of Frame.getLocation()">
+                This requests a surface_location event for the given surface.
+            </description>
+            <arg name="surface" type="object" interface="wl_surface"/>
+        </request>
+
+        <event name="surface_location">
+            <description summary="facilitates implementation of Frame.getLocation()">
+                This event reveals the absolute coordinates of the surface if error_code is zero.
+                If error_code is non-zero, (x, y) are undefined.
+                The surface argument always correspond to that of the get_surface_location request.
+            </description>
+            <arg name="surface" type="object" interface="wl_surface"/>
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+            <arg name="error_code" type="uint" enum="error"/>
+        </event>
+
+        <request name="get_pixel_color">
+            <description summary="facilitates implementation of Robot.getPixelColor()">
+                This requests a pixel_color event at the given absolute coordinates.
+            </description>
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+        </request>
+
+        <event name="pixel_color">
+            <description summary="facilitates implementation of Robot.getPixelColor()">
+                This event shows the color (24-bit, format r8g8b8) of the pixel with the given
+                absolute coordinates.
+                The (x, y) arguments correspond to that of the get_pixel_color request.
+                If error_code is non-zero, the rgb argument is undefined and the error_code argument
+                contains a code from the error enum.
+            </description>
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+            <arg name="rgb" type="uint"/>
+            <arg name="error_code" type="uint" enum="error"/>
+        </event>
+
+        <enum name="error">
+            <entry name="no_error" value="0" summary="error code 0 reserved for the absence of error"/>
+            <entry name="invalid_coordinates" value="1" summary="supplied absolute coordinates point
+             outside of any output"/>
+            <entry name="out_of_memory" value="2" summary="the request could not be fulfilled due to memory allocation error"/>
+            <entry name="internal" value="3" summary="a generic error code for internal errors"/>
+            <entry name="format" value="4" summary="(temporary?) color cannot be converted to RGB format"/>
+        </enum>
+
+        <request name="capture_create">
+            <arg name="buffer" type="object" interface="wl_buffer" summary="shall be an instance by the wl_shm factory"/>
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+            <!--
+            <arg name="capture_pointer" type="int" summary="0 to exclude the mouse pointer surface from the capture"/>
+            -->
+        </request>
+
+        <event name="capture_ready">
+            <arg name="buffer" type="object" interface="wl_buffer"/>
+            <arg name="error_code" type="uint" enum="error"/>
+        </event>
+    </interface>
+
+</protocol>
