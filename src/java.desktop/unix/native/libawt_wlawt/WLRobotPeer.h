@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2003, 2005, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,31 +24,8 @@
  * questions.
  */
 
-#ifndef BlittingIncludesDefined
-#define BlittingIncludesDefined
-
-#include "jni.h"
-#include "GlyphImageRef.h"
-#include "SurfaceData.h"
-
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-  int numGlyphs;
-  ImageRef *glyphs;
-} GlyphBlitVector;
-
-JNIEXPORT jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds);
-JNIEXPORT GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
-                                           jint fromGlyph, jint toGlyph);
-JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
-                                              jint fromGlyph, jint toGlyph);
-
-#ifdef  __cplusplus
-}
-#endif
-
-
+#ifdef WAKEFIELD_ROBOT
+extern struct wakefield         *wakefield;
+extern struct wakefield_listener wakefield_listener;
+extern struct wl_event_queue    *robot_queue;
 #endif
