@@ -92,6 +92,7 @@ typedef struct FontManagerNativeIDs {
    but we need access method to use it from separate rasterizer lib */
 extern FontManagerNativeIDs sunFontIDs;
 JNIEXPORT FontManagerNativeIDs getSunFontIDs(JNIEnv* env);
+JNIEXPORT const FontManagerNativeIDs* getSunFontIDsPtr(JNIEnv* env);
 
 #ifdef  __cplusplus
 }
