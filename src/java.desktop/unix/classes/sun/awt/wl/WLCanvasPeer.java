@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2003, 2005, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +23,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package sun.awt.wl;
 
-#ifndef BlittingIncludesDefined
-#define BlittingIncludesDefined
+import java.awt.Component;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
+import java.awt.peer.CanvasPeer;
 
-#include "jni.h"
-#include "GlyphImageRef.h"
-#include "SurfaceData.h"
+class WLCanvasPeer extends WLComponentPeer implements CanvasPeer {
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
+    WLCanvasPeer(Component target) {
+        super(target);
+    }
 
-typedef struct {
-  int numGlyphs;
-  ImageRef *glyphs;
-} GlyphBlitVector;
 
-JNIEXPORT jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds);
-JNIEXPORT GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
-                                           jint fromGlyph, jint toGlyph);
-JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
-                                              jint fromGlyph, jint toGlyph);
-
-#ifdef  __cplusplus
+    public GraphicsConfiguration getAppropriateGraphicsConfiguration(
+                                    GraphicsConfiguration gc)
+    {
+        return gc;
+    }
 }
-#endif
-
-
-#endif
