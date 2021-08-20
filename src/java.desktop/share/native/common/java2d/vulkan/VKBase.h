@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2005, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,31 +23,32 @@
  * questions.
  */
 
-#ifndef BlittingIncludesDefined
-#define BlittingIncludesDefined
+#ifndef VKBase_h_Included
+#define VKBase_h_Included
+#ifdef __cplusplus
 
-#include "jni.h"
-#include "GlyphImageRef.h"
-#include "SurfaceData.h"
 
-#ifdef  __cplusplus
+#define VK_NO_PROTOTYPES
+#define VULKAN_HPP_NO_DEFAULT_DISPATCHER
+#include <vulkan/vulkan_raii.hpp>
+
+extern vk::raii::Instance vkInstance;
+
+class PhysicalDevice;
+class Device : public vk::raii::Device {
+public:
+    Device(const PhysicalDevice& physicalDevice);
+};
+
 extern "C" {
-#endif
+#endif //__cplusplus
 
-typedef struct {
-  int numGlyphs;
-  ImageRef *glyphs;
-} GlyphBlitVector;
+typedef unsigned char jboolean;
 
-JNIEXPORT jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds);
-JNIEXPORT GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
-                                           jint fromGlyph, jint toGlyph);
-JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
-                                              jint fromGlyph, jint toGlyph);
+jboolean VK_Init();
 
-#ifdef  __cplusplus
+
+#ifdef __cplusplus
 }
-#endif
-
-
-#endif
+#endif //__cplusplus
+#endif //VKBase_h_Included
