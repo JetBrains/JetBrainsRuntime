@@ -258,11 +258,6 @@ AWT_ASSERT_APPKIT_THREAD;
     [ctr addObserver:clz selector:@selector(_appDidHide) name:NSApplicationDidHideNotification object:nil];
     [ctr addObserver:clz selector:@selector(_appDidUnhide) name:NSApplicationDidUnhideNotification object:nil];
 
-    [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:[AWTWindow class]
-                                                           selector:@selector(activeSpaceDidChange)
-                                                               name:NSWorkspaceActiveSpaceDidChangeNotification
-                                                             object:nil];
-
     return self;
 }
 
