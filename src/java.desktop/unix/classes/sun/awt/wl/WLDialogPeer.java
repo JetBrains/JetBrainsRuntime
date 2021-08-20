@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2005, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,50 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package sun.awt.wl;
 
-#ifndef BlittingIncludesDefined
-#define BlittingIncludesDefined
+import java.awt.*;
+import java.awt.peer.DialogPeer;
+import java.util.List;
 
-#include "jni.h"
-#include "GlyphImageRef.h"
-#include "SurfaceData.h"
+public class WLDialogPeer extends WLDecoratedPeer implements DialogPeer {
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
+    public WLDialogPeer(Dialog target) {
+        super(target, target.isUndecorated(), false, false);
+    }
 
-typedef struct {
-  int numGlyphs;
-  ImageRef *glyphs;
-} GlyphBlitVector;
+    @Override
+    public void setVisible(boolean vis) {
+        super.setVisible(vis);
+    }
+    
+    @Override
+    public void blockWindows(List<Window> windows) {
 
-JNIEXPORT jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds);
-JNIEXPORT GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
-                                           jint fromGlyph, jint toGlyph);
-JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
-                                              jint fromGlyph, jint toGlyph);
+    }
 
-#ifdef  __cplusplus
+    @Override
+    public boolean isResizable() {
+        return ((Dialog)target).isResizable();
+    }
+
+    @Override
+    public String getTitle() {
+        return ((Dialog)target).getTitle();
+    }
+
+    @Override
+    public void setState(int newState) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int getState() {
+        return Frame.NORMAL;
+    }
+
+    @Override
+    public void setExtendedState(int newState) {
+        throw new UnsupportedOperationException();
+    }
 }
-#endif
-
-
-#endif
