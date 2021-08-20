@@ -33,6 +33,7 @@ import java.awt.AWTException;
 import java.awt.event.InputMethodEvent;
 import java.awt.font.TextAttribute;
 import java.awt.font.TextHitInfo;
+import java.awt.Component;
 import java.awt.peer.ComponentPeer;
 import java.text.AttributedString;
 import java.util.Map;
@@ -56,6 +57,11 @@ public abstract class X11InputMethod extends X11InputMethodBase {
     public X11InputMethod() throws AWTException {
         super();
     }
+
+    /**
+     * fix fcitx position
+     */
+    public abstract void setXICTextCursorOffXY(ComponentPeer peer);
 
     /**
      * Reset the composition state to the current composition state.
@@ -379,6 +385,30 @@ public abstract class X11InputMethod extends X11InputMethodBase {
                 log.warning("can't recreate XIC for " + im.toString());
         }
     }
+        /**
+     * fix fcitx position
+     */
+    public synchronized void setXICTextCursorPosition(Component component){
+        if (component == null) {
+            return;
+        }
+        if (isActive) {
+            // deactivate/activate are being suppressed during a focus change -
+            // this may happen when an input method window is made visible
+            // boolean ac = haveActiveClient(); already set true in awt_InputMethod.c
+            setXICTextCursorOffXY(getPeer(awtFocussedComponent));
+
+        }
+        awtFocussedComponent = component;    
+        // ComponentPeer lastXICFocussedComponentPeer = null;
+        // if (lastXICFocussedComponent != null) {
+        //     lastXICFocussedComponentPeer = getPeer(lastXICFocussedComponent);
+        //  }
+        ComponentPeer awtFocussedComponentPeer = getPeer(awtFocussedComponent);
+        if(awtFocussedComponent !=null )
+            setXICTextCursorOffXY(awtFocussedComponentPeer);
+    }
+
 
     protected abstract boolean recreateXIC(int ctxid);
     protected abstract int releaseXIC();

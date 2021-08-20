@@ -28,6 +28,7 @@ package sun.awt.im;
 import java.awt.AWTEvent;
 import java.awt.AWTKeyStroke;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.EventQueue;
 import java.awt.Frame;
 import java.awt.Rectangle;
@@ -39,6 +40,7 @@ import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.InputMethodEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.im.InputMethodRequests;
@@ -54,6 +56,7 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 import sun.util.logging.PlatformLogger;
 import sun.awt.SunToolkit;
+import sun.awt.X11InputMethod;
 
 /**
  * This InputContext class contains parts of the implementation of
@@ -248,13 +251,26 @@ public class InputContext extends java.awt.im.InputContext
         case FocusEvent.FOCUS_LOST:
             focusLost((Component) event.getSource(), ((FocusEvent) event).isTemporary());
             break;
+            
+        case MouseEvent.MOUSE_RELEASED:
+            if(checkTextCursor((Component)event.getSource())) {
+                // focusGained((Component) event.getSource());
+                transCaretPositionToXIM((Component)event.getSource());
+                break;
+            }
 
         case KeyEvent.KEY_PRESSED:
-            if (checkInputMethodSelectionKey((KeyEvent)event)) {
+            if (event instanceof KeyEvent && checkInputMethodSelectionKey((KeyEvent)event)) {
                 // pop up the input method selection menu
                 InputMethodManager.getInstance().notifyChangeRequestByHotKey((Component)event.getSource());
                 break;
             }
+
+        case KeyEvent.KEY_RELEASED:   
+             if (event instanceof KeyEvent && checkDirectionKey((KeyEvent)event)) {
+                 transCaretPositionToXIM((Component) event.getSource());
+                 break;
+             }
 
             // fall through
 
@@ -359,6 +375,66 @@ public class InputContext extends java.awt.im.InputContext
             }
         }
     }
+
+    /**
+      * fix fcitx position
+      */
+     private void transCaretPositionToXIM(Component source) {
+         synchronized (source.getTreeLock()) {
+             synchronized (this) {
+                 if ("sun.awt.im.CompositionArea".equals(source.getClass().getName())) {
+                     // no special handling for this one
+                 } else if (getComponentWindow(source) instanceof InputMethodWindow) {
+                     // no special handling for this one either
+                 } else {
+                     if (!source.isDisplayable()) {
+                         // Component is being disposed
+                         return;
+                     }
+                     currentClientComponent = source;
+                 }
+                 awtFocussedComponent = source;
+                 if (inputMethod != null && inputMethod instanceof X11InputMethod) {
+                     ((X11InputMethod)inputMethod).setXICTextCursorPosition(source);
+                 }
+                 InputMethodContext inputContext = ((InputMethodContext)this);
+                 if (!inputContext.isCompositionAreaVisible()) {
+                       InputMethodRequests req = source.getInputMethodRequests();
+                       if (req != null && inputContext.useBelowTheSpotInput()) {
+                           inputContext.setCompositionAreaUndecorated(true);
+                       } else {
+                           inputContext.setCompositionAreaUndecorated(false);
+                       }
+                 }
+                 // restores the composition area if it was set to invisible
+                 // when focus got lost
+                 if (compositionAreaHidden == true) {
+                     ((InputMethodContext)this).setCompositionAreaVisible(true);
+                     compositionAreaHidden = false;
+                 }
+                 
+             }
+         }
+     }
+     /**
+      * fix fcitx position
+      */
+     private boolean checkDirectionKey(KeyEvent event) {
+         // if (event.getKeyCode() >= 37 && event.getKeyCode() <=40) {
+         //     return true;
+         // } else {
+         //     return false;
+         // }
+         return true;
+     }
+     /**
+      * fix fcitx position
+      */
+     private boolean checkTextCursor(Component source) {
+         if(source.getCursor().getType()==Cursor.TEXT_CURSOR)
+             return true;
+         return false;
+     }
 
     /**
      * Activates the current input method of this input context, and grabs

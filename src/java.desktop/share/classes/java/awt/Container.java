@@ -678,6 +678,10 @@ public class Container extends Component {
         }
     }
 
+    public ComponentPeer getPeer(){
+        return peer;
+    }
+    
     /**
      * Detects whether or not remove from current parent and adding to new parent requires call of
      * removeNotify on the component. Since removeNotify destroys native window this might (not)

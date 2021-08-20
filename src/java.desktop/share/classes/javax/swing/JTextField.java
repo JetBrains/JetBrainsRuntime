@@ -410,6 +410,10 @@ public class JTextField extends JTextComponent implements SwingConstants {
         return columnWidth;
     }
 
+    public FontMetrics getFontMetrics() {
+         return getFontMetrics(getFont());
+    }
+
     /**
      * Returns the preferred size <code>Dimensions</code> needed for this
      * <code>TextField</code>.  If a non-zero number of columns has been

@@ -436,13 +436,17 @@ setXICFocus(XIC ic, unsigned short req)
  * Sets the focus window to the given XIC.
  */
 static void
-setXICWindowFocus(XIC ic, Window w)
+setXICWindowFocus(XIC ic, Window w, int arr[2])
 {
     if (ic == NULL) {
         (void)fprintf(stderr, "Couldn't find X Input Context\n");
         return;
     }
-    (void) XSetICValues(ic, XNFocusWindow, w, NULL);
+    XPoint spot;
+    spot.x = arr[0];
+    spot.y = arr[1];
+    XVaNestedList xy = (XVaNestedList)XVaCreateNestedList(0, XNSpotLocation, &spot, NULL);
+    (void) XSetICValues(ic, XNFocusWindow, w, XNPreeditAttributes, xy, NULL);
 }
 
 /*
@@ -1468,7 +1472,8 @@ Java_sun_awt_X11_XInputMethod_setXICFocusNative(JNIEnv *env,
                                                 jobject this,
                                                 jlong w,
                                                 jboolean req,
-                                                jboolean active)
+                                                jboolean active,
+                                                jintArray arr)
 {
     X11InputMethodData *pX11IMData;
     AWT_LOCK();
@@ -1489,7 +1494,17 @@ Java_sun_awt_X11_XInputMethod_setXICFocusNative(JNIEnv *env,
          * On Solaris2.6, setXICWindowFocus() has to be invoked
          * before setting focus.
          */
-        setXICWindowFocus(pX11IMData->current_ic, w);
+        int positions[2] = {100,50};
+        if (arr)
+        {
+            int length = (*env)->GetArrayLength(env,arr);
+            int *addArr = (*env)->GetIntArrayElements(env, arr, NULL);      
+            for (int i= 0; i < length; ++i) {
+                positions[i] = *(addArr + i);
+            }
+            (*env)->ReleaseIntArrayElements(env, arr, addArr, 0);
+        }
+        setXICWindowFocus(pX11IMData->current_ic, w, positions);
         setXICFocus(pX11IMData->current_ic, req);
         currentX11InputMethodInstance = pX11IMData->x11inputmethod;
         currentFocusWindow =  w;

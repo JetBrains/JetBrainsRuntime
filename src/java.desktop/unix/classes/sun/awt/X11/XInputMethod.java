@@ -28,9 +28,20 @@ package sun.awt.X11;
 import java.awt.AWTException;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.geom.Point2D;
+import java.awt.FontMetrics;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.im.spi.InputMethodContext;
 import java.awt.peer.ComponentPeer;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.text.JTextComponent;
 
 import sun.awt.AWTAccessor;
 import sun.awt.X11InputMethod;
@@ -86,16 +97,94 @@ public class XInputMethod extends X11InputMethod {
 
     private static volatile long xicFocus = 0;
 
+    public void setXICTextCursorOffXY(ComponentPeer peer) {
+    
+        if (peer == null) {
+            return;
+        }
+        xicFocus = ((XComponentPeer)peer).getContentWindow();
+        int[] result = getOffXYRelateToFrame(peer ,true);
+        setXICFocusNative(((XComponentPeer)peer).getContentWindow(),true,true,result);
+        // setXICTextCursorOffXYNative(((XComponentPeer)peer).getContentWindow(),result);
+    }
+
     protected void setXICFocus(ComponentPeer peer,
                                     boolean value, boolean active) {
         if (peer == null) {
             return;
         }
         xicFocus = ((XComponentPeer)peer).getContentWindow();
+        int[] result = getOffXYRelateToFrame(peer ,value);
         setXICFocusNative(((XComponentPeer)peer).getContentWindow(),
                           value,
-                          active);
+                          active,
+                          result);
     }
+
+    protected int[] getOffXYRelateToFrame(ComponentPeer peer, boolean value)  {
+         int[] result = null;
+         if(value && this.awtFocussedComponent!=null && this.awtFocussedComponent instanceof JTextComponent){
+             try {
+                 Method method_getFontMetrics = null;
+                 Method method_getEditor = null;
+                 FontMetrics font_metrics = null;
+                 Object editor = null;
+                 int font_height = 0;
+                 int caret_x = 0;
+                 int caret_y = 0;
+                 if(this.awtFocussedComponent instanceof JTextArea || this.awtFocussedComponent instanceof JTextField){
+                     method_getFontMetrics = this.awtFocussedComponent.getClass().getMethod("getFontMetrics");
+                     font_metrics = (FontMetrics)method_getFontMetrics.invoke(this.awtFocussedComponent);
+                     font_height = font_metrics.getHeight();
+                     JTextComponent jc = (JTextComponent)this.awtFocussedComponent;
+                     if( jc.getCaret().getMagicCaretPosition() != null) {
+                         caret_x = jc.getCaret().getMagicCaretPosition().x;
+                         caret_y = jc.getCaret().getMagicCaretPosition().y;
+                     }
+                 }else {
+                     method_getEditor = this.awtFocussedComponent.getClass().getMethod("getEditor");
+ 
+                     editor = method_getEditor.invoke(this.awtFocussedComponent);
+         
+                     method_getFontMetrics = editor.getClass().getMethod("getFontMetrics",int.class);
+                     font_metrics = (FontMetrics)method_getFontMetrics.invoke(editor, 0);
+                     font_height = font_metrics.getHeight();
+                     Method getCaretLocations = editor.getClass().getMethod("getCaretLocations", boolean.class);
+                     Object[] locations = (Object[])getCaretLocations.invoke(editor, false);
+                     Field point = locations[0].getClass().getField("myPoint");
+                     Point2D.Double pd = (Point2D.Double)point.get(locations[0]);
+                     caret_x = (int)pd.x;
+                     caret_y = (int)pd.y;
+                 }
+                 
+ 
+                 Method method_getLocationOnScreen = this.awtFocussedComponent.getClass().getMethod("getLocationOnScreen");
+                 
+                 Point point = (Point)method_getLocationOnScreen.invoke(this.awtFocussedComponent);
+ 
+                 Method method_getNativeContainer = Component.class.getDeclaredMethod("getNativeContainer");
+                 method_getNativeContainer.setAccessible(true);
+                 Container c = (Container)method_getNativeContainer.invoke(awtFocussedComponent);
+                 if(c!=null)
+                     result = new int[]{point.x - c.getPeer().getLocationOnScreen().x + caret_x, point.y - c.getPeer().getLocationOnScreen().y + font_height + caret_y};
+ 
+                 return result;
+             } catch (IllegalAccessException e) {
+                 e.printStackTrace();
+             } catch (IllegalArgumentException e) {
+                 e.printStackTrace();
+             } catch (InvocationTargetException e) {
+                 e.printStackTrace();
+             } catch (NoSuchMethodException e) {
+                 e.printStackTrace();
+             } catch (SecurityException e) {
+                 e.printStackTrace();
+             } catch(NoSuchFieldException e) {
+                 e.printStackTrace();
+             }
+         }
+         return result;
+     }
 
     public static long getXICFocus() {
         return xicFocus;
@@ -164,6 +253,6 @@ public class XInputMethod extends X11InputMethod {
     private native boolean recreateXICNative(long window, long px11data, int ctxid);
     private native int releaseXICNative(long px11data);
     private native void setXICFocusNative(long window,
-                                    boolean value, boolean active);
+                                    boolean value, boolean active, int[] offxy);
     private native void adjustStatusWindow(long window);
 }

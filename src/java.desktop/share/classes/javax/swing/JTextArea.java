@@ -548,6 +548,10 @@ public class JTextArea extends JTextComponent {
         return rowHeight;
     }
 
+    public public FontMetrics getFontMetrics() {
+        return getFontMetrics(getFont());
+    }
+
     /**
      * Returns the number of columns in the TextArea.
      *
