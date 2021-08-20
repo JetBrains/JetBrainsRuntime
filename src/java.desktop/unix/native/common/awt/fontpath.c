@@ -92,7 +92,7 @@ typedef struct {
     int  num;
 } fDirRecord, *fDirRecordPtr;
 
-#ifndef HEADLESS
+#ifdef XAWT
 
 /*
  * Returns True if display is local, False of it's remote.
@@ -189,7 +189,7 @@ static char **getX11FontPath ()
 }
 
 
-#endif /* !HEADLESS */
+#endif /* XAWT */
 
 #if defined(__linux__)
 /* from awt_LoadLibrary.c */
@@ -329,7 +329,7 @@ static char *getPlatformFontPathChars(JNIEnv *env, jboolean noType1, jboolean is
      * this code could throw an exception and the fontpath would fail to
      * be initialised.
      */
-#ifndef HEADLESS
+#ifdef XAWT
     if (isX11) { // The following only works in an x11 environment.
 #if defined(__linux__)
     /* There's no headless build on linux ... */
@@ -351,7 +351,7 @@ static char *getPlatformFontPathChars(JNIEnv *env, jboolean noType1, jboolean is
     }
 #endif
     }
-#endif /* !HEADLESS */
+#endif /* XAWT */
     path = mergePaths(fcdirs, x11dirs, knowndirs, noType1);
     if (fcdirs != NULL) {
         char **p = fcdirs;
