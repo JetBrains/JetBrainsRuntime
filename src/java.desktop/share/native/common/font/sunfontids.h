@@ -89,6 +89,8 @@ typedef struct FontManagerNativeIDs {
 } FontManagerNativeIDs;
 
 extern FontManagerNativeIDs sunFontIDs;
+JNIEXPORT FontManagerNativeIDs getSunFontIDs(JNIEnv* env);
+JNIEXPORT const FontManagerNativeIDs* getSunFontIDsPtr(JNIEnv* env);
 
 #ifdef  __cplusplus
 }
