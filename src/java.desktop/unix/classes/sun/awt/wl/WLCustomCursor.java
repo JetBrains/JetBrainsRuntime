@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2005, Oracle and/or its affiliates. All rights reserved.
+ * Copyright 2022 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,31 +23,27 @@
  * questions.
  */
 
-#ifndef BlittingIncludesDefined
-#define BlittingIncludesDefined
+package sun.awt.wl;
 
-#include "jni.h"
-#include "GlyphImageRef.h"
-#include "SurfaceData.h"
+import sun.awt.AWTAccessor;
+import sun.awt.CustomCursor;
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
+import java.awt.*;
 
-typedef struct {
-  int numGlyphs;
-  ImageRef *glyphs;
-} GlyphBlitVector;
+@SuppressWarnings("serial") // JDK-implementation class
+final class WLCustomCursor extends CustomCursor {
+    WLCustomCursor(Image cursor, Point hotSpot, String name) throws IndexOutOfBoundsException {
+        super(cursor, hotSpot, name);
+    }
 
-JNIEXPORT jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds);
-JNIEXPORT GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
-                                           jint fromGlyph, jint toGlyph);
-JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
-                                              jint fromGlyph, jint toGlyph);
+    @Override
+    protected void createNativeCursor(Image im, int[] pixels, int width, int height, int xHotSpot, int yHotSpot) {
+        long pData = nativeCreateCustomCursor(pixels, width, height, xHotSpot, yHotSpot);
+        if (pData == 0) {
+            pData = -1; // mark as unavailable
+        }
+        AWTAccessor.getCursorAccessor().setPData(this, pData);
+    }
 
-#ifdef  __cplusplus
+    private static native long nativeCreateCustomCursor(int[] pixels, int width, int height, int xHotSpot, int yHotSpot);
 }
-#endif
-
-
-#endif
