@@ -28,15 +28,46 @@ package sun.awt;
 import java.io.File;
 import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
+import java.lang.annotation.Native;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import sun.awt.wl.WLGraphicsEnvironment;
 
 public final class PlatformGraphicsInfo {
+    @Native
+    public static final int TK_UNDEF   = 0;
+    @Native
+    public static final int TK_X11     = 1;
+    @Native
+    public static final int TK_WAYLAND = 2;
+
+    private static int toolkitID = TK_UNDEF;
+
+    private static int getToolkitID() {
+        if (toolkitID == TK_UNDEF) {
+            String name = System.getProperty("awt.toolkit.name");
+            if ("XToolkit".equals(name)) {
+                toolkitID = TK_X11;
+            } if ("WLToolkit".equals(name)) {
+                toolkitID = TK_WAYLAND;
+            } else {
+                toolkitID = TK_X11;
+            }
+        }
+        return toolkitID;
+    }
 
     public static GraphicsEnvironment createGE() {
-        return new X11GraphicsEnvironment();
+        return (getToolkitID() == TK_X11)?
+                new X11GraphicsEnvironment() :
+                WLGraphicsEnvironment.getSingleInstance();
     }
 
     public static Toolkit createToolkit() {
-        return new sun.awt.X11.XToolkit();
+        return  (getToolkitID() == TK_X11)?
+            new sun.awt.X11.XToolkit() :
+            new sun.awt.wl.WLToolkit();
     }
 
     /**
@@ -46,8 +77,25 @@ public final class PlatformGraphicsInfo {
       * a value for the java.awt.headless system property.
       */
     public static boolean getDefaultHeadlessProperty() {
-        final String display = System.getenv("DISPLAY");
-        boolean noDisplay = (display == null || display.trim().isEmpty());
+        boolean noDisplay = true;
+        if (getToolkitID() == TK_X11) {
+            final String display = System.getenv("DISPLAY");
+            noDisplay = display == null || display.trim().isEmpty();
+        } else {
+            // This code needs to be in sync with what wl_display_connect() does
+            // in WLToolkit.initIDs().
+            final String wl_display = System.getenv("WAYLAND_DISPLAY");
+            if (wl_display != null && !wl_display.trim().isEmpty()) {
+                noDisplay = false; // not headless
+            } else {
+                // Check $XDG_RUNTIME_DIR/wayland-0.
+                final String socketDir = System.getenv("XDG_RUNTIME_DIR");
+                if (socketDir != null && !socketDir.trim().isEmpty()) {
+                    final Path defaultSocketPath = Path.of(socketDir).resolve("wayland-0");
+                    noDisplay = !Files.isReadable(defaultSocketPath);
+                }
+            }
+        }
 
         if (noDisplay) {
             return true;
