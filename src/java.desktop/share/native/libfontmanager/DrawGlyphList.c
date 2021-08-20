@@ -72,7 +72,7 @@ static UInt8* getSubpixelGlyphImage(GlyphInfo *glyph, float x, float y) {
 #define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
  if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f;
 
-GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
+JNIEXPORT GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
                                  jint fromGlyph, jint toGlyph) {
 
     int g;
@@ -173,7 +173,7 @@ GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
     return gbv;
 }
 
-jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds) {
+JNIEXPORT jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds) {
     int index;
     jint dx1, dy1, dx2, dy2;
     ImageRef glyphImage;
@@ -520,8 +520,8 @@ Java_sun_java2d_loops_DrawGlyphListLCD_DrawGlyphListLCD
  *  rendered fractional metrics, there's typically more space between the
  *  glyphs. Perhaps disabling X-axis grid-fitting will help with that.
  */
-GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
-                                    jint fromGlyph, jint toGlyph) {
+JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
+                                              jint fromGlyph, jint toGlyph) {
 
     int g;
     size_t bytesNeeded;
