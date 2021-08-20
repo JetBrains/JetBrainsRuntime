@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2005, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,31 +23,13 @@
  * questions.
  */
 
-#ifndef BlittingIncludesDefined
-#define BlittingIncludesDefined
+// These are stubs in case we were built with Vulkan disabled.
+#ifndef VULKAN_ENABLED
 
-#include "jni.h"
-#include "GlyphImageRef.h"
-#include "SurfaceData.h"
+typedef unsigned char jboolean;
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-  int numGlyphs;
-  ImageRef *glyphs;
-} GlyphBlitVector;
-
-JNIEXPORT jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds);
-JNIEXPORT GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
-                                           jint fromGlyph, jint toGlyph);
-JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
-                                              jint fromGlyph, jint toGlyph);
-
-#ifdef  __cplusplus
+jboolean VK_Init() {
+    return 0;
 }
-#endif
-
 
 #endif
