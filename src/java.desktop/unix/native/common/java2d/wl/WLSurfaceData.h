@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2003, 2005, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,31 +24,27 @@
  * questions.
  */
 
-#ifndef BlittingIncludesDefined
-#define BlittingIncludesDefined
-
-#include "jni.h"
-#include "GlyphImageRef.h"
 #include "SurfaceData.h"
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
+typedef struct WLSDOps WLSDOps;
 
-typedef struct {
-  int numGlyphs;
-  ImageRef *glyphs;
-} GlyphBlitVector;
-
-JNIEXPORT jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds);
-JNIEXPORT GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
-                                           jint fromGlyph, jint toGlyph);
-JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
-                                              jint fromGlyph, jint toGlyph);
-
-#ifdef  __cplusplus
-}
-#endif
-
-
-#endif
+/*
+ * This function returns a pointer to a native WLSDOps structure
+ * for accessing the indicated WL SurfaceData Java object. It
+ * verifies that the indicated SurfaceData object is an instance
+ * of WLSurfaceData before returning and will return NULL if the
+ * wrong SurfaceData object is being accessed.  This function will
+ * throw the appropriate Java exception if it returns NULL so that
+ * the caller can simply return.
+ *
+ * Note to callers:
+ *      This function uses JNI methods so it is important that the
+ *      caller not have any outstanding GetPrimitiveArrayCritical or
+ *      GetStringCritical locks which have not been released.
+ *
+ *      The caller may continue to use JNI methods after this method
+ *      is called since this function will not leave any outstanding
+ *      JNI Critical locks unreleased.
+ */
+JNIEXPORT WLSDOps * JNICALL
+WLSurfaceData_GetOps(JNIEnv *env, jobject sData);
