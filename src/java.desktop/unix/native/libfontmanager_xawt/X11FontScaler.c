@@ -365,8 +365,9 @@ JNIEXPORT jobject JNICALL
      * leadingY : made-up number, but being compatible with what 1.4.x did
      * advance : no need to set yMaxLinearAdvanceWidth - it will be zero.
      */
-    metrics = (*env)->NewObject(env, sunFontIDs.strikeMetricsClass,
-                                sunFontIDs.strikeMetricsCtr,
+    const FontManagerNativeIDs* sunFontIDs = getSunFontIDsPtr(env);
+    metrics = (*env)->NewObject(env, sunFontIDs->strikeMetricsClass,
+                                sunFontIDs->strikeMetricsCtr,
                                 j0, ay, j0, dy, j1, j0, j0, j1, mx, j0);
 /*      printf("X11 asc=%f dsc=%f adv=%f scale=%f\n", */
 /*          ay, dy, mx, (float)context->scale); */
