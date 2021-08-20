@@ -62,7 +62,7 @@ JNIEXPORT jboolean JNICALL Java_sun_font_X11TextRenderer_doDrawGlyphList
     SurfaceDataBounds bounds;
     Region_GetBounds(env, clip, &bounds);
 
-    glyphCount =  (*env)->GetIntField(env, glyphlist, sunFontIDs.glyphListLen);
+    glyphCount =  (*env)->GetIntField(env, glyphlist, getSunFontIDsPtr(env)->glyphListLen);
     if ((gbv = setupBlitVector(env, glyphlist, 0, glyphCount)) == NULL) {
         return JNI_TRUE;
     }
