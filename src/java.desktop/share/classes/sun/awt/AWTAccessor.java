@@ -299,6 +299,10 @@ public final class AWTAccessor {
          */
         void updateWindow(Window window);
 
+        boolean needUpdateWindowAfterPaint(Window window);
+
+        boolean needUpdateWindow(Window window);
+
         /** Sets the synchronous status of focus requests on lightweight
          * components in the specified window to the specified value.
          */
