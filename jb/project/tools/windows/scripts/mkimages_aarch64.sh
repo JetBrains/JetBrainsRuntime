@@ -50,13 +50,18 @@ function create_jbr {
     echo "***ERR*** bundle was not specified" && do_exit 1
     ;;
   esac
-  cat modules.list > modules_tmp.list
+
+  echo "Exclude jdk.internal.vm.compiler and jdk.aot (because aot is not supported yet)"
+  cat modules.list | \
+    grep -v "jdk.internal.vm.compiler\|jdk.aot" \
+    > modules_tmp.list
+
   rm -rf ${JBR_BUNDLE}
 
   echo Running jlink....
   ${BOOT_JDK}/bin/jlink \
     --module-path ${JSDK}/jmods --no-man-pages --compress=2 \
-    --add-modules $(xargs < modules_tmp.list | sed s/" "//g) --output ${JBR_BUNDLE} || do_exit $?
+    --add-modules $(xargs < modules_tmp.list | sed 's/ //g' | sed 's/,\?$//g') --output ${JBR_BUNDLE} || do_exit $?
   if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]
   then
     rsync -av ${JCEF_PATH}/ ${JBR_BUNDLE}/bin --exclude="modular-sdk" || do_exit $?
