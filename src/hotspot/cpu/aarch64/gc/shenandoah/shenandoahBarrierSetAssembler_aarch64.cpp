@@ -263,16 +263,9 @@ void ShenandoahBarrierSetAssembler::load_reference_barrier_not_null(MacroAssembl
 
 void ShenandoahBarrierSetAssembler::iu_barrier(MacroAssembler* masm, Register dst, Register tmp) {
   if (ShenandoahIUBarrier) {
-    // Save possibly live regs.
-    RegSet live_regs = RegSet::range(r0, r4) - dst;
-    __ push(live_regs, sp);
-    __ strd(v0, __ pre(sp, 2 * -wordSize));
-
+    __ push_call_clobbered_registers();
     satb_write_barrier_pre(masm, noreg, dst, rthread, tmp, true, false);
-
-    // Restore possibly live regs.
-    __ ldrd(v0, __ post(sp, 2 * wordSize));
-    __ pop(live_regs, sp);
+    __ pop_call_clobbered_registers();
   }
 }
 
