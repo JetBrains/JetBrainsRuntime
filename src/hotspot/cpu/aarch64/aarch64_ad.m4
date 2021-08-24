@@ -1,4 +1,4 @@
-dnl Copyright (c) 2014, Red Hat Inc. All rights reserved.
+dnl Copyright (c) 2014, 2020, Red Hat Inc. All rights reserved.
 dnl DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 dnl
 dnl This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,12 @@ dnl
 dnl Process this file with m4 aarch64_ad.m4 to generate the arithmetic
 dnl and shift patterns patterns used in aarch64.ad.
 dnl
-// BEGIN This section of the file is automatically generated. Do not edit --------------
 dnl
 define(`ORL2I', `ifelse($1,I,orL2I)')
 dnl
 define(`BASE_SHIFT_INSN',
-`
+`// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct $2$1_reg_$4_reg(iReg$1NoSp dst,
                          iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I($1) src2,
                          immI src3, rFlagsReg cr) %{
@@ -46,9 +46,11 @@ instruct $2$1_reg_$4_reg(iReg$1NoSp dst,
   %}
 
   ins_pipe(ialu_reg_reg_shift);
-%}')dnl
+%}
+')dnl
 define(`BASE_INVERTED_INSN',
-`
+`// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct $2$1_reg_not_reg(iReg$1NoSp dst,
                          iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I($1) src2, imm$1_M1 m1,
                          rFlagsReg cr) %{
@@ -68,9 +70,11 @@ dnl into this canonical form.
   %}
 
   ins_pipe(ialu_reg_reg);
-%}')dnl
+%}
+')dnl
 define(`INVERTED_SHIFT_INSN',
-`
+`// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct $2$1_reg_$4_not_reg(iReg$1NoSp dst,
                          iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I($1) src2,
                          immI src3, imm$1_M1 src4, rFlagsReg cr) %{
@@ -91,9 +95,12 @@ dnl into this canonical form.
   %}
 
   ins_pipe(ialu_reg_reg_shift);
-%}')dnl
+%}
+')dnl
 define(`NOT_INSN',
-`instruct reg$1_not_reg(iReg$1NoSp dst,
+`// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+instruct reg$1_not_reg(iReg$1NoSp dst,
                          iReg$1`'ORL2I($1) src1, imm$1_M1 m1,
                          rFlagsReg cr) %{
   match(Set dst (Xor$1 src1 m1));
@@ -108,7 +115,8 @@ define(`NOT_INSN',
   %}
 
   ins_pipe(ialu_reg);
-%}')dnl
+%}
+')dnl
 dnl
 define(`BOTH_SHIFT_INSNS',
 `BASE_SHIFT_INSN(I, $1, ifelse($2,andr,andw,$2w), $3, $4)
@@ -120,7 +128,7 @@ BASE_INVERTED_INSN(L, $1, $2, $3, $4)')dnl
 dnl
 define(`BOTH_INVERTED_SHIFT_INSNS',
 `INVERTED_SHIFT_INSN(I, $1, $2w, $3, $4, ~0, int)
-INVERTED_SHIFT_INSN(L, $1, $2, $3, $4, ~0l, long)')dnl
+INVERTED_SHIFT_INSN(L, $1, $2, $3, $4, ~0l, jlong)')dnl
 dnl
 define(`ALL_SHIFT_KINDS',
 `BOTH_SHIFT_INSNS($1, $2, URShift, LSR)
@@ -147,8 +155,10 @@ ALL_SHIFT_KINDS(Add, add)
 ALL_SHIFT_KINDS(Sub, sub)
 dnl
 dnl EXTEND mode, rshift_op, src, lshift_count, rshift_count
-define(`EXTEND', `($2$1 (LShift$1 $3 $4) $5)')
-define(`BFM_INSN',`
+define(`EXTEND', `($2$1 (LShift$1 $3 $4) $5)') dnl
+define(`BFM_INSN',`// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+
 // Shift Left followed by Shift Right.
 // This idiom is used by the compiler for the i2b bytecode etc.
 instruct $4$1(iReg$1NoSp dst, iReg$1`'ORL2I($1) src, immI lshift_count, immI rshift_count)
@@ -167,7 +177,8 @@ instruct $4$1(iReg$1NoSp dst, iReg$1`'ORL2I($1) src, immI lshift_count, immI rsh
   %}
 
   ins_pipe(ialu_reg_shift);
-%}')
+%}
+')
 BFM_INSN(L, 63, RShift, sbfm)
 BFM_INSN(I, 31, RShift, sbfmw)
 BFM_INSN(L, 63, URShift, ubfm)
@@ -175,7 +186,9 @@ BFM_INSN(I, 31, URShift, ubfmw)
 dnl
 // Bitfield extract with shift & mask
 define(`BFX_INSN',
-`instruct $3$1(iReg$1NoSp dst, iReg$1`'ORL2I($1) src, immI rshift, imm$1_bitmask mask)
+`// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+instruct $3$1(iReg$1NoSp dst, iReg$1`'ORL2I($1) src, immI rshift, imm$1_bitmask mask)
 %{
   match(Set dst (And$1 ($2$1 src rshift) mask));
   // Make sure we are not going to exceed what $3 can do.
@@ -185,15 +198,19 @@ define(`BFX_INSN',
   format %{ "$3 $dst, $src, $rshift, $mask" %}
   ins_encode %{
     int rshift = $rshift$$constant & $4;
-    long mask = $mask$$constant;
+    intptr_t mask = $mask$$constant;
     int width = exact_log2$6(mask+1);
     __ $3(as_Register($dst$$reg),
             as_Register($src$$reg), rshift, width);
   %}
   ins_pipe(ialu_reg_shift);
-%}')
+%}
+')
 BFX_INSN(I, URShift, ubfxw, 31, int)
 BFX_INSN(L, URShift, ubfx,  63, long, _long)
+
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 
 // We can use ubfx when extending an And with a mask when we know mask
 // is positive.  We know that because immI_bitmask guarantees it.
@@ -207,7 +224,7 @@ instruct ubfxIConvI2L(iRegLNoSp dst, iRegIorL2I src, immI rshift, immI_bitmask m
   format %{ "ubfx $dst, $src, $rshift, $mask" %}
   ins_encode %{
     int rshift = $rshift$$constant & 31;
-    long mask = $mask$$constant;
+    intptr_t mask = $mask$$constant;
     int width = exact_log2(mask+1);
     __ ubfx(as_Register($dst$$reg),
             as_Register($src$$reg), rshift, width);
@@ -215,7 +232,10 @@ instruct ubfxIConvI2L(iRegLNoSp dst, iRegIorL2I src, immI rshift, immI_bitmask m
   ins_pipe(ialu_reg_shift);
 %}
 
-define(`UBFIZ_INSN', `// We can use ubfiz when masking by a positive number and then left shifting the result.
+define(`UBFIZ_INSN', `// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+
+// We can use ubfiz when masking by a positive number and then left shifting the result.
 // We know that the mask is positive because imm$1_bitmask guarantees it.
 instruct $3$1$8(iReg$2NoSp dst, iReg$1`'ORL2I($1) src, immI lshift, $7 mask)
 %{
@@ -230,7 +250,7 @@ instruct $3$1$8(iReg$2NoSp dst, iReg$1`'ORL2I($1) src, immI lshift, $7 mask)
   format %{ "$3 $dst, $src, $lshift, $mask" %}
   ins_encode %{
     int lshift = $lshift$$constant & $4;
-    long mask = $mask$$constant;
+    intptr_t mask = $mask$$constant;
     int width = $6(mask+1);
     __ $3(as_Register($dst$$reg),
           as_Register($src$$reg), lshift, width);
@@ -243,7 +263,10 @@ UBFIZ_INSN(L, L, ubfiz,  63, long, exact_log2_long, immL_bitmask)
 UBFIZ_INSN(I, L, ubfizw, 31, int,  exact_log2,      immI_bitmask,           ConvI2L)
 UBFIZ_INSN(L, I, ubfiz,  63, long, exact_log2_long, immL_positive_bitmaskI, ConvL2I)
 
-define(`BFX1_INSN', `// If there is a convert $1 to $2 block between and And$1 and a LShift$2, we can also match ubfiz
+define(`BFX1_INSN', `// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+
+// If there is a convert $1 to $2 block between and And$1 and a LShift$2, we can also match ubfiz
 instruct ubfiz$1Conv$3$9(iReg$2NoSp dst, iReg$1`'ORL2I($1) src, immI lshift, $8 mask)
 %{
   match(Set dst (LShift$2 (Conv$3 (And$1 src mask)) lshift));
@@ -253,7 +276,7 @@ instruct ubfiz$1Conv$3$9(iReg$2NoSp dst, iReg$1`'ORL2I($1) src, immI lshift, $8 
   format %{ "ubfiz $dst, $src, $lshift, $mask" %}
   ins_encode %{
     int lshift = $lshift$$constant & $6;
-    long mask = $mask$$constant;
+    intptr_t mask = $mask$$constant;
     int width = exact_log2(mask+1);
     __ ubfiz(as_Register($dst$$reg),
              as_Register($src$$reg), lshift, width);
@@ -275,10 +298,12 @@ instruct ubfizIConvI2LAndI(iRegLNoSp dst, iRegI src, immI_bitmask msk)
   ins_pipe(ialu_reg_shift);
 %}
 
-// Rotations
 
-define(`EXTRACT_INSN',
-`instruct extr$3$1(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I($1) src2, immI lshift, immI rshift, rFlagsReg cr)
+// Rotations dnl
+define(`EXTRACT_INSN',`
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+instruct extr$3$1(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I($1) src2, immI lshift, immI rshift, rFlagsReg cr)
 %{
   match(Set dst ($3$1 (LShift$1 src1 lshift) (URShift$1 src2 rshift)));
   predicate(0 == (((n->in(1)->in(2)->get_int() & $2) + (n->in(2)->in(2)->get_int() & $2)) & $2));
@@ -297,9 +322,10 @@ EXTRACT_INSN(L, 63, Or, extr)
 EXTRACT_INSN(I, 31, Or, extrw)
 EXTRACT_INSN(L, 63, Add, extr)
 EXTRACT_INSN(I, 31, Add, extrw)
-define(`ROL_EXPAND', `
-// $2 expander
+define(`ROL_EXPAND', `// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 
+// $2 expander
 instruct $2$1_rReg(iReg$1NoSp dst, iReg$1 src, iRegI shift, rFlagsReg cr)
 %{
   effect(DEF dst, USE src, USE shift);
@@ -312,10 +338,12 @@ instruct $2$1_rReg(iReg$1NoSp dst, iReg$1 src, iRegI shift, rFlagsReg cr)
             rscratch1);
     %}
   ins_pipe(ialu_reg_reg_vshift);
-%}')dnl
-define(`ROR_EXPAND', `
-// $2 expander
+%}
+')
+define(`ROR_EXPAND', `// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 
+// $2 expander
 instruct $2$1_rReg(iReg$1NoSp dst, iReg$1 src, iRegI shift, rFlagsReg cr)
 %{
   effect(DEF dst, USE src, USE shift);
@@ -327,8 +355,10 @@ instruct $2$1_rReg(iReg$1NoSp dst, iReg$1 src, iRegI shift, rFlagsReg cr)
             as_Register($shift$$reg));
     %}
   ins_pipe(ialu_reg_reg_vshift);
-%}')dnl
-define(ROL_INSN, `
+%}
+')dnl
+define(ROL_INSN, `// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct $3$1_rReg_Var_C$2(iReg$1NoSp dst, iReg$1 src, iRegI shift, immI$2 c$2, rFlagsReg cr)
 %{
   match(Set dst (Or$1 (LShift$1 src shift) (URShift$1 src (SubI c$2 shift))));
@@ -336,8 +366,10 @@ instruct $3$1_rReg_Var_C$2(iReg$1NoSp dst, iReg$1 src, iRegI shift, immI$2 c$2, 
   expand %{
     $3$1_rReg(dst, src, shift, cr);
   %}
-%}')dnl
-define(ROR_INSN, `
+%}
+')dnl
+define(ROR_INSN, `// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct $3$1_rReg_Var_C$2(iReg$1NoSp dst, iReg$1 src, iRegI shift, immI$2 c$2, rFlagsReg cr)
 %{
   match(Set dst (Or$1 (URShift$1 src shift) (LShift$1 src (SubI c$2 shift))));
@@ -345,7 +377,8 @@ instruct $3$1_rReg_Var_C$2(iReg$1NoSp dst, iReg$1 src, iRegI shift, immI$2 c$2, 
   expand %{
     $3$1_rReg(dst, src, shift, cr);
   %}
-%}')dnl
+%}
+')dnl
 ROL_EXPAND(L, rol, rorv)
 ROL_EXPAND(I, rol, rorvw)
 ROL_INSN(L, _64, rol)
@@ -362,6 +395,8 @@ ROR_INSN(I, 0, ror)
 // Add/subtract (extended)
 dnl ADD_SUB_EXTENDED(mode, size, add node, shift node, insn, shift type, wordsize
 define(`ADD_SUB_CONV', `
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct $3Ext$1(iReg$2NoSp dst, iReg$2`'ORL2I($2) src1, iReg$1`'ORL2I($1) src2, rFlagsReg cr)
 %{
   match(Set dst ($3$2 src1 (ConvI2L src2)));
@@ -374,10 +409,12 @@ instruct $3Ext$1(iReg$2NoSp dst, iReg$2`'ORL2I($2) src1, iReg$1`'ORL2I($1) src2,
    %}
   ins_pipe(ialu_reg_reg);
 %}')dnl
-ADD_SUB_CONV(I,L,Add,add,sxtw);
-ADD_SUB_CONV(I,L,Sub,sub,sxtw);
+ADD_SUB_CONV(I,L,Add,add,sxtw)
+ADD_SUB_CONV(I,L,Sub,sub,sxtw)
 dnl
 define(`ADD_SUB_EXTENDED', `
+// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct $3Ext$1_$6(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I($1) src2, immI_`'eval($7-$2) lshift, immI_`'eval($7-$2) rshift, rFlagsReg cr)
 %{
   match(Set dst ($3$1 src1 EXTEND($1, $4, src2, lshift, rshift)));
@@ -389,7 +426,7 @@ instruct $3Ext$1_$6(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I($1) sr
             as_Register($src2$$reg), ext::$6);
    %}
   ins_pipe(ialu_reg_reg);
-%}')
+%}')dnl
 ADD_SUB_EXTENDED(I,16,Add,RShift,add,sxth,32)
 ADD_SUB_EXTENDED(I,8,Add,RShift,add,sxtb,32)
 ADD_SUB_EXTENDED(I,8,Add,URShift,add,uxtb,32)
@@ -399,7 +436,8 @@ ADD_SUB_EXTENDED(L,8,Add,RShift,add,sxtb,64)
 ADD_SUB_EXTENDED(L,8,Add,URShift,add,uxtb,64)
 dnl
 dnl ADD_SUB_ZERO_EXTEND(mode, size, add node, insn, shift type)
-define(`ADD_SUB_ZERO_EXTEND', `
+define(`ADD_SUB_ZERO_EXTEND', `// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct $3Ext$1_$5_and(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I($1) src2, imm$1_$2 mask, rFlagsReg cr)
 %{
   match(Set dst ($3$1 src1 (And$1 src2 mask)));
@@ -411,7 +449,8 @@ instruct $3Ext$1_$5_and(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I($1
             as_Register($src2$$reg), ext::$5);
    %}
   ins_pipe(ialu_reg_reg);
-%}')
+%}
+')
 dnl
 ADD_SUB_ZERO_EXTEND(I,255,Add,addw,uxtb)
 ADD_SUB_ZERO_EXTEND(I,65535,Add,addw,uxth)
@@ -426,7 +465,8 @@ ADD_SUB_ZERO_EXTEND(L,65535,Sub,sub,uxth)
 ADD_SUB_ZERO_EXTEND(L,4294967295,Sub,sub,uxtw)
 dnl
 dnl ADD_SUB_ZERO_EXTEND_SHIFT(mode, size, add node, insn, ext type)
-define(`ADD_SUB_EXTENDED_SHIFT', `
+define(`ADD_SUB_EXTENDED_SHIFT', `// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct $3Ext$1_$6_shift(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I($1) src2, immIExt lshift2, immI_`'eval($7-$2) lshift1, immI_`'eval($7-$2) rshift1, rFlagsReg cr)
 %{
   match(Set dst ($3$1 src1 (LShift$1 EXTEND($1, $4, src2, lshift1, rshift1) lshift2)));
@@ -438,7 +478,8 @@ instruct $3Ext$1_$6_shift(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I(
             as_Register($src2$$reg), ext::$6, ($lshift2$$constant));
    %}
   ins_pipe(ialu_reg_reg_shift);
-%}')
+%}
+')
 dnl                   $1 $2 $3   $4   $5   $6  $7
 ADD_SUB_EXTENDED_SHIFT(L,8,Add,RShift,add,sxtb,64)
 ADD_SUB_EXTENDED_SHIFT(L,16,Add,RShift,add,sxth,64)
@@ -455,7 +496,8 @@ ADD_SUB_EXTENDED_SHIFT(I,8,Sub,RShift,subw,sxtb,32)
 ADD_SUB_EXTENDED_SHIFT(I,16,Sub,RShift,subw,sxth,32)
 dnl
 dnl ADD_SUB_CONV_SHIFT(mode, add node, insn, ext type)
-define(`ADD_SUB_CONV_SHIFT', `
+define(`ADD_SUB_CONV_SHIFT', `// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct $2ExtI_shift(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iRegIorL2I src2, immIExt lshift, rFlagsReg cr)
 %{
   match(Set dst ($2$1 src1 (LShiftL (ConvI2L src2) lshift)));
@@ -467,13 +509,14 @@ instruct $2ExtI_shift(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iRegIorL2I src2, i
             as_Register($src2$$reg), ext::$4, ($lshift$$constant));
    %}
   ins_pipe(ialu_reg_reg_shift);
-%}')
-dnl
-ADD_SUB_CONV_SHIFT(L,Add,add,sxtw);
-ADD_SUB_CONV_SHIFT(L,Sub,sub,sxtw);
+%}
+')dnl
+ADD_SUB_CONV_SHIFT(L,Add,add,sxtw)
+ADD_SUB_CONV_SHIFT(L,Sub,sub,sxtw)
 dnl
 dnl ADD_SUB_ZERO_EXTEND(mode, size, add node, insn, ext type)
-define(`ADD_SUB_ZERO_EXTEND_SHIFT', `
+define(`ADD_SUB_ZERO_EXTEND_SHIFT', `// This pattern is automatically generated from aarch64_ad.m4
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct $3Ext$1_$5_and_shift(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iReg$1`'ORL2I($1) src2, imm$1_$2 mask, immIExt lshift, rFlagsReg cr)
 %{
   match(Set dst ($3$1 src1 (LShift$1 (And$1 src2 mask) lshift)));
@@ -485,8 +528,8 @@ instruct $3Ext$1_$5_and_shift(iReg$1NoSp dst, iReg$1`'ORL2I($1) src1, iReg$1`'OR
             as_Register($src2$$reg), ext::$5, ($lshift$$constant));
    %}
   ins_pipe(ialu_reg_reg_shift);
-%}')
-dnl
+%}
+')dnl
 dnl                       $1 $2  $3  $4  $5
 ADD_SUB_ZERO_EXTEND_SHIFT(L,255,Add,add,uxtb)
 ADD_SUB_ZERO_EXTEND_SHIFT(L,65535,Add,add,uxth)
@@ -502,4 +545,4 @@ dnl
 ADD_SUB_ZERO_EXTEND_SHIFT(I,255,Sub,subw,uxtb)
 ADD_SUB_ZERO_EXTEND_SHIFT(I,65535,Sub,subw,uxth)
 dnl
-// END This section of the file is automatically generated. Do not edit --------------
+
