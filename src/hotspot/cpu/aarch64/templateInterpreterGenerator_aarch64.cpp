@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2014, 2019, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1003,7 +1003,7 @@ address TemplateInterpreterGenerator::generate_CRC32_update_entry() {
     __ ldrw(val, Address(esp, 0));              // byte value
     __ ldrw(crc, Address(esp, wordSize));       // Initial CRC
 
-    unsigned long offset;
+    uint64_t offset;
     __ adrp(tbl, ExternalAddress(StubRoutines::crc_table_addr()), offset);
     __ add(tbl, tbl, offset);
 
@@ -1593,26 +1593,29 @@ address TemplateInterpreterGenerator::generate_normal_entry(bool synchronized) {
   __ add(rlocals, esp, r2, ext::uxtx, 3);
   __ sub(rlocals, rlocals, wordSize);
 
-  // Make room for locals
-  __ sub(rscratch1, esp, r3, ext::uxtx, 3);
-
-  // Padding between locals and fixed part of activation frame to ensure
-  // SP is always 16-byte aligned.
-  __ andr(sp, rscratch1, -16);
+  __ mov(rscratch1, esp);
 
   // r3 - # of additional locals
   // allocate space for locals
   // explicitly initialize locals
+  // Initializing memory allocated for locals in the same direction as
+  // the stack grows to ensure page initialization order according
+  // to windows-aarch64 stack page growth requirement (see
+  // https://docs.microsoft.com/en-us/cpp/build/arm64-windows-abi-conventions?view=msvc-160#stack)
   {
     Label exit, loop;
     __ ands(zr, r3, r3);
     __ br(Assembler::LE, exit); // do nothing if r3 <= 0
     __ bind(loop);
-    __ str(zr, Address(__ post(rscratch1, wordSize)));
+    __ str(zr, Address(__ pre(rscratch1, -wordSize)));
     __ sub(r3, r3, 1); // until everything initialized
     __ cbnz(r3, loop);
     __ bind(exit);
   }
+
+  // Padding between locals and fixed part of activation frame to ensure
+  // SP is always 16-byte aligned.
+  __ andr(sp, rscratch1, -16);
 
   // And the base dispatch table
   __ get_dispatch();

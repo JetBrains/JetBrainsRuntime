@@ -103,7 +103,7 @@ public class TestVolatiles {
             procArgs[argcount - 2] = "-XX:+UseCondCardMark";
             break;
         case "Shenandoah":
-            argcount = 8;
+            argcount = 9;
             procArgs = new String[argcount];
             procArgs[argcount - 2] = "-XX:+UseShenandoahGC";
             break;
@@ -374,9 +374,9 @@ public class TestVolatiles {
                  // Shenandoah generates normal object graphs for
                  // volatile stores
                 matches = new String[] {
-                    "membar_release (elided)",
-                    "stlrw",
-                    "membar_volatile (elided)",
+                    "membar_release \\(elided\\)",
+                    useCompressedOops ? "stlrw?" : "stlr",
+                    "membar_volatile \\(elided\\)",
                     "ret"
                 };
                 break;
@@ -451,7 +451,7 @@ public class TestVolatiles {
                 matches = new String[] {
                     "membar_release",
                     "dmb ish",
-                    "strw",
+                    useCompressedOops ? "strw?" : "str",
                     "membar_volatile",
                     "dmb ish",
                     "ret"
@@ -564,9 +564,9 @@ public class TestVolatiles {
                 // For volatile CAS, Shenanodoah generates normal
                 // graphs with a shenandoah-specific cmpxchg
                 matches = new String[] {
-                    "membar_release (elided)",
-                    "cmpxchgw_acq_shenandoah",
-                    "membar_acquire (elided)",
+                    "membar_release \\(elided\\)",
+                    useCompressedOops ? "cmpxchgw?_acq_shenandoah" : "cmpxchg_acq_shenandoah",
+                    "membar_acquire \\(elided\\)",
                     "ret"
                 };
                 break;
@@ -630,6 +630,17 @@ public class TestVolatiles {
                     "strb",
                     "membar_acquire",
                     "dmb ish",
+                    "ret"
+                };
+                break;
+            case "Shenandoah":
+            case "ShenandoahIU":
+                // For volatile CAS, Shenanodoah generates normal
+                // graphs with a shenandoah-specific cmpxchg
+                matches = new String[] {
+                    "membar_release",
+                    useCompressedOops ? "cmpxchgw?_shenandoah" : "cmpxchg_shenandoah",
+                    "membar_acquire",
                     "ret"
                 };
                 break;
@@ -821,7 +832,7 @@ public class TestVolatiles {
                 matches = new String[] {
                     "membar_release",
                     "dmb ish",
-                    "cmpxchgw_shenandoah",
+                    useCompressedOops ? "cmpxchgw?_shenandoah" : "cmpxchg_shenandoah",
                     "membar_acquire",
                     "dmb ish",
                     "ret"

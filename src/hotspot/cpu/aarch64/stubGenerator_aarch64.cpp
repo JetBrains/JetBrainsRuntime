@@ -683,7 +683,6 @@ class StubGenerator: public StubCodeGenerator {
     int unit = wordSize * direction;
     int bias = (UseSIMDForMemoryOps ? 4:2) * wordSize;
 
-    int offset;
     const Register t0 = r3, t1 = r4, t2 = r5, t3 = r6,
       t4 = r7, t5 = r10, t6 = r11, t7 = r12;
     const Register stride = r13;
@@ -3243,8 +3242,8 @@ class StubGenerator: public StubCodeGenerator {
 
     // Max number of bytes we can process before having to take the mod
     // 0x15B0 is 5552 in decimal, the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1
-    unsigned long BASE = 0xfff1;
-    unsigned long NMAX = 0x15B0;
+    uint64_t BASE = 0xfff1;
+    uint64_t NMAX = 0x15B0;
 
     __ mov(base, BASE);
     __ mov(nmax, NMAX);
@@ -5607,12 +5606,12 @@ class StubGenerator: public StubCodeGenerator {
     // In C, approximately:
 
     // void
-    // montgomery_multiply(unsigned long Pa_base[], unsigned long Pb_base[],
-    //                     unsigned long Pn_base[], unsigned long Pm_base[],
-    //                     unsigned long inv, int len) {
-    //   unsigned long t0 = 0, t1 = 0, t2 = 0; // Triple-precision accumulator
-    //   unsigned long *Pa, *Pb, *Pn, *Pm;
-    //   unsigned long Ra, Rb, Rn, Rm;
+    // montgomery_multiply(julong Pa_base[], julong Pb_base[],
+    //                     julong Pn_base[], julong Pm_base[],
+    //                     julong inv, int len) {
+    //   julong t0 = 0, t1 = 0, t2 = 0; // Triple-precision accumulator
+    //   julong *Pa, *Pb, *Pn, *Pm;
+    //   julong Ra, Rb, Rn, Rm;
 
     //   int i;
 
@@ -5820,11 +5819,12 @@ class StubGenerator: public StubCodeGenerator {
     // In C, approximately:
 
     // void
-    // montgomery_square(unsigned long Pa_base[], unsigned long Pn_base[],
-    //                   unsigned long Pm_base[], unsigned long inv, int len) {
-    //   unsigned long t0 = 0, t1 = 0, t2 = 0; // Triple-precision accumulator
-    //   unsigned long *Pa, *Pb, *Pn, *Pm;
-    //   unsigned long Ra, Rb, Rn, Rm;
+    // montgomery_multiply(julong Pa_base[], julong Pb_base[],
+    //                     julong Pn_base[], julong Pm_base[],
+    //                     julong inv, int len) {
+    //   julong t0 = 0, t1 = 0, t2 = 0; // Triple-precision accumulator
+    //   julong *Pa, *Pb, *Pn, *Pm;
+    //   julong Ra, Rb, Rn, Rm;
 
     //   int i;
 
