@@ -13,7 +13,6 @@ java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java                    
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.html                             nobug macosx-all,windows-all
 java/awt/EventDispatchThread/PreserveDispathThread/PreserveDispatchThread.java              nobug windows-all
 java/awt/FileDialog/FileDialogMemoryLeak/FileDialogLeakTest.java                            nobug windows-all
-java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.html                              nobug macosx-all
 java/awt/FileDialog/MoveToTrashTest.java                                                    nobug windows-all
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                                nobug linux-all,windows-all
 java/awt/Focus/6981400/Test2.java                                                           nobug linux-all
