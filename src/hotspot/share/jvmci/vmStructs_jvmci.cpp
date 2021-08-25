@@ -632,6 +632,8 @@
   declare_function(JVMCIRuntime::dynamic_new_array) \
   declare_function(JVMCIRuntime::dynamic_new_instance) \
   \
+  declare_function(JVMCIRuntime::invoke_static_method_one_arg) \
+  \
   declare_function(JVMCIRuntime::thread_is_interrupted) \
   declare_function(JVMCIRuntime::vm_message) \
   declare_function(JVMCIRuntime::identity_hash_code) \
