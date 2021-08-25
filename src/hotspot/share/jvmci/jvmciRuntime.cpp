@@ -409,6 +409,114 @@ JRT_ENTRY(void, JVMCIRuntime::throw_class_cast_exception(JavaThread* thread, con
   SharedRuntime::throw_and_post_jvmti_exception(thread, symbol, message);
 JRT_END
 
+class ArgumentPusher : public SignatureIterator {
+ protected:
+  JavaCallArguments*  _jca;
+  jlong _argument;
+  bool _pushed;
+
+  jlong next_arg() {
+    guarantee(!_pushed, "one argument");
+    _pushed = true;
+    return _argument;
+  }
+
+  float next_float() {
+    guarantee(!_pushed, "one argument");
+    _pushed = true;
+    jvalue v;
+    v.i = (jint) _argument;
+    return v.f;
+  }
+
+  double next_double() {
+    guarantee(!_pushed, "one argument");
+    _pushed = true;
+    jvalue v;
+    v.j = _argument;
+    return v.d;
+  }
+
+  Handle next_object() {
+    guarantee(!_pushed, "one argument");
+    _pushed = true;
+    return Handle(Thread::current(), (oop) (address) _argument);
+  }
+
+ public:
+  ArgumentPusher(Symbol* signature, JavaCallArguments*  jca, jlong argument) : SignatureIterator(signature) {
+    this->_return_type = T_ILLEGAL;
+    _jca = jca;
+    _argument = argument;
+    _pushed = false;
+    iterate();
+  }
+
+  inline void do_object() { _jca->push_oop(next_object()); }
+
+  inline void do_bool()   { if (!is_return_type()) _jca->push_int((jboolean) next_arg()); }
+  inline void do_char()   { if (!is_return_type()) _jca->push_int((jchar) next_arg()); }
+  inline void do_short()  { if (!is_return_type()) _jca->push_int((jint)  next_arg()); }
+  inline void do_byte()   { if (!is_return_type()) _jca->push_int((jbyte) next_arg()); }
+  inline void do_int()    { if (!is_return_type()) _jca->push_int((jint)  next_arg()); }
+
+  inline void do_long()   { if (!is_return_type()) _jca->push_long((jlong) next_arg()); }
+  inline void do_float()  { if (!is_return_type()) _jca->push_float(next_float()); }
+  inline void do_double() { if (!is_return_type()) _jca->push_double(next_double()); }
+
+  inline void do_object(int begin, int end) { if (!is_return_type()) do_object(); }
+  inline void do_array(int begin, int end)  { if (!is_return_type()) do_object(); }
+
+  inline void do_void() { }
+};
+
+
+JRT_ENTRY(jlong, JVMCIRuntime::invoke_static_method_one_arg(JavaThread* thread, Method* method, jlong argument))
+  ResourceMark rm;
+  HandleMark hm;
+
+  methodHandle mh(thread, method);
+  if (mh->size_of_parameters() > 1 && !mh->is_static()) {
+    THROW_MSG_0(vmSymbols::java_lang_IllegalArgumentException(), "Invoked method must be static and take at most one argument");
+  }
+
+  Symbol* signature = mh->signature();
+  JavaCallArguments jca(mh->size_of_parameters());
+  ArgumentPusher jap(signature, &jca, argument);
+  BasicType return_type = jap.get_ret_type();
+  JavaValue result(return_type);
+  JavaCalls::call(&result, mh, &jca, CHECK_0);
+
+  if (return_type == T_VOID) {
+    return 0;
+  } else if (return_type == T_OBJECT || return_type == T_ARRAY) {
+    thread->set_vm_result((oop) result.get_jobject());
+    return 0;
+  } else {
+    jvalue *value = (jvalue *) result.get_value_addr();
+    // Narrow the value down if required (Important on big endian machines)
+    switch (return_type) {
+      case T_BOOLEAN:
+        return (jboolean) value->i;
+      case T_BYTE:
+        return (jbyte) value->i;
+      case T_CHAR:
+        return (jchar) value->i;
+      case T_SHORT:
+        return (jshort) value->i;
+      case T_INT:
+      case T_FLOAT:
+        return value->i;
+      case T_LONG:
+      case T_DOUBLE:
+        return value->j;
+      default:
+        fatal("Unexpected type %s", type2name(return_type));
+        return 0;
+    }
+  }
+JRT_END
+
 JRT_LEAF(void, JVMCIRuntime::log_object(JavaThread* thread, oopDesc* obj, bool as_string, bool newline))
   ttyLocker ttyl;
 
