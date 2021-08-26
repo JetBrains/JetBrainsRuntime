@@ -1635,6 +1635,7 @@ JNI_COCOA_EXIT(env);
 }
 
 // undocumented approach which avoids focus stealing
+// and can be used full screen switch is in progress for another window
 void enableFullScreenSpecial(NSWindow *nsWindow) {
     NSKeyedArchiver *coder = [[NSKeyedArchiver alloc] init];
     [nsWindow encodeRestorableStateWithCoder:coder];
@@ -1661,12 +1662,17 @@ JNI_COCOA_ENTER(env);
     if (![nsWindow respondsToSelector:toggleFullScreenSelector]) return;
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-        if ((nsWindow.styleMask & NSWindowStyleMaskFullScreen) != NSWindowStyleMaskFullScreen && !NSApp.active) {
+        static BOOL inProgress = NO;
+        if ((nsWindow.styleMask & NSWindowStyleMaskFullScreen) != NSWindowStyleMaskFullScreen &&
+            (inProgress || !NSApp.active)) {
             enableFullScreenSpecial(nsWindow);
             if ((nsWindow.styleMask & NSWindowStyleMaskFullScreen) == NSWindowStyleMaskFullScreen) return; // success
             // otherwise fall back to standard approach
         }
+        BOOL savedValue = inProgress;
+        inProgress = YES;
         [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
+        inProgress = savedValue;
     }];
 
 JNI_COCOA_EXIT(env);
