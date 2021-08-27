@@ -38,17 +38,20 @@
  *          java.base/sun.net.www.http
  *          java.base/sun.net.www
  *          java.base/sun.net
- * @run main/othervm -Djdk.http.auth.proxying.disabledSchemes=Basic,Digest
- *                   -Djdk.http.auth.tunneling.disabledSchemes=Digest,Basic
- *                   ProxyAuthDisabledSchemesSSL SSL
- * @run main/othervm -Djdk.http.auth.proxying.disabledSchemes=Basic
- *                   -Djdk.http.auth.tunneling.disabledSchemes=Basic
- *                   -Dtest.requiresHost=true
- *                   ProxyAuthDisabledSchemesSSL SSL PROXY
- * @run main/othervm -Djdk.http.auth.proxying.disabledSchemes=Digest
- *                   -Djdk.http.auth.tunneling.disabledSchemes=Digest
- *                   -Dtest.requiresHost=true
- *                   ProxyAuthDisabledSchemesSSL SSL PROXY
+ * @run main/othervm/timeout=300
+ *          -Djdk.http.auth.proxying.disabledSchemes=Basic,Digest
+ *          -Djdk.http.auth.tunneling.disabledSchemes=Digest,Basic
+ *          ProxyAuthDisabledSchemesSSL SSL
+ * @run main/othervm/timeout=300
+ *          -Djdk.http.auth.proxying.disabledSchemes=Basic
+ *          -Djdk.http.auth.tunneling.disabledSchemes=Basic
+ *          -Dtest.requiresHost=true
+ *          ProxyAuthDisabledSchemesSSL SSL PROXY
+ * @run main/othervm/timeout=300
+ *          -Djdk.http.auth.proxying.disabledSchemes=Digest
+ *          -Djdk.http.auth.tunneling.disabledSchemes=Digest
+ *          -Dtest.requiresHost=true
+ *          ProxyAuthDisabledSchemesSSL SSL PROXY
  */
 
 public class ProxyAuthDisabledSchemesSSL {
