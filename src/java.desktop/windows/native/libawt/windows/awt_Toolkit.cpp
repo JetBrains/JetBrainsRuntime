@@ -71,7 +71,6 @@ extern void initScreens(JNIEnv *env);
 extern "C" void awt_dnd_initialize();
 extern "C" void awt_dnd_uninitialize();
 extern "C" void awt_clipboard_uninitialize(JNIEnv *env);
-extern "C" BOOL g_bUserHasChangedInputLang;
 
 extern CriticalSection windowMoveLock;
 extern BOOL windowMoveLockHeld;
@@ -1219,14 +1218,6 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           return cmode;
       }
       case WM_AWT_ACTIVATEKEYBOARDLAYOUT: {
-          if (wParam && g_bUserHasChangedInputLang) {
-              // Input language has been changed since the last WInputMethod.getNativeLocale()
-              // call.  So let's honor the user's selection.
-              // Note: we need to check this flag inside the toolkit thread to synchronize access
-              // to the flag.
-              return FALSE;
-          }
-
           if (lParam == (LPARAM)::GetKeyboardLayout(0)) {
               // already active
               return FALSE;
