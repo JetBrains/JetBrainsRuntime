@@ -44,8 +44,6 @@ extern "C" {
 jobject CreateLocaleObject(JNIEnv *env, const char * name);
 HKL getDefaultKeyboardLayout();
 
-extern BOOL g_bUserHasChangedInputLang;
-
 /*
  * Class:     sun_awt_windows_WInputMethod
  * Method:    createNativeContext
@@ -292,10 +290,6 @@ JNIEXPORT jobject JNICALL Java_sun_awt_windows_WInputMethod_getNativeLocale
 
     const char * javaLocaleName = getJavaIDFromLangID(AwtComponent::GetInputLanguage());
     if (javaLocaleName != NULL) {
-        // Now WInputMethod.currentLocale and AwtComponent::m_idLang are get sync'ed,
-        // so we can reset this flag.
-        g_bUserHasChangedInputLang = FALSE;
-
         jobject ret = CreateLocaleObject(env, javaLocaleName);
         free((void *)javaLocaleName);
         return ret;
@@ -309,10 +303,10 @@ JNIEXPORT jobject JNICALL Java_sun_awt_windows_WInputMethod_getNativeLocale
 /*
  * Class:     sun_awt_windows_WInputMethod
  * Method:    setNativeLocale
- * Signature: (Ljava/lang/String;Z)Z
+ * Signature: (Ljava/lang/String;)Z
  */
 JNIEXPORT jboolean JNICALL Java_sun_awt_windows_WInputMethod_setNativeLocale
-  (JNIEnv *env, jclass cls, jstring localeString, jboolean onActivate)
+  (JNIEnv *env, jclass cls, jstring localeString)
 {
     TRY;
 
@@ -353,7 +347,7 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_windows_WInputMethod_setNativeLocale
         if (supported != NULL) {
             if (strcmp(supported, requested) == 0) {
                 // use special message to call ActivateKeyboardLayout() in main thread.
-                if (AwtToolkit::GetInstance().SendMessage(WM_AWT_ACTIVATEKEYBOARDLAYOUT, (WPARAM)onActivate, (LPARAM)hKLList[i])) {
+                if (AwtToolkit::GetInstance().SendMessage(WM_AWT_ACTIVATEKEYBOARDLAYOUT, 0, (LPARAM)hKLList[i])) {
                     //also need to change the same keyboard layout for the Java AWT-EventQueue thread
                     AwtToolkit::activateKeyboardLayout(hKLList[i]);
                     retValue = JNI_TRUE;
