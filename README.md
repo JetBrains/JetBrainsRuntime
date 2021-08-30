@@ -26,6 +26,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
     - [Ubuntu Linux](#ubuntu-linux)
     - [Windows](#build-windows)
     - [macOS](#macos)
+  - [Developing](#developing)
   - [Contributing](#contributing)
   - [Resources](#resources)
 
@@ -133,6 +134,30 @@ $ cd JetBrainsRuntime
 $ sh ./configure --prefix=$(pwd)/build  --disable-warnings-as-errors
 $ make images
 ```
+
+## Developing
+You can use  [CLion](https://www.jetbrains.com/clion/) to develop native parts of the JetBrains Runtime and
+[IntelliJ IDEA](https://www.jetbrains.com/idea/) for the parts written in Java.
+Both require projects to be created.
+
+### CLion
+Run
+```
+$ make compile-commands
+```
+in the git root and open the resulting `build/.../compile_commands.json` file as a project.
+Then use `Tools | Compilation Database | Change Project Root` to point to git root of this repository.
+
+See also this detailed step-by-step tutorial for all platforms:
+[How to develop OpenJDK with CLion](https://blog.jetbrains.com/clion/2020/03/openjdk-with-clion/).
+
+### IDEA
+Run
+```
+$ sh ./bin/idea.sh
+```
+in the git root to generate project files (add `--help` for options). Then open the git root directory
+as a project in IDEA.
 
 ## Contributing
 We are happy to receive your pull requests! 
