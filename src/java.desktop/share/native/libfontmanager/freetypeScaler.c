@@ -349,6 +349,11 @@ static int getScreenResolution(JNIEnv *env) {
     jthrowable exc;
     jclass tk = (*env)->CallStaticObjectMethod(
         env, tkClass, getDefaultToolkitMID);
+    exc = (*env)->ExceptionOccurred(env);
+    if (exc) {
+        (*env)->ExceptionClear(env);
+        return DEFAULT_DPI;
+    }
     int dpi = (*env)->CallIntMethod(env, tk, getScreenResolutionMID);
 
     /* Test if there is no exception here (can get java.awt.HeadlessException)
