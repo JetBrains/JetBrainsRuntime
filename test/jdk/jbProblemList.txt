@@ -843,6 +843,8 @@ sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                                 
 sun/security/pkcs11/Secmod/AddTrustedCert.java                                      8180837 generic-all
 sun/security/pkcs11/tls/TestKeyMaterial.java                                        8180837 generic-all
 
+sun/security/tools/keytool/ListKeychainStore.sh                                     8156889 macosx-all
+
 security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java    8224768 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/BuypassCA.java    8243543 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/ComodoCA.java     8263059 generic-all
