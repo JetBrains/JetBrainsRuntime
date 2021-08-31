@@ -24,6 +24,7 @@ It includes a number enhancements in font rendering, HiDPI support, ligatures, p
     - [Ubuntu Linux](#ubuntu-linux)
     - [Windows](#build-windows)
     - [macOS](#macos)
+  - [Developing](#developing)
   - [Contributing](#contributing)
   - [Resources](#resources)
 
@@ -83,9 +84,10 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 Install the necessary tools, libraries, and headers with:
 ```
 $ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
-       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev \
-       java-16-amazon-corretto-jdk
+       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev
 ```
+Get Java 17 (for instance, [Azul Zulu Builds of OpenJDK 17](https://www.azul.com/downloads/?version=java-17-ea&package=jdk)).
+
 Then run the following:
 ```
 $ cd JetBrainsRuntime
@@ -104,7 +106,7 @@ Install the following:
 * [Visual Studio compiler toolset](https://visualstudio.microsoft.com/downloads/).
   Install with the desktop development kit, which includes Windows SDK and compilers.
   Visual Studio 2019 is supported by default.
-* Java 16 (for instance, from [AdoptOpenJDK](https://adoptopenjdk.net/installation.html?variant=openjdk16&jvmVariant=hotspot#)).
+* Java 17 (for instance, [Azul Zulu Builds of OpenJDK 17](https://www.azul.com/downloads/?version=java-17-ea&os=windows&architecture=x86-64-bit&package=jdk).
   If you have problems while configuring, read [Java tips on Cygwin](http://horstmann.com/articles/cygwin-tips.html).
 
 From the command line: 
@@ -125,8 +127,8 @@ This will build the release configuration under `./build/windows-x86_64-server-r
 
 ### macOS
 Install the following:
-* Xcode command line developer tools and `autoconf` via [Homebrew](getDpiInfo).
-* Java 16 (for instance, from [AdoptOpenJDK](https://adoptopenjdk.net/installation.html?variant=openjdk16&jvmVariant=hotspot#)).
+* Xcode command line developer tools and `autoconf` via [Homebrew](https://brew.sh/).
+* Java 17 (for instance, [Azul Zulu Builds of OpenJDK 17](https://www.azul.com/downloads/?version=java-17-ea&package=jdk)).
 
 From the command line:
 ```
@@ -137,6 +139,31 @@ $ make images
 ```
 This will build the release configuration under `./build/macosx-x86_64-server-release/`.
 
+## Developing
+You can use  [CLion](https://www.jetbrains.com/clion/) to develop native parts of the JetBrains Runtime and
+[IntelliJ IDEA](https://www.jetbrains.com/idea/) for the parts written in Java.
+Both require projects to be created.
+
+### CLion
+Run
+```
+$ make compile-commands
+```
+in the git root and open the resulting `build/.../compile_commands.json` file as a project.
+Then use `Tools | Compilation Database | Change Project Root` to point to git root of this repository.
+
+See also this detailed step-by-step tutorial for all platforms:
+[How to develop OpenJDK with CLion](https://blog.jetbrains.com/clion/2020/03/openjdk-with-clion/).
+
+### IDEA
+Run
+```
+$ sh ./bin/idea.sh
+```
+in the git root to generate project files (add `--help` for options). If you have multiple
+configurations (for example, `release` and `fastdebug`), supply the `--conf <conf_name>` argument.
+Then open the git root directory as a project in IDEA.
+
 ## Contributing
 We are happy to receive your pull requests! 
 Before you submit one, please sign our [Contributor License Agreement (CLA)](https://www.jetbrains.com/agreements/cla/).
@@ -145,4 +172,3 @@ Before you submit one, please sign our [Contributor License Agreement (CLA)](htt
 * [JetBrains Runtime on github](https://github.com/JetBrains/JetBrainsRuntime).
 * [OpenJDK build instructions](https://openjdk.java.net/groups/build/doc/building.html).
 * [OpenJDK test instructions](https://htmlpreview.github.io/?https://raw.githubusercontent.com/openjdk/jdk/master/doc/building.html#running-tests).
-* [How to develop OpenJDK with CLion](https://blog.jetbrains.com/clion/2020/03/openjdk-with-clion/).
