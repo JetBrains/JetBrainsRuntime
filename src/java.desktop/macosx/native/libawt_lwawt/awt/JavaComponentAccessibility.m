@@ -809,8 +809,8 @@ static void RaiseMustOverrideException(NSString *method)
 - (BOOL)isAccessibilityEnabled
 {
     JNIEnv* env = [ThreadUtilities getJNIEnv];
-    GET_CACCESSIBILITY_CLASS_RETURN(nil);
-    DECLARE_STATIC_METHOD_RETURN(jm_isEnabled, sjc_CAccessibility, "isEnabled", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Z", nil);
+    GET_CACCESSIBILITY_CLASS_RETURN(NO);
+    DECLARE_STATIC_METHOD_RETURN(jm_isEnabled, sjc_CAccessibility, "isEnabled", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Z", NO);
 
     NSNumber *value = [NSNumber numberWithBool:(*env)->CallStaticBooleanMethod(env, sjc_CAccessibility, jm_isEnabled, fAccessible, fComponent)];
     CHECK_EXCEPTION();
