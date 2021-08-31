@@ -629,8 +629,8 @@ AWT_ASSERT_APPKIT_THREAD;
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         GET_CPLATFORM_WINDOW_CLASS();
-        DECLARE_METHOD(jm_checkBlockingAndOrder, jc_CPlatformWindow, "checkBlockingAndOrder", "()V");
-        (*env)->CallVoidMethod(env, platformWindow, jm_checkBlockingAndOrder);
+        DECLARE_METHOD(jm_checkBlockingAndOrder, jc_CPlatformWindow, "checkBlockingAndOrder", "()Z");
+        (*env)->CallBooleanMethod(env, platformWindow, jm_checkBlockingAndOrder);
         CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, platformWindow);
     }
