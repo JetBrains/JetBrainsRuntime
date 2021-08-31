@@ -183,22 +183,24 @@
  * or maybe a way for the app to continue running depending on the exact
  * nature of the problem that has been detected and how survivable it is.
  */
-#define CHECK_EXCEPTION() \
-    if ((*env)->ExceptionCheck(env)) { \
+#define CHECK_EXCEPTION_IN_ENV(env) \
+    if ((*(env))->ExceptionCheck(env)) { \
         if ([NSThread isMainThread] == YES) { \
             if (getenv("JNU_APPKIT_TRACE")) { \
-                (*env)->ExceptionDescribe(env); \
+                (*(env))->ExceptionDescribe(env); \
                 NSLog(@"%@",[NSThread callStackSymbols]); \
               } else { \
-                  (*env)->ExceptionClear(env); \
+                  (*(env))->ExceptionClear(env); \
               } \
          }  \
         if (getenv("JNU_NO_COCOA_EXCEPTION") == NULL) { \
             [NSException raise:NSGenericException format:@"Java Exception"]; \
         } else { \
-            (*env)->ExceptionClear(env); \
+            (*(env))->ExceptionClear(env); \
         } \
     };
+
+#define CHECK_EXCEPTION() CHECK_EXCEPTION_IN_ENV(env)
 
 #define CHECK_EXCEPTION_NULL_RETURN(x, y) \
     CHECK_EXCEPTION(); \
