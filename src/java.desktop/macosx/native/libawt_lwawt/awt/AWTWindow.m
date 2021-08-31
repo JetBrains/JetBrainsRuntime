@@ -592,6 +592,7 @@ AWT_ASSERT_APPKIT_THREAD;
     DECLARE_CLASS(jc_CCursorManager, "sun/lwawt/macosx/CCursorManager");
     DECLARE_STATIC_METHOD(sjm_resetCurrentCursor, jc_CCursorManager, "resetCurrentCursor", "()V");
     (*env)->CallStaticVoidMethod(env, jc_CCursorManager, sjm_resetCurrentCursor);
+    CHECK_EXCEPTION();
 }
 
 - (BOOL) canBecomeMainWindow {
