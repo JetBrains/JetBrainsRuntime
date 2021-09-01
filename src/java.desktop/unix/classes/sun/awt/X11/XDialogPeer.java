@@ -161,4 +161,25 @@ class XDialogPeer extends XDecoratedPeer implements DialogPeer {
         }
         return super.isFocusedWindowModalBlocker();
     }
+
+    @Override
+    public void handleUnmapNotifyEvent(XEvent xev) {
+        super.handleUnmapNotifyEvent(xev);
+        if (visible && ((Dialog)target).isModal() && XWM.getWMID() == XWM.KDE2_WM) {
+            // the case of modal dialog window being minimized (iconified) on KDE
+            // (other WMs don't seem to allow minimizing)
+            Vector<XWindowPeer> windowPeers = collectJavaToplevels();
+            for (XWindowPeer peer : windowPeers) {
+                if (peer.modalBlocker == target) {
+                    XToolkit.awtLock();
+                    try {
+                        XlibWrapper.XIconifyWindow(XToolkit.getDisplay(), peer.getWindow(), peer.getScreenNumber());
+                    }
+                    finally {
+                        XToolkit.awtUnlock();
+                    }
+                }
+            }
+        }
+    }
 }
