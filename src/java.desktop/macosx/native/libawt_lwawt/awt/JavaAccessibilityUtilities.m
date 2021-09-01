@@ -56,7 +56,7 @@ NSSize getAxComponentSize(JNIEnv *env, jobject axComponent, jobject component)
     DECLARE_STATIC_METHOD_RETURN(jm_getSize, sjc_CAccessibility, "getSize",
            "(Ljavax/accessibility/AccessibleComponent;Ljava/awt/Component;)Ljava/awt/Dimension;", NSZeroSize);
 
-    jobject dimension = (*env)->CallStaticObjectMethod(env, jc_Dimension, jm_getSize, axComponent, component);
+    jobject dimension = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getSize, axComponent, component);
     CHECK_EXCEPTION();
 
     if (dimension == NULL) return NSZeroSize;
