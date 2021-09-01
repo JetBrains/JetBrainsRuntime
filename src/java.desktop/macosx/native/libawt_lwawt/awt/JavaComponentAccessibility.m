@@ -324,7 +324,7 @@ static void RaiseMustOverrideException(NSString *method)
         GET_CACCESSIBILITY_CLASS_RETURN(nil);
         DECLARE_STATIC_METHOD_RETURN(jm_getChildrenAndRolesRecursive, sjc_CAccessibility, "getChildrenAndRolesRecursive",
                                      "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZI)[Ljava/lang/Object;", nil);
-        jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
+        jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getChildrenAndRolesRecursive,
                               parent->fAccessible, parent->fComponent, whichChildren, allowIgnored, 1);
     } else {
         GET_CHILDRENANDROLES_METHOD_RETURN(nil);
