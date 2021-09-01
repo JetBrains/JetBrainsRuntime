@@ -110,6 +110,13 @@ class XAtomList {
         atoms.remove(atom);
     }
 
+    /**
+     * Adds or removes (depending on {@code set} value) atom to the list. Returns {@code true} if the list contents
+     * has changed after the operation.
+     */
+    public boolean update(XAtom atom, boolean set) {
+        return set ? atoms.add(atom) : atoms.remove(atom);
+    }
 
     /**
      * Returns size of the list

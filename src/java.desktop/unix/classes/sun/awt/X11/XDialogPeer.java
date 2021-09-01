@@ -63,9 +63,17 @@ class XDialogPeer extends XDecoratedPeer implements DialogPeer {
         try {
             Dialog target = (Dialog)this.target;
             if (vis) {
-                if (target.getModalityType() != Dialog.ModalityType.MODELESS) {
+                boolean modal = target.getModalityType() != Dialog.ModalityType.MODELESS;
+                if (modal) {
                     if (!isModalBlocked()) {
                         XBaseWindow.ungrabInput();
+                    }
+                }
+                XNETProtocol protocol = XWM.getWM().getNETProtocol();
+                if (protocol != null && protocol.doModalityProtocol()) {
+                    XAtomList net_wm_state = getNETWMState();
+                    if (net_wm_state.update(protocol.XA_NET_WM_STATE_MODAL, modal)) {
+                        setNETWMState(net_wm_state);
                     }
                 }
             } else {
