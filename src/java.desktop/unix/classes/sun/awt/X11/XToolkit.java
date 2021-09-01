@@ -133,6 +133,7 @@ import java.util.Deque;
 import java.util.ArrayDeque;
 import java.util.AbstractMap;
 import java.util.StringTokenizer;
+import java.util.Optional;
 
 import javax.swing.LookAndFeel;
 import javax.swing.UIDefaults;
@@ -200,7 +201,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                     } else if (tok.equalsIgnoreCase("timestamp")) {
                         traceFlags |= TRACETIMESTAMP;
                     } else if (tok.regionMatches(true, 0, "name:", 0, 5)) {
-                        pattern = tok.substring(6).toUpperCase();
+                        pattern = tok.substring(5).toUpperCase();
                     } else if (tok.equalsIgnoreCase("verbose")) {
                         verbose = true;
                     } else if (tok.regionMatches(true, 0, "out:", 0, 4)) {
@@ -245,7 +246,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                         System.err.println("file '" + fileName + "'");
                     }
                     if (pattern != null) {
-                        System.err.print("XToolkit trace limited to " + pattern);
+                        System.err.println("XToolkit trace limited to " + pattern);
                     }
                 }
 
@@ -270,7 +271,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                                 }
                             });
                     if (o != null) {
-                        outStream = new PrintStream(o);
+                        outStream = new PrintStream(o, true);
                     }
                 }
             }
@@ -308,10 +309,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
 
         private static final class AwtLockerDescriptor {
-            public long startTimeMs;        // when the locking has occurred
-            public StackTraceElement frame; // the frame that called awtLock()
+            public long startTimeMs;             // when the locking has occurred
+            public StackWalker.StackFrame frame; // the frame that called awtLock()
 
-            public AwtLockerDescriptor(StackTraceElement frame, long start) {
+            public AwtLockerDescriptor(StackWalker.StackFrame frame, long start) {
                 this.startTimeMs = start;
                 this.frame       = frame;
             }
@@ -319,12 +320,12 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
         private static final Deque<AwtLockerDescriptor> awtLockersStack = new ArrayDeque<>();
 
-        private static void pushAwtLockCaller(StackTraceElement frame, long startTimeMs) {
+        private static void pushAwtLockCaller(StackWalker.StackFrame frame, long startTimeMs) {
             // accessed under AWT lock so no need for additional synchronization
             awtLockersStack.push(new AwtLockerDescriptor(frame, startTimeMs));
         }
 
-        private static long popAwtLockCaller(StackTraceElement frame, long finishTimeMs) {
+        private static long popAwtLockCaller(StackWalker.StackFrame frame, long finishTimeMs) {
             // accessed under AWT lock so no need for additional synchronization
             try {
                 final AwtLockerDescriptor descr = awtLockersStack.pop();
@@ -341,29 +342,19 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
 
         private static class AwtLockTracer implements SunToolkit.AwtLockListener {
-            private static StackTraceElement getLockCallerFrame() {
-                final StackTraceElement[] stack = (new Throwable()).getStackTrace();
-                StackTraceElement frame = null;
-                if (stack != null && stack.length >= 4) {
-                    boolean found = false;
-                    for (int i = 2; i < stack.length; i++) {
-                        final String mname = stack[i].getMethodName();
-                        if ("awtLock".equals(mname) || "awtUnlock".equals(mname)) {
-                            // There could be several same-named lock or unlock methods called in a sequence so...
-                            found = true;
-                        } else if (found) {
-                            // ...pick the last of them.
-                            frame = stack[i];
-                            break;
-                        }
-                    }
-                }
+            private static final Set<String> awtLockerMethods = Set.of("awtLock", "awtUnlock", "awtTryLock");
 
-                return frame;
+            private static StackWalker.StackFrame getLockCallerFrame() {
+                Optional<StackWalker.StackFrame> frame = StackWalker.getInstance().walk(
+                        s -> s.dropWhile(stackFrame -> !awtLockerMethods.contains(stackFrame.getMethodName()))
+                                .dropWhile(stackFrame -> awtLockerMethods.contains( stackFrame.getMethodName()))
+                                .findFirst() );
+
+                return frame.orElse(null);
             }
 
             public void afterAwtLocked() {
-                final StackTraceElement awtLockerFrame = getLockCallerFrame();
+                final StackWalker.StackFrame awtLockerFrame = getLockCallerFrame();
                 if (awtLockerFrame != null) {
                     final String mname = awtLockerFrame.getMethodName();
                     if (isInterestedInMethod(mname)) {
@@ -373,7 +364,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             }
 
             public void beforeAwtUnlocked() {
-                final StackTraceElement awtLockerFrame = getLockCallerFrame();
+                final StackWalker.StackFrame awtLockerFrame = getLockCallerFrame();
                 if (awtLockerFrame != null) {
                     final String mname = awtLockerFrame.getMethodName();
                     if (isInterestedInMethod(mname)) {

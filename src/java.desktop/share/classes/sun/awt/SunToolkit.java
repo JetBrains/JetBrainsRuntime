@@ -251,7 +251,11 @@ public abstract class SunToolkit extends Toolkit
     }
 
     public static final boolean awtTryLock() {
-        return AWT_LOCK.tryLock();
+        final boolean wasLocked = AWT_LOCK.tryLock();
+        if (wasLocked && awtLockListeners != null) {
+            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+        }
+        return wasLocked;
     }
 
     public static final void awtUnlock() {

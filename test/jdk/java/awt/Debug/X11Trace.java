@@ -28,7 +28,6 @@
  * @library /test/lib
  * @run main X11Trace
  */
-import java.awt.Robot;
 import java.awt.AWTException;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -54,20 +53,24 @@ public class X11Trace {
             oa = ProcessTools.executeTestJvm("-Dsun.awt.x11.trace=log,timestamp,stats,td=0,out:mylog", X11Trace.class.getName(), "runtest");
             oa.shouldHaveExitValue(0).stderrShouldBeEmpty();
 
-            final StringBuilder logFileContents = new StringBuilder();
-            final Stream<String> stream = Files.lines( Paths.get("mylog"), StandardCharsets.UTF_8);
-            stream.forEach(s -> logFileContents.append(s));
-            OutputAnalyzer logOA = new OutputAnalyzer(logFileContents.toString());
+            final String logFileContents = Files.readString(Paths.get("mylog"));
+            OutputAnalyzer logOA = new OutputAnalyzer(logFileContents);
             logOA.shouldContain("held AWT lock for").shouldContain("AWT Lock usage statistics");
         }
     }
 
-    public static void runTest() throws AWTException {
-        final Robot robot = new Robot();
+    public static void delay(int ms) {
+        try {
+            Thread.sleep(ms);
+        } catch(InterruptedException e) {
+        }
+    }
+
+    public static void runTest() {
         runSwing(() -> {
             final JFrame frame = new JFrame("test");
             frame.setVisible(true);
-            robot.delay(500);
+            delay(500);
             frame.dispose();
         });
     }
