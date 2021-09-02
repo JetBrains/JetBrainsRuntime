@@ -134,8 +134,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public FramePeer createFrame(Frame target) {
-        log.info("Not implemented: WLToolkit.createFrame(Frame)");
-        return null;
+        FramePeer peer = new WLFramePeer(target);
+        targetCreatedPeer(target, peer);
+        return peer;
     }
 
     @Override
