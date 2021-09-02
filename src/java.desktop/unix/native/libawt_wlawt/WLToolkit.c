@@ -34,6 +34,7 @@
 #include <jlong.h>
 #include <jni_util.h>
 #include <stdlib.h>
+#include <dlfcn.h>
 #include <wayland-client.h>
 
 #include "sun_awt_wl_WLToolkit.h"
@@ -221,4 +222,21 @@ Java_java_awt_event_InputEvent_initIDs(JNIEnv *env, jclass cls)
 JNIEXPORT void JNICALL
 Java_java_awt_event_KeyEvent_initIDs(JNIEnv *env, jclass cls)
 {
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_SunToolkit_closeSplashScreen(JNIEnv *env, jclass cls)
+{
+    typedef void (*SplashClose_t)();
+    SplashClose_t splashClose;
+    void* hSplashLib = dlopen(0, RTLD_LAZY);
+    if (!hSplashLib) {
+        return;
+    }
+    splashClose = (SplashClose_t)dlsym(hSplashLib,
+        "SplashClose");
+    if (splashClose) {
+        splashClose();
+    }
+    dlclose(hSplashLib);
 }
