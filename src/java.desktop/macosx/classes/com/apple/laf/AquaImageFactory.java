@@ -497,6 +497,10 @@ public class AquaImageFactory {
         return new SystemColorProxy(LWCToolkit.getAppleColor(LWCToolkit.INACTIVE_SELECTION_FOREGROUND_COLOR));
     }
 
+    public static Color getSelectedControlColorUIResource() {
+        return new SystemColorProxy(LWCToolkit.getAppleColor(LWCToolkit.SELECTED_CONTROL_TEXT_COLOR));
+    }
+
     private static class EmptyImage {
         static final BufferedImage INSTANCE;
         static {
