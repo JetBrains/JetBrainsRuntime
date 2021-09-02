@@ -31,6 +31,8 @@ import java.awt.Toolkit;
 import java.lang.annotation.Native;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+
+import sun.awt.wl.WLGraphicsEnvironment;
 import sun.security.action.GetPropertyAction;
 
 public class PlatformGraphicsInfo {
@@ -60,7 +62,9 @@ public class PlatformGraphicsInfo {
     }
 
     public static GraphicsEnvironment createGE() {
-        return new X11GraphicsEnvironment();
+        return (getToolkitID() == TK_X11)?
+                new X11GraphicsEnvironment() :
+                new WLGraphicsEnvironment();
     }
 
     public static Toolkit createToolkit() {
