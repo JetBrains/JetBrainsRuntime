@@ -348,6 +348,11 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFontMap.put("JetBrainsMono-Italic.ttf", new BundledFontInfo("JetBrainsMono-Italic", 1, 0, 2));
         jreFontMap.put("JetBrainsMono-Bold-Italic.ttf", new BundledFontInfo("JetBrainsMono-BoldItalic", 1, 0, 2));
 
+        jreFontMap.put("Inter-Bold.otf", new BundledFontInfo("Inter-Bold", 3, 19, 0));
+        jreFontMap.put("Inter-Regular.otf", new BundledFontInfo("Inter-Regular", 3, 19, 0));
+        jreFontMap.put("Inter-Italic.otf", new BundledFontInfo("Inter-Italic", 3, 19, 0));
+        jreFontMap.put("Inter-BoldItalic.otf", new BundledFontInfo("Inter-BoldItalic", 3, 19, 0));
+
         jreBundledFontFiles.addAll(jreFontMap.keySet());
     }
 
