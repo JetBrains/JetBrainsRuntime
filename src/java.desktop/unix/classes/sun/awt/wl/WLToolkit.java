@@ -149,13 +149,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
 
     @Override
-    public Insets getScreenInsets(final GraphicsConfiguration gc) {
-        log.info("Not implemented: WLToolkit.getScreenInsets()");
-        return null;
-    }
-
-
-    @Override
     public RobotPeer createRobot(GraphicsDevice screen) throws AWTException {
         log.info("Not implemented: WLToolkit.createRobot()");
         return null;
@@ -322,8 +315,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public KeyboardFocusManagerPeer getKeyboardFocusManagerPeer() throws HeadlessException {
-        log.info("Not implemented: WLToolkit.getKeyboardFocusManagerPeer()");
-        return null;
+        return WLKeyboardFocusManagerPeer.getInstance();
     }
 
     /**

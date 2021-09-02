@@ -45,14 +45,6 @@
 
 extern JavaVM *jvm;
 
-
-JNIEXPORT void JNICALL
-Java_java_awt_FileDialog_initIDs
-  (JNIEnv *env, jclass cls)
-{
-
-}
-
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLToolkit_initIDs
   (JNIEnv *env, jclass clazz)
@@ -192,5 +184,41 @@ JNIEXPORT void JNICALL Java_java_awt_TrayIcon_initIDs(JNIEnv *env , jclass clazz
  */
 JNIEXPORT void JNICALL
 Java_java_awt_Cursor_finalizeImpl(JNIEnv *env, jclass clazz, jlong pData)
+{
+}
+
+JNIEXPORT void JNICALL
+Java_java_awt_FileDialog_initIDs
+  (JNIEnv *env, jclass cls)
+{
+}
+
+JNIEXPORT void JNICALL
+Java_java_awt_AWTEvent_initIDs(JNIEnv *env, jclass cls)
+{
+}
+
+JNIEXPORT void JNICALL
+Java_java_awt_Insets_initIDs(JNIEnv *env, jclass cls)
+{
+}
+
+JNIEXPORT void JNICALL
+Java_java_awt_KeyboardFocusManager_initIDs
+    (JNIEnv *env, jclass cls)
+{
+}
+
+JNIEXPORT void JNICALL
+Java_java_awt_Font_initIDs(JNIEnv *env, jclass cls) {
+}
+
+JNIEXPORT void JNICALL
+Java_java_awt_event_InputEvent_initIDs(JNIEnv *env, jclass cls)
+{
+}
+
+JNIEXPORT void JNICALL
+Java_java_awt_event_KeyEvent_initIDs(JNIEnv *env, jclass cls)
 {
 }
