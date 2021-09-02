@@ -32,6 +32,7 @@ import java.awt.geom.*;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import sun.lwawt.macosx.CThreading;
+import static sun.awt.SunHints.*;
 
 public final class CStrike extends PhysicalStrike {
 
@@ -205,7 +206,15 @@ public final class CStrike extends PhysicalStrike {
             return;
         }
 
-        result.setRect(floatRect.x + pt.x, floatRect.y + pt.y, floatRect.width, floatRect.height);
+        boolean subpixel = desc.aaHint == INTVAL_TEXT_ANTIALIAS_ON &&
+                desc.fmHint == INTVAL_FRACTIONALMETRICS_ON;
+        float subpixelResolutionX = subpixel ? FontUtilities.subpixelResolution.width : 1;
+        float subpixelResolutionY = subpixel ? FontUtilities.subpixelResolution.height : 1;
+        // Before rendering, glyph positions are offset by 0.5 pixels, take into consideration
+        float x = ((int) (pt.x * subpixelResolutionX + 0.5f)) / subpixelResolutionX;
+        float y = ((int) (pt.y * subpixelResolutionY + 0.5f)) / subpixelResolutionY;
+
+        result.setRect(floatRect.x + x, floatRect.y + y, floatRect.width, floatRect.height);
     }
 
     private void getGlyphImageBounds(int glyphCode, float x, float y, Rectangle2D.Float floatRect) {
