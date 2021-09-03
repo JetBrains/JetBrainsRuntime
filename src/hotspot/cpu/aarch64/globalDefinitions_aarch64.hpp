@@ -53,7 +53,7 @@ const bool CCallingConventionRequiresIntsAsLongs = false;
 
 #define THREAD_LOCAL_POLL
 
-#if defined(_WIN64)
+#if defined(__APPLE__) || defined(_WIN64)
 #define R18_RESERVED
 #define R18_RESERVED_ONLY(code) code
 #define NOT_R18_RESERVED(code)
