@@ -1691,6 +1691,10 @@ static NSDictionary* prebuiltFamilyNames() {
              @"SourceCodePro-BoldIt" : @"Source Code Pro",
              @"SourceCodePro-It" : @"Source Code Pro",
              @"SourceCodePro-Regular" : @"Source Code Pro",
+             @"Inter-Bold": @"Inter",
+             @"Inter-BoldItalic": @"Inter",
+             @"Inter-Italic": @"Inter",
+             @"Inter-Regular": @"Inter"
              };
 }
 
@@ -2972,6 +2976,10 @@ static NSDictionary* prebuiltFaceNames() {
              @"SourceCodePro-BoldIt" : @"Bold Italic",
              @"SourceCodePro-It" : @"Italic",
              @"SourceCodePro-Regular" : @"Regular",
+             @"Inter-Bold": @"Bold",
+             @"Inter-BoldItalic": @"Bold Italoc",
+             @"Inter-Italic": @"Italic",
+             @"Inter-Regular": @"Regular"
             };
 }
 
