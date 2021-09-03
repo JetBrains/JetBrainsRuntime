@@ -29,37 +29,101 @@
 #endif
 
 
-#include <jvm.h>
-#include <jni.h>
-#include <jlong.h>
-#include <jni_util.h>
-#include <stdlib.h>
 #include <dlfcn.h>
-#include <wayland-client.h>
+#include <string.h>
+#include <poll.h>
 
 #include "sun_awt_wl_WLToolkit.h"
-#include "java_awt_SystemColor.h"
-#include "java_awt_TrayIcon.h"
-
-#include <unistd.h>
+#include "WLToolkit.h"
 
 
 extern JavaVM *jvm;
+
+struct wl_display *wl_display = NULL;
+struct wl_shm *wl_shm = NULL;
+struct wl_compositor *wl_compositor = NULL;
+struct xdg_wm_base *xdg_wm_base = NULL;
+
+JNIEnv *getEnv() {
+    JNIEnv *env;
+    // assuming we're always called from Java thread
+    (*jvm)->GetEnv(jvm, (void**)&env, JNI_VERSION_1_2);
+    return env;
+}
+
+static void xdg_wm_base_ping(void *data, struct xdg_wm_base *xdg_wm_base, uint32_t serial) {
+    xdg_wm_base_pong(xdg_wm_base, serial);
+}
+
+static const struct xdg_wm_base_listener xdg_wm_base_listener = {
+        .ping = xdg_wm_base_ping,
+};
+
+static void registry_global(void *data, struct wl_registry *wl_registry,
+                            uint32_t name, const char *interface, uint32_t version) {
+    if (strcmp(interface, wl_shm_interface.name) == 0) {
+        wl_shm = wl_registry_bind( wl_registry, name, &wl_shm_interface, 1);
+    } else if (strcmp(interface, wl_compositor_interface.name) == 0) {
+        wl_compositor = wl_registry_bind(wl_registry, name, &wl_compositor_interface, 4);
+    } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
+        xdg_wm_base = wl_registry_bind(wl_registry, name, &xdg_wm_base_interface, 3);
+        xdg_wm_base_add_listener(xdg_wm_base, &xdg_wm_base_listener, NULL);
+    }
+}
+
+static void registry_global_remove(void *data, struct wl_registry *wl_registry, uint32_t name) {
+}
+
+static const struct wl_registry_listener wl_registry_listener = {
+        .global = registry_global,
+        .global_remove = registry_global_remove,
+};
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLToolkit_initIDs
   (JNIEnv *env, jclass clazz)
 {
-    struct wl_display *display = wl_display_connect(NULL);
-    if (!display) {
+    wl_display = wl_display_connect(NULL);
+    if (!wl_display) {
         fprintf(stderr, "Failed to connect to Wayland display.\n");
         return;
     }
+    struct wl_registry *wl_registry = wl_display_get_registry(wl_display);
+    wl_registry_add_listener(wl_registry, &wl_registry_listener, NULL);
+    wl_display_roundtrip(wl_display);
     fprintf(stderr, "Connection established!\n");
-
-    wl_display_disconnect(display);
 }
 
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLToolkit_dispatchEvents
+  (JNIEnv *env, jobject obj)
+{
+    wl_display_dispatch_pending(wl_display);
+}
+
+JNIEXPORT jint JNICALL
+Java_sun_awt_wl_WLToolkit_readEvents
+  (JNIEnv *env, jobject obj)
+{
+    struct pollfd fds;
+
+    if (wl_display_prepare_read(wl_display)) return sun_awt_wl_WLToolkit_READ_RESULT_NOT_STARTED;
+
+    wl_display_flush(wl_display);
+
+    fds.fd = wl_display_get_fd(wl_display);
+    fds.events = POLLIN;
+    poll(&fds, 1, 50);
+
+    wl_display_read_events(wl_display);
+
+    if (wl_display_prepare_read(wl_display)) {
+        return sun_awt_wl_WLToolkit_READ_RESULT_FINISHED_WITH_EVENTS;
+    } else {
+        wl_display_cancel_read(wl_display);
+        return sun_awt_wl_WLToolkit_READ_RESULT_FINISHED_NO_EVENTS;
+    }
+}
 
 JNIEXPORT jint JNICALL
 DEF_JNI_OnLoad(JavaVM *vm, void *reserved)
