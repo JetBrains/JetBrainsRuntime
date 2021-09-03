@@ -110,8 +110,8 @@ reg_def R16     ( SOC, SOC, Op_RegI, 16, r16->as_VMReg()        );
 reg_def R16_H   ( SOC, SOC, Op_RegI, 16, r16->as_VMReg()->next());
 reg_def R17     ( SOC, SOC, Op_RegI, 17, r17->as_VMReg()        );
 reg_def R17_H   ( SOC, SOC, Op_RegI, 17, r17->as_VMReg()->next());
-reg_def R18     ( SOC, SOC, Op_RegI, 18, r18->as_VMReg()        );
-reg_def R18_H   ( SOC, SOC, Op_RegI, 18, r18->as_VMReg()->next());
+reg_def R18     ( SOC, SOC, Op_RegI, 18, r18_reserved->as_VMReg()        );
+reg_def R18_H   ( SOC, SOC, Op_RegI, 18, r18_reserved->as_VMReg()->next());
 reg_def R19     ( SOC, SOE, Op_RegI, 19, r19->as_VMReg()        );
 reg_def R19_H   ( SOC, SOE, Op_RegI, 19, r19->as_VMReg()->next());
 reg_def R20     ( SOC, SOE, Op_RegI, 20, r20->as_VMReg()        ); // caller esp
@@ -352,7 +352,6 @@ alloc_class chunk0(
     R15, R15_H,
     R16, R16_H,
     R17, R17_H,
-    R18, R18_H,
 
     // arg registers
     R0, R0_H,
@@ -375,7 +374,7 @@ alloc_class chunk0(
     R26, R26_H,
 
     // non-allocatable registers
-
+    R18, R18_H, // platform
     R27, R27_H, // heapbase
     R28, R28_H, // thread
     R29, R29_H, // fp
@@ -533,7 +532,10 @@ reg_class no_special_reg32_no_fp(
     R15,
     R16,
     R17,
+#ifndef R18_RESERVED
+    // See comment in register_aarch64.hpp
     R18,
+#endif
     R19,
     R20,
     R21,
@@ -566,7 +568,10 @@ reg_class no_special_reg32_with_fp(
     R15,
     R16,
     R17,
+#ifndef R18_RESERVED
+    // See comment in register_aarch64.hpp
     R18,
+#endif
     R19,
     R20,
     R21,
@@ -602,7 +607,10 @@ reg_class no_special_reg_no_fp(
     R15, R15_H,
     R16, R16_H,
     R17, R17_H,
+#ifndef R18_RESERVED
+    // See comment in register_aarch64.hpp
     R18, R18_H,
+#endif
     R19, R19_H,
     R20, R20_H,
     R21, R21_H,
@@ -635,7 +643,10 @@ reg_class no_special_reg_with_fp(
     R15, R15_H,
     R16, R16_H,
     R17, R17_H,
+#ifndef R18_RESERVED
+    // See comment in register_aarch64.hpp
     R18, R18_H,
+#endif
     R19, R19_H,
     R20, R20_H,
     R21, R21_H,
@@ -775,7 +786,10 @@ reg_class no_special_ptr_reg(
     R15, R15_H,
     R16, R16_H,
     R17, R17_H,
+#ifndef R18_RESERVED
+    // See comment in register_aarch64.hpp
     R18, R18_H,
+#endif
     R19, R19_H,
     R20, R20_H,
     R21, R21_H,
@@ -5419,7 +5433,7 @@ pipeline %{
 attributes %{
   // ARM instructions are of fixed length
   fixed_size_instructions;        // Fixed size instructions TODO does
-  max_instructions_per_bundle = 2;   // A53 = 2, A57 = 4
+  max_instructions_per_bundle = 4;   // A53 = 2, A57 = 4
   // ARM instructions come in 32-bit word units
   instruction_unit_size = 4;         // An instruction is 4 bytes long
   instruction_fetch_unit_size = 64;  // The processor fetches one line
