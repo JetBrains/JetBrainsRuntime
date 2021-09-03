@@ -206,22 +206,15 @@ public final class CStrike extends PhysicalStrike {
             return;
         }
 
-        float x, y;
-        if (desc.aaHint == INTVAL_TEXT_ANTIALIAS_OFF ||
-            desc.aaHint == INTVAL_TEXT_ANTIALIAS_ON) {
-            boolean subpixel = desc.aaHint == INTVAL_TEXT_ANTIALIAS_ON &&
-                               desc.fmHint == INTVAL_FRACTIONALMETRICS_ON;
-            float subpixelResolutionX = subpixel ?
-                    FontUtilities.supplementarySubpixelGlyphResolution.width : 1;
-            float subpixelResolutionY = subpixel ?
-                    FontUtilities.supplementarySubpixelGlyphResolution.height : 1;
-            // Before rendering, glyph positions are offset by 0.5 pixels, take into consideration
-            x = ((int) (pt.x * subpixelResolutionX + 0.5f)) / subpixelResolutionX;
-            y = ((int) (pt.y * subpixelResolutionY + 0.5f)) / subpixelResolutionY;
-        } else {
-            x = pt.x;
-            y = pt.y;
-        }
+        boolean subpixel = desc.aaHint == INTVAL_TEXT_ANTIALIAS_ON &&
+                desc.fmHint == INTVAL_FRACTIONALMETRICS_ON;
+        float subpixelResolutionX = subpixel ?
+                FontUtilities.supplementarySubpixelGlyphResolution.width : 1;
+        float subpixelResolutionY = subpixel ?
+                FontUtilities.supplementarySubpixelGlyphResolution.height : 1;
+        // Before rendering, glyph positions are offset by 0.5 pixels, take into consideration
+        float x = ((int) (pt.x * subpixelResolutionX + 0.5f)) / subpixelResolutionX;
+        float y = ((int) (pt.y * subpixelResolutionY + 0.5f)) / subpixelResolutionY;
 
         result.setRect(floatRect.x + x, floatRect.y + y, floatRect.width, floatRect.height);
     }
