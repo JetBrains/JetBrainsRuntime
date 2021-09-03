@@ -21,6 +21,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.FocusEvent;
 import java.awt.event.PaintEvent;
+import java.awt.event.WindowEvent;
 import java.awt.image.ColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
@@ -29,9 +30,11 @@ import java.awt.peer.FramePeer;
 
 public class WLFramePeer implements FramePeer {
     private final Frame target;
+    private long nativePtr;
 
     public WLFramePeer(Frame target) {
         this.target = target;
+        this.nativePtr = nativeCreateFrame();
     }
 
     @Override
@@ -46,7 +49,11 @@ public class WLFramePeer implements FramePeer {
 
     @Override
     public void setVisible(boolean v) {
-        throw new UnsupportedOperationException();
+        if (v) {
+            nativeShowFrame(nativePtr, target.getWidth(), target.getHeight());
+        } else {
+            nativeHideFrame(nativePtr);
+        }
     }
 
     @Override
@@ -71,7 +78,6 @@ public class WLFramePeer implements FramePeer {
 
     @Override
     public void handleEvent(AWTEvent e) {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -111,7 +117,8 @@ public class WLFramePeer implements FramePeer {
 
     @Override
     public void dispose() {
-        throw new UnsupportedOperationException();
+        WLToolkit.targetDisposedPeer(target, this);
+        nativeDisposeFrame(nativePtr);
     }
 
     @Override
@@ -131,7 +138,6 @@ public class WLFramePeer implements FramePeer {
 
     @Override
     public void updateCursorImmediately() {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -295,7 +301,6 @@ public class WLFramePeer implements FramePeer {
 
     @Override
     public void updateFocusableWindowState() {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -331,5 +336,15 @@ public class WLFramePeer implements FramePeer {
     @Override
     public void repositionSecurityWarning() {
         throw new UnsupportedOperationException();
+    }
+
+    private native long nativeCreateFrame();
+    private native void nativeShowFrame(long ptr, int width, int height);
+    private native void nativeHideFrame(long ptr);
+    private native void nativeDisposeFrame(long ptr);
+
+    // called from native code
+    private void postWindowClosing() {
+        WLToolkit.postEvent(new WindowEvent(target, WindowEvent.WINDOW_CLOSING));
     }
 }
