@@ -288,7 +288,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(CUPS_CFLAGS)
 
 
-    LIBAWT_WLAWT_LIBS := $(LIBM) -lawt $(WAYLAND_LIBS) $(LIBDL) -ljava -ljvm
+    LIBAWT_WLAWT_LIBS := $(LIBM) -lawt $(WAYLAND_LIBS) $(LIBDL) -ljava -ljvm -lrt
 
     ifeq ($(call isTargetOs, linux), true)
       LIBAWT_WLAWT_LIBS += -lpthread

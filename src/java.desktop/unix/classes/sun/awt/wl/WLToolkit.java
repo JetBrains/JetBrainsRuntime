@@ -26,43 +26,7 @@
 
 package sun.awt.wl;
 
-import java.awt.AWTException;
-import java.awt.Button;
-import java.awt.Canvas;
-import java.awt.Checkbox;
-import java.awt.CheckboxMenuItem;
-import java.awt.Choice;
-import java.awt.Component;
-import java.awt.Cursor;
-import java.awt.Desktop;
-import java.awt.Dialog;
-import java.awt.Dimension;
-import java.awt.FileDialog;
-import java.awt.Frame;
-import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsDevice;
-import java.awt.GraphicsEnvironment;
-import java.awt.HeadlessException;
-import java.awt.Image;
-import java.awt.Insets;
-import java.awt.JobAttributes;
-import java.awt.Label;
-import java.awt.Menu;
-import java.awt.MenuBar;
-import java.awt.MenuItem;
-import java.awt.PageAttributes;
-import java.awt.Panel;
-import java.awt.Point;
-import java.awt.PopupMenu;
-import java.awt.PrintJob;
-import java.awt.ScrollPane;
-import java.awt.Scrollbar;
-import java.awt.SystemTray;
-import java.awt.Taskbar;
-import java.awt.TextArea;
-import java.awt.TextField;
-import java.awt.TrayIcon;
-import java.awt.Window;
+import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.dnd.DragGestureEvent;
 import java.awt.dnd.DragGestureListener;
@@ -70,6 +34,7 @@ import java.awt.dnd.DragGestureRecognizer;
 import java.awt.dnd.DragSource;
 import java.awt.dnd.InvalidDnDOperationException;
 import java.awt.dnd.peer.DragSourceContextPeer;
+import java.awt.event.InvocationEvent;
 import java.awt.font.TextAttribute;
 import java.awt.im.InputMethodHighlight;
 import java.awt.im.spi.InputMethodDescriptor;
@@ -104,14 +69,18 @@ import java.awt.peer.WindowPeer;
 import java.beans.PropertyChangeListener;
 import java.util.Map;
 import java.util.Properties;
-import sun.awt.LightweightFrame;
-import sun.awt.SunToolkit;
-import sun.awt.UNIXToolkit;
+import java.util.concurrent.locks.LockSupport;
+
+import sun.awt.*;
 import sun.awt.datatransfer.DataTransferer;
 import sun.util.logging.PlatformLogger;
 
 public class WLToolkit extends UNIXToolkit implements Runnable {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLToolkit");
+
+    private static final int READ_RESULT_NOT_STARTED = 0;
+    private static final int READ_RESULT_FINISHED_NO_EVENTS = 1;
+    private static final int READ_RESULT_FINISHED_WITH_EVENTS = 2;
 
     private static native void initIDs();
 
@@ -120,6 +89,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             initIDs();
         }
     }
+
+    public WLToolkit() {
+        Thread toolkitThread = new Thread(this, "AWT-Wayland");
+        toolkitThread.setDaemon(true);
+        toolkitThread.start();
+    }
+
     @Override
     public ButtonPeer createButton(Button target) {
         log.info("Not implemented: WLToolkit.createButton(Button)");
@@ -141,11 +117,24 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public void run() {
-        log.info("Not implemented: WLToolkit.run()");
-
-        while(!Thread.currentThread().isInterrupted()) {
-            awtLock();
-            awtUnlock();
+        while(true) {
+            int result = readEvents();
+            if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
+                SunToolkit.postEvent(AppContext.getAppContext(),
+                        new PeerEvent(this, () -> {
+                            dispatchEvents();
+                            synchronized (WLToolkit.this) {
+                                WLToolkit.this.notifyAll();
+                            }
+                        }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
+            } else if (result == READ_RESULT_NOT_STARTED) {
+                synchronized (WLToolkit.this) {
+                    try {
+                        WLToolkit.this.wait(50);
+                    } catch (InterruptedException ignored) {
+                    }
+                }
+            }
         }
     }
 
@@ -579,5 +568,16 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     public boolean isTranslucencyCapable(GraphicsConfiguration gc) {
         log.info("Not implemented: WLToolkit.isWindowTranslucencySupported()");
         return false;
+    }
+
+    private native void dispatchEvents();
+    private native int readEvents();
+
+    protected static void targetDisposedPeer(Object target, Object peer) {
+        SunToolkit.targetDisposedPeer(target, peer);
+    }
+
+    static void postEvent(AWTEvent event) {
+        SunToolkit.postEvent(AppContext.getAppContext(), event);
     }
 }
