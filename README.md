@@ -110,8 +110,8 @@ Install the following:
 
 From the command line: 
 ```
-"c:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
-"c:\Program_Files\cygwin64\bin\mintty.exe" /bin/bash -l
+"c:\Program Files (x86)\Microsoft Visual Studio 15.0\VC\vcvarsall.bat" amd64
+c:\cygwin64\bin\mintty.exe /usr/bin/bash -l
 ```
 The first command sets up environment variables, the second starts a Cygwin shell with the proper environment.  
 
