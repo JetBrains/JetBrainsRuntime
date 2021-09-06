@@ -27,6 +27,7 @@
 #include "jvm_md.h"
 #include <dirent.h>
 #include <dlfcn.h>
+#include <link.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -220,6 +221,39 @@ ContainsLibJVM(const char *env) {
     return JNI_FALSE;
 }
 
+static int
+HaveGLibCCompatLibrary(struct dl_phdr_info* info, size_t size, void* data)
+{
+    static const char * const GLIBC_COMPAT_LIBRARY_NAME = "libgcompat.so";
+
+    const char * const so_pathname = info->dlpi_name;
+    if (so_pathname != NULL && so_pathname[0] != 0) {
+        const char * const last_slash = JLI_StrRChr(so_pathname, '/');
+        const char * const so_basename = (last_slash != NULL) ? last_slash + 1 : so_pathname;
+        if (JLI_StrNCmp(so_basename, GLIBC_COMPAT_LIBRARY_NAME, JLI_StrLen(GLIBC_COMPAT_LIBRARY_NAME)) == 0) {
+            return JNI_TRUE;
+        }
+    }
+
+    return 0; /* also means continue to iterate */
+}
+
+static jboolean
+UsingMusl(void) {
+    const jlong start = CurrentTimeMicros();
+
+    const int found_gcompat = dl_iterate_phdr(HaveGLibCCompatLibrary, NULL);
+
+    if (JLI_IsTraceLauncher()) {
+        const jlong end = CurrentTimeMicros();
+        JLI_TraceLauncher("%ld micro seconds to check for the musl compatibility layer for glibc\n",
+                          (long)(end - start));
+    }
+
+    return (found_gcompat != 0);
+}
+
+
 /*
  * Test whether the environment variable needs to be set, see flowchart.
  */
@@ -242,6 +276,10 @@ RequiresSetenv(const char *jvmpath) {
     /* We always have to set the LIBPATH on AIX because ld doesn't support $ORIGIN. */
     return JNI_TRUE;
 #endif
+
+    if (UsingMusl()) {
+        return JNI_TRUE;
+    }
 
     llp = getenv("LD_LIBRARY_PATH");
     /* no environment variable is a good environment variable */
