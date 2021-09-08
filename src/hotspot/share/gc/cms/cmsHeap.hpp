@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,6 +67,9 @@ public:
 
   virtual void print_gc_threads_on(outputStream* st) const;
   virtual void gc_threads_do(ThreadClosure* tc) const;
+  // Runs the given AbstractGangTask with the current active workers.
+  // No workGang for CmsHeap, work serially with thread 0
+  virtual void run_task(AbstractGangTask* task) { task->work(0); }
   virtual void print_on_error(outputStream* st) const;
 
   // Perform a full collection of the heap; intended for use in implementing

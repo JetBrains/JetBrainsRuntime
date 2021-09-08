@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2013, 2021, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -205,6 +205,10 @@ public:
   WorkGang* get_safepoint_workers();
 
   void gc_threads_do(ThreadClosure* tcl) const;
+
+  // Runs the given AbstractGangTask with the current active workers
+  // No workGang for shenandoahHeap, work serially with thread 0
+  virtual void run_task(AbstractGangTask* task) { task->work(0); }
 
 // ---------- Heap regions handling machinery
 //
