@@ -604,12 +604,6 @@ void ParallelScavengeHeap::print_gc_threads_on(outputStream* st) const {
   PSScavenge::gc_task_manager()->print_threads_on(st);
 }
 
-void ParallelScavengeHeap::run_task(AbstractGangTask* task) {
-  WorkGang workers("GC Threads", ParallelGCThreads, true, false);
-  workers.initialize_workers();
-  workers.run_task(task);
-}
-
 void ParallelScavengeHeap::print_tracing_info() const {
   AdaptiveSizePolicyOutput::print();
   log_debug(gc, heap, exit)("Accumulated young generation GC time %3.7f secs", PSScavenge::accumulated_time()->seconds());
