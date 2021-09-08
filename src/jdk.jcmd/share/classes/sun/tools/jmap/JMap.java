@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -149,18 +149,29 @@ public class JMap {
         throws AttachNotSupportedException, IOException,
                UnsupportedEncodingException {
         String liveopt = "-all";
-        if (options.equals("") || options.equals("all")) {
-            //  pass
-        }
-        else if (options.equals("live")) {
-            liveopt = "-live";
-        }
-        else {
-            usage(1);
+        String parallel = null;
+        String subopts[] = options.split(",");
+        for (int i = 0; i < subopts.length; i++) {
+            String subopt = subopts[i];
+            if (subopt.equals("") || options.equals("all")) {
+                //  pass
+            } else if (subopt.equals("live")) {
+                liveopt = "-live";
+            } else if (subopt.startsWith("parallel=")) {
+                parallel = subopt.substring("parallel=".length());
+                if (parallel == null) {
+                    System.err.println("Fail: no number provided in option: '" + subopt + "'");
+                    usage(1);
+                }
+            } else {
+                System.err.println("Fail: invalid option: '" + subopt + "'");
+                usage(1);
+            }
         }
 
+        System.out.flush();
         // inspectHeap is not the same as jcmd GC.class_histogram
-        executeCommandForPid(pid, "inspectheap", liveopt);
+        executeCommandForPid(pid, "inspectheap", liveopt, parallel);
     }
 
     private static void dump(String pid, String options)
@@ -184,7 +195,8 @@ public class JMap {
         }
 
         if (filename == null) {
-            usage(1);  // invalid options or no filename
+            System.err.println("Fail: invalid option or no file name");
+            usage(1);
         }
 
         // get the canonical path - important to avoid just passing
@@ -259,6 +271,11 @@ public class JMap {
         System.err.println("                   all objects in the heap are dumped.");
         System.err.println("      format=b     binary format");
         System.err.println("      file=<file>  dump heap to <file>");
+        System.err.println("      parallel=<number>  parallel threads number for heap iteration:");
+        System.err.println("                         parallel=0 default behavior, use predefined number of threads");
+        System.err.println("                         parallel=1 disable parallel heap iteration");
+        System.err.println("                         parallel=<N> use N threads for parallel heap iteration");
+
         System.err.println("");
         System.err.println("    Example: jmap -dump:live,format=b,file=heap.bin <pid>");
         System.exit(exit);
