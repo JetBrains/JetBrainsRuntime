@@ -166,7 +166,8 @@ class CFileDialog implements FileDialogPeer {
             String nameOnly = fileObj.getName();
             try {
                 ret = ff.accept(directoryObj, nameOnly);
-            } catch (Throwable ignored) {
+            } catch (Throwable e) {
+                log.warning("FilenameFilter call exception occurred", e);
             }
         }
         return ret;
