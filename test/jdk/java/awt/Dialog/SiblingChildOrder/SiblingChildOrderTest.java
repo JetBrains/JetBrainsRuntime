@@ -52,7 +52,9 @@ public class SiblingChildOrderTest
             frame.setVisible(true);
         });
 
+        Robot robot = new Robot();
         for (int i = 0; i < colors.length; i++) {
+            robot.delay(100);
             int finalI = i;
             SwingUtilities.invokeLater(() -> {
                 dlgs[finalI] = new JDialog(frame, "DLG " + finalI, true);
@@ -63,7 +65,6 @@ public class SiblingChildOrderTest
             });
         }
 
-        Robot robot = new Robot();
         robot.waitForIdle();
         robot.delay(1000);
 

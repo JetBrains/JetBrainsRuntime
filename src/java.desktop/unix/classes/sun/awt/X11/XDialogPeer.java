@@ -69,11 +69,19 @@ class XDialogPeer extends XDecoratedPeer implements DialogPeer {
                         XBaseWindow.ungrabInput();
                     }
                 }
-                XNETProtocol protocol = XWM.getWM().getNETProtocol();
-                if (protocol != null && protocol.doModalityProtocol()) {
-                    XAtomList net_wm_state = getNETWMState();
-                    if (net_wm_state.update(protocol.XA_NET_WM_STATE_MODAL, modal)) {
-                        setNETWMState(net_wm_state);
+                if (XWM.getWMID() == XWM.KDE2_WM) {
+                    // In case of KDE, we inform window manager that our window is a modal dialog
+                    // so that it's minimized along with its parent window.
+                    // This is not needed for other WMs, as it seems only KDE allows minimizing 'transient'
+                    // windows, and setting _NET_WM_STATE_MODAL causes other WMs' undesirable behaviour.
+                    // GNOME (mutter WM), for example, enforces centering of modal dialogs with respect
+                    // to their parent, which breaks SiblingChildOrderTest.
+                    XNETProtocol protocol = XWM.getWM().getNETProtocol();
+                    if (protocol != null && protocol.doModalityProtocol()) {
+                        XAtomList net_wm_state = getNETWMState();
+                        if (net_wm_state.update(protocol.XA_NET_WM_STATE_MODAL, modal)) {
+                            setNETWMState(net_wm_state);
+                        }
                     }
                 }
             } else {
