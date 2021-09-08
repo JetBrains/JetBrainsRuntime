@@ -55,8 +55,11 @@ import java.util.List;
 
 import sun.awt.AWTAccessor;
 import sun.java2d.pipe.Region;
+import sun.util.logging.PlatformLogger;
 
 final class CFileDialog implements FileDialogPeer {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.lwawt.macosx.CFileDialog");
 
     private final class Task implements Runnable {
 
@@ -161,7 +164,8 @@ final class CFileDialog implements FileDialogPeer {
             String nameOnly = fileObj.getName();
             try {
                 ret = ff.accept(directoryObj, nameOnly);
-            } catch (Throwable ignored) {
+            } catch (Throwable e) {
+                log.warning("FilenameFilter call exception occurred", e);
             }
         }
         return ret;
