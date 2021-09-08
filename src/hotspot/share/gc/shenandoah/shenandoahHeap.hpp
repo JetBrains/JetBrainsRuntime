@@ -206,10 +206,6 @@ public:
 
   void gc_threads_do(ThreadClosure* tcl) const;
 
-  // Runs the given AbstractGangTask with the current active workers
-  // No workGang for shenandoahHeap, work serially with thread 0
-  virtual void run_task(AbstractGangTask* task) { task->work(0); }
-
 // ---------- Heap regions handling machinery
 //
 private:
