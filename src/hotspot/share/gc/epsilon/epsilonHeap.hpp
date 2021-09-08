@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2017, 2021, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -135,6 +135,10 @@ public:
   // No GC threads
   virtual void print_gc_threads_on(outputStream* st) const {}
   virtual void gc_threads_do(ThreadClosure* tc) const {}
+
+  // Runs the given AbstractGangTask with the current active workers
+  // No workGang for EpsilonHeap, work serially with thread 0
+  virtual void run_task(AbstractGangTask* task) { task->work(0); }
 
   // No heap verification
   virtual void prepare_for_verify() {}
