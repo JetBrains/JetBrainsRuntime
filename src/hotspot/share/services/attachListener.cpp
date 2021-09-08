@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -246,9 +246,11 @@ jint dump_heap(AttachOperation* op, outputStream* out) {
 //
 // Input arguments :-
 //   arg0: "-live" or "-all"
+//   arg1: parallel thread number
 static jint heap_inspection(AttachOperation* op, outputStream* out) {
   bool live_objects_only = true;   // default is true to retain the behavior before this change is made
   const char* arg0 = op->arg(0);
+  uint parallel_thread_num = MAX2<uint>(1, (uint)os::initial_active_processor_count() * 3 / 8);
   if (arg0 != NULL && (strlen(arg0) > 0)) {
     if (strcmp(arg0, "-all") != 0 && strcmp(arg0, "-live") != 0) {
       out->print_cr("Invalid argument to inspectheap operation: %s", arg0);
@@ -256,7 +258,18 @@ static jint heap_inspection(AttachOperation* op, outputStream* out) {
     }
     live_objects_only = strcmp(arg0, "-live") == 0;
   }
-  VM_GC_HeapInspection heapop(out, live_objects_only /* request full gc */);
+
+  const char* num_str = op->arg(1);
+  if (num_str != NULL && num_str[0] != '\0') {
+    uintx num;
+    if (!Arguments::parse_uintx(num_str, &num, 0)) {
+      out->print_cr("Invalid parallel thread number: [%s]", num_str);
+      return JNI_ERR;
+    }
+    parallel_thread_num = num == 0 ? parallel_thread_num : (uint)num;
+  }
+
+  VM_GC_HeapInspection heapop(out, live_objects_only /* request full gc */, parallel_thread_num);
   VMThread::execute(&heapop);
   return JNI_OK;
 }

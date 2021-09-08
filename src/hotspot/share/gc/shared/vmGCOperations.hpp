@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -125,18 +125,21 @@ class VM_GC_HeapInspection: public VM_GC_Operation {
  private:
   outputStream* _out;
   bool _full_gc;
+  uint _parallel_thread_num;
   bool _csv_format; // "comma separated values" format for spreadsheet.
   bool _print_help;
   bool _print_class_stats;
   const char* _columns;
  public:
-  VM_GC_HeapInspection(outputStream* out, bool request_full_gc) :
+  VM_GC_HeapInspection(outputStream* out, bool request_full_gc,
+                       uint parallel_thread_num = 1) :
     VM_GC_Operation(0 /* total collections,      dummy, ignored */,
                     GCCause::_heap_inspection /* GC Cause */,
                     0 /* total full collections, dummy, ignored */,
                     request_full_gc) {
     _out = out;
     _full_gc = request_full_gc;
+    _parallel_thread_num = parallel_thread_num;
     _csv_format = false;
     _print_help = false;
     _print_class_stats = false;

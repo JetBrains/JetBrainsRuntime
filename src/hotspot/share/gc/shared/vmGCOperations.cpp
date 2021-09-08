@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -154,7 +154,7 @@ void VM_GC_HeapInspection::doit() {
   }
   HeapInspection inspect(_csv_format, _print_help, _print_class_stats,
                          _columns);
-  inspect.heap_inspection(_out);
+  inspect.heap_inspection(_out, _parallel_thread_num);
 }
 
 

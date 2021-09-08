@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -602,6 +602,12 @@ void ParallelScavengeHeap::gc_threads_do(ThreadClosure* tc) const {
 
 void ParallelScavengeHeap::print_gc_threads_on(outputStream* st) const {
   PSScavenge::gc_task_manager()->print_threads_on(st);
+}
+
+void ParallelScavengeHeap::run_task(AbstractGangTask* task) {
+  WorkGang workers("GC Threads", ParallelGCThreads, true, false);
+  workers.initialize_workers();
+  workers.run_task(task);
 }
 
 void ParallelScavengeHeap::print_tracing_info() const {

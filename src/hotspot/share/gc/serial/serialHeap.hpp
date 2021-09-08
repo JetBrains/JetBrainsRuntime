@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,6 +81,10 @@ public:
   template <typename OopClosureType1, typename OopClosureType2>
   void oop_since_save_marks_iterate(OopClosureType1* cur,
                                     OopClosureType2* older);
+
+  // Runs the given AbstractGangTask with the current active workers.
+  // No workGang for SerialHeap, work serially with thread 0.
+  virtual void run_task(AbstractGangTask* task) { task->work(0); }
 };
 
 #endif // SHARE_VM_GC_CMS_CMSHEAP_HPP

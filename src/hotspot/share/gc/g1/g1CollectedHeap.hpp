@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -527,6 +527,9 @@ public:
   G1YoungRemSetSamplingThread* sampling_thread() const { return _young_gen_sampling_thread; }
 
   WorkGang* workers() const { return _workers; }
+
+  // Runs the given AbstractGangTask with the current active workers.
+  virtual void run_task(AbstractGangTask* task);
 
   G1Allocator* allocator() {
     return _allocator;
@@ -1116,12 +1119,16 @@ public:
 
   // Iteration functions.
 
+  void object_iterate_parallel(ObjectClosure* cl, uint worker_id, HeapRegionClaimer* claimer);
+
   // Iterate over all objects, calling "cl.do_object" on each.
   virtual void object_iterate(ObjectClosure* cl);
 
   virtual void safe_object_iterate(ObjectClosure* cl) {
     object_iterate(cl);
   }
+
+  virtual ParallelObjectIterator* parallel_object_iterator(uint thread_num);
 
   // Keep alive an object that was loaded with AS_NO_KEEPALIVE.
   virtual void keep_alive(oop obj);
