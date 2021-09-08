@@ -67,9 +67,6 @@ public:
 
   virtual void print_gc_threads_on(outputStream* st) const;
   virtual void gc_threads_do(ThreadClosure* tc) const;
-  // Runs the given AbstractGangTask with the current active workers.
-  // No workGang for CmsHeap, work serially with thread 0
-  virtual void run_task(AbstractGangTask* task) { task->work(0); }
   virtual void print_on_error(outputStream* st) const;
 
   // Perform a full collection of the heap; intended for use in implementing

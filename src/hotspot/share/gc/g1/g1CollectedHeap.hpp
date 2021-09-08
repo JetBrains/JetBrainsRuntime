@@ -528,9 +528,6 @@ public:
 
   WorkGang* workers() const { return _workers; }
 
-  // Runs the given AbstractGangTask with the current active workers.
-  virtual void run_task(AbstractGangTask* task);
-
   G1Allocator* allocator() {
     return _allocator;
   }

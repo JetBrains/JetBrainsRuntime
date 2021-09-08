@@ -103,10 +103,6 @@ public:
   virtual void object_iterate(ObjectClosure* cl);
   virtual void safe_object_iterate(ObjectClosure* cl);
 
-  // Runs the given AbstractGangTask with the current active workers.
-  // No workGang for zHeap, work serially with thread 0
-  virtual void run_task(AbstractGangTask* task) { task->work(0); }
-
   virtual HeapWord* block_start(const void* addr) const;
   virtual size_t block_size(const HeapWord* addr) const;
   virtual bool block_is_obj(const HeapWord* addr) const;
