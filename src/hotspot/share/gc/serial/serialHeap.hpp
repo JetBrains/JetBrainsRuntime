@@ -82,9 +82,6 @@ public:
   void oop_since_save_marks_iterate(OopClosureType1* cur,
                                     OopClosureType2* older);
 
-  // Runs the given AbstractGangTask with the current active workers.
-  // No workGang for SerialHeap, work serially with thread 0.
-  virtual void run_task(AbstractGangTask* task) { task->work(0); }
 };
 
 #endif // SHARE_VM_GC_CMS_CMSHEAP_HPP
