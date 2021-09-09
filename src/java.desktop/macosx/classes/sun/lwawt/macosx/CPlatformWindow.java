@@ -425,15 +425,15 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     protected int getInitialStyleBits() {
         // defaults style bits
-        int styleBits = DECORATED | HAS_SHADOW | CLOSEABLE | MINIMIZABLE | ZOOMABLE | RESIZABLE | TITLE_VISIBLE;
+        int styleBits = DECORATED | HAS_SHADOW | CLOSEABLE | ZOOMABLE | RESIZABLE | TITLE_VISIBLE;
 
         styleBits |= getFocusableStyleBits();
 
         final boolean isFrame = (target instanceof Frame);
         final boolean isDialog = (target instanceof Dialog);
         final boolean isPopup = (target.getType() == Window.Type.POPUP);
-        if (isDialog) {
-            styleBits = SET(styleBits, MINIMIZABLE, false);
+        if (isFrame) {
+            styleBits = SET(styleBits, MINIMIZABLE, true);
         }
 
         // Either java.awt.Frame or java.awt.Dialog can be undecorated, however java.awt.Window always is undecorated.
