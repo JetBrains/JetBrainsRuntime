@@ -34,10 +34,13 @@ import java.awt.Rectangle;
 import java.awt.Window;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 import sun.java2d.opengl.GLXGraphicsConfig;
 import sun.java2d.pipe.Region;
@@ -145,7 +148,41 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return Region.clipRound(x / (double)getScaleFactor());
     }
 
-    public Rectangle getBounds() {
+    public static class TimedCache<T> {
+        private int cacheTimeoutMs;
+        private T valueCached;
+        private final Supplier<T> valueSupplier;
+        private LocalDateTime lastUpdateTime;
+
+        public TimedCache(Supplier<T> valueSupplier, int cacheTimeoutMs) {
+            this.valueSupplier = valueSupplier;
+            this.cacheTimeoutMs = cacheTimeoutMs;
+        }
+
+        public T get() {
+            maybeUpdateCache();
+            return valueCached;
+        }
+
+        private synchronized void maybeUpdateCache() {
+            final LocalDateTime now = LocalDateTime.now();
+            if (valueNeedsUpdate(now)) {
+                valueCached = valueSupplier.get();
+                lastUpdateTime = now;
+            }
+        }
+
+        private boolean valueNeedsUpdate(LocalDateTime now) {
+            if (lastUpdateTime == null) {
+                return true;
+            }
+
+            final LocalDateTime expirationTime = lastUpdateTime.plus(cacheTimeoutMs, ChronoUnit.MILLIS);
+            return expirationTime.isBefore(now);
+        }
+    }
+
+    private Rectangle getBoundsImpl() {
         Rectangle rect = pGetBounds(getScreen());
         if (getScaleFactor() != 1) {
             rect.x = scaleDown(rect.x);
@@ -154,6 +191,13 @@ public final class X11GraphicsDevice extends GraphicsDevice
             rect.height = scaleDown(rect.height);
         }
         return rect;
+    }
+
+    private final TimedCache<Rectangle> timedCache = new TimedCache<>(this::getBoundsImpl, 5000);
+    public Rectangle getBounds() {
+        // The value may change if the current screen gets resized or scaled differently;
+        // we'll get the right value only after at most 5000ms have passed.
+        return timedCache.get();
     }
 
     /**

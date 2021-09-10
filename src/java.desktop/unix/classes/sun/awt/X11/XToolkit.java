@@ -117,23 +117,9 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Properties;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import java.util.Vector;
-import java.util.Deque;
-import java.util.ArrayDeque;
-import java.util.AbstractMap;
-import java.util.StringTokenizer;
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.LookAndFeel;
 import javax.swing.UIDefaults;
@@ -1160,8 +1146,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
      * When two screens overlap and the first contains a dock(*****), then
      * _NET_WORKAREA may start at point x1,y1 and end at point x2,y2.
      */
-    @Override
-    public Insets getScreenInsets(final GraphicsConfiguration gc) {
+    public Insets getScreenInsetsImpl(final GraphicsConfiguration gc) {
         GraphicsDevice gd = gc.getDevice();
         XNETProtocol np = XWM.getWM().getNETProtocol();
         if (np == null || !(gd instanceof X11GraphicsDevice) || !np.active()) {
@@ -1203,6 +1188,15 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         {
             XToolkit.awtUnlock();
         }
+    }
+
+    private Hashtable<GraphicsConfiguration, Insets> cachedInsets = new Hashtable<>();
+
+    @Override
+    public Insets getScreenInsets(final GraphicsConfiguration gc) {
+        // Insets rarely change and don't affect all that much even if incorrect.
+        // Get them once and remember forever.
+        return cachedInsets.computeIfAbsent(gc, this::getScreenInsetsImpl);
     }
 
     /**
