@@ -119,6 +119,7 @@ import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
@@ -646,9 +647,15 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                         try {
                             ((X11GraphicsEnvironment)GraphicsEnvironment.
                              getLocalGraphicsEnvironment()).rebuildDevices();
+                            if (useCachedInsets) resetScreenInsetsCache();
                         } finally {
                             awtLock();
                         }
+                    } else if (useCachedInsets) {
+                        final XAtom XA_NET_WORKAREA = XAtom.get("_NET_WORKAREA");
+                        final boolean rootWindowWorkareaResized = (ev.get_type() == XConstants.PropertyNotify
+                                && ev.get_xproperty().get_atom() == XA_NET_WORKAREA.getAtom());
+                        if (rootWindowWorkareaResized) resetScreenInsetsCache();
                     }
                 }
             });
@@ -1147,8 +1154,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
      * When two screens overlap and the first contains a dock(*****), then
      * _NET_WORKAREA may start at point x1,y1 and end at point x2,y2.
      */
-    @Override
-    public Insets getScreenInsets(final GraphicsConfiguration gc) {
+    private Insets getScreenInsetsImpl(final GraphicsConfiguration gc) {
         GraphicsDevice gd = gc.getDevice();
         XNETProtocol np = XWM.getWM().getNETProtocol();
         if (np == null || !(gd instanceof X11GraphicsDevice) || !np.active()) {
@@ -1173,6 +1179,20 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             return new Insets(0, 0, 0, 0);
         } finally {
             XToolkit.awtUnlock();
+        }
+    }
+
+    private final Hashtable<GraphicsConfiguration, Insets> cachedInsets = new Hashtable<>();
+    private void resetScreenInsetsCache() {
+        cachedInsets.clear();
+    }
+
+    @Override
+    public Insets getScreenInsets(final GraphicsConfiguration gc) {
+        if (useCachedInsets) {
+            return cachedInsets.computeIfAbsent(gc, this::getScreenInsetsImpl);
+        } else {
+            return getScreenInsetsImpl(gc);
         }
     }
 
@@ -2892,4 +2912,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     public static boolean getSunAwtDisableGrab() {
         return AccessController.doPrivileged(new GetBooleanAction("sun.awt.disablegrab"));
     }
+
+    @SuppressWarnings("removal")
+    private static final boolean useCachedInsets = Boolean.parseBoolean(AccessController.doPrivileged(
+            new GetPropertyAction("x11.cache.screen.insets", "true")));
 }
