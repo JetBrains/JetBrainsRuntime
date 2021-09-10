@@ -16,8 +16,8 @@ static jmethodID sjm_getAccessibleName = NULL;
 static jmethodID sjm_getAccessibleSelection = NULL;
 #define GET_ACCESSIBLESELECTION_METHOD_RETURN(ret) \
     GET_CACCESSIBILITY_CLASS_RETURN(ret); \
-DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleSelection, sjc_CAccessibility, \
-"getAccessibleSelection", "(Ljavax/accessibility/AccessibleContext;Ljava/awt/Component;)Ljavax/accessibility/AccessibleSelection;", ret);
+    GET_STATIC_METHOD_RETURN(sjm_getAccessibleSelection, sjc_CAccessibility, "getAccessibleSelection", \
+                     "(Ljavax/accessibility/AccessibleContext;Ljava/awt/Component;)Ljavax/accessibility/AccessibleSelection;", ret);
 
 @implementation JavaComboBoxAccessibility
 
