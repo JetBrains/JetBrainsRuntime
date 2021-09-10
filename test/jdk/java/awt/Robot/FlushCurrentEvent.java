@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,14 @@ public final class FlushCurrentEvent {
         Robot robot = new Robot();
         AtomicBoolean done = new AtomicBoolean();
         EventQueue.invokeLater(() -> {
-            robot.delay(15000);
+            // Calling the robot.delay() will cause a deadlock because it is a
+            // synchronized method prior to JDK 15 (see JDK-8210231)
+            // robot.delay(15000);
+            try {
+                Thread.sleep(15000);
+            } catch(InterruptedException ite) {
+                throw new RuntimeException(ite);
+            }
             done.set(true);
         });
         robot.waitForIdle();
