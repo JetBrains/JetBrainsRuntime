@@ -220,7 +220,13 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
         PhysicalFont[] fonts = new PhysicalFont[numFonts];
         fonts[0] = this;
         int idx = 1;
+        if (FontUtilities.isLogging()) {
+            FontUtilities.getLogger().info("Cascading list for " + this + " :");
+        }
         for (String s : components) {
+            if (FontUtilities.isLogging()) {
+                FontUtilities.getLogger().info("Fallback:" + s);
+            }
             if (s.equals(".AppleSymbolsFB"))  {
                 // Don't know why we get the weird name above .. replace.
                 s = "AppleSymbols";
