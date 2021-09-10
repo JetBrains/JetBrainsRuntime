@@ -13,6 +13,12 @@ static jmethodID sjm_getAccessibleName = NULL;
     GET_STATIC_METHOD_RETURN(sjm_getAccessibleName, sjc_CAccessibility, "getAccessibleName", \
                      "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/String;", ret);
 
+static jmethodID sjm_getAccessibleSelection = NULL;
+#define GET_ACCESSIBLESELECTION_METHOD_RETURN(ret) \
+    GET_CACCESSIBILITY_CLASS_RETURN(ret); \
+DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleSelection, sjc_CAccessibility, \
+"getAccessibleSelection", "(Ljavax/accessibility/AccessibleContext;Ljava/awt/Component;)Ljavax/accessibility/AccessibleSelection;", ret);
+
 @implementation JavaComboBoxAccessibility
 
 // NSAccessibilityElement protocol methods
@@ -21,8 +27,7 @@ static jmethodID sjm_getAccessibleName = NULL;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return nil;
-    GET_CACCESSIBILITY_CLASS_RETURN(nil);
-    DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleSelection, sjc_CAccessibility, "getAccessibleSelection", "(Ljavax/accessibility/AccessibleContext;Ljava/awt/Component;)Ljavax/accessibility/AccessibleSelection;", nil);
+    GET_ACCESSIBLESELECTION_METHOD_RETURN(nil);
     jobject axSelection = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleSelection, axContext, self->fComponent);
     CHECK_EXCEPTION();
     if (axSelection == NULL) {
