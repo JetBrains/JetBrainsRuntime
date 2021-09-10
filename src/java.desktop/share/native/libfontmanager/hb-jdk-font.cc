@@ -363,12 +363,11 @@ extern "C" {
 /*
  * Class:     sun_font_SunLayoutEngine
  * Method:    createFace
- * Signature: (Lsun/font/Font2D;ZJJ)J
+ * Signature: (Lsun/font/Font2D;JJ)J
  */
 JNIEXPORT jlong JNICALL Java_sun_font_SunLayoutEngine_createFace(JNIEnv *env,
                          jclass cls,
                          jobject font2D,
-                         jboolean aat,
                          jlong platformFontPtr) {
     Font2DPtr *fi = (Font2DPtr*)malloc(sizeof(Font2DPtr));
     if (!fi) {
