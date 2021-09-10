@@ -35,11 +35,13 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
+import java.security.AccessController;
 import java.util.*;
 import sun.awt.X11.XToolkit;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceManagerFactory;
 import sun.java2d.UnixSurfaceManagerFactory;
+import sun.security.action.GetPropertyAction;
 import sun.util.logging.PlatformLogger;
 import sun.java2d.xr.XRSurfaceData;
 
@@ -253,6 +255,12 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
             } else {
                 // no more references to this device, remove it
                 it.remove();
+            }
+        }
+
+        if (useBoundsCache()) {
+            for (final X11GraphicsDevice gd : devices.values()) {
+                gd.resetBoundsCache();
             }
         }
     }
@@ -503,5 +511,12 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
      */
     @Override
     public void paletteChanged() {
+    }
+
+    private static final boolean cacheScreenBoundsValue = Boolean.parseBoolean(AccessController.doPrivileged(
+            new GetPropertyAction("x11.cache.screen.bounds", "true")));
+
+    public static boolean useBoundsCache() {
+        return cacheScreenBoundsValue;
     }
 }
