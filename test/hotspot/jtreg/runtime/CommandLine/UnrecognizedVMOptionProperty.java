@@ -28,27 +28,18 @@
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
- * @run driver UnrecognizedVMOption
+ * @run main/othervm -XX:+IgnoreUnrecognizedVMOptions -XX:+BogusOption01 -XX:+BogusOption02 UnrecognizedVMOptionProperty 
  */
 
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
 
-public class UnrecognizedVMOption {
+public class UnrecognizedVMOptionProperty {
   public static void main(String[] args) throws Exception {
-    // Note: -XX by itself is an unrecognized launcher option, the :
-    // must be present for it to be passed through as a VM option.
-    String[] badOptions = {
-      "",  // empty option
-      "bogus_option",
-    };
-    for (String option : badOptions) {
-      ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-          "-XX:" + option, "-XX:-IgnoreUnrecognizedVMOptions", "-version");
-
-      OutputAnalyzer output = new OutputAnalyzer(pb.start());
-      output.shouldContain("Unrecognized VM option '" + option + "'");
-      output.shouldHaveExitValue(1);
-    }
+     String badOptions = System.getProperty("java.vm.unrecognized.option");
+     System.out.println("Found unrecognized VM option " + badOptions);
+     if (! badOptions.equals(":+BogusOption01:+BogusOption02")) {
+        throw new RuntimeException("Invalid value of 'java.vm.unrecognized.option' property '" + badOptions + "'");
+     }
   }
 }
