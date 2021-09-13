@@ -56,21 +56,21 @@ public class JBRServiceTest {
      * it in 'instanceof' statement will cause loading this interface, which may in turn cause NoClassDefFoundError.
      */
     public static void main(String[] args) {
-        // Declaring variables is safe
-        SampleJBRApi.V1 service;
-        // We pass lambda instead of plain class. This allows JBRService#load to deal with NoClassDefFoundErrors
-        service = JBRService.load(() -> SampleJBRApi.V1.class);
-        // Null-checking variables is safe too
-        Objects.requireNonNull(service);
-        // When we ensured that SampleJBRApi.V1 is available, we can use anything that's inside
-        service.someMethod1(null);
-        // We can also create SampleJBRApi.V1.SomeDataClass instances, as we know they're supported with V1
-        service.someMethod1(new SampleJBRApi.V1.SomeDataClass());
-
-        // But don't try doing 'service instanceof SampleJBRApi.V2' as it may cause NoClassDefFoundErrors!
-        SampleJBRApi.V2 service2 = Objects.requireNonNull(JBRService.load(() -> SampleJBRApi.V2.class));
-        // Versioned service interfaces are inherited, so V2 gives you access to both V2 and V1 API
-        service2.someMethod1(service2.someMethod2());
+//        // Declaring variables is safe
+//        SampleJBRApi.V1 service;
+//        // We pass lambda instead of plain class. This allows JBRService#load to deal with NoClassDefFoundErrors
+//        service = JBRService.load(() -> SampleJBRApi.V1.class);
+//        // Null-checking variables is safe too
+//        Objects.requireNonNull(service);
+//        // When we ensured that SampleJBRApi.V1 is available, we can use anything that's inside
+//        service.someMethod1(null);
+//        // We can also create SampleJBRApi.V1.SomeDataClass instances, as we know they're supported with V1
+//        service.someMethod1(new SampleJBRApi.V1.SomeDataClass());
+//
+//        // But don't try doing 'service instanceof SampleJBRApi.V2' as it may cause NoClassDefFoundErrors!
+//        SampleJBRApi.V2 service2 = Objects.requireNonNull(JBRService.load(() -> SampleJBRApi.V2.class));
+//        // Versioned service interfaces are inherited, so V2 gives you access to both V2 and V1 API
+//        service2.someMethod1(service2.someMethod2());
     }
 
 

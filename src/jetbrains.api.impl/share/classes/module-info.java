@@ -15,7 +15,7 @@
  */
 
 import com.jetbrains.JBRService;
-import com.jetbrains.impl.SampleJBRApiImpl;
+import com.jetbrains.impl.*;
 
 module jetbrains.api.impl {
 
@@ -23,6 +23,6 @@ module jetbrains.api.impl {
 
     // We probably don't want to add `provides with` for each version of API, so we just provide `JBRService`
     // implementation, `JBRService#load` will take care of the rest
-    provides JBRService with SampleJBRApiImpl;
+    provides JBRService with ExtendedGlyphCacheImpl;
 
 }

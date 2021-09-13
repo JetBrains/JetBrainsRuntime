@@ -18,6 +18,8 @@ import com.jetbrains.JBRService;
 
 module jetbrains.api {
 
+    requires transitive java.desktop;
+
     exports com.jetbrains;
 
     uses JBRService;
