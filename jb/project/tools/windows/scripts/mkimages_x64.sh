@@ -101,7 +101,7 @@ JBRSDK_BUNDLE=jbrsdk
 
 where cygpath
 if [ $? -eq 0 ]; then
-  JCEF_PATH="$(cygpath -w $JCEF_PATH)"
+  JCEF_PATH="$(cygpath -w $JCEF_PATH | sed 's/\\/\//g')"
 fi
 
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ]; then
