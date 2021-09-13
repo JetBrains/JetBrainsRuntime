@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,7 +55,7 @@ class HeapDumper : public StackObj {
 
   // string representation of error
   char* error() const                   { return _error; }
-  void set_error(char* error);
+  void set_error(char const* error);
 
   // internal timer.
   elapsedTimer* timer()                 { return &_t; }
@@ -69,8 +69,8 @@ class HeapDumper : public StackObj {
   ~HeapDumper();
 
   // dumps the heap to the specified file, returns 0 if success.
-  // additional info is written to out if not NULL.
-  int dump(const char* path, outputStream* out = NULL, bool overwrite = false);
+  // compression >= 0 creates a gzipped file with the given compression level.
+  int dump(const char* path, outputStream* out = NULL, int compression = -1, bool overwrite = false);
 
   // returns error message (resource allocated), or NULL if no error
   char* error_as_C_string() const;
