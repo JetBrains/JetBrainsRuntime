@@ -24,7 +24,6 @@
  */
 
 #import "GeomUtilities.h"
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 static jobject NewJavaRect(JNIEnv *env, jdouble x, jdouble y, jdouble w, jdouble h) {
     DECLARE_CLASS_RETURN(sjc_Rectangle2DDouble, "java/awt/geom/Rectangle2D$Double", NULL);
