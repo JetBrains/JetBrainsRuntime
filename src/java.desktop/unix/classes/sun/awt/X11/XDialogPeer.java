@@ -63,25 +63,9 @@ class XDialogPeer extends XDecoratedPeer implements DialogPeer {
         try {
             Dialog target = (Dialog)this.target;
             if (vis) {
-                boolean modal = target.getModalityType() != Dialog.ModalityType.MODELESS;
-                if (modal) {
+                if (target.getModalityType() != Dialog.ModalityType.MODELESS) {
                     if (!isModalBlocked()) {
                         XBaseWindow.ungrabInput();
-                    }
-                }
-                if (XWM.getWMID() == XWM.KDE2_WM) {
-                    // In case of KDE, we inform window manager that our window is a modal dialog
-                    // so that it's minimized along with its parent window.
-                    // This is not needed for other WMs, as it seems only KDE allows minimizing 'transient'
-                    // windows, and setting _NET_WM_STATE_MODAL causes other WMs' undesirable behaviour.
-                    // GNOME (mutter WM), for example, enforces centering of modal dialogs with respect
-                    // to their parent, which breaks SiblingChildOrderTest.
-                    XNETProtocol protocol = XWM.getWM().getNETProtocol();
-                    if (protocol != null && protocol.doModalityProtocol()) {
-                        XAtomList net_wm_state = getNETWMState();
-                        if (net_wm_state.update(protocol.XA_NET_WM_STATE_MODAL, modal)) {
-                            setNETWMState(net_wm_state);
-                        }
                     }
                 }
             } else {
@@ -170,5 +154,26 @@ class XDialogPeer extends XDecoratedPeer implements DialogPeer {
             }
         }
         return super.isFocusedWindowModalBlocker();
+    }
+
+    @Override
+    public void handleUnmapNotifyEvent(XEvent xev) {
+        super.handleUnmapNotifyEvent(xev);
+        if (visible && ((Dialog)target).isModal() && XWM.getWMID() == XWM.KDE2_WM) {
+            // the case of modal dialog window being minimized (iconified) on KDE
+            // (other WMs don't seem to allow minimizing)
+            Vector<XWindowPeer> windowPeers = collectJavaToplevels();
+            for (XWindowPeer peer : windowPeers) {
+                if (peer.modalBlocker == target) {
+                    XToolkit.awtLock();
+                    try {
+                        XlibWrapper.XIconifyWindow(XToolkit.getDisplay(), peer.getWindow(), peer.getScreenNumber());
+                    }
+                    finally {
+                        XToolkit.awtUnlock();
+                    }
+                }
+            }
+        }
     }
 }
