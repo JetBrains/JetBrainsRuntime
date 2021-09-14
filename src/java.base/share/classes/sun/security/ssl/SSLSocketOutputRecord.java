@@ -68,7 +68,7 @@ final class SSLSocketOutputRecord extends OutputRecord implements SSLRecord {
         write(level);
         write(description);
         if (SSLLogger.isOn && SSLLogger.isOn("record")) {
-            SSLLogger.fine("WRITE: " + protocolVersion +
+            SSLLogger.fine("WRITE: " + protocolVersion.name +
                     " " + ContentType.ALERT.name +
                     "(" + Alert.nameOf(description) + ")" +
                     ", length = " + (count - headerSize));
@@ -173,7 +173,7 @@ final class SSLSocketOutputRecord extends OutputRecord implements SSLRecord {
 
             if (SSLLogger.isOn && SSLLogger.isOn("record")) {
                 SSLLogger.fine(
-                        "WRITE: " + protocolVersion +
+                        "WRITE: " + protocolVersion.name +
                         " " + ContentType.HANDSHAKE.name +
                         ", length = " + (count - headerSize));
             }
@@ -239,7 +239,7 @@ final class SSLSocketOutputRecord extends OutputRecord implements SSLRecord {
 
         if (SSLLogger.isOn && SSLLogger.isOn("record")) {
             SSLLogger.fine(
-                    "WRITE: " + protocolVersion +
+                    "WRITE: " + protocolVersion.name +
                     " " + ContentType.HANDSHAKE.name +
                     ", length = " + (count - headerSize));
         }
@@ -307,7 +307,7 @@ final class SSLSocketOutputRecord extends OutputRecord implements SSLRecord {
 
             if (SSLLogger.isOn && SSLLogger.isOn("record")) {
                 SSLLogger.fine(
-                        "WRITE: " + protocolVersion +
+                        "WRITE: " + protocolVersion.name +
                         " " + ContentType.APPLICATION_DATA.name +
                         ", length = " + (count - position));
             }

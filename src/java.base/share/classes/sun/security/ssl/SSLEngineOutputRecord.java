@@ -264,7 +264,7 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
 
             if (SSLLogger.isOn && SSLLogger.isOn("record")) {
                 SSLLogger.fine(
-                        "WRITE: " + protocolVersion + " " +
+                        "WRITE: " + protocolVersion.name + " " +
                         ContentType.APPLICATION_DATA.name +
                         ", length = " + destination.remaining());
             }
@@ -503,7 +503,7 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
 
             if (SSLLogger.isOn && SSLLogger.isOn("record")) {
                 SSLLogger.fine(
-                        "WRITE: " + protocolVersion + " " +
+                        "WRITE: " + protocolVersion.name + " " +
                         ContentType.nameOf(memo.contentType) +
                         ", length = " + dstBuf.remaining());
             }
