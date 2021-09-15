@@ -1255,6 +1255,13 @@ ALL_TARGETS += clean clean-docs clean-compile-commands dist-clean $(CLEAN_DIR_TA
     $(CLEAN_MODULE_TARGETS) $(CLEAN_MODULE_PHASE_TARGETS)
 
 ################################################################################
+# JBR API
+
+jbr-api:
+	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f JBRApi.gmk jbr-api)
+ALL_TARGETS += jbr-api
+
+################################################################################
 # Declare *-only targets for each normal target
 $(foreach t, $(ALL_TARGETS), $(eval $(t)-only: $(t)))
 

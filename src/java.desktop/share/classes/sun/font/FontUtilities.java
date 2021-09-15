@@ -155,6 +155,10 @@ public final class FontUtilities {
         });
     }
 
+    public static Dimension getSubpixelResolution() {
+        return supplementarySubpixelGlyphResolution;
+    }
+
     /**
      * Referenced by code in the JDK which wants to test for the
      * minimum char code for which layout may be required.
