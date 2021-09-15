@@ -1500,6 +1500,14 @@ create-main-targets-include:
 	  @$(ECHO) ALL_MAIN_TARGETS := $(sort $(ALL_TARGETS)) > \
 	      $(MAKESUPPORT_OUTPUTDIR)/main-targets.gmk
 
+################################################################################
+# JBR API
+
+$(eval $(call SetupTarget, jbr-api, \
+    MAKEFILE := JBRApi, \
+    TARGET := jbr-api \
+))
+
 .PHONY: $(ALL_TARGETS)
 
 FRC: # Force target
