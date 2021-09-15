@@ -129,11 +129,14 @@ module java.base {
     exports javax.security.auth.spi;
     exports javax.security.auth.x500;
     exports javax.security.cert;
+    exports com.jetbrains.bootstrap;
 
 
     // additional qualified exports may be inserted at build time
     // see make/gensrc/GenModuleInfo.gmk
 
+    exports com.jetbrains.internal to
+            java.desktop;
     exports com.sun.crypto.provider to
         jdk.crypto.cryptoki;
     exports sun.invoke.util to
