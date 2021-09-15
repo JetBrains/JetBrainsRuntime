@@ -188,7 +188,9 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
 
         static {
-            final String trace = System.getProperty("sun.awt.x11.trace");
+            final GetPropertyAction gpa = new GetPropertyAction("sun.awt.x11.trace");
+            @SuppressWarnings("removal")
+            final String trace = AccessController.doPrivileged(gpa);
             if (trace != null) {
                 int traceFlags = 0;
                 final StringTokenizer st = new StringTokenizer(trace, ",");
