@@ -1,0 +1,93 @@
+#
+# Copyright 2000-2023 JetBrains s.r.o.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
+
+include $(SPEC)
+include MakeBase.gmk
+include JavaCompilation.gmk
+
+JBR_API_ROOT_DIR   := $(TOPDIR)/src/jetbrains.api
+JBR_API_TOOLS_DIR  := $(JBR_API_ROOT_DIR)/tools
+JBR_API_SRC_DIR    := $(JBR_API_ROOT_DIR)/src
+JBR_API_OUTPUT_DIR := $(OUTPUTDIR)/jbr-api
+JBR_API_GENSRC_DIR := $(JBR_API_OUTPUT_DIR)/gensrc
+JBR_API_BIN_DIR    := $(JBR_API_OUTPUT_DIR)/bin
+JBR_API_VERSION_PROPERTIES := $(JBR_API_ROOT_DIR)/version.properties
+JBR_API_VERSION_GENSRC     := $(JBR_API_OUTPUT_DIR)/jbr-api.version
+JBR_API_GENSRC_BATCH       := $(JBR_API_VERSION_GENSRC)
+
+JBR_API_SRC_FILES := $(call FindFiles, $(JBR_API_SRC_DIR))
+JBR_API_GENSRC_FILES := $(foreach f, $(call FindFiles, $(JBR_API_SRC_DIR)), \
+    $(JBR_API_GENSRC_DIR)/$(call RelativePath, $f, $(JBR_API_SRC_DIR)))
+
+ifeq ($(JBR_API_JBR_VERSION),)
+  JBR_API_JBR_VERSION := <DEVELOPMENT>
+  JBR_API_FAIL_ON_HASH_MISMATCH := false
+else
+  .PHONY: $(JBR_API_VERSION_PROPERTIES)
+  JBR_API_FAIL_ON_HASH_MISMATCH := true
+endif
+
+ARCHIVE_BUILD_JBR_API_BIN := $(JBR_API_BIN_DIR)
+$(eval $(call SetupJavaCompilation, BUILD_JBR_API, \
+    SMALL_JAVA := true, \
+    COMPILER := bootjdk, \
+    SRC := $(JBR_API_GENSRC_DIR), \
+    EXTRA_FILES := $(JBR_API_GENSRC_FILES), \
+    BIN := $(JBR_API_BIN_DIR), \
+    JAR := $(JBR_API_OUTPUT_DIR)/jbr-api.jar, \
+))
+
+$(eval $(call SetupJarArchive, BUILD_JBR_API_SOURCES_JAR, \
+    DEPENDENCIES := $(JBR_API_GENSRC_FILES), \
+    SRCS := $(JBR_API_GENSRC_DIR), \
+    JAR := $(JBR_API_OUTPUT_DIR)/jbr-api-sources.jar, \
+    SUFFIXES := .java, \
+    BIN := $(JBR_API_BIN_DIR), \
+))
+
+# Grouped targets may not be supported, so hack dependencies: sources -> version file -> generated sources
+$(JBR_API_VERSION_GENSRC): $(JBR_API_SRC_FILES) $(JBR_API_VERSION_PROPERTIES) $(JBR_API_TOOLS_DIR)/Gensrc.java
+	$(ECHO) Generating sources for JBR API
+	$(JAVA_CMD) $(JAVA_FLAGS_SMALL) "$(JBR_API_TOOLS_DIR)/Gensrc.java" \
+	    "$(TOPDIR)/src" "$(JBR_API_OUTPUT_DIR)" "$(JBR_API_JBR_VERSION)"
+$(JBR_API_GENSRC_FILES): $(JBR_API_VERSION_GENSRC)
+	$(TOUCH) $@
+
+jbr-api-check-version: $(JBR_API_GENSRC_FILES) $(JBR_API_VERSION_PROPERTIES)
+	$(JAVA_CMD) $(JAVA_FLAGS_SMALL) "$(JBR_API_TOOLS_DIR)/CheckVersion.java" \
+	    "$(JBR_API_ROOT_DIR)" "$(JBR_API_GENSRC_DIR)" "$(JBR_API_FAIL_ON_HASH_MISMATCH)"
+
+jbr-api: $(BUILD_JBR_API) $(BUILD_JBR_API_SOURCES_JAR) jbr-api-check-version
+
+.PHONY: jbr-api jbr-api-check-version
+
+ifneq ($(JBR_API_CONF_FILE),)
+  $(JBR_API_CONF_FILE): $(JBR_API_GENSRC_FILES)
+	$(ECHO) "VERSION=`$(CAT) $(JBR_API_VERSION_GENSRC)`" > $(JBR_API_CONF_FILE)
+	$(ECHO) "JAR=$(JBR_API_OUTPUT_DIR)/jbr-api.jar" >> $(JBR_API_CONF_FILE)
+	$(ECHO) "SOURCES_JAR=$(JBR_API_OUTPUT_DIR)/jbr-api-sources.jar" >> $(JBR_API_CONF_FILE)
+  jbr-api: $(JBR_API_CONF_FILE)
+  .PHONY: $(JBR_API_CONF_FILE)
+endif
