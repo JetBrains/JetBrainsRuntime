@@ -3,6 +3,9 @@
 #import "JavaComponentAccessibility.h"
 
 @interface JavaTableAccessibility : JavaComponentAccessibility <NSAccessibilityTable>
+{
+    NSMutableDictionary<NSNumber*, id> *rowCache;
+}
 
 @property(readonly) int accessibleRowCount;
 @property(readonly) int accessibleColCount;
@@ -11,5 +14,7 @@
 - (BOOL)isAccessibleChildSelectedFromIndex:(int)index;
 - (int) accessibleRowAtIndex:(int)index;
 - (int) accessibleColumnAtIndex:(int)index;
+- (JavaTableAccessibility *)createRowForIndex:(NSNumber *)index;
+- (void)clearCache;
 
 @end

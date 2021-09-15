@@ -284,40 +284,6 @@ static void RaiseMustOverrideException(NSString *method)
 
 + (NSArray *) childrenOfParent:(JavaComponentAccessibility *)parent withEnv:(JNIEnv *)env withChildrenCode:(NSInteger)whichChildren allowIgnored:(BOOL)allowIgnored recursive:(BOOL)recursive
 {
-    if ([parent isKindOfClass:[JavaTableAccessibility class]]) {
-        if (whichChildren == JAVA_AX_SELECTED_CHILDREN) {
-            NSArray<NSNumber *> *selectedRowIndexses = [(JavaTableAccessibility *)parent selectedAccessibleRows];
-            NSMutableArray *children = [NSMutableArray arrayWithCapacity:[selectedRowIndexses count]];
-            for (NSNumber *index in selectedRowIndexses) {
-                [children addObject:[[JavaTableRowAccessibility alloc] initWithParent:parent
-                                                                              withEnv:env
-                                                                       withAccessible:NULL
-                                                                            withIndex:index.unsignedIntValue
-                                                                             withView:[parent view]
-                                                                         withJavaRole:JavaAccessibilityIgnore]];
-            }
-            return [NSArray arrayWithArray:children];
-        } else if (whichChildren == JAVA_AX_ALL_CHILDREN) {
-            int rowCount = [(JavaTableAccessibility *)parent accessibleRowCount];
-            NSMutableArray *children = [NSMutableArray arrayWithCapacity:rowCount];
-            for (int i = 0; i < rowCount; i++) {
-                [children addObject:[[JavaTableRowAccessibility alloc] initWithParent:parent
-                                                                              withEnv:env
-                                                                       withAccessible:NULL
-                                                                            withIndex:i
-                                                                             withView:[parent view]
-                                                                         withJavaRole:JavaAccessibilityIgnore]];
-            }
-            return [NSArray arrayWithArray:children];
-        } else {
-            return [NSArray arrayWithObject:[[JavaTableRowAccessibility alloc] initWithParent:parent
-                                                                                      withEnv:env
-                                                                               withAccessible:NULL
-                                                                                    withIndex:whichChildren
-                                                                                     withView:[parent view]
-                                                                                 withJavaRole:JavaAccessibilityIgnore]];
-        }
-    }
     if (parent->fAccessible == NULL) return nil;
     jobjectArray jchildrenAndRoles = NULL;
     if (recursive) {
