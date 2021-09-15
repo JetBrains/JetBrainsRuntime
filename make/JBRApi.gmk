@@ -1,0 +1,84 @@
+#
+# Copyright 2000-2021 JetBrains s.r.o.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+include $(SPEC)
+include MakeBase.gmk
+include JavaCompilation.gmk
+
+JBR_API_ROOT_DIR   := $(TOPDIR)/src/jetbrains.api
+JBR_API_TOOLS_DIR  := $(JBR_API_ROOT_DIR)/tools
+JBR_API_SRC_DIR    := $(JBR_API_ROOT_DIR)/src
+JBR_API_OUTPUT_DIR := $(OUTPUTDIR)/jbr-api
+JBR_API_GENSRC_DIR := $(JBR_API_OUTPUT_DIR)/gensrc
+JBR_API_BIN_DIR    := $(JBR_API_OUTPUT_DIR)/bin
+JBR_API_VERSION_PROPERTIES := $(JBR_API_ROOT_DIR)/version.properties
+JBR_API_VERSION_GENSRC     := $(JBR_API_OUTPUT_DIR)/jbr-api.version
+JBR_API_GENSRC_BATCH       := $(JBR_API_VERSION_GENSRC)
+
+JBR_API_SRC_FILES := $(call FindFiles, $(JBR_API_SRC_DIR))
+JBR_API_GENSRC_FILES := $(foreach f, $(call FindFiles, $(JBR_API_SRC_DIR)), \
+    $(JBR_API_GENSRC_DIR)/$(call RelativePath, $f, $(JBR_API_SRC_DIR)))
+
+ifeq ($(JBR_API_JBR_VERSION),)
+  JBR_API_JBR_VERSION := <DEVELOPMENT>
+  JBR_API_FAIL_ON_HASH_MISMATCH := false
+else
+  .PHONY: $(JBR_API_VERSION_PROPERTIES)
+  JBR_API_FAIL_ON_HASH_MISMATCH := true
+endif
+
+ARCHIVE_BUILD_JBR_API_BIN := $(JBR_API_BIN_DIR)
+$(eval $(call SetupJavaCompilation, BUILD_JBR_API, \
+    SMALL_JAVA := true, \
+    COMPILER := bootjdk, \
+    SRC := $(JBR_API_GENSRC_DIR), \
+    EXTRA_FILES := $(JBR_API_GENSRC_FILES), \
+    BIN := $(JBR_API_BIN_DIR), \
+    JAR := $(JBR_API_OUTPUT_DIR)/jbr-api.jar, \
+))
+
+$(eval $(call SetupJarArchive, BUILD_JBR_API_SOURCES_JAR, \
+    DEPENDENCIES := $(JBR_API_GENSRC_FILES), \
+    SRCS := $(JBR_API_GENSRC_DIR), \
+    JAR := $(JBR_API_OUTPUT_DIR)/jbr-api-sources.jar, \
+    SUFFIXES := .java, \
+    BIN := $(JBR_API_BIN_DIR), \
+))
+
+# Grouped targets may not be supported, so hack dependencies: sources -> version file -> generated sources
+$(JBR_API_VERSION_GENSRC): $(JBR_API_SRC_FILES) $(JBR_API_VERSION_PROPERTIES) $(JBR_API_TOOLS_DIR)/Gensrc.java
+	$(ECHO) Generating sources for JBR API
+	$(JAVA_CMD) $(JAVA_FLAGS_SMALL) "$(JBR_API_TOOLS_DIR)/Gensrc.java" \
+	    "$(TOPDIR)/src" "$(JBR_API_OUTPUT_DIR)" "$(JBR_API_JBR_VERSION)"
+$(JBR_API_GENSRC_FILES): $(JBR_API_VERSION_GENSRC)
+	$(TOUCH) $@
+
+jbr-api-check-version: $(JBR_API_GENSRC_FILES) $(JBR_API_VERSION_PROPERTIES)
+	$(JAVA_CMD) $(JAVA_FLAGS_SMALL) "$(JBR_API_TOOLS_DIR)/CheckVersion.java" \
+	    "$(JBR_API_ROOT_DIR)" "$(JBR_API_GENSRC_DIR)" "$(JBR_API_FAIL_ON_HASH_MISMATCH)"
+
+jbr-api: $(BUILD_JBR_API) $(BUILD_JBR_API_SOURCES_JAR) jbr-api-check-version
+
+.PHONY: jbr-api jbr-api-check-version
+
+ifneq ($(JBR_API_CONF_FILE),)
+  $(JBR_API_CONF_FILE): $(JBR_API_GENSRC_FILES)
+	$(ECHO) "VERSION=`$(CAT) $(JBR_API_VERSION_GENSRC)`" > $(JBR_API_CONF_FILE)
+	$(ECHO) "JAR=$(JBR_API_OUTPUT_DIR)/jbr-api.jar" >> $(JBR_API_CONF_FILE)
+	$(ECHO) "SOURCES_JAR=$(JBR_API_OUTPUT_DIR)/jbr-api-sources.jar" >> $(JBR_API_CONF_FILE)
+  jbr-api: $(JBR_API_CONF_FILE)
+  .PHONY: $(JBR_API_CONF_FILE)
+endif
