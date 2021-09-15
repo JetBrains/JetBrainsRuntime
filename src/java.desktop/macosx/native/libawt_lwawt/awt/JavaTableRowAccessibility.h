@@ -3,6 +3,9 @@
 #import "JavaComponentAccessibility.h"
 
 @interface JavaTableRowAccessibility : JavaComponentAccessibility <NSAccessibilityRow>
+{
+    NSMutableArray *cellIndex;
+}
 
 @property(readonly) NSUInteger rowNumberInTable;
 

@@ -73,6 +73,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
     private static native void menuOpened(long ptr);
     private static native void menuClosed(long ptr);
     private static native void menuItemSelected(long ptr);
+    private static native void tableContentIndexDestroy(long ptr);
 
     private Accessible accessible;
 
@@ -131,6 +132,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     selectionChanged(ptr);
                 } else if (name.compareTo(ACCESSIBLE_TABLE_MODEL_CHANGED) == 0) {
                     valueChanged(ptr);
+                    tableContentIndexDestroy(ptr);
                 } else if (name.compareTo(ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY) == 0 ) {
                     if (newValue == null || newValue instanceof AccessibleContext) {
                         activeDescendant = (AccessibleContext)newValue;

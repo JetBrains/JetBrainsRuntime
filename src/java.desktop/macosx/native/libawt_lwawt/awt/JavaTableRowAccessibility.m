@@ -32,8 +32,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
 }
 
 - (NSArray *)accessibilityChildren {
-    NSArray *children = [super accessibilityChildren];
-    if (children == NULL) {
+    if (cellIndex == nil) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
         JavaComponentAccessibility *parent = [self accessibilityParent];
         if (parent->fAccessible == NULL) return nil;
@@ -43,7 +42,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
         if (jchildrenAndRoles == NULL) return nil;
 
         jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
-        NSMutableArray *childrenCells = [NSMutableArray arrayWithCapacity:arrayLen/2];
+        cellIndex = [[NSMutableArray arrayWithCapacity:arrayLen/2] retain];
 
         NSUInteger childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *)parent accessibleColCount];
         NSInteger n = ([self rowNumberInTable] + 1) * [(JavaTableAccessibility *)parent accessibleColCount] * 2;
@@ -67,7 +66,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
                                                                                withIndex:childIndex
                                                                                 withView:self->fView
                                                                             withJavaRole:childJavaRole];
-            [childrenCells addObject:[[child retain] autorelease]];
+            [cellIndex addObject:child];
 
             (*env)->DeleteLocalRef(env, jchild);
             (*env)->DeleteLocalRef(env, jchildJavaRole);
@@ -75,10 +74,9 @@ static jmethodID jm_getChildrenAndRoles = NULL;
             childIndex++;
         }
         (*env)->DeleteLocalRef(env, jchildrenAndRoles);
-        return childrenCells;
-    } else {
-        return children;
     }
+
+    return cellIndex;;
 }
 
 - (NSInteger)accessibilityIndex {
@@ -114,6 +112,14 @@ static jmethodID jm_getChildrenAndRoles = NULL;
             width += [cell accessibilityFrame].size.width;
         }
         return NSMakeRect(point.x, point.y, width, height);
+}
+
+- (void)dealloc
+{
+    [cellIndex removeAllObjects];
+    [cellIndex release];
+    cellIndex = nil;
+    [super dealloc];
 }
 
 @end
