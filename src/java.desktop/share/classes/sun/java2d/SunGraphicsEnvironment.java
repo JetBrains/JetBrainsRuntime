@@ -73,8 +73,12 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     private static final double debugScale;
 
     static {
+        final GetPropertyAction gpa = new GetPropertyAction("sun.java2d.uiScale.enabled", "true");
+        @SuppressWarnings("removal")
+        final String uiScaleEnabledPropValue = AccessController.doPrivileged(gpa);
+
         uiScaleEnabled = FontUtilities.isMacOSX ||
-            ("true".equals(System.getProperty("sun.java2d.uiScale.enabled", "true")) &&
+            ("true".equals(uiScaleEnabledPropValue) &&
                 (isWindows_8_1_orUpper() || FontUtilities.isLinux));
 
         if (uiScaleEnabled && FontUtilities.isWindows) {
