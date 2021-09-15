@@ -1449,6 +1449,14 @@ create-main-targets-include:
 	      $(MAKESUPPORT_OUTPUTDIR)/main-targets.gmk
 
 ################################################################################
+# JBR API
+
+$(eval $(call SetupTarget, jbr-api, \
+    MAKEFILE := JBRApi, \
+    TARGET := jbr-api \
+))
+
+################################################################################
 # Hook to include the corresponding custom file, if present.
 $(eval $(call IncludeCustomExtension, Main-post.gmk))
 
