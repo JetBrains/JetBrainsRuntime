@@ -1333,9 +1333,12 @@ static int getRemoteX11WorkaroundProperty() {
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     jstring name = (*env)->NewStringUTF(env, WORKAROUND_PROPERTY_NAME);
     CHECK_NULL_RETURN(name, ret);
-    jstring jPropValue = JNU_CallStaticMethodByName(env, NULL, "java/lang/System", "getProperty",
-                                                    "(Ljava/lang/String;)Ljava/lang/String;", name).l;
-    if (jPropValue != NULL) {
+    jobject jPropGetAction = JNU_NewObjectByName(env, "sun/security/action/GetPropertyAction", "(Ljava/lang/String;)V", name);
+    CHECK_NULL_RETURN(name, ret);
+    jboolean ignoreExc;
+    jstring jPropValue = JNU_CallStaticMethodByName(env, &ignoreExc, "java/security/AccessController", "doPrivileged",
+                                                    "(Ljava/security/PrivilegedAction;)Ljava/lang/Object;", jPropGetAction).l;
+    if (jPropValue != NULL && JNU_IsInstanceOfByName(env, jPropValue, "java/lang/String")) {
         const char * utf8string = (*env)->GetStringUTFChars(env, jPropValue, NULL);
         if (utf8string != NULL) {
             if (strcmp(utf8string, "true") == 0) {
@@ -1346,7 +1349,6 @@ static int getRemoteX11WorkaroundProperty() {
         }
         (*env)->ReleaseStringUTFChars(env, jPropValue, utf8string);
     }
-    (*env)->DeleteLocalRef(env, name);
 
     return ret;
 }
