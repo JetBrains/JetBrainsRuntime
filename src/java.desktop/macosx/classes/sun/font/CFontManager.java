@@ -223,7 +223,7 @@ public final class CFontManager extends SunFontManager {
             String defaultFallback = "Lucida Grande";
 
             setupLogicalFonts("Dialog", defaultFont, defaultFallback);
-            setupLogicalFonts("Serif", "Times", "Times");
+            setupLogicalFonts("Serif", "Times", "Times New Roman");
             setupLogicalFonts("SansSerif", defaultFont, defaultFallback);
             setupLogicalFonts("Monospaced", "Menlo", "Courier");
             setupLogicalFonts("DialogInput", defaultFont, defaultFallback);
@@ -249,7 +249,13 @@ public final class CFontManager extends SunFontManager {
         family = getFontFamily(realName, fallbackName);
         if (family != null) return family;
 
-        System.err.println("Warning: the fonts \"" + realName + "\" and \"" + fallbackName + "\" are not available for the Java logical font \"" + logicalName + "\", which may have unexpected appearance or behavior. Re-enable the \""+ realName +"\" font to remove this warning.");
+        if (FontUtilities.debugFonts()) {
+            FontUtilities.getLogger().severe(
+                "The fonts \"" + realName + "\" and \"" + fallbackName +
+                "\" are not available for the Java logical font \"" + logicalName +
+                "\", which may have unexpected appearance or behavior. Re-enable the \""+
+                realName +"\" font to remove this warning.");
+        }
         return null;
     }
 
@@ -259,7 +265,12 @@ public final class CFontManager extends SunFontManager {
 
         family = FontFamily.getFamily(fallbackName);
         if (family != null){
-            System.err.println("Warning: the font \"" + realName + "\" is not available, so \"" + fallbackName + "\" has been substituted, but may have unexpected appearance or behavor. Re-enable the \""+ realName +"\" font to remove this warning.");
+            if (FontUtilities.debugFonts()) {
+                FontUtilities.getLogger().warning(
+                    "The font \"" + realName + "\" is not available, so \"" + fallbackName +
+                    "\" has been substituted, but may have unexpected appearance or behavor. Re-enable the \"" +
+                    realName +"\" font to remove this warning.");
+             }
             return family;
         }
 
