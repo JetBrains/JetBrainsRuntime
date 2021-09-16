@@ -58,7 +58,7 @@ public:
     VM_StopSafepoint ss(_unblock);
     VMThread::execute(&ss);
     _done->signal();
-    Threads::remove(this);
+    Threads::remove(this, false);
     this->smr_delete();
   }
   void doit() {
@@ -99,7 +99,7 @@ public:
   }
 
   void postrun() {
-    Threads::remove(this);
+    Threads::remove(this, false);
     _post->signal();
     this->smr_delete();
   }
