@@ -135,7 +135,7 @@ bool PathString::set_value(const char *value) {
   return true;
 }
 
-void PathString::append_value(const char *value) {
+void PathString::append_value(const char *value, const char *separator) {
   char *sp;
   size_t len = 0;
   if (value != NULL) {
@@ -148,7 +148,7 @@ void PathString::append_value(const char *value) {
     if (sp != NULL) {
       if (_value != NULL) {
         strcpy(sp, _value);
-        strcat(sp, os::path_separator());
+        strcat(sp, separator);
         strcat(sp, value);
         FreeHeap(_value);
       } else {
@@ -2029,7 +2029,7 @@ void Arguments::set_unrecognized_vm_options_property() {
 
     for (int i = 1; i < num_of_entries; i++) {
       option_string = _unrecognized_vm_options->at(i);
-      prop->append_value(option_string);
+      prop->append_value(option_string, " ");
     }
 
     PropertyList_add(&_system_properties, prop);

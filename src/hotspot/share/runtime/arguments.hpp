@@ -67,7 +67,8 @@ class PathString : public CHeapObj<mtArguments> {
   char* value() const { return _value; }
 
   bool set_value(const char *value);
-  void append_value(const char *value);
+  void append_value(const char *value, const char *delemiter);
+  void append_value(const char *value) { append_value(value, os::path_separator()); }
 
   PathString(const char* value);
   ~PathString();
