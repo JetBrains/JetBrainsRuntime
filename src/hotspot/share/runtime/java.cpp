@@ -380,6 +380,10 @@ void print_statistics() {
     MemTracker::final_report(tty);
   }
 
+  if (PrintMetaspaceStatisticsAtExit) {
+    MetaspaceUtils::print_basic_report(tty, 0);
+  }
+
   ThreadsSMRSupport::log_statistics();
 }
 
@@ -421,6 +425,10 @@ void print_statistics() {
   // Native memory tracking data
   if (PrintNMTStatistics) {
     MemTracker::final_report(tty);
+  }
+
+  if (PrintMetaspaceStatisticsAtExit) {
+    MetaspaceUtils::print_basic_report(tty, 0);
   }
 
   if (LogTouchedMethods && PrintTouchedMethodsAtExit) {
