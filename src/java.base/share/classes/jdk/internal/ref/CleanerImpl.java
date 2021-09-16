@@ -325,7 +325,7 @@ public final class CleanerImpl implements Runnable {
 
         public Thread newThread(Runnable r) {
             return InnocuousThread.newThread("Cleaner-" + cleanerThreadNumber.getAndIncrement(),
-                r, Thread.MIN_PRIORITY - 2);
+                r, Thread.MAX_PRIORITY - 2);
         }
     }
 
