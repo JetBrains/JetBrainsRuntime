@@ -1824,6 +1824,9 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "class pointers are used")                                        \
           range(1*M, 3*G)                                                   \
                                                                             \
+  diagnostic(bool, PrintMetaspaceStatisticsAtExit, false,                   \
+          "Print metaspace statistics upon VM exit.")                       \
+                                                                            \
   manageable(uintx, MinHeapFreeRatio, 40,                                   \
           "The minimum percentage of heap free after GC to avoid expansion."\
           " For most GCs this applies to the old generation. In G1 and"     \
