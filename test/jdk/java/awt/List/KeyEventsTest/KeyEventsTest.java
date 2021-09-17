@@ -22,13 +22,14 @@
  */
 
 /*
-  test
+  @test
+  @key headful
   @bug 6190768 6190778
-  @summary Tests that triggering events on AWT list by pressing CTRL + HOME, CTRL + END, PG-UP, PG-DOWN similar Motif behavior
-  @author Dmitry.Cherepanov@SUN.COM area=awt.list
+  @summary Tests that triggering events on AWT list by pressing CTRL + HOME,
+           CTRL + END, PG-UP, PG-DOWN similar Motif behavior
   @library ../../../../lib/testlibrary
   @build jdk.testlibrary.OSInfo
-  @run applet KeyEventsTest.html
+  @run main KeyEventsTest
 */
 
 /**
@@ -37,15 +38,13 @@
  * summary:
  */
 
-import java.applet.Applet;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.Set;
 import java.lang.reflect.*;
 
 import jdk.testlibrary.OSInfo;
 
-public class KeyEventsTest extends Applet implements ItemListener, FocusListener, KeyListener
+public class KeyEventsTest extends Frame implements ItemListener, FocusListener, KeyListener
 {
     TestState currentState;
     final Object LOCK = new Object();
@@ -56,6 +55,12 @@ public class KeyEventsTest extends Applet implements ItemListener, FocusListener
 
     Panel p1 = new Panel ();
     Panel p2 = new Panel ();
+
+    public static void main(final String[] args) {
+        KeyEventsTest app = new KeyEventsTest();
+        app.init();
+        app.start();
+    }
 
     public void init()
     {
@@ -100,25 +105,19 @@ public class KeyEventsTest extends Applet implements ItemListener, FocusListener
 
         try{
             setSize (200,200);
-            setVisible(true);
             validate();
+            setUndecorated(true);
+            setLocationRelativeTo(null);
+            setVisible(true);
 
-            main(null);
-
+            doTest();
+            System.out.println("Test passed.");
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("The test failed.");
         }
 
     }// start()
-
-    private void main(String[] args)
-      throws InterruptedException, InvocationTargetException {
-
-        doTest();
-
-        System.out.println("Test passed.");
-    }
 
     public void itemStateChanged (ItemEvent ie) {
         System.out.println("itemStateChanged-"+ie);

@@ -22,21 +22,29 @@
  */
 
 /*
-  test
-  @bug 6299858 7124338
+  @test
+  @key headful
+  @bug 6299858
   @summary PIT. Focused border not shown on List if selected item is removed, XToolkit
-  @author Dmitry.Cherepanov@SUN.COM area=awt.list
-  @run applet FirstItemRemoveTest.html
+  @library ../../../../lib/testlibrary
+  @build jdk.testlibrary.OSInfo
+  @run main FirstItemRemoveTest
 */
 
 import java.applet.Applet;
 import java.awt.*;
 import java.awt.event.*;
 
-public class FirstItemRemoveTest extends Applet
+public class FirstItemRemoveTest extends Frame
 {
     List list = new List(4, false);
     Panel panel = new Panel();
+
+    public static void main(final String[] args) {
+        FirstItemRemoveTest app = new FirstItemRemoveTest();
+        app.init();
+        app.start();
+    }
 
     public void init()
     {
@@ -57,6 +65,8 @@ public class FirstItemRemoveTest extends Applet
     public void start ()
     {
         setSize (200,200);
+        setUndecorated(true);
+        setLocationRelativeTo(null);
         setVisible(true);
         validate();
 
