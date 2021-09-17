@@ -186,6 +186,7 @@ module java.base {
         jdk.attach,
         jdk.charsets,
         jdk.compiler,
+        jdk.crypto.cryptoki,
         java.net.http,
         jdk.jfr,
         jdk.jlink,

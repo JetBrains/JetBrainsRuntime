@@ -40,6 +40,7 @@ import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.PasswordCallback;
 
+import jdk.internal.misc.InnocuousThread;
 import sun.security.util.Debug;
 import sun.security.util.ResourcesMgr;
 import static sun.security.util.SecurityConstants.PROVIDER_VER;
@@ -830,15 +831,11 @@ public final class SunPKCS11 extends AuthProvider {
     // background thread that periodically checks for token insertion
     // if no token is present. We need to do that in a separate thread because
     // the insertion check may block for quite a long time on some tokens.
-    private static class TokenPoller extends Thread {
+    private static class TokenPoller implements Runnable {
         private final SunPKCS11 provider;
         private volatile boolean enabled;
 
         private TokenPoller(SunPKCS11 provider) {
-            super((ThreadGroup)null, "Poller-" + provider.getName());
-            setContextClassLoader(null);
-            setDaemon(true);
-            setPriority(Thread.MIN_PRIORITY);
             this.provider = provider;
             enabled = true;
         }
@@ -867,12 +864,20 @@ public final class SunPKCS11 extends AuthProvider {
     }
 
     // create the poller thread, if not already active
+    @SuppressWarnings("removal")
     private void createPoller() {
         if (poller != null) {
             return;
         }
         poller = new TokenPoller(this);
-        poller.start();
+        Thread t = InnocuousThread.newSystemThread(
+                "Poller-" + getName(),
+                poller,
+                Thread.MIN_PRIORITY);
+        assert t.getContextClassLoader() == null;
+        t.setDaemon(true);
+        t.start();
+
     }
 
     // destroy the poller thread, if active
@@ -895,17 +900,10 @@ public final class SunPKCS11 extends AuthProvider {
         return (token != null) && token.isValid();
     }
 
-    private class NativeResourceCleaner extends Thread {
+    private class NativeResourceCleaner implements Runnable {
         private long sleepMillis = config.getResourceCleanerShortInterval();
         private int count = 0;
         boolean keyRefFound, sessRefFound;
-
-        private NativeResourceCleaner() {
-            super((ThreadGroup)null, "Cleanup-SunPKCS11");
-            setContextClassLoader(null);
-            setDaemon(true);
-            setPriority(Thread.MIN_PRIORITY);
-        }
 
         /*
          * The cleaner.shortInterval and cleaner.longInterval properties
@@ -924,7 +922,7 @@ public final class SunPKCS11 extends AuthProvider {
         public void run() {
             while (true) {
                 try {
-                    sleep(sleepMillis);
+                    Thread.sleep(sleepMillis);
                 } catch (InterruptedException ie) {
                     break;
                 }
@@ -943,6 +941,19 @@ public final class SunPKCS11 extends AuthProvider {
                 }
             }
         }
+    }
+
+    // create the cleaner thread, if not already active
+    @SuppressWarnings("removal")
+    private void createCleaner() {
+        cleaner = new NativeResourceCleaner();
+        Thread t = InnocuousThread.newSystemThread(
+                "Cleanup-SunPKCS11",
+                cleaner,
+                Thread.MIN_PRIORITY);
+        assert t.getContextClassLoader() == null;
+        t.setDaemon(true);
+        t.start();
     }
 
     // destroy the token. Called if we detect that it has been removed
@@ -1111,8 +1122,7 @@ public final class SunPKCS11 extends AuthProvider {
 
         this.token = token;
         if (cleaner == null) {
-            cleaner = new NativeResourceCleaner();
-            cleaner.start();
+            createCleaner();
         }
     }
 
