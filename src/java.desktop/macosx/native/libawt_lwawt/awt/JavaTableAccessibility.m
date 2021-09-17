@@ -200,18 +200,19 @@
         int rowCount = [self accessibleRowCount];
         rowCache = [[NSMutableDictionary<NSNumber*, id> dictionaryWithCapacity:rowCount] retain];
     }
-    if ([[rowCache allKeys] containsObject:index]) {
-        return [rowCache objectForKey:index];
-    } else {
-        JavaTableRowAccessibility *row = [[JavaTableRowAccessibility alloc] initWithParent:self
-                                                                                   withEnv:[ThreadUtilities getJNIEnv]
-                                                                            withAccessible:NULL
-                                                                                 withIndex:index.intValue
-                                                                                  withView:[self view]
-                                                                              withJavaRole:JavaAccessibilityIgnore];
+
+    id row = [rowCache objectForKeyedSubscript:index];
+    if (row == nil) {
+        row = [[JavaTableRowAccessibility alloc] initWithParent:self
+                                                        withEnv:[ThreadUtilities getJNIEnv]
+                                                 withAccessible:NULL
+                                                      withIndex:index.intValue
+                                                       withView:[self view]
+                                                   withJavaRole:JavaAccessibilityIgnore];
         [rowCache setValue:row forKey:[NSNumber numberWithInt:index]];
-        return row;
     }
+
+    return row;
 }
 
 - (void)clearCache {
