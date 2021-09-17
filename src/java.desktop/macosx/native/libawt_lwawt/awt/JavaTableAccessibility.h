@@ -15,6 +15,6 @@
 - (int) accessibleRowAtIndex:(int)index;
 - (int) accessibleColumnAtIndex:(int)index;
 - (JavaTableAccessibility *)createRowForIndex:(NSNumber *)index;
-- (void)disposeCache;
+- (void)clearCache;
 
 @end

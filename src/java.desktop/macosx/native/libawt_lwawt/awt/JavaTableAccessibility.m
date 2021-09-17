@@ -191,7 +191,7 @@
 
 - (void)dealloc
 {
-    [self disposeCache];
+    [self clearCache];
     [super dealloc];
 }
 
@@ -214,7 +214,7 @@
     }
 }
 
-- (void)disposeCache {
+- (void)clearCache {
     for (NSNumber *key in [rowCache allKeys]) {
         id row = [rowCache objectForKey:key];
         [rowCache removeObjectForKey:key];
@@ -243,11 +243,11 @@
  * Method:    tableContentIndexDestroy
  * Signature: (J)V
  */
-JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_tableContentCacheDispose
-  (JNIEnv *env, jclass class, jlong element)
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_tableContentCacheClear
+(JNIEnv *env, jclass class, jlong element)
 {
     JNI_COCOA_ENTER(env);
-    [ThreadUtilities performOnMainThread:@selector(disposeCache)
+    [ThreadUtilities performOnMainThread:@selector(clearCache)
     on:(JavaComponentAccessibility *)jlong_to_ptr(element)
     withObject:nil
             waitUntilDone:NO];
