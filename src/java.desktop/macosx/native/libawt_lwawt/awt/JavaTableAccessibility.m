@@ -201,7 +201,7 @@
         rowCache = [[NSMutableDictionary<NSNumber*, id> dictionaryWithCapacity:rowCount] retain];
     }
 
-    id row = [rowCache objectForKeyedSubscript:index];
+    id row = [rowCache objectForKey:index];
     if (row == nil) {
         row = [[JavaTableRowAccessibility alloc] initWithParent:self
                                                         withEnv:[ThreadUtilities getJNIEnv]
