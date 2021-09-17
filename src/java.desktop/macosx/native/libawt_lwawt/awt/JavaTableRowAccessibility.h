@@ -4,7 +4,7 @@
 
 @interface JavaTableRowAccessibility : JavaComponentAccessibility <NSAccessibilityRow>
 {
-    NSMutableArray *cellCash;
+    NSMutableArray *cellCache;
 }
 
 @property(readonly) NSUInteger rowNumberInTable;

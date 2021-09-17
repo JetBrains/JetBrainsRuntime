@@ -32,7 +32,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
 }
 
 - (NSArray *)accessibilityChildren {
-    if (cellCash == nil) {
+    if (cellCache == nil) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
         JavaComponentAccessibility *parent = [self accessibilityParent];
         if (parent->fAccessible == NULL) return nil;
@@ -42,7 +42,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
         if (jchildrenAndRoles == NULL) return nil;
 
         jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
-        cellIndex = [[NSMutableArray arrayWithCapacity:arrayLen/2] retain];
+        cellCache = [[NSMutableArray arrayWithCapacity:arrayLen/2] retain];
 
         NSUInteger childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *)parent accessibleColCount];
         NSInteger n = ([self rowNumberInTable] + 1) * [(JavaTableAccessibility *)parent accessibleColCount] * 2;
@@ -66,7 +66,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
                                                                                withIndex:childIndex
                                                                                 withView:self->fView
                                                                             withJavaRole:childJavaRole];
-            [cellCash addObject:child];
+            [cellCache addObject:child];
 
             (*env)->DeleteLocalRef(env, jchild);
             (*env)->DeleteLocalRef(env, jchildJavaRole);
@@ -76,7 +76,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
         (*env)->DeleteLocalRef(env, jchildrenAndRoles);
     }
 
-    return cellCash;;
+    return cellCache;;
 }
 
 - (NSInteger)accessibilityIndex {
@@ -116,9 +116,14 @@ static jmethodID jm_getChildrenAndRoles = NULL;
 
 - (void)dealloc
 {
-    [cellCash removeAllObjects];
-    [cellCash release];
-    cellCash = nil;
+    int count = [cellCache count];
+    for (int i = count - 1; i >= 0; i--) {
+        id cell = [cellCache objectAtIndex:i];
+        [cellCache removeObjectAtIndex:i];
+        [cell release];
+    }
+    [cellCache release];
+    cellCache = nil;
     [super dealloc];
 }
 

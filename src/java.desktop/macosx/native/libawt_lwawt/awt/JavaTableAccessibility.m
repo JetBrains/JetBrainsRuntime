@@ -130,31 +130,23 @@
 }
 
 - (NSArray *)accessibilityRows {
-    if (rowCash == nil) {
-        [self createCash];
-    }
-
-    NSArray *keys = [[rowCash allKeys] sortedArrayUsingSelector:@selector(compare:)];
-    NSMutableArray *children = [NSMutableArray arrayWithCapacity:[keys count]];
-    for (NSNumber *key in keys) {
-        [children addObject:[rowCash objectForKey:key]];
+    int rowCount = [self accessibleRowCount];
+    NSMutableArray *children = [NSMutableArray arrayWithCapacity:rowCount];
+    for (int i = 0; i < rowCount; i++) {
+        [children addObject:[self createRowForIndex:[NSNumber numberWithInt:i]]];
     }
 
     return children;
 }
 
 - (nullable NSArray<id<NSAccessibilityRow>> *)accessibilitySelectedRows {
-    if (rowCash == nil) {
-        [self createCash];
-    }
-
     NSArray *selectedRows = [self selectedAccessibleRows];
-    NSMutableArray *result = [NSMutableArray arrayWithCapacity:[selectedRows count]];
+    NSMutableArray *children = [NSMutableArray arrayWithCapacity:[selectedRows count]];
     for (NSNumber *index in selectedRows) {
-        [result addObject:[rowCash objectForKey:index]];
+        [children addObject:[self createRowForIndex:index]];
     }
 
-    return result;
+    return children;
 }
 
 - (NSString *)accessibilityLabel {
@@ -199,27 +191,37 @@
 
 - (void)dealloc
 {
-    [self disposeCash];
+    [self disposeCache];
     [super dealloc];
 }
 
-- (void)createCash {
-    int rowCount = [self accessibleRowCount];
-    rowCash = [[NSMutableDictionary<NSNumber*, id> dictionaryWithCapacity:rowCount] retain];
-    for (int i = 0; i < rowCount; i++) {
-        [rowIndex setValue:[[JavaTableRowAccessibility alloc] initWithParent:self
-                                                                     withEnv:[ThreadUtilities getJNIEnv]
-                                                              withAccessible:NULL
-                                                                   withIndex:i
-                                                                    withView:[self view]
-                                                                withJavaRole:JavaAccessibilityIgnore] forKey:[NSNumber numberWithInt:i]];
+- (JavaTableAccessibility *)createRowForIndex:(NSNumber *)index {
+    if (rowCache == nil) {
+        int rowCount = [self accessibleRowCount];
+        rowCache = [[NSMutableDictionary<NSNumber*, id> dictionaryWithCapacity:rowCount] retain];
+    }
+    if ([[rowCache allKeys] containsObject:index]) {
+        return [rowCache objectForKey:index];
+    } else {
+        JavaTableRowAccessibility *row = [[JavaTableRowAccessibility alloc] initWithParent:self
+                                                                                   withEnv:[ThreadUtilities getJNIEnv]
+                                                                            withAccessible:NULL
+                                                                                 withIndex:index.intValue
+                                                                                  withView:[self view]
+                                                                              withJavaRole:JavaAccessibilityIgnore];
+        [rowCache setValue:row forKey:[NSNumber numberWithInt:index]];
+        return row;
     }
 }
 
-- (void)disposeCash {
-    [rowCash removeAllObjects];
-    [rowCash release];
-    rowCash = nil;
+- (void)disposeCache {
+    for (NSNumber *key in [rowCache allKeys]) {
+        id row = [rowCache objectForKey:key];
+        [rowCache removeObjectForKey:key];
+        [row release];
+    }
+    [rowCache release];
+    rowCache = nil;
 }
 
 /*
@@ -241,11 +243,11 @@
  * Method:    tableContentIndexDestroy
  * Signature: (J)V
  */
-JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_tableContentIndexDispose
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_tableContentCacheDispose
   (JNIEnv *env, jclass class, jlong element)
 {
     JNI_COCOA_ENTER(env);
-    [ThreadUtilities performOnMainThread:@selector(disposeCash)
+    [ThreadUtilities performOnMainThread:@selector(disposeCache)
     on:(JavaComponentAccessibility *)jlong_to_ptr(element)
     withObject:nil
             waitUntilDone:NO];
