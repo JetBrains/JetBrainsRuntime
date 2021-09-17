@@ -24,7 +24,6 @@
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.event.*;
-import java.applet.Applet;
 import java.io.File;
 import java.util.ArrayList;
 
@@ -35,11 +34,20 @@ import jdk.testlibrary.OSInfo;
 
 import static java.lang.Thread.sleep;
 
-public class MissedHtmlAndRtfBug extends Applet {
-
-    public void init() {
-        setLayout(new BorderLayout());
-    }//End  init()
+/*
+    @test
+    @key headful
+    @bug 8005932 8017456
+    @summary Java 7 on mac os x only provides text clipboard formats
+    @library ../../regtesthelpers
+    @library ../../regtesthelpers/process
+    @library ../../../../lib/testlibrary
+    @build Util
+    @build ProcessResults ProcessCommunicator
+    @build jdk.testlibrary.OSInfo
+    @run main/othervm MissedHtmlAndRtfBug main
+ */
+public class MissedHtmlAndRtfBug {
 
     public void start() {
         if (OSInfo.getOSType() != OSInfo.OSType.MACOSX
@@ -179,6 +187,11 @@ public class MissedHtmlAndRtfBug extends Applet {
     }
 
     public static void main(String[] args) throws InterruptedException {
+        if (args.length > 0 && args[0].equals("main")) {
+            new MissedHtmlAndRtfBug().start();
+            return;
+        }
+
         Point dragSourcePoint = new Point(InterprocessArguments.DRAG_SOURCE_POINT_X_ARGUMENT.extractInt(args),
                 InterprocessArguments.DRAG_SOURCE_POINT_Y_ARGUMENT.extractInt(args));
         Point targetFrameLocation = new Point(InterprocessArguments.TARGET_FRAME_X_POSITION_ARGUMENT.extractInt(args),
