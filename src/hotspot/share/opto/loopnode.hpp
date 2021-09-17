@@ -1307,6 +1307,14 @@ SHENANDOAHGC_ONLY(private:)
                                                           ProjNode* output_proj, IdealLoopTree* loop);
   void check_created_predicate_for_unswitching(const Node* new_entry) const PRODUCT_RETURN;
 
+  // Determine if a method is too big for a/another round of split-if, based on
+  // a magic (approximate) ratio derived from the equally magic constant 35000,
+  // previously used for this purpose (but without relating to the node limit).
+  bool must_throttle_split_if() {
+    uint threshold = C->max_node_limit() * 2 / 5;
+    return C->live_nodes() > threshold;
+  }
+
   bool _created_loop_node;
 #ifdef ASSERT
   void dump_real_LCA(Node* early, Node* wrong_lca);
