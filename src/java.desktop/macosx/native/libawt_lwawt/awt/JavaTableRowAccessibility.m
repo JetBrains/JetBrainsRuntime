@@ -76,7 +76,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
         (*env)->DeleteLocalRef(env, jchildrenAndRoles);
     }
 
-    return cellCache;;
+    return cellCache;
 }
 
 - (NSInteger)accessibilityIndex {
@@ -118,9 +118,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
 {
     int count = [cellCache count];
     for (int i = count - 1; i >= 0; i--) {
-        id cell = [cellCache objectAtIndex:i];
-        [cellCache removeObjectAtIndex:i];
-        [cell release];
+        [[cellCache objectAtIndex:i] release];
     }
     [cellCache release];
     cellCache = nil;

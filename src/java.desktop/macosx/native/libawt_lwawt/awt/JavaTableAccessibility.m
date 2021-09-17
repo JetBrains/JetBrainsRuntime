@@ -217,9 +217,7 @@
 
 - (void)clearCache {
     for (NSNumber *key in [rowCache allKeys]) {
-        id row = [rowCache objectForKey:key];
-        [rowCache removeObjectForKey:key];
-        [row release];
+        [[rowCache objectForKey:key] release];
     }
     [rowCache release];
     rowCache = nil;
@@ -245,12 +243,12 @@
  * Signature: (J)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_tableContentCacheClear
-(JNIEnv *env, jclass class, jlong element)
+ (JNIEnv *env, jclass class, jlong element)
 {
     JNI_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThread:@selector(clearCache)
-    on:(JavaComponentAccessibility *)jlong_to_ptr(element)
-    withObject:nil
-            waitUntilDone:NO];
+                                      on:(JavaComponentAccessibility *)jlong_to_ptr(element)
+                              withObject:nil
+                           waitUntilDone:NO];
     JNI_COCOA_EXIT(env);
 }
