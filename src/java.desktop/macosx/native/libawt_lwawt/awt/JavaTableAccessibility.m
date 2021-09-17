@@ -130,28 +130,28 @@
 }
 
 - (NSArray *)accessibilityRows {
-    if (rowIndex == nil) {
-        [self createIndex];
+    if (rowCash == nil) {
+        [self createCash];
     }
 
-    NSArray *keys = [[rowIndex allKeys] sortedArrayUsingSelector:@selector(compare:)];
+    NSArray *keys = [[rowCash allKeys] sortedArrayUsingSelector:@selector(compare:)];
     NSMutableArray *children = [NSMutableArray arrayWithCapacity:[keys count]];
     for (NSNumber *key in keys) {
-        [children addObject:[rowIndex objectForKey:key]];
+        [children addObject:[rowCash objectForKey:key]];
     }
 
     return children;
 }
 
 - (nullable NSArray<id<NSAccessibilityRow>> *)accessibilitySelectedRows {
-    if (rowIndex == nil) {
-        [self createIndex];
+    if (rowCash == nil) {
+        [self createCash];
     }
 
     NSArray *selectedRows = [self selectedAccessibleRows];
     NSMutableArray *result = [NSMutableArray arrayWithCapacity:[selectedRows count]];
     for (NSNumber *index in selectedRows) {
-        [result addObject:[rowIndex objectForKey:index]];
+        [result addObject:[rowCash objectForKey:index]];
     }
 
     return result;
@@ -199,22 +199,27 @@
 
 - (void)dealloc
 {
-    [self destroyIndex];
+    [self disposeCash];
     [super dealloc];
 }
 
-- (void)createIndex {
-    NSArray *children = [super accessibilityChildren];
-    rowIndex = [[NSMutableDictionary<NSNumber*, id> dictionaryWithCapacity:[children count]] retain];
-    for (JavaTableRowAccessibility *row in children) {
-        [rowIndex setValue:row forKey:[NSNumber numberWithInt:[row accessibilityIndex]]];
+- (void)createCash {
+    int rowCount = [self accessibleRowCount];
+    rowCash = [[NSMutableDictionary<NSNumber*, id> dictionaryWithCapacity:rowCount] retain];
+    for (int i = 0; i < rowCount; i++) {
+        [rowIndex setValue:[[JavaTableRowAccessibility alloc] initWithParent:self
+                                                                     withEnv:[ThreadUtilities getJNIEnv]
+                                                              withAccessible:NULL
+                                                                   withIndex:i
+                                                                    withView:[self view]
+                                                                withJavaRole:JavaAccessibilityIgnore] forKey:[NSNumber numberWithInt:i]];
     }
 }
 
-- (void)destroyIndex {
-    [rowIndex removeAllObjects];
-    [rowIndex release];
-    rowIndex = nil;
+- (void)disposeCash {
+    [rowCash removeAllObjects];
+    [rowCash release];
+    rowCash = nil;
 }
 
 /*
@@ -236,11 +241,11 @@
  * Method:    tableContentIndexDestroy
  * Signature: (J)V
  */
-JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_tableContentIndexDestroy
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_tableContentIndexDispose
   (JNIEnv *env, jclass class, jlong element)
 {
     JNI_COCOA_ENTER(env);
-    [ThreadUtilities performOnMainThread:@selector(destroyIndex)
+    [ThreadUtilities performOnMainThread:@selector(disposeCash)
     on:(JavaComponentAccessibility *)jlong_to_ptr(element)
     withObject:nil
             waitUntilDone:NO];

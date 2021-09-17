@@ -32,7 +32,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
 }
 
 - (NSArray *)accessibilityChildren {
-    if (cellIndex == nil) {
+    if (cellCash == nil) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
         JavaComponentAccessibility *parent = [self accessibilityParent];
         if (parent->fAccessible == NULL) return nil;
@@ -66,7 +66,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
                                                                                withIndex:childIndex
                                                                                 withView:self->fView
                                                                             withJavaRole:childJavaRole];
-            [cellIndex addObject:child];
+            [cellCash addObject:child];
 
             (*env)->DeleteLocalRef(env, jchild);
             (*env)->DeleteLocalRef(env, jchildJavaRole);
@@ -76,7 +76,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
         (*env)->DeleteLocalRef(env, jchildrenAndRoles);
     }
 
-    return cellIndex;;
+    return cellCash;;
 }
 
 - (NSInteger)accessibilityIndex {
@@ -116,9 +116,9 @@ static jmethodID jm_getChildrenAndRoles = NULL;
 
 - (void)dealloc
 {
-    [cellIndex removeAllObjects];
-    [cellIndex release];
-    cellIndex = nil;
+    [cellCash removeAllObjects];
+    [cellCash release];
+    cellCash = nil;
     [super dealloc];
 }
 

@@ -4,7 +4,7 @@
 
 @interface JavaTableAccessibility : JavaComponentAccessibility <NSAccessibilityTable>
 {
-    NSMutableDictionary<NSNumber*, id> *rowIndex;
+    NSMutableDictionary<NSNumber*, id> *rowCash;
 }
 
 @property(readonly) int accessibleRowCount;
@@ -14,7 +14,7 @@
 - (BOOL)isAccessibleChildSelectedFromIndex:(int)index;
 - (int) accessibleRowAtIndex:(int)index;
 - (int) accessibleColumnAtIndex:(int)index;
-- (void)createIndex;
-- (void)destroyIndex;
+- (void)createCash;
+- (void)disposeCash;
 
 @end
