@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 
 // common infrastructure for SunPKCS11 tests
 
@@ -104,11 +103,9 @@ public abstract class PKCS11Test {
     // for quick checking for generic testing than many if-else statements.
     static double softoken3_version = -1;
     static double nss3_version = -1;
-    static Provider pkcs11;
+    static Provider pkcs11 = newPKCS11Provider();
 
-    // Goes through ServiceLoader instead of Provider.getInstance() since it
-    // works on all platforms
-    static {
+    public static Provider newPKCS11Provider() {
         ServiceLoader sl = ServiceLoader.load(java.security.Provider.class);
         Iterator<Provider> iter = sl.iterator();
         Provider p = null;
@@ -133,7 +130,7 @@ public abstract class PKCS11Test {
                 ex.printStackTrace();
             }
         }
-        pkcs11 = p;
+        return p;
     }
 
     /*
@@ -149,12 +146,17 @@ public abstract class PKCS11Test {
         return false;
     }
 
-    // Return a SunPKCS11 provider configured with the specified config file
+    // Return the static test SunPKCS11 provider configured with the specified config file
     static Provider getSunPKCS11(String config) throws Exception {
-        if (pkcs11 == null) {
+        return getSunPKCS11(config, pkcs11);
+    }
+
+    // Return the Provider p configured with the specified config file
+    static Provider getSunPKCS11(String config, Provider p) throws Exception {
+        if (p == null) {
             throw new NoSuchProviderException("No PKCS11 provider available");
         }
-        return pkcs11.configure(config);
+        return p.configure(config);
     }
 
     public abstract void main(Provider p) throws Exception;
@@ -532,36 +534,45 @@ public abstract class PKCS11Test {
         nss_library = "nss3";
     }
 
+    // Run NSS testing on a Provider p configured with test nss config
     public static void testNSS(PKCS11Test test) throws Exception {
+        String nssConfig = getNssConfig();
+        if (nssConfig == null) {
+            // issue loading libraries
+            return;
+        }
+        Provider p = getSunPKCS11(nssConfig);
+        test.premain(p);
+    }
+
+    public static String getNssConfig() throws Exception {
         String libdir = getNSSLibDir();
         if (libdir == null) {
-            return;
+            return null;
         }
-        String base = getBase();
 
         if (loadNSPR(libdir) == false) {
-            return;
+            return null;
         }
+
+        String base = getBase();
 
         String libfile = libdir + System.mapLibraryName(nss_library);
 
         String customDBdir = System.getProperty("CUSTOM_DB_DIR");
         String dbdir = (customDBdir != null) ?
-                                customDBdir :
-                                base + SEP + "nss" + SEP + "db";
+                customDBdir :
+                base + SEP + "nss" + SEP + "db";
         // NSS always wants forward slashes for the config path
         dbdir = dbdir.replace('\\', '/');
 
         String customConfig = System.getProperty("CUSTOM_P11_CONFIG");
         String customConfigName = System.getProperty("CUSTOM_P11_CONFIG_NAME", "p11-nss.txt");
-        String p11config = (customConfig != null) ?
-                                customConfig :
-                                base + SEP + "nss" + SEP + customConfigName;
-
         System.setProperty("pkcs11test.nss.lib", libfile);
         System.setProperty("pkcs11test.nss.db", dbdir);
-        Provider p = getSunPKCS11(p11config);
-        test.premain(p);
+        return (customConfig != null) ?
+                customConfig :
+                base + SEP + "nss" + SEP + customConfigName;
     }
 
     // Generate a vector of supported elliptic curves of a given provider
