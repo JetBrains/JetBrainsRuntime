@@ -4242,6 +4242,7 @@ void MacroAssembler::adrp(Register reg1, const Address &dest, uint64_t &byte_off
     uint64_t adrp_target
       = (target & 0xffffffffULL) | ((uint64_t)pc() & 0xffff00000000ULL);
 
+    _adrp(reg1, (address)adrp_target);
     movk(reg1, target >> 32, 32);
   }
   byte_offset = (uint64_t)dest.target() & 0xfff;
