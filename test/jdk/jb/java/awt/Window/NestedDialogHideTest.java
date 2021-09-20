@@ -61,13 +61,11 @@ public class NestedDialogHideTest {
                 button3 = new JButton("Hide");
                 button3.addActionListener(eee -> d.setVisible(false));
                 d2.add(button3);
-                d2.pack();
-                d2.setLocation(240, 240);
+                d2.setBounds(240, 240, 200, 200);
                 d2.setVisible(true);
             });
             d.add(button2);
-            d.pack();
-            d.setLocation(220, 220);
+            d.setBounds(220, 220, 200, 200);
             d.setVisible(true);
             d.addComponentListener(new ComponentAdapter() {
                 @Override
@@ -77,8 +75,7 @@ public class NestedDialogHideTest {
             });
         });
         frame.add(button1);
-        frame.pack();
-        frame.setLocation(200, 200);
+        frame.setBounds(200, 200, 200, 200);
         frame.setVisible(true);
     }
 
