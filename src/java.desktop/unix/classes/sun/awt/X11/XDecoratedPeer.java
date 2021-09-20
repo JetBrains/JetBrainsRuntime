@@ -1102,10 +1102,13 @@ abstract class XDecoratedPeer extends XWindowPeer {
         XClientMessageEvent cl = xev.get_xclient();
         if ((wm_protocols != null) && (cl.get_message_type() == wm_protocols.getAtom())) {
             long timestamp = getTimeStampFromClientMessage(cl);
-            // we should treat WM_TAKE_FOCUS and WM_DELETE_WINDOW messages as user interaction, as they can originate
+            // We should treat WM_TAKE_FOCUS and WM_DELETE_WINDOW messages as user interaction, as they can originate
             // e.g. from user clicking on window title bar and window close button correspondingly
-            // (there will be no ButtonPress/ButtonRelease events in those cases)
-            setUserTime(timestamp, true);
+            // (there will be no ButtonPress/ButtonRelease events in those cases).
+            // The received timestamp will be used to set _NET_WM_USER_TIME on newly opened windows to ensure their
+            // correct focusing/positioning, but we don't set it on current window to avoid race conditions (when e.g.
+            // WM_TAKE_FOCUS arrives around the time of new window opening).
+            setUserTime(timestamp, true, false);
 
             if (cl.get_data(0) == wm_delete_window.getAtom()) {
                 handleQuit();
