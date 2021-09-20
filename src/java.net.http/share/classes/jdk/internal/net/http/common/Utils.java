@@ -44,6 +44,7 @@ import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLPermission;
+import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpTimeoutException;
 import java.nio.ByteBuffer;
@@ -128,14 +129,23 @@ public final class Utils {
 
     public static final BiPredicate<String,String> ACCEPT_ALL = (x,y) -> true;
 
-    private static final Set<String> DISALLOWED_HEADERS_SET;
+    private static final Set<String> DISALLOWED_HEADERS_SET = getDisallowedHeaders();
 
-    static {
-        // A case insensitive TreeSet of strings.
-        TreeSet<String> treeSet = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        treeSet.addAll(Set.of("connection", "content-length",
-                "date", "expect", "from", "host", "upgrade", "via", "warning"));
-        DISALLOWED_HEADERS_SET = Collections.unmodifiableSet(treeSet);
+    private static Set<String> getDisallowedHeaders() {
+        Set<String> headers = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        headers.addAll(Set.of("connection", "content-length", "expect", "host", "upgrade"));
+
+        String v = getNetProperty("jdk.httpclient.allowRestrictedHeaders");
+        if (v != null) {
+            // any headers found are removed from set.
+            String[] tokens = v.trim().split(",");
+            for (String token : tokens) {
+                headers.remove(token);
+            }
+            return Collections.unmodifiableSet(headers);
+        } else {
+            return Collections.unmodifiableSet(headers);
+        }
     }
 
     public static final BiPredicate<String, String>
@@ -158,6 +168,20 @@ public final class Utils {
             };
 
     private static final Predicate<String> IS_HOST = "host"::equalsIgnoreCase;
+
+    // Headers that are not generally restricted, and can therefore be set by users,
+    // but can in some contexts be overridden by the implementation.
+    // Currently, only contains "Authorization" which will
+    // be overridden, when an Authenticator is set on the HttpClient.
+    // Needs to be BiPred<String,String> to fit with general form of predicates
+    // used by caller.
+
+    public static final BiPredicate<String, String> CONTEXT_RESTRICTED(HttpClient client) {
+        return (k, v) -> client.authenticator() == null ||
+                ! (k.equalsIgnoreCase("Authorization")
+                        && k.equalsIgnoreCase("Proxy-Authorization"));
+    }
+
     private static final Predicate<String> IS_PROXY_HEADER = (k) ->
             k != null && k.length() > 6 && "proxy-".equalsIgnoreCase(k.substring(0,6));
     private static final Predicate<String> NO_PROXY_HEADER =
@@ -335,8 +359,8 @@ public final class Utils {
                                                     Stream<String> headers) {
         String urlString = new StringBuilder()
                 .append(uri.getScheme()).append("://")
-                .append(uri.getAuthority())
-                .append(uri.getPath()).toString();
+                .append(uri.getRawAuthority())
+                .append(uri.getRawPath()).toString();
 
         StringBuilder actionStringBuilder = new StringBuilder(method);
         String collected = headers.collect(joining(","));
@@ -798,6 +822,33 @@ public final class Utils {
     public static Logger getDebugLogger(Supplier<String> dbgTag, boolean on) {
         Level errLevel = on ? Level.ALL : Level.OFF;
         return getDebugLogger(dbgTag, errLevel);
+    }
+
+    /**
+     * Return the host string from a HttpRequestImpl
+     *
+     * @param request
+     * @return
+     */
+    public static String hostString(HttpRequestImpl request) {
+        URI uri = request.uri();
+        int port = uri.getPort();
+        String host = uri.getHost();
+
+        boolean defaultPort;
+        if (port == -1) {
+            defaultPort = true;
+        } else if (uri.getScheme().equalsIgnoreCase("https")) {
+            defaultPort = port == 443;
+        } else {
+            defaultPort = port == 80;
+        }
+
+        if (defaultPort) {
+            return host;
+        } else {
+            return host + ":" + Integer.toString(port);
+        }
     }
 
     /**
