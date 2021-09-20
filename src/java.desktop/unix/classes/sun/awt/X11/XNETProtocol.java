@@ -296,7 +296,6 @@ final class XNETProtocol extends XProtocol implements XStateProtocol, XLayerProt
     XAtom XA_NET_WM_WINDOW_OPACITY = XAtom.get("_NET_WM_WINDOW_OPACITY");
 
     XAtom XA_NET_WM_USER_TIME = XAtom.get("_NET_WM_USER_TIME");
-    XAtom XA_NET_WM_USER_TIME_WINDOW = XAtom.get("_NET_WM_USER_TIME_WINDOW");
 
 /* For _NET_WM_STATE ClientMessage requests */
     static final int _NET_WM_STATE_REMOVE      =0; /* remove/unset property */
@@ -465,20 +464,9 @@ final class XNETProtocol extends XProtocol implements XStateProtocol, XLayerProt
         return (state != null && state.size() != 0 && state.contains(XA_NET_WM_STATE_HIDDEN));
     }
 
-    private boolean isUserTimeWindowSupported() {
-        return checkProtocol(XA_NET_SUPPORTED, XA_NET_WM_USER_TIME_WINDOW);
-    }
-
-    void setupUserTimeWindow(XBaseWindow window) {
-        if (active() && isUserTimeWindowSupported()) {
-            XA_NET_WM_USER_TIME_WINDOW.setWindowProperty(window, XRootWindow.getInstance());
-        }
-    }
-
     void setUserTime(XBaseWindow window, long time) {
         if (active()) {
-            XBaseWindow target = isUserTimeWindowSupported() ? XRootWindow.getInstance() : window;
-            XA_NET_WM_USER_TIME.setCard32Property(target, time);
+            XA_NET_WM_USER_TIME.setCard32Property(window, time);
         }
     }
 }
