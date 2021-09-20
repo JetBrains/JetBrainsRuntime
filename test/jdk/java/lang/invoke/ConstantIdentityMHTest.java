@@ -61,8 +61,7 @@ public class ConstantIdentityMHTest {
         assertEquals(MethodHandles.zero(expectedtype).type().toString(), expected);
     }
 
-    @Test
-    @ExpectedExceptions(NullPointerException.class)
+    @Test(expectedExceptions={ NullPointerException.class })
     public void testZeroNPE() {
         MethodHandle mh = MethodHandles.zero(null);
     }
@@ -75,8 +74,7 @@ public class ConstantIdentityMHTest {
         assertEquals(null, (String)mhEmpty.invoke("x","y"));
     }
 
-    @Test
-    @ExpectedExceptions(NullPointerException.class)
+    @Test(expectedExceptions = { NullPointerException.class })
     void testEmptyNPE() {
         MethodHandle lenEmptyMH = MethodHandles.empty(null);
     }
