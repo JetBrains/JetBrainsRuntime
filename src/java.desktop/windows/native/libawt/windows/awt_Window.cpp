@@ -1920,8 +1920,8 @@ MsgRouting AwtWindow::WmMove(int x, int y)
     URectBounds rect = UGetWindowRectBounds(GetHWnd());
     AwtWin32GraphicsDevice* device = UGetDeviceByBounds(rect, this);
 
-    int usrX = device->ScaleDownDX(rect.x);
-    int usrY = device->ScaleDownDY(rect.y);
+    int usrX = device->ScaleDownX(rect.x);
+    int usrY = device->ScaleDownY(rect.y);
 
     // [tav] Convert x/y to user space, asymmetrically to AwtComponent::Reshape.
     AwtComponent* parent = GetParent();

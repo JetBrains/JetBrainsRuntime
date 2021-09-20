@@ -981,8 +981,8 @@ void AwtComponent::ReshapeNoScale(int x, int y, int w, int h)
     int usrY = y;
 
     AwtWin32GraphicsDevice* device = UGetDeviceByBounds(URectBounds(x, y, w, h, USER_SPACE), this);
-    x = device->ScaleUpX(x, RELATIVITY_FOR_COMP_XY(this));
-    y = device->ScaleUpY(y, RELATIVITY_FOR_COMP_XY(this));
+    x = device->ScaleUpX(x);
+    y = device->ScaleUpY(y);
     w = device->ScaleUpX(w);
     h = device->ScaleUpY(h);
 
@@ -2484,7 +2484,7 @@ void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
             const jint scrollModifiers = modifiers & ~java_awt_event_InputEvent_SHIFT_DOWN_MASK;
             SendMouseWheelEventFromTouch(p, scrollModifiers, sun_awt_event_TouchEvent_TOUCH_UPDATE, deltaY);
         }
-        
+
         const jint deltaX = ScaleDownX(static_cast<int>(m_lastTouchPoint.x - p.x));
         if (deltaX != 0) {
             const jint scrollModifiers = modifiers | java_awt_event_InputEvent_SHIFT_DOWN_MASK;
