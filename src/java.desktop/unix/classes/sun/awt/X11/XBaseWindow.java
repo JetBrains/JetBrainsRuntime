@@ -172,8 +172,6 @@ public class XBaseWindow {
 
         // Set WM_CLIENT_LEADER property
         initClientLeader();
-
-        initUserTimeWindow();
     }
 
     /**
@@ -442,13 +440,6 @@ public class XBaseWindow {
             wm_client_leader.setWindowProperty(this, getXAWTRootWindow());
         } finally {
             XToolkit.awtUnlock();
-        }
-    }
-
-    private void initUserTimeWindow() {
-        XNETProtocol netProtocol = XWM.getWM().getNETProtocol();
-        if (netProtocol != null ) {
-            netProtocol.setupUserTimeWindow(this);
         }
     }
 
@@ -1312,12 +1303,18 @@ public class XBaseWindow {
     }
 
     protected void setUserTime(long time, boolean updateGlobalTime) {
+        setUserTime(time, updateGlobalTime, true);
+    }
+
+    protected void setUserTime(long time, boolean updateGlobalTime, boolean updateWindowProperty) {
         if (updateGlobalTime && (int)time - (int)globalUserTime > 0 /* accounting for wrap-around */) {
             globalUserTime = time;
         }
-        XNETProtocol netProtocol = XWM.getWM().getNETProtocol();
-        if (netProtocol != null) {
-            netProtocol.setUserTime(this, time);
+        if (updateWindowProperty) {
+            XNETProtocol netProtocol = XWM.getWM().getNETProtocol();
+            if (netProtocol != null) {
+                netProtocol.setUserTime(this, time);
+            }
         }
     }
 
