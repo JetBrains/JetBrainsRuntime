@@ -998,7 +998,7 @@ const int ObjectAlignmentInBytes = 8;
   product(bool, PrintVMOptions, false,                                      \
           "Print flags that appeared on the command line")                  \
                                                                             \
-  product(bool, IgnoreUnrecognizedVMOptions, false,                         \
+  product(bool, IgnoreUnrecognizedVMOptions, true,                          \
           "Ignore unrecognized VM options")                                 \
                                                                             \
   product(bool, PrintCommandLineFlags, false,                               \

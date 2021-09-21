@@ -71,7 +71,8 @@ class PathString : public CHeapObj<mtArguments> {
 
   // return false iff OOM && alloc_failmode == AllocFailStrategy::RETURN_NULL
   bool set_value(const char *value, AllocFailType alloc_failmode = AllocFailStrategy::EXIT_OOM);
-  void append_value(const char *value);
+  void append_value(const char *value, const char *delemiter);
+  void append_value(const char *value) { append_value(value, os::path_separator()); }
 
   PathString(const char* value);
   ~PathString();
@@ -247,6 +248,10 @@ class Arguments : AllStatic {
   static bool _xdebug_mode;
   static void set_xdebug_mode(bool arg) { _xdebug_mode = arg; }
   static bool xdebug_mode()             { return _xdebug_mode; }
+
+  // List of unrecognized VM options
+  static GrowableArray<const char *> *_unrecognized_vm_options;
+  static void store_unrecognized_vm_option(const char* option);
 
   // preview features
   static bool _enable_preview;
@@ -457,6 +462,9 @@ class Arguments : AllStatic {
 
   // Update/Initialize System properties after JDK version number is known
   static void init_version_specific_system_properties();
+
+  // Store unrecognized vm options to system property
+  static void set_unrecognized_vm_options_property();
 
   // Update VM info property - called after argument parsing
   static void update_vm_info_property(const char* vm_info) {
