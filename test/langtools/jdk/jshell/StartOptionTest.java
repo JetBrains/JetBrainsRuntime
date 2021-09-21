@@ -293,7 +293,7 @@ public class StartOptionTest {
     // Test an option that causes the back-end to fail is propagated
     public void testStartupFailedOption() {
         startExCe(1, s -> assertTrue(s.contains("Unrecognized option: -hoge-foo-bar"), "cmderr: " + s),
-                "-R-hoge-foo-bar");
+                "-R-XX:-IgnoreUnrecognizedVMOptions", "-R-hoge-foo-bar");
     }
 
     // Test the use of non-existant files with the --startup option
