@@ -2748,6 +2748,10 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   jint parse_result = Arguments::parse(args);
   if (parse_result != JNI_OK) return parse_result;
 
+  // Store all unrecognized vm options to system property
+  // to make it accessible from Java
+  Arguments::set_unrecognized_vm_options_property();
+
   os::init_before_ergo();
 
   jint ergo_result = Arguments::apply_ergo();

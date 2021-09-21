@@ -23,43 +23,23 @@
 
 /*
  * @test
- * @bug 7167142
- * @summary Warn if unused .hotspot_rc file is present
+ * @bug 8006298 8204055
+ * @summary Using an unrecognized VM option should print the name of the option
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
- * @run driver ConfigFileWarning
+ * @run main/othervm -XX:+IgnoreUnrecognizedVMOptions -Xverify:BadV -XX-BadSyn -Bad -XX:+BadXX01 -XX:+BadXX02 -XX:+Bad:SC UnrecognizedVMOptionsProperty
  */
 
-import java.io.PrintWriter;
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
-import jdk.test.lib.Platform;
 
-public class ConfigFileWarning {
-    public static void main(String[] args) throws Exception {
-        PrintWriter pw;
-        ProcessBuilder pb;
-        OutputAnalyzer output;
-
-        pw = new PrintWriter("hs_flags.txt");
-        pw.println("aaa");
-        pw.close();
-
-        pb = ProcessTools.createJavaProcessBuilder("-XX:Flags=hs_flags.txt","-XX:-IgnoreUnrecognizedVMOptions","-version");
-        output = new OutputAnalyzer(pb.start());
-        output.shouldContain("Unrecognized VM option 'aaa'");
-        output.shouldHaveExitValue(1);
-
-        // Skip on debug builds since we'll always read the file there
-        if (!Platform.isDebugBuild()) {
-            pw = new PrintWriter(".hotspotrc");
-            pw.println("aa");
-            pw.close();
-
-            pb = ProcessTools.createJavaProcessBuilder("-version");
-            output = new OutputAnalyzer(pb.start());
-            output.shouldContain("warning: .hotspotrc file is present but has been ignored.  Run with -XX:Flags=.hotspotrc to load the file.");
-        }
-    }
+public class UnrecognizedVMOptionsProperty {
+  public static void main(String[] args) throws Exception {
+     String badOptions = System.getProperty("java.vm.unrecognized.options");
+     System.out.println("Found unrecognized VM options " + badOptions);
+     if (! badOptions.equals("-Xverify:BadV\n-XX-BadSyn\n-Bad\n+BadXX01\n+BadXX02\n+Bad:SC")) {
+        throw new RuntimeException("Invalid value of 'java.vm.unrecognized.options' property '" + badOptions + "'");
+     }
+  }
 }

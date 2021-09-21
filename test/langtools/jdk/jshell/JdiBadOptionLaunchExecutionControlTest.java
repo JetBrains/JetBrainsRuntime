@@ -48,7 +48,7 @@ public class JdiBadOptionLaunchExecutionControlTest {
             Logger.getLogger("jdk.jshell.execution").setLevel(Level.ALL);
             JShell.builder()
                     .executionEngine("jdi:launch(true)")
-                    .remoteVMOptions("-BadBadOption")
+                    .remoteVMOptions("-XX:-IgnoreUnrecognizedVMOptions", "-BadBadOption")
                     .build();
         } catch (IllegalStateException ex) {
             assertTrue(ex.getMessage().startsWith(EXPECTED_ERROR), ex.getMessage());

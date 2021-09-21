@@ -117,6 +117,8 @@ bool Arguments::_has_jimage = false;
 
 char* Arguments::_ext_dirs = NULL;
 
+GrowableArray<const char *> *Arguments::_unrecognized_vm_options = NULL;
+
 bool PathString::set_value(const char *value) {
   if (_value != NULL) {
     FreeHeap(_value);
@@ -132,7 +134,7 @@ bool PathString::set_value(const char *value) {
   return true;
 }
 
-void PathString::append_value(const char *value) {
+void PathString::append_value(const char *value, const char *separator) {
   char *sp;
   size_t len = 0;
   if (value != NULL) {
@@ -145,7 +147,7 @@ void PathString::append_value(const char *value) {
     if (sp != NULL) {
       if (_value != NULL) {
         strcpy(sp, _value);
-        strcat(sp, os::path_separator());
+        strcat(sp, separator);
         strcat(sp, value);
         FreeHeap(_value);
       } else {
@@ -1217,8 +1219,10 @@ bool Arguments::process_argument(const char* arg,
     }
   } else {
     if (ignore_unrecognized) {
+      store_unrecognized_vm_option(arg);
       return true;
     }
+
     jio_fprintf(defaultStream::error_stream(),
                 "Unrecognized VM option '%s'\n", argname);
     JVMFlag* fuzzy_matched = JVMFlag::fuzzy_match((const char*)argname, arg_len, true);
@@ -1229,7 +1233,7 @@ bool Arguments::process_argument(const char* arg,
                   fuzzy_matched->name(),
                   (fuzzy_matched->is_bool()) ? "" : "=<value>");
     }
-  }
+ }
 
   // allow for commandline "commenting out" options like -XX:#+Verbose
   return arg[0] == '#';
@@ -2017,9 +2021,38 @@ bool Arguments::check_vm_args_consistency() {
   return status;
 }
 
+void Arguments::set_unrecognized_vm_options_property() {
+  if (_unrecognized_vm_options != NULL) {
+    int num_of_entries = _unrecognized_vm_options->length();
+    const char* option_string = _unrecognized_vm_options->at(0);
+
+    SystemProperty* prop = new SystemProperty("java.vm.unrecognized.options", "", true, false);
+
+    prop->set_value(option_string);
+
+    for (int i = 1; i < num_of_entries; i++) {
+      option_string = _unrecognized_vm_options->at(i);
+      prop->append_value(option_string, "\n");
+    }
+
+    PropertyList_add(&_system_properties, prop);
+  }
+}
+
+void Arguments::store_unrecognized_vm_option(const char* option) {
+  if (_unrecognized_vm_options == NULL) {
+    // Create GrowableArray lazily, only if unrecognized vm options found
+    _unrecognized_vm_options = new (ResourceObj::C_HEAP, mtArguments) GrowableArray<const char *>(10, mtArguments);
+  }
+  _unrecognized_vm_options->push(option);
+}
+
 bool Arguments::is_bad_option(const JavaVMOption* option, jboolean ignore,
   const char* option_type) {
-  if (ignore) return false;
+  if (ignore) {
+     store_unrecognized_vm_option(option->optionString);
+     return false;
+  }
 
   const char* spacer = " ";
   if (option_type == NULL) {
