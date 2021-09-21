@@ -37,7 +37,7 @@ import jdk.test.lib.Platform;
 
 public class VMOptionWarning {
     public static void main(String[] args) throws Exception {
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+AlwaysSafeConstructors", "-version");
+        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+AlwaysSafeConstructors", "-XX:-IgnoreUnrecognizedVMOptions", "-version");
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.shouldNotHaveExitValue(0);
         output.shouldContain("Error: VM option 'AlwaysSafeConstructors' is experimental and must be enabled via -XX:+UnlockExperimentalVMOptions.");
@@ -47,17 +47,17 @@ public class VMOptionWarning {
             return;
         }
 
-        pb = ProcessTools.createJavaProcessBuilder("-XX:+PrintInlining", "-version");
+        pb = ProcessTools.createJavaProcessBuilder("-XX:+PrintInlining", "-XX:-IgnoreUnrecognizedVMOptions", "-version");
         output = new OutputAnalyzer(pb.start());
         output.shouldNotHaveExitValue(0);
         output.shouldContain("Error: VM option 'PrintInlining' is diagnostic and must be enabled via -XX:+UnlockDiagnosticVMOptions.");
 
-        pb = ProcessTools.createJavaProcessBuilder("-XX:+VerifyStack", "-version");
+        pb = ProcessTools.createJavaProcessBuilder("-XX:+VerifyStack", "-XX:-IgnoreUnrecognizedVMOptions", "-version");
         output = new OutputAnalyzer(pb.start());
         output.shouldNotHaveExitValue(0);
         output.shouldContain("Error: VM option 'VerifyStack' is develop and is available only in debug version of VM.");
 
-        pb = ProcessTools.createJavaProcessBuilder("-XX:+CheckCompressedOops", "-version");
+        pb = ProcessTools.createJavaProcessBuilder("-XX:+CheckCompressedOops", "-XX:-IgnoreUnrecognizedVMOptions", "-version");
         output = new OutputAnalyzer(pb.start());
         output.shouldNotHaveExitValue(0);
         output.shouldContain("Error: VM option 'CheckCompressedOops' is notproduct and is available only in debug version of VM.");
