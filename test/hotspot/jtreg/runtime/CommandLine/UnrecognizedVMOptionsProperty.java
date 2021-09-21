@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,23 +23,23 @@
 
 /*
  * @test
- * @bug 7162488
- * @summary VM should print unrecognized -XX option
+ * @bug 8006298 8204055
+ * @summary Using an unrecognized VM option should print the name of the option
  * @library /test/lib
- * @run driver TestUnrecognizedVmOption
+ * @modules java.base/jdk.internal.misc
+ *          java.management
+ * @run main/othervm -XX:+IgnoreUnrecognizedVMOptions -Xverify:BadV -XX-BadSyn -Bad -XX:+BadXX01 -XX:+BadXX02 -XX:+Bad:SC UnrecognizedVMOptionsProperty
  */
-import jdk.test.lib.process.OutputAnalyzer;
+
 import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.process.OutputAnalyzer;
 
-public class TestUnrecognizedVmOption {
-    static final String OPTION="this_is_not_an_option";
-
-    public static void main(String[] args) throws Exception {
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-            "-showversion", "-XX:-IgnoreUnrecognizedVMOptions", "-XX:" + OPTION);
-        new OutputAnalyzer(pb.start())
-            .shouldNotHaveExitValue(0)
-            .shouldContain("Unrecognized VM option")
-            .shouldContain(OPTION);
-    }
+public class UnrecognizedVMOptionsProperty {
+  public static void main(String[] args) throws Exception {
+     String badOptions = System.getProperty("java.vm.unrecognized.options");
+     System.out.println("Found unrecognized VM options " + badOptions);
+     if (! badOptions.equals("-Xverify:BadV\n-XX-BadSyn\n-Bad\n+BadXX01\n+BadXX02\n+Bad:SC")) {
+        throw new RuntimeException("Invalid value of 'java.vm.unrecognized.options' property '" + badOptions + "'");
+     }
+  }
 }
