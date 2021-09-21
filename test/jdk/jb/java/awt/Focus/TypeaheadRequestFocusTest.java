@@ -45,6 +45,7 @@ public class TypeaheadRequestFocusTest {
             initFinished.get(10, TimeUnit.SECONDS);
             clickOn(frameField);
             SwingUtilities.invokeAndWait(TypeaheadRequestFocusTest::showPopup);
+            robot.delay(1000);
             pressAndRelease(KeyEvent.VK_ENTER);
             pressAndRelease(KeyEvent.VK_A);
             typedInPopup.get(10, TimeUnit.SECONDS);
