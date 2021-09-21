@@ -38,7 +38,7 @@ public class UnrecognizedVMOptionsProperty {
   public static void main(String[] args) throws Exception {
      String badOptions = System.getProperty("java.vm.unrecognized.options");
      System.out.println("Found unrecognized VM options " + badOptions);
-     if (! badOptions.equals("-Xverify:BadV -XX-BadSyn -Bad +BadXX01 +BadXX02 +Bad:SC")) {
+     if (! badOptions.equals("-Xverify:BadV\n-XX-BadSyn\n-Bad\n+BadXX01\n+BadXX02\n+Bad:SC")) {
         throw new RuntimeException("Invalid value of 'java.vm.unrecognized.options' property '" + badOptions + "'");
      }
   }

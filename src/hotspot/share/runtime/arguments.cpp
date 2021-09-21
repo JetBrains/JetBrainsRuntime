@@ -2029,7 +2029,7 @@ void Arguments::set_unrecognized_vm_options_property() {
 
     for (int i = 1; i < num_of_entries; i++) {
       option_string = _unrecognized_vm_options->at(i);
-      prop->append_value(option_string, " ");
+      prop->append_value(option_string, "\n");
     }
 
     PropertyList_add(&_system_properties, prop);
