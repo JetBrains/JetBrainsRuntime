@@ -41,6 +41,7 @@ public class TestUnrecognizedVMOptionsHandling {
   public static void main(String args[]) throws Exception {
     // The first two JAVA processes are expected to fail, but with a correct VM option suggestion
     ProcessBuilder pb = GCArguments.createJavaProcessBuilder(
+      "-XX:-IgnoreUnrecognizedVMOptions",
       "-XX:+UseDynamicNumberOfGcThreads",
       "-version"
       );
@@ -51,6 +52,7 @@ public class TestUnrecognizedVMOptionsHandling {
     }
 
     pb = GCArguments.createJavaProcessBuilder(
+      "-XX:-IgnoreUnrecognizedVMOptions",
       "-XX:MaxiumHeapSize=500m",
       "-version"
       );
@@ -62,6 +64,7 @@ public class TestUnrecognizedVMOptionsHandling {
 
     // The last JAVA process should run successfully for the purpose of sanity check
     pb = GCArguments.createJavaProcessBuilder(
+      "-XX:-IgnoreUnrecognizedVMOptions",
       "-XX:+UseDynamicNumberOfGCThreads",
       "-version"
       );
