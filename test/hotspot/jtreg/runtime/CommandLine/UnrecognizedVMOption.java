@@ -44,7 +44,7 @@ public class UnrecognizedVMOption {
     };
     for (String option : badOptions) {
       ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-          "-XX:" + option, "-version");
+          "-XX:" + option, "-XX:-IgnoreUnrecognizedVMOptions", "-version");
 
       OutputAnalyzer output = new OutputAnalyzer(pb.start());
       output.shouldContain("Unrecognized VM option '" + option + "'");
