@@ -59,8 +59,11 @@ jstring NSStringToJavaString(JNIEnv* env, NSString *str) {
             [NSException raise:NSMallocException
                          format:@"NSStringToJavaString: failed to allocate buffer for %lu characters", length];
         } else {
-            jStr = NSStringToJavaStringImpl(env, str, buffer, length);
-            free(buffer);
+            @try {
+                jStr = NSStringToJavaStringImpl(env, str, buffer, length);
+            } @finally {
+                free(buffer);
+            }
         }
     } else {
         unichar buffer[length];
