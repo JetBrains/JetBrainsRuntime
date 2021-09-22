@@ -1665,17 +1665,11 @@ bool CompileBroker::init_compiler_runtime() {
   // Final sanity check - the compiler object must exist
   guarantee(comp != NULL, "Compiler object must exist");
 
-  int system_dictionary_modification_counter;
-  {
-    MutexLocker locker(Compile_lock, thread);
-    system_dictionary_modification_counter = SystemDictionary::number_of_modifications();
-  }
-
   {
     // Must switch to native to allocate ci_env
     ThreadToNativeFromVM ttn(thread);
     Thread::WXWriteVerifier wx_write;
-    ciEnv ci_env(NULL, system_dictionary_modification_counter);
+    ciEnv ci_env((CompileTask*)NULL);
     // Cache Jvmti state
     ci_env.cache_jvmti_state();
     // Cache DTrace flags
@@ -2121,12 +2115,6 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
   const char* failure_reason = NULL;
   const char* retry_message = NULL;
 
-  int system_dictionary_modification_counter;
-  {
-    MutexLocker locker(Compile_lock, thread);
-    system_dictionary_modification_counter = SystemDictionary::number_of_modifications();
-  }
-
 #if INCLUDE_JVMCI
   if (UseJVMCICompiler && comp != NULL && comp->is_jvmci()) {
     JVMCICompiler* jvmci = (JVMCICompiler*) comp;
@@ -2140,7 +2128,7 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
         retry_message = "not retryable";
         compilable = ciEnv::MethodCompilable_never;
     } else {
-        JVMCIEnv env(task, system_dictionary_modification_counter);
+        JVMCIEnv env(task);
         methodHandle method(thread, target_handle);
         jvmci->compile_method(method, osr_bci, &env);
 
@@ -2162,7 +2150,7 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
     ThreadToNativeFromVM ttn(thread);
     Thread::WXWriteVerifier wx_write;
 
-    ciEnv ci_env(task, system_dictionary_modification_counter);
+    ciEnv ci_env(task);
     if (should_break) {
       ci_env.set_break_at_compile(true);
     }

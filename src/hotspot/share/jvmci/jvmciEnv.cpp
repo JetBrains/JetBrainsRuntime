@@ -54,9 +54,8 @@
 #include "jvmci/jvmciRuntime.hpp"
 #include "jvmci/jvmciJavaClasses.hpp"
 
-JVMCIEnv::JVMCIEnv(CompileTask* task, int system_dictionary_modification_counter):
+JVMCIEnv::JVMCIEnv(CompileTask* task):
   _task(task),
-  _system_dictionary_modification_counter(system_dictionary_modification_counter),
   _failure_reason(NULL),
   _retryable(true)
 {
@@ -421,14 +420,13 @@ JVMCIEnv::CodeInstallResult JVMCIEnv::validate_compile_task_dependencies(Depende
 
   // Dependencies must be checked when the system dictionary changes
   // or if we don't know whether it has changed (i.e., env == NULL).
-  bool counter_changed = env == NULL || env->_system_dictionary_modification_counter != SystemDictionary::number_of_modifications();
   CompileTask* task = env == NULL ? NULL : env->task();
-  Dependencies::DepType result = dependencies->validate_dependencies(task, counter_changed, failure_detail);
+  Dependencies::DepType result = dependencies->validate_dependencies(task, failure_detail);
   if (result == Dependencies::end_marker) {
     return JVMCIEnv::ok;
   }
 
-  if (!Dependencies::is_klass_type(result) || counter_changed) {
+  if (!Dependencies::is_klass_type(result)) {
     return JVMCIEnv::dependencies_failed;
   }
   // The dependencies were invalid at the time of installation

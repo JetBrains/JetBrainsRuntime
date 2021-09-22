@@ -96,14 +96,6 @@ JVMState* ParseGenerator::generate(JVMState* jvms) {
 
   Parse parser(jvms, method(), _expected_uses);
   // Grab signature for matching/allocation
-#ifdef ASSERT
-  if (parser.tf() != (parser.depth() == 1 ? C->tf() : tf())) {
-    MutexLockerEx ml(Compile_lock, Mutex::_no_safepoint_check_flag);
-    assert(C->env()->system_dictionary_modification_counter_changed(),
-           "Must invalidate if TypeFuncs differ");
-  }
-#endif
-
   GraphKit& exits = parser.exits();
 
   if (C->failing()) {
