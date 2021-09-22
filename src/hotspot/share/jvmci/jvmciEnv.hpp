@@ -92,11 +92,10 @@ public:
                                     int method_index, Bytecodes::Code bc,
                                     InstanceKlass* loading_klass);
 
-  JVMCIEnv(CompileTask* task, int system_dictionary_modification_counter);
+  JVMCIEnv(CompileTask* task);
 
 private:
   CompileTask*     _task;
-  int              _system_dictionary_modification_counter;
 
   // Compilation result values
   const char*      _failure_reason;
