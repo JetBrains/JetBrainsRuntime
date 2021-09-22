@@ -25,8 +25,6 @@
 
 #include "JNIUtilities.h"
 
-#define MAX_CHARS_TO_ALLOCATE_ON_STACK 128
-
 NSString* JavaStringToNSString(JNIEnv *env, jstring jstr) {
     if (jstr == NULL) {
         return NULL;
@@ -41,34 +39,12 @@ NSString* JavaStringToNSString(JNIEnv *env, jstring jstr) {
     return result;
 }
 
-static jstring NSStringToJavaStringImpl(JNIEnv* env, NSString *str, unichar *buffer, NSUInteger length) {
-    [str getCharacters:buffer range:NSMakeRange(0, length)];
-    return (*env)->NewString(env, buffer, length);
-}
-
 jstring NSStringToJavaString(JNIEnv* env, NSString *str) {
 
     if (str == NULL) {
        return NULL;
     }
-    jstring jStr;
-    NSUInteger length = str.length;
-    if (length > MAX_CHARS_TO_ALLOCATE_ON_STACK) {
-        unichar *buffer = (unichar*) malloc(sizeof(unichar) * length);
-        if (buffer == NULL) {
-            [NSException raise:NSMallocException
-                         format:@"NSStringToJavaString: failed to allocate buffer for %lu characters", length];
-        } else {
-            @try {
-                jStr = NSStringToJavaStringImpl(env, str, buffer, length);
-            } @finally {
-                free(buffer);
-            }
-        }
-    } else {
-        unichar buffer[length];
-        jStr = NSStringToJavaStringImpl(env, str, buffer, length);
-    }
+    jstring jStr = (*env)->NewStringUTF(env, [str UTF8String]);
     CHECK_EXCEPTION();
     return jStr;
 }
