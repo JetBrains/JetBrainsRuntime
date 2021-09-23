@@ -40,7 +40,7 @@ class WindowsFileKey {
 
     @Override
     public int hashCode() {
-        return (int)(volSerialNumber ^ (volSerialNumber >>> 16)) +
+        return (volSerialNumber ^ (volSerialNumber >>> 16)) +
                (int)(fileId ^ (fileId >>> 32));
     }
 
