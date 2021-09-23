@@ -157,6 +157,11 @@ class WindowsDirectoryStream
                 // synchronize on closeLock to prevent close while reading
                 synchronized (closeLock) {
                     // Fetch next set of entries if we don't have anything available in buffer
+                    if (!isOpen) {
+                        atEof = true;
+                        return null;
+                    }
+
                     if (nextOffset < 0) {
                         try {
                             atEof = !NextNtQueryDirectoryInformation(queryDirectoryInformation, queryDirectoryInformationBuffer);
