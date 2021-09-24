@@ -21,6 +21,8 @@ java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                 
 java/awt/Focus/RequestOnCompWithNullParent/RequestOnCompWithNullParent1.java                  JBR-3730 macosx-all
 java/awt/Focus/RestoreFocusOnDisabledComponentTest/RestoreFocusOnDisabledComponentTest.java   JBR-3730 macosx-all
 java/awt/Focus/ShowFrameCheckForegroundTest/ShowFrameCheckForegroundTest.java                 JBR-3733 macosx-all
+java/awt/Focus/ToFrontFocusTest/ToFrontFocus.java                                             JBR-3730 macosx-all
+java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java                             JBR-3730 macosx-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java                 JBR-3730 macosx-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java                                       JBR-3730 macosx-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java                                            JBR-3733 macosx-all
@@ -29,11 +31,14 @@ java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                          
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java                        JBR-3730 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java JBR-3730 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java      JBR-3730 macosx-all
+java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java
 java/awt/Mixing/MixingOnDialog.java                                                           JBR-3730 macosx-all
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java                          JBR-3730 macosx-all
 java/awt/Paint/ButtonRepaint.java                                                             JBR-3730 macosx-all
 java/awt/print/PaintSetEnabledDeadlock/PaintSetEnabledDeadlock.java                           JBR-3730 macosx-all
 java/awt/Toolkit/RealSync/Test.java                                                           JBR-3730 macosx-all
+java/awt/TrayIcon/ActionEventMask/ActionEventMask.java                                        JBR-3730 macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java                            JBR-3730 macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java                       JBR-3730 macosx-all
+java/awt/Window/setLocRelativeTo/SetLocationRelativeToTest.java                               JBR-3730 macosx-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java                                JBR-3730 macosx-all
