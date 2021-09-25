@@ -6,6 +6,8 @@ java/awt/Mixing/Validating.java                                                 
 sanity/client/SwingSet/src/TableDemoTest.java                                                 JBR-3389 macosx-all intermittent
 java/awt/Component/7097771/bug7097771.java                                                    JBR-3730 macosx-all
 java/awt/Component/NoUpdateUponShow/NoUpdateUponShow.java                                     JBR-3730 macosx-all
+java/awt/Component/SetComponentsBounds/SetComponentsBounds.java                               JBR-3722 macosx-all
+java/awt/event/ComponentEvent/MovedResizedTwiceTest/MovedResizedTwiceTest.java                JBR-3730 macosx-all
 java/awt/event/MouseEvent/EnterAsGrabbedEvent/EnterAsGrabbedEvent.java                        JBR-3730 macosx-all
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                                  JBR-3730 macosx-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest.java                             JBR-3730 macosx-all
@@ -29,9 +31,10 @@ java/awt/Frame/MiscUndecorated/FrameCloseTest.java                              
 java/awt/Frame/ObscuredFrame/ObscuredFrameTest.java                                           JBR-3730 macosx-all
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                                        JBR-3730 macosx-all
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java                        JBR-3730 macosx-all
+java/awt/Insets/CombinedTestApp1.java                                                         JBR-3730 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java JBR-3730 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java      JBR-3730 macosx-all
-java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java
+java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java                            JBR-3730 macosx-all
 java/awt/Mixing/MixingOnDialog.java                                                           JBR-3730 macosx-all
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java                          JBR-3730 macosx-all
 java/awt/Paint/ButtonRepaint.java                                                             JBR-3730 macosx-all
