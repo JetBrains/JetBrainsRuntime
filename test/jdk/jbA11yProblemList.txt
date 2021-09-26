@@ -36,6 +36,7 @@ java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithD
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java      JBR-3730 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java                            JBR-3730 macosx-all
 java/awt/Mixing/MixingOnDialog.java                                                           JBR-3730 macosx-all
+java/awt/Mixing/MixingOnShrinkingHWButton.java                                                JBR-3730 macosx-all
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java                          JBR-3730 macosx-all
 java/awt/Paint/ButtonRepaint.java                                                             JBR-3730 macosx-all
 java/awt/print/PaintSetEnabledDeadlock/PaintSetEnabledDeadlock.java                           JBR-3730 macosx-all
@@ -45,3 +46,5 @@ java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java              
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java                       JBR-3730 macosx-all
 java/awt/Window/setLocRelativeTo/SetLocationRelativeToTest.java                               JBR-3730 macosx-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java                                JBR-3730 macosx-all
+
+sanity/client/SwingSet/src/TreeDemoTest.java                                                  JBR-3389 macosx-all
