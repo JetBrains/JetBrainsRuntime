@@ -347,8 +347,8 @@ static int copystrings(char *buf, int offset, const char * const *arg) {
 __attribute_noinline__
 #endif
 
-/* vfork(2) is deprecated on Solaris */
-#ifndef __solaris__
+/* vfork(2) is deprecated on Darwin */
+#ifndef __APPLE__
 static pid_t
 vforkChild(ChildStuff *c) {
     volatile pid_t resultPid;
@@ -478,11 +478,11 @@ spawnChild(JNIEnv *env, jobject process, ChildStuff *c, const char *helperpath) 
 static pid_t
 startChild(JNIEnv *env, jobject process, ChildStuff *c, const char *helperpath) {
     switch (c->mode) {
-/* vfork(2) is deprecated on Solaris */
-#ifndef __solaris__
+/* vfork(2) is deprecated on Darwin*/
+      #ifndef __APPLE__
       case MODE_VFORK:
         return vforkChild(c);
-#endif
+      #endif
       case MODE_FORK:
         return forkChild(c);
       case MODE_POSIX_SPAWN:
