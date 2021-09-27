@@ -149,21 +149,26 @@ public final class X11GraphicsDevice extends GraphicsDevice
     }
 
     private Rectangle boundsCached;
+    private final Object boundsCacheLock = new Object();
 
-    private synchronized Rectangle getBoundsCached() {
-        if (boundsCached == null) {
-            boundsCached = getBoundsImpl();
+    private Rectangle getBoundsCached() {
+        synchronized (boundsCacheLock) {
+            if (boundsCached == null) {
+                boundsCached = getBoundsImpl();
+            }
+            return boundsCached;
         }
-        return boundsCached;
     }
 
-    public synchronized void resetBoundsCache() {
-        boundsCached = null;
+    public void resetBoundsCache() {
+        synchronized (boundsCacheLock) {
+            boundsCached = null;
+        }
     }
 
     public Rectangle getBounds() {
         if (X11GraphicsEnvironment.useBoundsCache()) {
-            return getBoundsCached();
+            return new Rectangle(getBoundsCached());
         }
         else {
             return getBoundsImpl();
