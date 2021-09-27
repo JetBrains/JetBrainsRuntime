@@ -96,6 +96,7 @@ public class bug7072653 {
                 gcBounds.x + gcBounds.width / 2 - frame.getWidth() / 2,
                 gcBounds.y + gcBounds.height / 2 - frame.getHeight() / 2);
 
+        final int ROW_COUNT = 400;
         combobox = new JComboBox(new DefaultComboBoxModel() {
             @Override
             public Object getElementAt(int index) {
@@ -104,14 +105,15 @@ public class bug7072653 {
 
             @Override
             public int getSize() {
-                return 100;
+                return ROW_COUNT;
             }
         });
 
-        combobox.setMaximumRowCount(100);
+        combobox.setMaximumRowCount(ROW_COUNT);
         combobox.putClientProperty("JComboBox.isPopDown", true);
         frame.getContentPane().add(combobox);
         frame.setVisible(true);
+        robot.delay(3000);
         combobox.addPopupMenuListener(new PopupMenuListener() {
             @Override
             public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
