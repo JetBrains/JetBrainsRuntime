@@ -49,6 +49,4 @@ jdk.unsupported,
 jdk.xml.dom,
 jdk.zipfs,
 jdk.hotspot.agent,
-jetbrains.api,
-jetbrains.api.impl,
 jdk.jcmd
