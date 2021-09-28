@@ -50,6 +50,7 @@ public final class StaticProperty {
     private static final String JDK_SERIAL_FILTER_FACTORY;
     private static final String JAVA_IO_TMPDIR;
     private static final String NATIVE_ENCODING;
+    private static final String JAVA_PROPERTIES_DATE;
 
     private StaticProperty() {}
 
@@ -65,6 +66,7 @@ public final class StaticProperty {
         JDK_SERIAL_FILTER = getProperty(props, "jdk.serialFilter", null);
         JDK_SERIAL_FILTER_FACTORY = getProperty(props, "jdk.serialFilterFactory", null);
         NATIVE_ENCODING = getProperty(props, "native.encoding");
+        JAVA_PROPERTIES_DATE = getProperty(props, "java.properties.date", null);
     }
 
     private static String getProperty(Properties props, String key) {
@@ -211,5 +213,17 @@ public final class StaticProperty {
      */
     public static String nativeEncoding() {
         return NATIVE_ENCODING;
+    }
+
+    /**
+     * Return the {@code java.properties.date} system property.
+     *
+     * <strong>{@link SecurityManager#checkPropertyAccess} is NOT checked
+     * in this method.</strong>
+     *
+     * @return the {@code java.properties.date} system property
+     */
+    public static String javaPropertiesDate() {
+        return JAVA_PROPERTIES_DATE;
     }
 }
