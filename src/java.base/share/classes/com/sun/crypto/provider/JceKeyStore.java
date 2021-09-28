@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -549,7 +549,7 @@ public final class JceKeyStore extends KeyStoreSpi {
              *     }
              *
              * ended by a keyed SHA1 hash (bytes only) of
-             *     { password + whitener + preceding body }
+             *     { password + extra data + preceding body }
              */
 
             // password is mandatory when storing
@@ -895,7 +895,7 @@ public final class JceKeyStore extends KeyStoreSpi {
 
     /**
      * To guard against tampering with the keystore, we append a keyed
-     * hash with a bit of whitener.
+     * hash with a bit of extra data.
      */
     private MessageDigest getPreKeyedHash(char[] password)
     throws NoSuchAlgorithmException, UnsupportedEncodingException {
