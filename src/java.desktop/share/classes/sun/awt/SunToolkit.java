@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1408,15 +1408,6 @@ public abstract class SunToolkit extends Toolkit
     }
 
     @SuppressWarnings("serial")
-    public static class OperationTimedOut extends RuntimeException {
-        public OperationTimedOut(String msg) {
-            super(msg);
-        }
-        public OperationTimedOut() {
-        }
-    }
-
-    @SuppressWarnings("serial")
     public static class IllegalThreadException extends RuntimeException {
         public IllegalThreadException(String msg) {
             super(msg);
@@ -1433,7 +1424,7 @@ public abstract class SunToolkit extends Toolkit
     /**
      * Parameterless version of realsync which uses default timout (see DEFAUL_WAIT_TIME).
      */
-    public void realSync() throws OperationTimedOut {
+    public void realSync() {
         realSync(DEFAULT_WAIT_TIME);
     }
 
@@ -1482,7 +1473,7 @@ public abstract class SunToolkit extends Toolkit
      *
      * @param timeout the maximum time to wait in milliseconds, negative means "forever".
      */
-    public void realSync(final long timeout) throws OperationTimedOut {
+    public void realSync(final long timeout) {
         if (EventQueue.isDispatchThread()) {
             throw new IllegalThreadException("The SunToolkit.realSync() method cannot be used on the event dispatch thread (EDT).");
         }
@@ -1538,7 +1529,7 @@ public abstract class SunToolkit extends Toolkit
                 && bigLoop < MAX_ITERS);
     }
 
-    private long timeout(long end){
+    protected long timeout(long end){
         return end - TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
     }
 
@@ -1568,6 +1559,9 @@ public abstract class SunToolkit extends Toolkit
      */
     @SuppressWarnings("serial")
     private final boolean waitForIdle(final long end) {
+        if (timeout(end) <= 0) {
+            return false;
+        }
         flushPendingEvents();
         final boolean queueWasEmpty;
         final AtomicBoolean queueEmpty = new AtomicBoolean();
