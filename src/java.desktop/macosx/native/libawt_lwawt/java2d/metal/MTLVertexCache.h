@@ -82,5 +82,5 @@ void
 MTLVertexCache_AddGlyphQuad(MTLContext *mtlc,
                             jfloat tx1, jfloat ty1, jfloat tx2, jfloat ty2,
                             jfloat dx1, jfloat dy1, jfloat dx2, jfloat dy2);
-void MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps);
+void MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps, bool gmc);
 #endif /* MTLVertexCache_h_Included */
