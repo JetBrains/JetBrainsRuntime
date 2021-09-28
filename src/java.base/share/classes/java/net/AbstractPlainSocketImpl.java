@@ -37,6 +37,7 @@ import java.util.Set;
 import sun.net.ConnectionResetException;
 import sun.net.NetHooks;
 import sun.net.ResourceManager;
+import sun.net.util.IPAddressUtil;
 import sun.net.util.SocketExceptions;
 
 /**
@@ -162,8 +163,12 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
         boolean connected = false;
         try {
             InetAddress address = InetAddress.getByName(host);
-            this.port = port;
+            // recording this.address as supplied by caller before calling connect
             this.address = address;
+            this.port = port;
+            if (address.isLinkLocalAddress()) {
+                address = IPAddressUtil.toScopedAddress(address);
+            }
 
             connectToAddress(address, port, timeout);
             connected = true;
@@ -186,8 +191,12 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
      * @param port the specified port
      */
     protected void connect(InetAddress address, int port) throws IOException {
-        this.port = port;
+        // recording this.address as supplied by caller before calling connect
         this.address = address;
+        this.port = port;
+        if (address.isLinkLocalAddress()) {
+            address = IPAddressUtil.toScopedAddress(address);
+        }
 
         try {
             connectToAddress(address, port, timeout);
@@ -218,10 +227,14 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
             InetSocketAddress addr = (InetSocketAddress) address;
             if (addr.isUnresolved())
                 throw new UnknownHostException(addr.getHostName());
+            // recording this.address as supplied by caller before calling connect
+            InetAddress ia = addr.getAddress();
+            this.address = ia;
             this.port = addr.getPort();
-            this.address = addr.getAddress();
-
-            connectToAddress(this.address, port, timeout);
+            if (ia.isLinkLocalAddress()) {
+                ia = IPAddressUtil.toScopedAddress(ia);
+            }
+            connectToAddress(ia, port, timeout);
             connected = true;
         } finally {
             if (!connected) {
@@ -432,6 +445,9 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
             if (!closePending && (socket == null || !socket.isBound())) {
                 NetHooks.beforeTcpBind(fd, address, lport);
             }
+        }
+        if (address.isLinkLocalAddress()) {
+            address = IPAddressUtil.toScopedAddress(address);
         }
         socketBind(address, lport);
         if (socket != null)
