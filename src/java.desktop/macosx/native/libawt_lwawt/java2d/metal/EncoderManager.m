@@ -40,19 +40,18 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 - (id)init;
 - (void)dealloc;
 
-- (void)reset:(id<MTLTexture>)destination
-           isDstOpaque:(jboolean)isDstOpaque
-    isDstPremultiplied:(jboolean)isDstPremultiplied
-                  isAA:(jboolean)isAA
-                  isText:(jboolean)isText
-                  isLCD:(jboolean)isLCD;
+- (void)     reset:(id<MTLTexture>)destination
+       isDstOpaque:(jboolean)isDstOpaque
+isDstPremultiplied:(jboolean)isDstPremultiplied
+              isAA:(jboolean)isAA
+         isGMCText:(jboolean)isGMCText
+             isLCD:(jboolean)isLCD;
 
 - (void)updateEncoder:(id<MTLRenderCommandEncoder>)encoder
               context:(MTLContext *)mtlc
         renderOptions:(const RenderOptions *)renderOptions
           forceUpdate:(jboolean)forceUpdate;
 @property (assign) jboolean aa;
-@property (assign) jboolean text;
 @property (assign) jboolean lcd;
 @property (assign) jboolean aaShader;
 @property (retain) MTLPaint* paint;
@@ -67,7 +66,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     SurfaceRasterFlags _dstFlags;
 
     jboolean _isAA;
-    jboolean _isText;
+    jboolean _isGMCText;
     jboolean _isLCD;
     jboolean _isAAShader;
 
@@ -93,7 +92,6 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     MTLTransform * _transform;
 }
 @synthesize aa = _isAA;
-@synthesize text = _isText;
 @synthesize lcd = _isLCD;
 @synthesize aaShader = _isAAShader;
 @synthesize paint = _paint;
@@ -126,13 +124,13 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
            isDstOpaque:(jboolean)isDstOpaque
     isDstPremultiplied:(jboolean)isDstPremultiplied
                   isAA:(jboolean)isAA
-                  isText:(jboolean)isText
+                  isGMCText:(jboolean)isGMCText
                   isLCD:(jboolean)isLCD {
     _destination = destination;
     _dstFlags.isOpaque = isDstOpaque;
     _dstFlags.isPremultiplied = isDstPremultiplied;
     _isAA = isAA;
-    _isText = isText;
+    _isGMCText = isGMCText;
     _isLCD = isLCD;
     // NOTE: probably it's better to invalidate/reset all cached states now
 }
@@ -182,7 +180,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
         && (_isTexture == renderOptions->isTexture && (!renderOptions->isTexture || _interpolationMode == renderOptions->interpolation)) // interpolation is used only in texture mode
         && _isAA == renderOptions->isAA
         && _isAAShader == renderOptions->isAAShader
-        && _isText == renderOptions->isText
+        && _isGMCText == renderOptions->isGMCText
         && _isLCD == renderOptions->isLCD
         && _srcFlags.isOpaque == renderOptions->srcFlags.isOpaque && _srcFlags.isPremultiplied == renderOptions->srcFlags.isPremultiplied)
         return;
@@ -193,7 +191,7 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     _interpolationMode = renderOptions->interpolation;
     _isAA = renderOptions->isAA;
     _isAAShader = renderOptions->isAAShader;
-    _isText = renderOptions->isText;
+    _isGMCText = renderOptions->isGMCText;
     _isLCD = renderOptions->isLCD;
     _srcFlags = renderOptions->srcFlags;
 
@@ -352,9 +350,11 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 }
 
 - (id<MTLRenderCommandEncoder> _Nonnull) getTextEncoder:(const BMTLSDOps * _Nonnull)dstOps
-                                      isSrcOpaque:(bool)isSrcOpaque
+                                            isSrcOpaque:(bool)isSrcOpaque
+                                        gammaCorrection:(bool)gmc
 {
-    RenderOptions roptions = {JNI_TRUE, JNI_FALSE, INTERPOLATION_NEAREST_NEIGHBOR, { isSrcOpaque, JNI_TRUE }, {dstOps->isOpaque, JNI_TRUE}, JNI_TRUE, JNI_FALSE, JNI_FALSE};
+    RenderOptions roptions = {JNI_TRUE, JNI_FALSE, INTERPOLATION_NEAREST_NEIGHBOR, { isSrcOpaque, JNI_TRUE },
+                              {dstOps->isOpaque, JNI_TRUE}, gmc, JNI_FALSE, JNI_FALSE};
     return [self getEncoder:dstOps->pTexture renderOptions:&roptions];
 }
 
@@ -437,11 +437,11 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
     _encoder = [[cbw getCommandBuffer] renderCommandEncoderWithDescriptor:rpd];
 
     [_encoderStates reset:dest
-               isDstOpaque:renderOptions->dstFlags.isOpaque
-        isDstPremultiplied:YES
-                      isAA:renderOptions->isAA
-                      isText:renderOptions->isText
-                      isLCD:renderOptions->isLCD];
+              isDstOpaque:renderOptions->dstFlags.isOpaque
+       isDstPremultiplied:YES
+                     isAA:renderOptions->isAA
+                isGMCText:renderOptions->isGMCText
+                    isLCD:renderOptions->isLCD];
   }
 
   //
