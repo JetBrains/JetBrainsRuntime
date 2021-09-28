@@ -32,7 +32,7 @@ include GendataBreakIterator.gmk
 
 include GendataTZDB.gmk
 
-include GendataBlacklistedCerts.gmk
+include GendataBlockedCerts.gmk
 
 include GendataCryptoPolicy.gmk
 
