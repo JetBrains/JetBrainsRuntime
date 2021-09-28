@@ -44,6 +44,7 @@ static jint vertexCacheIndex = 0;
 
 static MTLPooledTextureHandle * maskCacheTex = NULL;
 static jint maskCacheIndex = 0;
+static bool gammaCorrection = NO;
 static id<MTLRenderCommandEncoder> encoder = NULL;
 
 #define MTLVC_ADD_VERTEX(TX, TY, DX, DY, DZ) \
@@ -182,7 +183,7 @@ MTLVertexCache_EnableMaskCache(MTLContext *mtlc, BMTLSDOps *dstOps)
             return;
         }
     }
-    MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps);
+  MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps, gammaCorrection);
 }
 
 void
@@ -194,15 +195,18 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_DisableMaskCache");
     MTLVertexCache_FlushVertexCache(mtlc);
     maskCacheIndex = 0;
+    gammaCorrection = NO;
     free(vertexCache);
     vertexCache = NULL;
 }
 
 void
-MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps) {
+MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps, bool gmc) {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_CreateSamplingEncoder");
+    gammaCorrection = gmc;
     encoder = [mtlc.encoderManager getTextEncoder:dstOps
-                                         isSrcOpaque:NO];
+                                      isSrcOpaque:NO
+                                  gammaCorrection:gmc];
 }
 
 void
