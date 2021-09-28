@@ -56,7 +56,8 @@ static MTLRenderPipelineDescriptor * templateLCDPipelineDesc = nil;
 static MTLRenderPipelineDescriptor * templateAAPipelineDesc = nil;
 static void
 setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder, int interpolation, bool repeat,
-               jfloat extraAlpha, const SurfaceRasterFlags *srcFlags, const SurfaceRasterFlags *dstFlags, int mode);
+               jfloat extraAlpha, const SurfaceRasterFlags *srcFlags, const SurfaceRasterFlags *dstFlags, int mode,
+               bool gmcText);
 
 static void initTemplatePipelineDescriptors() {
     if (templateRenderPipelineDesc != nil && templateTexturePipelineDesc != nil &&
@@ -210,6 +211,7 @@ jint _color;
 
     NSString *vertShader = @"vert_col";
     NSString *fragShader = @"frag_col";
+    bool gmcText = NO;
 
     if (renderOptions->isTexture) {
         vertShader = @"vert_txt";
@@ -219,8 +221,9 @@ jint _color;
             fragShader = @"aa_frag_txt";
             rpDesc = [[templateAATexturePipelineDesc copy] autorelease];
         }
-        if (renderOptions->isText) {
-            fragShader = @"frag_text";
+        if (renderOptions->isGMCText) {
+            fragShader = @"frag_gmc_text";
+            gmcText = YES;
         }
         if (renderOptions->isLCD) {
             vertShader = @"vert_txt_lcd";
@@ -229,7 +232,7 @@ jint _color;
         }
         setTxtUniforms(mtlc, _color, encoder,
                        renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha], &renderOptions->srcFlags,
-                       &renderOptions->dstFlags, 1);
+                       &renderOptions->dstFlags, 1, gmcText);
     } else if (renderOptions->isAAShader) {
         vertShader = @"vert_col_aa";
         fragShader = @"frag_col_aa";
@@ -270,7 +273,7 @@ jint _color;
 
         setTxtUniforms(mtlc, col, encoder,
                        renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha],
-                       &renderOptions->srcFlags, &renderOptions->dstFlags, 1);
+                       &renderOptions->srcFlags, &renderOptions->dstFlags, 1, NO);
         [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex:0];
 
         [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
@@ -811,7 +814,7 @@ jint _color;
     const SurfaceRasterFlags srcFlags = {_isOpaque, renderOptions->srcFlags.isPremultiplied};
     setTxtUniforms(mtlc, 0, encoder,
                    renderOptions->interpolation, YES, [mtlc.composite getExtraAlpha],
-                   &srcFlags, &renderOptions->dstFlags, 0);
+                   &srcFlags, &renderOptions->dstFlags, 0, NO);
 
     id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
                                                                         vertexShaderId:vertShader
@@ -893,9 +896,18 @@ jint _color;
 
 static void
 setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder, int interpolation, bool repeat,
-               jfloat extraAlpha, const SurfaceRasterFlags *srcFlags, const SurfaceRasterFlags *dstFlags, int mode) {
-    struct TxtFrameUniforms uf = {RGBA_TO_V4(color), mode, srcFlags->isOpaque, dstFlags->isOpaque, extraAlpha};
-    [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+               jfloat extraAlpha, const SurfaceRasterFlags *srcFlags, const SurfaceRasterFlags *dstFlags, int mode,
+               bool gmcText)
+{
+    if (gmcText) {
+      struct GMCFrameUniforms uf =
+          {RGBA_TO_V4(color), 1.666f, 0.333f, 0.454f, 1.4f};
+      [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+    } else {
+      struct TxtFrameUniforms uf =
+          {RGBA_TO_V4(color), mode, srcFlags->isOpaque, dstFlags->isOpaque, extraAlpha};
+      [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+    }
     [mtlc.samplerManager setSamplerWithEncoder:encoder interpolation:interpolation repeat:repeat];
 }
 
@@ -957,7 +969,7 @@ setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder
             setTxtUniforms(mtlc, 0, encoder,
                            renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha],
                            &renderOptions->srcFlags,
-                           &renderOptions->dstFlags, 0);
+                           &renderOptions->dstFlags, 0, NO);
 
         }
         id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
@@ -998,7 +1010,7 @@ setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder
         const int col = 0 ^ xorColor;
         setTxtUniforms(mtlc, col, encoder,
                        renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha],
-                       &renderOptions->srcFlags, &renderOptions->dstFlags, 0);
+                       &renderOptions->srcFlags, &renderOptions->dstFlags, 0, NO);
         [encoder setFragmentBytes:&xorColor length:sizeof(xorColor) atIndex: 0];
 
         BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
@@ -1007,7 +1019,7 @@ setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder
         setTxtUniforms(mtlc, 0, encoder,
                        renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha],
                        &renderOptions->srcFlags,
-                       &renderOptions->dstFlags, 0);
+                       &renderOptions->dstFlags, 0, NO);
 
         id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
                                                                             vertexShaderId:vertShader
