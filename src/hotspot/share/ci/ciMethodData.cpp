@@ -174,6 +174,8 @@ void ciReceiverTypeData::translate_receiver_data_from(const ProfileData* data) {
     if (k != NULL) {
       ciKlass* klass = CURRENT_ENV->get_klass(k);
       set_receiver(row, klass);
+    } else {
+      set_receiver(row, NULL);
     }
   }
 }
