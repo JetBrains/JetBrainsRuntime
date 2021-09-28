@@ -332,6 +332,20 @@ fragment half4 frag_text(
     return half4(uniforms.color * pixelColor.a);
 }
 
+fragment half4 frag_gmc_text(
+        TxtShaderInOut vert [[stage_in]],
+        texture2d<float, access::sample> renderTexture [[texture(0)]],
+        constant GMCFrameUniforms& uniforms [[buffer(1)]],
+        sampler textureSampler [[sampler(0)]]
+) {
+    float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
+    float a = uniforms.color.a;
+    float3 col = uniforms.color.rgb;
+    // adjust fragment coverage
+    float frag_cov = pow(pixelColor.a, uniforms.exp);
+    return half4(col.r*frag_cov, col.g*frag_cov, col.b*frag_cov, a*frag_cov);
+}
+
 fragment half4 frag_txt_tp(TxtShaderInOut vert [[stage_in]],
                        texture2d<float, access::sample> renderTexture [[texture(0)]],
                        texture2d<float, access::sample> paintTexture [[texture(1)]],
