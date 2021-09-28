@@ -297,7 +297,8 @@ J2dTraceLn(J2D_TRACE_INFO, "MTLTR_EnableGlyphVertexCache");
             return;
         }
     }
-    MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps);
+
+  MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps, YES);
 }
 
 void
