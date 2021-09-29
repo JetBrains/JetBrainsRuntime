@@ -5,6 +5,14 @@
 JetBrains Runtime is a fork of [OpenJDK](https://github.com/openjdk/jdk) available for Windows, Mac OS X, and Linux.
 It includes a number enhancements in font rendering, HiDPI support, ligatures, performance improvements, and bugfixes.
 
+## Releases
+Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. The full list
+can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntime/releases).
+
+| IDE Version | Latest JBR | Date Released |
+|  ---        | ---        | ---           |
+| 2021.3      | [17-b106.1](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr17b106.1) | 28-Sep-2021 |
+
 ## Contents
 - [Welcome to JetBrains Runtime](#jetbrains-runtime)
   - [Products Built on JetBrains Runtime](#products-built-on-jetbrains-runtime)
