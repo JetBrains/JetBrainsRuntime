@@ -26,9 +26,9 @@
 /* @test
  * @bug 8150782 8207027
  * @compile TestAccessClass.java TestCls.java
- * @run testng/othervm -ea -esa test.java.lang.invoke.t8150782.TestAccessClass
+ * @run testng/othervm -ea -esa test.java.lang.invoke.TestAccessClass
  */
-package test.java.lang.invoke.t8150782;
+package test.java.lang.invoke;
 
 import java.lang.invoke.*;
 
