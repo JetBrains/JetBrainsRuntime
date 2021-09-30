@@ -341,21 +341,8 @@ fragment half4 frag_gmc_text(
     float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
     float a = uniforms.color.a;
     float3 col = uniforms.color.rgb;
-
-    // calculate brightness of the fragment
-    float b = dot(col, float3(1.0/3.0, 1.0/3.0, 1.0/3.0))*a;
-
     // adjust fragment coverage
-    float frag_cov = pixelColor.a;
-    float exp = mix(uniforms.inv_dark_exp, uniforms.inv_light_exp, b);
-    frag_cov = pow(frag_cov, exp);
-
-    // adjust fragment color and alpha for alpha < 1.0
-    if (a < 1.0) {
-        float g = mix(uniforms.inv_dark_gamma, uniforms.inv_light_gamma,b);
-        col = pow(col, float3(g));
-        a = pow(a, exp);
-    }
+    float frag_cov = pow(pixelColor.a, uniforms.exp);
     return half4(col.r*frag_cov, col.g*frag_cov, col.b*frag_cov, a*frag_cov);
 }
 
