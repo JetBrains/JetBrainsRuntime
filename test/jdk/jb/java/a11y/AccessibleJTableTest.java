@@ -194,12 +194,12 @@ public class AccessibleJTableTest extends AccessibleComponentTest {
 
         @Override
         public int getRowCount() {
-            return rows;
+            return rows >= 0 ? rows : 0;
         }
 
         @Override
         public int getColumnCount() {
-            return cols;
+            return cols >= 0 ? cols : 0;
         }
 
         @Override
