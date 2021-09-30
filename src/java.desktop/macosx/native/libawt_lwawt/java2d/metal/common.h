@@ -159,10 +159,7 @@ struct LCDFrameUniforms {
 
 struct GMCFrameUniforms {
     vector_float4 color;
-    float inv_light_gamma;
-    float inv_dark_gamma;
-    float inv_light_exp;
-    float inv_dark_exp;
+    float exp;
 };
 
 struct SwizzleUniforms {
