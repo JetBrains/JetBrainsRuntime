@@ -900,8 +900,31 @@ setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder
                bool gmcText)
 {
     if (gmcText) {
-      struct GMCFrameUniforms uf =
-          {RGBA_TO_V4(color), 1.666f, 0.333f, 0.454f, 1.4f};
+      float ca = (((color) >> 24) & 0xFF)/255.0f;
+      float cr = (((color) >> 16) & (0xFF))/255.0f;
+      float cg = (((color) >> 8) & 0xFF)/255.0f;
+      float cb = ((color) & 0xFF)/255.0f;
+      float inv_light_gamma = 1.666f;
+      float inv_dark_gamma = 0.333f;
+      float inv_light_exp = 0.454f;
+      float inv_dark_exp = 1.4f;
+
+      // calculate brightness of the fragment
+      float b = (cr/3.0f + cg/3.0f + cb/3.0f)*ca;
+
+      // adjust fragment coverage
+      float exp = inv_dark_exp*(1.0f - b) + inv_light_exp*b;
+
+      // adjust fragment color and alpha for alpha < 1.0
+      if (ca < 1.0f) {
+        float g = inv_dark_gamma*(1.0f - b) + inv_light_gamma*b;
+        cr = pow(cr, g);
+        cg = pow(cr, g);
+        cb = pow(cr, g);
+        ca = pow(ca, exp);
+      }
+
+      struct GMCFrameUniforms uf = {{cr, cg, cb, ca}, exp};
       [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
     } else {
       struct TxtFrameUniforms uf =
