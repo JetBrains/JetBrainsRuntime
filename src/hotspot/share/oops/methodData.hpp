@@ -2108,10 +2108,6 @@ private:
   // parameter profiling.
   enum { no_parameters = -2, parameters_uninitialized = -1 };
   int _parameters_type_data_di;
-  int parameters_size_in_bytes() const {
-    ParametersTypeData* param = parameters_type_data();
-    return param == NULL ? 0 : param->size_in_bytes();
-  }
 
   // Beginning of the data entries
   intptr_t _data[1];
@@ -2320,6 +2316,11 @@ public:
   }
   int data_size() const {
     return _data_size;
+  }
+
+  int parameters_size_in_bytes() const {
+    ParametersTypeData* param = parameters_type_data();
+    return param == NULL ? 0 : param->size_in_bytes();
   }
 
   // Accessors
