@@ -215,7 +215,6 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         super(target);
         // update GC based on the current bounds
         updateGC();
-        screenNum = getScreenImOn();
     }
 
     @Override
@@ -631,6 +630,9 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     public void updateGC() {
         int scrn = getScreenImOn();
+        screenChangedFlag = scrn != screenNum;
+        screenNum = scrn;
+
         if (screenLog.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("Screen number: " + scrn);
         }
@@ -699,9 +701,6 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
      */
     @Override
     public void displayChanged() {
-        int scrn = getScreenImOn();
-        screenChangedFlag = scrn != screenNum;
-        screenNum = scrn;
         SunToolkit.executeOnEventHandlerThread(target, ()->{
             updateGC();
             adjustBoundsOnDPIChange();

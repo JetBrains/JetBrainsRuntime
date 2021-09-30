@@ -1251,7 +1251,7 @@ MsgRouting AwtFrame::WmSysCommand(UINT uCmdType, int xPos, int yPos)
 }
 
 MsgRouting AwtFrame::WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds) {
-    if (isZoomed() && !m_maxBoundsSet) {
+    if (isZoomed()) {
         Devices::InstanceAccess devices;
         AwtWin32GraphicsDevice* device = devices->GetDevice(AwtWin32GraphicsDevice::DeviceIndexForWindow(GetHWnd()));
         if (device) {

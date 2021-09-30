@@ -35,7 +35,6 @@ import java.awt.peer.FramePeer;
 import java.security.AccessController;
 
 import sun.awt.AWTAccessor;
-import sun.awt.SunToolkit;
 import sun.awt.im.InputMethodManager;
 import sun.security.action.GetPropertyAction;
 
@@ -125,16 +124,15 @@ class WFramePeer extends WWindowPeer implements FramePeer {
     @Override
     public void displayChanged() {
         super.displayChanged();
-        SunToolkit.executeOnEventHandlerThread(target, this::updateIcon);
+        updateIcon();
         if (!screenChangedFlag &&
             (getExtendedState() & Frame.MAXIMIZED_BOTH) != 0 &&
-            (getExtendedState() & Frame.ICONIFIED) == 0) {
+            (getExtendedState() & Frame.ICONIFIED) == 0)
+        {
             // A workaround to update the maximized state of the frame
-            SunToolkit.executeOnEventHandlerThread(target, ()->{
-                int state = getExtendedState();
-                setState(Frame.NORMAL);
-                setState(state);
-            });
+            int state = getExtendedState();
+            setState(Frame.NORMAL);
+            setState(state);
         }
     }
 
