@@ -26,8 +26,9 @@
  * @bug 8151486
  * @summary Call Class.forName() on the system classloader from a class loaded
  *          from a custom classloader.
- * @library /lib/testlibrary
- * @build jdk.testlibrary.Utils JarUtils
+ * @library /test/lib
+ * @build jdk.test.lib.Utils
+ *        jdk.test.lib.util.JarUtils
  * @build ClassForName ClassForNameLeak
  * @run main/othervm/policy=test.policy -Djava.security.manager ClassForNameLeak
  */
@@ -48,7 +49,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import jdk.testlibrary.Utils;
+import jdk.test.lib.Utils;
+import jdk.test.lib.util.JarUtils;
 
 /*
  * Create .jar, load ClassForName from .jar using a URLClassLoader

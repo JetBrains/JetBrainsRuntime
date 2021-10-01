@@ -27,8 +27,9 @@
  * @summary Basic argument validation for --patch-module
  * @library /lib/testlibrary /test/lib
  * @modules jdk.compiler
- * @build PatchTestWarningError JarUtils jdk.testlibrary.*
+ * @build PatchTestWarningError jdk.testlibrary.*
  *        jdk.test.lib.compiler.CompilerUtils
+ *        jdk.test.lib.util.JarUtils
  * @run testng PatchTestWarningError
  */
 

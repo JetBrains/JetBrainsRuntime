@@ -27,8 +27,9 @@
  * @modules java.base/jdk.internal.misc
  *          java.base/sun.security.x509
  * @library /test/lib /lib/testlibrary modules
- * @build IllegalAccessTest TryAccess JarUtils
+ * @build IllegalAccessTest TryAccess
  *        jdk.test.lib.compiler.CompilerUtils
+ *        jdk.test.lib.util.JarUtils
  *        jdk.testlibrary.*
  * @build m/*
  * @run testng/othervm/timeout=180 IllegalAccessTest
@@ -47,6 +48,7 @@ import java.util.stream.Stream;
 import jdk.test.lib.compiler.CompilerUtils;
 import jdk.testlibrary.ProcessTools;
 import jdk.testlibrary.OutputAnalyzer;
+import jdk.test.lib.util.JarUtils;
 
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

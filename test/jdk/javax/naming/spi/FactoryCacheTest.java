@@ -25,8 +25,9 @@
  * @test
  * @bug 8223260
  * @summary NamingManager should cache InitialContextFactory
- * @library /test/lib /lib/testlibrary
- * @build JarUtils jdk.test.lib.process.*
+ * @library /test/lib
+ * @build jdk.test.lib.process.*
+ *        jdk.test.lib.util.JarUtils
  *        FactoryCacheTest
  *        DummyContextFactory
  *        DummyContextFactory2
@@ -41,6 +42,7 @@ import java.util.List;
 import jdk.test.lib.JDKToolFinder;
 import jdk.test.lib.Utils;
 import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.util.JarUtils;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.util.Arrays.asList;

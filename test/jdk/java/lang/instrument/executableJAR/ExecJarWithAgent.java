@@ -24,7 +24,9 @@
 /**
  * @test
  * @library /lib/testlibrary
- * @build ExecJarWithAgent Main Agent AgentHelper JarUtils jdk.testlibrary.*
+ * @library /test/lib
+ * @build ExecJarWithAgent Main Agent AgentHelper jdk.testlibrary.*
+ *        jdk.test.lib.util.JarUtils
  * @run testng ExecJarWithAgent
  * @summary Test starting agents in executable JAR files
  */
@@ -40,6 +42,7 @@ import static org.testng.Assert.*;
 
 import jdk.testlibrary.ProcessTools;
 import jdk.testlibrary.OutputAnalyzer;
+import jdk.test.lib.util.JarUtils;
 
 @Test
 public class ExecJarWithAgent {

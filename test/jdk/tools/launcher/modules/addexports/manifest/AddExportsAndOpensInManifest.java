@@ -24,8 +24,10 @@
 /**
  * @test
  * @library /lib/testlibrary
+ * @library /test/lib
  * @modules jdk.compiler
- * @build AddExportsAndOpensInManifest Test2 JarUtils jdk.testlibrary.*
+ * @build AddExportsAndOpensInManifest Test2 jdk.testlibrary.*
+ *        jdk.test.lib.util.JarUtils
  * @compile --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED Test1.java
  * @run testng AddExportsAndOpensInManifest
  * @summary Basic test for Add-Exports and Add-Opens attributes in the
@@ -41,6 +43,7 @@ import java.util.jar.Manifest;
 
 import jdk.testlibrary.OutputAnalyzer;
 import jdk.testlibrary.ProcessTools;
+import jdk.test.lib.util.JarUtils;
 
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;

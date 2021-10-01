@@ -25,8 +25,9 @@
  * @test
  * @library /lib/testlibrary /test/lib
  * @modules jdk.compiler
- * @build AddReadsTest JarUtils jdk.testlibrary.*
+ * @build AddReadsTest jdk.testlibrary.*
  *        jdk.test.lib.compiler.CompilerUtils
+ *        jdk.test.lib.util.JarUtils
  * @run testng AddReadsTest
  * @summary Basic tests for java --add-reads
  */
@@ -36,6 +37,7 @@ import java.nio.file.Paths;
 
 import jdk.test.lib.compiler.CompilerUtils;
 import jdk.testlibrary.OutputAnalyzer;
+import jdk.test.lib.util.JarUtils;
 import static jdk.testlibrary.ProcessTools.*;
 
 import org.testng.annotations.BeforeTest;
