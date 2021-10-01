@@ -31,7 +31,8 @@
  *          jdk.compiler
  * @build jdk.testlibrary.ProcessTools
  *        jdk.testlibrary.OutputAnalyzer
- *        JarUtils jdk.test.lib.compiler.CompilerUtils
+ *        jdk.test.lib.compiler.CompilerUtils
+ *        jdk.test.lib.util.JarUtils
  * @run main BasicTest
  */
 
@@ -48,6 +49,7 @@ import java.util.spi.ToolProvider;
 import jdk.test.lib.compiler.CompilerUtils;
 import jdk.testlibrary.OutputAnalyzer;
 import jdk.testlibrary.ProcessTools;
+import jdk.test.lib.util.JarUtils;
 
 public class BasicTest {
     static final ToolProvider JMOD_TOOL = ToolProvider.findFirst("jmod")

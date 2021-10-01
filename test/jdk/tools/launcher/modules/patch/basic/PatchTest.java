@@ -26,8 +26,9 @@
  * @library /lib/testlibrary /test/lib
  * @modules jdk.compiler
  *          jdk.naming.dns
- * @build PatchTest JarUtils jdk.testlibrary.*
+ * @build PatchTest jdk.testlibrary.*
  *        jdk.test.lib.compiler.CompilerUtils
+ *        jdk.test.lib.util.JarUtils
  * @run testng PatchTest
  * @summary Basic test for --patch-module
  */
@@ -40,6 +41,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import jdk.test.lib.compiler.CompilerUtils;
+import jdk.test.lib.util.JarUtils;
 import static jdk.testlibrary.ProcessTools.*;
 
 import org.testng.annotations.BeforeTest;

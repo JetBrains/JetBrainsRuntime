@@ -23,11 +23,13 @@
 
 /**
  * @test
- * @library /lib/testlibrary /test/lib
+ * @library  /lib/testlibrary /test/lib
  * @modules jdk.compiler
  *          java.scripting
  *          jdk.zipfs
- * @build RunWithAutomaticModules jdk.test.lib.compiler.CompilerUtils JarUtils
+ * @build RunWithAutomaticModules
+ *        jdk.test.lib.compiler.CompilerUtils
+ *        jdk.test.lib.util.JarUtils
  *        jdk.testlibrary.ProcessTools
  * @run testng RunWithAutomaticModules
  * @summary Runs tests that make use of automatic modules
@@ -38,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import jdk.test.lib.compiler.CompilerUtils;
+import jdk.test.lib.util.JarUtils;
 import static jdk.testlibrary.ProcessTools.*;
 
 import org.testng.annotations.Test;
