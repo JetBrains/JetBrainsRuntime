@@ -34,19 +34,23 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Common library for various test jar file utility functions.
+ * This class consists exclusively of static utility methods that are useful
+ * for creating and manipulating JAR files.
  */
 public final class JarUtils {
     private JarUtils() { }
@@ -103,6 +107,15 @@ public final class JarUtils {
     }
 
     /**
+     * Creates a JAR file from the contents of a directory.
+     *
+     * Equivalent to {@code jar cf <jarfile> -C <dir> .}
+     */
+    public static void createJarFile(Path jarfile, Path dir) throws IOException {
+        createJarFile(jarfile, dir, Paths.get("."));
+    }
+
+    /**
      * Creates a JAR file.
      *
      * Equivalent to {@code jar cf <jarfile> -C <dir> file...}
@@ -118,9 +131,64 @@ public final class JarUtils {
     }
 
     /**
+     * Updates a JAR file.
+     *
+     * Equivalent to {@code jar uf <jarfile> -C <dir> file...}
+     *
+     * The input files are resolved against the given directory. Any input
+     * files that are directories are processed recursively.
+     */
+    public static void updateJarFile(Path jarfile, Path dir, Path... files)
+            throws IOException
+    {
+        List<Path> entries = findAllRegularFiles(dir, files);
+
+        Set<String> names = entries.stream()
+                                   .map(JarUtils::toJarEntryName)
+                                   .collect(Collectors.toSet());
+
+        Path tmpfile = Files.createTempFile("jar", "jar");
+
+        try (OutputStream out = Files.newOutputStream(tmpfile);
+             JarOutputStream jos = new JarOutputStream(out)) {
+            // copy existing entries from the original JAR file
+            try (JarFile jf = new JarFile(jarfile.toString())) {
+                Enumeration<JarEntry> jentries = jf.entries();
+                while (jentries.hasMoreElements()) {
+                    JarEntry jentry = jentries.nextElement();
+                    if (!names.contains(jentry.getName())) {
+                        jos.putNextEntry(jentry);
+                        jf.getInputStream(jentry).transferTo(jos);
+                    }
+                }
+            }
+
+            // add the new entries
+            for (Path entry : entries) {
+                String name = toJarEntryName(entry);
+                jos.putNextEntry(new JarEntry(name));
+                Files.copy(dir.resolve(entry), jos);
+            }
+        }
+
+        // replace the original JAR file
+        Files.move(tmpfile, jarfile, StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    /**
+     * Updates a JAR file.
+     *
+     * Equivalent to {@code jar uf <jarfile> -C <dir> .}
+     */
+    public static void updateJarFile(Path jarfile, Path dir) throws IOException {
+        updateJarFile(jarfile, dir, Paths.get("."));
+    }
+
+    /**
      * Create jar file with specified files. If a specified file does not exist,
      * a new jar entry will be created with the file name itself as the content.
      */
+    @Deprecated
     public static void createJar(String dest, String... files)
             throws IOException {
         try (JarOutputStream jos = new JarOutputStream(
@@ -155,6 +223,7 @@ public final class JarUtils {
      *              the 1st group.
      * @throws IOException if there is an error
      */
+    @Deprecated
     public static void updateJar(String src, String dest, String... files)
             throws IOException {
         Map<String,Object> changes = new HashMap<>();
@@ -192,6 +261,7 @@ public final class JarUtils {
      *                Existing entries in src not a key is unmodified.
      * @throws IOException if there is an error
      */
+    @Deprecated
     public static void updateJar(String src, String dest,
                                  Map<String,Object> changes)
             throws IOException {
