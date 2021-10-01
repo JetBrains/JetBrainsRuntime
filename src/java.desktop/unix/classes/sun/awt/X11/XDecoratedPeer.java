@@ -59,6 +59,8 @@ abstract class XDecoratedPeer extends XWindowPeer {
     static final Map<Class<?>,Insets> lastKnownInsets =
                                    Collections.synchronizedMap(new HashMap<>());
 
+    private final long createdTimeMs = System.nanoTime() / 1_000_000;
+
     XDecoratedPeer(Window target) {
         super(target);
     }
@@ -296,6 +298,14 @@ abstract class XDecoratedPeer extends XWindowPeer {
         }
 
         if (changedAtom == null) {
+            final long currentTimeMs = System.nanoTime() / 1_000_000;
+            final long timeForInsetExtentToBecomeReadyMs = 5;
+            final boolean tooSoon = (currentTimeMs - createdTimeMs) < timeForInsetExtentToBecomeReadyMs;
+            if (tooSoon) {
+                try {
+                    Thread.sleep(timeForInsetExtentToBecomeReadyMs);
+                } catch (InterruptedException ignored) {}
+            }
             wm_set_insets = XWM.getInsetsFromExtents(getWindow());
         } else {
             wm_set_insets = XWM.getInsetsFromProp(getWindow(), changedAtom);
