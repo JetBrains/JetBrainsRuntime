@@ -781,7 +781,6 @@ javax/swing/JTree/8003830/bug8003830.java 8199057 generic-all
 javax/swing/ToolTipManager/Test6256140.java 8233560 macosx-all
 javax/swing/text/View/8014863/bug8014863.java 8233561 macosx-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java 8233562 macosx-all
-javax/swing/text/JTextComponent/6361367/bug6361367.java 8233569 macosx-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java 233570 macosx-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java 8208566 macosx-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java 8233635 macosx-all
