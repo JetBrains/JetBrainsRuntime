@@ -533,7 +533,9 @@ reg_class no_special_reg32_no_fp(
     R15,
     R16,
     R17,
+#ifdef __APPLE__
     R18,
+#endif
     R19,
     R20,
     R21,
@@ -566,7 +568,9 @@ reg_class no_special_reg32_with_fp(
     R15,
     R16,
     R17,
+#ifdef __APPLE__
     R18,
+#endif
     R19,
     R20,
     R21,
@@ -602,7 +606,9 @@ reg_class no_special_reg_no_fp(
     R15, R15_H,
     R16, R16_H,
     R17, R17_H,
+#ifdef __APPLE__
     R18, R18_H,
+#endif
     R19, R19_H,
     R20, R20_H,
     R21, R21_H,
@@ -635,7 +641,9 @@ reg_class no_special_reg_with_fp(
     R15, R15_H,
     R16, R16_H,
     R17, R17_H,
+#ifdef __APPLE__
     R18, R18_H,
+#endif
     R19, R19_H,
     R20, R20_H,
     R21, R21_H,
