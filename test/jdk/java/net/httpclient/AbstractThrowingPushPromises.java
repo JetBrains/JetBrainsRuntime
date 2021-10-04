@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,8 @@
 
 import jdk.testlibrary.SimpleSSLContext;
 import org.testng.ITestContext;
+import org.testng.ITestResult;
+import org.testng.SkipException;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeMethod;
@@ -67,6 +69,7 @@ import java.net.http.HttpResponse.BodySubscriber;
 import java.net.http.HttpResponse.PushPromiseHandler;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -78,6 +81,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -150,17 +154,37 @@ public abstract class AbstractThrowingPushPromises implements HttpServerAdapters
         return Boolean.getBoolean("jdk.internal.httpclient.debug");
     }
 
+    final AtomicReference<SkipException> skiptests = new AtomicReference<>();
+    void checkSkip() {
+        var skip = skiptests.get();
+        if (skip != null) throw skip;
+    }
+    static String name(ITestResult result) {
+        var params = result.getParameters();
+        return result.getName()
+                + (params == null ? "()" : Arrays.toString(result.getParameters()));
+    }
+
     @BeforeMethod
     void beforeMethod(ITestContext context) {
         if (stopAfterFirstFailure() && context.getFailedTests().size() > 0) {
-            throw new RuntimeException("some tests failed");
+            if (skiptests.get() == null) {
+                SkipException skip = new SkipException("some tests failed");
+                skip.setStackTrace(new StackTraceElement[0]);
+                skiptests.compareAndSet(null, skip);
+            }
         }
     }
 
     @AfterClass
-    static final void printFailedTests() {
+    static final void printFailedTests(ITestContext context) {
         out.println("\n=========================");
         try {
+            // Exceptions should already have been added to FAILURES
+            // var failed = context.getFailedTests().getAllResults().stream()
+            //        .collect(Collectors.toMap(r -> name(r), ITestResult::getThrowable));
+            // FAILURES.putAll(failed);
+
             out.printf("%n%sCreated %d servers and %d clients%n",
                     now(), serverCount.get(), clientCount.get());
             if (FAILURES.isEmpty()) return;
@@ -359,6 +383,7 @@ public abstract class AbstractThrowingPushPromises implements HttpServerAdapters
                                     Finisher finisher, Thrower thrower)
             throws Exception
     {
+        checkSkip();
         out.printf("%n%s%s%n", now(), name);
         try {
             testThrowing(uri, sameClient, handlers, finisher, thrower);
