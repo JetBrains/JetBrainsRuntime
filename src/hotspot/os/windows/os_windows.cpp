@@ -2712,15 +2712,14 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
         return EXCEPTION_CONTINUE_EXECUTION;
       }
     }
-  }
 
 #if defined(_M_AMD64) || defined(_M_IX86)
-  if ((exception_code == EXCEPTION_ACCESS_VIOLATION) &&
-      VM_Version::is_cpuinfo_segv_addr(pc)) {
-    // Verify that OS save/restore AVX registers.
-    return Handle_Exception(exceptionInfo, VM_Version::cpuinfo_cont_addr());
-  }
+    if (VM_Version::is_cpuinfo_segv_addr(pc)) {
+      // Verify that OS save/restore AVX registers.
+      return Handle_Exception(exceptionInfo, VM_Version::cpuinfo_cont_addr());
+    }
 #endif
+  }
 
   if (t != NULL && t->is_Java_thread()) {
     JavaThread* thread = (JavaThread*) t;
