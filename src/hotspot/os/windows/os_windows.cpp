@@ -2359,7 +2359,8 @@ bool os::win32::get_frame_at_stack_banging_point(JavaThread* thread,
 JNIEXPORT
 LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
   if (InterceptOSException) return EXCEPTION_CONTINUE_SEARCH;
-  DWORD exception_code = exceptionInfo->ExceptionRecord->ExceptionCode;
+  PEXCEPTION_RECORD exception_record = exceptionInfo->ExceptionRecord;
+  DWORD exception_code = exception_record->ExceptionCode;
 #ifdef _M_AMD64
   address pc = (address) exceptionInfo->ContextRecord->Rip;
 #else
@@ -2378,9 +2379,8 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
   // This is safe to do because we have a new/unique ExceptionInformation
   // code for this condition.
   if (exception_code == EXCEPTION_ACCESS_VIOLATION) {
-    PEXCEPTION_RECORD exceptionRecord = exceptionInfo->ExceptionRecord;
-    int exception_subcode = (int) exceptionRecord->ExceptionInformation[0];
-    address addr = (address) exceptionRecord->ExceptionInformation[1];
+    int exception_subcode = (int) exception_record->ExceptionInformation[0];
+    address addr = (address) exception_record->ExceptionInformation[1];
 
     if (exception_subcode == EXCEPTION_INFO_EXEC_VIOLATION) {
       int page_size = os::vm_page_size();
@@ -2444,7 +2444,7 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
 
       // Last unguard failed or not unguarding
       tty->print_raw_cr("Execution protection violation");
-      report_error(t, exception_code, addr, exceptionInfo->ExceptionRecord,
+      report_error(t, exception_code, addr, exception_record,
                    exceptionInfo->ContextRecord);
       return EXCEPTION_CONTINUE_SEARCH;
     }
@@ -2458,33 +2458,30 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
   if (exception_code == EXCEPTION_ACCESS_VIOLATION) {
     if (t != NULL && t->is_Java_thread()) {
       JavaThread* thread = (JavaThread*) t;
-      PEXCEPTION_RECORD exceptionRecord = exceptionInfo->ExceptionRecord;
-      address addr = (address) exceptionRecord->ExceptionInformation[1];
+      address addr = (address) exception_record->ExceptionInformation[1];
       if (os::is_memory_serialize_page(thread, addr)) {
         // Block current thread until the memory serialize page permission restored.
         os::block_on_serialize_page_trap();
         return EXCEPTION_CONTINUE_EXECUTION;
       }
     }
-  }
-
-  if ((exception_code == EXCEPTION_ACCESS_VIOLATION) &&
-      VM_Version::is_cpuinfo_segv_addr(pc)) {
-    // Verify that OS save/restore AVX registers.
-    return Handle_Exception(exceptionInfo, VM_Version::cpuinfo_cont_addr());
+    if (VM_Version::is_cpuinfo_segv_addr(pc)) {
+      // Verify that OS save/restore AVX registers.
+      return Handle_Exception(exceptionInfo, VM_Version::cpuinfo_cont_addr());
+    }
   }
 
   if (t != NULL && t->is_Java_thread()) {
     JavaThread* thread = (JavaThread*) t;
     bool in_java = thread->thread_state() == _thread_in_Java;
+    bool in_native = thread->thread_state() == _thread_in_native;
+    bool in_vm = thread->thread_state() == _thread_in_vm;
 
     // Handle potential stack overflows up front.
     if (exception_code == EXCEPTION_STACK_OVERFLOW) {
       if (thread->stack_guards_enabled()) {
         if (in_java) {
           frame fr;
-          PEXCEPTION_RECORD exceptionRecord = exceptionInfo->ExceptionRecord;
-          address addr = (address) exceptionRecord->ExceptionInformation[1];
           if (os::win32::get_frame_at_stack_banging_point(thread, exceptionInfo, pc, &fr)) {
             assert(fr.is_java_frame(), "Must be a Java frame");
             SharedRuntime::look_for_reserved_stack_annotated_method(thread, fr);
@@ -2493,7 +2490,7 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
         // Yellow zone violation.  The o/s has unprotected the first yellow
         // zone page for us.  Note:  must call disable_stack_yellow_zone to
         // update the enabled status, even if the zone contains only one page.
-        assert(thread->thread_state() != _thread_in_vm, "Undersized StackShadowPages");
+        assert(!in_vm, "Undersized StackShadowPages");
         thread->disable_stack_yellow_reserved_zone();
         // If not in java code, return and hope for the best.
         return in_java
@@ -2503,15 +2500,14 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
         // Fatal red zone violation.
         thread->disable_stack_red_zone();
         tty->print_raw_cr("An unrecoverable stack overflow has occurred.");
-        report_error(t, exception_code, pc, exceptionInfo->ExceptionRecord,
-                      exceptionInfo->ContextRecord);
+        report_error(t, exception_code, pc, exception_record,
+                     exceptionInfo->ContextRecord);
         return EXCEPTION_CONTINUE_SEARCH;
       }
     } else if (exception_code == EXCEPTION_ACCESS_VIOLATION) {
-      // Either stack overflow or null pointer exception.
       if (in_java) {
-        PEXCEPTION_RECORD exceptionRecord = exceptionInfo->ExceptionRecord;
-        address addr = (address) exceptionRecord->ExceptionInformation[1];
+        // Either stack overflow or null pointer exception.
+        address addr = (address) exception_record->ExceptionInformation[1];
         address stack_end = thread->stack_end();
         if (addr < stack_end && addr >= stack_end - os::vm_page_size()) {
           // Stack overflow.
@@ -2530,47 +2526,38 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
             return Handle_Exception(exceptionInfo, stub);
           }
         }
-        {
 #ifdef _WIN64
-          // If it's a legal stack address map the entire region in
-          //
-          PEXCEPTION_RECORD exceptionRecord = exceptionInfo->ExceptionRecord;
-          address addr = (address) exceptionRecord->ExceptionInformation[1];
-          if (addr > thread->stack_reserved_zone_base() && addr < thread->stack_base()) {
-            addr = (address)((uintptr_t)addr &
-                             (~((uintptr_t)os::vm_page_size() - (uintptr_t)1)));
-            os::commit_memory((char *)addr, thread->stack_base() - addr,
-                              !ExecMem);
-            return EXCEPTION_CONTINUE_EXECUTION;
-          } else
-#endif
-          {
-            // Null pointer exception.
-            if (!MacroAssembler::needs_explicit_null_check((intptr_t)addr)) {
-              address stub = SharedRuntime::continuation_for_implicit_exception(thread, pc, SharedRuntime::IMPLICIT_NULL);
-              if (stub != NULL) return Handle_Exception(exceptionInfo, stub);
-            }
-            report_error(t, exception_code, pc, exceptionInfo->ExceptionRecord,
-                         exceptionInfo->ContextRecord);
-            return EXCEPTION_CONTINUE_SEARCH;
-          }
+        // If it's a legal stack address, map the entire region in
+        if (addr > thread->stack_reserved_zone_base() && addr < thread->stack_base()) {
+          addr = (address)((uintptr_t)addr &
+                           (~((uintptr_t)os::vm_page_size() - (uintptr_t)1)));
+          os::commit_memory((char *)addr, thread->stack_base() - addr,
+                            !ExecMem);
+          return EXCEPTION_CONTINUE_EXECUTION;
         }
+#endif
+        // Null pointer exception.
+        if (!MacroAssembler::needs_explicit_null_check((intptr_t)addr)) {
+          address stub = SharedRuntime::continuation_for_implicit_exception(thread, pc, SharedRuntime::IMPLICIT_NULL);
+          if (stub != NULL) return Handle_Exception(exceptionInfo, stub);
+        }
+        report_error(t, exception_code, pc, exception_record,
+                     exceptionInfo->ContextRecord);
+        return EXCEPTION_CONTINUE_SEARCH;
       }
 
 #ifdef _WIN64
       // Special care for fast JNI field accessors.
       // jni_fast_Get<Primitive>Field can trap at certain pc's if a GC kicks
       // in and the heap gets shrunk before the field access.
-      if (exception_code == EXCEPTION_ACCESS_VIOLATION) {
-        address addr = JNI_FastGetField::find_slowcase_pc(pc);
-        if (addr != (address)-1) {
-          return Handle_Exception(exceptionInfo, addr);
-        }
+      address slowcase_pc = JNI_FastGetField::find_slowcase_pc(pc);
+      if (slowcase_pc != (address)-1) {
+        return Handle_Exception(exceptionInfo, slowcase_pc);
       }
 #endif
 
       // Stack overflow or null pointer exception in native code.
-      report_error(t, exception_code, pc, exceptionInfo->ExceptionRecord,
+      report_error(t, exception_code, pc, exception_record,
                    exceptionInfo->ContextRecord);
       return EXCEPTION_CONTINUE_SEARCH;
     } // /EXCEPTION_ACCESS_VIOLATION
@@ -2583,8 +2570,7 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
         CodeBlob* cb = CodeCache::find_blob_unsafe(pc);
         nm = (cb != NULL) ? cb->as_compiled_method_or_null() : NULL;
       }
-      if ((thread->thread_state() == _thread_in_vm &&
-          thread->doing_unsafe_access()) ||
+      if ((in_vm && thread->doing_unsafe_access()) ||
           (nm != NULL && nm->has_unsafe_access())) {
         return Handle_Exception(exceptionInfo, SharedRuntime::handle_unsafe_access(thread, (address)Assembler::locate_next_instruction(pc)));
       }
@@ -2600,16 +2586,14 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
 
       } // switch
     }
-    if (((thread->thread_state() == _thread_in_Java) ||
-         (thread->thread_state() == _thread_in_native)) &&
-         exception_code != EXCEPTION_UNCAUGHT_CXX_EXCEPTION) {
+    if ((in_java || in_native) && exception_code != EXCEPTION_UNCAUGHT_CXX_EXCEPTION) {
       LONG result=Handle_FLT_Exception(exceptionInfo);
       if (result==EXCEPTION_CONTINUE_EXECUTION) return result;
     }
   }
 
   if (exception_code != EXCEPTION_BREAKPOINT) {
-    report_error(t, exception_code, pc, exceptionInfo->ExceptionRecord,
+    report_error(t, exception_code, pc, exception_record,
                  exceptionInfo->ContextRecord);
   }
   return EXCEPTION_CONTINUE_SEARCH;
