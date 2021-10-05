@@ -113,3 +113,41 @@ jstring NormalizedPathJavaStringFromNSString(JNIEnv* env, NSString *str) {
     NSString *normStr = [str precomposedStringWithCanonicalMapping];
     return NSStringToJavaString(env, normStr);
 }
+
+NSString *ThrowableToNSString(JNIEnv *env, jthrowable exc) {
+    (*env)->ExceptionClear(env);
+
+    if (JNU_IsInstanceOfByName(env, exc, "java/lang/OutOfMemoryError")) {
+        static NSString* const OOMEDescr = @"OutOfMemoryError";
+        return OOMEDescr;
+    }
+
+    DECLARE_CLASS_RETURN(sjc_Object, "java/lang/Object", nil);
+    DECLARE_METHOD_RETURN(jm_toString, sjc_Object, "toString", "()Ljava/lang/String;", nil);
+    DECLARE_CLASS_RETURN(sjc_Throwable, "java/lang/Throwable", nil);
+    DECLARE_METHOD_RETURN(jm_getStackTrace, sjc_Throwable, "getStackTrace",
+                          "()[Ljava/lang/StackTraceElement;", nil);
+    jobject jstr = (*env)->CallObjectMethod(env, exc, jm_toString);
+
+    NSString* result = JavaStringToNSString(env, jstr);
+
+    jobjectArray frames =
+        (jobjectArray) (*env)->CallObjectMethod(env, exc, jm_getStackTrace);
+    if (frames != NULL) {
+        jsize framesLen = (*env)->GetArrayLength(env, frames);
+
+        for (int i = 0; i < framesLen; i++) {
+            jobject stackElem = (*env)->GetObjectArrayElement(env, frames, i);
+            jobject stackElemStr = (*env)->CallObjectMethod(env, stackElem, jm_toString);
+            NSString *frameStr = JavaStringToNSString(env, stackElemStr);
+            result = [result stringByAppendingFormat:@"\n%@", frameStr];
+            (*env)->DeleteLocalRef(env, stackElem);
+            (*env)->DeleteLocalRef(env, stackElemStr);
+        }
+        (*env)->DeleteLocalRef(env, frames);
+    }
+    (*env)->DeleteLocalRef(env, jstr);
+
+    return result;
+}
+
