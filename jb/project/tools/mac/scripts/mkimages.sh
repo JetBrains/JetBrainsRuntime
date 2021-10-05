@@ -136,45 +136,45 @@ case "$bundle_type" in
     ;;
 esac
 
-#if [[ "${architecture}" == *aarch64* ]]; then
-#  # NOTE: aot, cds aren't supported yet
-#  WITH_JVM_FEATURES="--with-jvm-features=-aot"
-#  if [[ "${enable_aot}" == *enable_aot* ]]; then
-#    echo "Enable unstable jvm feature: AOT"
-#    WITH_JVM_FEATURES=""
-#  fi
-#  sh configure \
-#  --disable-warnings-as-errors \
-#  $WITH_DEBUG_LEVEL \
-#  --with-vendor-name="${VENDOR_NAME}" \
-#  --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
-#  --with-jvm-features=shenandoahgc \
-#  --with-version-pre= \
-#  --with-version-build=${JDK_BUILD_NUMBER} \
-#  --with-version-opt=b${build_number} \
-#  $WITH_IMPORT_MODULES \
-#  --with-boot-jdk=`/usr/libexec/java_home -v 11` \
-#  --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
-#  --enable-cds=no \
-#  $WITH_JVM_FEATURES \
-#  --with-extra-cflags="-F$(pwd)/Frameworks" \
-#  --with-extra-cxxflags="-F$(pwd)/Frameworks" \
-#  --with-extra-ldflags="-F$(pwd)/Frameworks" || do_exit $?
-#else
-#  sh configure \
-#    --disable-warnings-as-errors \
-#    $WITH_DEBUG_LEVEL \
-#    --with-vendor-name="${VENDOR_NAME}" \
-#    --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
-#    --with-version-pre= \
-#    --with-version-build=${JDK_BUILD_NUMBER} \
-#    --with-version-opt=b${build_number} \
-#    $WITH_IMPORT_MODULES \
-#    --with-boot-jdk=`/usr/libexec/java_home -v 11` \
-#    --enable-cds=yes || do_exit $?
-#fi
+if [[ "${architecture}" == *aarch64* ]]; then
+  # NOTE: aot, cds aren't supported yet
+  WITH_JVM_FEATURES="--with-jvm-features=-aot"
+  if [[ "${enable_aot}" == *enable_aot* ]]; then
+    echo "Enable unstable jvm feature: AOT"
+    WITH_JVM_FEATURES=""
+  fi
+  sh configure \
+  --disable-warnings-as-errors \
+  $WITH_DEBUG_LEVEL \
+  --with-vendor-name="${VENDOR_NAME}" \
+  --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
+  --with-jvm-features=shenandoahgc \
+  --with-version-pre= \
+  --with-version-build=${JDK_BUILD_NUMBER} \
+  --with-version-opt=b${build_number} \
+  $WITH_IMPORT_MODULES \
+  --with-boot-jdk=`/usr/libexec/java_home -v 11` \
+  --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
+  --enable-cds=no \
+  $WITH_JVM_FEATURES \
+  --with-extra-cflags="-F$(pwd)/Frameworks" \
+  --with-extra-cxxflags="-F$(pwd)/Frameworks" \
+  --with-extra-ldflags="-F$(pwd)/Frameworks" || do_exit $?
+else
+  sh configure \
+    --disable-warnings-as-errors \
+    $WITH_DEBUG_LEVEL \
+    --with-vendor-name="${VENDOR_NAME}" \
+    --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
+    --with-version-pre= \
+    --with-version-build=${JDK_BUILD_NUMBER} \
+    --with-version-opt=b${build_number} \
+    $WITH_IMPORT_MODULES \
+    --with-boot-jdk=`/usr/libexec/java_home -v 11` \
+    --enable-cds=yes || do_exit $?
+fi
 
-#make clean CONF=$CONF_NAME || do_exit $?
+make clean CONF=$CONF_NAME || do_exit $?
 make images CONF=$CONF_NAME || do_exit $?
 
 JSDK=build/${CONF_NAME}/images/jdk-bundle
