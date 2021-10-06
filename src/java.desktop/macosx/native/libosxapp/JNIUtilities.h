@@ -186,7 +186,6 @@
 #define CHECK_EXCEPTION_IN_ENV(env) { \
     jthrowable exc = (*(env))->ExceptionOccurred(env); \
     if (exc != NULL) { \
-        NSString* excStr = JNIObjectToNSString(env, exc);                            \
         if ([NSThread isMainThread] == YES) { \
             if (getenv("JNU_APPKIT_TRACE")) { \
                 (*(env))->ExceptionDescribe(env); \
@@ -196,8 +195,9 @@
               } \
          }  \
         if (getenv("JNU_NO_COCOA_EXCEPTION") == NULL) {\
-            [NSException raise:NSGenericException format:@"Java Exception: %@", excStr]; \
-        } else {                      \
+            [NSException raise:NSGenericException \
+                        format:@"%@", ThrowableToNSString(env, exc)]; \
+        } else { \
             (*(env))->ExceptionClear(env); \
         } \
     } \
@@ -266,5 +266,7 @@ JNIEXPORT NSString* NormalizedPathNSStringFromJavaString(JNIEnv *env, jstring pa
 JNIEXPORT jstring NormalizedPathJavaStringFromNSString(JNIEnv* env, NSString *str);
 
 JNIEXPORT NSString* JNIObjectToNSString(JNIEnv *env, jobject obj);
+
+JNIEXPORT NSString *ThrowableToNSString(JNIEnv *env, jthrowable exc);
 
 #endif /* __JNIUTILITIES_H */
