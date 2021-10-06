@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,39 +77,39 @@ public class TestVolatiles {
         // i.e. GC type plus GC conifg
         switch(testType) {
         case "G1":
-            argcount = 9;
+            argcount = 10;
             procArgs = new String[argcount];
             procArgs[argcount - 2] = "-XX:+UseG1GC";
             break;
         case "Parallel":
-            argcount = 9;
+            argcount = 10;
             procArgs = new String[argcount];
             procArgs[argcount - 2] = "-XX:+UseParallelGC";
             break;
         case "Serial":
-            argcount = 9;
+            argcount = 10;
             procArgs = new String[argcount];
             procArgs[argcount - 2] = "-XX:+UseSerialGC";
             break;
         case "CMS":
-            argcount = 10;
+            argcount = 11;
             procArgs = new String[argcount];
             procArgs[argcount - 3] = "-XX:+UseConcMarkSweepGC";
             procArgs[argcount - 2] = "-XX:-UseCondCardMark";
             break;
         case "CMSCondMark":
-            argcount = 10;
+            argcount = 11;
             procArgs = new String[argcount];
             procArgs[argcount - 3] = "-XX:+UseConcMarkSweepGC";
             procArgs[argcount - 2] = "-XX:+UseCondCardMark";
             break;
         case "Shenandoah":
-            argcount = 9;
+            argcount = 10;
             procArgs = new String[argcount];
             procArgs[argcount - 2] = "-XX:+UseShenandoahGC";
             break;
         case "ShenandoahIU":
-            argcount = 11;
+            argcount = 12;
             procArgs = new String[argcount];
             procArgs[argcount - 4] = "-XX:+UnlockExperimentalVMOptions";
             procArgs[argcount - 3] = "-XX:+UseShenandoahGC";
@@ -128,11 +129,12 @@ public class TestVolatiles {
         procArgs[0] = "-XX:-UseBarriersForVolatile";
         procArgs[1] = "-XX:+UseCompressedOops";
 
-        procArgs[2] = "-XX:-TieredCompilation";
-        procArgs[3] = "-XX:+PrintOptoAssembly";
-        procArgs[4] = "-XX:CompileCommand=compileonly," + fullclassname + "::" + "test*";
-        procArgs[5] = "--add-exports";
-        procArgs[6] = "java.base/jdk.internal.misc=ALL-UNNAMED";
+        procArgs[2] = "-XX:-BackgroundCompilation";
+        procArgs[3] = "-XX:-TieredCompilation";
+        procArgs[4] = "-XX:+PrintOptoAssembly";
+        procArgs[5] = "-XX:CompileCommand=compileonly," + fullclassname + "::" + "test*";
+        procArgs[6] = "--add-exports";
+        procArgs[7] = "java.base/jdk.internal.misc=ALL-UNNAMED";
         procArgs[argcount - 1] = fullclassname;
 
         runtest(classname, testType, false, true, procArgs);
