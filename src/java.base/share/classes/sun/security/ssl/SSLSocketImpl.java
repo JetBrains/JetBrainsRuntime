@@ -38,6 +38,7 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import javax.net.ssl.HandshakeCompletedListener;
@@ -659,22 +660,96 @@ public final class SSLSocketImpl
     void closeNotify(boolean useUserCanceled) throws IOException {
         // Need a lock here so that the user_canceled alert and the
         // close_notify alert can be delivered together.
-        try {
-            synchronized (conContext.outputRecord) {
-                // send a user_canceled alert if needed.
-                if (useUserCanceled) {
-                    conContext.warning(Alert.USER_CANCELED);
-                }
+        int linger = getSoLinger();
+        if (linger >= 0) {
+            // don't wait more than SO_LINGER for obtaining the
+            // the lock.
+            //
+            // keep and clear the current thread interruption status.
+            boolean interrupted = Thread.interrupted();
+            try {
+                if (conContext.outputRecord.recordLock.tryLock() ||
+                        conContext.outputRecord.recordLock.tryLock(
+                                linger, TimeUnit.SECONDS)) {
+                    try {
+                        handleClosedNotifyAlert(useUserCanceled);
+                    } finally {
+                        conContext.outputRecord.recordLock.unlock();
+                    }
+                } else {
+                    // For layered, non-autoclose sockets, we are not
+                    // able to bring them into a usable state, so we
+                    // treat it as fatal error.
+                    if (!super.isOutputShutdown()) {
+                        if (isLayered() && !autoClose) {
+                            throw new SSLException(
+                                    "SO_LINGER timeout, " +
+                                    "close_notify message cannot be sent.");
+                        } else {
+                            super.shutdownOutput();
+                            if (SSLLogger.isOn && SSLLogger.isOn("ssl")) {
+                                SSLLogger.warning(
+                                    "SSLSocket output duplex close failed: " +
+                                    "SO_LINGER timeout, " +
+                                    "close_notify message cannot be sent.");
+                            }
+                        }
+                    }
 
-                // send a close_notify alert
-                conContext.warning(Alert.CLOSE_NOTIFY);
+                    // RFC2246 requires that the session becomes
+                    // unresumable if any connection is terminated
+                    // without proper close_notify messages with
+                    // level equal to warning.
+                    //
+                    // RFC4346 no longer requires that a session not be
+                    // resumed if failure to properly close a connection.
+                    //
+                    // We choose to make the session unresumable if
+                    // failed to send the close_notify message.
+                    //
+                    conContext.conSession.invalidate();
+                    if (SSLLogger.isOn && SSLLogger.isOn("ssl")) {
+                        SSLLogger.warning(
+                                "Invalidate the session: SO_LINGER timeout, " +
+                                "close_notify message cannot be sent.");
+                    }
+                }
+            } catch (InterruptedException ex) {
+                // keep interrupted status
+                interrupted = true;
             }
+
+            // restore the interrupted status
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        } else {
+            conContext.outputRecord.recordLock.lock();
+            try {
+                handleClosedNotifyAlert(useUserCanceled);
+            } finally {
+                conContext.outputRecord.recordLock.unlock();
+            }
+        }
+    }
+
+    private void handleClosedNotifyAlert(
+            boolean useUserCanceled) throws IOException {
+        try {
+            // send a user_canceled alert if needed.
+            if (useUserCanceled) {
+                conContext.warning(Alert.USER_CANCELED);
+            }
+
+            // send a close_notify alert
+            conContext.warning(Alert.CLOSE_NOTIFY);
         } finally {
             if (!conContext.isOutboundClosed()) {
                 conContext.outputRecord.close();
             }
 
-            if ((autoClose || !isLayered()) && !super.isOutputShutdown()) {
+            if (!super.isOutputShutdown() &&
+                    (autoClose || !isLayered())) {
                 super.shutdownOutput();
             }
         }
