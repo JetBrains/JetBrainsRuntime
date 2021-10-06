@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -262,7 +262,8 @@ class TransportContext implements ConnectionContext {
         } else {
             // Need a lock here so that the user_canceled alert and the
             // close_notify alert can be delivered together.
-            synchronized (outputRecord) {
+            outputRecord.recordLock.lock();
+            try {
                 try {
                     // send a user_canceled alert if needed.
                     if (isUserCanceled) {
@@ -274,6 +275,8 @@ class TransportContext implements ConnectionContext {
                 } finally {
                     outputRecord.close();
                 }
+            } finally {
+                outputRecord.recordLock.unlock();
             }
         }
     }
