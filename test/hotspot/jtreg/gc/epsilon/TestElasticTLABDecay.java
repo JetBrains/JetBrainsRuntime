@@ -24,12 +24,23 @@
 /**
  * @test TestElasticTLABDecay
  * @key gc
- * @requires vm.gc.Epsilon & !vm.graal.enabled & os.maxMemory > 1G
+ * @requires vm.gc.Epsilon & !vm.graal.enabled
  * @summary Epsilon is able to work with/without elastic TLABs
  *
- * @run main/othervm -Xmx1g -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC -XX:+EpsilonElasticTLAB -XX:-EpsilonElasticTLABDecay                               TestElasticTLABDecay
- * @run main/othervm -Xmx1g -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC -XX:+EpsilonElasticTLAB -XX:+EpsilonElasticTLABDecay -XX:EpsilonTLABDecayTime=1    TestElasticTLABDecay
- * @run main/othervm -Xmx1g -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC -XX:+EpsilonElasticTLAB -XX:+EpsilonElasticTLABDecay -XX:EpsilonTLABDecayTime=100  TestElasticTLABDecay
+ * @run main/othervm -Xmx256m
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   -XX:+EpsilonElasticTLAB -XX:-EpsilonElasticTLABDecay
+ *                   TestElasticTLABDecay
+ *
+ * @run main/othervm -Xmx256m
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   -XX:+EpsilonElasticTLAB -XX:+EpsilonElasticTLABDecay -XX:EpsilonTLABDecayTime=1
+ *                   TestElasticTLABDecay
+ *
+ * @run main/othervm -Xmx256m
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   -XX:+EpsilonElasticTLAB -XX:+EpsilonElasticTLABDecay -XX:EpsilonTLABDecayTime=100
+ *                   TestElasticTLABDecay
  */
 
 import java.util.Random;
@@ -37,7 +48,7 @@ import java.util.Random;
 public class TestElasticTLABDecay {
 
   static long SEED = Long.getLong("seed", System.nanoTime());
-  static int COUNT = Integer.getInteger("count", 3000); // ~500 MB allocation
+  static int COUNT = Integer.getInteger("count", 500); // ~100 MB allocation
 
   static byte[][] arr;
 

@@ -29,9 +29,21 @@
  * @summary Test JMX memory beans
  * @modules java.base/jdk.internal.misc
  *          java.management
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC          -Xmx1g TestMemoryMXBeans   -1 1024
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC -Xms1g   -Xmx1g TestMemoryMXBeans 1024 1024
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC -Xms128m -Xmx1g TestMemoryMXBeans  128 1024
+ *
+ * @run main/othervm -Xmx256m
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   TestMemoryMXBeans
+ *                   -1 256
+ *
+ * @run main/othervm -Xmx256m -Xmx256m
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   TestMemoryMXBeans
+ *                   256 256
+ *
+ * @run main/othervm -Xms64m -Xmx256m
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   TestMemoryMXBeans
+ *                   64 256
  */
 
 import java.lang.management.*;
