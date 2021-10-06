@@ -341,6 +341,15 @@ tier1 = \
   :tier1_runtime \
   :tier1_serviceability
 
+tier2 = \
+  :hotspot_tier2_runtime \
+  :hotspot_tier2_runtime_platform_agnostic \
+  :tier2_gc_shenandoah
+
+tier3 = \
+  :hotspot_tier3_runtime \
+  :tier3_gc_shenandoah
+
 hotspot_tier2_runtime = \
   runtime/ \
   serviceability/ \
