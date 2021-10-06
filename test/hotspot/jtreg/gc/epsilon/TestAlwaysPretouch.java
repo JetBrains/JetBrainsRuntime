@@ -25,13 +25,31 @@
  * @test TestAlwaysPretouch
  * @key gc
  * @requires vm.gc.Epsilon & !vm.graal.enabled
- * @summary Basic sanity test for Epsilon
- * @run main/othervm -Xms128m -Xmx1g                     -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC TestAlwaysPretouch
- * @run main/othervm -Xms128m -Xmx1g -XX:-AlwaysPreTouch -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC TestAlwaysPretouch
- * @run main/othervm -Xms128m -Xmx1g -XX:+AlwaysPreTouch -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC TestAlwaysPretouch
- * @run main/othervm          -Xmx1g                     -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC TestAlwaysPretouch
- * @run main/othervm          -Xmx1g -XX:-AlwaysPreTouch -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC TestAlwaysPretouch
- * @run main/othervm          -Xmx1g -XX:+AlwaysPreTouch -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC TestAlwaysPretouch
+ * @summary Test that pre-touch works
+ *
+ * @run main/othervm -Xms64m -Xmx256m
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   TestAlwaysPretouch
+ *
+ * @run main/othervm -Xms64m -Xmx256m -XX:-AlwaysPreTouch
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   TestAlwaysPretouch
+ *
+ * @run main/othervm -Xms64m -Xmx256m -XX:+AlwaysPreTouch
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   TestAlwaysPretouch
+ *
+ * @run main/othervm -Xmx256m
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   TestAlwaysPretouch
+ *
+ * @run main/othervm -Xmx256m -XX:-AlwaysPreTouch
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   TestAlwaysPretouch
+ *
+ * @run main/othervm -Xmx256m -XX:+AlwaysPreTouch
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   TestAlwaysPretouch
  */
 
 public class TestAlwaysPretouch {

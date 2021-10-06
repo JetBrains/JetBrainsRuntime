@@ -27,7 +27,10 @@
  * @requires vm.gc.Epsilon & !vm.graal.enabled
  * @summary Basic sanity test for Epsilon
  * @library /test/lib
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC TestEpsilonEnabled
+ *
+ * @run main/othervm -Xmx256m
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   TestEpsilonEnabled
  */
 
 import jdk.test.lib.Platform;
