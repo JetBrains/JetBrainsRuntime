@@ -15,6 +15,7 @@
  */
 
 import java.awt.*;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.concurrent.CountDownLatch;
@@ -37,11 +38,15 @@ public class AltGrMustGenerateAltGrModifierTest3838 extends Frame {
 
         try {
             mainWindow.setVisible(true);
-            mainWindow.textArea.requestFocus();
+            mainWindow.toFront();
+
+            final Robot robot = new Robot();
+
+            forceFocusTo(mainWindow.textArea, robot);
 
             Thread.sleep(PAUSE_MS);
 
-            mainWindow.pressAllKeysWithAltGr();
+            mainWindow.pressAllKeysWithAltGr(robot);
 
             Thread.sleep(PAUSE_MS);
 
@@ -61,6 +66,8 @@ public class AltGrMustGenerateAltGrModifierTest3838 extends Frame {
     private AltGrMustGenerateAltGrModifierTest3838()
     {
         super("AltGr must generate AltGr modifier");
+
+        setAlwaysOnTop(true);
 
         textArea = new TextArea();
         textArea.setFocusable(true);
@@ -122,10 +129,8 @@ public class AltGrMustGenerateAltGrModifierTest3838 extends Frame {
         });
     }
 
-    private void pressAllKeysWithAltGr() throws Exception
+    private void pressAllKeysWithAltGr(final Robot robot) throws Exception
     {
-        final Robot robot = new Robot();
-
         for (final int keyToPress : allLayoutFreeVirtualKeys) {
             keyPressedLatch = new CountDownLatch(2);
 
@@ -170,6 +175,31 @@ public class AltGrMustGenerateAltGrModifierTest3838 extends Frame {
         }
     }
 
+
+    // Sometimes top-level Frame does not get focus when requestFocus is called.
+    // For example, when this test is launched after test/.../bug6361367.java:
+    //  jtreg test/jdk/javax/swing/text/JTextComponent/6361367/bug6361367.java test/jdk/jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest3838.java
+    //
+    // So this method forces the focus acquiring via mouse clicking to the component.
+    private static void forceFocusTo(final Component component, final Robot robot) {
+        robot.waitForIdle();
+
+        final Point componentTopLeft = component.getLocationOnScreen();
+        final int componentCenterX = componentTopLeft.x + component.getWidth() / 2;
+        final int componentCenterY = componentTopLeft.y + component.getHeight() / 2;
+
+        robot.mouseMove(componentCenterX, componentCenterY);
+        robot.waitForIdle();
+
+        robot.mousePress(InputEvent.BUTTON1_MASK);
+        robot.mouseRelease(InputEvent.BUTTON1_MASK);
+
+        robot.waitForIdle();
+
+        component.requestFocus();
+
+        robot.waitForIdle();
+    }
 
     private static String keyCodeToText(int keyCode) {
         return "<" + KeyEvent.getKeyText(keyCode) + " (code=" + keyCode + ")>";
