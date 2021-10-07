@@ -28,7 +28,7 @@
 #include "jvm_md.h"
 #include "sunfontids.h"
 #include "sun_font_FreetypeFontScaler.h"
-
+#include "freetype/tttables.h"
 #include <stdlib.h>
 #if defined(_WIN32) || defined(MACOSX)
 #define DISABLE_FONTCONFIG
@@ -1140,6 +1140,7 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
              (FTScalerInfo*) jlong_to_ptr(pScaler);
 
     int errCode;
+    jlong ascent, descent, height;
 
     if (isNullScalerContext(context) || scalerInfo == NULL) {
         return (*env)->NewObject(env,
@@ -1181,6 +1182,19 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
      FTFixedToFloat(context->transform.yy) * (y))
 
     if (context->fixedSizeIndex == -1) {
+#if defined(_WIN32)
+        TT_OS2* info = (TT_OS2*)FT_Get_Sfnt_Table(scalerInfo->face, FT_SFNT_OS2);
+        if (info) {
+            ascent = (jlong) (info->usWinAscent);
+            descent = (jlong) (-info->usWinDescent);
+            height = (jlong) (info->usWinAscent + info->usWinDescent);
+        } else
+#endif
+        {
+            ascent = (jlong)scalerInfo->face->ascender;
+            descent = (jlong)scalerInfo->face->descender;
+            height = (jlong) scalerInfo->face->height;
+        }
         /*
          * See FreeType source code:
          * src/base/ftobjs.c ft_recompute_scaled_metrics()
@@ -1189,12 +1203,12 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
         /* ascent */
         ax = 0;
         ay = -(jfloat) (FT_MulFixFloatShift6(
-                ((jlong) scalerInfo->face->ascender),
+                ascent,
                 (jlong) scalerInfo->face->size->metrics.y_scale));
         /* descent */
         dx = 0;
         dy = -(jfloat) (FT_MulFixFloatShift6(
-                ((jlong) scalerInfo->face->descender),
+                descent,
                 (jlong) scalerInfo->face->size->metrics.y_scale));
         /* baseline */
         bx = by = 0;
@@ -1202,7 +1216,7 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
         /* leading */
         lx = 0;
         ly = (jfloat) (FT_MulFixFloatShift6(
-                (jlong) scalerInfo->face->height,
+                height,
                 (jlong) scalerInfo->face->size->metrics.y_scale))
              + ay - dy;
         /* max advance */
