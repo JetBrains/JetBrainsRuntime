@@ -1091,6 +1091,7 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
              (FTScalerInfo*) jlong_to_ptr(pScaler);
 
     int errCode;
+    jlong ascent, descent, height;
 
     if (isNullScalerContext(context) || scalerInfo == NULL) {
         return (*env)->NewObject(env,
@@ -1139,14 +1140,25 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
          */
         /* ascent */
         ax = 0;
+
+#if !defined(_WIN32)
+        ascent = (jlong)scalerInfo->face->ascender;
+        descent = (jlong)scalerInfo->face->descender;
+        height = (jlong) scalerInfo->face->height;
+#else
         TT_OS2* info = (TT_OS2*)FT_Get_Sfnt_Table(scalerInfo->face, FT_SFNT_OS2);
+        ascent = (jlong) (info->usWinAscent);
+        descent = (jlong) (-info->usWinDescent);
+        height = (jlong) (info->usWinAscent + info->usWinDescent);
+#endif
+
         ay = -(jfloat) (FT_MulFixFloatShift6(
-                ((jlong) info->usWinAscent),
+                ascent,
                 (jlong) scalerInfo->face->size->metrics.y_scale));
         /* descent */
         dx = 0;
         dy = -(jfloat) (FT_MulFixFloatShift6(
-                ((jlong) info->usWinDescent),
+                descent,
                 (jlong) scalerInfo->face->size->metrics.y_scale));
         /* baseline */
         bx = by = 0;
@@ -1154,7 +1166,7 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
         /* leading */
         lx = 0;
         ly = (jfloat) (FT_MulFixFloatShift6(
-                (jlong) scalerInfo->face->height,
+                height,
                 (jlong) scalerInfo->face->size->metrics.y_scale))
              + ay - dy;
         /* max advance */
