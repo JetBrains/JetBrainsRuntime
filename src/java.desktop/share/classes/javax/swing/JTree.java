@@ -4765,11 +4765,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
                     return null;
                 } else {
                     Object childObj = treeModel.getChild(obj, i);
-                    Object[] objPath = path.getPath();
-                    Object[] objChildPath = new Object[objPath.length+1];
-                    java.lang.System.arraycopy(objPath, 0, objChildPath, 0, objPath.length);
-                    objChildPath[objChildPath.length-1] = childObj;
-                    return new TreePath(objChildPath);
+                    return path.pathByAddingChild(childObj);
                 }
             }
 
@@ -4960,16 +4956,12 @@ public class JTree extends JComponent implements Scrollable, Accessible
                 // someone wants to know, so we need to create our parent
                 // if we don't have one (hey, we're a talented kid!)
                 if (accessibleParent == null) {
-                    Object[] objPath = path.getPath();
-                    if (objPath.length > 1) {
-                        Object objParent = objPath[objPath.length-2];
+                    TreePath parentPath = path.getParentPath();
+                    if (parentPath != null) {
+                        Object objParent = parentPath.getLastPathComponent();
                         if (treeModel != null) {
                             index = treeModel.getIndexOfChild(objParent, obj);
                         }
-                        Object[] objParentPath = new Object[objPath.length-1];
-                        java.lang.System.arraycopy(objPath, 0, objParentPath,
-                                                   0, objPath.length-1);
-                        TreePath parentPath = new TreePath(objParentPath);
                         accessibleParent = new AccessibleJTreeNode(tree,
                                                                    parentPath,
                                                                    null);
@@ -5011,6 +5003,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
              * @return the number of accessible children in the object.
              */
             public int getAccessibleChildrenCount() {
+                if (tree.isCollapsed(path)) return 0; // skip children of collapsed node
                 // Tree nodes can't be so complex that they have
                 // two sets of children -> we're ignoring that case
                 return treeModel.getChildCount(obj);
@@ -5023,17 +5016,10 @@ public class JTree extends JComponent implements Scrollable, Accessible
              * @return the Accessible child of the object
              */
             public Accessible getAccessibleChild(int i) {
-                // Tree nodes can't be so complex that they have
-                // two sets of children -> we're ignoring that case
-                if (i < 0 || i >= getAccessibleChildrenCount()) {
+                TreePath childPath = getChildTreePath(i);
+                if (childPath == null) {
                     return null;
                 } else {
-                    Object childObj = treeModel.getChild(obj, i);
-                    Object[] objPath = path.getPath();
-                    Object[] objChildPath = new Object[objPath.length+1];
-                    java.lang.System.arraycopy(objPath, 0, objChildPath, 0, objPath.length);
-                    objChildPath[objChildPath.length-1] = childObj;
-                    TreePath childPath = new TreePath(objChildPath);
                     return new AccessibleJTreeNode(JTree.this, childPath, this);
                 }
             }
