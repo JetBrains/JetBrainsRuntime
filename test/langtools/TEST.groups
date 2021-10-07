@@ -58,4 +58,7 @@ tier2 = \
     jdk/jshell/UserJdiUserRemoteTest.java
 
 # No langtools tests are tier 3 either.
-tier3 = 
+tier3 =
+
+# No langtools tests are tier 4 either.
+tier4 =
