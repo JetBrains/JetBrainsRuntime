@@ -55,7 +55,7 @@ static jmethodID jm_getChildrenAndRolesRecursive = NULL;
 #define GET_CHILDRENANDROLESRECURSIVE_METHOD_RETURN(ret) \
     GET_CACCESSIBILITY_CLASS_RETURN(ret); \
     GET_STATIC_METHOD_RETURN(jm_getChildrenAndRolesRecursive, sjc_CAccessibility, "getChildrenAndRolesRecursive",\
-                      "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZI)[Ljava/lang/Object;", ret);
+                      "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;", ret);
 
 static jmethodID sjm_getAccessibleComponent = NULL;
 #define GET_ACCESSIBLECOMPONENT_STATIC_METHOD_RETURN(ret) \
@@ -458,7 +458,7 @@ static jobject sAccessibilityClass = NULL;
     if (recursive) {
         GET_CHILDRENANDROLESRECURSIVE_METHOD_RETURN(nil);
         jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getChildrenAndRolesRecursive,
-                      parent->fAccessible, parent->fComponent, whichChildren, allowIgnored, 0);
+                      parent->fAccessible, parent->fComponent, whichChildren, allowIgnored);
         CHECK_EXCEPTION();
     } else {
         GET_CHILDRENANDROLES_METHOD_RETURN(nil);
