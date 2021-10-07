@@ -38,9 +38,11 @@ import java.beans.PropertyChangeListener;
 import java.lang.annotation.Native;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+
 import java.util.concurrent.Callable;
 import java.util.Arrays;
 
@@ -776,7 +778,7 @@ class CAccessibility implements PropertyChangeListener {
 
     // This method is called from the native
     // Each child takes up three entries in the array: one for itself, one for its role, and one for the recursion level
-    private static Object[] getChildrenAndRolesRecursive(final Accessible a, final Component c, final int whichChildren, final boolean allowIgnored, final int level) {
+    private static Object[] getChildrenAndRolesRecursive(final Accessible a, final Component c, final int whichChildren, final boolean allowIgnored) {
         if (a == null) return null;
         return invokeAndWait(new Callable<Object[]>() {
             public Object[] call() throws Exception {
@@ -832,7 +834,7 @@ class CAccessibility implements PropertyChangeListener {
                 parentStack.add(a);
                 ArrayList<Integer> indexses = new ArrayList<Integer>();
                 Integer index = 0;
-                int currentLevel = level;
+                int currentLevel = 0;
                 while (!parentStack.isEmpty()) {
                     Accessible p = parentStack.get(parentStack.size() - 1);
 
