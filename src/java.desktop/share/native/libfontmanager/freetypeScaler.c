@@ -28,7 +28,7 @@
 #include "jvm_md.h"
 #include "sunfontids.h"
 #include "sun_font_FreetypeFontScaler.h"
-
+#include "freetype/tttables.h"
 #include <stdlib.h>
 #include <math.h>
 
@@ -1139,13 +1139,14 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
          */
         /* ascent */
         ax = 0;
+        TT_OS2* info = (TT_OS2*)FT_Get_Sfnt_Table(scalerInfo->face, FT_SFNT_OS2);
         ay = -(jfloat) (FT_MulFixFloatShift6(
-                ((jlong) scalerInfo->face->ascender),
+                ((jlong) info->usWinAscent),
                 (jlong) scalerInfo->face->size->metrics.y_scale));
         /* descent */
         dx = 0;
         dy = -(jfloat) (FT_MulFixFloatShift6(
-                ((jlong) scalerInfo->face->descender),
+                ((jlong) info->usWinDescent),
                 (jlong) scalerInfo->face->size->metrics.y_scale));
         /* baseline */
         bx = by = 0;
