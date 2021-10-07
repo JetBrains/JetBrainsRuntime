@@ -1133,14 +1133,6 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
      FTFixedToFloat(context->transform.yy) * (y))
 
     if (context->fixedSizeIndex == -1) {
-        /*
-         * See FreeType source code:
-         * src/base/ftobjs.c ft_recompute_scaled_metrics()
-         * http://icedtea.classpath.org/bugzilla/show_bug.cgi?id=1659
-         */
-        /* ascent */
-        ax = 0;
-
 #if !defined(_WIN32)
         ascent = (jlong)scalerInfo->face->ascender;
         descent = (jlong)scalerInfo->face->descender;
@@ -1151,7 +1143,13 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
         descent = (jlong) (-info->usWinDescent);
         height = (jlong) (info->usWinAscent + info->usWinDescent);
 #endif
-
+        /*
+         * See FreeType source code:
+         * src/base/ftobjs.c ft_recompute_scaled_metrics()
+         * http://icedtea.classpath.org/bugzilla/show_bug.cgi?id=1659
+         */
+        /* ascent */
+        ax = 0;
         ay = -(jfloat) (FT_MulFixFloatShift6(
                 ascent,
                 (jlong) scalerInfo->face->size->metrics.y_scale));
