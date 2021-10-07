@@ -79,6 +79,13 @@ tier3 = \
     :jdk_sound \
     :jdk_client_sanity
 
+# Everything not in other tiers
+tier4 = \
+    / \
+   -:tier1 \
+   -:tier2 \
+   -:tier3
+
 ###############################################################################
 #
 # Other test definitions; generally smaller granularity than tiers
