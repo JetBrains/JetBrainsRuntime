@@ -882,4 +882,6 @@ com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                          
 java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java            JBR-4207 windows-all
 jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                    JBR-4207 windows-all
 
+java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
+
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984 macosx-all
