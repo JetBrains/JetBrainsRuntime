@@ -48,6 +48,8 @@
 #define MAX_UNIX_DOMAIN_PATH_LEN \
         (int)(sizeof(((struct sockaddr_un *)0)->sun_path)-2)
 
+extern JavaVM *jvm;
+
 /* NIO utility procedures */
 
 
