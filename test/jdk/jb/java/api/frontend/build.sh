@@ -15,15 +15,34 @@
 # limitations under the License.
 #
 
+PATHTOOL=echo
+PATHTOOL_WIN=echo
+case "`uname -a | tr '[:upper:]' '[:lower:]'`" in
+    cygwin* )
+        PATHTOOL="cygpath -au" ; PATHTOOL_WIN="cygpath -aw" ;;
+    *microsoft* )
+        PATHTOOL="wslpath -au" ; PATHTOOL_WIN="wslpath -aw" ;;
+esac
+PWD=`pwd`
+PWD=`$PATHTOOL_WIN "$PWD"`
+TESTSRC_UNIX=`$PATHTOOL "$TESTSRC"`
+COMPILEJAVA_UNIX=`$PATHTOOL "$COMPILEJAVA"`
+TESTCLASSES_UNIX=`$PATHTOOL "$TESTCLASSES"`
+
 SRC="$TESTSRC/../../../../../../src"
-PWD="`pwd`"
+SRC_UNIX="$TESTSRC_UNIX/../../../../../../src"
 # Generate sources
-"$COMPILEJAVA/bin/java" "$SRC/jetbrains.api/templates/Gensrc.java" "$SRC" "$PWD/jbr-api" "TEST" || exit $?
+"$COMPILEJAVA_UNIX/bin/java$EXE_SUFFIX" "$SRC/jetbrains.api/templates/Gensrc.java" "$SRC" "$PWD/jbr-api" "TEST" || exit $?
 # Validate version
-"$COMPILEJAVA/bin/java" "$SRC/jetbrains.api/templates/CheckVersion.java" "$SRC/jetbrains.api" "$PWD/jbr-api/gensrc" "true" || exit $?
+"$COMPILEJAVA_UNIX/bin/java$EXE_SUFFIX" "$SRC/jetbrains.api/templates/CheckVersion.java" "$SRC/jetbrains.api" "$PWD/jbr-api/gensrc" "true" || exit $?
 # Compile API
-find "$SRC/jetbrains.api/src" -name *.java > compile.list
-find jbr-api/gensrc -name *.java >> compile.list
-"$COMPILEJAVA/bin/javac" $TESTJAVACOPTS -d "$TESTCLASSES" @compile.list || exit $?
-rm "$TESTCLASSES/module-info.class"
+if [ "$PATHTOOL" != "echo" ]; then
+  where.exe /r "`$PATHTOOL_WIN "$SRC_UNIX"`\\jetbrains.api\\src" *.java > compile.list
+  where.exe /r "jbr-api\\gensrc" *.java >> compile.list
+else
+  find "$SRC_UNIX/jetbrains.api/src" -name *.java > compile.list
+  find jbr-api/gensrc -name *.java >> compile.list
+fi
+"$COMPILEJAVA_UNIX/bin/javac$EXE_SUFFIX" $TESTJAVACOPTS -d "$TESTCLASSES" @compile.list || exit $?
+rm "$TESTCLASSES_UNIX/module-info.class"
 exit 0

@@ -95,14 +95,13 @@ public class CheckVersion {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                     try {
-                        Path abs = file.toAbsolutePath();
-                        Path rel = dir.relativize(abs);
+                        Path rel = dir.relativize(file);
                         StringBuilder name = new StringBuilder();
                         for (int i = 0; i < rel.getNameCount(); i++) {
                             if (!name.isEmpty()) name.append('/');
                             name.append(rel.getName(i));
                         }
-                        String content = Files.readString(abs);
+                        String content = Files.readString(file);
                         String fileName = name.toString();
                         files.add(new Entry(FILE_TRANSFORMERS.getOrDefault(fileName, c -> c).apply(content), fileName));
                         return FileVisitResult.CONTINUE;
