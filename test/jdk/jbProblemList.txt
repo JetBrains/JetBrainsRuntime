@@ -1277,3 +1277,5 @@ jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java                   
 jb/java/awt/Focus/ChainOfPopupsFocusTest.java                                       JBR-1518 linux-all
 
 java/time/tck/java/time/format/TCKDateTimeFormatterBuilder.java                     JBR-2842 macosx-10.14,macosx-10.15,macosx-10.16
+
+java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
