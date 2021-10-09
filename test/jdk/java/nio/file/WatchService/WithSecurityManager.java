@@ -21,7 +21,8 @@
  * questions.
  */
 
-/* @test
+/* @ignore
+ * @test
  * @bug 4313887
  * @summary Unit test for Watchable#register's permission checks
  * @modules jdk.unsupported
