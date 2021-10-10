@@ -133,6 +133,9 @@ typedef struct {
     int           objectsByIDsize;
     int           objectsByIDcount;
 
+    /* true if enhanced class redefinition is enabled */
+    jboolean isEnhancedClassRedefinitionEnabled;
+
      /* Indication that the agent has been loaded */
      jboolean isLoaded;
 

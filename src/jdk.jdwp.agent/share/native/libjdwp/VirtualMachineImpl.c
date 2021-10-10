@@ -477,6 +477,14 @@ redefineClasses(PacketInputStream *in, PacketOutputStream *out)
     if (ok == JNI_TRUE) {
         jvmtiError error;
 
+        jlong classIds[classCount];
+
+        if (gdata->isEnhancedClassRedefinitionEnabled) {
+            for (i = 0; i < classCount; ++i) {
+              classIds[i] = commonRef_refToID(env, classDefs[i].klass);
+            }
+        }
+
         error = JVMTI_FUNC_PTR(gdata->jvmti,RedefineClasses)
                         (gdata->jvmti, classCount, classDefs);
         if (error != JVMTI_ERROR_NONE) {
@@ -486,6 +494,18 @@ redefineClasses(PacketInputStream *in, PacketOutputStream *out)
             for ( i = 0 ; i < classCount; i++ ) {
                 eventHandler_freeClassBreakpoints(classDefs[i].klass);
             }
+
+            if (gdata->isEnhancedClassRedefinitionEnabled) {
+                /* Update tags in jvmti to use new classes */
+                for ( i = 0 ; i < classCount; i++ ) {
+                    /* pointer in classIds[i] is updated by advanced redefinition to a new class */
+                    error = commonRef_updateTags(env, classIds[i]);
+                    if (error != JVMTI_ERROR_NONE) {
+                        break;
+                    }
+                }
+            }
+
         }
     }
 
