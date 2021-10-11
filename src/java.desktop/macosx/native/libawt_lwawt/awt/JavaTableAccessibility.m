@@ -11,8 +11,11 @@
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
 #import "sun_lwawt_macosx_CAccessible.h"
+#import "PropertiesUtilities.h"
 
 @implementation JavaTableAccessibility
+
+static jclass sjc_CAccessibility = NULL;
 
 - (int)accessibleRowCount {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
@@ -128,7 +131,17 @@
     return [self accessibilitySelectedRows];
 }
 
+- (NSArray *)accessibilityVisibleChildren {
+    return [self accessibilityVisibleRows];
+}
+
 - (NSArray *)accessibilityRows {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    NSString *maxTableAccessibleRowCountProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.awt.mac.a11y.tableAccessibleRowCountThreshold" withEnv:env];
+    NSInteger maxAccessibleTableRowCount = maxTableAccessibleRowCountProp != NULL ? [maxTableAccessibleRowCountProp integerValue] : 0;
+    if (maxAccessibleTableRowCount > 0 && [self accessibleRowCount] > maxAccessibleTableRowCount) {
+        return [self accessibilityVisibleRows];
+    }
     int rowCount = [self accessibleRowCount];
     NSMutableArray *children = [NSMutableArray arrayWithCapacity:rowCount];
     for (int i = 0; i < rowCount; i++) {
@@ -145,6 +158,29 @@
         [children addObject:[self createRowForIndex:index]];
     }
 
+    return children;
+}
+
+- (nullable NSArray<id<NSAccessibilityRow>> *)accessibilityVisibleRows {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    GET_CACCESSIBILITY_CLASS_RETURN(nil);
+    DECLARE_STATIC_METHOD_RETURN(sjm_getTableVisibleRowRange, sjc_CAccessibility, \
+     "getTableVisibleRowRange", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)[I", nil);
+
+    jintArray jIndices = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getTableVisibleRowRange,
+                                                        self->fAccessible, self->fComponent);
+    CHECK_EXCEPTION();
+
+    if (jIndices == NULL) return nil;
+    jint *range = (*env)->GetIntArrayElements(env, jIndices, NULL);
+    int firstRow = range[0];
+    int lastRow = range[1];
+    (*env)->ReleaseIntArrayElements(env, jIndices, range, 0);
+
+    NSMutableArray *children = [NSMutableArray arrayWithCapacity:lastRow - firstRow + 1];
+    for (int i = firstRow; i <= lastRow; i++) {
+        [children addObject:[self createRowForIndex:[NSNumber numberWithInt:i]]];
+    }
     return children;
 }
 

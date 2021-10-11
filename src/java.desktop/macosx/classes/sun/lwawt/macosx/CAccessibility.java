@@ -603,6 +603,48 @@ class CAccessibility implements PropertyChangeListener {
     static final int JAVA_AX_SELECTED_CHILDREN = -2;
     static final int JAVA_AX_VISIBLE_CHILDREN = -3;
 
+    // [tav] todo: the visibility detection is incomplete
+    private static int[] getTableVisibleRowRange(Accessible a, Component c) {
+        if (a == null) return null;
+        Integer[] result = invokeAndWait(new Callable<Integer[]>() {
+            public Integer[] call() throws Exception {
+                final AccessibleContext ac = a.getAccessibleContext();
+                if (!(ac instanceof AccessibleComponent) && !(ac instanceof AccessibleTable)) return null;
+
+                Accessible parent = ac.getAccessibleParent();
+                if (parent == null) return null;
+                AccessibleContext parentContext = parent.getAccessibleContext();
+                if (!(parentContext instanceof AccessibleComponent)) return null;
+
+                Rectangle bounds = ((AccessibleComponent) ac).getBounds();
+                Rectangle parentBounds = ((AccessibleComponent) parentContext).getBounds();
+                int y = bounds.y >= 0 ? 0 : -bounds.y;
+                int h = Math.min(bounds.height, parentBounds.height);
+                Point location1 = new Point(0, y);
+                Point location2 = new Point(0, y + h);
+
+                Function<Point, Integer> calcRowIndex = (location) -> {
+                    Accessible rowChild = ((AccessibleComponent) ac).getAccessibleAt(location);
+                    if (rowChild == null) return null;
+
+                    AccessibleContext rowChildContext = rowChild.getAccessibleContext();
+                    if (rowChildContext == null) return null;
+
+                    int rowChildIndex = rowChildContext.getAccessibleIndexInParent();
+                    return rowChildIndex / ((AccessibleTable) ac).getAccessibleColumnCount();
+                };
+                int firstVisibleRow = calcRowIndex.apply(location1);
+                int lastVisibleRow = calcRowIndex.apply(location2);
+
+                return new Integer[]{firstVisibleRow, lastVisibleRow};
+            }
+        }, c);
+        if (result != null) {
+            return new int[]{result[0], result[1]};
+        }
+        return null;
+    }
+
     private static Object[] getTableRowChildrenAndRoles(Accessible a, Component c, int whichChildren, boolean allowIgnored, int tableRowIndex) {
         return invokeGetChildrenAndRoles(a, c, whichChildren, allowIgnored, ChildrenOperations.createForTableRow(tableRowIndex));
     }
