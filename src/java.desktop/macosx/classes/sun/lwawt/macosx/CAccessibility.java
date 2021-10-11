@@ -674,9 +674,8 @@ class CAccessibility implements PropertyChangeListener {
     private static Accessible createAccessibleTreeNode(JTree t, TreePath p) {
         Accessible a = null;
 
-        final String accessibleJTreeNodeName = "javax.swing.JTree$AccessibleJTree$AccessibleJTreeNode";
         try {
-            Class<?> accessibleJTreeNodeClass = Class.forName(accessibleJTreeNodeName);
+            Class<?> accessibleJTreeNodeClass = Class.forName("javax.swing.JTree$AccessibleJTree$AccessibleJTreeNode");
             Constructor<?> constructor = accessibleJTreeNodeClass.getConstructor(t.getAccessibleContext().getClass(), JTree.class, TreePath.class, Accessible.class);
             constructor.setAccessible(true);
             a = ((Accessible) constructor.newInstance(t.getAccessibleContext(), t, p, null));
@@ -689,7 +688,7 @@ class CAccessibility implements PropertyChangeListener {
 
     // This method is called from the native
     // Each child takes up three entries in the array: one for itself, one for its role, and one for the recursion level
-    private static Object[] getChildrenAndRolesRecursive(final Accessible a, final Component c, final int whichChildren, final boolean allowIgnored, final int level) {
+    private static Object[] getChildrenAndRolesRecursive(final Accessible a, final Component c, final int whichChildren, final boolean allowIgnored) {
         if (a == null) return null;
         return invokeAndWait(new Callable<Object[]>() {
             public Object[] call() throws Exception {
@@ -714,9 +713,8 @@ class CAccessibility implements PropertyChangeListener {
                                 AccessibleContext ac = an.getAccessibleContext();
                                 if (ac != null) {
                                     allChildren.add(an);
-                                    allChildren.add(ac.getAccessibleRole());
-                                    int level = tree.isRootVisible() ? path.getPathCount() : path.getPathCount() - 1;
-                                    allChildren.add(String.valueOf(level));
+                                    allChildren.add(ac.getAccessibleRole());;
+                                    allChildren.add(String.valueOf((tree.isRootVisible() ? path.getPathCount() : path.getPathCount() - 1)));
                                 }
                             }
                         }
@@ -732,8 +730,7 @@ class CAccessibility implements PropertyChangeListener {
                                 if (ac != null) {
                                     allChildren.add(an);
                                     allChildren.add(ac.getAccessibleRole());
-                                    int level = tree.isRootVisible() ? path.getPathCount() : path.getPathCount() - 1;
-                                    allChildren.add(String.valueOf(level));
+                                    allChildren.add(String.valueOf((tree.isRootVisible() ? path.getPathCount() : path.getPathCount() - 1)));
                                 }
                             }
                         }
@@ -747,7 +744,7 @@ class CAccessibility implements PropertyChangeListener {
                 parentStack.add(a);
                 ArrayList<Integer> indexses = new ArrayList<Integer>();
                 Integer index = 0;
-                int currentLevel = level;
+                int currentLevel = 0;
                 while (!parentStack.isEmpty()) {
                     Accessible p = parentStack.get(parentStack.size() - 1);
 
