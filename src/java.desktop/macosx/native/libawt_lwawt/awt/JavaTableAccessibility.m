@@ -209,7 +209,7 @@
                                                       withIndex:index.intValue
                                                        withView:[self view]
                                                    withJavaRole:JavaAccessibilityIgnore];
-        [rowCache setValue:row forKey:[NSNumber numberWithInt:index]];
+        [rowCache setObject:row forKey:index];
     }
 
     return row;

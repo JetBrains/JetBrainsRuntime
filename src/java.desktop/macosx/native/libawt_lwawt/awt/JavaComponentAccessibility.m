@@ -404,6 +404,8 @@ static void RaiseMustOverrideException(NSString *method)
         newChild = [JavaListRowAccessibility alloc];
     } else if ([parent isKindOfClass:[JavaOutlineAccessibility class]]) {
         newChild = [JavaOutlineRowAccessibility alloc];
+    } else if ([parent isKindOfClass:[JavaTableRowAccessibility class]]) {
+        newChild = [JavaCellAccessibility alloc];
     } else if ([javaRole isEqualToString:@"pagetablist"]) {
         newChild = [JavaTabGroupAccessibility alloc];
     } else if ([javaRole isEqualToString:@"scrollpane"]) {
