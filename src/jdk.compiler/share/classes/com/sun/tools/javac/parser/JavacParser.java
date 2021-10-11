@@ -1690,7 +1690,9 @@ public class JavacParser implements Parser {
                 if (param.vartype != null &&
                         isRestrictedLocalVarTypeName(param.vartype, false) &&
                         param.vartype.hasTag(TYPEARRAY)) {
-                    log.error(DiagnosticFlag.SYNTAX, param.pos, Errors.VarNotAllowedArray);
+                    log.error(DiagnosticFlag.SYNTAX, param.pos,
+                        Feature.VAR_SYNTAX_IMPLICIT_LAMBDAS.allowedInSource(source)
+                            ? Errors.VarNotAllowedArray : Errors.VarNotAllowedHere);
                 }
                 lambdaClassifier.addParameter(param);
                 if (lambdaClassifier.result() == LambdaParameterKind.ERROR) {
@@ -1701,7 +1703,9 @@ public class JavacParser implements Parser {
                 log.error(DiagnosticFlag.SYNTAX, pos, Errors.InvalidLambdaParameterDeclaration(lambdaClassifier.diagFragment));
             }
             for (JCVariableDecl param: params) {
-                if (param.vartype != null && isRestrictedLocalVarTypeName(param.vartype, true)) {
+                if (param.vartype != null
+                        && isRestrictedLocalVarTypeName(param.vartype, true)) {
+                    checkSourceLevel(param.pos, Feature.VAR_SYNTAX_IMPLICIT_LAMBDAS);
                     param.startPos = TreeInfo.getStartPos(param.vartype);
                     param.vartype = null;
                 }
@@ -1711,9 +1715,9 @@ public class JavacParser implements Parser {
     }
 
     enum LambdaParameterKind {
-        EXPLICIT(0),
-        IMPLICIT(1),
-        VAR(2),
+        VAR(0),
+        EXPLICIT(1),
+        IMPLICIT(2),
         ERROR(-1);
 
         private final int index;
@@ -1723,11 +1727,11 @@ public class JavacParser implements Parser {
         }
     }
 
-    private final static Fragment[][] decisionTable = new Fragment[][]{
-        /*              EXPLICIT                         IMPLICIT                         VAR  */
-        /* EXPLICIT */ {null,                            ImplicitAndExplicitNotAllowed,   VarAndExplicitNotAllowed},
-        /* IMPLICIT */ {ImplicitAndExplicitNotAllowed,   null,                            VarAndImplicitNotAllowed},
-        /* VAR      */ {VarAndExplicitNotAllowed,        VarAndImplicitNotAllowed,        null}
+    private final static Fragment[][] decisionTable = new Fragment[][] {
+        /*              VAR                              EXPLICIT                         IMPLICIT  */
+        /* VAR      */ {null,                            VarAndExplicitNotAllowed,        VarAndImplicitNotAllowed},
+        /* EXPLICIT */ {VarAndExplicitNotAllowed,        null,                            ImplicitAndExplicitNotAllowed},
+        /* IMPLICIT */ {VarAndImplicitNotAllowed,        ImplicitAndExplicitNotAllowed,   null},
     };
 
     class LambdaClassifier {
@@ -1756,7 +1760,10 @@ public class JavacParser implements Parser {
             } else if (kind != newKind && kind != LambdaParameterKind.ERROR) {
                 LambdaParameterKind currentKind = kind;
                 kind = LambdaParameterKind.ERROR;
-                diagFragment = decisionTable[currentKind.index][newKind.index];
+                boolean varIndex = currentKind.index == LambdaParameterKind.VAR.index ||
+                        newKind.index == LambdaParameterKind.VAR.index;
+                diagFragment = Feature.VAR_SYNTAX_IMPLICIT_LAMBDAS.allowedInSource(source) || !varIndex ?
+                        decisionTable[currentKind.index][newKind.index] : null;
             }
         }
 
