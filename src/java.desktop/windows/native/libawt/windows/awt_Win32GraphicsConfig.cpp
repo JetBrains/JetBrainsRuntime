@@ -84,9 +84,10 @@ RECT AwtWin32GraphicsConfig::getMonitorBounds(int screen, const UCoordSpace& spa
     AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
 
     if (TRUE == MonitorBounds(AwtWin32GraphicsDevice::GetMonitor(screen), &rRW)) {
-        // don't scale xy to avoid overlapping of the multi-dpi-monitors bounds in the user space
-        int x = rRW.left;
-        int y = rRW.top;
+        int x = (device == NULL || space == DEVICE_SPACE) ? rRW.left
+                                 : device->ScaleDownX(rRW.left);
+        int y = (device == NULL || space == DEVICE_SPACE) ? rRW.top
+                                 : device->ScaleDownY(rRW.top);
         int w = (device == NULL || space == DEVICE_SPACE) ? rRW.right - rRW.left
                                  : device->ScaleDownX(rRW.right - rRW.left);
         int h = (device == NULL || space == DEVICE_SPACE) ? rRW.bottom - rRW.top

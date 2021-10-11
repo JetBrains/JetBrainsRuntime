@@ -37,6 +37,7 @@ import java.awt.Graphics;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.IllegalComponentStateException;
 import java.awt.Image;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
@@ -89,7 +90,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     private TranslucentWindowPainter painter;
 
-    private int screenNum;
+    private int screenNum = 0;
     protected boolean screenChangedFlag;
 
     /*
@@ -215,6 +216,13 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         super(target);
         // update GC based on the current bounds
         updateGC();
+        try {
+            screenNum = getScreenImOn();
+        } catch (IllegalComponentStateException e) {
+            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                log.warning(e.getMessage());
+            }
+        }
     }
 
     @Override
@@ -630,9 +638,6 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     public void updateGC() {
         int scrn = getScreenImOn();
-        screenChangedFlag = scrn != screenNum;
-        screenNum = scrn;
-
         if (screenLog.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("Screen number: " + scrn);
         }
@@ -701,6 +706,9 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
      */
     @Override
     public void displayChanged() {
+        int scrn = getScreenImOn();
+        screenChangedFlag = scrn != screenNum;
+        screenNum = scrn;
         SunToolkit.executeOnEventHandlerThread(target, ()->{
             updateGC();
             adjustBoundsOnDPIChange();
