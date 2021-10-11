@@ -1,7 +1,7 @@
-From fb4331e60ec1ce1caaebbac1af64f2ddc2eab713 Mon Sep 17 00:00:00 2001
+From c8fc7efc8a4ea802125d086e46a43baea7a64a28 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:09:39 +0100
-Subject: [PATCH 01/29] Apply basic dcevm11 patch
+Subject: [PATCH 01/30] Apply basic dcevm11 patch
 
 ---
  src/hotspot/share/ci/ciObjectFactory.cpp      |   25 +
