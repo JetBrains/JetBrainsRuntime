@@ -261,18 +261,24 @@ static void RaiseMustOverrideException(NSString *method)
 }
 
 + (jobject) getCAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env {
+    // jaccessible is a weak ref, check it's still alive
+    jobject jaccessibleLocal = (*env)->NewLocalRef(env, jaccessible);
+    if ((*env)->IsSameObject(env, jaccessibleLocal, NULL)) return NULL;
+
     JNI_COCOA_DURING(env);
     DECLARE_CLASS_RETURN(sjc_Accessible, "javax/accessibility/Accessible", NULL);
     GET_CACCESSIBLE_CLASS_RETURN(NULL);
     DECLARE_STATIC_METHOD_RETURN(sjm_getCAccessible, sjc_CAccessible, "getCAccessible",
                                 "(Ljavax/accessibility/Accessible;)Lsun/lwawt/macosx/CAccessible;", NULL);
-    if ((*env)->IsInstanceOf(env, jaccessible, sjc_CAccessible)) {
-        return jaccessible;
-    } else if ((*env)->IsInstanceOf(env, jaccessible, sjc_Accessible)) {
-        jobject o = (*env)->CallStaticObjectMethod(env, sjc_CAccessible,  sjm_getCAccessible, jaccessible);
+    if ((*env)->IsInstanceOf(env, jaccessibleLocal, sjc_CAccessible)) {
+        return jaccessibleLocal; // delete in the caller
+    } else if ((*env)->IsInstanceOf(env, jaccessibleLocal, sjc_Accessible)) {
+        jobject jCAX = (*env)->CallStaticObjectMethod(env, sjc_CAccessible, sjm_getCAccessible, jaccessibleLocal);
         CHECK_EXCEPTION();
-        return o;
+        (*env)->DeleteLocalRef(env, jaccessibleLocal);
+        return jCAX; // delete in the caller
     }
+    (*env)->DeleteLocalRef(env, jaccessibleLocal);
     JNI_COCOA_HANDLE(env);
     return NULL;
 }
@@ -419,11 +425,11 @@ static void RaiseMustOverrideException(NSString *method)
     jobject jCAX = [JavaComponentAccessibility getCAccessible:jaccessible withEnv:env];
     if (jCAX == NULL) return nil;
     if (!wrapped) { // If wrapped is true, then you don't need to get an existing instance, you need to create a new one
-    JavaComponentAccessibility *value = (JavaComponentAccessibility *) jlong_to_ptr((*env)->GetLongField(env, jCAX, jf_ptr));
-    if (value != nil) {
-        (*env)->DeleteLocalRef(env, jCAX);
-        return [[value retain] autorelease];
-    }
+        JavaComponentAccessibility *value = (JavaComponentAccessibility *) jlong_to_ptr((*env)->GetLongField(env, jCAX, jf_ptr));
+        if (value != nil) {
+            (*env)->DeleteLocalRef(env, jCAX);
+            return [[value retain] autorelease];
+        }
     }
 
     // otherwise, create a new instance
@@ -470,10 +476,7 @@ static void RaiseMustOverrideException(NSString *method)
     [newChild retain];
     (*env)->SetLongField(env, jCAX, jf_ptr, ptr_to_jlong(newChild));
 
-    // the link is removed in the wrapper
-    if (!wrapped) {
-        (*env)->DeleteLocalRef(env, jCAX);
-    }
+    (*env)->DeleteLocalRef(env, jCAX);
 
     // return autoreleased instance
     return [newChild autorelease];
