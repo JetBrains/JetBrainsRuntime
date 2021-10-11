@@ -1,7 +1,7 @@
-From dcb44f0e56dbc63b90d655b694a3f7751744fe53 Mon Sep 17 00:00:00 2001
+From 2138bc84b56ceef95db7574e0ace1a109bbbe3b4 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 13 Feb 2021 20:47:52 +0100
-Subject: [PATCH 24/28] JBR-3111 Update class in all dictionaries where it was
+Subject: [PATCH 24/29] JBR-3111 Update class in all dictionaries where it was
  already defined
 
 This patch keeps compatibility with std redefinition, that does not
@@ -16,10 +16,10 @@ dictionaries containing this class.
  5 files changed, 17 insertions(+), 3 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index 8b2deb70e1b..4e06b09e7d5 100644
+index b649d6358ed..a70d92c27fc 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
-@@ -1274,6 +1274,15 @@ void ClassLoaderDataGraph::rollback_redefinition() {
+@@ -1277,6 +1277,15 @@ void ClassLoaderDataGraph::rollback_redefinition() {
    }
  }
  
@@ -50,7 +50,7 @@ index 00a84610b43..16711dca237 100644
    static void dictionary_all_entries_do(void f(InstanceKlass*, ClassLoaderData*));
  
 diff --git a/src/hotspot/share/classfile/dictionary.cpp b/src/hotspot/share/classfile/dictionary.cpp
-index 4e361d439f4..6c072407fd9 100644
+index 781a929e7de..a1baaef86f5 100644
 --- a/src/hotspot/share/classfile/dictionary.cpp
 +++ b/src/hotspot/share/classfile/dictionary.cpp
 @@ -345,7 +345,7 @@ DictionaryEntry* Dictionary::get_entry(int index, unsigned int hash,
@@ -76,10 +76,10 @@ index f6e08e7bfd5..2932cc9c320 100644
    void rollback_redefinition();
  
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index 9e0f4dd3c96..789b5fb1e6d 100644
+index fe537421e22..f7452adcf02 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
-@@ -1606,7 +1606,9 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
+@@ -1608,7 +1608,9 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
    Dictionary* dictionary = loader_data->dictionary();
    unsigned int d_hash = dictionary->compute_hash(name_h);
    if (is_redefining) {

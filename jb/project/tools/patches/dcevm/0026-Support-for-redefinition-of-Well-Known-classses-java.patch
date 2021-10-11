@@ -1,7 +1,7 @@
-From f279999a412cc87c6f4a7eed7e1e2ad34655b4fe Mon Sep 17 00:00:00 2001
+From 3859bf897eeebdc026e3d72346323edcf936e0c3 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Mon, 8 Mar 2021 02:22:54 +0700
-Subject: [PATCH 26/28] Support for redefinition of Well Known classses
+Subject: [PATCH 26/29] Support for redefinition of Well Known classses
  (java.*,jdk.*, sun.*)
 
 ---
@@ -122,10 +122,10 @@ index 3e9d48c4cdc..79059f6e2e8 100644
    void remove_symbols();
  
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index 789b5fb1e6d..25e577a664c 100644
+index f7452adcf02..1d2c7d22ce0 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
-@@ -1983,6 +1983,16 @@ bool SystemDictionary::is_well_known_klass(Symbol* class_name) {
+@@ -1985,6 +1985,16 @@ bool SystemDictionary::is_well_known_klass(Symbol* class_name) {
  }
  #endif
  
@@ -143,10 +143,10 @@ index 789b5fb1e6d..25e577a664c 100644
    assert(id >= (int)FIRST_WKID && id < (int)WKID_LIMIT, "oob");
    int  info = wk_init_info[id - FIRST_WKID];
 diff --git a/src/hotspot/share/classfile/systemDictionary.hpp b/src/hotspot/share/classfile/systemDictionary.hpp
-index 1dbbffa197f..4220978a025 100644
+index a8359143908..aba2780a321 100644
 --- a/src/hotspot/share/classfile/systemDictionary.hpp
 +++ b/src/hotspot/share/classfile/systemDictionary.hpp
-@@ -467,6 +467,8 @@ public:
+@@ -470,6 +470,8 @@ public:
    static bool is_well_known_klass(Symbol* class_name);
  #endif
  
@@ -156,10 +156,10 @@ index 1dbbffa197f..4220978a025 100644
    static void remove_from_hierarchy(InstanceKlass* k);
    static void update_constraints_after_redefinition();
 diff --git a/src/hotspot/share/classfile/vmSymbols.hpp b/src/hotspot/share/classfile/vmSymbols.hpp
-index 2409af9b06e..daaa8d12375 100644
+index 0d0badeabd0..3477a408cb6 100644
 --- a/src/hotspot/share/classfile/vmSymbols.hpp
 +++ b/src/hotspot/share/classfile/vmSymbols.hpp
-@@ -355,6 +355,8 @@
+@@ -356,6 +356,8 @@
    template(exit_method_name,                          "exit")                                     \
    template(add_method_name,                           "add")                                      \
    template(remove_method_name,                        "remove")                                   \
@@ -169,7 +169,7 @@ index 2409af9b06e..daaa8d12375 100644
    template(threads_name,                              "threads")                                  \
    template(groups_name,                               "groups")                                   \
 diff --git a/src/hotspot/share/compiler/compileBroker.cpp b/src/hotspot/share/compiler/compileBroker.cpp
-index 765b8ffa4dc..25271feb41f 100644
+index 0ed0ca52cb0..4f64beae978 100644
 --- a/src/hotspot/share/compiler/compileBroker.cpp
 +++ b/src/hotspot/share/compiler/compileBroker.cpp
 @@ -1877,6 +1877,17 @@ void CompileBroker::compiler_thread_loop() {
@@ -224,7 +224,7 @@ index 742dada0e8f..d1af82b5fa7 100644
    static oop          arithmetic_exception_instance() { return _arithmetic_exception_instance; }
    static oop          virtual_machine_error_instance() { return _virtual_machine_error_instance; }
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index f4bde7504c8..80d4e68ccae 100644
+index 4ee12b7021f..7997b178d22 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -497,6 +497,16 @@ void VM_EnhancedRedefineClasses::doit() {
@@ -316,7 +316,7 @@ index f4bde7504c8..80d4e68ccae 100644
  //      if (num != ConstMethod::UNSET_IDNUM) {
  //        old_method->set_method_idnum(num);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 4c0412d343d..79ea17b0d47 100644
+index d00109a0b92..8c47baa8a74 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -141,6 +141,8 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

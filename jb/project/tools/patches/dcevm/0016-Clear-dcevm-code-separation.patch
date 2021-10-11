@@ -1,7 +1,7 @@
-From 0550e70425054a77e32fb96770d416b077720857 Mon Sep 17 00:00:00 2001
+From 7cb41bcfdbc07e0447b1f67ab111e17cde662c2e Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 23 Oct 2020 10:20:26 +0200
-Subject: [PATCH 16/28] Clear dcevm code separation
+Subject: [PATCH 16/29] Clear dcevm code separation
 
 ---
  src/hotspot/share/classfile/systemDictionary.cpp   |  4 ++--
@@ -15,7 +15,7 @@ Subject: [PATCH 16/28] Clear dcevm code separation
  8 files changed, 27 insertions(+), 17 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index a6a03d3c0e9..9e0f4dd3c96 100644
+index 1dd53e0b7bc..fe537421e22 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
 @@ -1152,7 +1152,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
@@ -27,7 +27,7 @@ index a6a03d3c0e9..9e0f4dd3c96 100644
    } );
  
    return k;
-@@ -2153,7 +2153,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
+@@ -2155,7 +2155,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
        // also hold array classes.
  
        assert(check->is_instance_klass(), "noninstance in systemdictionary");
@@ -148,10 +148,10 @@ index 7eb1b01c785..710e0ddc930 100644
  
    // Verify implementor fields requires the Compile_lock, but this is sometimes
 diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
-index a9556ecf0c4..6c7edaca67e 100644
+index 17c08a9dc18..2596ed7add2 100644
 --- a/src/hotspot/share/oops/method.cpp
 +++ b/src/hotspot/share/oops/method.cpp
-@@ -2100,7 +2100,7 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
+@@ -2145,7 +2145,7 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
  // Add a method id to the jmethod_ids
  jmethodID Method::make_jmethod_id(ClassLoaderData* loader_data, Method* m) {
    // FIXME: (DCEVM) ???

@@ -1,7 +1,7 @@
-From c8850725d4c84f93beaee3c05f9d8f9862fe6159 Mon Sep 17 00:00:00 2001
+From e7e3f7dded747a16bc3a1c6336d8f66e03b37e92 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Thu, 15 Nov 2018 03:20:08 +0700
-Subject: [PATCH 05/28] HotswapAgent integration
+Subject: [PATCH 05/29] HotswapAgent integration
 
 It include:
 
@@ -390,10 +390,10 @@ index 82311e69fd6..bd39f8595b2 100644
      CFLAGS := -DENABLE_ARG_FILES, \
  ))
 diff --git a/src/hotspot/share/classfile/vmSymbols.hpp b/src/hotspot/share/classfile/vmSymbols.hpp
-index 26ff6ee9853..2409af9b06e 100644
+index 17f7e720c95..0d0badeabd0 100644
 --- a/src/hotspot/share/classfile/vmSymbols.hpp
 +++ b/src/hotspot/share/classfile/vmSymbols.hpp
-@@ -342,6 +342,7 @@
+@@ -343,6 +343,7 @@
    /* common method and field names */                                                             \
    template(object_initializer_name,                   "<init>")                                   \
    template(class_initializer_name,                    "<clinit>")                                 \
@@ -511,7 +511,7 @@ index cc7f71a4404..b2bab2e1f44 100644
    static size_t max_heap_for_compressed_oops();
  
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index a6c33744760..b8dba232fc1 100644
+index 194242e4c4b..9c007fc2d82 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
 @@ -32,6 +32,12 @@
@@ -527,7 +527,7 @@ index a6c33744760..b8dba232fc1 100644
  // The larger HeapWordSize for 64bit requires larger heaps
  // for the same application running in 64bit.  See bug 4967770.
  // The minimum alignment to a heap word size is done.  Other
-@@ -2678,8 +2684,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
+@@ -2684,8 +2690,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
                                                                              \
    product(bool, AllowEnhancedClassRedefinition, true,                       \
               "Allow enhanced class redefinition beyond swapping method "    \

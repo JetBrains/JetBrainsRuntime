@@ -1,14 +1,14 @@
-From f0b7253294f14a64a5a4d0ef825e5377da03efa5 Mon Sep 17 00:00:00 2001
+From 71d8d5b1a0b01c5de7025c12b0440ff25830c9b4 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Thu, 22 Oct 2020 20:15:20 +0200
-Subject: [PATCH 15/28] Initialize method's _new_version/_old_version to NULL
+Subject: [PATCH 15/29] Initialize method's _new_version/_old_version to NULL
 
 ---
  src/hotspot/share/oops/method.cpp | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
-index 031f255e632..a9556ecf0c4 100644
+index 165a2e4de36..17c08a9dc18 100644
 --- a/src/hotspot/share/oops/method.cpp
 +++ b/src/hotspot/share/oops/method.cpp
 @@ -83,7 +83,8 @@ Method* Method::allocate(ClassLoaderData* loader_data,

@@ -1,14 +1,14 @@
-From 5e7a1218684556596677f39ae01b2ec13ff68a19 Mon Sep 17 00:00:00 2001
+From c031833051640f012bbc5485b2398064985abdb1 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Mon, 19 Oct 2020 20:00:04 +0200
-Subject: [PATCH 13/28] Set HOTSPOT_VM_DISTRO=Dynamic Code Evolution
+Subject: [PATCH 13/29] Set HOTSPOT_VM_DISTRO=Dynamic Code Evolution
 
 ---
  make/autoconf/version-numbers | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/make/autoconf/version-numbers b/make/autoconf/version-numbers
-index b9440902d34..c487ac6f047 100644
+index 12a95c59483..662ad155896 100644
 --- a/make/autoconf/version-numbers
 +++ b/make/autoconf/version-numbers
 @@ -44,7 +44,7 @@ PRODUCT_NAME=OpenJDK

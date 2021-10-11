@@ -1,7 +1,7 @@
-From 93cea8d61ef395a1ef9e308b0d3a8f9409b108d0 Mon Sep 17 00:00:00 2001
+From c67fb6c5d045b46248274aa715c5305afc7497e6 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 12 Feb 2021 11:27:39 +0100
-Subject: [PATCH 23/28] Code cleanup
+Subject: [PATCH 23/29] Code cleanup
 
 - Rename confusing method name old_if_redefined to old_if_redefining
 - Remove unused is_redefining_gc_run
@@ -12,7 +12,7 @@ Subject: [PATCH 23/28] Code cleanup
  3 files changed, 4 insertions(+), 9 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/dictionary.cpp b/src/hotspot/share/classfile/dictionary.cpp
-index dda5188c370..4e361d439f4 100644
+index a97b48fe5bb..781a929e7de 100644
 --- a/src/hotspot/share/classfile/dictionary.cpp
 +++ b/src/hotspot/share/classfile/dictionary.cpp
 @@ -381,7 +381,7 @@ InstanceKlass* Dictionary::find(unsigned int hash, Symbol* name,

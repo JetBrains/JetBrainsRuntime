@@ -1,7 +1,7 @@
-From 07373a8bd65d7c2663024709f0d5b7e0e41aba40 Mon Sep 17 00:00:00 2001
+From fb4331e60ec1ce1caaebbac1af64f2ddc2eab713 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:09:39 +0100
-Subject: [PATCH 01/28] Apply basic dcevm11 patch
+Subject: [PATCH 01/29] Apply basic dcevm11 patch
 
 ---
  src/hotspot/share/ci/ciObjectFactory.cpp      |   25 +
@@ -126,7 +126,7 @@ index 1063c9853e1..3e9d48c4cdc 100644
  
  #endif // SHARE_VM_CI_CIOBJECTFACTORY_HPP
 diff --git a/src/hotspot/share/classfile/classFileParser.cpp b/src/hotspot/share/classfile/classFileParser.cpp
-index 6d65cca2101..e2b8c5793d0 100644
+index 154dab55e43..0c6c3a86965 100644
 --- a/src/hotspot/share/classfile/classFileParser.cpp
 +++ b/src/hotspot/share/classfile/classFileParser.cpp
 @@ -954,6 +954,8 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
@@ -236,10 +236,10 @@ index 3bdfd34e39f..d792ab4bb3f 100644
    ReferenceType reference_type() const { return _rt; }
    AccessFlags access_flags() const { return _access_flags; }
 diff --git a/src/hotspot/share/classfile/classLoader.cpp b/src/hotspot/share/classfile/classLoader.cpp
-index 78eb096458a..368c59e2cbf 100644
+index e10d32ea7b7..079558bb244 100644
 --- a/src/hotspot/share/classfile/classLoader.cpp
 +++ b/src/hotspot/share/classfile/classLoader.cpp
-@@ -1505,6 +1505,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
+@@ -1502,6 +1502,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
                                                             protection_domain,
                                                             NULL, // host_klass
                                                             NULL, // cp_patches
@@ -248,10 +248,10 @@ index 78eb096458a..368c59e2cbf 100644
    if (HAS_PENDING_EXCEPTION) {
      if (DumpSharedSpaces) {
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index c58026ae192..25103fff2c0 100644
+index 5d9ac0009aa..e2754d5f5be 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
-@@ -1242,6 +1242,12 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*)) {
+@@ -1245,6 +1245,12 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*)) {
    }
  }
  
@@ -264,7 +264,7 @@ index c58026ae192..25103fff2c0 100644
  // Only walks the classes defined in this class loader.
  void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*, TRAPS), TRAPS) {
    Thread* thread = Thread::current();
-@@ -1251,6 +1257,12 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*, TRAPS),
+@@ -1254,6 +1260,12 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*, TRAPS),
    }
  }
  
@@ -277,7 +277,7 @@ index c58026ae192..25103fff2c0 100644
  // Walks all entries in the dictionary including entries initiated by this class loader.
  void ClassLoaderDataGraph::dictionary_all_entries_do(void f(InstanceKlass*, ClassLoaderData*)) {
    Thread* thread = Thread::current();
-@@ -1372,11 +1384,15 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
+@@ -1375,11 +1387,15 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
    // Mark metadata seen on the stack only so we can delete unneeded entries.
    // Only walk all metadata, including the expensive code cache walk, for Full GC
    // and only if class redefinition and if there's previous versions of
@@ -294,7 +294,7 @@ index c58026ae192..25103fff2c0 100644
  
    // Save previous _unloading pointer for CMS which may add to unloading list before
    // purging and we don't want to rewalk the previously unloaded class loader data.
-@@ -1386,10 +1402,12 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
+@@ -1389,10 +1405,12 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
    while (data != NULL) {
      if (data->is_alive()) {
        // clean metaspace
@@ -336,7 +336,7 @@ index f5157e07c76..e9e52f00e8a 100644
  
    if (HAS_PENDING_EXCEPTION) {
 diff --git a/src/hotspot/share/classfile/dictionary.cpp b/src/hotspot/share/classfile/dictionary.cpp
-index 3ac1ca69ae5..118730f1b83 100644
+index b949bac8de6..5bd048d8627 100644
 --- a/src/hotspot/share/classfile/dictionary.cpp
 +++ b/src/hotspot/share/classfile/dictionary.cpp
 @@ -245,6 +245,19 @@ void Dictionary::classes_do(void f(InstanceKlass*)) {
@@ -449,7 +449,7 @@ index d26f1f11fb4..fd4b134d7a7 100644
  
  // An entry in the class loader data dictionaries, this describes a class as
 diff --git a/src/hotspot/share/classfile/javaClasses.cpp b/src/hotspot/share/classfile/javaClasses.cpp
-index e4f1b934afc..ef4011c1292 100644
+index 559d90339be..b86f8320d70 100644
 --- a/src/hotspot/share/classfile/javaClasses.cpp
 +++ b/src/hotspot/share/classfile/javaClasses.cpp
 @@ -2428,6 +2428,8 @@ void java_lang_Throwable::fill_in_stack_trace(Handle throwable, const methodHand
@@ -537,7 +537,7 @@ index e4f1b934afc..ef4011c1292 100644
    // lookup ResolvedMethod oop in the table, or create a new one and intern it
    oop resolved_method = ResolvedMethodTable::find_method(m());
 diff --git a/src/hotspot/share/classfile/javaClasses.hpp b/src/hotspot/share/classfile/javaClasses.hpp
-index 910bb084b63..89a46264553 100644
+index 97df4a0bdea..2e121e19f19 100644
 --- a/src/hotspot/share/classfile/javaClasses.hpp
 +++ b/src/hotspot/share/classfile/javaClasses.hpp
 @@ -67,6 +67,8 @@
@@ -732,7 +732,7 @@ index 8a7a1248e62..611e18aaf85 100644
    bool add_entry(Symbol* name, InstanceKlass* klass1, Handle loader1,
                                      InstanceKlass* klass2, Handle loader2);
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index bfd67334f82..5a745b6fca6 100644
+index 4509025cf70..1ab9b99b435 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
 @@ -201,6 +201,7 @@ Klass* SystemDictionary::resolve_or_fail(Symbol* class_name, Handle class_loader
@@ -824,7 +824,7 @@ index bfd67334f82..5a745b6fca6 100644
    } );
  
    return k;
-@@ -1553,11 +1566,12 @@ static void post_class_define_event(InstanceKlass* k, const ClassLoaderData* def
+@@ -1555,11 +1568,12 @@ static void post_class_define_event(InstanceKlass* k, const ClassLoaderData* def
    }
  }
  
@@ -838,7 +838,7 @@ index bfd67334f82..5a745b6fca6 100644
  
   // for bootstrap and other parallel classloaders don't acquire lock,
   // use placeholder token
-@@ -1582,7 +1596,11 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
+@@ -1584,7 +1598,11 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
    Symbol*  name_h = k->name();
    Dictionary* dictionary = loader_data->dictionary();
    unsigned int d_hash = dictionary->compute_hash(name_h);
@@ -851,7 +851,7 @@ index bfd67334f82..5a745b6fca6 100644
  
    // Register class just loaded with class loader (placed in Vector)
    // Note we do this before updating the dictionary, as this can
-@@ -1616,7 +1634,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
+@@ -1618,7 +1636,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
    k->eager_initialize(THREAD);
  
    // notify jvmti
@@ -860,7 +860,7 @@ index bfd67334f82..5a745b6fca6 100644
        assert(THREAD->is_Java_thread(), "thread->is_Java_thread()");
        JvmtiExport::post_class_load((JavaThread *) THREAD, k);
  
-@@ -1694,7 +1712,7 @@ InstanceKlass* SystemDictionary::find_or_define_instance_class(Symbol* class_nam
+@@ -1696,7 +1714,7 @@ InstanceKlass* SystemDictionary::find_or_define_instance_class(Symbol* class_nam
      }
    }
  
@@ -869,7 +869,7 @@ index bfd67334f82..5a745b6fca6 100644
  
    Handle linkage_exception = Handle(); // null handle
  
-@@ -1817,6 +1835,18 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
+@@ -1819,6 +1837,18 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
    CodeCache::flush_dependents_on(k);
  }
  
@@ -888,7 +888,7 @@ index bfd67334f82..5a745b6fca6 100644
  // ----------------------------------------------------------------------------
  // GC support
  
-@@ -2113,7 +2143,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
+@@ -2115,7 +2145,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
        // also hold array classes.
  
        assert(check->is_instance_klass(), "noninstance in systemdictionary");
@@ -898,7 +898,7 @@ index bfd67334f82..5a745b6fca6 100644
          ss.print("loader %s", loader_data->loader_name_and_id());
          ss.print(" attempted duplicate %s definition for %s. (%s)",
 diff --git a/src/hotspot/share/classfile/systemDictionary.hpp b/src/hotspot/share/classfile/systemDictionary.hpp
-index 649b321a6a4..06f6c869d63 100644
+index a14728df757..b956c6a7519 100644
 --- a/src/hotspot/share/classfile/systemDictionary.hpp
 +++ b/src/hotspot/share/classfile/systemDictionary.hpp
 @@ -161,6 +161,8 @@ class OopStorage;
@@ -910,7 +910,7 @@ index 649b321a6a4..06f6c869d63 100644
    do_klass(MethodHandle_klass,                          java_lang_invoke_MethodHandle,             Pre                 ) \
    do_klass(VarHandle_klass,                             java_lang_invoke_VarHandle,                Pre                 ) \
    do_klass(MemberName_klass,                            java_lang_invoke_MemberName,               Pre                 ) \
-@@ -318,6 +320,7 @@ public:
+@@ -321,6 +323,7 @@ public:
                                              Handle class_loader,
                                              Handle protection_domain,
                                              ClassFileStream* st,
@@ -918,7 +918,7 @@ index 649b321a6a4..06f6c869d63 100644
                                              TRAPS);
  
    // Lookup an already loaded class. If not found NULL is returned.
-@@ -462,6 +465,10 @@ public:
+@@ -465,6 +468,10 @@ public:
    static bool is_well_known_klass(Symbol* class_name);
  #endif
  
@@ -929,7 +929,7 @@ index 649b321a6a4..06f6c869d63 100644
  protected:
    // Returns the class loader data to be used when looking up/updating the
    // system dictionary.
-@@ -655,7 +662,7 @@ protected:
+@@ -658,7 +665,7 @@ protected:
    // after waiting, but before reentering SystemDictionary_lock
    // to preserve lock order semantics.
    static void double_lock_wait(Handle lockObject, TRAPS);
@@ -977,10 +977,10 @@ index 05239c57866..c1357bde0ed 100644
    methodHandle        _method; // current method being verified
    VerificationType    _this_type; // the verification type of the current class
 diff --git a/src/hotspot/share/classfile/vmSymbols.hpp b/src/hotspot/share/classfile/vmSymbols.hpp
-index 8955dd0b366..26ff6ee9853 100644
+index cef3f530cbc..17f7e720c95 100644
 --- a/src/hotspot/share/classfile/vmSymbols.hpp
 +++ b/src/hotspot/share/classfile/vmSymbols.hpp
-@@ -286,6 +286,8 @@
+@@ -287,6 +287,8 @@
    template(java_lang_invoke_CallSite,                 "java/lang/invoke/CallSite")                \
    template(java_lang_invoke_ConstantCallSite,         "java/lang/invoke/ConstantCallSite")        \
    template(java_lang_invoke_DirectMethodHandle,       "java/lang/invoke/DirectMethodHandle")      \
@@ -989,7 +989,7 @@ index 8955dd0b366..26ff6ee9853 100644
    template(java_lang_invoke_MutableCallSite,          "java/lang/invoke/MutableCallSite")         \
    template(java_lang_invoke_VolatileCallSite,         "java/lang/invoke/VolatileCallSite")        \
    template(java_lang_invoke_MethodHandle,             "java/lang/invoke/MethodHandle")            \
-@@ -446,6 +448,12 @@
+@@ -447,6 +449,12 @@
    template(module_entry_name,                         "module_entry")                             \
    template(resolved_references_name,                  "<resolved_references>")                    \
    template(init_lock_name,                            "<init_lock>")                              \
@@ -2186,10 +2186,10 @@ index b77a19deb38..5573b10f021 100644
    // Compiler support
    static ByteSize super_offset()                 { return in_ByteSize(offset_of(Klass, _super)); }
 diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
-index 916772c0b10..ed6f769bf1b 100644
+index 576da96ed32..e47dd223f92 100644
 --- a/src/hotspot/share/oops/method.cpp
 +++ b/src/hotspot/share/oops/method.cpp
-@@ -1402,6 +1402,8 @@ methodHandle Method::clone_with_new_data(const methodHandle& m, u_char* new_code
+@@ -1447,6 +1447,8 @@ methodHandle Method::clone_with_new_data(const methodHandle& m, u_char* new_code
  
    // Reset correct method/const method, method size, and parameter info
    newm->set_constMethod(newcm);
@@ -2198,7 +2198,7 @@ index 916772c0b10..ed6f769bf1b 100644
    newm->constMethod()->set_code_size(new_code_length);
    newm->constMethod()->set_constMethod_size(new_const_method_size);
    assert(newm->code_size() == new_code_length, "check");
-@@ -2096,6 +2098,10 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
+@@ -2141,6 +2143,10 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
  
  // Add a method id to the jmethod_ids
  jmethodID Method::make_jmethod_id(ClassLoaderData* loader_data, Method* m) {
@@ -2210,7 +2210,7 @@ index 916772c0b10..ed6f769bf1b 100644
  
    if (!SafepointSynchronize::is_at_safepoint()) {
 diff --git a/src/hotspot/share/oops/method.hpp b/src/hotspot/share/oops/method.hpp
-index 18c706187df..4533476ff8f 100644
+index da8468dead4..4ac3e6e80de 100644
 --- a/src/hotspot/share/oops/method.hpp
 +++ b/src/hotspot/share/oops/method.hpp
 @@ -78,6 +78,9 @@ class Method : public Metadata {
@@ -2248,7 +2248,7 @@ index 18c706187df..4533476ff8f 100644
    Symbol* signature() const                      { return constants()->symbol_at(signature_index()); }
    int signature_index() const                    { return constMethod()->signature_index();         }
 diff --git a/src/hotspot/share/prims/jni.cpp b/src/hotspot/share/prims/jni.cpp
-index 21e7f652652..e9cc3de9652 100644
+index f5db74f4225..7f88297aa10 100644
 --- a/src/hotspot/share/prims/jni.cpp
 +++ b/src/hotspot/share/prims/jni.cpp
 @@ -353,6 +353,7 @@ JNI_ENTRY(jclass, jni_DefineClass(JNIEnv *env, const char *name, jobject loaderR
@@ -2260,7 +2260,7 @@ index 21e7f652652..e9cc3de9652 100644
  
    if (log_is_enabled(Debug, class, resolve) && k != NULL) {
 diff --git a/src/hotspot/share/prims/jvm.cpp b/src/hotspot/share/prims/jvm.cpp
-index 0d686d85fc7..70b525533cd 100644
+index 147beffc814..129b71bf0f5 100644
 --- a/src/hotspot/share/prims/jvm.cpp
 +++ b/src/hotspot/share/prims/jvm.cpp
 @@ -936,6 +936,7 @@ static jclass jvm_define_class_common(JNIEnv *env, const char *name,
@@ -2273,7 +2273,7 @@ index 0d686d85fc7..70b525533cd 100644
    if (log_is_enabled(Debug, class, resolve) && k != NULL) {
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 new file mode 100644
-index 00000000000..83c0952de37
+index 00000000000..80c31135487
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -0,0 +1,2255 @@
@@ -4534,7 +4534,7 @@ index 00000000000..83c0952de37
 +}
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 new file mode 100644
-index 00000000000..b712d69a193
+index 00000000000..3f95cf42645
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -0,0 +1,202 @@
@@ -4806,10 +4806,10 @@ index f54c9b713be..54617f05b5a 100644
    VMThread::execute(&op);
    return (op.check_error());
 diff --git a/src/hotspot/share/prims/jvmtiExport.cpp b/src/hotspot/share/prims/jvmtiExport.cpp
-index 6600848e2d3..9337b6ab585 100644
+index a63b0f67423..9e70e3bc3f8 100644
 --- a/src/hotspot/share/prims/jvmtiExport.cpp
 +++ b/src/hotspot/share/prims/jvmtiExport.cpp
-@@ -2780,7 +2780,7 @@ JvmtiDynamicCodeEventCollector::JvmtiDynamicCodeEventCollector() : _code_blobs(N
+@@ -2783,7 +2783,7 @@ JvmtiDynamicCodeEventCollector::JvmtiDynamicCodeEventCollector() : _code_blobs(N
  // iterate over any code blob descriptors collected and post a
  // DYNAMIC_CODE_GENERATED event to the profiler.
  JvmtiDynamicCodeEventCollector::~JvmtiDynamicCodeEventCollector() {
@@ -4866,10 +4866,10 @@ index a0a6a6cbd18..39953a71244 100644
    for (InstanceKlass* pv_node = ik->previous_versions();
         pv_node != NULL;
 diff --git a/src/hotspot/share/prims/resolvedMethodTable.cpp b/src/hotspot/share/prims/resolvedMethodTable.cpp
-index c071e0641d4..a9057893368 100644
+index 5c1ed782b8f..5bca664c7c0 100644
 --- a/src/hotspot/share/prims/resolvedMethodTable.cpp
 +++ b/src/hotspot/share/prims/resolvedMethodTable.cpp
-@@ -201,6 +201,8 @@ void ResolvedMethodTable::print() {
+@@ -202,6 +202,8 @@ void ResolvedMethodTable::print() {
  void ResolvedMethodTable::adjust_method_entries(bool * trace_name_printed) {
    assert(SafepointSynchronize::is_at_safepoint(), "only called at safepoint");
    // For each entry in RMT, change to new method
@@ -4878,7 +4878,7 @@ index c071e0641d4..a9057893368 100644
    for (int i = 0; i < _the_table->table_size(); ++i) {
      for (ResolvedMethodEntry* entry = _the_table->bucket(i);
           entry != NULL;
-@@ -215,18 +217,30 @@ void ResolvedMethodTable::adjust_method_entries(bool * trace_name_printed) {
+@@ -216,18 +218,30 @@ void ResolvedMethodTable::adjust_method_entries(bool * trace_name_printed) {
  
        if (old_method->is_old()) {
  
@@ -4918,7 +4918,7 @@ index c071e0641d4..a9057893368 100644
  
          ResourceMark rm;
          if (!(*trace_name_printed)) {
-@@ -235,9 +249,14 @@ void ResolvedMethodTable::adjust_method_entries(bool * trace_name_printed) {
+@@ -236,9 +250,14 @@ void ResolvedMethodTable::adjust_method_entries(bool * trace_name_printed) {
          }
          log_debug(redefine, class, update, constantpool)
            ("ResolvedMethod method update: %s(%s)",
@@ -4997,10 +4997,10 @@ index bd439aab073..cc7f71a4404 100644
    static size_t max_heap_for_compressed_oops();
  
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index 4a53ecb37a8..a6c33744760 100644
+index 5c389505417..194242e4c4b 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
-@@ -2674,7 +2674,11 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
+@@ -2680,7 +2680,11 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
            "Start flight recording with options"))                           \
                                                                              \
    experimental(bool, UseFastUnorderedTimeStamps, false,                     \
@@ -5043,7 +5043,7 @@ index 563ffdbd446..55f06eadcc2 100644
    _result   = result;
  
 diff --git a/src/hotspot/share/runtime/mutexLocker.cpp b/src/hotspot/share/runtime/mutexLocker.cpp
-index d504ef00f90..982ba1b69d5 100644
+index 42f1fa9626f..16e91c85fd1 100644
 --- a/src/hotspot/share/runtime/mutexLocker.cpp
 +++ b/src/hotspot/share/runtime/mutexLocker.cpp
 @@ -5,7 +5,7 @@
@@ -5064,7 +5064,7 @@ index d504ef00f90..982ba1b69d5 100644
  Monitor* GCTaskManager_lock           = NULL;
  
  Mutex*   Management_lock              = NULL;
-@@ -285,6 +287,7 @@ void mutex_init() {
+@@ -291,6 +293,7 @@ void mutex_init() {
    def(JNIGlobalActive_lock         , PaddedMutex  , nonleaf-1,   true,  Monitor::_safepoint_check_never);
    def(JNIWeakAlloc_lock            , PaddedMutex  , nonleaf,     true,  Monitor::_safepoint_check_never);
    def(JNIWeakActive_lock           , PaddedMutex  , nonleaf-1,   true,  Monitor::_safepoint_check_never);
@@ -5073,10 +5073,10 @@ index d504ef00f90..982ba1b69d5 100644
    def(AdapterHandlerLibrary_lock   , PaddedMutex  , nonleaf,     true,  Monitor::_safepoint_check_always);
  
 diff --git a/src/hotspot/share/runtime/mutexLocker.hpp b/src/hotspot/share/runtime/mutexLocker.hpp
-index 12366c7ead1..70aeb1bd0c1 100644
+index 0d263ca55ba..b41abcb82ae 100644
 --- a/src/hotspot/share/runtime/mutexLocker.hpp
 +++ b/src/hotspot/share/runtime/mutexLocker.hpp
-@@ -123,6 +123,8 @@ extern Mutex*   PerfDataManager_lock;            // a long on access to PerfData
+@@ -124,6 +124,8 @@ extern Mutex*   PerfDataManager_lock;            // a long on access to PerfData
  extern Mutex*   ParkerFreeList_lock;
  extern Mutex*   OopMapCacheAlloc_lock;           // protects allocation of oop_map caches
  

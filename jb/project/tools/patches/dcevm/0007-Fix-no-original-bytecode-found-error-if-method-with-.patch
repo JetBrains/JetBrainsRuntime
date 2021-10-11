@@ -1,7 +1,7 @@
-From 83c2efaeb6ea9ee29c6d9eb779991db787c036ac Mon Sep 17 00:00:00 2001
+From e30520d2f2b424ad64f989120a331b0035b48ef7 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 23 May 2020 10:02:15 +0200
-Subject: [PATCH 07/28] Fix "no original bytecode found" error if method with
+Subject: [PATCH 07/29] Fix "no original bytecode found" error if method with
  bkp is missing
 
 Sometimes IDE can deploy class with erroneous method, such method has
@@ -41,10 +41,10 @@ index c25e13d83e8..2a66419908c 100644
  
  IRT_ENTRY(void, InterpreterRuntime::set_original_bytecode_at(JavaThread* thread, Method* method, address bcp, Bytecodes::Code new_code))
 diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
-index ed6f769bf1b..031f255e632 100644
+index e47dd223f92..165a2e4de36 100644
 --- a/src/hotspot/share/oops/method.cpp
 +++ b/src/hotspot/share/oops/method.cpp
-@@ -1744,14 +1744,14 @@ bool CompressedLineNumberReadStream::read_pair() {
+@@ -1789,14 +1789,14 @@ bool CompressedLineNumberReadStream::read_pair() {
  
  #if INCLUDE_JVMTI
  
@@ -61,7 +61,7 @@ index ed6f769bf1b..031f255e632 100644
      ResourceMark rm;
      fatal("no original bytecode found in %s at bci %d", name_and_sig_as_C_string(), bci);
    }
-@@ -1897,7 +1897,7 @@ BreakpointInfo::BreakpointInfo(Method* m, int bci) {
+@@ -1942,7 +1942,7 @@ BreakpointInfo::BreakpointInfo(Method* m, int bci) {
    _signature_index = m->signature_index();
    _orig_bytecode = (Bytecodes::Code) *m->bcp_from(_bci);
    if (_orig_bytecode == Bytecodes::_breakpoint)
@@ -70,7 +70,7 @@ index ed6f769bf1b..031f255e632 100644
    _next = NULL;
  }
  
-@@ -1906,7 +1906,7 @@ void BreakpointInfo::set(Method* method) {
+@@ -1951,7 +1951,7 @@ void BreakpointInfo::set(Method* method) {
    {
      Bytecodes::Code code = (Bytecodes::Code) *method->bcp_from(_bci);
      if (code == Bytecodes::_breakpoint)
@@ -80,7 +80,7 @@ index ed6f769bf1b..031f255e632 100644
    }
  #endif
 diff --git a/src/hotspot/share/oops/method.hpp b/src/hotspot/share/oops/method.hpp
-index 4533476ff8f..193e1845b23 100644
+index 4ac3e6e80de..9ff4f0e8036 100644
 --- a/src/hotspot/share/oops/method.hpp
 +++ b/src/hotspot/share/oops/method.hpp
 @@ -230,7 +230,7 @@ class Method : public Metadata {
@@ -102,7 +102,7 @@ index 4533476ff8f..193e1845b23 100644
    void set_breakpoint(int bci);
    void clear_breakpoint(int bci);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index b94caa39562..1fbba406087 100644
+index 0b239b2ff6d..aba99bb60fa 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1356,14 +1356,16 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {

@@ -1,7 +1,7 @@
-From fde9f15ed4fdb5139b6b81238d0a667327b552bb Mon Sep 17 00:00:00 2001
+From 9fbfc0fb2e18306c22214eeb89a520c9f07e1417 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 23 Oct 2020 11:07:40 +0200
-Subject: [PATCH 17/28] Fix metadataOnStack bug
+Subject: [PATCH 17/29] Fix metadataOnStack bug
 
 ---
  .../share/classfile/classLoaderData.cpp       |  7 +-
@@ -11,10 +11,10 @@ Subject: [PATCH 17/28] Fix metadataOnStack bug
  4 files changed, 41 insertions(+), 38 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index 1bc67adf5a7..bba5ce0511f 100644
+index d5ee3c0338c..0376777649b 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
-@@ -1398,13 +1398,10 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
+@@ -1401,13 +1401,10 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
    // Klassesoto delete.
  
    // FIXME: dcevm - block asserts in MetadataOnStackMark

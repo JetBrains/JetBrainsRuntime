@@ -1,7 +1,7 @@
-From 88e0325768b074607f5f9edfbb7f8e4a76159942 Mon Sep 17 00:00:00 2001
+From 41ac2ebf621ec03579aea919d25a6e08070c09bd Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 20 Mar 2021 20:51:08 +0100
-Subject: [PATCH 28/28] JBR-3459: Fix race condition in
+Subject: [PATCH 28/29] JBR-3459: Fix race condition in
  ClassLoaderDataGraph::classes_do
 
 InstanceKlass in ClassLoaderData can be uninitialized when
@@ -15,10 +15,10 @@ persisting with anonymous classes.
  3 files changed, 25 insertions(+), 2 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index 4e06b09e7d5..f319cca3b2b 100644
+index a70d92c27fc..f6764ff37a0 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
-@@ -1166,6 +1166,16 @@ void ClassLoaderDataGraph::classes_do(KlassClosure* klass_closure) {
+@@ -1169,6 +1169,16 @@ void ClassLoaderDataGraph::classes_do(KlassClosure* klass_closure) {
    }
  }
  
@@ -51,7 +51,7 @@ index 16711dca237..b10fafa01e5 100644
    static void methods_do(void f(Method*));
    static void modules_do(void f(ModuleEntry*));
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 10c375d601c..5de5f78aea0 100644
+index 0d1c68f5cd0..745109902af 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -2130,8 +2130,17 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {

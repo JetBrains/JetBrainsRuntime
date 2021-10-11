@@ -1,7 +1,7 @@
-From 41093b9513718c3122f3ff36da7fc2eeca224a10 Mon Sep 17 00:00:00 2001
+From add6398d61bfb68476188e6e0a54405bba906187 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:18:22 +0100
-Subject: [PATCH 02/28] dcevm11 fixes
+Subject: [PATCH 02/29] dcevm11 fixes
 
 1. We need to set classRedefinitionCount on new class, not old class.
 
@@ -82,7 +82,7 @@ dmh
  19 files changed, 324 insertions(+), 415 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/classFileParser.cpp b/src/hotspot/share/classfile/classFileParser.cpp
-index e2b8c5793d0..5e1c740a3d2 100644
+index 0c6c3a86965..b03272da179 100644
 --- a/src/hotspot/share/classfile/classFileParser.cpp
 +++ b/src/hotspot/share/classfile/classFileParser.cpp
 @@ -954,6 +954,7 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
@@ -124,10 +124,10 @@ index d792ab4bb3f..de48092bde8 100644
  
   public:
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index 25103fff2c0..ab2615da0ed 100644
+index e2754d5f5be..1c0d5b0a8f2 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
-@@ -1242,6 +1242,7 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*)) {
+@@ -1245,6 +1245,7 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*)) {
    }
  }
  
@@ -135,7 +135,7 @@ index 25103fff2c0..ab2615da0ed 100644
  void ClassLoaderDataGraph::dictionary_classes_do(KlassClosure* klass_closure) {
    FOR_ALL_DICTIONARY(cld) {
      cld->dictionary()->classes_do(klass_closure);
-@@ -1257,6 +1258,7 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*, TRAPS),
+@@ -1260,6 +1261,7 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*, TRAPS),
    }
  }
  
@@ -143,7 +143,7 @@ index 25103fff2c0..ab2615da0ed 100644
  void ClassLoaderDataGraph::rollback_redefinition() {
    FOR_ALL_DICTIONARY(cld) {
      cld->dictionary()->rollback_redefinition();
-@@ -1387,12 +1389,13 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
+@@ -1390,12 +1392,13 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
    // Klassesoto delete.
  
    // FIXME: dcevm - block asserts in MetadataOnStackMark
@@ -163,7 +163,7 @@ index 25103fff2c0..ab2615da0ed 100644
  
    // Save previous _unloading pointer for CMS which may add to unloading list before
    // purging and we don't want to rewalk the previously unloaded class loader data.
-@@ -1402,12 +1405,12 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
+@@ -1405,12 +1408,12 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
    while (data != NULL) {
      if (data->is_alive()) {
        // clean metaspace
@@ -182,7 +182,7 @@ index 25103fff2c0..ab2615da0ed 100644
        data = data->next();
        loaders_processed++;
 diff --git a/src/hotspot/share/classfile/dictionary.cpp b/src/hotspot/share/classfile/dictionary.cpp
-index 118730f1b83..dda5188c370 100644
+index 5bd048d8627..a97b48fe5bb 100644
 --- a/src/hotspot/share/classfile/dictionary.cpp
 +++ b/src/hotspot/share/classfile/dictionary.cpp
 @@ -245,6 +245,8 @@ void Dictionary::classes_do(void f(InstanceKlass*)) {
@@ -244,7 +244,7 @@ index a26b9d1cb55..3d5a59a04ff 100644
    for (int index = 0; index < table_size(); index++) {
      LoaderConstraintEntry** p = bucket_addr(index);
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index 5a745b6fca6..19bc8d9899a 100644
+index 1ab9b99b435..52b6ed22b5d 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
 @@ -876,7 +876,8 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
@@ -266,7 +266,7 @@ index 5a745b6fca6..19bc8d9899a 100644
    if (!DumpSharedSpaces) {
      k = SystemDictionaryShared::lookup_from_stream(class_name,
                                                     class_loader,
-@@ -1835,7 +1836,7 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
+@@ -1837,7 +1838,7 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
    CodeCache::flush_dependents_on(k);
  }
  
@@ -275,7 +275,7 @@ index 5a745b6fca6..19bc8d9899a 100644
  void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
      assert(k != NULL, "just checking");
  
-@@ -1843,6 +1844,7 @@ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
+@@ -1845,6 +1846,7 @@ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
    k->remove_from_sibling_list();
  }
  
@@ -463,7 +463,7 @@ index 2cc98b636f1..e8107a39813 100644
    // link this class into the implementors list of every interface it implements
    void process_interfaces(Thread *thread);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 83c0952de37..92ce6c27b8a 100644
+index 80c31135487..43d761cdbb2 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1,4 +1,4 @@
@@ -1394,7 +1394,7 @@ index 83c0952de37..92ce6c27b8a 100644
    ResourceMark mark(THREAD);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index b712d69a193..60b62c3170a 100644
+index 3f95cf42645..a48e07e3a6a 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -16,6 +16,8 @@
@@ -1528,10 +1528,10 @@ index 39953a71244..b59d3046b88 100644
  
    // search previous versions if they exist
 diff --git a/src/hotspot/share/prims/resolvedMethodTable.cpp b/src/hotspot/share/prims/resolvedMethodTable.cpp
-index a9057893368..af2ec48c2e1 100644
+index 5bca664c7c0..4498bdcd77e 100644
 --- a/src/hotspot/share/prims/resolvedMethodTable.cpp
 +++ b/src/hotspot/share/prims/resolvedMethodTable.cpp
-@@ -197,8 +197,52 @@ void ResolvedMethodTable::print() {
+@@ -198,8 +198,52 @@ void ResolvedMethodTable::print() {
  #endif // PRODUCT
  
  #if INCLUDE_JVMTI
