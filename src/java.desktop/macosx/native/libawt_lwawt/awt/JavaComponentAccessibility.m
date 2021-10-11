@@ -16,7 +16,6 @@
 #import "JavaTableAccessibility.h"
 #import "JavaListRowAccessibility.h"
 #import "JavaTableRowAccessibility.h"
-#import "JavaCellAccessibility.h"
 #import "JavaOutlineAccessibility.h"
 #import "JavaOutlineRowAccessibility.h"
 #import "JavaStaticTextAccessibility.h"
@@ -61,6 +60,8 @@ static jclass sjc_CAccessible = NULL;
 
 
 static jobject sAccessibilityClass = NULL;
+
+static NSDictionary* sRole2ClassMap = NULL;
 
 NSMutableArray *sJavaComponentAccessibilityPtrs = nil; // a list of pointers to allocated JavaComponentAccessibility objects
 
@@ -211,6 +212,11 @@ static void RaiseMustOverrideException(NSString *method)
     return (*env)->IsSameObject(env, fAccessible, accessible);
 }
 
+static NSString* parentRole(NSAccessibilityRole nsRole)
+{
+    return [NSString stringWithFormat:@"parent_%@", nsRole];
+}
+
 + (void)initialize
 {
     if (sRoles == nil) {
@@ -219,6 +225,21 @@ static void RaiseMustOverrideException(NSString *method)
     if (sActions == nil) {
         initializeActions();
     }
+
+    sRole2ClassMap = @{
+        parentRole(NSAccessibilityListRole):    [JavaListRowAccessibility class],
+        parentRole(NSAccessibilityOutlineRole): [JavaOutlineRowAccessibility class],
+        NSAccessibilityTabGroupRole:            [JavaTabGroupAccessibility class],
+        NSAccessibilityScrollAreaRole:          [JavaScrollAreaAccessibility class],
+        NSAccessibilityStaticTextRole:          [JavaStaticTextAccessibility class],
+        NSAccessibilityTextAreaRole:            [JavaNavigableTextAccessibility class],
+        NSAccessibilityTextFieldRole:           [JavaNavigableTextAccessibility class],
+        NSAccessibilityListRole:                [JavaListAccessibility class],
+        NSAccessibilityTableRole:               [JavaTableAccessibility class],
+        NSAccessibilityOutlineRole:             [JavaOutlineAccessibility class],
+        NSAccessibilityComboBoxRole:            [JavaComboBoxAccessibility class]
+    };
+    [sRole2ClassMap retain];
 
     if (sAccessibilityClass == NULL) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
@@ -380,55 +401,37 @@ static void RaiseMustOverrideException(NSString *method)
 
 + (JavaComponentAccessibility *) createWithParent:(JavaComponentAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view
 {
-    return [JavaComponentAccessibility createWithParent:parent accessible:jaccessible role:javaRole index:index withEnv:env withView:view isWrapped:NO];
+    Class classType = nil;
+    NSString *nsRole = NULL;
+    if (parent) {
+        nsRole = [sRoles objectForKey:[parent javaRole]];
+        classType = [sRole2ClassMap objectForKey:parentRole(nsRole)];
+    }
+    if (!classType) {
+        nsRole = [sRoles objectForKey:javaRole];
+        classType = [sRole2ClassMap objectForKey:nsRole];
+    }
+    if (!classType) {
+        classType = [JavaComponentAccessibility class];
+    }
+    return [JavaComponentAccessibility createWithParent:parent withClass:classType accessible:jaccessible role:javaRole index:index withEnv:env withView:view];
 }
 
-+ (JavaComponentAccessibility *) createWithParent:(JavaComponentAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view isWrapped:(BOOL)wrapped
++ (JavaComponentAccessibility *) createWithParent:(JavaComponentAccessibility *)parent withClass:(Class)classType accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view
 {
     GET_CACCESSIBLE_CLASS_RETURN(NULL);
     DECLARE_FIELD_RETURN(jf_ptr, sjc_CAccessible, "ptr", "J", NULL);
     // try to fetch the jCAX from Java, and return autoreleased
     jobject jCAX = [JavaComponentAccessibility getCAccessible:jaccessible withEnv:env];
     if (jCAX == NULL) return nil;
-    if (!wrapped) { // If wrapped is true, then you don't need to get an existing instance, you need to create a new one
-        JavaComponentAccessibility *value = (JavaComponentAccessibility *) jlong_to_ptr((*env)->GetLongField(env, jCAX, jf_ptr));
-        if (value != nil) {
-            (*env)->DeleteLocalRef(env, jCAX);
-            return [[value retain] autorelease];
-        }
+    JavaComponentAccessibility *value = (JavaComponentAccessibility *) jlong_to_ptr((*env)->GetLongField(env, jCAX, jf_ptr));
+    if (value != nil) {
+        (*env)->DeleteLocalRef(env, jCAX);
+        return [[value retain] autorelease];
     }
 
-    // otherwise, create a new instance
-    JavaComponentAccessibility *newChild = nil;
-    if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityListRole]) {
-        newChild = [JavaListRowAccessibility alloc];
-    } else if ([parent isKindOfClass:[JavaOutlineAccessibility class]]) {
-        newChild = [JavaOutlineRowAccessibility alloc];
-    } else if ([javaRole isEqualToString:@"pagetablist"]) {
-        newChild = [JavaTabGroupAccessibility alloc];
-    } else if ([javaRole isEqualToString:@"scrollpane"]) {
-        newChild = [JavaScrollAreaAccessibility alloc];
-    } else {
-        NSString *nsRole = [sRoles objectForKey:javaRole];
-        if ([nsRole isEqualToString:NSAccessibilityStaticTextRole]) {
-            newChild = [JavaStaticTextAccessibility alloc];
-        } else if ([nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
-            newChild = [JavaNavigableTextAccessibility alloc];
-        } else if ([nsRole isEqualToString:NSAccessibilityListRole]) {
-            newChild = [JavaListAccessibility alloc];
-        } else if ([nsRole isEqualToString:NSAccessibilityTableRole]) {
-            newChild = [JavaTableAccessibility alloc];
-        } else if ([nsRole isEqualToString:NSAccessibilityOutlineRole]) {
-            newChild = [JavaOutlineAccessibility alloc];
-        } else if ([nsRole isEqualToString:NSAccessibilityComboBoxRole]) {
-            newChild = [JavaComboBoxAccessibility alloc];
-        } else {
-            newChild = [JavaComponentAccessibility alloc];
-        }
-    }
-
-    // must init freshly -alloc'd object
-    [newChild initWithParent:parent withEnv:env withAccessible:jCAX withIndex:index withView:view withJavaRole:javaRole]; // must init new instance
+    JavaComponentAccessibility *newChild =
+        [[classType alloc] initWithParent:parent withEnv:env withAccessible:jCAX withIndex:index withView:view withJavaRole:javaRole];
 
     // If creating a JPopupMenu (not a combobox popup list) need to fire menuOpened.
     // This is the only way to know if the menu is opening; visible state change

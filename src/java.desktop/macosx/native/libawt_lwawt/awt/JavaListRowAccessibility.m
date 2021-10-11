@@ -12,25 +12,7 @@
 // NSAccessibilityElement protocol methods
 
 - (NSAccessibilityRole)accessibilityRole {
-    return NSAccessibilityRowRole;;
-}
-
-- (NSArray *)accessibilityChildren {
-    NSArray *children = [super accessibilityChildren];
-    if (children == NULL) {
-
-        // Since the row element has already been created, we should no create it again, but just retrieve it by a pointer, that's why isWrapped is set to YES.
-        JavaComponentAccessibility *newChild = [JavaComponentAccessibility createWithParent:self
-                                                                                 accessible:self->fAccessible
-                                                                                       role:self->fJavaRole
-                                                                                      index:self->fIndex
-                                                                                    withEnv:[ThreadUtilities getJNIEnv]
-                                                                                   withView:self->fView
-                                                                                  isWrapped:YES];
-        return [NSArray arrayWithObject:newChild];
-    } else {
-        return children;
-    }
+    return NSAccessibilityRowRole;
 }
 
 - (NSInteger)accessibilityIndex {

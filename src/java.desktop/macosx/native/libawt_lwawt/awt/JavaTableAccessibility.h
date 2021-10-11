@@ -4,6 +4,8 @@
 
 @interface JavaTableAccessibility : JavaComponentAccessibility <NSAccessibilityTable>
 {
+    // A table row object does not have java peer, but the platform a11y requires that a table has rows.
+    // So it is hard linked in the cache which follows the table modifications and life cycle.
     NSMutableDictionary<NSNumber*, id> *rowCache;
 }
 

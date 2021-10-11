@@ -26,7 +26,6 @@ static jmethodID jm_getChildrenAndRoles = NULL;
     return NSAccessibilityColumnRole;
 }
 
-
 - (NSUInteger)columnNumberInTable {
     return self->fIndex;
 }

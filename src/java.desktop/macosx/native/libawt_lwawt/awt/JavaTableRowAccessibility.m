@@ -32,51 +32,51 @@ static jmethodID jm_getChildrenAndRoles = NULL;
 }
 
 - (NSArray *)accessibilityChildren {
-    if (cellCache == nil) {
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
-        JavaComponentAccessibility *parent = [self accessibilityParent];
-        if (parent->fAccessible == NULL) return nil;
-        GET_CHILDRENANDROLES_METHOD_RETURN(nil);
-        jobjectArray jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, JAVA_AX_ALL_CHILDREN, NO);
-        CHECK_EXCEPTION();
-        if (jchildrenAndRoles == NULL) return nil;
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    JavaComponentAccessibility *parent = [self accessibilityParent];
+    if (parent->fAccessible == NULL) return nil;
+    GET_CHILDRENANDROLES_METHOD_RETURN(nil);
+    jobjectArray jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, JAVA_AX_ALL_CHILDREN, NO);
+    CHECK_EXCEPTION();
+    if (jchildrenAndRoles == NULL) return nil;
 
-        jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
-        cellCache = [[NSMutableArray arrayWithCapacity:arrayLen/2] retain];
+    jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
+    NSMutableArray *children = [[NSMutableArray arrayWithCapacity:arrayLen/2] retain];
 
-        NSUInteger childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *)parent accessibleColCount];
-        NSInteger n = ([self rowNumberInTable] + 1) * [(JavaTableAccessibility *)parent accessibleColCount] * 2;
-        for (NSInteger i = childIndex * 2; i < n; i+=2)
-        {
-            jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
-            jobject /* String */ jchildJavaRole = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+1);
+    NSUInteger childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *)parent accessibleColCount];
+    NSInteger n = ([self rowNumberInTable] + 1) * [(JavaTableAccessibility *)parent accessibleColCount] * 2;
+    for (NSInteger i = childIndex * 2; i < n; i+=2)
+    {
+        jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
+        jobject /* String */ jchildJavaRole = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+1);
 
-            NSString *childJavaRole = nil;
-            if (jchildJavaRole != NULL) {
-                DECLARE_CLASS_RETURN(sjc_AccessibleRole, "javax/accessibility/AccessibleRole", nil);
-                DECLARE_FIELD_RETURN(sjf_key, sjc_AccessibleRole, "key", "Ljava/lang/String;", nil);
-                jobject jkey = (*env)->GetObjectField(env, jchildJavaRole, sjf_key);
-                childJavaRole = JavaStringToNSString(env, jkey);
-                (*env)->DeleteLocalRef(env, jkey);
-            }
-
-            JavaCellAccessibility *child = [[JavaCellAccessibility alloc] initWithParent:self
-                                                                                 withEnv:env
-                                                                          withAccessible:jchild
-                                                                               withIndex:childIndex
-                                                                                withView:self->fView
-                                                                            withJavaRole:childJavaRole];
-            [cellCache addObject:child];
-
-            (*env)->DeleteLocalRef(env, jchild);
-            (*env)->DeleteLocalRef(env, jchildJavaRole);
-
-            childIndex++;
+        NSString *childJavaRole = nil;
+        if (jchildJavaRole != NULL) {
+            DECLARE_CLASS_RETURN(sjc_AccessibleRole, "javax/accessibility/AccessibleRole", nil);
+            DECLARE_FIELD_RETURN(sjf_key, sjc_AccessibleRole, "key", "Ljava/lang/String;", nil);
+            jobject jkey = (*env)->GetObjectField(env, jchildJavaRole, sjf_key);
+            childJavaRole = JavaStringToNSString(env, jkey);
+            (*env)->DeleteLocalRef(env, jkey);
         }
-        (*env)->DeleteLocalRef(env, jchildrenAndRoles);
-    }
 
-    return cellCache;
+        JavaCellAccessibility *child = (JavaCellAccessibility *)
+            [JavaComponentAccessibility createWithParent:self
+                                               withClass:[JavaCellAccessibility class]
+                                              accessible:jchild
+                                                    role:childJavaRole
+                                                   index:childIndex
+                                                 withEnv:env
+                                                withView:self->fView];
+        [children addObject:child];
+
+        (*env)->DeleteLocalRef(env, jchild);
+        (*env)->DeleteLocalRef(env, jchildJavaRole);
+
+        childIndex++;
+    }
+    (*env)->DeleteLocalRef(env, jchildrenAndRoles);
+
+    return children;
 }
 
 - (NSInteger)accessibilityIndex {
@@ -112,17 +112,6 @@ static jmethodID jm_getChildrenAndRoles = NULL;
             width += [cell accessibilityFrame].size.width;
         }
         return NSMakeRect(point.x, point.y, width, height);
-}
-
-- (void)dealloc
-{
-    int count = [cellCache count];
-    for (int i = count - 1; i >= 0; i--) {
-        [[cellCache objectAtIndex:i] release];
-    }
-    [cellCache release];
-    cellCache = nil;
-    [super dealloc];
 }
 
 @end

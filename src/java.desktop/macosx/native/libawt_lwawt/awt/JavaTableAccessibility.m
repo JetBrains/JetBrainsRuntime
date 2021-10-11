@@ -7,7 +7,6 @@
 #import "JavaAccessibilityAction.h"
 #import "JavaAccessibilityUtilities.h"
 #import "JavaTableAccessibility.h"
-#import "JavaCellAccessibility.h"
 #import "JavaColumnAccessibility.h"
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
@@ -181,7 +180,7 @@
                                                       withIndex:index.intValue
                                                        withView:[self view]
                                                    withJavaRole:JavaAccessibilityIgnore];
-        [rowCache setValue:row forKey:[NSNumber numberWithInt:index]];
+        [rowCache setObject:row forKey:index];
     }
 
     return row;
