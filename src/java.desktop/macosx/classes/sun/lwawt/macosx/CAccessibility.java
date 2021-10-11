@@ -604,7 +604,7 @@ class CAccessibility implements PropertyChangeListener {
     static final int JAVA_AX_VISIBLE_CHILDREN = -3;
 
     // [tav] todo: the visibility detection is incomplete
-    public static int[] getTableVisibleRowRange(Accessible a, Component c) {
+    private static int[] getTableVisibleRowRange(Accessible a, Component c) {
         if (a == null) return null;
         Integer[] result = invokeAndWait(new Callable<Integer[]>() {
             public Integer[] call() throws Exception {
@@ -645,16 +645,16 @@ class CAccessibility implements PropertyChangeListener {
         return null;
     }
 
-    public static Object[] getTableRowChildrenAndRoles(Accessible a, Component c, int whichChildren, boolean allowIgnored, int tableRowIndex) {
+    private static Object[] getTableRowChildrenAndRoles(Accessible a, Component c, int whichChildren, boolean allowIgnored, int tableRowIndex) {
         return invokeGetChildrenAndRoles(a, c, whichChildren, allowIgnored, ChildrenOperations.createForTableRow(tableRowIndex));
     }
 
     // Each child takes up two entries in the array: one for itself and one for its role
-    public static Object[] getChildrenAndRoles(final Accessible a, final Component c, final int whichChildren, final boolean allowIgnored) {
+    private static Object[] getChildrenAndRoles(final Accessible a, final Component c, final int whichChildren, final boolean allowIgnored) {
         return invokeGetChildrenAndRoles(a, c, whichChildren, allowIgnored, ChildrenOperations.COMMON);
     }
 
-    public static Object[] invokeGetChildrenAndRoles(Accessible a, Component c, int whichChildren, boolean allowIgnored, ChildrenOperations ops) {
+    private static Object[] invokeGetChildrenAndRoles(Accessible a, Component c, int whichChildren, boolean allowIgnored, ChildrenOperations ops) {
         if (a == null) return null;
         return invokeAndWait(new Callable<Object[]>() {
             public Object[] call() throws Exception {
