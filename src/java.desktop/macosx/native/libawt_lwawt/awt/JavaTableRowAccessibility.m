@@ -8,16 +8,10 @@
 #import "JavaCellAccessibility.h"
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
+#import "AWTView.h"
 
 // GET* macros defined in JavaAccessibilityUtilities.h, so they can be shared.
 static jclass sjc_CAccessibility = NULL;
-
-static jmethodID jm_getChildrenAndRoles = NULL;
-#define GET_CHILDRENANDROLES_METHOD_RETURN(ret) \
-    GET_CACCESSIBILITY_CLASS_RETURN(ret); \
-    GET_STATIC_METHOD_RETURN(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles",\
-                      "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;", ret);
-
 
 @implementation JavaTableRowAccessibility
 
@@ -35,20 +29,24 @@ static jmethodID jm_getChildrenAndRoles = NULL;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     JavaComponentAccessibility *parent = [self accessibilityParent];
     if (parent->fAccessible == NULL) return nil;
-    GET_CHILDRENANDROLES_METHOD_RETURN(nil);
-    jobjectArray jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getChildrenAndRoles, parent->fAccessible, parent->fComponent, JAVA_AX_ALL_CHILDREN, NO);
+
+    GET_CACCESSIBILITY_CLASS_RETURN(nil);
+    DECLARE_STATIC_METHOD_RETURN(jm_getTableRowChildrenAndRoles, sjc_CAccessibility, "getTableRowChildrenAndRoles",\
+        "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZI)[Ljava/lang/Object;", nil);
+
+    jobjectArray jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(
+        env, sjc_CAccessibility, jm_getTableRowChildrenAndRoles, parent->fAccessible, parent->fComponent, JAVA_AX_ALL_CHILDREN, NO, [self rowNumberInTable]);
     CHECK_EXCEPTION();
+
     if (jchildrenAndRoles == NULL) return nil;
 
     jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
-    NSMutableArray *children = [[NSMutableArray arrayWithCapacity:arrayLen/2] retain];
+    NSMutableArray *children = [[NSMutableArray arrayWithCapacity:arrayLen / 2] retain];
+    int childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *)parent accessibleColCount];
 
-    NSUInteger childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *)parent accessibleColCount];
-    NSInteger n = ([self rowNumberInTable] + 1) * [(JavaTableAccessibility *)parent accessibleColCount] * 2;
-    for (NSInteger i = childIndex * 2; i < n; i+=2)
-    {
+    for (NSInteger i = 0; i < arrayLen; i += 2) {
         jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
-        jobject /* String */ jchildJavaRole = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+1);
+        jobject /* String */ jchildJavaRole = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i + 1);
 
         NSString *childJavaRole = nil;
         if (jchildJavaRole != NULL) {
