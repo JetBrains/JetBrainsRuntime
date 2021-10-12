@@ -955,3 +955,7 @@ javax/print/attribute/AttributeTest.java                                        
 javax/print/attribute/GetCopiesSupported.java                                       nobug generic-all
 javax/print/attribute/SidesPageRangesTest.java                                      nobug generic-all
 javax/print/attribute/SupportedPrintableAreas.java                                  nobug generic-all
+
+# Fedora & ArchLinux (Wayland) & Ubuntu 21.04
+sun/java2d/ClassCastExceptionForInvalidSurface.java                                 JBR-3167 linux-5.11.0-37-generic,linux-5.10.12-200.fc33.x86_64,linux-5.11.6-arch1-1
+java/awt/Frame/HugeFrame/HugeFrame.java                                             JBR-3167 linux-5.11.0-37-generic,linux-5.10.12-200.fc33.x86_64,linux-5.11.6-arch1-1
