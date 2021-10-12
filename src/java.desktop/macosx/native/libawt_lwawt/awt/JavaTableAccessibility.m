@@ -247,7 +247,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_tableContentCacheClear
 {
     JNI_COCOA_ENTER(env);
     JavaComponentAccessibility *obj = (JavaComponentAccessibility *)jlong_to_ptr(element);
-    if ([obj requestSelector:@selector(clearCache)]) {
+    if ([obj respondsToSelector:@selector(clearCache)]) {
         [ThreadUtilities performOnMainThread:@selector(clearCache)
                                           on:obj
                                   withObject:nil
