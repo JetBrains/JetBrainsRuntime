@@ -37,7 +37,6 @@
 #include "awt_GraphicsEnv.h"
 
 #include <dlfcn.h>
-#include <time.h>
 
 #ifndef HEADLESS
 
@@ -1115,9 +1114,9 @@ X11SD_SwapBytes(X11SDOps *xsdo, XImage * img, int depth, int bpp) {
     }
 }
 
-static XImage * X11SD_GetImageReal(JNIEnv *env, X11SDOps *xsdo,
+static XImage * X11SD_GetImage(JNIEnv *env, X11SDOps *xsdo,
                                SurfaceDataBounds *bounds,
-                               jint lockFlags, jboolean* usedXGetImage)
+                               jint lockFlags)
 {
     int x, y, w, h, maxWidth, maxHeight;
     int scan;
@@ -1174,14 +1173,12 @@ static XImage * X11SD_GetImageReal(JNIEnv *env, X11SDOps *xsdo,
         }
         if (img == NULL) {
             img = XGetImage(awt_display, drawable, x, y, w, h, -1, ZPixmap);
-            if (usedXGetImage != NULL) *usedXGetImage = True;
             if (img != NULL) {
                 img->obdata = NULL;
             }
         }
 #else
         img = XGetImage(awt_display, drawable, x, y, w, h, -1, ZPixmap);
-        if (usedXGetImage != NULL) *usedXGetImage = True;
 #endif /* MITSHM */
         if (img == NULL) {
             SurfaceDataBounds temp;
@@ -1279,179 +1276,6 @@ static XImage * X11SD_GetImageReal(JNIEnv *env, X11SDOps *xsdo,
         }
     }
     return img;
-}
-
-static jboolean isDisplayLocal() {
-    static jboolean isLocal = True;
-    static jboolean isLocalSet = False;
-
-    if (!isLocalSet) {
-        isLocalSet = True;
-
-        JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
-
-        jboolean sawException = JNI_FALSE;
-        jobject ge = JNU_CallStaticMethodByName(env, &sawException, "java/awt/GraphicsEnvironment",
-                                                "getLocalGraphicsEnvironment", "()Ljava/awt/GraphicsEnvironment;").l;
-        CHECK_NULL_RETURN(ge, True);
-        if (!sawException) {
-            jclass sgeCls = (*env)->FindClass(env, "sun/java2d/SunGraphicsEnvironment");
-            CHECK_NULL_RETURN(sgeCls, True);
-            if ((*env)->IsInstanceOf(env, ge, sgeCls)) {
-                isLocal = JNU_CallMethodByName(env, NULL, ge, "isDisplayLocal", "()Z").z;
-            }
-        }
-    }
-
-    return isLocal;
-}
-
-// Auxiliary data structure to keep info when faking XGetImage() calls
-struct X11GetImageInfo {
-    unsigned long bgPixel;
-};
-
-// All the possible settings for the "remote.x11.workaround"  property.
-#define WORKAROUND_PROPERTY_NAME "remote.x11.workaround"
-
-// Corresponds to property value "false" and means that the workaround will not be used at all
-#define WORKAROUND_DONT_USE 0
-
-// Corresponds to property value "true" and forces the workaround to be used even if not needed or not useful
-#define WORKAROUND_USE      1
-
-// This is the default setting and is used when the property wasn't specified or is neither "true" nor "false".
-// Enables the workaround only when XGetImage() calls become "slow", but once enabled, never switches
-// the workaround off.
-#define WORKAROUND_AUTO     2
-
-// Returns one of WORKAROUND_... values based on "remote.x11.workaround" VM property.
-// The default is WORKAROUND_AUTO.
-static int getRemoteX11WorkaroundProperty() {
-    int ret = WORKAROUND_AUTO;
-
-    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
-    jstring name = (*env)->NewStringUTF(env, WORKAROUND_PROPERTY_NAME);
-    CHECK_NULL_RETURN(name, ret);
-    jobject jPropGetAction = JNU_NewObjectByName(env, "sun/security/action/GetPropertyAction", "(Ljava/lang/String;)V", name);
-    CHECK_NULL_RETURN(name, ret);
-    jboolean ignoreExc;
-    jstring jPropValue = JNU_CallStaticMethodByName(env, &ignoreExc, "java/security/AccessController", "doPrivileged",
-                                                    "(Ljava/security/PrivilegedAction;)Ljava/lang/Object;", jPropGetAction).l;
-    if (jPropValue != NULL && JNU_IsInstanceOfByName(env, jPropValue, "java/lang/String")) {
-        const char * utf8string = (*env)->GetStringUTFChars(env, jPropValue, NULL);
-        if (utf8string != NULL) {
-            if (strcmp(utf8string, "true") == 0) {
-                ret = WORKAROUND_USE;
-            } else if (strcmp(utf8string, "false") == 0){
-                ret = WORKAROUND_DONT_USE;
-            }
-        }
-        (*env)->ReleaseStringUTFChars(env, jPropValue, utf8string);
-    }
-
-    return ret;
-}
-
-// Verifies if the workaround for slow XGetImage() performance needs to be used based on the image given and
-// the difference between start and finish times.
-// Collects the information necessary for the workaround to work into the 'info' output argument.
-// Returns False - use workaround, True - use real XGetImage().
-static jboolean shouldUseRealGetImage(int workaroundPropertyValue,
-                                      XImage* img,
-                                      const struct timespec* timeStart,
-                                      const struct timespec* timeFinish,
-                                      struct X11GetImageInfo* info) {
-    static int timesCalled = 0;
-    if (timesCalled <= 4) {
-        timesCalled++;
-        // Skip first several calls because these aren't representative (showing the splash screen, etc).
-        return True;
-    }
-
-    // NB: local X server time varies between 0 (most of the time) and 40ms (rarely). Remote X server times naturally
-    // vary wildly.
-    const long long timeMillis = (timeFinish->tv_sec - timeStart->tv_sec)*1000
-                                 + (timeFinish->tv_nsec - timeStart->tv_nsec)/1000000;
-
-    const jboolean considerWorkaround = (workaroundPropertyValue == WORKAROUND_USE || timeMillis > 20);
-    if (considerWorkaround) {
-        if (img != NULL && img->data != NULL && img->width > 3 && img->height > 3) {
-            unsigned long px1 = XGetPixel(img, 0, 0);
-            unsigned long px2 = XGetPixel(img, 1, 1);
-            unsigned long px3 = XGetPixel(img, 2, 2);
-            if (px1 == px2 && px2 == px3) {
-                // Consider this one to be a good candidate for the background pixel because a short diagonal
-                // of this image has the same color.
-                info->bgPixel = px1;
-
-                if (workaroundPropertyValue == WORKAROUND_USE) {
-                    fprintf(stderr, "[JetBrains Runtime] Switched off alpha compositing of images because "
-                                    "-D" WORKAROUND_PROPERTY_NAME "=true was specified.\n");
-                } else {
-                    fprintf(stderr, "[JetBrains Runtime] Detected slow X11, switched off alpha compositing of images. "
-                                    "Control with -D" WORKAROUND_PROPERTY_NAME "={true|false|auto}.\n");
-                }
-                return False;
-            }
-        }
-    }
-
-    return True;
-}
-
-// Paints every pixel of the given image with the given color.
-static inline void paintImageWithColor(XImage* img, unsigned long bgColor) {
-    if (img != NULL && img->data != NULL) {
-        for(int y = 0; y < img->height; y++) {
-            for(int x = 0; x < img->width; x++) {
-                XPutPixel(img, x, y, bgColor);
-            }
-        }
-    }
-}
-
-// Overrides "real" X11SD_GetImage() in order to measure performance and decide whether a workaround for slow
-// remote X11 is needed. In that case, routes the call to a "fake" XGetImage() that merely creates an empty image
-// with a background obtained from one of the "slow", but real XGetImage() calls.
-static XImage * X11SD_GetImage(JNIEnv *env, X11SDOps *xsdo,
-                               SurfaceDataBounds *bounds,
-                               jint lockFlags) {
-    static struct X11GetImageInfo info      = { 0 };
-    static int      workaroundPropertyValue = WORKAROUND_DONT_USE;
-    static jboolean useRealGetImage         = True;
-    static jboolean isFirstTime             = True;
-    if (isFirstTime) {
-        isFirstTime = False;
-        workaroundPropertyValue = getRemoteX11WorkaroundProperty();
-        if (workaroundPropertyValue != WORKAROUND_USE && isDisplayLocal()) {
-            // Even if we detect XGetImage() slowness, switching to a fake one will not improve the performance of a
-            // local X11 connection. Switch to "don't use" for the local one unless we are forced to use by
-            // the VM property.
-            workaroundPropertyValue = WORKAROUND_DONT_USE;
-        }
-    }
-
-    XImage *resImg = NULL;
-    if (useRealGetImage) {
-        struct timespec timeStart, timeFinish;
-        jboolean usedXGetImage = False;
-
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &timeStart);
-        resImg = X11SD_GetImageReal(env, xsdo, bounds, lockFlags, &usedXGetImage);
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &timeFinish);
-
-        if (workaroundPropertyValue != WORKAROUND_DONT_USE && usedXGetImage) {
-            useRealGetImage = shouldUseRealGetImage(workaroundPropertyValue, resImg, &timeStart, &timeFinish, &info);
-        }
-    } else {
-        const jint fakeLockFlags = 0; // forces creation of a new image instead of fetching it with XGetImage()
-        resImg = X11SD_GetImageReal(env, xsdo, bounds, fakeLockFlags, NULL);
-
-        paintImageWithColor(resImg, info.bgPixel);
-    }
-
-    return resImg;
 }
 
 void X11SD_DisposeOrCacheXImage(XImage * image) {
