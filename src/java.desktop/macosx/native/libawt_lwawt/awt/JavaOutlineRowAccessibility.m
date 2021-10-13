@@ -38,13 +38,7 @@
     JavaComponentAccessibility *currentElement = [JavaComponentAccessibility createWithAccessible:currentAccessible withEnv:env withView:self->fView isCurrent:YES];
     NSArray *children = [JavaComponentAccessibility childrenOfParent:currentElement withEnv:env withChildrenCode:JAVA_AX_ALL_CHILDREN allowIgnored:YES];
     if ([children count] == 0) {
-        return [NSArray arrayWithObject:[JavaComponentAccessibility createWithParent:self
-                                                                          accessible:self->fAccessible
-                                                                                role:self->fJavaRole
-                                                                               index:self->fIndex
-                                                                             withEnv:env
-                                                                            withView:self->fView
-                                                                           isWrapped:YES]];
+        return [super accessibilityChildren];
     } else {
         return children;
     }
@@ -59,11 +53,11 @@
 }
 
 - (NSAccessibilitySubrole)accessibilitySubrole {
-    return NSAccessibilityOutlineRowSubrole;;
+    return NSAccessibilityOutlineRowSubrole;
 }
 
 - (NSAccessibilityRole)accessibilityRole {
-    return NSAccessibilityRowRole;;
+    return NSAccessibilityRowRole;
 }
 
 @end

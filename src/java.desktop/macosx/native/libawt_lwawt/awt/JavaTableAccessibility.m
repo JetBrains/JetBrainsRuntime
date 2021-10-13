@@ -7,7 +7,6 @@
 #import "JavaAccessibilityAction.h"
 #import "JavaAccessibilityUtilities.h"
 #import "JavaTableAccessibility.h"
-#import "JavaCellAccessibility.h"
 #import "JavaColumnAccessibility.h"
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"

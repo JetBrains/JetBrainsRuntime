@@ -27,7 +27,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
 }
 
 - (NSArray *)accessibilityChildren {
-    NSArray *children = [super accessibilityChildren];
+    NSMutableArray *children = [super accessibilityChildren];
     if (children == NULL) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
         JavaComponentAccessibility *parent = [self accessibilityParent];
@@ -38,7 +38,7 @@ static jmethodID jm_getChildrenAndRoles = NULL;
         if (jchildrenAndRoles == NULL) return nil;
 
         jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
-        NSMutableArray *childrenCells = [NSMutableArray arrayWithCapacity:arrayLen/2];
+        children = [NSMutableArray arrayWithCapacity:arrayLen/2];
 
         NSUInteger childIndex = [self columnNumberInTable];
 
@@ -57,13 +57,15 @@ static jmethodID jm_getChildrenAndRoles = NULL;
                 (*env)->DeleteLocalRef(env, jkey);
             }
 
-            JavaCellAccessibility *child = [[JavaCellAccessibility alloc] initWithParent:self
-                                                                                 withEnv:env
-                                                                          withAccessible:jchild
-                                                                               withIndex:childIndex
-                                                                                withView:self->fView
-                                                                            withJavaRole:childJavaRole];
-            [childrenCells addObject:[[child retain] autorelease]];
+            JavaCellAccessibility *child = (JavaCellAccessibility *)
+                [JavaComponentAccessibility createWithParent:self
+                                                   withClass:[JavaCellAccessibility class]
+                                                  accessible:jchild
+                                                        role:childJavaRole
+                                                       index:childIndex
+                                                     withEnv:env
+                                                    withView:self->fView];
+            [children addObject:child];
 
             (*env)->DeleteLocalRef(env, jchild);
             (*env)->DeleteLocalRef(env, jchildJavaRole);
@@ -71,10 +73,8 @@ static jmethodID jm_getChildrenAndRoles = NULL;
             childIndex += (inc / 2);
         }
         (*env)->DeleteLocalRef(env, jchildrenAndRoles);
-        return childrenCells;
-    } else {
-        return children;
     }
+    return children;
 }
 
 - (NSUInteger)columnNumberInTable {
