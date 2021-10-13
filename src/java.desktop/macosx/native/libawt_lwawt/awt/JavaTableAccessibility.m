@@ -161,34 +161,6 @@
     return [super accessibilityParent];
 }
 
-- (nullable NSArray *)accessibilityColumns {
-    int colCount = [self accessibleColCount];
-    NSMutableArray *columns = [NSMutableArray arrayWithCapacity:colCount];
-    for (int i = 0; i < colCount; i++) {
-        [columns addObject:[[JavaColumnAccessibility alloc] initWithParent:self
-                                                                   withEnv:[ThreadUtilities getJNIEnv]
-                                                            withAccessible:NULL
-                                                                 withIndex:i
-                                                                  withView:self->fView
-                                                              withJavaRole:JavaAccessibilityIgnore]];
-    }
-    return [NSArray arrayWithArray:columns];
-}
-
-- (nullable NSArray *)accessibilitySelectedColumns {
-    NSArray<NSNumber *> *indexes = [self selectedAccessibleColumns];
-    NSMutableArray *columns = [NSMutableArray arrayWithCapacity:[indexes count]];
-    for (NSNumber *i in indexes) {
-        [columns addObject:[[JavaColumnAccessibility alloc] initWithParent:self
-                                                                   withEnv:[ThreadUtilities getJNIEnv]
-                                                            withAccessible:NULL
-                                                                 withIndex:i.unsignedIntValue
-                                                                  withView:self->fView
-                                                              withJavaRole:JavaAccessibilityIgnore]];
-    }
-    return [NSArray arrayWithArray:columns];
-}
-
 - (void)dealloc
 {
     [self clearCache];
