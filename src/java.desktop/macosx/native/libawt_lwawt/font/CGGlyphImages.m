@@ -652,10 +652,10 @@ CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
     if (subpixelResolution) {
         subpixelResX = strike->fSubpixelResolutionX;
         subpixelResY = strike->fSubpixelResolutionY;
-        topLeftX = floorf(bbox.origin.x / (float) subpixelResX);
-        topLeftY = floorf(bbox.origin.y / (float) subpixelResY);
-        width = ceilf((bbox.origin.x + bbox.size.width) / (float) subpixelResX) - topLeftX;
-        height = ceilf((bbox.origin.y + bbox.size.height) / (float) subpixelResY) - topLeftY;
+        topLeftX = floorf(bbox.origin.x);
+        topLeftY = floorf(bbox.origin.y);
+        width = ceilf(bbox.origin.x + bbox.size.width) - topLeftX;
+        height = ceilf(bbox.origin.y + bbox.size.height) - topLeftY;
     } else {
         topLeftX = round(bbox.origin.x);
         topLeftY = round(bbox.origin.y);
@@ -826,11 +826,9 @@ CGGI_CreateImageForUnicode
 
     bool subpixelResolution = mode->subpixelResolution && glyphDescriptor == &grey;
 
-    CGAffineTransform tx = strike->fTx;
-    CGGI_ScaleTXForSubpixelResolution(&tx, strike, subpixelResolution);
     CGRect bbox;
     CGSize advance;
-    CGGlyphImages_GetGlyphMetrics(fallback, &tx, style, &glyph, 1, &bbox, &advance, isCatalinaOrAbove);
+    CGGlyphImages_GetGlyphMetrics(fallback, &strike->fTx, strike->fSize, style, &glyph, 1, &bbox, &advance, isCatalinaOrAbove);
 
 
     // create the Sun2D GlyphInfo we are going to strike into
@@ -991,13 +989,10 @@ CGGI_CreateGlyphInfos(jlong *glyphInfos, const AWTStrike *strike,
                       CGSize advances[], CGRect bboxes[], const CFIndex len)
 {
     AWTFont *font = strike->fAWTFont;
-    CGAffineTransform tx = strike->fTx;
-    CGGI_ScaleTXForSubpixelResolution(&tx, strike, mode->subpixelResolution);
     JRSFontRenderingStyle bboxCGMode = JRSFontAlignStyleForFractionalMeasurement(strike->fStyle);
 
     CTFontRef fontRef = (CTFontRef)font->fFont;
-    CGGlyphImages_GetGlyphMetrics(fontRef, &tx, bboxCGMode, glyphs, len, bboxes, advances, IS_OSX_GT10_14);
-    CGGI_GlyphInfoDescriptor* mainFontDescriptor = CGGI_GetGlyphInfoDescriptor(mode, fontRef);
+    CGGlyphImages_GetGlyphMetrics(fontRef, &strike->fTx, strike->fSize, bboxCGMode, glyphs, len, bboxes, advances, IS_OSX_GT10_14);
 
     size_t maxWidth = 1;
     size_t maxHeight = 1;
@@ -1122,6 +1117,7 @@ CGGlyphImages_GetGlyphImagePtrs(jlong glyphInfos[],
 void
 CGGlyphImages_GetGlyphMetrics(const CTFontRef font,
                               const CGAffineTransform *tx,
+                              CGFloat fontSize,
                               const JRSFontRenderingStyle style,
                               const CGGlyph glyphs[],
                               size_t count,
@@ -1134,7 +1130,6 @@ CGGlyphImages_GetGlyphMetrics(const CTFontRef font,
         // The logic here must match the logic in CGGI_CreateImageForGlyph,
         // which performs glyph drawing.
 
-        CGFloat fontSize = sqrt(fabs(tx->a * tx->d - tx->b * tx->c));
         CTFontRef sizedFont = CTFontCreateCopyWithSymbolicTraits(font, fontSize, NULL, 0, 0);
 
         if (bboxes) {
