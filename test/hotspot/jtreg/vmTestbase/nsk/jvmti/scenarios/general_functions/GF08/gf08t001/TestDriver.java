@@ -64,16 +64,18 @@
  */
 
 import sun.hotspot.code.Compiler;
+import sun.hotspot.WhiteBox;
+import sun.hotspot.gc.GC;
 
 public class TestDriver {
     public static void main(String[] args) throws Exception {
-        sun.hotspot.WhiteBox wb = sun.hotspot.WhiteBox.getWhiteBox();
+        WhiteBox wb = WhiteBox.getWhiteBox();
         Boolean isExplicitGCInvokesConcurrentOn = wb.getBooleanVMFlag("ExplicitGCInvokesConcurrent");
-        Boolean isUseG1GCon = wb.getBooleanVMFlag("UseG1GC");
         Boolean isUseConcMarkSweepGCon = wb.getBooleanVMFlag("UseConcMarkSweepGC");
-        Boolean isUseZGCon = wb.getBooleanVMFlag("UseZGC");
-        Boolean isShenandoahGCon = wb.getBooleanVMFlag("UseShenandoahGC");
-        Boolean isUseEpsilonGCon = wb.getBooleanVMFlag("UseEpsilonGC");
+        boolean isUseG1GCon = GC.G1.isSelected();
+        boolean isUseZGCon = GC.Z.isSelected();
+        boolean isShenandoahGCon = GC.Shenandoah.isSelected();
+        boolean isUseEpsilonGCon = GC.Epsilon.isSelected();
 
         if (Compiler.isGraalEnabled() &&
             (isUseConcMarkSweepGCon || isUseZGCon || isUseEpsilonGCon || isShenandoahGCon)) {
