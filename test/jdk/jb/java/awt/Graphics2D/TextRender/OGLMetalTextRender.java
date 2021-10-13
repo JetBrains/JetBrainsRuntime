@@ -1,3 +1,4 @@
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -31,8 +32,8 @@ public class OGLMetalTextRender {
     GraphicsConfiguration gc =
         ge.getDefaultScreenDevice().getDefaultConfiguration();
 
-    VolatileImage vi = gc.createCompatibleVolatileImage(WIDTH, HEIGHT);
-    BufferedImage bi = gc.createCompatibleImage(WIDTH, HEIGHT);
+    VolatileImage vi = gc.createCompatibleVolatileImage(WIDTH, 2*HEIGHT);
+    BufferedImage bi = gc.createCompatibleImage(WIDTH, 2*HEIGHT);
     String text = "The quick brown fox jumps over the lazy dog";
     int c = 10;
     do {
@@ -45,6 +46,13 @@ public class OGLMetalTextRender {
         g2d.setColor(new Color(0, 0, 0, i/10.0f));
         g2d.drawString(text, 10, 10*(i + 1));
       }
+      g2d.setColor(Color.BLACK);
+      g2d.fillRect(0, HEIGHT, WIDTH, HEIGHT);
+      for (int i = 0; i <= 10; i++) {
+        g2d.setColor(new Color(1.0f, 1.0f, 1.0f, i/10.0f));
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC));
+        g2d.drawString(text, 10, 10*(i + 1) + HEIGHT);
+      }
       g2d.dispose();
     } while (vi.contentsLost() && (--c > 0));
 
@@ -52,7 +60,7 @@ public class OGLMetalTextRender {
     g2d.drawImage(vi, 0, 0, null);
     g2d.dispose();
     int errors = 0;
-    BufferedImage result = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
+    BufferedImage result = new BufferedImage(WIDTH, 2*HEIGHT, BufferedImage.TYPE_INT_ARGB);
 
     String opt = System.getProperty("sun.java2d.metal");
     if (opt != null && ("true".equals(opt) || "True".equals(opt))) {
@@ -78,7 +86,7 @@ public class OGLMetalTextRender {
   {
     int errors = 0;
     for (int i = 0; i < WIDTH; i++) {
-      for (int j = 0; j < HEIGHT; j++) {
+      for (int j = 0; j < 2*HEIGHT; j++) {
         Color c1 = new Color(bi1.getRGB(i, j));
         Color c2 = new Color(bi2.getRGB(i, j));
         int dr = Math.abs(c1.getRed() - c2.getRed());
@@ -88,7 +96,6 @@ public class OGLMetalTextRender {
           errors++;
           result.setRGB(i, j, Color.RED.getRGB());
         }
-        Color r = new Color(dr, dg, db);
       }
     }
     return errors;
