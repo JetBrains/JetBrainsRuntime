@@ -343,7 +343,7 @@ fragment half4 frag_gmc_text(
     float3 col = uniforms.color.rgb;
     // adjust fragment coverage
     float frag_cov = pow(pixelColor.a, uniforms.exp);
-    return half4(col.r*frag_cov, col.g*frag_cov, col.b*frag_cov, a*frag_cov);
+    return half4(col.r*frag_cov*a, col.g*frag_cov*a, col.b*frag_cov*a, a*frag_cov);
 }
 
 fragment half4 frag_txt_tp(TxtShaderInOut vert [[stage_in]],
