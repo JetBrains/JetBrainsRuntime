@@ -919,8 +919,8 @@ setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder
       if (ca < 1.0f) {
         float g = inv_dark_gamma*(1.0f - b) + inv_light_gamma*b;
         cr = pow(cr, g);
-        cg = pow(cr, g);
-        cb = pow(cr, g);
+        cg = pow(cg, g);
+        cb = pow(cb, g);
         ca = pow(ca, exp);
       }
 
