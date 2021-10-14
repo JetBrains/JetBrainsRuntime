@@ -61,6 +61,8 @@ static jclass sjc_CAccessible = NULL;
 
 static jobject sAccessibilityClass = NULL;
 
+static NSDictionary* sRole2ClassMap = NULL;
+
 NSMutableArray *sJavaComponentAccessibilityPtrs = nil; // a list of pointers to allocated JavaComponentAccessibility objects
 
 static void RaiseMustOverrideException(NSString *method)
@@ -210,6 +212,11 @@ static void RaiseMustOverrideException(NSString *method)
     return (*env)->IsSameObject(env, fAccessible, accessible);
 }
 
+static NSString* parentRole(NSAccessibilityRole nsRole)
+{
+    return [NSString stringWithFormat:@"parent_%@", nsRole];
+}
+
 + (void)initialize
 {
     if (sRoles == nil) {
@@ -218,6 +225,21 @@ static void RaiseMustOverrideException(NSString *method)
     if (sActions == nil) {
         initializeActions();
     }
+
+    sRole2ClassMap = @{
+        parentRole(NSAccessibilityListRole):    [JavaListRowAccessibility class],
+        parentRole(NSAccessibilityOutlineRole): [JavaOutlineRowAccessibility class],
+        NSAccessibilityTabGroupRole:            [JavaTabGroupAccessibility class],
+        NSAccessibilityScrollAreaRole:          [JavaScrollAreaAccessibility class],
+        NSAccessibilityStaticTextRole:          [JavaStaticTextAccessibility class],
+        NSAccessibilityTextAreaRole:            [JavaNavigableTextAccessibility class],
+        NSAccessibilityTextFieldRole:           [JavaNavigableTextAccessibility class],
+        NSAccessibilityListRole:                [JavaListAccessibility class],
+        NSAccessibilityTableRole:               [JavaTableAccessibility class],
+        NSAccessibilityOutlineRole:             [JavaOutlineAccessibility class],
+        NSAccessibilityComboBoxRole:            [JavaComboBoxAccessibility class]
+    };
+    [sRole2ClassMap retain];
 
     if (sAccessibilityClass == NULL) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
@@ -379,32 +401,18 @@ static void RaiseMustOverrideException(NSString *method)
 
 + (JavaComponentAccessibility *) createWithParent:(JavaComponentAccessibility *)parent accessible:(jobject)jaccessible role:(NSString *)javaRole index:(jint)index withEnv:(JNIEnv *)env withView:(NSView *)view
 {
-    Class classType;
-    if ([[sRoles objectForKey:[parent javaRole]] isEqualToString:NSAccessibilityListRole]) {
-        classType = [JavaListRowAccessibility class];
-    } else if ([parent isKindOfClass:[JavaOutlineAccessibility class]]) {
-        classType = [JavaOutlineRowAccessibility class];
-    } else if ([javaRole isEqualToString:@"pagetablist"]) {
-        classType = [JavaTabGroupAccessibility class];
-    } else if ([javaRole isEqualToString:@"scrollpane"]) {
-        classType = [JavaScrollAreaAccessibility class];
-    } else {
-        NSString *nsRole = [sRoles objectForKey:javaRole];
-        if ([nsRole isEqualToString:NSAccessibilityStaticTextRole]) {
-            classType = [JavaStaticTextAccessibility class];
-        } else if ([nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
-            classType = [JavaNavigableTextAccessibility class];
-        } else if ([nsRole isEqualToString:NSAccessibilityListRole]) {
-            classType = [JavaListAccessibility class];
-        } else if ([nsRole isEqualToString:NSAccessibilityTableRole]) {
-            classType = [JavaTableAccessibility class];
-        } else if ([nsRole isEqualToString:NSAccessibilityOutlineRole]) {
-            classType = [JavaOutlineAccessibility class];
-        } else if ([nsRole isEqualToString:NSAccessibilityComboBoxRole]) {
-            classType = [JavaComboBoxAccessibility class];
-        } else {
-            classType = [JavaComponentAccessibility class];
-        }
+    Class classType = nil;
+    NSString *nsRole = NULL;
+    if (parent) {
+        nsRole = [sRoles objectForKey:[parent javaRole]];
+        classType = [sRole2ClassMap objectForKey:parentRole(nsRole)];
+    }
+    if (!classType) {
+        nsRole = [sRoles objectForKey:javaRole];
+        classType = [sRole2ClassMap objectForKey:nsRole];
+    }
+    if (!classType) {
+        classType = [JavaComponentAccessibility class];
     }
     return [JavaComponentAccessibility createWithParent:parent withClass:classType accessible:jaccessible role:javaRole index:index withEnv:env withView:view];
 }
