@@ -51,7 +51,7 @@ public final class FontUtilities {
 
     public static boolean isWindows;
 
-    public static Dimension subpixelResolution;
+    static Dimension subpixelResolution;
 
     private static boolean debugFonts = false;
     private static PlatformLogger logger = null;
@@ -136,7 +136,7 @@ public final class FontUtilities {
         });
     }
 
-    public static Dimension getSubpixelResolution() {
+    static Dimension getSubpixelResolution() {
         return subpixelResolution;
     }
 
