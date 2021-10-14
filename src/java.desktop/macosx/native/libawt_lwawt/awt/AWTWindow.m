@@ -237,15 +237,15 @@ AWT_NS_WINDOW_IMPLEMENTATION
     [super moveTabToNewWindow:sender];
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [((AWTWindow *)self.delegate).javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env,((AWTWindow *)self.delegate).javaPlatformWindow);
     if (platformWindow != NULL) {
         // extract the target AWT Window object out of the CPlatformWindow
-        static JNF_MEMBER_CACHE(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;");
-        jobject awtWindow = JNFGetObjectField(env, platformWindow, jf_target);
+        DECLARE_FIELD(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;");
+        jobject awtWindow = (*env)->GetObjectField(env, platformWindow, jf_target);
         if (awtWindow != NULL) {
-            static JNF_CLASS_CACHE(jc_Window, "java/awt/Window");
-            static JNF_MEMBER_CACHE(jm_runMoveTabToNewWindowCallback, jc_Window, "runMoveTabToNewWindowCallback", "()V");
-            JNFCallVoidMethod(env, awtWindow, jm_runMoveTabToNewWindowCallback);
+            DECLARE_CLASS(jc_Window, "java/awt/Window");
+            DECLARE_METHOD(jm_runMoveTabToNewWindowCallback, jc_Window, "runMoveTabToNewWindowCallback", "()V");
+            (*env)->CallVoidMethod(env, awtWindow, jm_runMoveTabToNewWindowCallback);
             (*env)->DeleteLocalRef(env, awtWindow);
         }
         (*env)->DeleteLocalRef(env, platformWindow);
@@ -259,7 +259,15 @@ AWT_NS_WINDOW_IMPLEMENTATION
 // Call over Foundation from Java
 - (CGFloat) getTabBarVisibleAndHeight {
     if ([self respondsToSelector:@selector(tabGroup)]) { // API_AVAILABLE(macos(10.13))
-        id tabGroup = [self tabGroup];
+        id tabGroup = nil;
+        if (@available(macOS 10.13, *)) {
+            tabGroup = [self tabGroup];
+        } else {
+#ifdef DEBUG
+            NSLog(@"=== Window tabGroup not supported before macOS 10.13 ===");
+#endif
+            return 0;
+        }
 #ifdef DEBUG
         NSLog(@"=== Window tabBar: %@ ===", tabGroup);
 #endif
@@ -492,15 +500,15 @@ AWT_ASSERT_APPKIT_THREAD;
     BOOL result = NO;
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    jobject platformWindow = (*env)->NewLocalRef(env,self.javaPlatformWindow);
     if (platformWindow != NULL) {
         // extract the target AWT Window object out of the CPlatformWindow
-        static JNF_MEMBER_CACHE(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;");
-        jobject awtWindow = JNFGetObjectField(env, platformWindow, jf_target);
+        DECLARE_FIELD_RETURN(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;", NSWindowTabbingModeDisallowed);
+        jobject awtWindow = (*env)->GetObjectField(env, platformWindow, jf_target);
         if (awtWindow != NULL) {
-            static JNF_CLASS_CACHE(jc_Window, "java/awt/Window");
-            static JNF_MEMBER_CACHE(jm_hasTabbingMode, jc_Window, "hasTabbingMode", "()Z");
-            result = JNFCallBooleanMethod(env, awtWindow, jm_hasTabbingMode) == JNI_TRUE ? YES : NO;
+            DECLARE_CLASS_RETURN(jc_Window, "java/awt/Window", NSWindowTabbingModeDisallowed);
+            DECLARE_METHOD_RETURN(jm_hasTabbingMode, jc_Window, "hasTabbingMode", "()Z", NSWindowTabbingModeDisallowed);
+            result = (*env)->CallBooleanMethod(env, awtWindow, jm_hasTabbingMode) == JNI_TRUE ? YES : NO;
             (*env)->DeleteLocalRef(env, awtWindow);
         }
         (*env)->DeleteLocalRef(env, platformWindow);
@@ -1078,7 +1086,6 @@ AWT_ASSERT_APPKIT_THREAD;
 
     self.isEnterFullScreen = YES;
 
-    static JNF_MEMBER_CACHE(jm_windowWillEnterFullScreen, jc_CPlatformWindow, "windowWillEnterFullScreen", "()V");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowWillEnterFullScreen, jc_CPlatformWindow, "windowWillEnterFullScreen", "()V");
@@ -1096,7 +1103,6 @@ AWT_ASSERT_APPKIT_THREAD;
 
     self.isEnterFullScreen = YES;
 
-    static JNF_MEMBER_CACHE(jm_windowDidEnterFullScreen, jc_CPlatformWindow, "windowDidEnterFullScreen", "()V");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowDidEnterFullScreen, jc_CPlatformWindow, "windowDidEnterFullScreen", "()V");
@@ -1113,7 +1119,6 @@ AWT_ASSERT_APPKIT_THREAD;
 - (void)windowWillExitFullScreen:(NSNotification *)notification {
     self.isEnterFullScreen = NO;
 
-    static JNF_MEMBER_CACHE(jm_windowWillExitFullScreen, jc_CPlatformWindow, "windowWillExitFullScreen", "()V");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowWillExitFullScreen, jc_CPlatformWindow, "windowWillExitFullScreen", "()V");
@@ -1134,7 +1139,6 @@ AWT_ASSERT_APPKIT_THREAD;
 - (void)windowDidExitFullScreen:(NSNotification *)notification {
     self.isEnterFullScreen = NO;
 
-    static JNF_MEMBER_CACHE(jm_windowDidExitFullScreen, jc_CPlatformWindow, "windowDidExitFullScreen", "()V");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
