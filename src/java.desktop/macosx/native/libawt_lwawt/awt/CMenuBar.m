@@ -45,6 +45,7 @@ static CMenuBar *sActiveMenuBar = nil;
 static NSMenu *sDefaultHelpMenu = nil;
 static BOOL sSetupHelpMenu = NO;
 static BOOL sUseSingleMenuBar = NO; // Equals YES when VM-property 'mac.system.menu.singleton' == true
+static BOOL sDisableJbScreenMenuBar = NO; // Equals YES when VM-property 'disableJbScreenMenuBar' == true
 
 @interface CMenuBar (CMenuBar_Private)
 + (void) addDefaultHelpMenu;
@@ -99,6 +100,13 @@ static BOOL sUseSingleMenuBar = NO; // Equals YES when VM-property 'mac.system.m
 
 + (void) activate:(CMenuBar *)menubar modallyDisabled:(BOOL)modallyDisabled {
     AWT_ASSERT_APPKIT_THREAD;
+
+    if (!sDisableJbScreenMenuBar) {
+        fprintf(stderr, "WARNING: CMenuBar [%p] activate mustn't be invoked " \
+                        "(can cause unstable behaviour with new impl of screen menu support)\n", (void*)menubar);
+        // TODO: fix activation logic
+        return;
+    }
 
     if (!menubar) {
         if (!sUseSingleMenuBar)
@@ -403,7 +411,7 @@ static BOOL sUseSingleMenuBar = NO; // Equals YES when VM-property 'mac.system.m
 
 @end
 
-static BOOL sUseSingleMenuBarCalculated = NO;
+static BOOL sPropertyFlagsCalculated = NO;
 
 /*
  * Class:     sun_lwawt_macosx_CMenuBar
@@ -428,13 +436,17 @@ Java_sun_lwawt_macosx_CMenuBar_nativeCreateMenuBar
         return 0L;
     }
 
-    JNI_COCOA_EXIT(env);
+    if (!sPropertyFlagsCalculated) {
+        sPropertyFlagsCalculated = YES;
 
-    if (!sUseSingleMenuBarCalculated) {
         NSString * sval = [PropertiesUtilities javaSystemPropertyForKey:@"mac.system.menu.singleton" withEnv:env];
         sUseSingleMenuBar = sval != nil && ([@"true" caseInsensitiveCompare:sval] == 0);
-        sUseSingleMenuBarCalculated = YES;
+
+        sval = [PropertiesUtilities javaSystemPropertyForKey:@"disableJbScreenMenuBar" withEnv:env];
+        sDisableJbScreenMenuBar = sval != nil && ([@"true" caseInsensitiveCompare:sval] == 0);
     }
+
+    JNI_COCOA_EXIT(env);
 
     return ptr_to_jlong(aCMenuBar);
 }
