@@ -176,6 +176,7 @@ static jclass sjc_CAccessibility = NULL;
     int firstRow = range[0];
     int lastRow = range[1];
     (*env)->ReleaseIntArrayElements(env, jIndices, range, 0);
+    if (firstRow < 0 || lastRow < 0) return nil;
 
     NSMutableArray *children = [NSMutableArray arrayWithCapacity:lastRow - firstRow + 1];
     for (int i = firstRow; i <= lastRow; i++) {

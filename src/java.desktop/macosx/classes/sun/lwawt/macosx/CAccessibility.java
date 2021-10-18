@@ -625,13 +625,16 @@ class CAccessibility implements PropertyChangeListener {
 
                 Function<Point, Integer> calcRowIndex = (location) -> {
                     Accessible rowChild = ((AccessibleComponent) ac).getAccessibleAt(location);
-                    if (rowChild == null) return null;
+                    if (rowChild == null) return -1;
 
                     AccessibleContext rowChildContext = rowChild.getAccessibleContext();
-                    if (rowChildContext == null) return null;
+                    if (rowChildContext == null) return -1;
 
                     int rowChildIndex = rowChildContext.getAccessibleIndexInParent();
-                    return rowChildIndex / ((AccessibleTable) ac).getAccessibleColumnCount();
+                    int accessibleColumnCount = ((AccessibleTable) ac).getAccessibleColumnCount();
+                    if (accessibleColumnCount <= 0) return -1;
+                    
+                    return rowChildIndex / accessibleColumnCount;
                 };
                 int firstVisibleRow = calcRowIndex.apply(location1);
                 int lastVisibleRow = calcRowIndex.apply(location2);
