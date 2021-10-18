@@ -135,11 +135,8 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     if (CAccessible.getSwingAccessible(CAccessible.this) != null) {
                         Accessible a = CAccessible.getSwingAccessible(CAccessible.this);
                         AccessibleContext ac = a.getAccessibleContext();
-                        if (ac != null) {
-                            AccessibleRole ar = ac.getAccessibleRole();
-                            if ((ar != null) && (ar == AccessibleRole.TABLE)) {
-                                tableContentCacheClear(ptr);
-                            }
+                        if ((ac != null) && (ac.getAccessibleRole() == AccessibleRole.TABLE)) {
+                            tableContentCacheClear(ptr);
                         }
                     }
                 } else if (name.compareTo(ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY) == 0 ) {
