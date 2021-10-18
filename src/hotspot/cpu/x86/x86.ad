@@ -1297,6 +1297,16 @@ class HandlerImpl {
 #endif
 };
 
+inline uint vector_length(const Node* n) {
+  const TypeVect* vt = n->bottom_type()->is_vect();
+  return vt->length();
+}
+
+inline uint vector_length_in_bytes(const Node* n) {
+  const TypeVect* vt = n->bottom_type()->is_vect();
+  return vt->length_in_bytes();
+}
+
 %} // end source_hpp
 
 source %{
@@ -6034,7 +6044,8 @@ instruct vadd4B_reg(vecS dst, vecS src1, vecS src2) %{
 
 
 instruct vadd4B_mem(vecS dst, vecS src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 4);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 4) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (AddVB src (LoadVector mem)));
   format %{ "vpaddb  $dst,$src,$mem\t! add packed4B" %}
   ins_encode %{
@@ -6067,7 +6078,8 @@ instruct vadd8B_reg(vecD dst, vecD src1, vecD src2) %{
 
 
 instruct vadd8B_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 8);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 8) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (AddVB src (LoadVector mem)));
   format %{ "vpaddb  $dst,$src,$mem\t! add packed8B" %}
   ins_encode %{
@@ -6176,7 +6188,8 @@ instruct vadd2S_reg(vecS dst, vecS src1, vecS src2) %{
 %}
 
 instruct vadd2S_mem(vecS dst, vecS src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 2);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 2) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (AddVS src (LoadVector mem)));
   format %{ "vpaddw  $dst,$src,$mem\t! add packed2S" %}
   ins_encode %{
@@ -6208,7 +6221,8 @@ instruct vadd4S_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vadd4S_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 4);
+  predicate((UseAVX == 0) && (n->as_Vector()->length() == 4) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (AddVS src (LoadVector mem)));
   format %{ "vpaddw  $dst,$src,$mem\t! add packed4S" %}
   ins_encode %{
@@ -6317,7 +6331,8 @@ instruct vadd2I_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vadd2I_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 2);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 2) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (AddVI src (LoadVector mem)));
   format %{ "vpaddd  $dst,$src,$mem\t! add packed2I" %}
   ins_encode %{
@@ -6503,7 +6518,8 @@ instruct vadd2F_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vadd2F_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 2);
+  predicate((UseAVX == 0) && (n->as_Vector()->length() == 2) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (AddVF src (LoadVector mem)));
   format %{ "vaddps  $dst,$src,$mem\t! add packed2F" %}
   ins_encode %{
@@ -6691,7 +6707,8 @@ instruct vsub4B_reg(vecS dst, vecS src1, vecS src2) %{
 %}
 
 instruct vsub4B_mem(vecS dst, vecS src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 4);
+  predicate((UseAVX == 0) && (n->as_Vector()->length() == 4) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (SubVB src (LoadVector mem)));
   format %{ "vpsubb  $dst,$src,$mem\t! sub packed4B" %}
   ins_encode %{
@@ -6723,7 +6740,8 @@ instruct vsub8B_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vsub8B_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 8);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 8) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (SubVB src (LoadVector mem)));
   format %{ "vpsubb  $dst,$src,$mem\t! sub packed8B" %}
   ins_encode %{
@@ -6832,7 +6850,8 @@ instruct vsub2S_reg(vecS dst, vecS src1, vecS src2) %{
 %}
 
 instruct vsub2S_mem(vecS dst, vecS src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 2);
+  predicate((UseAVX == 0) && (n->as_Vector()->length() == 2) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (SubVS src (LoadVector mem)));
   format %{ "vpsubw  $dst,$src,$mem\t! sub packed2S" %}
   ins_encode %{
@@ -6864,7 +6883,8 @@ instruct vsub4S_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vsub4S_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 4);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 4) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (SubVS src (LoadVector mem)));
   format %{ "vpsubw  $dst,$src,$mem\t! sub packed4S" %}
   ins_encode %{
@@ -6973,7 +6993,8 @@ instruct vsub2I_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vsub2I_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 2);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 2) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (SubVI src (LoadVector mem)));
   format %{ "vpsubd  $dst,$src,$mem\t! sub packed2I" %}
   ins_encode %{
@@ -7159,7 +7180,8 @@ instruct vsub2F_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vsub2F_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 2);
+  predicate((UseAVX == 0) && (n->as_Vector()->length() == 2) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (SubVF src (LoadVector mem)));
   format %{ "vsubps  $dst,$src,$mem\t! sub packed2F" %}
   ins_encode %{
@@ -7527,7 +7549,8 @@ instruct vmul2S_reg(vecS dst, vecS src1, vecS src2) %{
 %}
 
 instruct vmul2S_mem(vecS dst, vecS src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 2);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 2) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (MulVS src (LoadVector mem)));
   format %{ "vpmullw $dst,$src,$mem\t! mul packed2S" %}
   ins_encode %{
@@ -7559,7 +7582,8 @@ instruct vmul4S_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vmul4S_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 4);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 4) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (MulVS src (LoadVector mem)));
   format %{ "vpmullw $dst,$src,$mem\t! mul packed4S" %}
   ins_encode %{
@@ -7668,7 +7692,8 @@ instruct vmul2I_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vmul2I_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 2);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 2) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (MulVI src (LoadVector mem)));
   format %{ "vpmulld $dst,$src,$mem\t! mul packed2I" %}
   ins_encode %{
@@ -7843,7 +7868,8 @@ instruct vmul2F_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vmul2F_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 2);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 2) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (MulVF src (LoadVector mem)));
   format %{ "vmulps  $dst,$src,$mem\t! mul packed2F" %}
   ins_encode %{
@@ -8063,7 +8089,8 @@ instruct vdiv2F_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vdiv2F_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 2);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 2) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (DivVF src (LoadVector mem)));
   format %{ "vdivps  $dst,$src,$mem\t! div packed2F" %}
   ins_encode %{
@@ -8307,7 +8334,8 @@ instruct vsqrt2F_reg(vecD dst, vecD src) %{
 %}
 
 instruct vsqrt2F_mem(vecD dst, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length() == 2);
+  predicate((UseAVX > 0) && (n->as_Vector()->length() == 2) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (SqrtVF (LoadVector mem)));
   format %{ "vsqrtps  $dst,$mem\t! sqrt packed2F" %}
   ins_encode %{
@@ -8892,7 +8920,8 @@ instruct vand4B_reg(vecS dst, vecS src1, vecS src2) %{
 %}
 
 instruct vand4B_mem(vecS dst, vecS src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length_in_bytes() == 4);
+  predicate((UseAVX > 0) && (n->as_Vector()->length_in_bytes() == 4) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (AndV src (LoadVector mem)));
   format %{ "vpand   $dst,$src,$mem\t! and vectors (4 bytes)" %}
   ins_encode %{
@@ -8924,7 +8953,8 @@ instruct vand8B_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vand8B_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length_in_bytes() == 8);
+  predicate((UseAVX > 0) && (n->as_Vector()->length_in_bytes() == 8) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (AndV src (LoadVector mem)));
   format %{ "vpand   $dst,$src,$mem\t! and vectors (8 bytes)" %}
   ins_encode %{
@@ -9034,7 +9064,8 @@ instruct vor4B_reg(vecS dst, vecS src1, vecS src2) %{
 %}
 
 instruct vor4B_mem(vecS dst, vecS src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length_in_bytes() == 4);
+  predicate((UseAVX > 0) && (n->as_Vector()->length_in_bytes() == 4) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (OrV src (LoadVector mem)));
   format %{ "vpor    $dst,$src,$mem\t! or vectors (4 bytes)" %}
   ins_encode %{
@@ -9066,7 +9097,8 @@ instruct vor8B_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vor8B_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length_in_bytes() == 4);
+  predicate((UseAVX > 0) && (n->as_Vector()->length_in_bytes() == 8) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (OrV src (LoadVector mem)));
   format %{ "vpor    $dst,$src,$mem\t! or vectors (8 bytes)" %}
   ins_encode %{
@@ -9176,7 +9208,8 @@ instruct vxor4B_reg(vecS dst, vecS src1, vecS src2) %{
 %}
 
 instruct vxor4B_mem(vecS dst, vecS src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length_in_bytes() == 4);
+  predicate((UseAVX > 0) && (n->as_Vector()->length_in_bytes() == 4) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (XorV src (LoadVector mem)));
   format %{ "vpxor   $dst,$src,$mem\t! xor vectors (4 bytes)" %}
   ins_encode %{
@@ -9208,7 +9241,8 @@ instruct vxor8B_reg(vecD dst, vecD src1, vecD src2) %{
 %}
 
 instruct vxor8B_mem(vecD dst, vecD src, memory mem) %{
-  predicate(UseAVX > 0 && n->as_Vector()->length_in_bytes() == 8);
+  predicate((UseAVX > 0) && (n->as_Vector()->length_in_bytes() == 8) &&
+    (vector_length_in_bytes(n->in(1)) > 8));
   match(Set dst (XorV src (LoadVector mem)));
   format %{ "vpxor   $dst,$src,$mem\t! xor vectors (8 bytes)" %}
   ins_encode %{
