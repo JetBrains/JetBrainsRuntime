@@ -50,7 +50,13 @@ static jvmtiError JNICALL IsClassUnloadingEnabled(const jvmtiEnv* env, ...) {
 }
 
 // extension function
-static jvmtiError JNICALL IsEnhancedClassRedefinitionEnabled(const jvmtiEnv* env, jboolean* enabled, ...) {
+static jvmtiError JNICALL IsEnhancedClassRedefinitionEnabled(const jvmtiEnv* env, ...) {
+  jboolean* enabled = NULL;
+  va_list ap;
+
+  va_start(ap, env);
+  enabled = va_arg(ap, jboolean *);
+  va_end(ap);
   if (enabled == NULL) {
     return JVMTI_ERROR_NULL_POINTER;
   }
