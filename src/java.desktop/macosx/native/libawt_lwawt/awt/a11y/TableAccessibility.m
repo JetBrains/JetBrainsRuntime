@@ -33,6 +33,7 @@
 #import "JNIUtilities.h"
 #import "CellAccessibility.h"
 #import "sun_lwawt_macosx_CAccessibility.h"
+#import "sun_lwawt_macosx_CAccessible.h"
 
 static jclass sjc_CAccessibility = NULL;
 
@@ -124,12 +125,23 @@ static jmethodID sjm_getAccessibleName = NULL;
 
 - (TableRowAccessibility *)createRowWithIndex:(NSUInteger)index
 {
-    return [[TableRowAccessibility alloc] initWithParent:self
-                                                      withEnv:[ThreadUtilities getJNIEnv]
-                                               withAccessible:NULL
-                                                    withIndex:index
-                                                     withView:[self view]
-                                                 withJavaRole:JavaAccessibilityIgnore];
+    if (rowCache == nil) {
+        int rowCount = [self accessibilityRowCount];
+        rowCache = [[NSMutableDictionary<NSNumber*, id> dictionaryWithCapacity:rowCount] retain];
+    }
+
+    id row = [rowCache objectForKey:[NSNumber numberWithUnsignedInteger:index]];
+    if (row == nil) {
+        row = [[TableRowAccessibility alloc] initWithParent:self
+                                                        withEnv:[ThreadUtilities getJNIEnv]
+                                                 withAccessible:NULL
+                                                      withIndex:index
+                                                       withView:[self view]
+                                                   withJavaRole:JavaAccessibilityIgnore];
+        [rowCache setObject:row forKey:[NSNumber numberWithUnsignedInteger:index]];
+    }
+
+    return row;
 }
 
 - (ColumnAccessibility *)createColumnWithIndex:(NSUInteger)index
@@ -238,4 +250,28 @@ static jmethodID sjm_getAccessibleName = NULL;
     return [NSArray arrayWithArray:selectedCells];
 }
 
+- (void)clearCache {
+    for (NSNumber *key in [rowCache allKeys]) {
+        [[rowCache objectForKey:key] release];
+    }
+    [rowCache release];
+    rowCache = nil;
+}
+
 @end
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessible
+ * Method:    tableContentIndexDestroy
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_tableContentCacheClear
+        (JNIEnv *env, jclass class, jlong element)
+{
+    JNI_COCOA_ENTER(env);
+        [ThreadUtilities performOnMainThread:@selector(clearCache)
+                                          on:(CommonComponentAccessibility *)jlong_to_ptr(element)
+                                  withObject:nil
+                               waitUntilDone:NO];
+    JNI_COCOA_EXIT(env);
+}
