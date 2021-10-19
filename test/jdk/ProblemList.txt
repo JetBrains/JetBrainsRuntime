@@ -1,6 +1,6 @@
 ###########################################################################
 #
-# Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -42,10 +42,11 @@
 # List items are testnames followed by labels, all MUST BE commented
 #   as to why they are here and use a label:
 #     generic-all   Problems on all platforms
-#     generic-ARCH  Where ARCH is one of: x64, i586, ppc64, ppc64le, s390x, aarch64 etc.
-#     OSNAME-all    Where OSNAME is one of: linux, windows, macosx, aix
-#     OSNAME-ARCH   Specific on to one OSNAME and ARCH, e.g. macosx-x64
-#     OSNAME-REV    Specific on to one OSNAME and REV, e.g. macosx-10.7.4
+#     generic-ARCH  Where ARCH is one of: sparc, sparcv9, x64, i586, ppc64,
+#                   ppc64le, s390x etc.
+#     OSNAME-all    Where OSNAME is one of: solaris, linux, windows, macosx, aix
+#     OSNAME-ARCH   Specific on to one OSNAME and ARCH, e.g. solaris-amd64
+#     OSNAME-REV    Specific on to one OSNAME and REV, e.g. solaris-5.8
 #
 # More than one label is allowed but must be on the same line comma seperated,
 # without spaces.
@@ -685,8 +686,6 @@ sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                 8209398 generic-
 security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java  8224768 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/BuypassCA.java  8243543 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/ComodoCA.java   8263059 generic-all
-security/infra/java/security/cert/CertPathValidator/certification/QuoVadisCA.java 8248899 generic-all
-security/infra/java/security/cert/CertPathValidator/certification/LetsEncryptCA.java 8270280 generic-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
 sun/security/smartcardio/TestConnect.java                       8039280 generic-all
