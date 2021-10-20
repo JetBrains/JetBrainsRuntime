@@ -102,6 +102,9 @@ static BOOL sDisableJbScreenMenuBar = NO; // Equals YES when VM-property 'disabl
     AWT_ASSERT_APPKIT_THREAD;
 
     if (!sDisableJbScreenMenuBar) {
+        fprintf(stderr, "WARNING: CMenuBar [%p] activate mustn't be invoked " \
+                        "(can cause unstable behaviour with new impl of screen menu support)\n", (void*)menubar);
+        // TODO: fix activation logic
         return;
     }
 
