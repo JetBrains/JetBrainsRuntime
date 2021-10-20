@@ -1,7 +1,7 @@
-From a1ff2ca342f7e0cf957de2516f2cf6802c2fb748 Mon Sep 17 00:00:00 2001
+From fc955c851f24501927e14d8200ddc7f2c05faa3c Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 7 Feb 2021 12:08:58 +0100
-Subject: [PATCH 22/30] JBR-3110 Fix assert in MetadataOnStackMark
+Subject: [PATCH 22/31] JBR-3110 Fix assert in MetadataOnStackMark
 
 Fixed fastdebug tests crashes in redefine gc run
 ---
