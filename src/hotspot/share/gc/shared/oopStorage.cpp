@@ -34,7 +34,7 @@
 #include "runtime/mutex.hpp"
 #include "runtime/mutexLocker.hpp"
 #include "runtime/orderAccess.hpp"
-#include "runtime/safefetch.hpp"
+#include "runtime/safefetch.inline.hpp"
 #include "runtime/safepoint.hpp"
 #include "runtime/thread.hpp"
 #include "utilities/align.hpp"
