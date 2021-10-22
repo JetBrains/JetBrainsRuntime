@@ -1,7 +1,7 @@
-From 7bb6ea77608cd43cb7ca8c1ea8d492ae07789a0f Mon Sep 17 00:00:00 2001
+From 57d2451903b84dfc772cc0bf6957a52ee5e8c0f3 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sat, 23 May 2020 10:02:15 +0200
-Subject: [PATCH 05/39] Fix "no original bytecode found" error if method with
+Subject: [PATCH 05/42] Fix "no original bytecode found" error if method with
  bkp is missing
 
 Sometimes IDE can deploy class with erroneous method, such method has
@@ -102,7 +102,7 @@ index 030ddd1f675..a8d6507ff6c 100644
    void set_breakpoint(int bci);
    void clear_breakpoint(int bci);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index bf31819479d..07935bd0ada 100644
+index c1b1b354541..ad05b4f34cf 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1360,14 +1360,16 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {

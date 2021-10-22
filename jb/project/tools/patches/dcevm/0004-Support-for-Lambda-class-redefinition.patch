@@ -1,7 +1,7 @@
-From 53d50b53f83aa5135ff5092d0d566424024b8b4b Mon Sep 17 00:00:00 2001
+From 146b85fb6af764594999cb9922fd820798f3e9cc Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 4 Oct 2020 21:12:12 +0200
-Subject: [PATCH 04/39] Support for Lambda class redefinition
+Subject: [PATCH 04/42] Support for Lambda class redefinition
 
 ---
  .../share/classfile/classLoaderData.cpp       |  9 +++
@@ -80,7 +80,7 @@ index 2bfd9cb802f..cea614a574f 100644
    // Hidden classes that are not strong must update ClassLoaderData holder
    // so that they can be unloaded when the mirror is no longer referenced.
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 5551d3ca123..bf31819479d 100644
+index 5308b079e67..c1b1b354541 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -492,6 +492,8 @@ void VM_EnhancedRedefineClasses::doit() {
@@ -177,7 +177,7 @@ index 5551d3ca123..bf31819479d 100644
  
    // Sort the affected klasses such that a supertype is always on a smaller array index than its subtype.
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 60b62c3170a..d8a11b51fe9 100644
+index a48e07e3a6a..3551b06ecde 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -116,6 +116,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

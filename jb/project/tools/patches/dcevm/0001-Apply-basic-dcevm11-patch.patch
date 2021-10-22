@@ -1,7 +1,7 @@
-From 621bd4318f792891d26387eb149415fb6454f439 Mon Sep 17 00:00:00 2001
+From 51f91f7ccd3638360afcc8333d086bd2d5852b0e Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 14 Nov 2018 21:09:39 +0100
-Subject: [PATCH 01/39] Apply basic dcevm11 patch
+Subject: [PATCH 01/42] Apply basic dcevm11 patch
 
 ---
  src/hotspot/share/ci/ciObjectFactory.cpp      |   25 +
@@ -6041,7 +6041,7 @@ index 575ebed679e..a7fe090ba01 100644
    if (log_is_enabled(Debug, class, resolve)) {
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 new file mode 100644
-index 00000000000..83c0952de37
+index 00000000000..80c31135487
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -0,0 +1,2255 @@
@@ -8302,7 +8302,7 @@ index 00000000000..83c0952de37
 +}
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 new file mode 100644
-index 00000000000..b712d69a193
+index 00000000000..3f95cf42645
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -0,0 +1,202 @@
@@ -8664,10 +8664,10 @@ index ea5ba609f95..08e3c0cddf8 100644
    for (InstanceKlass* pv_node = ik->previous_versions();
         pv_node != NULL;
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index 2504527c233..1373408f18d 100644
+index 8f34ed3b7fb..11e7997b4a6 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
-@@ -1969,6 +1969,36 @@ unsigned int addmods_count = 0;
+@@ -1973,6 +1973,36 @@ unsigned int addmods_count = 0;
  unsigned int patch_mod_count = 0;
  unsigned int enable_native_access_count = 0;
  
@@ -8704,7 +8704,7 @@ index 2504527c233..1373408f18d 100644
  // Check the consistency of vm_init_args
  bool Arguments::check_vm_args_consistency() {
    // Method for adding checks for flag consistency.
-@@ -1985,6 +2015,8 @@ bool Arguments::check_vm_args_consistency() {
+@@ -1989,6 +2019,8 @@ bool Arguments::check_vm_args_consistency() {
      status = false;
    }
  
@@ -8714,10 +8714,10 @@ index 2504527c233..1373408f18d 100644
  #if INCLUDE_NMT
      if (MemTracker::tracking_level() == NMT_off) {
 diff --git a/src/hotspot/share/runtime/arguments.hpp b/src/hotspot/share/runtime/arguments.hpp
-index 3876be4a9da..1b7f8fe9f47 100644
+index 2fcca433c90..3adc03a6583 100644
 --- a/src/hotspot/share/runtime/arguments.hpp
 +++ b/src/hotspot/share/runtime/arguments.hpp
-@@ -488,6 +488,7 @@ class Arguments : AllStatic {
+@@ -493,6 +493,7 @@ class Arguments : AllStatic {
    static bool process_settings_file(const char* file_name, bool should_exist, jboolean ignore_unrecognized);
  
    static size_t conservative_max_heap_alignment() { return _conservative_max_heap_alignment; }
@@ -8726,7 +8726,7 @@ index 3876be4a9da..1b7f8fe9f47 100644
    static size_t max_heap_for_compressed_oops();
  
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index 8779036b440..2fcb02fcf49 100644
+index 6d8b38ae536..845a39b0225 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
 @@ -2087,6 +2087,11 @@ const intx ObjectAlignmentInBytes = 8;
@@ -8742,7 +8742,7 @@ index 8779036b440..2fcb02fcf49 100644
  // end of RUNTIME_FLAGS
  
 diff --git a/src/hotspot/share/runtime/interfaceSupport.inline.hpp b/src/hotspot/share/runtime/interfaceSupport.inline.hpp
-index 17e04696e76..22bd9e05865 100644
+index 1e345b01caa..bf1331544ea 100644
 --- a/src/hotspot/share/runtime/interfaceSupport.inline.hpp
 +++ b/src/hotspot/share/runtime/interfaceSupport.inline.hpp
 @@ -220,8 +220,8 @@ class ThreadToNativeFromVM : public ThreadStateTransition {

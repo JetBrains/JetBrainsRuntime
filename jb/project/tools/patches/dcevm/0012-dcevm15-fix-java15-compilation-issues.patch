@@ -1,7 +1,7 @@
-From 2dd09ce40a545a4256f990346e5cebf23dbf0b56 Mon Sep 17 00:00:00 2001
+From f583e16509936d6873c4a2dac936d9089cc402a1 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 10:10:02 +0100
-Subject: [PATCH 12/39] dcevm15 - fix java15 compilation issues
+Subject: [PATCH 12/42] dcevm15 - fix java15 compilation issues
 
 ---
  .../share/classfile/classFileParser.hpp       |   8 +-
@@ -411,7 +411,7 @@ index a7fe090ba01..2966343c835 100644
  
      // The hidden class loader data has been artificially been kept alive to
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 1da6661dd3e..efaf11e1666 100644
+index 2679d3a556a..a27c2ff87ae 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -24,11 +24,14 @@
@@ -832,7 +832,7 @@ index 1da6661dd3e..efaf11e1666 100644
          Klass* interfaceKlass = local_interfaces->at(j);
          if (_affected_klasses->contains(interfaceKlass)) {
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 4c0412d343d..bd5e7d153be 100644
+index d00109a0b92..61f62e7f831 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -32,7 +32,7 @@
@@ -1151,10 +1151,10 @@ index b8d039adff6..3c29eda4da0 100644
  class VerifyResolvedMethod : StackObj {
   public:
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index b7bb88e2a46..567803b70b7 100644
+index 2d33448ec8d..9661f2b62b9 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
-@@ -1975,13 +1975,15 @@ bool Arguments::check_gc_consistency() {
+@@ -1979,13 +1979,15 @@ bool Arguments::check_gc_consistency() {
    // of collectors.
    uint i = 0;
    if (UseSerialGC)                       i++;

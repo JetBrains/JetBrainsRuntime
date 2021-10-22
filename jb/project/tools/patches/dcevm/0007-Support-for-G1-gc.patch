@@ -1,7 +1,7 @@
-From a3775e77a2b4c5ec15051d5cfbf150fc67719d90 Mon Sep 17 00:00:00 2001
+From 2365d0dc56b6b28ee3355e89ecf981a42fdfe440 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Jun 2020 17:43:52 +0200
-Subject: [PATCH 07/39] Support for G1 gc
+Subject: [PATCH 07/42] Support for G1 gc
 
 ---
  src/hotspot/share/gc/g1/g1CollectedHeap.cpp   |  23 +++
@@ -1032,7 +1032,7 @@ index 8091ab2808d..9fcbb6c41b3 100644
    SystemDictionary::oops_do(oopClosure);
  }
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 3c86e8c68ac..1da6661dd3e 100644
+index 95be32f0070..2679d3a556a 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -36,7 +36,6 @@
@@ -1254,7 +1254,7 @@ index 3c86e8c68ac..1da6661dd3e 100644
    ResourceMark mark(THREAD);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index d8a11b51fe9..4c0412d343d 100644
+index 3551b06ecde..d00109a0b92 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -86,9 +86,10 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
@@ -1280,10 +1280,10 @@ index d8a11b51fe9..4c0412d343d 100644
    static void fix_invoke_method(Method* method);
  
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index 1373408f18d..b7bb88e2a46 100644
+index 11e7997b4a6..2d33448ec8d 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
-@@ -1981,9 +1981,9 @@ bool Arguments::check_gc_consistency() {
+@@ -1985,9 +1985,9 @@ bool Arguments::check_gc_consistency() {
    if (AllowEnhancedClassRedefinition) {
      // Must use serial GC. This limitation applies because the instance size changing GC modifications
      // are only built into the mark and compact algorithm.

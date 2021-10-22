@@ -1,0 +1,54 @@
+From db54a42adf258e2ba3459fe017221cf2cf49c33f Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Mon, 11 Oct 2021 20:22:26 +0200
+Subject: [PATCH 41/42] JBR-3867 - fix msvc compilation issue with non const
+ array on stack
+
+---
+ .../share/native/libjdwp/VirtualMachineImpl.c      | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/src/jdk.jdwp.agent/share/native/libjdwp/VirtualMachineImpl.c b/src/jdk.jdwp.agent/share/native/libjdwp/VirtualMachineImpl.c
+index 7e3070d7d1d..669fac7cb5b 100644
+--- a/src/jdk.jdwp.agent/share/native/libjdwp/VirtualMachineImpl.c
++++ b/src/jdk.jdwp.agent/share/native/libjdwp/VirtualMachineImpl.c
+@@ -477,11 +477,16 @@ redefineClasses(PacketInputStream *in, PacketOutputStream *out)
+     if (ok == JNI_TRUE) {
+         jvmtiError error;
+ 
+-        jlong classIds[classCount];
++        jlong* classIds = NULL;
+ 
+         if (gdata->isEnhancedClassRedefinitionEnabled) {
+-            for (i = 0; i < classCount; ++i) {
+-              classIds[i] = commonRef_refToID(env, classDefs[i].klass);
++            classIds = jvmtiAllocate(classCount*(int)sizeof(jlong));
++            if (classIds == NULL) {
++                outStream_setError(out, JDWP_ERROR(OUT_OF_MEMORY));
++                return JNI_TRUE;
++            }
++            for (i = 0; i < classCount; i++) {
++                classIds[i] = commonRef_refToID(env, classDefs[i].klass);
+             }
+         }
+ 
+@@ -495,7 +500,7 @@ redefineClasses(PacketInputStream *in, PacketOutputStream *out)
+                 eventHandler_freeClassBreakpoints(classDefs[i].klass);
+             }
+ 
+-            if (gdata->isEnhancedClassRedefinitionEnabled) {
++            if (gdata->isEnhancedClassRedefinitionEnabled && classIds != NULL) {
+                 /* Update tags in jvmti to use new classes */
+                 for ( i = 0 ; i < classCount; i++ ) {
+                     /* pointer in classIds[i] is updated by advanced redefinition to a new class */
+@@ -504,6 +509,7 @@ redefineClasses(PacketInputStream *in, PacketOutputStream *out)
+                         break;
+                     }
+                 }
++                jvmtiDeallocate((void*) classIds);
+             }
+ 
+         }
+-- 
+2.23.0
+

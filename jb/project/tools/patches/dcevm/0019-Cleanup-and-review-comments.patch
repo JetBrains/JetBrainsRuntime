@@ -1,7 +1,7 @@
-From 3b09df69c007285ea6c258388532a8e5f9fe3d45 Mon Sep 17 00:00:00 2001
+From e286bbfb6ef8235be6aa9b41e30e9ed36cfd177d Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 22 Nov 2020 12:03:32 +0100
-Subject: [PATCH 19/39] Cleanup and review comments
+Subject: [PATCH 19/42] Cleanup and review comments
 
 ---
  src/hotspot/share/classfile/classLoaderDataGraph.hpp     | 2 +-
@@ -37,7 +37,7 @@ index 26a2b67b8e9..8e78696bef5 100644
    } else if (os::is_server_class_machine()) {
  #if INCLUDE_G1GC
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 590f7fdfafe..2a7dd35bdd1 100644
+index 1433e429e30..af34d751bdb 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -842,6 +842,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
@@ -49,7 +49,7 @@ index 590f7fdfafe..2a7dd35bdd1 100644
        // The hidden class loader data has been artificially been kept alive to
        // this point. The mirror and any instances of this class have to keep
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index bd5e7d153be..5de375fb888 100644
+index 61f62e7f831..43f1aff8e91 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -78,7 +78,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

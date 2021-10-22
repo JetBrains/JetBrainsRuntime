@@ -1,7 +1,7 @@
-From d4d56b7ad6cd8f73f7485cdc608655c014c55f3c Mon Sep 17 00:00:00 2001
+From b57c414d7885df5142a4a6bbf78001e96938f8ac Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 20 Mar 2021 20:51:08 +0100
-Subject: [PATCH 31/39] JBR-3459: Fix race condition in
+Subject: [PATCH 31/42] JBR-3459: Fix race condition in
  ClassLoaderDataGraph::classes_do
 
 InstanceKlass in ClassLoaderData can be uninitialized when
@@ -51,7 +51,7 @@ index ebdb0bc2c8c..da712eaf55f 100644
    static void methods_do(void f(Method*));
    static void modules_do(void f(ModuleEntry*));
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 7bdbc861c1f..4e8e7141e61 100644
+index 90dfc1ae545..10407755457 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -2164,9 +2164,19 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {

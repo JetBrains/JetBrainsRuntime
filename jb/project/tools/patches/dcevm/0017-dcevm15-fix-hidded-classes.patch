@@ -1,14 +1,14 @@
-From ed546016ead6064d8b95a9c1e4cdc6bc192f8d67 Mon Sep 17 00:00:00 2001
+From 50e3023f20fbea76fcc644a037bebc3ee5afc212 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 29 Nov 2020 20:05:03 +0100
-Subject: [PATCH 17/39] dcevm15 - fix hidded classes
+Subject: [PATCH 17/42] dcevm15 - fix hidded classes
 
 ---
  .../prims/jvmtiEnhancedRedefineClasses.cpp    | 41 ++++++++++++++-----
  1 file changed, 30 insertions(+), 11 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index db5fb1c472b..590f7fdfafe 100644
+index d742679d199..1433e429e30 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -722,7 +722,8 @@ bool VM_EnhancedRedefineClasses::is_modifiable_class(oop klass_mirror) {

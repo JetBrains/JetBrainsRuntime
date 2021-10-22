@@ -1,7 +1,7 @@
-From 3eb64e8ed65ae214091b55e497d24dff0eb1e353 Mon Sep 17 00:00:00 2001
+From fd5b6cd29a5dfed532b0c6ac80c94271f388c5bc Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 20 Jun 2021 19:11:16 +0200
-Subject: [PATCH 33/39] Fix dcevm issues related to refactorization of Thread
+Subject: [PATCH 33/42] Fix dcevm issues related to refactorization of Thread
  to JavaThread
 
 ---
@@ -23,7 +23,7 @@ index 5c058dc43ac..9de28f740ac 100644
  
    {
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index f6bef8262d3..b662976afcb 100644
+index e87d4452d31..0aeeea4e7a4 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -23,7 +23,6 @@
@@ -299,7 +299,7 @@ index f6bef8262d3..b662976afcb 100644
        ik->vtable().verify(tty, true);
      }
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 673688dff84..378e6f78582 100644
+index d0d2f78aa62..252287a3697 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -122,7 +122,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

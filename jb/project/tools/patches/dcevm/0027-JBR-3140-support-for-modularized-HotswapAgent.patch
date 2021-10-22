@@ -1,7 +1,7 @@
-From 30308e893e43425da166175f5f18f84abf2c6110 Mon Sep 17 00:00:00 2001
+From e85a74a6bd33e5d81569ec209311e698de402990 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Thu, 18 Jun 2020 18:40:11 +0200
-Subject: [PATCH 27/39] JBR-3140 - support for modularized HotswapAgent
+Subject: [PATCH 27/42] JBR-3140 - support for modularized HotswapAgent
 
 Add -XX:HotswapAgent=[disabled,fatjar.core]
 ---
@@ -13,10 +13,10 @@ Add -XX:HotswapAgent=[disabled,fatjar.core]
  5 files changed, 102 insertions(+), 2 deletions(-)
 
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index cbcd8f91c66..4f9cfde9323 100644
+index 252ebbc4e57..9c6fab8ae4b 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
-@@ -4001,6 +4001,8 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
+@@ -4034,6 +4034,8 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
      }
    }
  
@@ -25,7 +25,7 @@ index cbcd8f91c66..4f9cfde9323 100644
  #if !INCLUDE_CDS
    if (DumpSharedSpaces || RequireSharedSpaces) {
      jio_fprintf(defaultStream::error_stream(),
-@@ -4357,3 +4359,78 @@ bool Arguments::copy_expand_pid(const char* src, size_t srclen,
+@@ -4390,3 +4392,78 @@ bool Arguments::copy_expand_pid(const char* src, size_t srclen,
    *b = '\0';
    return (p == src_end); // return false if not all of the source was copied
  }
@@ -105,10 +105,10 @@ index cbcd8f91c66..4f9cfde9323 100644
 +
 +}
 diff --git a/src/hotspot/share/runtime/arguments.hpp b/src/hotspot/share/runtime/arguments.hpp
-index 6a8ceb7fa8a..7669a283375 100644
+index b8eb4d0ab24..a14e11b48ef 100644
 --- a/src/hotspot/share/runtime/arguments.hpp
 +++ b/src/hotspot/share/runtime/arguments.hpp
-@@ -491,6 +491,10 @@ class Arguments : AllStatic {
+@@ -496,6 +496,10 @@ class Arguments : AllStatic {
  
    static size_t conservative_max_heap_alignment() { return _conservative_max_heap_alignment; }
  
@@ -154,7 +154,7 @@ index 8bc3a9a1548..c5f58fd16ee 100644
  RUNTIME_CONSTRAINTS(DECLARE_CONSTRAINT)
  
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index 7051b634a9b..d23e43407e1 100644
+index fb6d1667156..20838a878ce 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
 @@ -2090,7 +2090,16 @@ const intx ObjectAlignmentInBytes = 8;

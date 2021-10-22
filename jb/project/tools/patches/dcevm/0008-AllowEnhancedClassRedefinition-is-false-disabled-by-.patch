@@ -1,7 +1,7 @@
-From e062743b148a099a8593a3110d5f1d9156f4ca23 Mon Sep 17 00:00:00 2001
+From e818e4a83fafc07142b7b7279c633823d5d8ab23 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Tue, 6 Oct 2020 22:15:31 +0200
-Subject: [PATCH 08/39] AllowEnhancedClassRedefinition is false (disabled) by
+Subject: [PATCH 08/42] AllowEnhancedClassRedefinition is false (disabled) by
  default
 
 ---
@@ -9,7 +9,7 @@ Subject: [PATCH 08/39] AllowEnhancedClassRedefinition is false (disabled) by
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index 2fcb02fcf49..7051b634a9b 100644
+index 845a39b0225..fb6d1667156 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
 @@ -2088,7 +2088,7 @@ const intx ObjectAlignmentInBytes = 8;

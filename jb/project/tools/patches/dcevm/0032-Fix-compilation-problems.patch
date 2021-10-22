@@ -1,7 +1,7 @@
-From 5356c4dbbcc2564e401fc92b7680b870ee7070ec Mon Sep 17 00:00:00 2001
+From 66d53205a84c8e4db40fb2fc91f563cde458afcc Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sat, 15 May 2021 13:01:25 +0200
-Subject: [PATCH 32/39] Fix compilation problems
+Subject: [PATCH 32/42] Fix compilation problems
 
 ---
  src/hotspot/share/oops/instanceKlass.cpp                 | 2 +-
@@ -22,7 +22,7 @@ index 3cc96f98f41..c54b6b1bf46 100644
        }
      }
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 4e8e7141e61..f6bef8262d3 100644
+index 10407755457..e87d4452d31 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -708,7 +708,7 @@ void VM_EnhancedRedefineClasses::reinitializeJDKClasses() {

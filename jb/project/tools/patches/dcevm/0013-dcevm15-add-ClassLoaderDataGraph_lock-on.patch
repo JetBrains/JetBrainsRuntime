@@ -1,7 +1,7 @@
-From 9815ee603b27484953651bdc6d5705994a4d38aa Mon Sep 17 00:00:00 2001
+From 4c98b29fed42b51e399f2ae0dc06f0c7a4397e2c Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 22 Nov 2020 19:51:46 +0100
-Subject: [PATCH 13/39] dcevm15 - add ClassLoaderDataGraph_lock on
+Subject: [PATCH 13/42] dcevm15 - add ClassLoaderDataGraph_lock on
  ClassLoaderDataGraph::classes_do
 
 ClassLoaderDataGraph::classes_do and need safepoint or lock,
@@ -13,7 +13,7 @@ ClassLoaderDataGraph::rollback_redefinition need safepoint too
  1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index efaf11e1666..9f42d14ce98 100644
+index a27c2ff87ae..001d2c782d8 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1380,7 +1380,9 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne

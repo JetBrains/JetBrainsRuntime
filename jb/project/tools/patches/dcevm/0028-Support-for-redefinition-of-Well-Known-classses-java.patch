@@ -1,7 +1,7 @@
-From 51f0036ff15d39330b787512af9e38d15c748e4b Mon Sep 17 00:00:00 2001
+From b2e59ba5f246798f4901fa16d8fd3aeceac8309e Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 7 Mar 2021 20:22:54 +0100
-Subject: [PATCH 28/39] Support for redefinition of Well Known classses
+Subject: [PATCH 28/42] Support for redefinition of Well Known classses
  (java.*,jdk.*, sun.*)
 
 ---
@@ -222,7 +222,7 @@ index 4b2211c415e..4d4c444220e 100644
  
    // Reference pending list manipulation.  Access is protected by
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index a5264077bfe..e00f0e19e20 100644
+index b88c071be13..fb9da134e97 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -55,6 +55,7 @@
@@ -330,7 +330,7 @@ index a5264077bfe..e00f0e19e20 100644
  //      if (num != ConstMethod::UNSET_IDNUM) {
  //        old_method->set_method_idnum(num);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 9be70039e32..673688dff84 100644
+index ae0a15281f3..d0d2f78aa62 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -150,6 +150,8 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

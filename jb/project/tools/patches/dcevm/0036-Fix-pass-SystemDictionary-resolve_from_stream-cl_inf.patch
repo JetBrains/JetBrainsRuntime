@@ -1,7 +1,7 @@
-From 5bb6ef0fc266a748232c7c51191deab47d4f3857 Mon Sep 17 00:00:00 2001
+From df4c29b24d41069168ee5647b2737348d9902090 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 30 Jun 2021 18:30:00 +0200
-Subject: [PATCH 36/39] Fix, pass SystemDictionary::resolve_from_stream cl_info
+Subject: [PATCH 36/42] Fix, pass SystemDictionary::resolve_from_stream cl_info
  param
 
 ---
@@ -9,7 +9,7 @@ Subject: [PATCH 36/39] Fix, pass SystemDictionary::resolve_from_stream cl_info
  1 file changed, 7 insertions(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index ff012383872..cbcb484a290 100644
+index e7f26b7d08e..4d145f30100 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -920,10 +920,16 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
