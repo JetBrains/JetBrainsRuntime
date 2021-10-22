@@ -4106,7 +4106,7 @@ public class Window extends Container implements Accessible {
         hasTabbingMode = true;
     }
 
-    private volatile Runnable moveTabToNewWindowCallback;
+    private transient volatile Runnable moveTabToNewWindowCallback;
 
     void runMoveTabToNewWindowCallback() {
         if (moveTabToNewWindowCallback != null) {
