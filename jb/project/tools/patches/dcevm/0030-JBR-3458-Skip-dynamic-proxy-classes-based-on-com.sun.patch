@@ -1,7 +1,7 @@
-From 585e2f11d293081db5dc919fa8c13fb5bc7cbc53 Mon Sep 17 00:00:00 2001
+From e3dcad4df8369cfa4a5eb90058ce265c0233b272 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 19 Mar 2021 19:13:38 +0100
-Subject: [PATCH 30/39] JBR-3458: Skip dynamic proxy classes based on
+Subject: [PATCH 30/42] JBR-3458: Skip dynamic proxy classes based on
  com.sun.proxy
 
 ---
@@ -9,7 +9,7 @@ Subject: [PATCH 30/39] JBR-3458: Skip dynamic proxy classes based on
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 62477b5ce10..7bdbc861c1f 100644
+index 890382e2029..90dfc1ae545 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -707,7 +707,8 @@ void VM_EnhancedRedefineClasses::reinitializeJDKClasses() {

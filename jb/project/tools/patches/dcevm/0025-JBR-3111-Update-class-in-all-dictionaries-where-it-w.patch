@@ -1,7 +1,7 @@
-From dac9d7a7d87de680a50be7c2857646323c4c8ffa Mon Sep 17 00:00:00 2001
+From fdc87a0203f5aa1a21b3bf2e7a5aa114739f66cf Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sat, 13 Feb 2021 20:47:52 +0100
-Subject: [PATCH 25/39] JBR-3111 Update class in all dictionaries where it was
+Subject: [PATCH 25/42] JBR-3111 Update class in all dictionaries where it was
  already defined
 
 This patch keeps compatibility with std redefinition, that does not

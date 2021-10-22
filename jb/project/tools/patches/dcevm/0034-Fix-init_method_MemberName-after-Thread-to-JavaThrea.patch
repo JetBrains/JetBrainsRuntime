@@ -1,7 +1,7 @@
-From db2d7cd0cd956f297c58baa7500c1440092648bf Mon Sep 17 00:00:00 2001
+From 52c661cebf92d4ad68058ada5d3463e54428aee7 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 20 Jun 2021 19:42:51 +0200
-Subject: [PATCH 34/39] Fix init_method_MemberName after Thread to JavaThread
+Subject: [PATCH 34/42] Fix init_method_MemberName after Thread to JavaThread
  refactorization
 
 ---
@@ -116,7 +116,7 @@ index 317a006a4ec..36587031fec 100644
    void array_klasses_do(void f(Klass* k, TRAPS), TRAPS);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index b662976afcb..ff012383872 100644
+index 0aeeea4e7a4..e7f26b7d08e 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -292,8 +292,15 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {

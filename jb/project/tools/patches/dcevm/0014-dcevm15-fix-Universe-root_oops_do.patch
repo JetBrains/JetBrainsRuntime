@@ -1,7 +1,7 @@
-From d3e5f8acd389021128bb8a899bb538294de353f6 Mon Sep 17 00:00:00 2001
+From b312e64db8532c57658d1f39269d73969ecf98d4 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 22 Nov 2020 12:05:50 +0100
-Subject: [PATCH 14/39] dcevm15 - fix Universe::root_oops_do
+Subject: [PATCH 14/42] dcevm15 - fix Universe::root_oops_do
 
 Removed ClassLoaderDataGraph::cld_do was cause of crashes due multiple
 oop patching. ClassLoaderDataGraph::cld_do replaced in dcevm15

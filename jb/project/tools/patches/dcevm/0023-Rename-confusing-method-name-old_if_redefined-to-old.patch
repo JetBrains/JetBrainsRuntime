@@ -1,7 +1,7 @@
-From 96680710816d9cd6e9cd8d5ce6dcbe054a7e53bd Mon Sep 17 00:00:00 2001
+From 8f59a799ec9996f3d92843f1a9f8504390c20009 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 11:39:05 +0100
-Subject: [PATCH 23/39] Rename confusing method name old_if_redefined to
+Subject: [PATCH 23/42] Rename confusing method name old_if_redefined to
  old_if_redefining
 
 ---

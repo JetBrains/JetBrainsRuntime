@@ -1,14 +1,14 @@
-From 983b4aaed2c56a74287b9400ddae4b7d7f3fd715 Mon Sep 17 00:00:00 2001
+From 936d83f295468e7c0e51b759def1d8664cca2a6e Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 29 Nov 2020 17:18:16 +0100
-Subject: [PATCH 16/39] dcevm15 - mark_as_scavengable only alive methods
+Subject: [PATCH 16/42] dcevm15 - mark_as_scavengable only alive methods
 
 ---
  .../share/prims/jvmtiEnhancedRedefineClasses.cpp   | 14 ++++++++------
  1 file changed, 8 insertions(+), 6 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 9f42d14ce98..db5fb1c472b 100644
+index 001d2c782d8..d742679d199 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -223,19 +223,21 @@ class FieldCopier : public FieldClosure {

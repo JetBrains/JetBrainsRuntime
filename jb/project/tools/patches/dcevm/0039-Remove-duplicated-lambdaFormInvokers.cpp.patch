@@ -1,7 +1,7 @@
-From 563465b112da14e8b81ef32eefc06c79015a809b Mon Sep 17 00:00:00 2001
+From f303ef1fec703144efe6b9989a1a71fae0fb4263 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Tue, 27 Jul 2021 21:32:51 +0200
-Subject: [PATCH 39/39] Remove duplicated lambdaFormInvokers.cpp
+Subject: [PATCH 39/42] Remove duplicated lambdaFormInvokers.cpp
 
 ---
  .../share/classfile/lambdaFormInvokers.cpp    | 152 ------------------

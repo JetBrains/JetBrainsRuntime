@@ -1,7 +1,7 @@
-From bb8f91da24b2649507f2e200f1ff2bae2d2658bf Mon Sep 17 00:00:00 2001
+From 3957393df0bd440fe90f4a8eea007b3354a45b98 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 11 Nov 2020 18:45:15 +0100
-Subject: [PATCH 11/39] Fix LoadedClassesClosure - fixes problems with remote
+Subject: [PATCH 11/42] Fix LoadedClassesClosure - fixes problems with remote
  debugging
 
 ---

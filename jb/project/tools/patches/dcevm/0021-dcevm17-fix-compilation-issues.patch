@@ -1,7 +1,7 @@
-From e560b33cdec3ef0e4ce91714663d3befa87ff4e5 Mon Sep 17 00:00:00 2001
+From 8770c3da756a6193d69bb8c23aa992584edcb723 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 09:44:28 +0100
-Subject: [PATCH 21/39] dcevm17 - fix compilation issues
+Subject: [PATCH 21/42] dcevm17 - fix compilation issues
 
 ---
  .../share/classfile/classLoaderData.cpp       |   2 +-
@@ -533,7 +533,7 @@ index b4d09e92830..c2de2bec7d4 100644
  
    // Verify local interfaces
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 2a7dd35bdd1..071dbc6d6ad 100644
+index af34d751bdb..0b1db1581d1 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -26,8 +26,10 @@
@@ -635,7 +635,7 @@ index 2a7dd35bdd1..071dbc6d6ad 100644
      // Clear class_being_redefined just to be sure.
      state->clear_class_being_redefined();
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 5de375fb888..9be70039e32 100644
+index 43f1aff8e91..ae0a15281f3 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -124,6 +124,8 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
@@ -678,10 +678,10 @@ index 3c29eda4da0..a1eadc2958a 100644
        if (_local_table->insert(thread, lookup, wh)) {
          log_insert(method);
 diff --git a/src/hotspot/share/runtime/arguments.hpp b/src/hotspot/share/runtime/arguments.hpp
-index 1b7f8fe9f47..6a8ceb7fa8a 100644
+index 3adc03a6583..b8eb4d0ab24 100644
 --- a/src/hotspot/share/runtime/arguments.hpp
 +++ b/src/hotspot/share/runtime/arguments.hpp
-@@ -482,6 +482,8 @@ class Arguments : AllStatic {
+@@ -487,6 +487,8 @@ class Arguments : AllStatic {
    // Adjusts the arguments after the OS have adjusted the arguments
    static jint adjust_after_os();
  

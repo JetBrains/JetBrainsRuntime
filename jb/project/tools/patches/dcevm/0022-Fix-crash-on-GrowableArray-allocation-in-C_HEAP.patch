@@ -1,14 +1,14 @@
-From 6e18ad67981ab5a1bbdac46e1e0c7cc80beb4a5b Mon Sep 17 00:00:00 2001
+From d170fa0a21d5c62348fe77eeaa81b16c8c51531a Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 11:38:48 +0100
-Subject: [PATCH 22/39] Fix crash on GrowableArray allocation in C_HEAP
+Subject: [PATCH 22/42] Fix crash on GrowableArray allocation in C_HEAP
 
 ---
  src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 071dbc6d6ad..a5264077bfe 100644
+index 0b1db1581d1..b88c071be13 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -750,8 +750,8 @@ bool VM_EnhancedRedefineClasses::is_modifiable_class(oop klass_mirror) {

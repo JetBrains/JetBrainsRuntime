@@ -1,7 +1,7 @@
-From acad06204bc4f7e7a89e9a44ded6b9d27082327b Mon Sep 17 00:00:00 2001
+From e9c3042e13c5fe58cac7409b1f93a4dc287cc14a Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 30 Jun 2021 18:58:47 +0200
-Subject: [PATCH 38/39] Fix compilation issue
+Subject: [PATCH 38/42] Fix compilation issue
 
 ---
  src/hotspot/share/interpreter/linkResolver.cpp | 4 ++--

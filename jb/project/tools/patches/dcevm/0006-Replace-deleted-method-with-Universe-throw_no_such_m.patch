@@ -1,7 +1,7 @@
-From c40cd307310822e6e60c61931c14f97a8501f975 Mon Sep 17 00:00:00 2001
+From d606e7de6dfe1204128a8ac034d8f57ad6130e0a Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 24 May 2020 12:07:42 +0200
-Subject: [PATCH 06/39] Replace deleted method with
+Subject: [PATCH 06/42] Replace deleted method with
  Universe::throw_no_such_method_error
 
 + Change log level in advanced redefinition
@@ -13,7 +13,7 @@ Subject: [PATCH 06/39] Replace deleted method with
  2 files changed, 16 insertions(+), 16 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 07935bd0ada..3c86e8c68ac 100644
+index ad05b4f34cf..95be32f0070 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -881,7 +881,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {

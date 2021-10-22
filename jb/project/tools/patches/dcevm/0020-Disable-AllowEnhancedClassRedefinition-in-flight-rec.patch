@@ -1,7 +1,7 @@
-From 5c41ecc9f48d22b81b3ac610e5655f1a74d25614 Mon Sep 17 00:00:00 2001
+From a755a90e2845ef3a30f3f03185ecee1a71182606 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 10:11:10 +0100
-Subject: [PATCH 20/39] Disable AllowEnhancedClassRedefinition in flight
+Subject: [PATCH 20/42] Disable AllowEnhancedClassRedefinition in flight
  recorder
 
 ---
@@ -9,10 +9,10 @@ Subject: [PATCH 20/39] Disable AllowEnhancedClassRedefinition in flight
  1 file changed, 7 insertions(+)
 
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index 567803b70b7..cbcd8f91c66 100644
+index 9661f2b62b9..252ebbc4e57 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
-@@ -3994,6 +3994,13 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
+@@ -4027,6 +4027,13 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
    // Set object alignment values.
    set_object_alignment();
  

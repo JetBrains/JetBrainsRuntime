@@ -1,7 +1,7 @@
-From 563e06d1c56cfc3f4e93e3975cd6c2dab8183c98 Mon Sep 17 00:00:00 2001
+From 47ae71afaf12c7bab4f928579b154ec72aad3c02 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 30 Jun 2021 18:50:38 +0200
-Subject: [PATCH 37/39] Search for affected classes in all initialized classes
+Subject: [PATCH 37/42] Search for affected classes in all initialized classes
  in cld
 
 Fix also case when lambda interface is redefined. Lambda class is
@@ -83,7 +83,7 @@ index da712eaf55f..ff391ec74fc 100644
    static void classes_do(void f(Klass* const));
    static void methods_do(void f(Method*));
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index cbcb484a290..43899ea3d48 100644
+index 4d145f30100..8615806ac98 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -2170,17 +2170,12 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {

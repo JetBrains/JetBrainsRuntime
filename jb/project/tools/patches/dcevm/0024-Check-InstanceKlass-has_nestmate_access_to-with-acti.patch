@@ -1,7 +1,7 @@
-From 5d10d789150dfa6f8366dceb7fce3251d725ab8a Mon Sep 17 00:00:00 2001
+From cc05b370b2fdf4c367bb9b6e4a21b9f97ae53dcf Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 12:33:47 +0100
-Subject: [PATCH 24/39] Check InstanceKlass::has_nestmate_access_to with active
+Subject: [PATCH 24/42] Check InstanceKlass::has_nestmate_access_to with active
  classes
 
 Dcevm can leave old host in nested class if nested class is not

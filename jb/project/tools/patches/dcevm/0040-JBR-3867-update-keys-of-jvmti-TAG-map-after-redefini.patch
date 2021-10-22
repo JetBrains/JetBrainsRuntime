@@ -1,0 +1,222 @@
+From 9cb4aaf17c8e35f39aed0dfa33e173b40968eee6 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Sun, 10 Oct 2021 20:25:30 +0200
+Subject: [PATCH 40/42] JBR-3867 - update keys of jvmti TAG map after
+ redefinition
+
+jdwp keeps relation class_ptr->class_ref in jvmti tag. class_ptr is used
+as a tag key, tag value is refnode. There are new class_ptrs after
+redefinition, therefore jdwp redefinition method update all affected
+keys in the tag map.
+---
+ src/hotspot/share/prims/jvmtiExtensions.cpp   | 24 ++++++++++++++
+ .../share/native/libjdwp/VirtualMachineImpl.c | 20 +++++++++++
+ .../share/native/libjdwp/commonRef.c          | 29 ++++++++++++++++
+ .../share/native/libjdwp/commonRef.h          |  2 ++
+ .../share/native/libjdwp/util.c               | 33 +++++++++++++++++++
+ .../share/native/libjdwp/util.h               |  3 ++
+ 6 files changed, 111 insertions(+)
+
+diff --git a/src/hotspot/share/prims/jvmtiExtensions.cpp b/src/hotspot/share/prims/jvmtiExtensions.cpp
+index a3fc430e1d1..ab2e663b95d 100644
+--- a/src/hotspot/share/prims/jvmtiExtensions.cpp
++++ b/src/hotspot/share/prims/jvmtiExtensions.cpp
+@@ -49,6 +49,15 @@ static jvmtiError JNICALL IsClassUnloadingEnabled(const jvmtiEnv* env, ...) {
+   return JVMTI_ERROR_NONE;
+ }
+ 
++// extension function
++static jvmtiError JNICALL IsEnhancedClassRedefinitionEnabled(const jvmtiEnv* env, jboolean* enabled, ...) {
++  if (enabled == NULL) {
++    return JVMTI_ERROR_NULL_POINTER;
++  }
++  *enabled = (jboolean)AllowEnhancedClassRedefinition;
++  return JVMTI_ERROR_NONE;
++}
++
+ // register extension functions and events. In this implementation we
+ // have a single extension function (to prove the API) that tests if class
+ // unloading is enabled or disabled. We also have a single extension event
+@@ -88,6 +97,21 @@ void JvmtiExtensions::register_extensions() {
+     event_params
+   };
+   _ext_events->append(&ext_event);
++
++  static jvmtiParamInfo func_params_enh_redef[] = {
++    { (char*)"IsEnhancedClassRedefinitionEnabled", JVMTI_KIND_OUT,  JVMTI_TYPE_JBOOLEAN, JNI_FALSE }
++
++  };
++  static jvmtiExtensionFunctionInfo ext_func_enh_redef = {
++    (jvmtiExtensionFunction)IsEnhancedClassRedefinitionEnabled,
++    (char*)"com.sun.hotspot.functions.IsEnhancedClassRedefinitionEnabled",
++    (char*)"Tell if enhanced class redefinition is enabled (-noclassgc)",
++    sizeof(func_params_enh_redef)/sizeof(func_params_enh_redef[0]),
++    func_params_enh_redef,
++    0,              // no non-universal errors
++    NULL
++  };
++  _ext_functions->append(&ext_func_enh_redef);
+ }
+ 
+ 
+diff --git a/src/jdk.jdwp.agent/share/native/libjdwp/VirtualMachineImpl.c b/src/jdk.jdwp.agent/share/native/libjdwp/VirtualMachineImpl.c
+index c07bdac2922..7e3070d7d1d 100644
+--- a/src/jdk.jdwp.agent/share/native/libjdwp/VirtualMachineImpl.c
++++ b/src/jdk.jdwp.agent/share/native/libjdwp/VirtualMachineImpl.c
+@@ -477,6 +477,14 @@ redefineClasses(PacketInputStream *in, PacketOutputStream *out)
+     if (ok == JNI_TRUE) {
+         jvmtiError error;
+ 
++        jlong classIds[classCount];
++
++        if (gdata->isEnhancedClassRedefinitionEnabled) {
++            for (i = 0; i < classCount; ++i) {
++              classIds[i] = commonRef_refToID(env, classDefs[i].klass);
++            }
++        }
++
+         error = JVMTI_FUNC_PTR(gdata->jvmti,RedefineClasses)
+                         (gdata->jvmti, classCount, classDefs);
+         if (error != JVMTI_ERROR_NONE) {
+@@ -486,6 +494,18 @@ redefineClasses(PacketInputStream *in, PacketOutputStream *out)
+             for ( i = 0 ; i < classCount; i++ ) {
+                 eventHandler_freeClassBreakpoints(classDefs[i].klass);
+             }
++
++            if (gdata->isEnhancedClassRedefinitionEnabled) {
++                /* Update tags in jvmti to use new classes */
++                for ( i = 0 ; i < classCount; i++ ) {
++                    /* pointer in classIds[i] is updated by advanced redefinition to a new class */
++                    error = commonRef_updateTags(env, classIds[i]);
++                    if (error != JVMTI_ERROR_NONE) {
++                        break;
++                    }
++                }
++            }
++
+         }
+     }
+ 
+diff --git a/src/jdk.jdwp.agent/share/native/libjdwp/commonRef.c b/src/jdk.jdwp.agent/share/native/libjdwp/commonRef.c
+index bc7ddb660bf..f8cb8e36f17 100644
+--- a/src/jdk.jdwp.agent/share/native/libjdwp/commonRef.c
++++ b/src/jdk.jdwp.agent/share/native/libjdwp/commonRef.c
+@@ -712,3 +712,32 @@ commonRef_unlock(void)
+ {
+     debugMonitorExit(gdata->refLock);
+ }
++
++/*
++ * Update JVMTI tags, used from enhanced redefinition
++ */
++jvmtiError
++commonRef_updateTags(JNIEnv *env, jlong id)
++{
++    jvmtiError error;
++
++    error = JVMTI_ERROR_NONE;
++
++    if (id == NULL_OBJECT_ID) {
++        return error;
++    }
++
++    debugMonitorEnter(gdata->refLock); {
++        RefNode *node;
++
++        node = findNodeByID(env, id);
++        if (node != NULL) {
++            error = JVMTI_FUNC_PTR(gdata->jvmti, SetTag)
++                                  (gdata->jvmti, node->ref, ptr_to_jlong(node));
++        } else {
++            printf("Node not found\n");
++        }
++    } debugMonitorExit(gdata->refLock);
++
++    return error;
++}
+diff --git a/src/jdk.jdwp.agent/share/native/libjdwp/commonRef.h b/src/jdk.jdwp.agent/share/native/libjdwp/commonRef.h
+index c3700f8c743..35c77e4adbf 100644
+--- a/src/jdk.jdwp.agent/share/native/libjdwp/commonRef.h
++++ b/src/jdk.jdwp.agent/share/native/libjdwp/commonRef.h
+@@ -43,4 +43,6 @@ void commonRef_compact(void);
+ void commonRef_lock(void);
+ void commonRef_unlock(void);
+ 
++jvmtiError commonRef_updateTags(JNIEnv *env, jlong id);
++
+ #endif
+diff --git a/src/jdk.jdwp.agent/share/native/libjdwp/util.c b/src/jdk.jdwp.agent/share/native/libjdwp/util.c
+index 2403c5273ba..b4a5ad183e0 100644
+--- a/src/jdk.jdwp.agent/share/native/libjdwp/util.c
++++ b/src/jdk.jdwp.agent/share/native/libjdwp/util.c
+@@ -43,6 +43,7 @@ BackendGlobalData *gdata = NULL;
+ static jboolean isInterface(jclass clazz);
+ static jboolean isArrayClass(jclass clazz);
+ static char * getPropertyUTF8(JNIEnv *env, char *propertyName);
++static jboolean isEnhancedClassRedefinitionEnabled(JNIEnv *env);
+ 
+ /* Save an object reference for use later (create a NewGlobalRef) */
+ void
+@@ -285,6 +286,8 @@ util_initialize(JNIEnv *env)
+             }
+         }
+ 
++        gdata->isEnhancedClassRedefinitionEnabled = isEnhancedClassRedefinitionEnabled(env);
++
+     } END_WITH_LOCAL_REFS(env);
+ 
+ }
+@@ -1701,6 +1704,36 @@ getPropertyUTF8(JNIEnv *env, char *propertyName)
+     return value;
+ }
+ 
++static jboolean
++isEnhancedClassRedefinitionEnabled(JNIEnv *env)
++{
++    jvmtiError error;
++    jint count, i;
++    jvmtiExtensionFunctionInfo* ext_funcs;
++
++    error = JVMTI_FUNC_PTR(gdata->jvmti,GetExtensionFunctions)
++                (gdata->jvmti, &count, &ext_funcs);
++    if (error != JVMTI_ERROR_NONE) {
++        return JNI_FALSE;
++    }
++
++    for (i=0; i<count; i++) {
++        if (strcmp(ext_funcs[i].id, (char*)"com.sun.hotspot.functions.IsEnhancedClassRedefinitionEnabled") == 0) {
++            jboolean enabled;
++            error = (*ext_funcs[i].func)(gdata->jvmti, &enabled);
++
++            if (error != JVMTI_ERROR_NONE) {
++                return JNI_FALSE;
++            } else {
++                return enabled;
++            }
++        }
++    }
++
++    return JNI_FALSE;
++}
++
++
+ jboolean
+ isMethodObsolete(jmethodID method)
+ {
+diff --git a/src/jdk.jdwp.agent/share/native/libjdwp/util.h b/src/jdk.jdwp.agent/share/native/libjdwp/util.h
+index f62b5c409f0..6de8f17bb23 100644
+--- a/src/jdk.jdwp.agent/share/native/libjdwp/util.h
++++ b/src/jdk.jdwp.agent/share/native/libjdwp/util.h
+@@ -133,6 +133,9 @@ typedef struct {
+     int           objectsByIDsize;
+     int           objectsByIDcount;
+ 
++    /* true if enhanced class redefinition is enabled */
++    jboolean isEnhancedClassRedefinitionEnabled;
++
+      /* Indication that the agent has been loaded */
+      jboolean isLoaded;
+ 
+-- 
+2.23.0
+
