@@ -443,10 +443,14 @@ jfc_demo = \
 jdk_editpad = \
      jdk/editpad
 
+jbr_all = \
+     jb
+
 jdk_desktop = \
     :jdk_desktop_part1 \
     :jdk_desktop_part2 \
-    :jdk_desktop_part3
+    :jdk_desktop_part3 \
+    :jbr_all
 
 jdk_desktop_part1 = \
     :jdk_client_sanity \
