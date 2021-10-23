@@ -436,6 +436,9 @@ jfc_demo = \
 jdk_editpad = \
      jdk/editpad
 
+jbr_all = \
+     jb
+
 jdk_desktop = \
     :jdk_desktop_part1 \
     :jdk_desktop_part2 \
@@ -450,7 +453,8 @@ jdk_desktop_part1 = \
     :jdk_editpad \
     :jfc_demo \
     :jdk_accessibility \
-    :jdk_beans
+    :jdk_beans \
+    :jbr_all
 
 jdk_desktop_part2 = \
     :jdk_awt \
