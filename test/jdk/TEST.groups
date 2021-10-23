@@ -375,6 +375,9 @@ jdk_accessibility = \
 jfc_demo = \
      demo/jfc
 
+jbr_all = \
+     jb
+
 jdk_desktop = \
     :jdk_awt \
     :jdk_2d \
@@ -384,7 +387,8 @@ jdk_desktop = \
     :jdk_imageio \
     :jdk_accessibility \
     :jfc_demo \
-    :jdk_client_sanity
+    :jdk_client_sanity \
+    :jbr_all
 
 # SwingSet3 tests.
 jdk_client_sanity = \
