@@ -31,7 +31,6 @@ JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=./modular-sdk}"
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
 architecture=${architecture:=x64}
-MAJOR_JBSDK_VERSION=$(echo "$JBSDK_VERSION_WITH_DOTS" | awk -F "." '{print $1}')
 BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 16)}
 
 source jb/project/tools/common/scripts/common.sh
@@ -144,7 +143,11 @@ make clean CONF=$RELEASE_NAME || do_exit $?
 make images CONF=$RELEASE_NAME || do_exit $?
 
 IMAGES_DIR=build/$RELEASE_NAME/images
-JSDK=$IMAGES_DIR/jdk-bundle/jdk-$MAJOR_JBSDK_VERSION.jdk/Contents/Home
+
+major_version=$(echo "$JBSDK_VERSION_WITH_DOTS" | awk -F "." '{print $1}')
+minor_version=$(echo "$JBSDK_VERSION_WITH_DOTS" | awk -F "." '{print $3}')
+[ -z "$minor_version"  -o "$minor_version" = "0" ] && version_dir=$major_version || version_dir=$JBSDK_VERSION_WITH_DOTS
+JSDK=$IMAGES_DIR/jdk-bundle/jdk-$version_dir.jdk/Contents/Home
 JSDK_MODS_DIR=$IMAGES_DIR/jmods
 JBRSDK_BUNDLE=jbrsdk
 
