@@ -21,6 +21,16 @@
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
 #               By default JCEF binaries should be located in ./jcef_mac
 
+while getopts ":i?" o; do
+    case "${o}" in
+        i)
+            i="incremental build"
+            INC_BUILD=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
@@ -39,6 +49,36 @@ function copyJNF {
   __contents_dir=$1
     mkdir -p ${__contents_dir}/Frameworks
     cp -Rp Frameworks/JavaNativeFoundation.framework ${__contents_dir}/Frameworks
+}
+
+function do_configure {
+  if [[ "${architecture}" == *aarch64* ]]; then
+    sh configure \
+      $WITH_DEBUG_LEVEL \
+      --with-vendor-name="${VENDOR_NAME}" \
+      --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
+      --with-jvm-features=shenandoahgc \
+      --with-version-pre= \
+      --with-version-build="${JDK_BUILD_NUMBER}" \
+      --with-version-opt=b"${build_number}" \
+      --with-boot-jdk="$BOOT_JDK" \
+      --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
+      --enable-cds=no \
+      --with-extra-cflags="-F$(pwd)/Frameworks" \
+      --with-extra-cxxflags="-F$(pwd)/Frameworks" \
+      --with-extra-ldflags="-F$(pwd)/Frameworks" || do_exit $?
+  else
+    sh configure \
+      $WITH_DEBUG_LEVEL \
+      --with-vendor-name="$VENDOR_NAME" \
+      --with-vendor-version-string="$VENDOR_VERSION_STRING" \
+      --with-jvm-features=shenandoahgc \
+      --with-version-pre= \
+      --with-version-build="$JDK_BUILD_NUMBER" \
+      --with-version-opt=b"$build_number" \
+      --with-boot-jdk="$BOOT_JDK" \
+      --enable-cds=yes || do_exit $?
+  fi
 }
 
 function create_image_bundle {
@@ -112,34 +152,10 @@ case "$bundle_type" in
     ;;
 esac
 
-if [[ "${architecture}" == *aarch64* ]]; then
-  sh configure \
-    $WITH_DEBUG_LEVEL \
-    --with-vendor-name="${VENDOR_NAME}" \
-    --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
-    --with-jvm-features=shenandoahgc \
-    --with-version-pre= \
-    --with-version-build="${JDK_BUILD_NUMBER}" \
-    --with-version-opt=b"${build_number}" \
-    --with-boot-jdk="$BOOT_JDK" \
-    --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
-    --enable-cds=no \
-    --with-extra-cflags="-F$(pwd)/Frameworks" \
-    --with-extra-cxxflags="-F$(pwd)/Frameworks" \
-    --with-extra-ldflags="-F$(pwd)/Frameworks" || do_exit $?
-else
-  sh configure \
-    $WITH_DEBUG_LEVEL \
-    --with-vendor-name="$VENDOR_NAME" \
-    --with-vendor-version-string="$VENDOR_VERSION_STRING" \
-    --with-jvm-features=shenandoahgc \
-    --with-version-pre= \
-    --with-version-build="$JDK_BUILD_NUMBER" \
-    --with-version-opt=b"$build_number" \
-    --with-boot-jdk="$BOOT_JDK" \
-    --enable-cds=yes || do_exit $?
+if [ -z "$INC_BUILD" ]; then
+  do_configure || do_exit $?
+  make clean CONF=$RELEASE_NAME || do_exit $?
 fi
-make clean CONF=$RELEASE_NAME || do_exit $?
 make images CONF=$RELEASE_NAME || do_exit $?
 
 IMAGES_DIR=build/$RELEASE_NAME/images
