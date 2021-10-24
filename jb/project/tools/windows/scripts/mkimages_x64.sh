@@ -21,6 +21,16 @@
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
 #               By default JCEF binaries should be located in ./jcef_win_x64
 
+while getopts ":i?" o; do
+    case "${o}" in
+        i)
+            i="incremental build"
+            INC_BUILD=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
@@ -30,6 +40,21 @@ WORK_DIR=$(pwd)
 JCEF_PATH=${JCEF_PATH:=$WORK_DIR/jcef_win_x64}
 
 source jb/project/tools/common/scripts/common.sh
+
+function do_configure {
+  sh ./configure \
+    $WITH_DEBUG_LEVEL \
+    --with-vendor-name="$VENDOR_NAME" \
+    --with-vendor-version-string="$VENDOR_VERSION_STRING" \
+    --with-jvm-features=shenandoahgc \
+    --with-version-pre= \
+    --with-version-build=$JDK_BUILD_NUMBER \
+    --with-version-opt=b${build_number} \
+    --with-toolchain-version=$TOOLCHAIN_VERSION \
+    --with-boot-jdk=$BOOT_JDK \
+    --disable-ccache \
+    --enable-cds=yes || do_exit $?
+}
 
 function create_image_bundle {
   __bundle_name=$1
@@ -75,23 +100,19 @@ case "$bundle_type" in
     ;;
 esac
 
-sh ./configure \
-  $WITH_DEBUG_LEVEL \
-  --with-vendor-name="$VENDOR_NAME" \
-  --with-vendor-version-string="$VENDOR_VERSION_STRING" \
-  --with-jvm-features=shenandoahgc \
-  --with-version-pre= \
-  --with-version-build=$JDK_BUILD_NUMBER \
-  --with-version-opt=b${build_number} \
-  --with-toolchain-version=$TOOLCHAIN_VERSION \
-  --with-boot-jdk=$BOOT_JDK \
-  --disable-ccache \
-  --enable-cds=yes || do_exit $?
-
-if [ -z "$bundle_type" ]; then
-  make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
+if [ -z "$INC_BUILD" ]; then
+  do_configure || do_exit $?
+  if [ -z "$bundle_type" ]; then
+    make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
+  else
+    make LOG=info CONF=$RELEASE_NAME clean images || do_exit $?
+  fi
 else
-  make LOG=info CONF=$RELEASE_NAME clean images || do_exit $?
+  if [ -z "$bundle_type" ]; then
+    make LOG=info CONF=$RELEASE_NAME images test-image || do_exit $?
+  else
+    make LOG=info CONF=$RELEASE_NAME images || do_exit $?
+  fi
 fi
 
 IMAGES_DIR=build/$RELEASE_NAME/images
