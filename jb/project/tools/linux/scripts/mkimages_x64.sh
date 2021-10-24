@@ -21,6 +21,16 @@
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
 #               By default JCEF binaries should be located in ./jcef_linux_x64
 
+while getopts ":i?" o; do
+    case "${o}" in
+        i)
+            i="incremental build"
+            INC_BUILD=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
@@ -29,6 +39,19 @@ JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 JCEF_PATH=${JCEF_PATH:=./jcef_linux_x64}
 
 source jb/project/tools/common/scripts/common.sh
+
+function do_configure {
+  sh configure \
+    $WITH_DEBUG_LEVEL \
+    --with-vendor-name="$VENDOR_NAME" \
+    --with-vendor-version-string="$VENDOR_VERSION_STRING" \
+    --with-jvm-features=shenandoahgc \
+    --with-version-pre= \
+    --with-version-build="$JDK_BUILD_NUMBER" \
+    --with-version-opt=b"$build_number" \
+    --with-boot-jdk="$BOOT_JDK" \
+    --enable-cds=yes || do_exit $?
+}
 
 function create_image_bundle {
   __bundle_name=$1
@@ -85,18 +108,10 @@ case "$bundle_type" in
     ;;
 esac
 
-sh configure \
-  $WITH_DEBUG_LEVEL \
-  --with-vendor-name="$VENDOR_NAME" \
-  --with-vendor-version-string="$VENDOR_VERSION_STRING" \
-  --with-jvm-features=shenandoahgc \
-  --with-version-pre= \
-  --with-version-build="$JDK_BUILD_NUMBER" \
-  --with-version-opt=b"$build_number" \
-  --with-boot-jdk="$BOOT_JDK" \
-  --enable-cds=yes || do_exit $?
-
-make clean CONF=$RELEASE_NAME || exit $?
+if [ -z "$INC_BUILD" ]; then
+  do_configure || do_exit $?
+  make clean CONF=$RELEASE_NAME || do_exit $?
+fi
 make images CONF=$RELEASE_NAME || do_exit $?
 
 IMAGES_DIR=build/$RELEASE_NAME/images
