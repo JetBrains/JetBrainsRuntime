@@ -23,6 +23,7 @@
 
 /**
  * @test
+ * @library /test/lib
  * @library /lib/testlibrary/
  * @modules jdk.httpserver
  * @build jdk.testlibrary.SimpleSSLContext
