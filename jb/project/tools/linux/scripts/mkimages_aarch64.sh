@@ -16,6 +16,16 @@
 # OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
 #
 
+while getopts ":i?" o; do
+    case "${o}" in
+        i)
+            i="incremental build"
+            INC_BUILD=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
@@ -24,21 +34,27 @@ JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 
 source jb/project/tools/common.sh
 
+function do_configure {
+  sh configure \
+    --disable-warnings-as-errors \
+    --with-debug-level=release \
+    --with-vendor-name="${VENDOR_NAME}" \
+    --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
+    --with-jvm-features=shenandoahgc \
+    --with-version-pre= \
+    --with-version-build=${JDK_BUILD_NUMBER} \
+    --with-version-opt=b${build_number} \
+    --with-import-modules=./modular-sdk \
+    --with-boot-jdk=amazon-corretto-11.0.5.10.1-linux-aarch64 \
+    --enable-cds=yes || exit $?
+}
+
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 
-sh configure \
-  --disable-warnings-as-errors \
-  --with-debug-level=release \
-  --with-vendor-name="${VENDOR_NAME}" \
-  --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
-  --with-jvm-features=shenandoahgc \
-  --with-version-pre= \
-  --with-version-build=${JDK_BUILD_NUMBER} \
-  --with-version-opt=b${build_number} \
-  --with-import-modules=./modular-sdk \
-  --with-boot-jdk=amazon-corretto-11.0.5.10.1-linux-aarch64 \
-  --enable-cds=yes || exit $?
-make clean CONF=linux-aarch64-normal-server-release || exit $?
+if [ -z "$INC_BUILD" ]; then
+  do_configure || do_exit $?
+  make clean CONF=linux-aarch64-normal-server-release || exit $?
+fi
 make images CONF=linux-aarch64-normal-server-release test-image || exit $?
 
 JBSDK=${JBRSDK_BASE_NAME}-linux-aarch64-b${build_number}

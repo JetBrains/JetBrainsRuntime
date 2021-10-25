@@ -26,6 +26,16 @@
 #   BOOT_JDK         - specifies the path to the directory with a ready build of OpenJDK 11 with
 #                      the same architecture as the build system. It will be used as the boot jdk.
 
+while getopts ":i?" o; do
+    case "${o}" in
+        i)
+            i="incremental build"
+            INC_BUILD=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
@@ -37,6 +47,25 @@ JCEF_PATH=${JCEF_PATH:=${WORK_DIR}/jcef_win_aarch64}
 TOOLCHAIN_VERSION=${TOOLCHAIN_VERSION:=2019}
 
 source jb/project/tools/common.sh
+
+function do_configure {
+  sh ./configure \
+    --openjdk-target=aarch64-unknown-cygwin \
+    --disable-warnings-as-errors \
+    $WITH_DEBUG_LEVEL \
+    --with-vendor-name="${VENDOR_NAME}" \
+    --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
+    --with-jvm-features=shenandoahgc \
+    --with-version-pre= \
+    --with-version-build=${JDK_BUILD_NUMBER} \
+    --with-version-opt=b${build_number} \
+    $WITH_IMPORT_MODULES \
+    --with-toolchain-version=${TOOLCHAIN_VERSION} \
+    --with-boot-jdk=${BOOT_JDK} \
+    --with-build-jdk=${BOOT_JDK} \
+    --disable-ccache \
+    --enable-cds=yes || do_exit $?
+}
 
 function create_jbr {
 
@@ -102,27 +131,19 @@ case "$bundle_type" in
     ;;
 esac
 
-sh ./configure \
-  --openjdk-target=aarch64-unknown-cygwin \
-  --disable-warnings-as-errors \
-  $WITH_DEBUG_LEVEL \
-  --with-vendor-name="${VENDOR_NAME}" \
-  --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
-  --with-jvm-features=shenandoahgc \
-  --with-version-pre= \
-  --with-version-build=${JDK_BUILD_NUMBER} \
-  --with-version-opt=b${build_number} \
-  $WITH_IMPORT_MODULES \
-  --with-toolchain-version=${TOOLCHAIN_VERSION} \
-  --with-boot-jdk=${BOOT_JDK} \
-  --with-build-jdk=${BOOT_JDK} \
-  --disable-ccache \
-  --enable-cds=yes || do_exit $?
-
-if [ "${bundle_type}" == "jcef" ]; then
-  make LOG=info clean images test-image CONF=$RELEASE_NAME || do_exit $?
+if [ -z "$INC_BUILD" ]; then
+  do_configure || do_exit $?
+  if [ "${bundle_type}" == "jcef" ]; then
+    make LOG=info clean images test-image CONF=$RELEASE_NAME || do_exit $?
+  else
+    make LOG=info clean images CONF=$RELEASE_NAME || do_exit $?
+  fi
 else
-  make LOG=info clean images CONF=$RELEASE_NAME || do_exit $?
+  if [ "${bundle_type}" == "jcef" ]; then
+    make LOG=info images test-image CONF=$RELEASE_NAME || do_exit $?
+  else
+    make LOG=info images CONF=$RELEASE_NAME || do_exit $?
+  fi
 fi
 
 JSDK=build/$RELEASE_NAME/images/jdk
