@@ -782,9 +782,6 @@ javax/swing/JTree/6263446/bug6263446.java 8213125 macosx-all
 javax/swing/text/View/8014863/bug8014863.java 8233561 macosx-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java 8233562 macosx-all
 javax/swing/JRootPane/4670486/bug4670486.java 8042381 macosx-all
-javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java 8233555 macosx-all
-javax/swing/JRadioButton/8075609/bug8075609.java 8233555 macosx-all
-javax/swing/JRadioButton/8033699/bug8033699.java 8233555 macosx-all
 javax/swing/JPopupMenu/4634626/bug4634626.java 8017175 macosx-all
 javax/swing/JMenuItem/ActionListenerCalledTwice/ActionListenerCalledTwiceTest.java 8233637 macosx-all
 javax/swing/JMenuItem/6249972/bug6249972.java 8233640 macosx-all
