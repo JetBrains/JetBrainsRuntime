@@ -50,6 +50,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import jdk.test.lib.compiler.CompilerUtils;
+import jdk.test.lib.net.URIBuilder;
 import jdk.test.lib.util.JarUtils;
 
 import com.sun.net.httpserver.HttpContext;
@@ -158,8 +159,12 @@ public class CloseTest extends Common {
 
     static URL getServerURL() throws Exception {
         int port = httpServer.getAddress().getPort();
-        String s = "http://127.0.0.1:" + port + "/";
-        return new URL(s);
+        return URIBuilder.newBuilder()
+            .scheme("http")
+            .loopback()
+            .port(port)
+            .path("/")
+            .toURL();
     }
 
     static void startHttpServer(String docroot) throws Exception {
