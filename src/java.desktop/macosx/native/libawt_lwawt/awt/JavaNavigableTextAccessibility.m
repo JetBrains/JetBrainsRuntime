@@ -82,13 +82,13 @@ static jmethodID sjm_getAccessibleEditableText = NULL;
 
 - (NSInteger)accessibilityLineForIndex:(NSInteger)index {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    GET_CACCESSIBLETEXT_CLASS_RETURN(nil);
+    GET_CACCESSIBLETEXT_CLASS_RETURN(0);
     DECLARE_STATIC_METHOD_RETURN(jm_getLineNumberForIndex, sjc_CAccessibleText, "getLineNumberForIndex",
-                           "(Ljavax/accessibility/Accessible;Ljava/awt/Component;I)I", nil);
+                           "(Ljavax/accessibility/Accessible;Ljava/awt/Component;I)I", 0);
     jint row = (*env)->CallStaticIntMethod(env, sjc_CAccessibleText, jm_getLineNumberForIndex,
                        fAccessible, fComponent, index);
     CHECK_EXCEPTION();
-    if (row < 0) return nil;
+    if (row < 0) return 0;
     return row;
 }
 
@@ -223,7 +223,7 @@ static jmethodID sjm_getAccessibleEditableText = NULL;
     // cmcnote: should coalesce these two calls - radr://3951923
     // also, static text doesn't always have accessibleText. if axText is null, should get the charcount of the accessibleName instead
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    GET_ACCESSIBLETEXT_METHOD_RETURN(nil);
+    GET_ACCESSIBLETEXT_METHOD_RETURN(0);
     jobject axText = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
                      sjm_getAccessibleText, fAccessible, fComponent);
     CHECK_EXCEPTION();
@@ -234,13 +234,13 @@ static jmethodID sjm_getAccessibleEditableText = NULL;
 
 - (NSInteger)accessibilityInsertionPointLineNumber {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    GET_CACCESSIBLETEXT_CLASS_RETURN(nil);
+    GET_CACCESSIBLETEXT_CLASS_RETURN(0);
     DECLARE_STATIC_METHOD_RETURN(jm_getLineNumberForInsertionPoint, sjc_CAccessibleText,
-             "getLineNumberForInsertionPoint", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)I", nil);
+             "getLineNumberForInsertionPoint", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)I", 0);
     jint row = (*env)->CallStaticIntMethod(env, sjc_CAccessibleText,
                   jm_getLineNumberForInsertionPoint, fAccessible, fComponent);
     CHECK_EXCEPTION();
-    if (row < 0) return nil;
+    if (row < 0) return 0;
     return row;
 }
 
