@@ -286,102 +286,28 @@ CGGI_ConvertBWPixelToByteGray(UInt32 p)
 }
 
 static void
-CGGI_CopySubpixelImageFromCanvasToAlphaInfo(const UInt32* srcImage, int srcRowWidth,
-                                            UInt8* dstImage,
-                                            int dstWidth, int dstHeight,
-                                            int subpixelResolutionX,
-                                            int subpixelResolutionY,
-                                            short *tempBuffer)
-{
-    int srcWidth = dstWidth * subpixelResolutionX;
-    int srcHeight = dstHeight * subpixelResolutionY;
-    int imageSize = dstWidth * dstHeight;
-    int xGlyph, yGlyph, x, y;
-    // For each subpixel offset by x axis
-    for (xGlyph = 0; xGlyph < subpixelResolutionX; xGlyph++) {
-        // Sum values by x axis and store into temporary buffer
-        for (y = 0; y < srcHeight; y++) {
-            for (x = 0; x < dstWidth; x++) {
-                int value = 0;
-                int xFrom = x * subpixelResolutionX - xGlyph,
-                        xTo = xFrom + subpixelResolutionX;
-                if (xFrom < 0) xFrom = 0;
-                if (xTo > srcWidth) xTo = srcWidth;
-                int i;
-                for (i = xFrom; i < xTo; i++) {
-                    value += CGGI_ConvertBWPixelToByteGray(
-                            srcImage[y * srcRowWidth + i]);
-                }
-                tempBuffer[y * dstWidth + x] = (short) value;
-            }
-        }
-        // For each subpixel offset by y axis
-        for (yGlyph = 0; yGlyph < subpixelResolutionY; yGlyph++) {
-            UInt8 *dst = dstImage +
-                         imageSize * (xGlyph + yGlyph * subpixelResolutionX);
-            // Sum values by y axis and store average into destination image
-            for (y = 0; y < dstHeight; y++) {
-                for (x = 0; x < dstWidth; x++) {
-                    int value = 0;
-                    int yFrom = y * subpixelResolutionY - yGlyph,
-                            yTo = yFrom + subpixelResolutionY;
-                    if (yFrom < 0) yFrom = 0;
-                    if (yTo > srcHeight) yTo = srcHeight;
-                    int j;
-                    for (j = yFrom; j < yTo; j++) {
-                        value += tempBuffer[j * dstWidth + x];
-                    }
-                    dst[y * dstWidth + x] =
-                            value / subpixelResolutionX / subpixelResolutionY;
-                }
-            }
-        }
-    }
-}
-
-/* Size (in pixels) of stack-allocated temporary buffer for glyph downscaling.
- * If glyph is too big and requires more memory, it will use malloc. */
-#define SUBPIXEL_DOWNSCALE_STATIC_BUFFER_SIZE 2048
-
-static void
 CGGI_CopyImageFromCanvasToAlphaInfo(CGGI_GlyphCanvas *canvas, GlyphInfo *info)
 {
-    UInt32 *src = (UInt32 *)canvas->image->data;
     size_t srcRowWidth = canvas->image->width;
 
-    UInt8 *dest = (UInt8 *)info->image;
     size_t destRowWidth = info->width;
-
     size_t height = info->height;
 
-    if (info->subpixelResolutionX > 1 || info->subpixelResolutionY > 1) {
-        int bufferSize = destRowWidth * height * info->subpixelResolutionY;
-        if (bufferSize <= SUBPIXEL_DOWNSCALE_STATIC_BUFFER_SIZE) {
-            short staticBuffer[bufferSize];
-            CGGI_CopySubpixelImageFromCanvasToAlphaInfo(
-                    src, srcRowWidth,
-                    dest, destRowWidth, height,
-                    info->subpixelResolutionX, info->subpixelResolutionY,
-                    staticBuffer);
-        } else {
-            short *buffer = malloc(sizeof(short) * bufferSize);
-            CGGI_CopySubpixelImageFromCanvasToAlphaInfo(
-                    src, srcRowWidth,
-                    dest, destRowWidth, height,
-                    info->subpixelResolutionX, info->subpixelResolutionY,
-                    buffer);
-            free(buffer);
-        }
-    } else {
-        size_t y;
-        // fill empty glyph image with black-on-white glyph
-        for (y = 0; y < height; y++) {
-            size_t destRow = y * destRowWidth;
-            size_t srcRow = y * srcRowWidth;
-            size_t x;
-            for (x = 0; x < destRowWidth; x++) {
-                UInt32 p = src[srcRow + x];
-                dest[destRow + x] = CGGI_ConvertBWPixelToByteGray(p);
+    for (int sy = 0; sy < info->subpixelResolutionY; sy++) {
+        for (int sx = 0; sx < info->subpixelResolutionX; sx++) {
+            UInt32 *src = (UInt32 *)canvas->image->data + sy * height * srcRowWidth + sx * destRowWidth;
+            UInt8 *dest = (UInt8 *)info->image + (info->subpixelResolutionX * sy + sx) * destRowWidth * height;
+
+            size_t y;
+            // fill empty glyph image with black-on-white glyph
+            for (y = 0; y < height; y++) {
+                size_t destRow = y * destRowWidth;
+                size_t srcRow = y * srcRowWidth;
+                size_t x;
+                for (x = 0; x < destRowWidth; x++) {
+                    UInt32 p = src[srcRow + x];
+                    dest[destRow + x] = CGGI_ConvertBWPixelToByteGray(p);
+                }
             }
         }
     }
@@ -717,19 +643,9 @@ CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
 
 #pragma mark --- Glyph Striking onto Canvas ---
 
-static inline void CGGI_ScaleTXForSubpixelResolution(CGAffineTransform *tx,
-                                                     const AWTStrike *strike,
-                                                     bool subpixelResolution) {
-    if (subpixelResolution) {
-        float subResX = (float) strike->fSubpixelResolutionX;
-        float subResY = (float) strike->fSubpixelResolutionY;
-        tx->a *= subResX;
-        tx->b *= subResY;
-        tx->c *= subResX;
-        tx->d *= subResY;
-    }
-}
-
+#define RENDER_GLYPH_BATCH_SIZE 16
+#define RENDER_GLYPH_ARRAY_INIT_8 glyph,glyph,glyph,glyph,glyph,glyph,glyph,glyph
+#define RENDER_GLYPH_ARRAY_INIT RENDER_GLYPH_ARRAY_INIT_8,RENDER_GLYPH_ARRAY_INIT_8
 /*
  * Clears the canvas, strikes the glyph with CoreGraphics, and then
  * copies the struck pixels into the GlyphInfo image.
@@ -754,9 +670,10 @@ CGGI_CreateImageForGlyph
     CGGI_ClearCanvas(canvas, info, glyphDescriptor == &argb);
 
     // strike the glyph in the upper right corner
-    CGFloat x = -info->topLeftX * (float) info->subpixelResolutionX;
-    CGFloat y = canvas->image->height + info->topLeftY * (float) info->subpixelResolutionY;
+    CGFloat x = -info->topLeftX;
+    CGFloat y = canvas->image->height + info->topLeftY;
 
+    CGPoint subpixelOffset = CGPointMake(1.0 / (float) info->subpixelResolutionX, 1.0 / (float) info->subpixelResolutionY);
     if (isCatalinaOrAbove || glyphDescriptor == &argb) {
         // Emoji glyphs are not rendered by CGContextShowGlyphsAtPoint.
         // Also, it's not possible to use transformation matrix to get the emoji glyph
@@ -765,26 +682,49 @@ CGGI_CreateImageForGlyph
         // which calculates glyph metrics.
 
         CGAffineTransform matrix = CGContextGetTextMatrix(canvas->context);
-        CGFloat fontSize = sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c) /
-                (float) info->subpixelResolutionX / (float) info->subpixelResolutionY);
-        CTFontRef sizedFont = CTFontCreateCopyWithSymbolicTraits(font, fontSize, NULL, 0, 0);
+        CTFontRef sizedFont = CTFontCreateCopyWithSymbolicTraits(font, strike->fSize, NULL, 0, 0);
 
-        CGFloat normFactor = 1.0 / fontSize;
+        CGFloat normFactor = 1.0 / strike->fSize;
         CGAffineTransform normalizedMatrix = CGAffineTransformScale(matrix, normFactor, normFactor);
         CGContextSetTextMatrix(canvas->context, normalizedMatrix);
 
-        CGPoint userPoint = CGPointMake(x, y);
         CGAffineTransform normalizedMatrixInv = CGAffineTransformInvert(normalizedMatrix);
-        CGPoint textPoint = CGPointApplyAffineTransform(userPoint, normalizedMatrixInv);
 
-        CTFontDrawGlyphs(sizedFont, &glyph, &textPoint, 1, canvas->context);
+        // Render glyphs with subpixel offsets in batches up to 16 per draw call.
+        // Maximum subpixel resolution is 16 in each dimension, which is 256 total images, which is too crazy.
+        // In practice 4x1 is enough, so we can draw up to something like 4x4 in one call.
+        const CGGlyph glyphs[RENDER_GLYPH_BATCH_SIZE] = {RENDER_GLYPH_ARRAY_INIT};
+        CGPoint glyphPositions[RENDER_GLYPH_BATCH_SIZE];
+
+        int glyphIndex = 0;
+        for (int sy = 0; sy < info->subpixelResolutionY; sy++) {
+            for (int sx = 0; sx < info->subpixelResolutionX; sx++) {
+                CGPoint userPoint = CGPointMake(x + info->width * sx + subpixelOffset.x * (float) sx,
+                                                y - info->height * sy - subpixelOffset.y * (float) sy);
+                glyphPositions[glyphIndex] = CGPointApplyAffineTransform(userPoint, normalizedMatrixInv);
+                glyphIndex++;
+                if (glyphIndex >= RENDER_GLYPH_BATCH_SIZE) {
+                    CTFontDrawGlyphs(sizedFont, glyphs, glyphPositions, glyphIndex, canvas->context);
+                    glyphIndex = 0;
+                }
+            }
+        }
+        if (glyphIndex > 0) {
+            CTFontDrawGlyphs(sizedFont, glyphs, glyphPositions, glyphIndex, canvas->context);
+        }
 
         CFRelease(sizedFont);
         // restore context's original state
         CGContextSetTextMatrix(canvas->context, matrix);
         CGContextSetFontSize(canvas->context, 1); // CTFontDrawGlyphs tampers with it
     } else {
-        CGContextShowGlyphsAtPoint(canvas->context, x, y, &glyph, 1);
+        for (int sy = 0; sy < info->subpixelResolutionY; sy++) {
+            for (int sx = 0; sx < info->subpixelResolutionX; sx++) {
+                CGContextShowGlyphsAtPoint(canvas->context,
+                                           x + info->width * sx + subpixelOffset.x * (float) sx,
+                                           y - info->height * sy - subpixelOffset.y * (float) sy, &glyph, 1);
+            }
+        }
     }
 
     // copy the glyph from the canvas into the info
@@ -838,9 +778,7 @@ CGGI_CreateImageForUnicode
     CGGI_SizeCanvas(canvas, info->width * info->subpixelResolutionX, info->height * info->subpixelResolutionY, mode);
 
     // align the transform for the real CoreText strike
-    CGAffineTransform altTx = strike->fAltTx;
-    CGGI_ScaleTXForSubpixelResolution(&altTx, strike, subpixelResolution);
-    CGContextSetTextMatrix(canvas->context, altTx);
+    CGContextSetTextMatrix(canvas->context, strike->fAltTx);
 
     const CGFontRef cgFallback = CTFontCopyGraphicsFont(fallback, NULL);
     CGContextSetFont(canvas->context, cgFallback);
@@ -886,9 +824,7 @@ CGGI_FillImagesForGlyphsWithSizedCanvas(CGGI_GlyphCanvas *canvas,
                                         const CGGlyph glyphs[],
                                         const CFIndex len)
 {
-    CGAffineTransform tx = strike->fAltTx;
-    CGGI_ScaleTXForSubpixelResolution(&tx, strike, mode->subpixelResolution);
-    CGContextSetTextMatrix(canvas->context, tx);
+    CGContextSetTextMatrix(canvas->context, strike->fAltTx);
 
     CGContextSetFont(canvas->context, strike->fAWTFont->fNativeCGFont);
     JRSFontSetRenderingStyleOnContext(canvas->context, strike->fStyle);
