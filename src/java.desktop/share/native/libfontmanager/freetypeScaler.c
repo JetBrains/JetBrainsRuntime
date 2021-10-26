@@ -1618,69 +1618,6 @@ static void transformBGRABitmapGlyph(FT_GlyphSlot ftglyph, GlyphInfo* glyphInfo,
     freeSampledBGRABitmap(&sampledBitmap);
 }
 
-/* Size (in pixels) of stack-allocated temporary buffer for glyph downscaling.
- * If glyph is too big and requires more memory, it will use malloc. */
-#define SUBPIXEL_DOWNSCALE_STATIC_BUFFER_SIZE 2048
-
-/* In order to get an extended set of grayscale glyph images, we pick single
- * upscaled image and downscale it with different offsets by x and y axis */
-static void CopySupplementarySubpixelToGrey8(const UInt8* srcImage, int srcRowBytes,
-                                             int srcWidth, int srcHeight,
-                                             UInt8* dstImage, int dstRowBytes,
-                                             int dstWidth, int dstHeight,
-                                             int xOffset, int yOffset,
-                                             int xResolution, int yResolution,
-                                             int imageSize) {
-    short staticBuffer[SUBPIXEL_DOWNSCALE_STATIC_BUFFER_SIZE];
-    int bufferSize = dstWidth * srcHeight;
-    int useStaticBuffer = bufferSize <= SUBPIXEL_DOWNSCALE_STATIC_BUFFER_SIZE;
-    short *buffer = useStaticBuffer ?
-            staticBuffer : malloc(sizeof(short) * bufferSize);
-
-    int xGlyph, yGlyph, x, y;
-    // For each subpixel offset by x axis
-    for (xGlyph = 0; xGlyph < xResolution; xGlyph++) {
-        // Sum values by x axis and store into temporary buffer
-        for (y = 0; y < srcHeight; y++) {
-            for (x = 0; x < dstWidth; x++) {
-                int value = 0;
-                int xFrom = x * xResolution - xOffset - xGlyph,
-                    xTo = xFrom + xResolution;
-                if (xFrom < 0) xFrom = 0;
-                if (xTo > srcWidth) xTo = srcWidth;
-                int i;
-                for (i = xFrom; i < xTo; i++) {
-                    value += srcImage[y * srcRowBytes + i];
-                }
-                buffer[y * dstWidth + x] = (short) value;
-            }
-        }
-        // For each subpixel offset by y axis
-        for (yGlyph = 0; yGlyph < yResolution; yGlyph++) {
-            UInt8 *dst = dstImage +
-                         imageSize * (xGlyph + yGlyph * xResolution);
-            // Sum values by y axis and store average into destination image
-            for (y = 0; y < dstHeight; y++) {
-                for (x = 0; x < dstWidth; x++) {
-                    int value = 0;
-                    int yFrom = y * yResolution - yOffset - yGlyph,
-                        yTo = yFrom + yResolution;
-                    if (yFrom < 0) yFrom = 0;
-                    if (yTo > srcHeight) yTo = srcHeight;
-                    int j;
-                    for (j = yFrom; j < yTo; j++) {
-                        value += buffer[j * dstWidth + x];
-                    }
-                    dst[y * dstRowBytes + x] =
-                            value / xResolution / yResolution;
-                }
-            }
-        }
-    }
-
-    if (!useStaticBuffer) free(buffer);
-}
-
 /* JDK does not use glyph images for fonts with a
  * pixel size > 100 (see THRESHOLD in OutlineTextRenderer.java)
  * so if the glyph bitmap image dimension is > 1024 pixels,
@@ -1837,12 +1774,6 @@ static jlong
             subpixelResolutionY = subpixelGlyphResolution.y;
             if (subpixelResolutionX > 1 || subpixelResolutionY > 1) {
                 subpixelGlyph = TRUE;
-                FT_Matrix matrix;
-                matrix.xx = (long) FT_MATRIX_ONE * subpixelResolutionX;
-                matrix.xy = 0;
-                matrix.yx = 0;
-                matrix.yy = (long) FT_MATRIX_ONE * subpixelResolutionY;
-                FT_Outline_Transform(&(ftglyph->outline), &matrix);
             }
         }
         FT_BBox bbox;
@@ -1865,19 +1796,9 @@ static jlong
     FT_BBox manualTransformBoundingBox;
     int topLeftX, topLeftY;
     if (renderImage) {
-        if (subpixelGlyph) {
-            topLeftX = FLOOR_DIV(ftglyph->bitmap_left, subpixelResolutionX);
-            topLeftY = FLOOR_DIV(-ftglyph->bitmap_top, subpixelResolutionY);
-            width = -FLOOR_DIV(
-                    -ftglyph->bitmap_left - (int) ftglyph->bitmap.width -
-                    subpixelResolutionX + 1, subpixelResolutionX) - topLeftX;
-            height = -FLOOR_DIV(
-                    ftglyph->bitmap_top - (int) ftglyph->bitmap.rows -
-                    subpixelResolutionX + 1, subpixelResolutionY) - topLeftY;
-        }
-        else if (context->fixedSizeIndex == -1) {
-            width  = (UInt16) ftglyph->bitmap.width;
-            height = (UInt16) ftglyph->bitmap.rows;
+        if (context->fixedSizeIndex == -1) {
+            width  = (UInt16) ftglyph->bitmap.width + subpixelGlyph;
+            height = (UInt16) ftglyph->bitmap.rows + subpixelGlyph;
             topLeftX = ftglyph->bitmap_left;
             topLeftY = -ftglyph->bitmap_top;
         } else {
@@ -1975,23 +1896,35 @@ static jlong
         //4 bytes per pixel for BGRA glyphs
         // or 1 byte per pixel for AA and B&W
         if (subpixelGlyph) {
-            int offsetX = ftglyph->bitmap_left - topLeftX * subpixelResolutionX;
-            int offsetY = -ftglyph->bitmap_top - topLeftY * subpixelResolutionY;
-            CopySupplementarySubpixelToGrey8(ftglyph->bitmap.buffer,
-                                             ftglyph->bitmap.pitch,
-                                             ftglyph->bitmap.width,
-                                             ftglyph->bitmap.rows,
-                                             glyphInfo->image,
-                                             rowBytes,
-                                             width,
-                                             height,
-                                             offsetX,
-                                             offsetY,
-                                             subpixelResolutionX,
-                                             subpixelResolutionY,
-                                             imageSize);
-        }
-        else if (context->fixedSizeIndex == -1) {
+            // Copy first image with zero subpixel offset
+            unsigned int i;
+            for (i = 0; i < ftglyph->bitmap.rows; i++) {
+                const UInt8* src = ftglyph->bitmap.buffer + i * ftglyph->bitmap.pitch;
+                UInt8* dst = glyphInfo->image + i * rowBytes;
+                memcpy(dst, src, ftglyph->bitmap.width);
+            }
+            // Render remaining images
+            int sx = (1 << 6) / subpixelResolutionX, sy = (1 << 6) / subpixelResolutionY;
+            FT_Bitmap bitmap = ftglyph->bitmap;
+            bitmap.rows = height;
+            bitmap.pitch = bitmap.width = width;
+            int prevX = ftglyph->bitmap_left * (1 << 6), prevY = (ftglyph->bitmap_top - height) * (1 << 6);
+            int x, y;
+            for (y = 0; y < subpixelResolutionY; y++) {
+                for (x = (y == 0); x < subpixelResolutionX; x++) {
+                    bitmap.buffer = glyphInfo->image + imageSize * (subpixelResolutionX * y + x);
+                    int newX = sx * x, newY = -sy * y;
+                    FT_Outline_Translate(&ftglyph->outline, newX - prevX, newY - prevY);
+                    error = FT_Outline_Get_Bitmap(library, &ftglyph->outline, &bitmap);
+                    if (error) {
+                        // In case of error, copy first image
+                        memcpy(bitmap.buffer, glyphInfo->image, imageSize);
+                    }
+                    prevX = newX;
+                    prevY = newY;
+                }
+            }
+        } else if (context->fixedSizeIndex == -1) {
             // Standard format conversion without image transformation
             if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_MONO) {
                 /* convert from 8 pixels per byte to 1 byte per pixel */
