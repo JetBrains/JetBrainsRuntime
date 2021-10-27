@@ -93,11 +93,7 @@ public class AquaMenuBarUI extends BasicMenuBarUI implements ScreenMenuBarProvid
 
     void clearScreenMenuBar(final JFrame frame) {
         if (useScreenMenuBar) {
-            if (!disableJbScreenMenuBar) {
-                // TODO: trace event
-            } else {
-                frame.setMenuBar(null);
-            }
+            frame.setMenuBar(null);
         }
     }
 
@@ -109,18 +105,13 @@ public class AquaMenuBarUI extends BasicMenuBarUI implements ScreenMenuBarProvid
                 return false;
             }
 
-            if (disableJbScreenMenuBar)
-                frame.setMenuBar(fScreenMenuBar);
+            frame.setMenuBar(fScreenMenuBar);
         }
 
         return true;
     }
 
     public ScreenMenuBar getScreenMenuBar() {
-        if (!disableJbScreenMenuBar) {
-            // TODO: trace event
-            return null;
-        }
         // Lazy init of member variables means we should use a synchronized block.
         synchronized(this) {
             if (fScreenMenuBar == null) fScreenMenuBar = new ScreenMenuBar(this.menuBar);
@@ -149,8 +140,7 @@ public class AquaMenuBarUI extends BasicMenuBarUI implements ScreenMenuBarProvid
     }
 
     ScreenMenuBar fScreenMenuBar;
-    private static boolean useScreenMenuBar = getScreenMenuBarProperty();
-    private static boolean disableJbScreenMenuBar = getDisableJBScreenMenuBarProperty();
+    boolean useScreenMenuBar = getScreenMenuBarProperty();
 
     public static boolean getScreenMenuBarProperty() {
         // Do not allow AWT to set the screen menu bar if it's embedded in another UI toolkit
@@ -165,14 +155,6 @@ public class AquaMenuBarUI extends BasicMenuBarUI implements ScreenMenuBarProvid
                         "useScreenMenuBar has been deprecated. Please switch to " +
                         AquaLookAndFeel.sPropertyPrefix + "useScreenMenuBar");
                 return true;
-        }
-        return false;
-    }
-
-    public static boolean getDisableJBScreenMenuBarProperty() {
-        if (AccessController.doPrivileged(
-                new GetBooleanAction("disableJbScreenMenuBar"))) {
-            return true;
         }
         return false;
     }
