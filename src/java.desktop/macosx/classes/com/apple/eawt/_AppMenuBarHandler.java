@@ -123,13 +123,8 @@ class _AppMenuBarHandler {
         final AquaMenuBarUI aquaUI = (AquaMenuBarUI)ui;
         final ScreenMenuBar screenMenuBar = aquaUI.getScreenMenuBar();
         if (screenMenuBar == null) {
-            if (Boolean.getBoolean("disableJbScreenMenuBar")) {
-                // Aqua is installed, but we aren't using the screen menu bar
-                throw new IllegalStateException("Application.setDefaultMenuBar() only works if apple.laf.useScreenMenuBar=true");
-            } else {
-                // Screen menu bar is managed by IDEA (via JNI library)
-                return;
-            }
+            // Aqua is installed, but we aren't using the screen menu bar
+            throw new IllegalStateException("Application.setDefaultMenuBar() only works if apple.laf.useScreenMenuBar=true");
         }
 
         if (screenMenuBar != defaultMenuBar) {
