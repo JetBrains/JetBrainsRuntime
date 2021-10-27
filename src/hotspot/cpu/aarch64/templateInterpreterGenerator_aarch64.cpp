@@ -1598,6 +1598,10 @@ address TemplateInterpreterGenerator::generate_normal_entry(bool synchronized) {
   // r3 - # of additional locals
   // allocate space for locals
   // explicitly initialize locals
+  // Initializing memory allocated for locals in the same direction as
+  // the stack grows to ensure page initialization order according
+  // to windows-aarch64 stack page growth requirement (see
+  // https://docs.microsoft.com/en-us/cpp/build/arm64-windows-abi-conventions?view=msvc-160#stack)
   {
     Label exit, loop;
     __ ands(zr, r3, r3);

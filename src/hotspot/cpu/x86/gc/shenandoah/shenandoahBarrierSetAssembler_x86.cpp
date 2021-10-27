@@ -46,6 +46,77 @@
 
 address ShenandoahBarrierSetAssembler::_shenandoah_lrb = NULL;
 
+static void save_machine_state(MacroAssembler* masm, bool handle_gpr, bool handle_fp) {
+  if (handle_gpr) {
+    __ push_IU_state();
+  }
+
+  if (handle_fp) {
+    // Some paths can be reached from the c2i adapter with live fp arguments in registers.
+    LP64_ONLY(assert(Argument::n_float_register_parameters_j == 8, "8 fp registers to save at java call"));
+
+    if (UseSSE >= 2) {
+      const int xmm_size = wordSize * LP64_ONLY(2) NOT_LP64(4);
+      __ subptr(rsp, xmm_size * 8);
+      __ movdbl(Address(rsp, xmm_size * 0), xmm0);
+      __ movdbl(Address(rsp, xmm_size * 1), xmm1);
+      __ movdbl(Address(rsp, xmm_size * 2), xmm2);
+      __ movdbl(Address(rsp, xmm_size * 3), xmm3);
+      __ movdbl(Address(rsp, xmm_size * 4), xmm4);
+      __ movdbl(Address(rsp, xmm_size * 5), xmm5);
+      __ movdbl(Address(rsp, xmm_size * 6), xmm6);
+      __ movdbl(Address(rsp, xmm_size * 7), xmm7);
+    } else if (UseSSE >= 1) {
+      const int xmm_size = wordSize * LP64_ONLY(1) NOT_LP64(2);
+      __ subptr(rsp, xmm_size * 8);
+      __ movflt(Address(rsp, xmm_size * 0), xmm0);
+      __ movflt(Address(rsp, xmm_size * 1), xmm1);
+      __ movflt(Address(rsp, xmm_size * 2), xmm2);
+      __ movflt(Address(rsp, xmm_size * 3), xmm3);
+      __ movflt(Address(rsp, xmm_size * 4), xmm4);
+      __ movflt(Address(rsp, xmm_size * 5), xmm5);
+      __ movflt(Address(rsp, xmm_size * 6), xmm6);
+      __ movflt(Address(rsp, xmm_size * 7), xmm7);
+    } else {
+      __ push_FPU_state();
+    }
+  }
+}
+
+static void restore_machine_state(MacroAssembler* masm, bool handle_gpr, bool handle_fp) {
+  if (handle_fp) {
+    if (UseSSE >= 2) {
+      const int xmm_size = wordSize * LP64_ONLY(2) NOT_LP64(4);
+      __ movdbl(xmm0, Address(rsp, xmm_size * 0));
+      __ movdbl(xmm1, Address(rsp, xmm_size * 1));
+      __ movdbl(xmm2, Address(rsp, xmm_size * 2));
+      __ movdbl(xmm3, Address(rsp, xmm_size * 3));
+      __ movdbl(xmm4, Address(rsp, xmm_size * 4));
+      __ movdbl(xmm5, Address(rsp, xmm_size * 5));
+      __ movdbl(xmm6, Address(rsp, xmm_size * 6));
+      __ movdbl(xmm7, Address(rsp, xmm_size * 7));
+      __ addptr(rsp, xmm_size * 8);
+    } else if (UseSSE >= 1) {
+      const int xmm_size = wordSize * LP64_ONLY(1) NOT_LP64(2);
+      __ movflt(xmm0, Address(rsp, xmm_size * 0));
+      __ movflt(xmm1, Address(rsp, xmm_size * 1));
+      __ movflt(xmm2, Address(rsp, xmm_size * 2));
+      __ movflt(xmm3, Address(rsp, xmm_size * 3));
+      __ movflt(xmm4, Address(rsp, xmm_size * 4));
+      __ movflt(xmm5, Address(rsp, xmm_size * 5));
+      __ movflt(xmm6, Address(rsp, xmm_size * 6));
+      __ movflt(xmm7, Address(rsp, xmm_size * 7));
+      __ addptr(rsp, xmm_size * 8);
+    } else {
+      __ pop_FPU_state();
+    }
+  }
+
+  if (handle_gpr) {
+    __ pop_IU_state();
+  }
+}
+
 void ShenandoahBarrierSetAssembler::arraycopy_prologue(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                                                        Register src, Register dst, Register count) {
 
@@ -88,7 +159,7 @@ void ShenandoahBarrierSetAssembler::arraycopy_prologue(MacroAssembler* masm, Dec
       __ testb(gc_state, flags);
       __ jcc(Assembler::zero, done);
 
-      __ pusha();                      // push registers
+      save_machine_state(masm, /* handle_gpr = */ true, /* handle_fp = */ false);
 
 #ifdef _LP64
       assert(src == rdi, "expected");
@@ -104,7 +175,8 @@ void ShenandoahBarrierSetAssembler::arraycopy_prologue(MacroAssembler* masm, Dec
                         src, dst, count);
       }
 
-      __ popa();
+      restore_machine_state(masm, /* handle_gpr = */ true, /* handle_fp = */ false);
+
       __ bind(done);
       NOT_LP64(__ pop(thread);)
     }
@@ -265,7 +337,9 @@ void ShenandoahBarrierSetAssembler::load_reference_barrier_not_null(MacroAssembl
 
   Address gc_state(thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
   __ testb(gc_state, ShenandoahHeap::HAS_FORWARDED);
-  __ jccb(Assembler::zero, done);
+  __ jcc(Assembler::zero, done);
+
+  save_machine_state(masm, /* handle_gpr = */ false, /* handle_fp = */ true);
 
   // Use rsi for src address
   const Register src_addr = rsi;
@@ -303,6 +377,8 @@ void ShenandoahBarrierSetAssembler::load_reference_barrier_not_null(MacroAssembl
     __ pop(rax);
   }
 
+  restore_machine_state(masm, /* handle_gpr = */ false, /* handle_fp = */ true);
+
   __ bind(done);
 
 #ifndef _LP64
@@ -322,12 +398,7 @@ void ShenandoahBarrierSetAssembler::iu_barrier_impl(MacroAssembler* masm, Regist
   if (dst == noreg) return;
 
   if (ShenandoahIUBarrier) {
-    // The set of registers to be saved+restored is the same as in the write-barrier above.
-    // Those are the commonly used registers in the interpreter.
-    __ pusha();
-    // __ push_callee_saved_registers();
-    __ subptr(rsp, 2 * Interpreter::stackElementSize);
-    __ movdbl(Address(rsp, 0), xmm0);
+    save_machine_state(masm, /* handle_gpr = */ true, /* handle_fp = */ true);
 
 #ifdef _LP64
     Register thread = r15_thread;
@@ -344,10 +415,8 @@ void ShenandoahBarrierSetAssembler::iu_barrier_impl(MacroAssembler* masm, Regist
     assert_different_registers(dst, tmp, thread);
 
     satb_write_barrier_pre(masm, noreg, dst, thread, tmp, true, false);
-    __ movdbl(xmm0, Address(rsp, 0));
-    __ addptr(rsp, 2 * Interpreter::stackElementSize);
-    //__ pop_callee_saved_registers();
-    __ popa();
+
+    restore_machine_state(masm, /* handle_gpr = */ true, /* handle_fp = */ true);
   }
 }
 
@@ -422,19 +491,7 @@ void ShenandoahBarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet d
 
   // 3: apply keep-alive barrier if needed
   if (ShenandoahBarrierSet::need_keep_alive_barrier(decorators, type)) {
-    __ push_IU_state();
-    // That path can be reached from the c2i adapter with live fp
-    // arguments in registers.
-    LP64_ONLY(assert(Argument::n_float_register_parameters_j == 8, "8 fp registers to save at java call"));
-    __ subptr(rsp, 64);
-    __ movdbl(Address(rsp, 0), xmm0);
-    __ movdbl(Address(rsp, 8), xmm1);
-    __ movdbl(Address(rsp, 16), xmm2);
-    __ movdbl(Address(rsp, 24), xmm3);
-    __ movdbl(Address(rsp, 32), xmm4);
-    __ movdbl(Address(rsp, 40), xmm5);
-    __ movdbl(Address(rsp, 48), xmm6);
-    __ movdbl(Address(rsp, 56), xmm7);
+    save_machine_state(masm, /* handle_gpr = */ true, /* handle_fp = */ true);
 
     Register thread = NOT_LP64(tmp_thread) LP64_ONLY(r15_thread);
     assert_different_registers(dst, tmp1, tmp_thread);
@@ -451,16 +508,8 @@ void ShenandoahBarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet d
                                  tmp1 /* tmp */,
                                  true /* tosca_live */,
                                  true /* expand_call */);
-    __ movdbl(xmm0, Address(rsp, 0));
-    __ movdbl(xmm1, Address(rsp, 8));
-    __ movdbl(xmm2, Address(rsp, 16));
-    __ movdbl(xmm3, Address(rsp, 24));
-    __ movdbl(xmm4, Address(rsp, 32));
-    __ movdbl(xmm5, Address(rsp, 40));
-    __ movdbl(xmm6, Address(rsp, 48));
-    __ movdbl(xmm7, Address(rsp, 56));
-    __ addptr(rsp, 64);
-    __ pop_IU_state();
+
+    restore_machine_state(masm, /* handle_gpr = */ true, /* handle_fp = */ true);
   }
 }
 

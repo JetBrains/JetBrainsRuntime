@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,18 +56,18 @@ void UnhandledOops::dump_oops(UnhandledOops *list) {
 
 // For debugging unhandled oop detector _in the debugger_
 // You don't want to turn it on in compiled code here.
-static bool unhandled_oop_print=0;
+static Thread* unhandled_oop_print = NULL;
 
-void UnhandledOops::register_unhandled_oop(oop* op, address pc) {
+void UnhandledOops::register_unhandled_oop(oop* op) {
   if (!_thread->is_in_stack((address)op))
     return;
 
-  _level ++;
-  if (unhandled_oop_print) {
-    for (int i=0; i<_level; i++) tty->print(" ");
+  _level++;
+  if (unhandled_oop_print == _thread) {
+    for (int i=0; i < _level; i++) tty->print(" ");
     tty->print_cr("r " INTPTR_FORMAT, p2i(op));
   }
-  UnhandledOopEntry entry(op, pc);
+  UnhandledOopEntry entry(op);
   _oop_list->push(entry);
 }
 
@@ -99,11 +99,11 @@ void UnhandledOops::allow_unhandled_oop(oop* op) {
 void UnhandledOops::unregister_unhandled_oop(oop* op) {
   if (!_thread->is_in_stack((address)op)) return;
 
-  _level --;
-  if (unhandled_oop_print) {
-    for (int i=0; i<_level; i++) tty->print(" ");
+  if (unhandled_oop_print == _thread) {
+    for (int i=0; i < _level; i++) tty->print(" ");
     tty->print_cr("u " INTPTR_FORMAT, p2i(op));
   }
+  _level--;
 
   int i = _oop_list->find_from_end(op, match_oop_entry);
   assert(i!=-1, "oop not in unhandled_oop_list");
@@ -120,8 +120,7 @@ void UnhandledOops::clear_unhandled_oops() {
     // in the unhandled oop generator.
     if(!_thread->is_in_stack((address)entry._oop_ptr)) {
       tty->print_cr("oop_ptr is " INTPTR_FORMAT, p2i(entry._oop_ptr));
-      tty->print_cr("thread is " INTPTR_FORMAT " from pc " INTPTR_FORMAT,
-                     p2i(_thread), p2i(entry._pc));
+      tty->print_cr("thread is " INTPTR_FORMAT, p2i(_thread));
       assert(false, "heap is corrupted by the unhandled oop detector");
     }
     // Set unhandled oops to a pattern that will crash distinctively

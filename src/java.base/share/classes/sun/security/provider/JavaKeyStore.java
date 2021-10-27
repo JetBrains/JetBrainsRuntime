@@ -263,6 +263,9 @@ public abstract class JavaKeyStore extends KeyStoreSpi {
         if (!(key instanceof java.security.PrivateKey)) {
             throw new KeyStoreException("Cannot store non-PrivateKeys");
         }
+        if (password == null) {
+            throw new KeyStoreException("password can't be null");
+        }
         try {
             synchronized(entries) {
                 KeyEntry entry = new KeyEntry();

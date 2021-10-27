@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2018, 2020, Red Hat, Inc. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -47,7 +48,16 @@ void LIR_OpShenandoahCompareAndSwap::emit_code(LIR_Assembler* masm) {
     newval = tmp2;
   }
 
-  ShenandoahBarrierSet::assembler()->cmpxchg_oop(masm->masm(), addr, cmpval, newval, /*acquire*/ false, /*release*/ true, /*weak*/ false, /*is_cae*/ false, result);
+  ShenandoahBarrierSet::assembler()->cmpxchg_oop(masm->masm(), addr, cmpval, newval, /*acquire*/ true, /*release*/ true, /*is_cae*/ false, result);
+
+  if (UseBarriersForVolatile) {
+    // The membar here is necessary to prevent reordering between the
+    // release store in the CAS above and a subsequent volatile load.
+    // However for !UseBarriersForVolatile, C1 inserts a full barrier before
+    // volatile loads which means we don't need an additional barrier
+    // here (see LIRGenerator::volatile_field_load()).
+    __ membar(__ AnyAny);
+  }
 }
 
 #undef __

@@ -2654,7 +2654,7 @@ bool InstanceKlass::is_same_class_package(const Klass* class2) const {
   // and package entries. Both must be the same. This rule
   // applies even to classes that are defined in the unnamed
   // package, they still must have the same class loader.
-  if (oopDesc::equals(classloader1, classloader2) && (classpkg1 == classpkg2)) {
+  if ((classloader1 == classloader2) && (classpkg1 == classpkg2)) {
     return true;
   }
 
@@ -2665,7 +2665,7 @@ bool InstanceKlass::is_same_class_package(const Klass* class2) const {
 // and classname information is enough to determine a class's package
 bool InstanceKlass::is_same_class_package(oop other_class_loader,
                                           const Symbol* other_class_name) const {
-  if (!oopDesc::equals(class_loader(), other_class_loader)) {
+  if (class_loader() != other_class_loader) {
     return false;
   }
   if (name()->fast_compare(other_class_name) == 0) {
@@ -2835,6 +2835,18 @@ InstanceKlass* InstanceKlass::compute_enclosing_class(bool* inner_is_member, TRA
     constantPoolHandle i_cp(THREAD, constants());
     if (ooff != 0) {
       Klass* ok = i_cp->klass_at(ooff, CHECK_NULL);
+      if (!ok->is_instance_klass()) {
+        // If the outer class is not an instance klass then it cannot have
+        // declared any inner classes.
+        ResourceMark rm(THREAD);
+        Exceptions::fthrow(
+          THREAD_AND_LOCATION,
+          vmSymbols::java_lang_IncompatibleClassChangeError(),
+          "%s and %s disagree on InnerClasses attribute",
+          ok->external_name(),
+          external_name());
+        return NULL;
+      }
       outer_klass = InstanceKlass::cast(ok);
       *inner_is_member = true;
     }

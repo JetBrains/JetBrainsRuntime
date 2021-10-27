@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2015 SAP SE. All rights reserved.
+ * Copyright (c) 2008, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,8 +51,22 @@ Java_com_sun_management_internal_OperatingSystemImpl_getSingleCpuLoad0
     return -1.0;
 }
 
+JNIEXPORT jlong JNICALL
+Java_com_sun_management_internal_OperatingSystemImpl_getHostTotalCpuTicks0
+(JNIEnv *env, jobject mbean)
+{
+    return -1;
+}
+
 JNIEXPORT jint JNICALL
 Java_com_sun_management_internal_OperatingSystemImpl_getHostConfiguredCpuCount0
+(JNIEnv *env, jobject mbean)
+{
+    return -1;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_sun_management_internal_OperatingSystemImpl_getHostOnlineCpuCount0
 (JNIEnv *env, jobject mbean)
 {
     return -1;

@@ -153,6 +153,8 @@ class JarFile extends ZipFile {
     private static final boolean MULTI_RELEASE_ENABLED;
     private static final boolean MULTI_RELEASE_FORCED;
     private static final ThreadLocal<Boolean> isInitializing = new ThreadLocal<>();
+    // The maximum size of array to allocate. Some VMs reserve some header words in an array.
+    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
     private SoftReference<Manifest> manRef;
     private JarEntry manEntry;
@@ -804,7 +806,11 @@ class JarFile extends ZipFile {
      */
     private byte[] getBytes(ZipEntry ze) throws IOException {
         try (InputStream is = super.getInputStream(ze)) {
-            int len = (int)ze.getSize();
+            long uncompressedSize = ze.getSize();
+            if (uncompressedSize > MAX_ARRAY_SIZE) {
+                throw new IOException("Unsupported size: " + uncompressedSize);
+            }
+            int len = (int)uncompressedSize;
             int bytesRead;
             byte[] b;
             // trust specified entry sizes when reasonably small

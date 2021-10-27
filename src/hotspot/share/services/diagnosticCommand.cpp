@@ -299,6 +299,7 @@ void JVMTIDataDumpDCmd::execute(DCmdSource source, TRAPS) {
 }
 
 #if INCLUDE_SERVICES
+#if INCLUDE_JVMTI
 JVMTIAgentLoadDCmd::JVMTIAgentLoadDCmd(outputStream* output, bool heap) :
                                        DCmdWithParser(output, heap),
   _libpath("library path", "Absolute path of the JVMTI agent to load.",
@@ -358,6 +359,7 @@ int JVMTIAgentLoadDCmd::num_arguments() {
     return 0;
   }
 }
+#endif // INCLUDE_JVMTI
 #endif // INCLUDE_SERVICES
 
 void PrintSystemPropertiesDCmd::execute(DCmdSource source, TRAPS) {
@@ -504,9 +506,12 @@ HeapDumpDCmd::HeapDumpDCmd(outputStream* output, bool heap) :
                            DCmdWithParser(output, heap),
   _filename("filename","Name of the dump file", "STRING",true),
   _all("-all", "Dump all objects, including unreachable objects",
-       "BOOLEAN", false, "false") {
+       "BOOLEAN", false, "false"),
+  _overwrite("-overwrite", "If specified, the dump file will be overwritten if it exists",
+           "BOOLEAN", false, "false") {
   _dcmdparser.add_dcmd_option(&_all);
   _dcmdparser.add_dcmd_argument(&_filename);
+  _dcmdparser.add_dcmd_option(&_overwrite);
 }
 
 void HeapDumpDCmd::execute(DCmdSource source, TRAPS) {
@@ -514,19 +519,7 @@ void HeapDumpDCmd::execute(DCmdSource source, TRAPS) {
   // This helps reduces the amount of unreachable objects in the dump
   // and makes it easier to browse.
   HeapDumper dumper(!_all.value() /* request GC if _all is false*/);
-  int res = dumper.dump(_filename.value());
-  if (res == 0) {
-    output()->print_cr("Heap dump file created");
-  } else {
-    // heap dump failed
-    ResourceMark rm;
-    char* error = dumper.error_as_C_string();
-    if (error == NULL) {
-      output()->print_cr("Dump failed - reason unknown");
-    } else {
-      output()->print_cr("%s", error);
-    }
-  }
+  dumper.dump(_filename.value(), output(), _overwrite.value());
 }
 
 int HeapDumpDCmd::num_arguments() {

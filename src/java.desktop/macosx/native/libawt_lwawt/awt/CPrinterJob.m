@@ -365,7 +365,6 @@ static void nsPrintInfoToJavaPrinterJob(JNIEnv* env, NSPrintInfo* src, jobject d
     } else {
         (*env)->CallVoidMethod(env, dstPrinterJob, jm_setPrintToFile, false);
     }
-    CHECK_EXCEPTION();
 
     // get the selected printer's name, and set the appropriate PrintService on the Java side
     NSString *name = [[src printer] name];

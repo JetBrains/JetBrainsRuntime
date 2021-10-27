@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1433,8 +1433,7 @@ public final class Main {
                                            X509CertInfo.DN_NAME);
 
         Date firstDate = getStartDate(startDate);
-        Date lastDate = new Date();
-        lastDate.setTime(firstDate.getTime() + validity*1000L*24L*60L*60L);
+        Date lastDate = getLastDate(firstDate, validity);
         CertificateValidity interval = new CertificateValidity(firstDate,
                                                                lastDate);
 
@@ -1493,12 +1492,39 @@ public final class Main {
                 reqex = (CertificateExtensions)attr.getAttributeValue();
             }
         }
+
+        PublicKey subjectPubKey = req.getSubjectPublicKeyInfo();
+        PublicKey issuerPubKey = signerCert.getPublicKey();
+
+        KeyIdentifier signerSubjectKeyId;
+        if (Arrays.equals(subjectPubKey.getEncoded(), issuerPubKey.getEncoded())) {
+            // No AKID for self-signed cert
+            signerSubjectKeyId = null;
+        } else {
+            X509CertImpl certImpl;
+            if (signerCert instanceof X509CertImpl) {
+                certImpl = (X509CertImpl) signerCert;
+            } else {
+                certImpl = new X509CertImpl(signerCert.getEncoded());
+            }
+
+            // To enforce compliance with RFC 5280 section 4.2.1.1: "Where a key
+            // identifier has been previously established, the CA SHOULD use the
+            // previously established identifier."
+            // Use issuer's SKID to establish the AKID in createV3Extensions() method.
+            signerSubjectKeyId = certImpl.getSubjectKeyId();
+
+            if (signerSubjectKeyId == null) {
+                signerSubjectKeyId = new KeyIdentifier(issuerPubKey);
+            }
+        }
+
         CertificateExtensions ext = createV3Extensions(
                 reqex,
                 null,
                 v3ext,
-                req.getSubjectPublicKeyInfo(),
-                signerCert.getPublicKey());
+                subjectPubKey,
+                signerSubjectKeyId);
         info.set(X509CertInfo.EXTENSIONS, ext);
         X509CertImpl cert = new X509CertImpl(info);
         cert.sign(privateKey, params, sigAlgName, null);
@@ -1530,11 +1556,9 @@ public final class Main {
                                                       X509CertInfo.DN_NAME);
 
         Date firstDate = getStartDate(startDate);
-        Date lastDate = (Date) firstDate.clone();
-        lastDate.setTime(lastDate.getTime() + validity*1000*24*60*60);
+        Date lastDate = getLastDate(firstDate, validity);
         CertificateValidity interval = new CertificateValidity(firstDate,
                                                                lastDate);
-
 
         PrivateKey privateKey =
                 (PrivateKey)recoverKey(alias, storePass, keyPass).fst;
@@ -2917,8 +2941,7 @@ public final class Main {
 
         // Extend its validity
         Date firstDate = getStartDate(startDate);
-        Date lastDate = new Date();
-        lastDate.setTime(firstDate.getTime() + validity*1000L*24L*60L*60L);
+        Date lastDate = getLastDate(firstDate, validity);
         CertificateValidity interval = new CertificateValidity(firstDate,
                                                                lastDate);
         certInfo.set(X509CertInfo.VALIDITY, interval);
@@ -4204,6 +4227,7 @@ public final class Main {
      * @param extstrs -ext values, Read keytool doc
      * @param pkey the public key for the certificate
      * @param akey the public key for the authority (issuer)
+     * @param aSubjectKeyId the subject key identifier for the authority (issuer)
      * @return the created CertificateExtensions
      */
     private CertificateExtensions createV3Extensions(
@@ -4211,7 +4235,7 @@ public final class Main {
             CertificateExtensions existingEx,
             List <String> extstrs,
             PublicKey pkey,
-            PublicKey akey) throws Exception {
+            KeyIdentifier aSubjectKeyId) throws Exception {
 
         // By design, inside a CertificateExtensions object, all known
         // extensions uses name (say, "BasicConstraints") as key and
@@ -4236,6 +4260,14 @@ public final class Main {
             }
         }
         try {
+            // always non-critical
+            setExt(result, new SubjectKeyIdentifierExtension(
+                    new KeyIdentifier(pkey).getIdentifier()));
+            if (aSubjectKeyId != null) {
+                setExt(result, new AuthorityKeyIdentifierExtension(aSubjectKeyId,
+                        null, null));
+            }
+
             // name{:critical}{=value}
             // Honoring requested extensions
             if (requestedEx != null) {
@@ -4568,17 +4600,25 @@ public final class Main {
                                 "Unknown.extension.type.") + extstr);
                 }
             }
-            // always non-critical
-            setExt(result, new SubjectKeyIdentifierExtension(
-                    new KeyIdentifier(pkey).getIdentifier()));
-            if (akey != null && !pkey.equals(akey)) {
-                setExt(result, new AuthorityKeyIdentifierExtension(
-                                new KeyIdentifier(akey), null, null));
-            }
         } catch(IOException e) {
             throw new RuntimeException(e);
         }
         return result;
+    }
+
+    private Date getLastDate(Date firstDate, long validity)
+            throws Exception {
+        Date lastDate = new Date();
+        lastDate.setTime(firstDate.getTime() + validity*1000L*24L*60L*60L);
+
+        Calendar c = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+        c.setTime(lastDate);
+        if (c.get(Calendar.YEAR) > 9999) {
+            throw new Exception("Validity period ends at calendar year " +
+                    c.get(Calendar.YEAR) + " which is greater than 9999");
+        }
+
+        return lastDate;
     }
 
     private boolean isTrustedCert(Certificate cert) throws KeyStoreException {

@@ -680,7 +680,7 @@ bool ThreadStackTrace::is_owned_monitor_on_stack(oop object) {
     for (int j = 0; j < len; j++) {
       oop monitor = locked_monitors->at(j);
       assert(monitor != NULL, "must be a Java object");
-      if (oopDesc::equals(monitor, object)) {
+      if (monitor == object) {
         found = true;
         break;
       }
@@ -861,7 +861,10 @@ void ThreadSnapshot::initialize(ThreadsList * t_list, JavaThread* thread) {
   _sleep_ticks = stat->sleep_ticks();
   _sleep_count = stat->sleep_count();
 
-  _thread_status = java_lang_Thread::get_thread_status(_threadObj);
+  // If thread is still attaching then threadObj will be NULL.
+  _thread_status = _threadObj == NULL ? java_lang_Thread::NEW
+                                     : java_lang_Thread::get_thread_status(_threadObj);
+
   _is_ext_suspended = thread->is_being_ext_suspended();
   _is_in_native = (thread->thread_state() == _thread_in_native);
 

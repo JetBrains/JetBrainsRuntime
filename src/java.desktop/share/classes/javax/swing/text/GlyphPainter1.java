@@ -179,8 +179,7 @@ class GlyphPainter1 extends GlyphView.GlyphPainter {
         Segment text = v.getText(p0, p1);
         int[] justificationData = getJustificationData(v);
         int offs = Utilities.getTabbedTextOffset(v, text, metrics,
-                                                 alloc.x, (int) x, expander, p0,
-                                                 justificationData);
+                (float)alloc.x,  x, expander, p0, justificationData);
         SegmentCache.releaseSharedSegment(text);
         int retValue = p0 + offs;
         if(retValue == p1) {

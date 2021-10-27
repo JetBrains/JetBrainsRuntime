@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1354,11 +1354,15 @@ static jclass jc_CInputMethod = NULL;
 #ifdef IM_DEBUG
     fprintf(stderr, "AWTView InputMethod Selector Called : [attributedSubstringFromRange] location=%lu, length=%lu\n", (unsigned long)theRange.location, (unsigned long)theRange.length);
 #endif // IM_DEBUG
+    if (!fInputMethodLOCKABLE) {
+        return nil;
+    }
 
     if (!fInputMethodLOCKABLE) {
         return NULL;
     }
     JNIEnv *env = [ThreadUtilities getJNIEnv];
+    GET_CIM_CLASS_RETURN(nil);
     DECLARE_METHOD_RETURN(jm_substringFromRange, jc_CInputMethod, "attributedSubstringFromRange", "(II)Ljava/lang/String;", nil);
     jobject theString = (*env)->CallObjectMethod(env, fInputMethodLOCKABLE, jm_substringFromRange, theRange.location, theRange.length);
     CHECK_EXCEPTION_NULL_RETURN(theString, nil);

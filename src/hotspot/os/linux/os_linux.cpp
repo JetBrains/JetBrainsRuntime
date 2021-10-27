@@ -414,7 +414,14 @@ void os::init_system_properties_values() {
 #if defined(AMD64) || (defined(_LP64) && defined(SPARC)) || defined(PPC64) || defined(S390)
   #define DEFAULT_LIBPATH "/usr/lib64:/lib64:/lib:/usr/lib"
 #else
+#if defined(AARCH64)
+  // Use 32-bit locations first for AARCH64 (a 64-bit architecture), since some systems
+  // might not adhere to the FHS and it would be a change in behaviour if we used
+  // DEFAULT_LIBPATH of other 64-bit architectures which prefer the 64-bit paths.
+  #define DEFAULT_LIBPATH "/lib:/usr/lib:/usr/lib64:/lib64"
+#else
   #define DEFAULT_LIBPATH "/lib:/usr/lib"
+#endif // AARCH64
 #endif
 
 // Base path of extensions installed on the system.
@@ -5748,9 +5755,7 @@ int os::open(const char *path, int oflag, int mode) {
 // create binary file, rewriting existing file if required
 int os::create_binary_file(const char* path, bool rewrite_existing) {
   int oflags = O_WRONLY | O_CREAT;
-  if (!rewrite_existing) {
-    oflags |= O_EXCL;
-  }
+  oflags |= rewrite_existing ? O_TRUNC : O_EXCL;
   return ::open64(path, oflags, S_IREAD | S_IWRITE);
 }
 
