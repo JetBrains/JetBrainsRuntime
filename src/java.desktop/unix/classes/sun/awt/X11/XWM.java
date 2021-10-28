@@ -1484,8 +1484,12 @@ final class XWM
         if (window == XConstants.None) {
             return null;
         }
-        XNETProtocol net_protocol = getWM().getNETProtocol();
-        if (net_protocol != null && net_protocol.active()) {
+        final XNETProtocol net_protocol = getWM().getNETProtocol();
+        final boolean frameExtentsSupported =
+                           net_protocol != null
+                        && net_protocol.active()
+                        && net_protocol.checkProtocol(net_protocol.XA_NET_SUPPORTED, XA_NET_FRAME_EXTENTS);
+        if (frameExtentsSupported) {
             Insets insets = null;
             final int MAX_RETRY_COUNT = 3;
             for (int i = 0; i < MAX_RETRY_COUNT; i++) {
