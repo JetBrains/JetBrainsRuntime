@@ -4805,7 +4805,8 @@ MsgRouting AwtComponent::WmNcPaint(HRGN hrgn)
 
 MsgRouting AwtComponent::WmNcHitTest(int x, int y, LRESULT &retVal)
 {
-    return mrDoDefault;
+    retVal = HTTRANSPARENT;
+    return mrConsume;
 }
 
 /**
