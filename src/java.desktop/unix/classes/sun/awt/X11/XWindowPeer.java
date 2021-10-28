@@ -655,9 +655,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
      * called to check if we've been moved onto a different screen
      * Based on checkNewXineramaScreen() in awt_GraphicsEnv.c
      */
-    public void checkIfOnNewScreen(Rectangle newBounds) {
+    public boolean checkIfOnNewScreen(Rectangle newBounds) {
         if (!XToolkit.localEnv.runningXinerama()) {
-            return;
+            return false;
         }
 
         if (log.isLoggable(PlatformLogger.Level.FINEST)) {
@@ -706,7 +706,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                 log.finest("XWindowPeer: Moved to a new screen");
             }
             executeDisplayChangedOnEDT(newGC);
+            return true;
         }
+        return false;
     }
 
     /**
@@ -729,7 +731,16 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
      * X11GraphicsDevice when the display mode has been changed.
      */
     public void displayChanged() {
-        executeDisplayChangedOnEDT(getGraphicsConfiguration());
+        boolean onNewScreen = false;
+        XToolkit.awtLock();
+        try {
+            onNewScreen = checkIfOnNewScreen(getBounds());
+        } finally {
+            XToolkit.awtUnlock();
+        }
+        if (!onNewScreen) {
+            executeDisplayChangedOnEDT(getGraphicsConfiguration());
+        }
     }
 
     /**
