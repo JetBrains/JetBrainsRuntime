@@ -25,6 +25,9 @@ import java.util.Arrays;
 import jdk.internal.platform.Metrics;
 
 public class MetricsMemoryTester {
+
+    private static final long UNLIMITED = -1;
+
     public static void main(String[] args) {
         System.out.println(Arrays.toString(args));
         switch (args[0]) {
@@ -109,7 +112,10 @@ public class MetricsMemoryTester {
     private static void testKernelMemoryLimit(String value) {
         long limit = getMemoryValue(value);
         long kmemlimit = Metrics.systemMetrics().getKernelMemoryLimit();
-        if (kmemlimit != 0 && limit != kmemlimit) {
+        // Note that the kernel memory limit might get ignored by OCI runtimes
+        // This feature is deprecated. Only perform the check if we get an actual
+        // limit back.
+        if (kmemlimit != UNLIMITED && limit != kmemlimit) {
             throw new RuntimeException("Kernel Memory limit not equal, expected : ["
                     + limit + "]" + ", got : ["
                     + kmemlimit + "]");
