@@ -1898,7 +1898,7 @@ static jlong
         if (subpixelGlyph) {
             // Copy first image with zero subpixel offset
             unsigned int i;
-            for (i = 0; i < ftglyph->bitmap.rows; i++) {
+            for (i = 0; i < (unsigned int) ftglyph->bitmap.rows; i++) {
                 const UInt8* src = ftglyph->bitmap.buffer + i * ftglyph->bitmap.pitch;
                 UInt8* dst = glyphInfo->image + i * rowBytes;
                 memcpy(dst, src, ftglyph->bitmap.width);
