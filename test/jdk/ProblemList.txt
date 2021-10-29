@@ -764,7 +764,6 @@ javax/swing/text/View/8014863/bug8014863.java 8233561 macosx-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java 8233562 macosx-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java 233570 macosx-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java 8208566 macosx-all
-javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java 8233635 macosx-all
 javax/swing/JRootPane/4670486/bug4670486.java 8042381 macosx-all
 javax/swing/JPopupMenu/6827786/bug6827786.java 8233556 macosx-all
 javax/swing/JPopupMenu/6544309/bug6544309.java 8233556 macosx-all
