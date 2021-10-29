@@ -32,9 +32,16 @@
  */
 
 import java.net.URI;
-import java.nio.file.*;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.util.*;
+import java.util.Formatter;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 import jdk.test.lib.SecurityTools;
 
@@ -59,6 +66,7 @@ public class PosixPermissionsTest {
 
         createFiles();
 
+        // generate key for signing
         SecurityTools.keytool(
                 "-genkey",
                 "-keyalg", "RSA",
@@ -70,6 +78,7 @@ public class PosixPermissionsTest {
                 "-validity", "365")
                 .shouldHaveExitValue(0);
 
+        // sign zip file - expect warning
         SecurityTools.jarsigner(
                 "-keystore", "examplekeystore",
                 "-verbose", ZIPFILENAME,
@@ -79,8 +88,9 @@ public class PosixPermissionsTest {
                 .shouldHaveExitValue(0)
                 .shouldContain(WARNING_MSG);
 
-        // sign jar file - no posix warning message expected
-        SecurityTools.jarsigner("-keystore", "examplekeystore",
+        // sign jar file - expect no warning
+        SecurityTools.jarsigner(
+                "-keystore", "examplekeystore",
                 "-verbose", JARFILENAME,
                 "-storepass", "password",
                 "-keypass", "password",
@@ -88,7 +98,9 @@ public class PosixPermissionsTest {
                 .shouldHaveExitValue(0)
                 .shouldNotContain(WARNING_MSG);
 
-        SecurityTools.jarsigner("-keystore", "examplekeystore",
+        // verify zip file - expect warning
+        SecurityTools.jarsigner(
+                "-keystore", "examplekeystore",
                 "-storepass", "password",
                 "-keypass", "password",
                 "-verbose",
@@ -96,8 +108,9 @@ public class PosixPermissionsTest {
                 .shouldHaveExitValue(0)
                 .shouldContain(WARNING_MSG);
 
-        // no warning expected for regular jar file
-        SecurityTools.jarsigner("-keystore", "examplekeystore",
+        // verify jar file - expect no warning
+        SecurityTools.jarsigner(
+                "-keystore", "examplekeystore",
                 "-storepass", "password",
                 "-keypass", "password",
                 "-verbose",
