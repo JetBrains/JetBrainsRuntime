@@ -119,7 +119,6 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   static void unregister_nmethod_g1(nmethod* nm);
   static void register_nmethod_g1(nmethod* nm);
   static void unpatch_bytecode(Method* method);
-  static void fix_invoke_method(Method* method);
 
   // Figure out which new methods match old methods in name and signature,
   // which methods have been added, and which are no longer present

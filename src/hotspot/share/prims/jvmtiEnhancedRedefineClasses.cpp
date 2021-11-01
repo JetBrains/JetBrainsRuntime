@@ -517,8 +517,6 @@ void VM_EnhancedRedefineClasses::doit() {
     ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
 
 
-    // SystemDictionary::methods_do(fix_invoke_method);
-
   // JSR-292 support
   if (_any_class_has_resolved_methods) {
     bool trace_name_printed = false;
@@ -646,10 +644,6 @@ void VM_EnhancedRedefineClasses::doit() {
 
   // TODO: explain...
   ciObjectFactory::resort_shared_ci_metadata();
-
-  // FIXME - check if it was in JDK8. Copied from standard JDK9 hotswap.
-  //MethodDataCleaner clean_weak_method_links;
-  //ClassLoaderDataGraph::classes_do(&clean_weak_method_links);
 
   // Disable any dependent concurrent compilations
   SystemDictionary::notice_modification();
@@ -1568,29 +1562,6 @@ void VM_EnhancedRedefineClasses::MethodDataCleaner::do_klass(Klass* k) {
   }
 }
 
-void VM_EnhancedRedefineClasses::fix_invoke_method(Method* method) {
-
-  constantPoolHandle other_cp = constantPoolHandle(method->constants());
-
-  for (int i = 0; i < other_cp->length(); i++) {
-    if (other_cp->tag_at(i).is_klass()) {
-      Klass* klass = other_cp->resolved_klass_at(i);
-      if (klass->new_version() != NULL) {
-        // Constant pool entry points to redefined class -- update to the new version
-        other_cp->klass_at_put(i, klass->newest_version());
-      }
-      assert(other_cp->resolved_klass_at(i)->new_version() == NULL, "Must be new klass!");
-    }
-  }
-
-  ConstantPoolCache* cp_cache = other_cp->cache();
-  if (cp_cache != NULL) {
-    cp_cache->clear_entries();
-  }
-
-}
-
-
 
 void VM_EnhancedRedefineClasses::update_jmethod_ids() {
   for (int j = 0; j < _matching_methods_length; ++j) {
@@ -2071,11 +2042,22 @@ void VM_EnhancedRedefineClasses::dump_methods() {
 class AffectedKlassClosure : public KlassClosure {
  private:
    GrowableArray<Klass*>* _affected_klasses;
+   bool _is_anonymous;
  public:
-  AffectedKlassClosure(GrowableArray<Klass*>* affected_klasses) : _affected_klasses(affected_klasses) {}
+  AffectedKlassClosure(GrowableArray<Klass*>* affected_klasses) : _affected_klasses(affected_klasses), _is_anonymous(false) {}
+
+  bool is_anonymous() { return _is_anonymous; }
+  void set_anonymous(bool value) { _is_anonymous = value; }
 
   void do_klass(Klass* klass) {
     assert(!_affected_klasses->contains(klass), "must not occur more than once!");
+
+    if (_is_anonymous && klass->is_instance_klass()) {
+      InstanceKlass *ik = InstanceKlass::cast(klass);
+      if (ik->is_not_initialized()) {
+        return;  // anonymous class does not need to be initialized
+      }
+    }
 
     if (klass->new_version() != NULL) {
       return;
@@ -2135,11 +2117,13 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
   // ClassLoaderDataGraph::classes_do(&closure);
 
   // 1. Scan over dictionaries
+  closure.set_anonymous(false);
   ClassLoaderDataGraph::dictionary_classes_do(&closure);
 
   // 2. Anonymous class is not in dictionary, we have to iterate anonymous cld directly, but there is race cond...
   // TODO: review ... anonymous class is added to cld before InstanceKlass initialization,
   //                  find out how to check if the InstanceKlass is initialized
+  closure.set_anonymous(true);
   ClassLoaderDataGraph::anonymous_classes_do(&closure);
 
   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
