@@ -49,6 +49,8 @@ extern OGLContext *OGLSD_MakeOGLContextCurrent(JNIEnv *env,
                                                OGLSDOps *srcOps,
                                                OGLSDOps *dstOps);
 
+int OGLContext_BlitTileSize = 128;
+
 /**
  * This table contains the standard blending rules (or Porter-Duff compositing
  * factors) used in glBlendFunc(), indexed by the rule constants from the
@@ -572,10 +574,16 @@ OGLContext_InitBlitTileTexture(OGLContext *oglc)
 {
     J2dTraceLn(J2D_TRACE_INFO, "OGLContext_InitBlitTileTexture");
 
+    GLint texMax;
+    j2d_glGetIntegerv(GL_MAX_TEXTURE_SIZE, &texMax);
+    if (OGLContext_BlitTileSize > (int)texMax) {
+        OGLContext_BlitTileSize = texMax;
+        J2dTraceLn1(J2D_TRACE_INFO, "OGLContext_InitBlitTileTexture: reset OGLContext_BlitTileSize to %d", (int)texMax);
+    }
     oglc->blitTextureID =
         OGLContext_CreateBlitTexture(GL_RGBA8, GL_RGBA,
-                                     OGLC_BLIT_TILE_SIZE,
-                                     OGLC_BLIT_TILE_SIZE);
+                                     OGLContext_BlitTileSize,
+                                     OGLContext_BlitTileSize);
 
     return JNI_TRUE;
 }
@@ -1071,6 +1079,18 @@ JNIEXPORT jstring JNICALL Java_sun_java2d_opengl_OGLContext_getOGLIdString
     }
 
     return ret;
+}
+
+/*
+ * Class:     sun_java2d_opengl_OGLContext
+ * Method:    init
+ * Signature: (J)V;
+ */
+JNIEXPORT void JNICALL Java_sun_java2d_opengl_OGLContext_init
+        (JNIEnv *env, jclass oglcc, jint blitTileSize)
+{
+    OGLContext_BlitTileSize = blitTileSize;
+    J2dTraceLn1(J2D_TRACE_INFO, "OGLContext_init: set OGLContext_BlitTileSize to %d", OGLContext_BlitTileSize);
 }
 
 #endif /* !HEADLESS */

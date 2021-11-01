@@ -284,10 +284,10 @@ OGLBlitToSurfaceViaTexture(OGLContext *oglc, SurfaceDataRasInfo *srcInfo,
 
     tx1 = 0.0f;
     ty1 = 0.0f;
-    tw = OGLC_BLIT_TILE_SIZE;
-    th = OGLC_BLIT_TILE_SIZE;
-    cdw = (dx2-dx1) / (((GLdouble)(sx2-sx1)) / OGLC_BLIT_TILE_SIZE);
-    cdh = (dy2-dy1) / (((GLdouble)(sy2-sy1)) / OGLC_BLIT_TILE_SIZE);
+    tw = OGLContext_BlitTileSize;
+    th = OGLContext_BlitTileSize;
+    cdw = (dx2-dx1) / (((GLdouble)(sx2-sx1)) / OGLContext_BlitTileSize);
+    cdh = (dy2-dy1) / (((GLdouble)(sy2-sy1)) / OGLContext_BlitTileSize);
 
     j2d_glEnable(GL_TEXTURE_2D);
     j2d_glBindTexture(GL_TEXTURE_2D, oglc->blitTextureID);

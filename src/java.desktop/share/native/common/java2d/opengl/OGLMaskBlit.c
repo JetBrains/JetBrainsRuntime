@@ -78,8 +78,8 @@ OGLMaskBlit_MaskBlit(JNIEnv *env, OGLContext *oglc,
 
     tx1 = 0.0f;
     ty1 = 0.0f;
-    tx2 = ((GLfloat)width) / OGLC_BLIT_TILE_SIZE;
-    ty2 = ((GLfloat)height) / OGLC_BLIT_TILE_SIZE;
+    tx2 = ((GLfloat)width) / OGLContext_BlitTileSize;
+    ty2 = ((GLfloat)height) / OGLContext_BlitTileSize;
 
     // render cached texture to the OpenGL surface
     j2d_glBegin(GL_QUADS);
