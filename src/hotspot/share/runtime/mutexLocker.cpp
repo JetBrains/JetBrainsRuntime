@@ -84,6 +84,7 @@ Mutex*   Compile_lock                 = NULL;
 Monitor* MethodCompileQueue_lock      = NULL;
 Monitor* CompileThread_lock           = NULL;
 Monitor* Compilation_lock             = NULL;
+Monitor* DcevmCompilation_lock        = NULL;
 Mutex*   CompileTaskAlloc_lock        = NULL;
 Mutex*   CompileStatistics_lock       = NULL;
 Mutex*   DirectivesStack_lock         = NULL;
@@ -317,6 +318,8 @@ void mutex_init() {
   if (WhiteBoxAPI) {
     def(Compilation_lock           , PaddedMonitor, leaf,        false, _safepoint_check_never);
   }
+
+  def(DcevmCompilation_lock        , PaddedMonitor, nonleaf+1,   false, _safepoint_check_never);
 
 #if INCLUDE_JFR
   def(JfrMsg_lock                  , PaddedMonitor, leaf,        true,  _safepoint_check_always);

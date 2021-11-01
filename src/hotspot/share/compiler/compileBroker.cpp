@@ -140,6 +140,8 @@ CompileLog** CompileBroker::_compiler2_logs = NULL;
 // These counters are used to assign an unique ID to each compilation.
 volatile jint CompileBroker::_compilation_id     = 0;
 volatile jint CompileBroker::_osr_compilation_id = 0;
+volatile bool CompileBroker::_compilation_stopped = false;
+volatile int CompileBroker::_active_compilations = 0;
 
 // Performance counters
 PerfCounter* CompileBroker::_perf_total_compilation = NULL;
@@ -2320,8 +2322,19 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
           locker.wait();
         }
       }
-      comp->compile_method(&ci_env, target, osr_bci, true, directive);
-
+      if (AllowEnhancedClassRedefinition) {
+        {
+          MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
+          while (_compilation_stopped) {
+            locker.wait();
+          }
+          Atomic::add(&_active_compilations, 1);
+        }
+        comp->compile_method(&ci_env, target, osr_bci, true, directive);
+        Atomic::sub(&_active_compilations, 1);
+      } else {
+        comp->compile_method(&ci_env, target, osr_bci, true, directive);
+      }
       /* Repeat compilation without installing code for profiling purposes */
       int repeat_compilation_count = directive->RepeatCompilationOption;
       while (repeat_compilation_count > 0) {
@@ -2329,6 +2342,7 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
         comp->compile_method(&ci_env, target, osr_bci, false , directive);
         repeat_compilation_count--;
       }
+
     }
 
     if (!ci_env.failing() && task->code() == NULL) {
@@ -2941,4 +2955,24 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
     out->print_cr("\n__ Compile & CodeCache (global) lock hold took %10.3f seconds _________\n", ts_global.seconds());
   }
   out->print_cr("\n__ CodeHeapStateAnalytics total duration %10.3f seconds _________\n", ts_total.seconds());
+}
+
+void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
+  if (AllowEnhancedClassRedefinition) {
+    MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
+    _compilation_stopped = true;
+    while (_active_compilations > 0) {
+      VM_ThreadsSuspendJVMTI tsj; // force safepoint to run C1/C2 VM op
+      VMThread::execute(&tsj);
+      locker.wait(10);
+    }
+  }
+}
+
+void CompileBroker::releaseCompilationAfterEnhancedRedefinition() {
+  if (AllowEnhancedClassRedefinition) {
+    MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
+    _compilation_stopped = false;
+    locker.notify_all();
+  }
 }
