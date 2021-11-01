@@ -161,12 +161,12 @@ typedef struct {
     (((oglc)->caps >> OGLC_VCAP_OFFSET) & OGLC_VCAP_MASK)
 
 /**
- * This constant determines the size of the shared tile texture used
+ * This value determines the size of the shared tile texture used
  * by a number of image rendering methods.  For example, the blit tile texture
- * will have dimensions with width OGLC_BLIT_TILE_SIZE and height
- * OGLC_BLIT_TILE_SIZE (the tile will always be square).
+ * will have dimensions with width OGLContext_BlitTileSize and height
+ * OGLContext_BlitTileSize (the tile will always be square).
  */
-#define OGLC_BLIT_TILE_SIZE 128
+extern int OGLContext_BlitTileSize;
 
 /**
  * Helper macros that update the current texture function state only when

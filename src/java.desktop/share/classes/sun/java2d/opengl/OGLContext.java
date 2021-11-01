@@ -25,6 +25,7 @@
 
 package sun.java2d.opengl;
 
+import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
@@ -32,7 +33,11 @@ import sun.java2d.pipe.hw.ContextCapabilities;
 import static sun.java2d.pipe.BufferedOpCodes.*;
 import static sun.java2d.pipe.hw.ContextCapabilities.*;
 
+import java.awt.*;
+import java.awt.geom.AffineTransform;
 import java.lang.annotation.Native;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 /**
  * Note that the RenderQueue lock must be acquired before calling any of
@@ -41,6 +46,36 @@ import java.lang.annotation.Native;
 public class OGLContext extends BufferedContext {
 
     private final OGLGraphicsConfig config;
+
+    static {
+        EventQueue.invokeLater(() -> {
+            Integer blitTileSize = AccessController.doPrivileged((PrivilegedAction<Integer>)() ->
+                Integer.parseInt(System.getProperty("sun.java2d.opengl.blitTileSize", "-1")));
+
+            if (blitTileSize < 0) {
+                int maxDeviceSize = 0;
+                try {
+                    GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+                    if (ge != null) {
+                        for (GraphicsDevice gd : ge.getScreenDevices()) {
+                            GraphicsConfiguration gc = gd.getDefaultConfiguration();
+                            if (gc == null) continue;
+                            AffineTransform tx = gc.getDefaultTransform();
+                            Rectangle bounds = gc.getBounds();
+                            maxDeviceSize = Math.max((int)(bounds.width * tx.getScaleX()), maxDeviceSize);
+                            maxDeviceSize = Math.max((int)(bounds.height * tx.getScaleY()), maxDeviceSize);
+                        }
+                    }
+                }
+                catch (HeadlessException ignore) {
+                }
+                blitTileSize = Math.max(128, Integer.highestOneBit((int)(maxDeviceSize * 1.25)));
+            }
+            init(blitTileSize);
+        });
+    }
+
+    private static native void init(int blitTileSize);
 
     OGLContext(RenderQueue rq, OGLGraphicsConfig config) {
         super(rq);

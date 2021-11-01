@@ -1216,8 +1216,8 @@ OGLTR_DrawLCDGlyphNoCache(OGLContext *oglc, OGLSDOps *dstOps,
                             pixelFormat, GL_UNSIGNED_BYTE,
                             ginfo->image + rowBytesOffset);
 
-        tx2 = ((GLfloat)w) / OGLC_BLIT_TILE_SIZE;
-        ty2 = ((GLfloat)h) / OGLC_BLIT_TILE_SIZE;;
+        tx2 = ((GLfloat)w) / OGLContext_BlitTileSize;
+        ty2 = ((GLfloat)h) / OGLContext_BlitTileSize;;
         dxadj = dstOps->xOffset + x;
         dyadj = dstOps->yOffset + dstOps->height - y;
         dtx1 = ((GLfloat)dxadj) / dstOps->textureWidth;
@@ -1252,7 +1252,7 @@ OGLTR_DrawLCDGlyphNoCache(OGLContext *oglc, OGLSDOps *dstOps,
             sh = ((sy + th) > h) ? (h - sy) : th;
 
             // update lower glyph texture coordinate
-            ty2 = ((GLfloat)sh) / OGLC_BLIT_TILE_SIZE;
+            ty2 = ((GLfloat)sh) / OGLContext_BlitTileSize;
 
             // update the destination texture coordinate
             dty1 = ((GLfloat)sh) / OGLTR_CACHED_DEST_HEIGHT;
@@ -1275,7 +1275,7 @@ OGLTR_DrawLCDGlyphNoCache(OGLContext *oglc, OGLSDOps *dstOps,
                                     ginfo->image + rowBytesOffset);
 
                 // update right glyph texture coordinate
-                tx2 = ((GLfloat)sw) / OGLC_BLIT_TILE_SIZE;
+                tx2 = ((GLfloat)sw) / OGLContext_BlitTileSize;
 
                 // this accounts for left origin of the destination region
                 dxadj = dstOps->xOffset + x;
