@@ -4706,6 +4706,14 @@ MsgRouting AwtComponent::WmNcPaint(HRGN hrgn)
 
 MsgRouting AwtComponent::WmNcHitTest(int x, int y, LRESULT &retVal)
 {
+    AwtWindow* window = GetContainer();
+    if (window == NULL || window->IsSimpleWindow()) return mrDoDefault;
+    AwtFrame* frame = (AwtFrame*)window;
+    if (frame->HasCustomDecoration() &&
+        frame->WmNcHitTest(x, y, retVal) == mrConsume) {
+        retVal = HTTRANSPARENT;
+        return mrConsume;
+    }
     return mrDoDefault;
 }
 
