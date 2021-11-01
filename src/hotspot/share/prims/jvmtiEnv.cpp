@@ -29,6 +29,7 @@
 #include "classfile/modules.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
+#include "compiler/compileBroker.hpp"
 #include "interpreter/bytecodeStream.hpp"
 #include "interpreter/interpreter.hpp"
 #include "jvmtifiles/jvmtiEnv.hpp"
@@ -453,9 +454,12 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
     class_definitions[index].klass              = jcls;
   }
   if (AllowEnhancedClassRedefinition) {
+    // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
+    CompileBroker::stopCompilationBeforeEnhancedRedefinition();
     MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
     VMThread::execute(&op);
+    CompileBroker::releaseCompilationAfterEnhancedRedefinition();
     return (op.check_error());
   }
   VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
@@ -469,9 +473,12 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
 jvmtiError
 JvmtiEnv::RedefineClasses(jint class_count, const jvmtiClassDefinition* class_definitions) {
   if (AllowEnhancedClassRedefinition) {
+    // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
+    CompileBroker::stopCompilationBeforeEnhancedRedefinition();
     MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
     VMThread::execute(&op);
+    CompileBroker::releaseCompilationAfterEnhancedRedefinition();
     return (op.check_error());
   }
   VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);

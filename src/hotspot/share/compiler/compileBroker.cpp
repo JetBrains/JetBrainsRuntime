@@ -133,6 +133,8 @@ CompileLog** CompileBroker::_compiler2_logs = NULL;
 // These counters are used to assign an unique ID to each compilation.
 volatile jint CompileBroker::_compilation_id     = 0;
 volatile jint CompileBroker::_osr_compilation_id = 0;
+volatile bool CompileBroker::_compilation_stopped = false;
+volatile int CompileBroker::_active_compilations = 0;
 
 // Debugging information
 int  CompileBroker::_last_compile_type     = no_compile;
@@ -2191,7 +2193,22 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
           locker.wait(Mutex::_no_safepoint_check_flag);
         }
       }
-      comp->compile_method(&ci_env, target, osr_bci, directive);
+
+      if (AllowEnhancedClassRedefinition) {
+        {
+          MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
+          while (_compilation_stopped) {
+            locker.wait(Mutex::_no_safepoint_check_flag);
+          }
+          Atomic::add(1, &_active_compilations);
+        }
+
+        comp->compile_method(&ci_env, target, osr_bci, directive);
+        Atomic::sub(1, &_active_compilations);
+
+      } else {
+        comp->compile_method(&ci_env, target, osr_bci, directive);
+      }
     }
 
     if (!ci_env.failing() && task->code() == NULL) {
@@ -2852,4 +2869,24 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
     out->print_cr("\n__ Compile & CodeCache (global) lock hold took %10.3f seconds _________\n", ts_global.seconds());
   }
   out->print_cr("\n__ CodeHeapStateAnalytics total duration %10.3f seconds _________\n", ts_total.seconds());
+}
+
+void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
+  if (AllowEnhancedClassRedefinition) {
+    MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
+    _compilation_stopped = true;
+    while (_active_compilations > 0) {
+      VM_ThreadsSuspendJVMTI tsj;
+      VMThread::execute(&tsj);
+      locker.wait(Mutex::_no_safepoint_check_flag);
+    }
+  }
+}
+
+void CompileBroker::releaseCompilationAfterEnhancedRedefinition() {
+  if (AllowEnhancedClassRedefinition) {
+    MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
+    _compilation_stopped = false;
+    locker.notify_all();
+  }
 }
