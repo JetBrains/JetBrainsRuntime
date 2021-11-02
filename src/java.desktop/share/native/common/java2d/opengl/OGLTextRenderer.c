@@ -1306,7 +1306,7 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
             continue;
         }
 
-        if (ginfo->rowBytes == ginfo->width) {
+        if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
             if (oglc->grayRenderHints == NULL) {
                 OGLContext_InitGrayRenderHints(env, oglc);
             }
@@ -1326,7 +1326,7 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
             } else {
                 ok = OGLTR_DrawGrayscaleGlyphNoCache(oglc, ginfo, x, y, subimage);
             }
-        } else if (ginfo->rowBytes == ginfo->width * 4) {
+        } else if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_BGRA) {
             // color glyph data
             ok = OGLTR_DrawColorGlyphNoCache(oglc, ginfo, x, y);
         } else {
