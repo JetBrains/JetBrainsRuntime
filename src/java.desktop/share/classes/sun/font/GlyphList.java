@@ -502,7 +502,7 @@ public final class GlyphList {
     }
 
     public static boolean canContainColorGlyphs() {
-        return FontUtilities.isMacOSX || FontUtilities.isLinux;
+        return true;
     }
 
     public boolean isColorGlyph(int glyphIndex) {
