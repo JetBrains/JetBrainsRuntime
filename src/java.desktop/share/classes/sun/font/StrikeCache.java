@@ -27,6 +27,7 @@ package sun.font;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
+import java.lang.annotation.Native;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
@@ -116,7 +117,13 @@ public final class StrikeCache {
     static int managedOffset;
     static int subpixelResolutionXOffset;
     static int subpixelResolutionYOffset;
+    static int formatOffset;
     static long invisibleGlyphPtr;
+
+    @Native public static final byte PIXEL_FORMAT_UNKNOWN   = -1;
+    @Native public static final byte PIXEL_FORMAT_GREYSCALE = 1;
+    @Native public static final byte PIXEL_FORMAT_LCD       = 3;
+    @Native public static final byte PIXEL_FORMAT_BGRA      = 4;
 
     /* Native method used to return information used for unsafe
      * access to native data.
@@ -136,6 +143,7 @@ public final class StrikeCache {
      * arr[12] = offset of managed
      * arr[13] = offset of subpixelResolutionX
      * arr[14] = offset of subpixelResolutionY
+     * arr[15] = offset of format
      */
     static native void getGlyphCacheDescription(long[] infoArray);
 
@@ -146,7 +154,7 @@ public final class StrikeCache {
     @SuppressWarnings("removal")
     private static void initStatic() {
 
-        long[] nativeInfo = new long[15];
+        long[] nativeInfo = new long[16];
         getGlyphCacheDescription(nativeInfo);
         //Can also get address size from Unsafe class :-
         //nativeAddressSize = unsafe.addressSize();
@@ -165,6 +173,7 @@ public final class StrikeCache {
         managedOffset = (int) nativeInfo[12];
         subpixelResolutionXOffset = (int) nativeInfo[13];
         subpixelResolutionYOffset = (int) nativeInfo[14];
+        formatOffset = (int) nativeInfo[15];
 
         if (nativeAddressSize < 4) {
             throw new InternalError("Unexpected address size for font data: " +
