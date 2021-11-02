@@ -895,7 +895,7 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
         FT_UInt dpi = (FT_UInt) getScreenResolution(env);
 
         if (FT_IS_SCALABLE(scalerInfo->face)) { // Standard scalable face
-            context->colorFont = FT_HAS_COLOR(scalerInfo->face);
+            context->colorFont = FT_HAS_COLOR(scalerInfo->face) ? TRUE : FALSE;
             context->fixedSizeIndex = -1;
             errCode = FT_Set_Char_Size(scalerInfo->face, 0,
                                        ADJUST_FONT_SIZE(context->ptsz, dpi),
