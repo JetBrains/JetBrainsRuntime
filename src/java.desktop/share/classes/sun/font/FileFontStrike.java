@@ -307,7 +307,8 @@ public class FileFontStrike extends PhysicalStrike {
             intPtSize = (int) pts;
             useNatives = (rotation == 0 || rotation > 0 && useNativesForRotatedText) && pts >= 3.0 && pts <= 100.0 &&
                     (getImageWithAdvance || desc.fmHint == INTVAL_FRACTIONALMETRICS_ON) &&
-                    !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize);
+                    !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize) &&
+                    !((TrueTypeFont)fileFont).hasCOLRTable();
         }
         if (FontUtilities.isLogging() && FontUtilities.isWindows) {
             FontUtilities.logInfo("Strike for " + fileFont + " at size = " + intPtSize +
@@ -839,14 +840,12 @@ public class FileFontStrike extends PhysicalStrike {
 
     private int getGlyphImageMinX(long ptr, int origMinX) {
 
-        int width = StrikeCache.unsafe.getChar(ptr+StrikeCache.widthOffset);
+        byte format = StrikeCache.unsafe.getByte(ptr+StrikeCache.formatOffset);
+        if (format != StrikeCache.PIXEL_FORMAT_LCD) return origMinX;
+
         int height = StrikeCache.unsafe.getChar(ptr+StrikeCache.heightOffset);
         int rowBytes =
             StrikeCache.unsafe.getChar(ptr+StrikeCache.rowBytesOffset);
-
-        if (rowBytes == width) {
-            return origMinX;
-        }
 
         long pixelData =
             StrikeCache.unsafe.getAddress(ptr + StrikeCache.pixelDataOffset);
