@@ -3955,7 +3955,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     }
 
     public boolean areColorGlyphsSupported() {
-        return false;
+        return true;
     }
 
     protected BundledFontInfo getBundledFontInfo(String fileName) {

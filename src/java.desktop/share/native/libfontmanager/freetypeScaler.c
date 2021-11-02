@@ -139,6 +139,7 @@ typedef struct FTScalerContext {
     int        ptsz;          /* size in points */
     int        fixedSizeIndex;/* -1 for scalable fonts and index inside
                                * scalerInfo->face->available_sizes otherwise */
+    jboolean colorFont;
 } FTScalerContext;
 
 /* SampledBGRABitmap contains (possibly) downscaled image data
@@ -755,10 +756,10 @@ Java_sun_font_FreetypeFontScaler_createScalerContextNative(
 }
 
 static void setDefaultScalerSettings(FTScalerContext *context) {
-    if (context->aaType == TEXT_AA_OFF) {
-        context->loadFlags = FT_LOAD_TARGET_MONO;
-    } else if (context->aaType == TEXT_AA_ON) {
+    if (context->aaType == TEXT_AA_ON || context->colorFont) {
         context->loadFlags = FT_LOAD_TARGET_NORMAL;
+    } else if (context->aaType == TEXT_AA_OFF) {
+        context->loadFlags = FT_LOAD_TARGET_MONO;
     } else {
         context->lcdFilter = FT_LCD_FILTER_LIGHT;
         if (context->aaType == TEXT_AA_LCD_HRGB ||
@@ -829,12 +830,13 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
 
         FT_UInt dpi = (FT_UInt) getScreenResolution(env);
         if (FT_IS_SCALABLE(scalerInfo->face)) { // Standard scalable face
+            context->colorFont = FT_HAS_COLOR(scalerInfo->face);
             context->fixedSizeIndex = -1;
             errCode = FT_Set_Char_Size(scalerInfo->face, 0,
                                        ADJUST_FONT_SIZE(context->ptsz, dpi),
                                        dpi, dpi);
-        }
-        else { // Non-scalable face (that should only be bitmap faces)
+        } else { // Non-scalable face (that should only be bitmap faces)
+            context->colorFont = TRUE;
             const int ptsz = context->ptsz;
             // Best size is smallest, but not smaller than requested
             int bestSizeIndex = 0;
@@ -971,17 +973,10 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
 
             if (logFC && fcAutohintSet) fprintf(stderr, "FC_AUTOHINT(%d) ", fcAutohint);
 
-            if (context->aaType == TEXT_AA_ON) { // Greyscale AA
+            if (context->aaType == TEXT_AA_ON || context->colorFont) { // Greyscale AA or color glyph
                 setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet, FT_LOAD_DEFAULT, FT_RENDER_MODE_NORMAL);
-            }
-            else if (context->aaType == TEXT_AA_OFF) { // No AA
-                /* We disable MONO for non-scalable fonts, because that
-                 * is most probably a colored bitmap glyph */
-                setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet,
-                        context->fixedSizeIndex == -1 ?
-                            FT_LOAD_TARGET_MONO : FT_LOAD_TARGET_NORMAL,
-                        context->fixedSizeIndex == -1 ?
-                            FT_RENDER_MODE_MONO : FT_RENDER_MODE_NORMAL);
+            } else if (context->aaType == TEXT_AA_OFF) { // No AA
+                setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet, FT_LOAD_TARGET_MONO, FT_RENDER_MODE_MONO);
             } else {
                 int fcRGBA = FC_RGBA_UNKNOWN;
                 if (fcAntialiasSet && fcAntialias) {
@@ -1019,10 +1014,6 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                                              FT_LOAD_TARGET_LCD_V, FT_RENDER_MODE_LCD_V);
                     }
                 }
-            }
-            if (context->fixedSizeIndex != -1) {
-                // This is most probably a colored bitmap glyph, so enable COLOR
-                context->loadFlags |= FT_LOAD_COLOR;
             }
 
             FT_LcdFilter fcLCDFilter;
@@ -1646,10 +1637,13 @@ static jlong
         context->loadFlags |= FT_LOAD_NO_HINTING;
     }
 
-    /* Don't disable bitmaps when working with fixed-size glyph,
-     * this is most probably a BGRA glyph */
-    if (!context->useSbits && context->fixedSizeIndex == -1) {
-        context->loadFlags |=  FT_LOAD_NO_BITMAP;
+    if (context->colorFont) {
+        context->loadFlags |= FT_LOAD_COLOR;
+    }
+
+    /* Don't disable bitmaps for color glyphs */
+    if (!context->useSbits && !context->colorFont) {
+        context->loadFlags |= FT_LOAD_NO_BITMAP;
     }
 
     /* NB: in case of non identity transform
@@ -1667,14 +1661,14 @@ static jlong
     library = ftglyph->library;
     FT_Library_SetLcdFilter_Proxy(library, context->lcdFilter);
 
-    /* apply styles */
-    if (context->doBold && context->fixedSizeIndex == -1) { /* if bold style */
-        FT_GlyphSlot_Embolden(ftglyph);
-    }
-
     /* After call to FT_Render_Glyph, glyph format will be changed from
      * FT_GLYPH_FORMAT_OUTLINE to FT_GLYPH_FORMAT_BITMAP, so save this value */
     int outlineGlyph = ftglyph->format == FT_GLYPH_FORMAT_OUTLINE;
+
+    /* apply styles */
+    if (context->doBold && outlineGlyph && !context->colorFont) { /* if bold style */
+        FT_GlyphSlot_Embolden(ftglyph);
+    }
 
     /* generate bitmap if it is not done yet
      e.g. if algorithmic styling is performed and style was added to outline */
@@ -1687,7 +1681,7 @@ static jlong
          * We do this by rendering the glyph in bigger resolution and then
          * downscaling it with different subpixel offsets, which results in
          * subpixelResolutionX * subpixelResolutionY images per glyph. */
-        if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_GRAY &&
+        if (!context->colorFont && ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_GRAY &&
             context->aaType == TEXT_AA_ON && context->fmType == TEXT_FM_ON) {
             subpixelResolutionX = supplementarySubpixelGlyphResolution.x;
             subpixelResolutionY = supplementarySubpixelGlyphResolution.y;
