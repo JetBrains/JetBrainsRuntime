@@ -32,6 +32,7 @@
 #import "GeomUtilities.h"
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
+#import "PropertiesUtilities.h"
 
 #import <Carbon/Carbon.h>
 
@@ -358,9 +359,16 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
     }
 
-    NSUInteger deviceIndependentModifierFlagsMask =
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    NSString *captureNextAppWinKey = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.captureNextAppWinKey"
+                                                                           withEnv:env];
+    if ([@"false" isCaseInsensitiveLike:captureNextAppWinKey]) {
+        return NO;
+    } else {
+        NSUInteger deviceIndependentModifierFlagsMask =
             [event modifierFlags] & NSDeviceIndependentModifierFlagsMask;
-    return isSystemShortcut_NextWindowInApplication(deviceIndependentModifierFlagsMask, [event characters]);
+        return isSystemShortcut_NextWindowInApplication(deviceIndependentModifierFlagsMask, [event characters]);
+    }
 }
 
 /**
