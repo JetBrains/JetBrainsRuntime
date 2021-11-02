@@ -308,7 +308,7 @@ Java_sun_font_StrikeCache_getGlyphCacheDescription
     GlyphInfo *info;
     size_t baseAddr;
 
-    if ((*env)->GetArrayLength(env, results) < 15) {
+    if ((*env)->GetArrayLength(env, results) < 16) {
         return;
     }
 
@@ -337,6 +337,7 @@ Java_sun_font_StrikeCache_getGlyphCacheDescription
     nresults[12] = (size_t)&(info->managed)-baseAddr;
     nresults[13] = (size_t)&(info->subpixelResolutionX)-baseAddr;
     nresults[14] = (size_t)&(info->subpixelResolutionY)-baseAddr;
+    nresults[15] = (size_t)&(info->format)-baseAddr;
 
     (*env)->ReleasePrimitiveArrayCritical(env, results, nresults, 0);
 }
