@@ -1,7 +1,7 @@
-From 5325334e5f75c8c5fd711c021764901b8fa81a33 Mon Sep 17 00:00:00 2001
+From 91cfd6de1aac67a2f096568fda3b5992c19bddfb Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 19 Mar 2021 19:13:38 +0100
-Subject: [PATCH 27/31] JBR-3458: Skip dynamic proxy classes based on
+Subject: [PATCH 27/33] JBR-3458: Skip dynamic proxy classes based on
  com.sun.proxy
 
 ---

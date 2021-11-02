@@ -1,7 +1,7 @@
-From 2a004a093c23ca8515954d180064a59cdcaba0f8 Mon Sep 17 00:00:00 2001
+From f243b468b99115fcc4552644fea57cb695ab3ef8 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 12 Jun 2020 17:43:52 +0200
-Subject: [PATCH 09/31] Support for G1 gc
+Subject: [PATCH 09/33] Support for G1 gc
 
 ---
  src/hotspot/share/gc/g1/g1CollectedHeap.cpp   |  20 +++
@@ -1024,7 +1024,7 @@ index 8c255d6d428..71ed3cfcda8 100644
          oop(compaction_top)->init_mark_raw();
          assert(oop(compaction_top)->klass() != NULL, "should have a class");
 diff --git a/src/hotspot/share/memory/universe.cpp b/src/hotspot/share/memory/universe.cpp
-index d0a6d665aa0..3dc4cc1323c 100644
+index 9a633280118..2e4f597cf1f 100644
 --- a/src/hotspot/share/memory/universe.cpp
 +++ b/src/hotspot/share/memory/universe.cpp
 @@ -210,6 +210,11 @@ void Universe::root_oops_do(OopClosure *oopClosure) {
@@ -1269,7 +1269,7 @@ index 3551b06ecde..62a0fbf54d4 100644
    static void fix_invoke_method(Method* method);
  
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index 2b5ba619f43..5053ad7ee61 100644
+index 36276741b5c..0db55d00bd3 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
 @@ -2045,9 +2045,9 @@ bool Arguments::check_gc_consistency() {
@@ -1285,10 +1285,10 @@ index 2b5ba619f43..5053ad7ee61 100644
      }
    }
 diff --git a/src/hotspot/share/utilities/growableArray.hpp b/src/hotspot/share/utilities/growableArray.hpp
-index f37d94a0529..738d475aea6 100644
+index ea746e065fa..d13e64f3806 100644
 --- a/src/hotspot/share/utilities/growableArray.hpp
 +++ b/src/hotspot/share/utilities/growableArray.hpp
-@@ -532,6 +532,10 @@ template<class E> class GrowableArrayIterator : public StackObj {
+@@ -523,6 +523,10 @@ template<class E> class GrowableArrayIterator : public StackObj {
      assert(_array == rhs._array, "iterator belongs to different array");
      return _position != rhs._position;
    }

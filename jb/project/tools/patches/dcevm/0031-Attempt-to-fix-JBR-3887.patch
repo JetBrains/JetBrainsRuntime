@@ -1,7 +1,7 @@
-From 8d3ebd313983584f63e2d5b3e32f3e2c60191711 Mon Sep 17 00:00:00 2001
+From 6dc05f05716854367e229d72d5fa03f8f7d0739d Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Tue, 19 Oct 2021 17:02:35 +0200
-Subject: [PATCH 31/31] Attempt to fix JBR-3887
+Subject: [PATCH 31/33] Attempt to fix JBR-3887
 
 ---
  src/hotspot/share/prims/jvmtiExtensions.cpp | 8 +++++++-

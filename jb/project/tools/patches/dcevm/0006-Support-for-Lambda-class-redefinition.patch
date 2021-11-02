@@ -1,7 +1,7 @@
-From 124f27f271c87f37f342028412bc7387f2028cde Mon Sep 17 00:00:00 2001
+From 4386e1b6a0429a39e390cca3bc66f920bf6dafe5 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 4 Oct 2020 21:12:12 +0200
-Subject: [PATCH 06/31] Support for Lambda class redefinition
+Subject: [PATCH 06/33] Support for Lambda class redefinition
 
 ---
  .../share/classfile/classLoaderData.cpp       |  9 +++
@@ -15,7 +15,7 @@ Subject: [PATCH 06/31] Support for Lambda class redefinition
  8 files changed, 85 insertions(+), 10 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index 1c0d5b0a8f2..d5ee3c0338c 100644
+index 3f75bffce8a..a901b4309b9 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
 @@ -663,6 +663,15 @@ Dictionary* ClassLoaderData::create_dictionary() {
@@ -35,7 +35,7 @@ index 1c0d5b0a8f2..d5ee3c0338c 100644
  oop ClassLoaderData::holder_phantom() const {
    // A klass that was previously considered dead can be looked up in the
 diff --git a/src/hotspot/share/classfile/classLoaderData.hpp b/src/hotspot/share/classfile/classLoaderData.hpp
-index 7e357929971..00a84610b43 100644
+index b5a7cf21c85..c4f617ab800 100644
 --- a/src/hotspot/share/classfile/classLoaderData.hpp
 +++ b/src/hotspot/share/classfile/classLoaderData.hpp
 @@ -292,6 +292,7 @@ class ClassLoaderData : public CHeapObj<mtClass> {
@@ -47,7 +47,7 @@ index 7e357929971..00a84610b43 100644
  
    void unload();
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index 52b6ed22b5d..1dd53e0b7bc 100644
+index f69167ae53c..42e0fee800f 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
 @@ -971,12 +971,16 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
@@ -220,10 +220,10 @@ index a48e07e3a6a..3551b06ecde 100644
    // Figure out which new methods match old methods in name and signature,
    // which methods have been added, and which are no longer present
 diff --git a/src/hotspot/share/prims/resolvedMethodTable.cpp b/src/hotspot/share/prims/resolvedMethodTable.cpp
-index 4498bdcd77e..8966ee8a00a 100644
+index 8098b80baa6..5a5d5e98623 100644
 --- a/src/hotspot/share/prims/resolvedMethodTable.cpp
 +++ b/src/hotspot/share/prims/resolvedMethodTable.cpp
-@@ -201,7 +201,7 @@ void ResolvedMethodTable::print() {
+@@ -203,7 +203,7 @@ void ResolvedMethodTable::print() {
  
  void ResolvedMethodTable::adjust_method_entries(bool * trace_name_printed) {
    assert(SafepointSynchronize::is_at_safepoint(), "only called at safepoint");
@@ -232,7 +232,7 @@ index 4498bdcd77e..8966ee8a00a 100644
    for (int i = 0; i < _the_table->table_size(); ++i) {
      for (ResolvedMethodEntry* entry = _the_table->bucket(i);
           entry != NULL;
-@@ -272,6 +272,8 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
+@@ -274,6 +274,8 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
          InstanceKlass* newer_klass = InstanceKlass::cast(old_method->method_holder()->new_version());
          Method* newer_method = newer_klass->method_with_idnum(old_method->orig_method_idnum());
  
@@ -242,7 +242,7 @@ index 4498bdcd77e..8966ee8a00a 100644
          assert(newer_method != NULL, "method_with_idnum() should not be NULL");
          assert(old_method != newer_method, "sanity check");
 diff --git a/src/hotspot/share/prims/unsafe.cpp b/src/hotspot/share/prims/unsafe.cpp
-index 1983b4f45f0..5e7aca092eb 100644
+index 5f9f93c6b4c..c35ef044e65 100644
 --- a/src/hotspot/share/prims/unsafe.cpp
 +++ b/src/hotspot/share/prims/unsafe.cpp
 @@ -820,6 +820,7 @@ Unsafe_DefineAnonymousClass_impl(JNIEnv *env,
