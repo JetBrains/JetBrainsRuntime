@@ -41,7 +41,7 @@ static jclass sjc_CAccessibility = NULL;
     if (jchildrenAndRoles == NULL) return nil;
 
     jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
-    NSMutableArray *children = [[NSMutableArray arrayWithCapacity:arrayLen / 2] retain];
+    NSMutableArray *children = [NSMutableArray arrayWithCapacity:arrayLen / 2];
     int childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *)parent accessibleColCount];
 
     for (NSInteger i = 0; i < arrayLen; i += 2) {
