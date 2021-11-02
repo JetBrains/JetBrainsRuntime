@@ -1,7 +1,7 @@
-From da3762cb7687c58c89303092a7e8ed92d4c00cef Mon Sep 17 00:00:00 2001
+From 9d8b4cee545f9895b77f5f05059cbd519c6c8094 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Thu, 15 Nov 2018 03:20:08 +0700
-Subject: [PATCH 05/31] HotswapAgent integration
+Subject: [PATCH 05/33] HotswapAgent integration
 
 It include:
 
@@ -415,10 +415,10 @@ index 0c24146ff00..9dc184d02f5 100644
                                                       !fd.is_static() &&
                                                       !m->is_object_initializer());
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index 013ba213c00..2b5ba619f43 100644
+index e3cb44d8690..36276741b5c 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
-@@ -3962,6 +3962,8 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
+@@ -3967,6 +3967,8 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
    // Set object alignment values.
    set_object_alignment();
  
@@ -427,7 +427,7 @@ index 013ba213c00..2b5ba619f43 100644
  #if !INCLUDE_CDS
    if (DumpSharedSpaces || RequireSharedSpaces) {
      jio_fprintf(defaultStream::error_stream(),
-@@ -4295,3 +4297,68 @@ bool Arguments::copy_expand_pid(const char* src, size_t srclen,
+@@ -4300,3 +4302,68 @@ bool Arguments::copy_expand_pid(const char* src, size_t srclen,
    *b = '\0';
    return (p == src_end); // return false if not all of the source was copied
  }

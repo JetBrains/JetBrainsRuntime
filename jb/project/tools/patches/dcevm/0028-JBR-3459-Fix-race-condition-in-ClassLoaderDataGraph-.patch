@@ -1,7 +1,7 @@
-From 6ec78dba58b2e05b373dda3ca6a7f6b5c837b331 Mon Sep 17 00:00:00 2001
+From 33a280c972960380f3627fd178d170b14f0b7995 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 20 Mar 2021 20:51:08 +0100
-Subject: [PATCH 28/31] JBR-3459: Fix race condition in
+Subject: [PATCH 28/33] JBR-3459: Fix race condition in
  ClassLoaderDataGraph::classes_do
 
 InstanceKlass in ClassLoaderData can be uninitialized when
@@ -15,7 +15,7 @@ persisting with anonymous classes.
  3 files changed, 25 insertions(+), 2 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index a70d92c27fc..f6764ff37a0 100644
+index 68df33b6c40..b12784954af 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
 @@ -1169,6 +1169,16 @@ void ClassLoaderDataGraph::classes_do(KlassClosure* klass_closure) {
@@ -36,7 +36,7 @@ index a70d92c27fc..f6764ff37a0 100644
    Thread* thread = Thread::current();
    for (ClassLoaderData* cld = _head; cld != NULL; cld = cld->next()) {
 diff --git a/src/hotspot/share/classfile/classLoaderData.hpp b/src/hotspot/share/classfile/classLoaderData.hpp
-index 16711dca237..b10fafa01e5 100644
+index 92f57dac23e..c4c17112a2d 100644
 --- a/src/hotspot/share/classfile/classLoaderData.hpp
 +++ b/src/hotspot/share/classfile/classLoaderData.hpp
 @@ -108,6 +108,10 @@ class ClassLoaderDataGraph : public AllStatic {

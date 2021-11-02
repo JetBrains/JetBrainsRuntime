@@ -1,7 +1,7 @@
-From dc73c2dc3268a8b17844b75b76e14b5d0e3c1259 Mon Sep 17 00:00:00 2001
+From 08175b2107ccaabcd626ebaf6f154bdd2841a88e Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 24 May 2020 12:07:42 +0200
-Subject: [PATCH 08/31] Replace deleted method with
+Subject: [PATCH 08/33] Replace deleted method with
  Universe::throw_no_such_method_error
 
 ---
@@ -9,10 +9,10 @@ Subject: [PATCH 08/31] Replace deleted method with
  1 file changed, 14 insertions(+), 14 deletions(-)
 
 diff --git a/src/hotspot/share/prims/resolvedMethodTable.cpp b/src/hotspot/share/prims/resolvedMethodTable.cpp
-index 8966ee8a00a..c3ed1d28fe5 100644
+index 5a5d5e98623..c7996df51bc 100644
 --- a/src/hotspot/share/prims/resolvedMethodTable.cpp
 +++ b/src/hotspot/share/prims/resolvedMethodTable.cpp
-@@ -262,25 +262,25 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
+@@ -264,25 +264,25 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
  
        if (old_method->is_old()) {
  

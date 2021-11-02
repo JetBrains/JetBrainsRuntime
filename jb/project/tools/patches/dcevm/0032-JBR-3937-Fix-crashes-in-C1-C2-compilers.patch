@@ -1,0 +1,141 @@
+From 256af0b88776c1ba2afdae760d3220ef48a644aa Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Mon, 1 Nov 2021 19:00:41 +0100
+Subject: [PATCH 32/33] JBR-3937 Fix crashes in C1/C2 compilers
+
+There is a race condition in enhanced redefinition with C1/C2. Therefore
+the patch stops C1/C2 compilation before redefinition and release after
+redefinition finishing. There is no performance impact since dcevm
+flushes all code cache.
+---
+ src/hotspot/share/compiler/compileBroker.cpp | 39 +++++++++++++++++++-
+ src/hotspot/share/compiler/compileBroker.hpp |  6 +++
+ src/hotspot/share/prims/jvmtiEnv.cpp         |  7 ++++
+ 3 files changed, 51 insertions(+), 1 deletion(-)
+
+diff --git a/src/hotspot/share/compiler/compileBroker.cpp b/src/hotspot/share/compiler/compileBroker.cpp
+index 5ec54baec96..a72560069e4 100644
+--- a/src/hotspot/share/compiler/compileBroker.cpp
++++ b/src/hotspot/share/compiler/compileBroker.cpp
+@@ -133,6 +133,8 @@ CompileLog** CompileBroker::_compiler2_logs = NULL;
+ // These counters are used to assign an unique ID to each compilation.
+ volatile jint CompileBroker::_compilation_id     = 0;
+ volatile jint CompileBroker::_osr_compilation_id = 0;
++volatile bool CompileBroker::_compilation_stopped = false;
++volatile int CompileBroker::_active_compilations = 0;
+ 
+ // Debugging information
+ int  CompileBroker::_last_compile_type     = no_compile;
+@@ -2203,7 +2205,22 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
+           locker.wait(Mutex::_no_safepoint_check_flag);
+         }
+       }
+-      comp->compile_method(&ci_env, target, osr_bci, directive);
++
++      if (AllowEnhancedClassRedefinition) {
++        {
++          MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
++          while (_compilation_stopped) {
++            locker.wait(Mutex::_no_safepoint_check_flag);
++          }
++          Atomic::add(1, &_active_compilations);
++        }
++
++        comp->compile_method(&ci_env, target, osr_bci, directive);
++        Atomic::sub(1, &_active_compilations);
++
++      } else {
++        comp->compile_method(&ci_env, target, osr_bci, directive);
++      }
+     }
+ 
+     if (!ci_env.failing() && task->code() == NULL) {
+@@ -2865,3 +2882,23 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
+   }
+   out->print_cr("\n__ CodeHeapStateAnalytics total duration %10.3f seconds _________\n", ts_total.seconds());
+ }
++
++void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
++  if (AllowEnhancedClassRedefinition) {
++    MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
++    _compilation_stopped = true;
++    while (_active_compilations > 0) {
++      VM_ThreadsSuspendJVMTI tsj;
++      VMThread::execute(&tsj);
++      locker.wait(Mutex::_no_safepoint_check_flag);
++    }
++  }
++}
++
++void CompileBroker::releaseCompilationAfterEnhancedRedefinition() {
++  if (AllowEnhancedClassRedefinition) {
++    MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
++    _compilation_stopped = false;
++    locker.notify_all();
++  }
++}
+diff --git a/src/hotspot/share/compiler/compileBroker.hpp b/src/hotspot/share/compiler/compileBroker.hpp
+index 53e496cd306..fa50e778d9e 100644
+--- a/src/hotspot/share/compiler/compileBroker.hpp
++++ b/src/hotspot/share/compiler/compileBroker.hpp
+@@ -173,6 +173,9 @@ class CompileBroker: AllStatic {
+   static volatile jint _compilation_id;
+   static volatile jint _osr_compilation_id;
+ 
++  static volatile bool _compilation_stopped;
++  static volatile int _active_compilations;
++
+   static int  _last_compile_type;
+   static int  _last_compile_level;
+   static char _last_method_compiled[name_buffer_length];
+@@ -421,6 +424,9 @@ public:
+   // CodeHeap State Analytics.
+   static void print_info(outputStream *out);
+   static void print_heapinfo(outputStream *out, const char* function, size_t granularity);
++
++  static void stopCompilationBeforeEnhancedRedefinition();
++  static void releaseCompilationAfterEnhancedRedefinition();
+ };
+ 
+ #endif // SHARE_VM_COMPILER_COMPILEBROKER_HPP
+diff --git a/src/hotspot/share/prims/jvmtiEnv.cpp b/src/hotspot/share/prims/jvmtiEnv.cpp
+index 54617f05b5a..0ca9ec020a9 100644
+--- a/src/hotspot/share/prims/jvmtiEnv.cpp
++++ b/src/hotspot/share/prims/jvmtiEnv.cpp
+@@ -29,6 +29,7 @@
+ #include "classfile/modules.hpp"
+ #include "classfile/systemDictionary.hpp"
+ #include "classfile/vmSymbols.hpp"
++#include "compiler/compileBroker.hpp"
+ #include "interpreter/bytecodeStream.hpp"
+ #include "interpreter/interpreter.hpp"
+ #include "jvmtifiles/jvmtiEnv.hpp"
+@@ -453,9 +454,12 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
+     class_definitions[index].klass              = jcls;
+   }
+   if (AllowEnhancedClassRedefinition) {
++    // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
++    CompileBroker::stopCompilationBeforeEnhancedRedefinition();
+     MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
+     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
+     VMThread::execute(&op);
++    CompileBroker::releaseCompilationAfterEnhancedRedefinition();
+     return (op.check_error());
+   }
+   VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
+@@ -469,9 +473,12 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
+ jvmtiError
+ JvmtiEnv::RedefineClasses(jint class_count, const jvmtiClassDefinition* class_definitions) {
+   if (AllowEnhancedClassRedefinition) {
++    // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
++    CompileBroker::stopCompilationBeforeEnhancedRedefinition();
+     MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
+     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
+     VMThread::execute(&op);
++    CompileBroker::releaseCompilationAfterEnhancedRedefinition();
+     return (op.check_error());
+   }
+   VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
+-- 
+2.23.0
+

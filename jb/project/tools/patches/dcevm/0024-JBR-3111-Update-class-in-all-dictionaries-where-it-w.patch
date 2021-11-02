@@ -1,7 +1,7 @@
-From 94482d0b6d49ee57870c8dcefc207cb1ec707065 Mon Sep 17 00:00:00 2001
+From 3af6608b1808653ad706b447e6e96a039819d03f Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 13 Feb 2021 20:47:52 +0100
-Subject: [PATCH 24/31] JBR-3111 Update class in all dictionaries where it was
+Subject: [PATCH 24/33] JBR-3111 Update class in all dictionaries where it was
  already defined
 
 This patch keeps compatibility with std redefinition, that does not
@@ -16,7 +16,7 @@ dictionaries containing this class.
  5 files changed, 17 insertions(+), 3 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index b649d6358ed..a70d92c27fc 100644
+index 2f6329f3e4d..68df33b6c40 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
 @@ -1277,6 +1277,15 @@ void ClassLoaderDataGraph::rollback_redefinition() {
@@ -36,7 +36,7 @@ index b649d6358ed..a70d92c27fc 100644
  void ClassLoaderDataGraph::dictionary_all_entries_do(void f(InstanceKlass*, ClassLoaderData*)) {
    Thread* thread = Thread::current();
 diff --git a/src/hotspot/share/classfile/classLoaderData.hpp b/src/hotspot/share/classfile/classLoaderData.hpp
-index 00a84610b43..16711dca237 100644
+index c4f617ab800..92f57dac23e 100644
 --- a/src/hotspot/share/classfile/classLoaderData.hpp
 +++ b/src/hotspot/share/classfile/classLoaderData.hpp
 @@ -130,6 +130,9 @@ class ClassLoaderDataGraph : public AllStatic {
@@ -50,7 +50,7 @@ index 00a84610b43..16711dca237 100644
    static void dictionary_all_entries_do(void f(InstanceKlass*, ClassLoaderData*));
  
 diff --git a/src/hotspot/share/classfile/dictionary.cpp b/src/hotspot/share/classfile/dictionary.cpp
-index 781a929e7de..a1baaef86f5 100644
+index d347f572350..fd9ef491ba1 100644
 --- a/src/hotspot/share/classfile/dictionary.cpp
 +++ b/src/hotspot/share/classfile/dictionary.cpp
 @@ -345,7 +345,7 @@ DictionaryEntry* Dictionary::get_entry(int index, unsigned int hash,
@@ -76,7 +76,7 @@ index f6e08e7bfd5..2932cc9c320 100644
    void rollback_redefinition();
  
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index fe537421e22..f7452adcf02 100644
+index be4d2010c0c..d0365162b81 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
 @@ -1608,7 +1608,9 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol

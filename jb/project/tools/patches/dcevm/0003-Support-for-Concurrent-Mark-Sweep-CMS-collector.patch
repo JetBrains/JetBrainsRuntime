@@ -1,7 +1,7 @@
-From fc483e0a98a0bb8042df60567fa238d00bf66263 Mon Sep 17 00:00:00 2001
+From a23078dc957ec7b88de7b82fdea6438c9a046cf1 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 12 Dec 2018 19:38:28 +0100
-Subject: [PATCH 03/31] Support for Concurrent Mark Sweep (CMS) collector
+Subject: [PATCH 03/33] Support for Concurrent Mark Sweep (CMS) collector
 
 ---
  .../share/gc/cms/compactibleFreeListSpace.cpp | 139 ++++++++++++------
@@ -462,7 +462,7 @@ index 43d761cdbb2..14af1aad21b 100644
        } else {
          obj->set_klass(obj->klass()->new_version());
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index a11dfe48dd6..013ba213c00 100644
+index 4e2a3ff1083..e3cb44d8690 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
 @@ -2045,14 +2045,14 @@ bool Arguments::check_gc_consistency() {

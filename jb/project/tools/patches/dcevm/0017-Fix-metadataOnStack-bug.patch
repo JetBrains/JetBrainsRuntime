@@ -1,7 +1,7 @@
-From e029e021d4fbc24506571ad83555189175b9ebad Mon Sep 17 00:00:00 2001
+From 19981a51c2ea2322f958216fa2c6e83604138d7e Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 23 Oct 2020 11:07:40 +0200
-Subject: [PATCH 17/31] Fix metadataOnStack bug
+Subject: [PATCH 17/33] Fix metadataOnStack bug
 
 ---
  .../share/classfile/classLoaderData.cpp       |  7 +-
@@ -11,7 +11,7 @@ Subject: [PATCH 17/31] Fix metadataOnStack bug
  4 files changed, 41 insertions(+), 38 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index d5ee3c0338c..0376777649b 100644
+index a901b4309b9..7b88f6b44d9 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
 @@ -1401,13 +1401,10 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
