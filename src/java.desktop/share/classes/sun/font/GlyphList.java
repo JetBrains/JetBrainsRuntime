@@ -479,13 +479,19 @@ public final class GlyphList {
     }
 
     public static boolean canContainColorGlyphs() {
-        return FontUtilities.isMacOSX || FontUtilities.isLinux;
+        return true;
+    }
+
+    /**
+     * @return {@link StrikeCache#PIXEL_FORMAT_GREYSCALE} for greyscale,
+     * {@link StrikeCache#PIXEL_FORMAT_LCD} for LCD and {@link StrikeCache#PIXEL_FORMAT_BGRA} for BGRA glyph
+     */
+    public byte getPixelFormat(int glyphIndex) {
+        return StrikeCache.getGlyphFormat(images[glyphIndex]);
     }
 
     public boolean isColorGlyph(int glyphIndex) {
-        int width = StrikeCache.getGlyphWidth(images[glyphIndex]);
-        int rowBytes = StrikeCache.getGlyphRowBytes(images[glyphIndex]);
-        return rowBytes == width * 4;
+        return getPixelFormat(glyphIndex) == StrikeCache.PIXEL_FORMAT_BGRA;
     }
 
     public SurfaceData getColorGlyphData() {
