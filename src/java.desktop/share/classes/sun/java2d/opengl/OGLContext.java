@@ -53,7 +53,6 @@ public class OGLContext extends BufferedContext {
                 Integer.parseInt(System.getProperty("sun.java2d.opengl.blitTileSize", "-1")));
 
             if (blitTileSize < 0) {
-                final int minBlitTileSize = 128;
                 int maxDeviceSize = 0;
                 try {
                     GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
@@ -70,14 +69,7 @@ public class OGLContext extends BufferedContext {
                 }
                 catch (HeadlessException ignore) {
                 }
-                blitTileSize = minBlitTileSize;
-                while (blitTileSize < maxDeviceSize) {
-                    blitTileSize *= 2;
-                }
-                // check the tile size is not too big
-                if (blitTileSize > maxDeviceSize * 1.25) {
-                    blitTileSize = Math.max(minBlitTileSize, blitTileSize / 2);
-                }
+                blitTileSize = Math.max(128, Integer.highestOneBit((int)(maxDeviceSize * 1.25)));
             }
             init(blitTileSize);
         });
