@@ -27,6 +27,7 @@ package sun.font;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
+import java.lang.annotation.Native;
 
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
@@ -121,15 +122,21 @@ public final class StrikeCache {
         JAVA_CHAR.withName("height"),              // 10+2=12
         JAVA_CHAR.withName("rowBytes"),            // 12+2=14
         JAVA_BYTE.withName("managed"),             // 14+1=15
-        JAVA_BYTE.withName("subpixelResolutionX"), // 15+1=16
-        JAVA_BYTE.withName("subpixelResolutionY"), // 16+1=17
-        MemoryLayout.paddingLayout(3),             // 17+3=20
+        JAVA_BYTE.withName("format"),              // 15+1=16
+        JAVA_BYTE.withName("subpixelResolutionX"), // 16+1=17
+        JAVA_BYTE.withName("subpixelResolutionY"), // 17+1=18
+        MemoryLayout.paddingLayout(2),             // 18+2=20
         JAVA_FLOAT.withName("topLeftX"),           // 20+4=24
         JAVA_FLOAT.withName("topLeftY"),           // 24+4=28
         MemoryLayout.paddingLayout(4),             // 28+4=32
         ADDRESS.withName("cellInfo"),              // 32+8=40
         ADDRESS.withName("image")                  // 40+8=48
      );
+
+    @Native public static final byte PIXEL_FORMAT_UNKNOWN   = -1;
+    @Native public static final byte PIXEL_FORMAT_GREYSCALE = 1;
+    @Native public static final byte PIXEL_FORMAT_LCD       = 3;
+    @Native public static final byte PIXEL_FORMAT_BGRA      = 4;
 
    private static final long GLYPHIMAGESIZE = GlyphImageLayout.byteSize();
 
@@ -145,6 +152,7 @@ public final class StrikeCache {
     private static final VarHandle heightHandle              = getVarHandle(GlyphImageLayout, "height");
     private static final VarHandle rowBytesHandle            = getVarHandle(GlyphImageLayout, "rowBytes");
     private static final VarHandle managedHandle             = getVarHandle(GlyphImageLayout, "managed");
+    private static final VarHandle formatHandle              = getVarHandle(GlyphImageLayout, "format");
     private static final VarHandle subpixelResolutionXHandle = getVarHandle(GlyphImageLayout, "subpixelResolutionX");
     private static final VarHandle subpixelResolutionYHandle = getVarHandle(GlyphImageLayout, "subpixelResolutionY");
     private static final VarHandle topLeftXHandle            = getVarHandle(GlyphImageLayout, "topLeftX");
@@ -206,6 +214,13 @@ public final class StrikeCache {
         MemorySegment seg = MemorySegment.ofAddress(ptr);
         seg = seg.reinterpret(GLYPHIMAGESIZE);
         return (byte)managedHandle.get(seg);
+    }
+
+    @SuppressWarnings("restricted")
+    static final byte getGlyphFormat(long ptr) {
+        MemorySegment seg = MemorySegment.ofAddress(ptr);
+        seg = seg.reinterpret(GLYPHIMAGESIZE);
+        return (byte)formatHandle.get(seg);
     }
 
     @SuppressWarnings("restricted")
