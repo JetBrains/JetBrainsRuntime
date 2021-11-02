@@ -1765,8 +1765,8 @@ static jlong
     if (renderImage && outlineGlyph) {
         /* We can create an extended glyph when rendering with grayscale AA thus
          * increasing subpixel resolution & reducing glyph spacing issues.
-         * We do this by rendering the glyph in bigger resolution and then
-         * downscaling it with different subpixel offsets, which results in
+         * We do this by rendering the glyph multiple times with
+         * different subpixel offsets, which results in
          * subpixelResolutionX * subpixelResolutionY images per glyph. */
         if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_GRAY &&
             context->aaType == TEXT_AA_ON && context->fmType == TEXT_FM_ON) {
