@@ -1,7 +1,7 @@
-From 4ca5a545df83c41c0ee4465d5d598aa83f1b106c Mon Sep 17 00:00:00 2001
+From 82bbf38d7385e26f28f47df65b58b1ab7f8c52c3 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 23 Oct 2020 10:20:26 +0200
-Subject: [PATCH 16/31] Clear dcevm code separation
+Subject: [PATCH 16/33] Clear dcevm code separation
 
 ---
  src/hotspot/share/classfile/systemDictionary.cpp   |  4 ++--
@@ -15,7 +15,7 @@ Subject: [PATCH 16/31] Clear dcevm code separation
  8 files changed, 27 insertions(+), 17 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index 1dd53e0b7bc..fe537421e22 100644
+index 42e0fee800f..be4d2010c0c 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
 @@ -1152,7 +1152,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
@@ -106,7 +106,7 @@ index 61a406377ee..da9df7a21a2 100644
    if (HAS_PENDING_EXCEPTION) {
      log_pending_exception(PENDING_EXCEPTION);
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index 7eb1b01c785..710e0ddc930 100644
+index 76791cdd905..cb448b1b762 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -178,7 +178,9 @@ bool InstanceKlass::has_nest_member(InstanceKlass* k, TRAPS) const {
@@ -138,7 +138,7 @@ index 7eb1b01c785..710e0ddc930 100644
          wait = true;
        ol.waitUninterruptibly(CHECK);
      }
-@@ -3617,7 +3619,7 @@ void InstanceKlass::verify_on(outputStream* st) {
+@@ -3629,7 +3631,7 @@ void InstanceKlass::verify_on(outputStream* st) {
  
      guarantee(sib->is_klass(), "should be klass");
      // TODO: (DCEVM) explain
@@ -174,7 +174,7 @@ index 60604c645ff..325bffb7ad0 100644
      }
    }
 diff --git a/src/hotspot/share/runtime/reflection.cpp b/src/hotspot/share/runtime/reflection.cpp
-index ed789b0bc2b..06f60855655 100644
+index ac233f3b373..ae0cb65969a 100644
 --- a/src/hotspot/share/runtime/reflection.cpp
 +++ b/src/hotspot/share/runtime/reflection.cpp
 @@ -660,7 +660,7 @@ bool Reflection::verify_member_access(const Klass* current_class,

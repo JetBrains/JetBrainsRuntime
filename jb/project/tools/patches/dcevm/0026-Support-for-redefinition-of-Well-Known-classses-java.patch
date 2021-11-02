@@ -1,7 +1,7 @@
-From cb2c85624c82ec9f9c30ba4a8122eb23e806999c Mon Sep 17 00:00:00 2001
+From 8dd54d6e012458db96f199550d0f6016537c6d82 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Mon, 8 Mar 2021 02:22:54 +0700
-Subject: [PATCH 26/31] Support for redefinition of Well Known classses
+Subject: [PATCH 26/33] Support for redefinition of Well Known classses
  (java.*,jdk.*, sun.*)
 
 ---
@@ -31,7 +31,7 @@ index 896f489453a..c610c365aba 100644
  
  #endif // SHARE_VM_CI_CIKLASS_HPP
 diff --git a/src/hotspot/share/ci/ciObjectFactory.cpp b/src/hotspot/share/ci/ciObjectFactory.cpp
-index 66bbe835e7b..107c16fa5cf 100644
+index c8a03aa9ee9..6b187909943 100644
 --- a/src/hotspot/share/ci/ciObjectFactory.cpp
 +++ b/src/hotspot/share/ci/ciObjectFactory.cpp
 @@ -70,7 +70,10 @@ GrowableArray<ciMetadata*>* ciObjectFactory::_shared_ci_metadata = NULL;
@@ -122,7 +122,7 @@ index 3e9d48c4cdc..79059f6e2e8 100644
    void remove_symbols();
  
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index f7452adcf02..1d2c7d22ce0 100644
+index d0365162b81..74f30524279 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
 @@ -1985,6 +1985,16 @@ bool SystemDictionary::is_well_known_klass(Symbol* class_name) {
@@ -169,7 +169,7 @@ index 0d0badeabd0..3477a408cb6 100644
    template(threads_name,                              "threads")                                  \
    template(groups_name,                               "groups")                                   \
 diff --git a/src/hotspot/share/compiler/compileBroker.cpp b/src/hotspot/share/compiler/compileBroker.cpp
-index 0ed0ca52cb0..4f64beae978 100644
+index 80a940980a5..5ec54baec96 100644
 --- a/src/hotspot/share/compiler/compileBroker.cpp
 +++ b/src/hotspot/share/compiler/compileBroker.cpp
 @@ -1877,6 +1877,17 @@ void CompileBroker::compiler_thread_loop() {
@@ -191,7 +191,7 @@ index 0ed0ca52cb0..4f64beae978 100644
            thread->start_idle_timer();
          } else {
 diff --git a/src/hotspot/share/memory/universe.cpp b/src/hotspot/share/memory/universe.cpp
-index 3dc4cc1323c..6b88271b5ef 100644
+index 2e4f597cf1f..4b2c3e62941 100644
 --- a/src/hotspot/share/memory/universe.cpp
 +++ b/src/hotspot/share/memory/universe.cpp
 @@ -1030,6 +1030,14 @@ void Universe::initialize_known_methods(TRAPS) {

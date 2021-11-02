@@ -1,14 +1,14 @@
-From fac0c15ae914e5b45fece5dc8d35d389098bdff7 Mon Sep 17 00:00:00 2001
+From 163cf26017433389041f824c7d8342eb54f4cef8 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 1 Nov 2020 21:19:00 +0100
-Subject: [PATCH 18/31] Ignore MetadataOnStackMark if redefining_gc_run
+Subject: [PATCH 18/33] Ignore MetadataOnStackMark if redefining_gc_run
 
 ---
  src/hotspot/share/classfile/classLoaderData.cpp | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/classfile/classLoaderData.cpp b/src/hotspot/share/classfile/classLoaderData.cpp
-index 0376777649b..b649d6358ed 100644
+index 7b88f6b44d9..2f6329f3e4d 100644
 --- a/src/hotspot/share/classfile/classLoaderData.cpp
 +++ b/src/hotspot/share/classfile/classLoaderData.cpp
 @@ -1404,7 +1404,7 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {

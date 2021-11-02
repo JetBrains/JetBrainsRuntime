@@ -1,7 +1,7 @@
-From b49d26f6e512f5bbdb89c360e8cb73e3bbd037e4 Mon Sep 17 00:00:00 2001
+From c7bf974723c6822dca4abc878ee3e59df59d5330 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 13 Jun 2020 18:50:59 +0200
-Subject: [PATCH 10/31] Change log level in advanced redefinition
+Subject: [PATCH 10/33] Change log level in advanced redefinition
 
 - Change log level for "Comparing different class ver.." to debug
 - Fix adjust_method_entries_dcevm logging levels and severity
@@ -24,10 +24,10 @@ index 8b6fad2128e..a8adfa5af47 100644
    assert(new_class->old_version() != NULL, "must have old version");
    InstanceKlass* the_class = InstanceKlass::cast(new_class->old_version());
 diff --git a/src/hotspot/share/prims/resolvedMethodTable.cpp b/src/hotspot/share/prims/resolvedMethodTable.cpp
-index c3ed1d28fe5..650007b26ff 100644
+index c7996df51bc..082d3d26c34 100644
 --- a/src/hotspot/share/prims/resolvedMethodTable.cpp
 +++ b/src/hotspot/share/prims/resolvedMethodTable.cpp
-@@ -271,7 +271,7 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
+@@ -273,7 +273,7 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
          } else {
            newer_method = newer_klass->method_with_idnum(old_method->orig_method_idnum());
  
@@ -36,7 +36,7 @@ index c3ed1d28fe5..650007b26ff 100644
  
            assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
            assert(newer_method != NULL, "method_with_idnum() should not be NULL");
-@@ -291,7 +291,7 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
+@@ -293,7 +293,7 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
  
          ResourceMark rm;
          if (!(*trace_name_printed)) {

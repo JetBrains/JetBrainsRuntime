@@ -1,7 +1,7 @@
-From 7a7a6733faf1ef9fd4787fd67d99e846f480e922 Mon Sep 17 00:00:00 2001
+From 7cbf2af248f33daa6fb5b55a7fb9316b1d2680e0 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Thu, 18 Jun 2020 18:40:11 +0200
-Subject: [PATCH 25/31] JBR-3140 - support for modularized HotswapAgent
+Subject: [PATCH 25/33] JBR-3140 - support for modularized HotswapAgent
 
 Add -XX:HotswapAgent=[disabled,fatjar.core]
 ---
@@ -349,10 +349,10 @@ index bd39f8595b2..82311e69fd6 100644
      CFLAGS := -DENABLE_ARG_FILES, \
  ))
 diff --git a/src/hotspot/share/runtime/arguments.cpp b/src/hotspot/share/runtime/arguments.cpp
-index c5635bb8537..d7fee6a8c95 100644
+index 65839b842e2..dce89a044e9 100644
 --- a/src/hotspot/share/runtime/arguments.cpp
 +++ b/src/hotspot/share/runtime/arguments.cpp
-@@ -4310,11 +4310,17 @@ void Arguments::setup_hotswap_agent() {
+@@ -4315,11 +4315,17 @@ void Arguments::setup_hotswap_agent() {
    if (DumpSharedSpaces)
      return;
  
@@ -372,7 +372,7 @@ index c5635bb8537..d7fee6a8c95 100644
  
      char ext_path_str[JVM_MAXPATHLEN];
  
-@@ -4333,23 +4339,27 @@ void Arguments::setup_hotswap_agent() {
+@@ -4338,23 +4344,27 @@ void Arguments::setup_hotswap_agent() {
        }
      }
      if (ext_path_length < JVM_MAXPATHLEN - 10) {

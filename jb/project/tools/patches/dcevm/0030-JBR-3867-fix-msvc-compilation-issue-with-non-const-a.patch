@@ -1,7 +1,7 @@
-From 16a09678b838d67b0a80340ba904b600013a494f Mon Sep 17 00:00:00 2001
+From d7ea3b028367ca5ac2b622a2282bb4e468442e4b Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Mon, 11 Oct 2021 20:22:26 +0200
-Subject: [PATCH 30/31] JBR-3867 - fix msvc compilation issue with non const
+Subject: [PATCH 30/33] JBR-3867 - fix msvc compilation issue with non const
  array on stack
 
 ---
