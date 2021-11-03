@@ -199,13 +199,11 @@ public class XRGlyphCacheEntry {
     }
 
     public Type getType() {
-        int rowBytes = getSourceRowBytes();
-        int width = getWidth();
-        // 0x0 is just for backward compatibiity
-        if (width == 0 || getHeight() == 0) return Type.LCD;
-        if (width == rowBytes) return Type.GRAYSCALE;
-        if (width * 4 == rowBytes) return Type.BGRA;
-        return Type.LCD;
+        int format = StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.formatOffset);
+        if (format == 1) return Type.GRAYSCALE;
+        else if (format == 3) return Type.LCD;
+        else if (format == 4) return Type.BGRA;
+        else throw new IllegalStateException("Unknown glyph format: " + format);
     }
 
     public int getPaddedWidth() {

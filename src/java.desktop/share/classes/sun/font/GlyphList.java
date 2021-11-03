@@ -509,9 +509,8 @@ public final class GlyphList {
     }
 
     public boolean isColorGlyph(int glyphIndex) {
-        int width = StrikeCache.unsafe.getChar(images[glyphIndex] + StrikeCache.widthOffset);
-        int rowBytes = StrikeCache.unsafe.getChar(images[glyphIndex] + StrikeCache.rowBytesOffset);
-        return rowBytes == width * 4;
+        int format = StrikeCache.unsafe.getByte(images[glyphIndex] + StrikeCache.formatOffset);
+        return format == 4;
     }
 
     public SurfaceData getColorGlyphData() {

@@ -1768,6 +1768,11 @@ static jlong
     glyphInfo->subpixelResolutionX = subpixelResolutionX;
     glyphInfo->subpixelResolutionY = subpixelResolutionY;
 
+    if (ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_BGRA) glyphInfo->format = 4;
+    else if (ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD ||
+             ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD_V) glyphInfo->format = 3;
+    else glyphInfo->format = 1;
+
     if (renderImage) {
         if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_LCD && width > 0) {
             glyphInfo->width = width/3;
