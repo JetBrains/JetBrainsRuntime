@@ -26,7 +26,6 @@
 package sun.java2d.pipe;
 
 import sun.awt.SunHints;
-import sun.font.SunFontManager;
 import sun.java2d.SunGraphics2D;
 import sun.font.GlyphList;
 
@@ -42,44 +41,41 @@ public abstract class GlyphListLoopPipe extends GlyphListPipe
     protected void drawGlyphList(SunGraphics2D sg2d, GlyphList gl,
                                  int aaHint) {
         int prevBorder = 0;
-        boolean isColor = false;
+        int pixelFormat = -1;
         int len = gl.getNumGlyphs();
         gl.startGlyphIteration();
-        if (SunFontManager.getInstance().areColorGlyphsSupported()) {
-            for (int i = 0; i < len; i++) {
-                boolean newIsColor = gl.isColorGlyph(i);
-                if (newIsColor != isColor) {
-                    drawGlyphListSegment(sg2d, gl, prevBorder, i, aaHint, isColor);
-                    prevBorder = i;
-                    isColor = newIsColor;
-                }
+        for (int i = 0; i < len; i++) {
+            int newFormat = gl.getPixelFormat(i);
+            if (newFormat != pixelFormat) {
+                if (pixelFormat != -1) drawGlyphListSegment(sg2d, gl, prevBorder, i, aaHint, pixelFormat);
+                prevBorder = i;
+                pixelFormat = newFormat;
             }
         }
-        drawGlyphListSegment(sg2d, gl, prevBorder, len, aaHint, isColor);
+        drawGlyphListSegment(sg2d, gl, prevBorder, len, aaHint, pixelFormat);
     }
 
     private void drawGlyphListSegment(SunGraphics2D sg2d, GlyphList gl, int fromglyph, int toGlyph,
-                                      int aaHint, boolean isColor) {
+                                      int aaHint, int pixelFormat) {
         if (fromglyph >= toGlyph) return;
-        if (isColor) {
-            sg2d.loops.drawGlyphListColorLoop.
-                    DrawGlyphListColor(sg2d, sg2d.surfaceData, gl, fromglyph, toGlyph);
-        } else {
-            switch (aaHint) {
-                case SunHints.INTVAL_TEXT_ANTIALIAS_OFF:
+        switch (pixelFormat) {
+            case 1:
+                if (aaHint == SunHints.INTVAL_TEXT_ANTIALIAS_OFF) {
                     sg2d.loops.drawGlyphListLoop.
                             DrawGlyphList(sg2d, sg2d.surfaceData, gl, fromglyph, toGlyph);
-                    return;
-                case SunHints.INTVAL_TEXT_ANTIALIAS_ON:
+                } else {
                     sg2d.loops.drawGlyphListAALoop.
                             DrawGlyphListAA(sg2d, sg2d.surfaceData, gl, fromglyph, toGlyph);
-                    return;
-                case SunHints.INTVAL_TEXT_ANTIALIAS_LCD_HRGB:
-                case SunHints.INTVAL_TEXT_ANTIALIAS_LCD_VRGB:
-                    sg2d.loops.drawGlyphListLCDLoop.
-                            DrawGlyphListLCD(sg2d, sg2d.surfaceData, gl, fromglyph, toGlyph);
-                    return;
-            }
+                }
+                return;
+            case 3:
+                sg2d.loops.drawGlyphListLCDLoop.
+                        DrawGlyphListLCD(sg2d, sg2d.surfaceData, gl, fromglyph, toGlyph);
+                return;
+            case 4:
+                sg2d.loops.drawGlyphListColorLoop.
+                        DrawGlyphListColor(sg2d, sg2d.surfaceData, gl, fromglyph, toGlyph);
+                return;
         }
     }
 }

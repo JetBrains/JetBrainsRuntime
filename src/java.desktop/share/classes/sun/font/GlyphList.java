@@ -508,9 +508,15 @@ public final class GlyphList {
         bounds[3] = (int)Math.floor(by1);
     }
 
+    /**
+     * @return 1 for greyscale, 3 for LCD and 4 for BGRA glyph
+     */
+    public int getPixelFormat(int glyphIndex) {
+        return StrikeCache.unsafe.getByte(images[glyphIndex] + StrikeCache.formatOffset);
+    }
+
     public boolean isColorGlyph(int glyphIndex) {
-        int format = StrikeCache.unsafe.getByte(images[glyphIndex] + StrikeCache.formatOffset);
-        return format == 4;
+        return getPixelFormat(glyphIndex) == 4;
     }
 
     public SurfaceData getColorGlyphData() {
