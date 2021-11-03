@@ -696,6 +696,7 @@ java/awt/print/PrinterJob/Margins.java                                          
 java/awt/print/PrinterJob/PSQuestionMark.java                                       7003378 generic-all
 java/awt/print/PrinterJob/PaintText.java                                            8212202 windows-all
 java/awt/print/PrinterJob/TestPgfmtSetMPA.java                                      8198343 generic-all
+java/awt/security/WarningWindowDisposeTest/WarningWindowDisposeTest.java            8266059 macosx-all
 java/awt/xembed/server/RunTestXEmbed.java                                           7034201 linux-all
 
 sun/awt/datatransfer/SuplementaryCharactersTransferTest.java                        8011371 generic-all
