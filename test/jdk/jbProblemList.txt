@@ -894,7 +894,7 @@ javax/swing/JComboBox/6236162/bug6236162.java                                   
 javax/swing/JComboBox/6559152/bug6559152.java                                       8196090 windows-all,macosx-all,linux-all
 javax/swing/JComboBox/6607130/bug6607130.java                                       8196091 windows-all
 javax/swing/JComboBox/7031551/bug7031551.java                                       8199056 generic-all
-javax/swing/JComboBox/8032878/bug8032878.java                                       8196092,8196439 macosx-all,linux-all
+javax/swing/JComboBox/8032878/bug8032878.java                                       8196092,8196439 windows-all,macosx-all,linux-all
 javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java                            8163367 macosx-all,windows-all,linux-all
 javax/swing/JComboBox/8033069/bug8033069ScrollBar.java                              8163367 generic-all
 javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java                      8197552 macosx-all,windows-all,linux-all
