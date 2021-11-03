@@ -74,7 +74,8 @@ typedef struct GlyphInfo {
     UInt16       width;
     UInt16       height;
     UInt16       rowBytes;
-    UInt8         managed;
+    UInt8        managed;
+    UInt8        format; // 1-Grayscale, 3-LCD, 4-BGRA
     UInt8        subpixelResolutionX;
     UInt8        subpixelResolutionY;
     float        topLeftX;

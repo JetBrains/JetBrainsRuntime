@@ -1436,7 +1436,7 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
             continue;
         }
 
-        if (ginfo->rowBytes == ginfo->width) {
+        if (ginfo->format == 1) {
             OGLMTVertexCache_disable();
             // grayscale or monochrome glyph data
             int rx = ginfo->subpixelResolutionX;
@@ -1454,7 +1454,7 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
             } else {
                 ok = OGLTR_DrawGrayscaleGlyphNoCache(oglc, ginfo, x, y, subimage);
             }
-        } else if (ginfo->rowBytes == ginfo->width * 4) {
+        } else if (ginfo->format == 4) {
             OGLMTVertexCache_disable();
             // color glyph data
             ok = OGLTR_DrawColorGlyphNoCache(oglc, ginfo, x, y);

@@ -877,14 +877,12 @@ public class FileFontStrike extends PhysicalStrike {
 
     private int getGlyphImageMinX(long ptr, int origMinX) {
 
-        int width = StrikeCache.unsafe.getChar(ptr+StrikeCache.widthOffset);
+        int format = StrikeCache.unsafe.getByte(ptr+StrikeCache.formatOffset);
+        if (format != 3) return origMinX;
+
         int height = StrikeCache.unsafe.getChar(ptr+StrikeCache.heightOffset);
         int rowBytes =
             StrikeCache.unsafe.getChar(ptr+StrikeCache.rowBytesOffset);
-
-        if (rowBytes == width) {
-            return origMinX;
-        }
 
         long pixelData =
             StrikeCache.unsafe.getAddress(ptr + StrikeCache.pixelDataOffset);

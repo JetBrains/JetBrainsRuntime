@@ -116,6 +116,7 @@ public final class StrikeCache {
     static int managedOffset;
     static int subpixelResolutionXOffset;
     static int subpixelResolutionYOffset;
+    static int formatOffset;
     static long invisibleGlyphPtr;
 
     /* Native method used to return information used for unsafe
@@ -136,12 +137,13 @@ public final class StrikeCache {
      * arr[12] = offset of managed
      * arr[13] = offset of subpixelResolutionX
      * arr[14] = offset of subpixelResolutionY
+     * arr[15] = offset of format
      */
     static native void getGlyphCacheDescription(long[] infoArray);
 
     static {
 
-        long[] nativeInfo = new long[15];
+        long[] nativeInfo = new long[16];
         getGlyphCacheDescription(nativeInfo);
         //Can also get address size from Unsafe class :-
         //nativeAddressSize = unsafe.addressSize();
@@ -160,6 +162,7 @@ public final class StrikeCache {
         managedOffset = (int) nativeInfo[12];
         subpixelResolutionXOffset = (int) nativeInfo[13];
         subpixelResolutionYOffset = (int) nativeInfo[14];
+        formatOffset = (int) nativeInfo[15];
 
         if (nativeAddressSize < 4) {
             throw new InternalError("Unexpected address size for font data: " +

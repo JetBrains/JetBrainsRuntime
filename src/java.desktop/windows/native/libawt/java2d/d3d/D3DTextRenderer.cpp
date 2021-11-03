@@ -792,7 +792,7 @@ D3DTR_DrawGlyphList(D3DContext *d3dc, D3DSDOps *dstOps,
             break;
         }
 
-        grayscale = (ginfo->rowBytes == ginfo->width);
+        grayscale = (ginfo->format == 1);
 
         if (usePositions) {
             jfloat posx = NEXT_FLOAT(positions);

@@ -572,8 +572,7 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist, jint fromGly
             free(gbv);
             return (GlyphBlitVector*)NULL;
         }
-        /* rowBytes==width tests if its a B&W or LCD glyph */
-        if (ginfo->width == ginfo->rowBytes) {
+        if (ginfo->format != 3) { // Not LCD glyph
             subPixPos = JNI_FALSE;
         }
     }
