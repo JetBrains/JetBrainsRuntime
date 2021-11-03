@@ -755,9 +755,4 @@ public final class X11FontManager extends FcFontManager {
         FontAccess.getFontAccess().setCreatedFont(fuir);
         return fuir;
     }
-
-    @Override
-    public boolean areColorGlyphsSupported() {
-        return true;
-    }
 }
