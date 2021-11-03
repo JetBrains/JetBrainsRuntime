@@ -324,7 +324,8 @@ public class FileFontStrike extends PhysicalStrike {
             intPtSize = (int) pts;
             useNatives = (rotation == 0 || rotation > 0 && useNativesForRotatedText) && pts >= 3.0 && pts <= 100.0 &&
                     (getImageWithAdvance || desc.fmHint == INTVAL_FRACTIONALMETRICS_ON) &&
-                    !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize);
+                    !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize) &&
+                    !((TrueTypeFont)fileFont).hasCOLRTable();
         }
         else if (fileFont.checkUseNatives() && desc.aaHint==0 && !algoStyle) {
             /* Check its a simple scale of a pt size in the range
