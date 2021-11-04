@@ -312,8 +312,6 @@ langtools_JTREG_PROBLEM_LIST += $(TOPDIR)/test/langtools/ProblemList.txt
 nashorn_JTREG_PROBLEM_LIST += $(TOPDIR)/test/nashorn/ProblemList.txt
 hotspot_JTREG_PROBLEM_LIST += $(TOPDIR)/test/hotspot/jtreg/ProblemList.txt
 
-langtools_JTREG_MAX_MEM := 768m
-
 ################################################################################
 # Parse test selection
 #
@@ -627,7 +625,7 @@ define SetupRunJtregTestBody
   # Convert JTREG_foo into $1_JTREG_foo with a suitable value.
   $$(eval $$(call SetJtregValue,$1,JTREG_TEST_MODE,agentvm))
   $$(eval $$(call SetJtregValue,$1,JTREG_ASSERT,true))
-  $$(eval $$(call SetJtregValue,$1,JTREG_MAX_MEM,512m))
+  $$(eval $$(call SetJtregValue,$1,JTREG_MAX_MEM,768m))
   $$(eval $$(call SetJtregValue,$1,JTREG_NATIVEPATH))
   $$(eval $$(call SetJtregValue,$1,JTREG_BASIC_OPTIONS))
   $$(eval $$(call SetJtregValue,$1,JTREG_PROBLEM_LIST))
