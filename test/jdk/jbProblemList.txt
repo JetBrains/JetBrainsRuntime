@@ -255,7 +255,7 @@ java/awt/FontMetrics/FontCrash.java 8198336 windows-all
 java/awt/image/BufferedImage/ICMColorDataTest/ICMColorDataTest.java 8233028 generic-all
 java/awt/image/DrawImage/IncorrectAlphaSurface2SW.java 8056077 linux-all
 java/awt/image/DrawImage/BlitRotateClippedArea.java 8255724 linux-all
-java/awt/image/multiresolution/MultiresolutionIconTest.java 8169187,8252812 macosx-all,windows-all,linux-x64
+java/awt/image/multiresolution/MultiresolutionIconTest.java 8169187,8252812 macosx-all,windows-all,linux-all
 java/awt/print/Headless/HeadlessPrinterJob.java 8196088 windows-all
 sun/awt/datatransfer/SuplementaryCharactersTransferTest.java 8011371 generic-all
 sun/awt/shell/ShellFolderMemoryLeak.java 8197794 windows-all
@@ -583,7 +583,7 @@ java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720 w
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java   8238720 windows-all
 java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsoluteCoordsTest.java
 
-java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787 linux-x64
+java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787 linux-all
 
 ############################################################################
 
