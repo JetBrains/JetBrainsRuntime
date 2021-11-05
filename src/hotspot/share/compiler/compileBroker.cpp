@@ -2204,7 +2204,7 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
 
       if (AllowEnhancedClassRedefinition) {
         {
-          MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
+          MonitorLockerEx locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
           while (_compilation_stopped) {
             locker.wait(Mutex::_no_safepoint_check_flag);
           }
@@ -2846,19 +2846,19 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
 
 void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
   if (AllowEnhancedClassRedefinition) {
-    MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
+    MonitorLockerEx locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
     _compilation_stopped = true;
     while (_active_compilations > 0) {
-      VM_ThreadsSuspendJVMTI tsj;
+      VM_ThreadsSuspendJVMTI tsj; // force safepoint to run C1/C2 VM op
       VMThread::execute(&tsj);
-      locker.wait(Mutex::_no_safepoint_check_flag);
+      locker.wait(Mutex::_no_safepoint_check_flag, 10);
     }
   }
 }
 
 void CompileBroker::releaseCompilationAfterEnhancedRedefinition() {
   if (AllowEnhancedClassRedefinition) {
-    MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
+    MonitorLockerEx locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
     _compilation_stopped = false;
     locker.notify_all();
   }
