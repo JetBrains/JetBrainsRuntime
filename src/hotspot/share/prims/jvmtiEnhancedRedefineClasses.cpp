@@ -385,7 +385,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
     bool oop_updated  = false;
     if (obj->is_instance() && InstanceKlass::cast(obj->klass())->is_mirror_instance_klass()) {
       Klass* klass = java_lang_Class::as_Klass(obj);
-      if (klass != NULL && klass->is_instance_klass()) {
+      if (klass != NULL && klass->is_instance_klass() && klass->new_version() != NULL) {
         assert(obj == InstanceKlass::cast(klass)->java_mirror(), "just checking");
         if (klass->new_version() != NULL) {
           obj = InstanceKlass::cast(klass->new_version())->java_mirror();
@@ -578,6 +578,7 @@ void VM_EnhancedRedefineClasses::doit() {
       if (log_is_enabled(Info, redefine, class, timer)) {
         _timer_heap_iterate.start();
       }
+      // returns after the iteration is finished
       G1CollectedHeap::heap()->object_par_iterate(&objectClosure);
       _timer_heap_iterate.stop();
     } else {
