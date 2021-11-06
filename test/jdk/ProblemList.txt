@@ -758,7 +758,6 @@ javax/swing/JComboBox/7031551/bug7031551.java 8199056 generic-all
 javax/swing/JScrollBar/6924059/bug6924059.java 8199078 generic-all
 javax/swing/JTabbedPane/TabProb.java 8236635 linux-all
 javax/swing/JTree/8003830/bug8003830.java 8199057 generic-all
-javax/swing/ToolTipManager/Test6256140.java 8233560 macosx-all
 javax/swing/text/View/8014863/bug8014863.java 8233561 macosx-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java 8233562 macosx-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java 8208566 macosx-all
