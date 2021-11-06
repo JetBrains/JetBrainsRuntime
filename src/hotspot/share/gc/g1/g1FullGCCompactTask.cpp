@@ -114,7 +114,7 @@ void G1FullGCCompactTask::work(uint worker_id) {
     }
   }
 
-  // TODO: (DCEV) check it
+  // TODO: (DCEVM) check it
   G1ResetHumongousClosure hc(collector()->mark_bitmap());
   G1CollectedHeap::heap()->heap_region_par_iterate_from_worker_offset(&hc, &_claimer, worker_id);
   log_task("Compaction task", worker_id, start);
@@ -146,8 +146,7 @@ void G1FullGCCompactTask::compact_region_dcevm(HeapRegion* hr, GrowableArray<Hea
 void G1FullGCCompactTask::serial_compaction_dcevm() {
   GCTraceTime(Debug, gc, phases) tm("Phase 4: Serial Compaction", collector()->scope()->timer());
 
-  // compact remaining, not parallel compacted rescued oops using serial compact point
-
+  // Clear allocated resources at compact points now, since all rescued oops are copied to destination.
   for (uint i = 0; i < collector()->workers(); i++) {
     G1FullGCCompactionPoint* cp = collector()->compaction_point(i);
     DcevmSharedGC::clear_rescued_objects_heap(cp->rescued_oops_values());

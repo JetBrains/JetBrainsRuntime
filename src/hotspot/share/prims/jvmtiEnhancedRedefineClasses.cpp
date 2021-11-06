@@ -548,6 +548,7 @@ void VM_EnhancedRedefineClasses::doit() {
       if (log_is_enabled(Info, redefine, class, timer)) {
         _timer_heap_iterate.start();
       }
+      // returns after the iteration is finished
       G1CollectedHeap::heap()->object_par_iterate(&objectClosure);
       _timer_heap_iterate.stop();
     } else {
