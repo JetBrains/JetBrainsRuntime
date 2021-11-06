@@ -146,6 +146,9 @@ bool G1FullGCPrepareTask::G1CalculatePointersClosure::should_compact(HeapRegion*
   if (hr->is_pinned()) {
     return false;
   }
+  if (Universe::is_redefining_gc_run()) {
+    return true;
+  }
   size_t live_words = _collector->live_words(hr->hrm_index());
   size_t live_words_threshold = _collector->scope()->region_compaction_threshold();
   // High live ratio region will not be compacted.
@@ -324,6 +327,7 @@ bool G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::must_rescue(oop old_
   int new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
   int original_size = old_obj->size();
 
+  // what if old_obj > new_obj ?
   bool overlap = (cast_from_oop<HeapWord*>(old_obj) + original_size < cast_from_oop<HeapWord*>(new_obj) + new_size);
 
   return overlap;

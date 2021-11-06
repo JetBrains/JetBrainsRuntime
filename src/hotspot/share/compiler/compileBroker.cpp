@@ -2958,6 +2958,8 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
 }
 
 void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
+  // There are hard to fix C1/C2 race conditions with dcevm. The easiest solution
+  // is to stop compilation.
   if (AllowEnhancedClassRedefinition) {
     MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
     _compilation_stopped = true;
