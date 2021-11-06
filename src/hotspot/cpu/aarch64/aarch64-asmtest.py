@@ -13,6 +13,8 @@ class Register(Operand):
 
     def generate(self):
         self.number = random.randint(0, 30)
+        if self.number == 18:
+            self.number = 17
         return self
 
     def astr(self, prefix):
@@ -37,6 +39,8 @@ class GeneralRegisterOrZr(Register):
 
     def generate(self):
         self.number = random.randint(0, 31)
+        if self.number == 18:
+            self.number = 16
         return self
 
     def astr(self, prefix = ""):
@@ -54,6 +58,8 @@ class GeneralRegisterOrZr(Register):
 class GeneralRegisterOrSp(Register):
     def generate(self):
         self.number = random.randint(0, 31)
+        if self.number == 18:
+            self.number = 15
         return self
 
     def astr(self, prefix = ""):
