@@ -20,6 +20,8 @@
 # Environment variables:
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
 #               By default JCEF binaries should be located in ./jcef_mac
+#   MACOSX_VERSION_MAX - specifies value for the --with-macosx-version-max parameter. By default it is 10.12.00 for x64
+#               and 11.00.00 for aarch64
 
 while getopts ":i?" o; do
     case "${o}" in
@@ -62,6 +64,7 @@ function do_configure {
       --with-version-build="${JDK_BUILD_NUMBER}" \
       --with-version-opt=b"${build_number}" \
       --with-boot-jdk="$BOOT_JDK" \
+      --with-macosx-version-max="${MACOSX_VERSION_MAX:="11.00.00"}" \
       --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
       --enable-cds=no \
       --with-extra-cflags="-F$(pwd)/Frameworks" \
@@ -77,6 +80,7 @@ function do_configure {
       --with-version-build="$JDK_BUILD_NUMBER" \
       --with-version-opt=b"$build_number" \
       --with-boot-jdk="$BOOT_JDK" \
+      --with-macosx-version-max="${MACOSX_VERSION_MAX:="10.12.00"}" \
       --enable-cds=yes || do_exit $?
   fi
 }
