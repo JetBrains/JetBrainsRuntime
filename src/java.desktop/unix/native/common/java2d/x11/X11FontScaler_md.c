@@ -291,7 +291,7 @@ JNIEXPORT jlong JNICALL AWTFontGenerateImage(AWTFont pFont, AWTChar2b* xChar) {
     glyphInfo->height = height;
     glyphInfo->subpixelResolutionX = 1;
     glyphInfo->subpixelResolutionY = 1;
-    glyphInfo->format = PIXEL_FORMAT_GREYSCALE;
+    glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE;
     glyphInfo->topLeftX = xcs.lbearing;
     glyphInfo->topLeftY = -xcs.ascent;
     glyphInfo->advanceX = xcs.width;

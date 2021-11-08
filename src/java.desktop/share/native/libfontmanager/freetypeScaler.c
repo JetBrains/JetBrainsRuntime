@@ -1768,10 +1768,10 @@ static jlong
     glyphInfo->subpixelResolutionX = subpixelResolutionX;
     glyphInfo->subpixelResolutionY = subpixelResolutionY;
 
-    if (ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_BGRA) glyphInfo->format = PIXEL_FORMAT_BGRA;
+    if (ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_BGRA) glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_BGRA;
     else if (ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD ||
-             ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD_V) glyphInfo->format = PIXEL_FORMAT_LCD;
-    else glyphInfo->format = PIXEL_FORMAT_GREYSCALE;
+             ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD_V) glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_LCD;
+    else glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE;
 
     if (renderImage) {
         if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_LCD && width > 0) {

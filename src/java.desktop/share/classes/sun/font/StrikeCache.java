@@ -27,6 +27,7 @@ package sun.font;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
+import java.lang.annotation.Native;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
@@ -119,10 +120,10 @@ public final class StrikeCache {
     static int formatOffset;
     static long invisibleGlyphPtr;
 
-    public static final byte PIXEL_FORMAT_UNKNOWN = -1;
-    public static final byte PIXEL_FORMAT_GREYSCALE = 1;
-    public static final byte PIXEL_FORMAT_LCD = 3;
-    public static final byte PIXEL_FORMAT_BGRA = 4;
+    @Native public static final byte PIXEL_FORMAT_UNKNOWN   = -1;
+    @Native public static final byte PIXEL_FORMAT_GREYSCALE = 1;
+    @Native public static final byte PIXEL_FORMAT_LCD       = 3;
+    @Native public static final byte PIXEL_FORMAT_BGRA      = 4;
 
     /* Native method used to return information used for unsafe
      * access to native data.

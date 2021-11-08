@@ -572,7 +572,7 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist, jint fromGly
             free(gbv);
             return (GlyphBlitVector*)NULL;
         }
-        if (ginfo->format != PIXEL_FORMAT_LCD) {
+        if (ginfo->format != sun_font_StrikeCache_PIXEL_FORMAT_LCD) {
             subPixPos = JNI_FALSE;
         }
     }
