@@ -27,6 +27,7 @@
 #define FontScalerDefsIncludesDefined
 
 #include "AccelGlyphCache.h"
+#include "sun_font_StrikeCache.h"
 
 #ifdef  __cplusplus
 extern "C" {
@@ -68,9 +69,6 @@ typedef UInt32                  Bool32;
    */
 #define UNMANAGED_GLYPH 0
 #define MANAGED_GLYPH   1
-#define PIXEL_FORMAT_GREYSCALE 1
-#define PIXEL_FORMAT_LCD       3
-#define PIXEL_FORMAT_BGRA      4
 typedef struct GlyphInfo {
     float        advanceX;
     float        advanceY;
@@ -78,7 +76,7 @@ typedef struct GlyphInfo {
     UInt16       height;
     UInt16       rowBytes;
     UInt8        managed;
-    UInt8        format; // PIXEL_FORMAT_GREYSCALE / PIXEL_FORMAT_LCD / PIXEL_FORMAT_BGRA
+    UInt8        format; // sun_font_StrikeCache_PIXEL_FORMAT_*
     UInt8        subpixelResolutionX;
     UInt8        subpixelResolutionY;
     float        topLeftX;

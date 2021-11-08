@@ -266,7 +266,7 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindowsUsingDirectWrite
     glyphInfo->height = glyphHeight;
     glyphInfo->subpixelResolutionX = 1;
     glyphInfo->subpixelResolutionY = 1;
-    glyphInfo->format = PIXEL_FORMAT_LCD;
+    glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_LCD;
     glyphInfo->advanceX = rotation == 0 ? advance : rotation == 2 ? -advance : 0;
     glyphInfo->advanceY = rotation == 3 ? advance : rotation == 1 ? -advance : 0;
     glyphInfo->topLeftX = bbRect.left - xTransformed;
