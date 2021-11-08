@@ -67,6 +67,7 @@
 #include "gc/shared/dcevmSharedGC.hpp"
 #include "gc/shared/scavengableNMethods.hpp"
 #include "gc/shared/oopStorageSet.inline.hpp"
+#include "gc/shared/weakProcessor.hpp"
 #include "ci/ciObjectFactory.hpp"
 
 Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
@@ -250,6 +251,7 @@ void VM_EnhancedRedefineClasses::root_oops_do(OopClosure *oopClosure) {
 
   Threads::oops_do(oopClosure, NULL);
   OopStorageSet::strong_oops_do(oopClosure);
+  WeakProcessor::oops_do(oopClosure);
 
   CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
   CodeCache::blobs_do(&blobClosure);
