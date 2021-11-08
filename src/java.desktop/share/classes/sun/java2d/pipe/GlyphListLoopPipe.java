@@ -26,6 +26,7 @@
 package sun.java2d.pipe;
 
 import sun.awt.SunHints;
+import sun.font.StrikeCache;
 import sun.java2d.SunGraphics2D;
 import sun.font.GlyphList;
 
@@ -41,13 +42,13 @@ public abstract class GlyphListLoopPipe extends GlyphListPipe
     protected void drawGlyphList(SunGraphics2D sg2d, GlyphList gl,
                                  int aaHint) {
         int prevBorder = 0;
-        int pixelFormat = -1;
+        byte pixelFormat = StrikeCache.PIXEL_FORMAT_UNKNOWN;
         int len = gl.getNumGlyphs();
         gl.startGlyphIteration();
         for (int i = 0; i < len; i++) {
-            int newFormat = gl.getPixelFormat(i);
+            byte newFormat = gl.getPixelFormat(i);
             if (newFormat != pixelFormat) {
-                if (pixelFormat != -1) drawGlyphListSegment(sg2d, gl, prevBorder, i, aaHint, pixelFormat);
+                drawGlyphListSegment(sg2d, gl, prevBorder, i, aaHint, pixelFormat);
                 prevBorder = i;
                 pixelFormat = newFormat;
             }
@@ -56,10 +57,10 @@ public abstract class GlyphListLoopPipe extends GlyphListPipe
     }
 
     private void drawGlyphListSegment(SunGraphics2D sg2d, GlyphList gl, int fromglyph, int toGlyph,
-                                      int aaHint, int pixelFormat) {
+                                      int aaHint, byte pixelFormat) {
         if (fromglyph >= toGlyph) return;
         switch (pixelFormat) {
-            case 1:
+            case StrikeCache.PIXEL_FORMAT_GREYSCALE:
                 if (aaHint == SunHints.INTVAL_TEXT_ANTIALIAS_OFF) {
                     sg2d.loops.drawGlyphListLoop.
                             DrawGlyphList(sg2d, sg2d.surfaceData, gl, fromglyph, toGlyph);
@@ -68,11 +69,11 @@ public abstract class GlyphListLoopPipe extends GlyphListPipe
                             DrawGlyphListAA(sg2d, sg2d.surfaceData, gl, fromglyph, toGlyph);
                 }
                 return;
-            case 3:
+            case StrikeCache.PIXEL_FORMAT_LCD:
                 sg2d.loops.drawGlyphListLCDLoop.
                         DrawGlyphListLCD(sg2d, sg2d.surfaceData, gl, fromglyph, toGlyph);
                 return;
-            case 4:
+            case StrikeCache.PIXEL_FORMAT_BGRA:
                 sg2d.loops.drawGlyphListColorLoop.
                         DrawGlyphListColor(sg2d, sg2d.surfaceData, gl, fromglyph, toGlyph);
                 return;

@@ -199,10 +199,10 @@ public class XRGlyphCacheEntry {
     }
 
     public Type getType() {
-        int format = StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.formatOffset);
-        if (format == 1) return Type.GRAYSCALE;
-        else if (format == 3) return Type.LCD;
-        else if (format == 4) return Type.BGRA;
+        byte format = StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.formatOffset);
+        if (format == StrikeCache.PIXEL_FORMAT_GREYSCALE) return Type.GRAYSCALE;
+        else if (format == StrikeCache.PIXEL_FORMAT_LCD) return Type.LCD;
+        else if (format == StrikeCache.PIXEL_FORMAT_BGRA) return Type.BGRA;
         else throw new IllegalStateException("Unknown glyph format: " + format);
     }
 

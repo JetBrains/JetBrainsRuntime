@@ -119,6 +119,11 @@ public final class StrikeCache {
     static int formatOffset;
     static long invisibleGlyphPtr;
 
+    public static final byte PIXEL_FORMAT_UNKNOWN = -1;
+    public static final byte PIXEL_FORMAT_GREYSCALE = 1;
+    public static final byte PIXEL_FORMAT_LCD = 3;
+    public static final byte PIXEL_FORMAT_BGRA = 4;
+
     /* Native method used to return information used for unsafe
      * access to native data.
      * return values as follows:-
