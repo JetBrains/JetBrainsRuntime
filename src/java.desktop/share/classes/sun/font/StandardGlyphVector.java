@@ -1782,7 +1782,8 @@ public class StandardGlyphVector extends GlyphVector {
                 result = new Rectangle2D.Float();
                 result.setRect(strike.getGlyphOutlineBounds(glyphID)); // don't mutate cached rect
             } else {
-                if (sgv.invdtx.getShearX() == 0 && sgv.invdtx.getShearY() == 0) {
+                if (sgv.invdtx.getShearX() == 0 && sgv.invdtx.getShearY() == 0 &&
+                        sgv.invdtx.getScaleX() > 0 && sgv.invdtx.getScaleY() > 0) {
                     final Rectangle2D.Float rect = strike.getGlyphOutlineBounds(glyphID);
                     result = new Rectangle2D.Float(
                         (float)(rect.x*sgv.invdtx.getScaleX() + sgv.invdtx.getTranslateX()),

@@ -2093,7 +2093,7 @@ static FT_Outline* getFTOutline(JNIEnv* env, jobject font2D,
     }
 
     // We cannot get an outline from bitmap version of glyph
-    loadFlags = context->loadFlags | FT_LOAD_NO_BITMAP;
+    loadFlags = FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP;
 
     error = FT_Load_Glyph(scalerInfo->face, glyphCode, loadFlags);
     if (error) {
