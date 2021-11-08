@@ -572,7 +572,7 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist, jint fromGly
             free(gbv);
             return (GlyphBlitVector*)NULL;
         }
-        if (ginfo->format != 3) { // Not LCD glyph
+        if (ginfo->format != PIXEL_FORMAT_LCD) {
             subPixPos = JNI_FALSE;
         }
     }
