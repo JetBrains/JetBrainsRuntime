@@ -1,7 +1,7 @@
-From d170fa0a21d5c62348fe77eeaa81b16c8c51531a Mon Sep 17 00:00:00 2001
+From 09f5f22d61675a9f8909e903fa6e6f51507b656c Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 11:38:48 +0100
-Subject: [PATCH 22/42] Fix crash on GrowableArray allocation in C_HEAP
+Subject: [PATCH 22/45] Fix crash on GrowableArray allocation in C_HEAP
 
 ---
  src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 4 ++--

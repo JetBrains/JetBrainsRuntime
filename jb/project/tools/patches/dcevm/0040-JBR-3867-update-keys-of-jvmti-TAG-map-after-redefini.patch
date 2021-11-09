@@ -1,7 +1,7 @@
-From 9cb4aaf17c8e35f39aed0dfa33e173b40968eee6 Mon Sep 17 00:00:00 2001
+From 92651c5d109896613e14792aa96ed5226a797f9b Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 10 Oct 2021 20:25:30 +0200
-Subject: [PATCH 40/42] JBR-3867 - update keys of jvmti TAG map after
+Subject: [PATCH 40/45] JBR-3867 - update keys of jvmti TAG map after
  redefinition
 
 jdwp keeps relation class_ptr->class_ref in jvmti tag. class_ptr is used

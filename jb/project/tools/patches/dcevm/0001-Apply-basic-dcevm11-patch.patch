@@ -1,7 +1,7 @@
-From 51f91f7ccd3638360afcc8333d086bd2d5852b0e Mon Sep 17 00:00:00 2001
+From b936da7d9d3572a4ded40a5ba74d51dead91e832 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 14 Nov 2018 21:09:39 +0100
-Subject: [PATCH 01/42] Apply basic dcevm11 patch
+Subject: [PATCH 01/45] Apply basic dcevm11 patch
 
 ---
  src/hotspot/share/ci/ciObjectFactory.cpp      |   25 +
@@ -125,7 +125,7 @@ index 83f4bcf248f..fdefc8e3b92 100644
  
  #endif // SHARE_CI_CIOBJECTFACTORY_HPP
 diff --git a/src/hotspot/share/classfile/classFileParser.cpp b/src/hotspot/share/classfile/classFileParser.cpp
-index 41da1214f2b..906798b029d 100644
+index 0999d7dced7..14e86466cda 100644
 --- a/src/hotspot/share/classfile/classFileParser.cpp
 +++ b/src/hotspot/share/classfile/classFileParser.cpp
 @@ -852,6 +852,8 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
@@ -137,7 +137,7 @@ index 41da1214f2b..906798b029d 100644
        if (!interf->is_interface()) {
          THROW_MSG(vmSymbols::java_lang_IncompatibleClassChangeError(),
                    err_msg("class %s can not implement %s, because it is not an interface (%s)",
-@@ -4010,7 +4012,7 @@ const InstanceKlass* ClassFileParser::parse_super_class(ConstantPool* const cp,
+@@ -4017,7 +4019,7 @@ const InstanceKlass* ClassFileParser::parse_super_class(ConstantPool* const cp,
      // However, make sure it is not an array type.
      bool is_array = false;
      if (cp->tag_at(super_class_index).is_klass()) {
@@ -146,7 +146,7 @@ index 41da1214f2b..906798b029d 100644
        if (need_verify)
          is_array = super_klass->is_array_klass();
      } else if (need_verify) {
-@@ -4150,7 +4152,10 @@ void ClassFileParser::set_precomputed_flags(InstanceKlass* ik) {
+@@ -4157,7 +4159,10 @@ void ClassFileParser::set_precomputed_flags(InstanceKlass* ik) {
    if (!_has_empty_finalizer) {
      if (_has_finalizer ||
          (super != NULL && super->has_finalizer())) {
@@ -158,7 +158,7 @@ index 41da1214f2b..906798b029d 100644
      }
    }
  
-@@ -5497,6 +5502,7 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
+@@ -5504,6 +5509,7 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
                                   ClassLoaderData* loader_data,
                                   const ClassLoadInfo* cl_info,
                                   Publicity pub_level,
@@ -166,7 +166,7 @@ index 41da1214f2b..906798b029d 100644
                                   TRAPS) :
    _stream(stream),
    _class_name(NULL),
-@@ -5555,7 +5561,8 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
+@@ -5562,7 +5568,8 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
    _has_finalizer(false),
    _has_empty_finalizer(false),
    _has_vanilla_constructor(false),
@@ -176,7 +176,7 @@ index 41da1214f2b..906798b029d 100644
  
    _class_name = name != NULL ? name : vmSymbols::unknown_class_name();
    _class_name->increment_refcount();
-@@ -5954,14 +5961,15 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
+@@ -5961,14 +5968,15 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
          CHECK);
      }
      Handle loader(THREAD, _loader_data->class_loader());
@@ -843,7 +843,7 @@ index f4d40685ddc..0c774dfeb51 100644
                                                Handle class_loader,
                                                InstanceKlass* k, TRAPS);
 diff --git a/src/hotspot/share/classfile/verifier.cpp b/src/hotspot/share/classfile/verifier.cpp
-index 47468a16a20..bbabe2976bf 100644
+index 9bebe3a5faf..d3045ca69f9 100644
 --- a/src/hotspot/share/classfile/verifier.cpp
 +++ b/src/hotspot/share/classfile/verifier.cpp
 @@ -270,7 +270,7 @@ bool Verifier::is_eligible_for_verification(InstanceKlass* klass, bool should_ve
@@ -5674,7 +5674,7 @@ index 233608bc7b1..b934302f422 100644
  
    // RedefineClasses support
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index 208d8a04f73..ee8d2d11ce4 100644
+index cdc67e970bf..69d319e1f29 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -964,7 +964,8 @@ bool InstanceKlass::link_class_impl(TRAPS) {
@@ -5771,7 +5771,7 @@ index 208d8a04f73..ee8d2d11ce4 100644
  #ifndef PRODUCT
  void InstanceKlass::print_dependent_nmethods(bool verbose) {
    dependencies().print_dependent_nmethods(verbose);
-@@ -3733,7 +3782,7 @@ void InstanceKlass::verify_on(outputStream* st) {
+@@ -3745,7 +3794,7 @@ void InstanceKlass::verify_on(outputStream* st) {
      }
  
      guarantee(sib->is_klass(), "should be klass");

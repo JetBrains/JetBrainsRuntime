@@ -1,7 +1,7 @@
-From e85a74a6bd33e5d81569ec209311e698de402990 Mon Sep 17 00:00:00 2001
+From e7e7920986355d6fd5ad0c333ec780c93583d030 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Thu, 18 Jun 2020 18:40:11 +0200
-Subject: [PATCH 27/42] JBR-3140 - support for modularized HotswapAgent
+Subject: [PATCH 27/45] JBR-3140 - support for modularized HotswapAgent
 
 Add -XX:HotswapAgent=[disabled,fatjar.core]
 ---

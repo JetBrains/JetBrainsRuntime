@@ -1,0 +1,35 @@
+From bb7c41e91326eaa90e25e02e13a2559adf41ae9e Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Mon, 8 Nov 2021 19:51:41 +0100
+Subject: [PATCH 45/45] JBR-3867 - fix dcevm redefinition stops due the not
+ updated weak oops
+
+Dcevm must update also oops in weak storage using WeakProcessor. Oops
+storage is new concept in java17.
+---
+ src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 32e0fcbe62b..35dfc1a66d1 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -67,6 +67,7 @@
+ #include "gc/shared/dcevmSharedGC.hpp"
+ #include "gc/shared/scavengableNMethods.hpp"
+ #include "gc/shared/oopStorageSet.inline.hpp"
++#include "gc/shared/weakProcessor.hpp"
+ #include "ci/ciObjectFactory.hpp"
+ 
+ Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
+@@ -250,6 +251,7 @@ void VM_EnhancedRedefineClasses::root_oops_do(OopClosure *oopClosure) {
+ 
+   Threads::oops_do(oopClosure, NULL);
+   OopStorageSet::strong_oops_do(oopClosure);
++  WeakProcessor::oops_do(oopClosure);
+ 
+   CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
+   CodeCache::blobs_do(&blobClosure);
+-- 
+2.23.0
+

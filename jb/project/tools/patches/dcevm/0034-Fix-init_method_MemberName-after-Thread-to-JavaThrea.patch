@@ -1,7 +1,7 @@
-From 52c661cebf92d4ad68058ada5d3463e54428aee7 Mon Sep 17 00:00:00 2001
+From 7fcef1a84c37c568c0afafb8cb22303efda68f0d Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 20 Jun 2021 19:42:51 +0200
-Subject: [PATCH 34/42] Fix init_method_MemberName after Thread to JavaThread
+Subject: [PATCH 34/45] Fix init_method_MemberName after Thread to JavaThread
  refactorization
 
 ---
@@ -78,7 +78,7 @@ index 9eeb10cc6fd..871eaab7464 100644
    BasicType    result_type() const               { return selected_method()->result_type(); }
    CallKind     call_kind() const                 { return _call_kind; }
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index c54b6b1bf46..8d259451032 100644
+index c5f37d42a9a..9920e7fb25d 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -1643,21 +1643,6 @@ void InstanceKlass::methods_do(void f(Method* method)) {

@@ -1,7 +1,7 @@
-From 8770c3da756a6193d69bb8c23aa992584edcb723 Mon Sep 17 00:00:00 2001
+From 5d065e823c431a80251696c2543f6c98e68f00a6 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 09:44:28 +0100
-Subject: [PATCH 21/42] dcevm17 - fix compilation issues
+Subject: [PATCH 21/45] dcevm17 - fix compilation issues
 
 ---
  .../share/classfile/classLoaderData.cpp       |   2 +-
@@ -511,7 +511,7 @@ index cb320076a55..4b2211c415e 100644
    static void serialize(SerializeClosure* f);
  
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index b4d09e92830..c2de2bec7d4 100644
+index a8ac12450d7..ab2d7f10f9c 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -1286,7 +1286,7 @@ void InstanceKlass::init_implementor() {
@@ -523,7 +523,7 @@ index b4d09e92830..c2de2bec7d4 100644
    assert(addr != NULL, "null addr");
    if (addr != NULL) {
      *addr = NULL;
-@@ -3816,7 +3816,7 @@ void InstanceKlass::verify_on(outputStream* st) {
+@@ -3828,7 +3828,7 @@ void InstanceKlass::verify_on(outputStream* st) {
  
      guarantee(sib->is_klass(), "should be klass");
      // TODO: (DCEVM) explain

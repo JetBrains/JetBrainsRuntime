@@ -1,7 +1,7 @@
-From 2365d0dc56b6b28ee3355e89ecf981a42fdfe440 Mon Sep 17 00:00:00 2001
+From cfd0e2b3070e7ad75bcf3f320b2c35ac432f9ee9 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Jun 2020 17:43:52 +0200
-Subject: [PATCH 07/42] Support for G1 gc
+Subject: [PATCH 07/45] Support for G1 gc
 
 ---
  src/hotspot/share/gc/g1/g1CollectedHeap.cpp   |  23 +++

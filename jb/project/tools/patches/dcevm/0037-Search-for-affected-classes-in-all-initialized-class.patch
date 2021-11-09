@@ -1,7 +1,7 @@
-From 47ae71afaf12c7bab4f928579b154ec72aad3c02 Mon Sep 17 00:00:00 2001
+From 24fe3ebd655068b819a437af62d40c2ee9ed7171 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 30 Jun 2021 18:50:38 +0200
-Subject: [PATCH 37/42] Search for affected classes in all initialized classes
+Subject: [PATCH 37/45] Search for affected classes in all initialized classes
  in cld
 
 Fix also case when lambda interface is redefined. Lambda class is

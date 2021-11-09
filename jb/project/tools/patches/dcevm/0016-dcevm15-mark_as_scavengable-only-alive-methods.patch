@@ -1,7 +1,7 @@
-From 936d83f295468e7c0e51b759def1d8664cca2a6e Mon Sep 17 00:00:00 2001
+From d20a52a5e7a87003da6f3e4bda39ec2976868a75 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 29 Nov 2020 17:18:16 +0100
-Subject: [PATCH 16/42] dcevm15 - mark_as_scavengable only alive methods
+Subject: [PATCH 16/45] dcevm15 - mark_as_scavengable only alive methods
 
 ---
  .../share/prims/jvmtiEnhancedRedefineClasses.cpp   | 14 ++++++++------
