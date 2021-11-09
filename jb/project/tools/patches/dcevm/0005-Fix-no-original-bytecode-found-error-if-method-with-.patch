@@ -1,7 +1,7 @@
-From 57d2451903b84dfc772cc0bf6957a52ee5e8c0f3 Mon Sep 17 00:00:00 2001
+From 97ab12615a56e90993b5df4615c6dbd7eb856ebb Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sat, 23 May 2020 10:02:15 +0200
-Subject: [PATCH 05/42] Fix "no original bytecode found" error if method with
+Subject: [PATCH 05/45] Fix "no original bytecode found" error if method with
  bkp is missing
 
 Sometimes IDE can deploy class with erroneous method, such method has

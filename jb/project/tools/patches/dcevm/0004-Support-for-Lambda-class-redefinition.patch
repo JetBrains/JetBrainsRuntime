@@ -1,7 +1,7 @@
-From 146b85fb6af764594999cb9922fd820798f3e9cc Mon Sep 17 00:00:00 2001
+From 784dd5e16922110b0ee802d5bf1063e2b94499bc Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sun, 4 Oct 2020 21:12:12 +0200
-Subject: [PATCH 04/42] Support for Lambda class redefinition
+Subject: [PATCH 04/45] Support for Lambda class redefinition
 
 ---
  .../share/classfile/classLoaderData.cpp       |  9 +++

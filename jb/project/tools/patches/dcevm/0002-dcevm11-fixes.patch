@@ -1,7 +1,7 @@
-From 53a078caced2b0812e45cf2586b5e9036ee142ae Mon Sep 17 00:00:00 2001
+From 269611e5ccc24a29685bd38aff50c9681506dd26 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Wed, 14 Nov 2018 21:18:22 +0100
-Subject: [PATCH 02/42] dcevm11 fixes
+Subject: [PATCH 02/45] dcevm11 fixes
 
 1. We need to set classRedefinitionCount on new class, not old class.
 
@@ -89,7 +89,7 @@ dmh
  delete mode 100644 src/hotspot/share/gc/cms/compactibleFreeListSpace.hpp
 
 diff --git a/src/hotspot/share/classfile/classFileParser.cpp b/src/hotspot/share/classfile/classFileParser.cpp
-index 906798b029d..e1dfda7d26b 100644
+index 14e86466cda..a7bbb0252dc 100644
 --- a/src/hotspot/share/classfile/classFileParser.cpp
 +++ b/src/hotspot/share/classfile/classFileParser.cpp
 @@ -852,6 +852,7 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
@@ -100,7 +100,7 @@ index 906798b029d..e1dfda7d26b 100644
        interf = (Klass *) maybe_newest(interf);
  
        if (!interf->is_interface()) {
-@@ -4012,6 +4013,7 @@ const InstanceKlass* ClassFileParser::parse_super_class(ConstantPool* const cp,
+@@ -4019,6 +4020,7 @@ const InstanceKlass* ClassFileParser::parse_super_class(ConstantPool* const cp,
      // However, make sure it is not an array type.
      bool is_array = false;
      if (cp->tag_at(super_class_index).is_klass()) {
@@ -108,7 +108,7 @@ index 906798b029d..e1dfda7d26b 100644
        super_klass = InstanceKlass::cast(maybe_newest(cp->resolved_klass_at(super_class_index)));
        if (need_verify)
          is_array = super_klass->is_array_klass();
-@@ -4152,7 +4154,7 @@ void ClassFileParser::set_precomputed_flags(InstanceKlass* ik) {
+@@ -4159,7 +4161,7 @@ void ClassFileParser::set_precomputed_flags(InstanceKlass* ik) {
    if (!_has_empty_finalizer) {
      if (_has_finalizer ||
          (super != NULL && super->has_finalizer())) {
@@ -4365,7 +4365,7 @@ index 9c1961619c1..167cb274661 100644
    }
  
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index ee8d2d11ce4..9327652d8fe 100644
+index 69d319e1f29..db5b8da58fc 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -1275,6 +1275,15 @@ void InstanceKlass::init_implementor() {
@@ -4423,7 +4423,7 @@ index ee8d2d11ce4..9327652d8fe 100644
  bool InstanceKlass::update_jmethod_id(Method* method, jmethodID newMethodID) {
    size_t idnum = (size_t)method->method_idnum();
    jmethodID* jmeths = methods_jmethod_ids_acquire();
-@@ -3782,6 +3792,7 @@ void InstanceKlass::verify_on(outputStream* st) {
+@@ -3794,6 +3804,7 @@ void InstanceKlass::verify_on(outputStream* st) {
      }
  
      guarantee(sib->is_klass(), "should be klass");

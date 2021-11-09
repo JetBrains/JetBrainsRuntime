@@ -1,7 +1,7 @@
-From b14f6ba2d743aacf15dedfe8ad677f176683d51c Mon Sep 17 00:00:00 2001
+From c04d57e5278aa5d3cb6ef53fc161d2b6b4f19f3c Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 23 Oct 2020 10:20:26 +0200
-Subject: [PATCH 10/42] Clear dcevm code separation
+Subject: [PATCH 10/45] Clear dcevm code separation
 
 ---
  src/hotspot/share/classfile/systemDictionary.cpp   |  3 +--
@@ -132,7 +132,7 @@ index b934302f422..d7ae5edc7b3 100644
  
    void set_field(                                // sets entry to resolved field state
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index c18a5822939..994f6bf266f 100644
+index 6d9e5116df1..1e2b40dd1f2 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -968,7 +968,7 @@ bool InstanceKlass::link_class_impl(TRAPS) {
@@ -153,7 +153,7 @@ index c18a5822939..994f6bf266f 100644
        wait = true;
        jt->set_class_to_be_initialized(this);
        ol.wait_uninterruptibly(jt);
-@@ -3796,7 +3796,7 @@ void InstanceKlass::verify_on(outputStream* st) {
+@@ -3808,7 +3808,7 @@ void InstanceKlass::verify_on(outputStream* st) {
  
      guarantee(sib->is_klass(), "should be klass");
      // TODO: (DCEVM) explain

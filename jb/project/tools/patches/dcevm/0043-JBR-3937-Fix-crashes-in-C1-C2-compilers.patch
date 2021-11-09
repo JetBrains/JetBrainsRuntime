@@ -1,0 +1,180 @@
+From 91534f381bf08471b7e6e5064d561fb75e2890c6 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Mon, 1 Nov 2021 19:00:41 +0100
+Subject: [PATCH 43/45] JBR-3937 Fix crashes in C1/C2 compilers
+
+There is a race condition in enhanced redefinition with C1/C2. Therefore
+the patch stops C1/C2 compilation before redefinition and release after
+redefinition finishing. There is no performance impact since dcevm
+flushes all code cache.
+---
+ src/hotspot/share/compiler/compileBroker.cpp | 38 ++++++++++++++++++--
+ src/hotspot/share/compiler/compileBroker.hpp |  6 ++++
+ src/hotspot/share/prims/jvmtiEnv.cpp         |  7 ++++
+ src/hotspot/share/runtime/mutexLocker.cpp    |  3 ++
+ src/hotspot/share/runtime/mutexLocker.hpp    |  1 +
+ 5 files changed, 53 insertions(+), 2 deletions(-)
+
+diff --git a/src/hotspot/share/compiler/compileBroker.cpp b/src/hotspot/share/compiler/compileBroker.cpp
+index aaf8e4b1f1e..878bc265d2f 100644
+--- a/src/hotspot/share/compiler/compileBroker.cpp
++++ b/src/hotspot/share/compiler/compileBroker.cpp
+@@ -140,6 +140,8 @@ CompileLog** CompileBroker::_compiler2_logs = NULL;
+ // These counters are used to assign an unique ID to each compilation.
+ volatile jint CompileBroker::_compilation_id     = 0;
+ volatile jint CompileBroker::_osr_compilation_id = 0;
++volatile bool CompileBroker::_compilation_stopped = false;
++volatile int CompileBroker::_active_compilations = 0;
+ 
+ // Performance counters
+ PerfCounter* CompileBroker::_perf_total_compilation = NULL;
+@@ -2320,8 +2322,19 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
+           locker.wait();
+         }
+       }
+-      comp->compile_method(&ci_env, target, osr_bci, true, directive);
+-
++      if (AllowEnhancedClassRedefinition) {
++        {
++          MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
++          while (_compilation_stopped) {
++            locker.wait();
++          }
++          Atomic::add(&_active_compilations, 1);
++        }
++        comp->compile_method(&ci_env, target, osr_bci, true, directive);
++        Atomic::sub(&_active_compilations, 1);
++      } else {
++        comp->compile_method(&ci_env, target, osr_bci, true, directive);
++      }
+       /* Repeat compilation without installing code for profiling purposes */
+       int repeat_compilation_count = directive->RepeatCompilationOption;
+       while (repeat_compilation_count > 0) {
+@@ -2329,6 +2342,7 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
+         comp->compile_method(&ci_env, target, osr_bci, false , directive);
+         repeat_compilation_count--;
+       }
++
+     }
+ 
+     if (!ci_env.failing() && task->code() == NULL) {
+@@ -2942,3 +2956,23 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
+   }
+   out->print_cr("\n__ CodeHeapStateAnalytics total duration %10.3f seconds _________\n", ts_total.seconds());
+ }
++
++void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
++  if (AllowEnhancedClassRedefinition) {
++    MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
++    _compilation_stopped = true;
++    while (_active_compilations > 0) {
++      VM_ThreadsSuspendJVMTI tsj; // force safepoint to run C1/C2 VM op
++      VMThread::execute(&tsj);
++      locker.wait(10);
++    }
++  }
++}
++
++void CompileBroker::releaseCompilationAfterEnhancedRedefinition() {
++  if (AllowEnhancedClassRedefinition) {
++    MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
++    _compilation_stopped = false;
++    locker.notify_all();
++  }
++}
+diff --git a/src/hotspot/share/compiler/compileBroker.hpp b/src/hotspot/share/compiler/compileBroker.hpp
+index 0b721f83121..f146ff5c93d 100644
+--- a/src/hotspot/share/compiler/compileBroker.hpp
++++ b/src/hotspot/share/compiler/compileBroker.hpp
+@@ -175,6 +175,9 @@ class CompileBroker: AllStatic {
+   static volatile jint _compilation_id;
+   static volatile jint _osr_compilation_id;
+ 
++  static volatile bool _compilation_stopped;
++  static volatile int _active_compilations;
++
+   static CompileQueue* _c2_compile_queue;
+   static CompileQueue* _c1_compile_queue;
+ 
+@@ -423,6 +426,9 @@ public:
+   // CodeHeap State Analytics.
+   static void print_info(outputStream *out);
+   static void print_heapinfo(outputStream *out, const char* function, size_t granularity);
++
++  static void stopCompilationBeforeEnhancedRedefinition();
++  static void releaseCompilationAfterEnhancedRedefinition();
+ };
+ 
+ #endif // SHARE_COMPILER_COMPILEBROKER_HPP
+diff --git a/src/hotspot/share/prims/jvmtiEnv.cpp b/src/hotspot/share/prims/jvmtiEnv.cpp
+index 8970d7991b7..9ca8e660197 100644
+--- a/src/hotspot/share/prims/jvmtiEnv.cpp
++++ b/src/hotspot/share/prims/jvmtiEnv.cpp
+@@ -31,6 +31,7 @@
+ #include "classfile/vmClasses.hpp"
+ #include "classfile/vmSymbols.hpp"
+ #include "gc/shared/collectedHeap.hpp"
++#include "compiler/compileBroker.hpp"
+ #include "interpreter/bytecodeStream.hpp"
+ #include "interpreter/interpreter.hpp"
+ #include "jfr/jfrEvents.hpp"
+@@ -458,8 +459,11 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
+ 
+   if (AllowEnhancedClassRedefinition) {
+     MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
++    // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
++    CompileBroker::stopCompilationBeforeEnhancedRedefinition();
+     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
+     VMThread::execute(&op);
++    CompileBroker::releaseCompilationAfterEnhancedRedefinition();
+     op_id = op.id();
+     error = (op.check_error());
+   } else {
+@@ -489,8 +493,11 @@ JvmtiEnv::RedefineClasses(jint class_count, const jvmtiClassDefinition* class_de
+ 
+   if (AllowEnhancedClassRedefinition) {
+     MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
++    // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
++    CompileBroker::stopCompilationBeforeEnhancedRedefinition();
+     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
+     VMThread::execute(&op);
++    CompileBroker::releaseCompilationAfterEnhancedRedefinition();
+     op_id = op.id();
+     error = (op.check_error());
+   } else {
+diff --git a/src/hotspot/share/runtime/mutexLocker.cpp b/src/hotspot/share/runtime/mutexLocker.cpp
+index 83982382e6f..beb36ebc177 100644
+--- a/src/hotspot/share/runtime/mutexLocker.cpp
++++ b/src/hotspot/share/runtime/mutexLocker.cpp
+@@ -84,6 +84,7 @@ Mutex*   Compile_lock                 = NULL;
+ Monitor* MethodCompileQueue_lock      = NULL;
+ Monitor* CompileThread_lock           = NULL;
+ Monitor* Compilation_lock             = NULL;
++Monitor* DcevmCompilation_lock        = NULL;
+ Mutex*   CompileTaskAlloc_lock        = NULL;
+ Mutex*   CompileStatistics_lock       = NULL;
+ Mutex*   DirectivesStack_lock         = NULL;
+@@ -318,6 +319,8 @@ void mutex_init() {
+     def(Compilation_lock           , PaddedMonitor, leaf,        false, _safepoint_check_never);
+   }
+ 
++  def(DcevmCompilation_lock        , PaddedMonitor, nonleaf+1,   false, _safepoint_check_never);
++
+ #if INCLUDE_JFR
+   def(JfrMsg_lock                  , PaddedMonitor, leaf,        true,  _safepoint_check_always);
+   def(JfrBuffer_lock               , PaddedMutex  , leaf,        true,  _safepoint_check_never);
+diff --git a/src/hotspot/share/runtime/mutexLocker.hpp b/src/hotspot/share/runtime/mutexLocker.hpp
+index 65a6366bbfb..4333bd51464 100644
+--- a/src/hotspot/share/runtime/mutexLocker.hpp
++++ b/src/hotspot/share/runtime/mutexLocker.hpp
+@@ -80,6 +80,7 @@ extern Mutex*   Compile_lock;                    // a lock held when Compilation
+ extern Monitor* MethodCompileQueue_lock;         // a lock held when method compilations are enqueued, dequeued
+ extern Monitor* CompileThread_lock;              // a lock held by compile threads during compilation system initialization
+ extern Monitor* Compilation_lock;                // a lock used to pause compilation
++extern Monitor* DcevmCompilation_lock;           // a lock used to pause compilation from dcevm
+ extern Mutex*   CompileTaskAlloc_lock;           // a lock held when CompileTasks are allocated
+ extern Mutex*   CompileStatistics_lock;          // a lock held when updating compilation statistics
+ extern Mutex*   DirectivesStack_lock;            // a lock held when mutating the dirstack and ref counting directives
+-- 
+2.23.0
+

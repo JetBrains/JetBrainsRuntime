@@ -1,0 +1,111 @@
+From c45eb681e77d16b7e873c8e4dbd19f98879a102a Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Sat, 6 Nov 2021 19:47:08 +0100
+Subject: [PATCH 44/45] G1 fixes, code cleanup
+
+---
+ src/hotspot/share/compiler/compileBroker.cpp             | 2 ++
+ src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp          | 4 +---
+ src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp          | 4 ++++
+ src/hotspot/share/gc/shared/gcConfig.cpp                 | 6 +++---
+ src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 3 ++-
+ 5 files changed, 12 insertions(+), 7 deletions(-)
+
+diff --git a/src/hotspot/share/compiler/compileBroker.cpp b/src/hotspot/share/compiler/compileBroker.cpp
+index 878bc265d2f..d8275508f9b 100644
+--- a/src/hotspot/share/compiler/compileBroker.cpp
++++ b/src/hotspot/share/compiler/compileBroker.cpp
+@@ -2958,6 +2958,8 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
+ }
+ 
+ void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
++  // There are hard to fix C1/C2 race conditions with dcevm. The easiest solution
++  // is to stop compilation.
+   if (AllowEnhancedClassRedefinition) {
+     MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
+     _compilation_stopped = true;
+diff --git a/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp b/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp
+index 765630a9826..c5bffc9bc49 100644
+--- a/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp
++++ b/src/hotspot/share/gc/g1/g1FullGCCompactTask.cpp
+@@ -140,7 +140,6 @@ void G1FullGCCompactTask::compact_region_dcevm(HeapRegion* hr, GrowableArray<Hea
+   hr->apply_to_marked_objects(collector()->mark_bitmap(), &compact);
+   // Once all objects have been moved the liveness information
+   // needs be cleared.
+-  collector()->mark_bitmap()->clear_region(hr);
+   if (G1VerifyBitmaps) {
+     collector()->mark_bitmap()->clear_region(hr);
+   }
+@@ -150,8 +149,7 @@ void G1FullGCCompactTask::compact_region_dcevm(HeapRegion* hr, GrowableArray<Hea
+ void G1FullGCCompactTask::serial_compaction_dcevm() {
+   GCTraceTime(Debug, gc, phases) tm("Phase 4: Serial Compaction", collector()->scope()->timer());
+ 
+-  // compact remaining, not parallel compacted rescued oops using serial compact point
+-
++  // Clear allocated resources at compact points now, since all rescued oops are copied to destination.
+   for (uint i = 0; i < collector()->workers(); i++) {
+     G1FullGCCompactionPoint* cp = collector()->compaction_point(i);
+     DcevmSharedGC::clear_rescued_objects_heap(cp->rescued_oops_values());
+diff --git a/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp b/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp
+index 93c066383a1..aa199f57dd7 100644
+--- a/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp
++++ b/src/hotspot/share/gc/g1/g1FullGCPrepareTask.cpp
+@@ -146,6 +146,9 @@ bool G1FullGCPrepareTask::G1CalculatePointersClosure::should_compact(HeapRegion*
+   if (hr->is_pinned()) {
+     return false;
+   }
++  if (Universe::is_redefining_gc_run()) {
++    return true;
++  }
+   size_t live_words = _collector->live_words(hr->hrm_index());
+   size_t live_words_threshold = _collector->scope()->region_compaction_threshold();
+   // High live ratio region will not be compacted.
+@@ -324,6 +327,7 @@ bool G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::must_rescue(oop old_
+   int new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
+   int original_size = old_obj->size();
+ 
++  // what if old_obj > new_obj ?
+   bool overlap = (cast_from_oop<HeapWord*>(old_obj) + original_size < cast_from_oop<HeapWord*>(new_obj) + new_size);
+ 
+   return overlap;
+diff --git a/src/hotspot/share/gc/shared/gcConfig.cpp b/src/hotspot/share/gc/shared/gcConfig.cpp
+index 8e78696bef5..f8365f94214 100644
+--- a/src/hotspot/share/gc/shared/gcConfig.cpp
++++ b/src/hotspot/share/gc/shared/gcConfig.cpp
+@@ -96,9 +96,9 @@ void GCConfig::fail_if_non_included_gc_is_selected() {
+ }
+ 
+ void GCConfig::select_gc_ergonomically() {
+-  if (AllowEnhancedClassRedefinition && !UseG1GC) {
+-    // (DCEVM) Enhanced class redefinition only supports serial GC at the moment
+-    FLAG_SET_ERGO(UseSerialGC, true);
++  if (AllowEnhancedClassRedefinition && !UseSerialGC) {
++    // (DCEVM) use G1 as default GC in Enhanced class redefinition
++    FLAG_SET_ERGO(UseG1GC, true);
+   } else if (os::is_server_class_machine()) {
+ #if INCLUDE_G1GC
+     FLAG_SET_ERGO_IF_DEFAULT(UseG1GC, true);
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 8615806ac98..32e0fcbe62b 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -385,7 +385,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
+     bool oop_updated  = false;
+     if (obj->is_instance() && InstanceKlass::cast(obj->klass())->is_mirror_instance_klass()) {
+       Klass* klass = java_lang_Class::as_Klass(obj);
+-      if (klass != NULL && klass->is_instance_klass()) {
++      if (klass != NULL && klass->is_instance_klass() && klass->new_version() != NULL) {
+         assert(obj == InstanceKlass::cast(klass)->java_mirror(), "just checking");
+         if (klass->new_version() != NULL) {
+           obj = InstanceKlass::cast(klass->new_version())->java_mirror();
+@@ -578,6 +578,7 @@ void VM_EnhancedRedefineClasses::doit() {
+       if (log_is_enabled(Info, redefine, class, timer)) {
+         _timer_heap_iterate.start();
+       }
++      // returns after the iteration is finished
+       G1CollectedHeap::heap()->object_par_iterate(&objectClosure);
+       _timer_heap_iterate.stop();
+     } else {
+-- 
+2.23.0
+

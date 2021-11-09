@@ -1,7 +1,7 @@
-From f583e16509936d6873c4a2dac936d9089cc402a1 Mon Sep 17 00:00:00 2001
+From 9b3a0f4afda0051f7c653162ff4192d55ecceb4f Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Fri, 12 Feb 2021 10:10:02 +0100
-Subject: [PATCH 12/42] dcevm15 - fix java15 compilation issues
+Subject: [PATCH 12/45] dcevm15 - fix java15 compilation issues
 
 ---
  .../share/classfile/classFileParser.hpp       |   8 +-
@@ -322,7 +322,7 @@ index bec9c91d40a..29a81348d2d 100644
        // Old and new address are in same space, so just compare the address.
        // Must rescue if object moves towards the top of the space.
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index 994f6bf266f..ef0091fe288 100644
+index 1e2b40dd1f2..c181fe044e2 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -1281,7 +1281,7 @@ void InstanceKlass::init_implementor() {

@@ -1,7 +1,7 @@
-From 66d53205a84c8e4db40fb2fc91f563cde458afcc Mon Sep 17 00:00:00 2001
+From c4941350aa7d3c5df3a20652f640fe446ff00c5c Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Sat, 15 May 2021 13:01:25 +0200
-Subject: [PATCH 32/42] Fix compilation problems
+Subject: [PATCH 32/45] Fix compilation problems
 
 ---
  src/hotspot/share/oops/instanceKlass.cpp                 | 2 +-
@@ -9,7 +9,7 @@ Subject: [PATCH 32/42] Fix compilation problems
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index 3cc96f98f41..c54b6b1bf46 100644
+index bcb0da6301f..c5f37d42a9a 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -978,7 +978,7 @@ bool InstanceKlass::link_class_impl(TRAPS) {
