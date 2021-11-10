@@ -111,14 +111,13 @@ public class FontStrikeDesc {
      */
     public static int getAAHintIntVal(Object aa, Font2D font2D, int ptSize) {
 
-        if (FontUtilities.isMacOSX16 ||
-            (FontUtilities.isMacOSX14 &&
-             (aa == VALUE_TEXT_ANTIALIAS_OFF ||
-              aa == VALUE_TEXT_ANTIALIAS_DEFAULT ||
-              aa == VALUE_TEXT_ANTIALIAS_ON ||
-              aa == VALUE_TEXT_ANTIALIAS_GASP)))
+        if (FontUtilities.isMacOSX14 &&
+                (aa == VALUE_TEXT_ANTIALIAS_LCD_HBGR ||
+                 aa == VALUE_TEXT_ANTIALIAS_LCD_HRGB ||
+                 aa == VALUE_TEXT_ANTIALIAS_LCD_VBGR ||
+                 aa == VALUE_TEXT_ANTIALIAS_LCD_VRGB))
         {
-             return INTVAL_TEXT_ANTIALIAS_ON;
+            return INTVAL_TEXT_ANTIALIAS_ON;
         }
 
         if (aa == VALUE_TEXT_ANTIALIAS_OFF ||
@@ -154,14 +153,13 @@ public class FontStrikeDesc {
                                       FontRenderContext frc) {
         Object aa = frc.getAntiAliasingHint();
 
-        if (FontUtilities.isMacOSX16 ||
-            (FontUtilities.isMacOSX14 &&
-             (aa == VALUE_TEXT_ANTIALIAS_OFF ||
-              aa == VALUE_TEXT_ANTIALIAS_DEFAULT ||
-              aa == VALUE_TEXT_ANTIALIAS_ON ||
-              aa == VALUE_TEXT_ANTIALIAS_GASP)))
+        if (FontUtilities.isMacOSX14 &&
+                (aa == VALUE_TEXT_ANTIALIAS_LCD_HBGR ||
+                 aa == VALUE_TEXT_ANTIALIAS_LCD_HRGB ||
+                 aa == VALUE_TEXT_ANTIALIAS_LCD_VBGR ||
+                 aa == VALUE_TEXT_ANTIALIAS_LCD_VRGB))
         {
-             return INTVAL_TEXT_ANTIALIAS_ON;
+            return INTVAL_TEXT_ANTIALIAS_ON;
         }
 
         if (aa == VALUE_TEXT_ANTIALIAS_OFF ||

@@ -450,13 +450,9 @@ public abstract class SurfaceData
         colorPrimitives = new LoopPipe();
 
         outlineTextRenderer = new OutlineTextRenderer();
+        solidTextRenderer = new SolidTextRenderer();
         aaTextRenderer = new AATextRenderer();
         if (FontUtilities.isMacOSX14) {
-            solidTextRenderer = aaTextRenderer;
-        } else {
-            solidTextRenderer = new SolidTextRenderer();
-        }
-        if (FontUtilities.isMacOSX16) {
             lcdTextRenderer = aaTextRenderer;
         } else {
             lcdTextRenderer = new LCDTextRenderer();
