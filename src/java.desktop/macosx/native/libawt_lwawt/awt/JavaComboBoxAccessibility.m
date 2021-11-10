@@ -21,9 +21,7 @@ static jmethodID sjm_getAccessibleSelection = NULL;
 
 @implementation JavaComboBoxAccessibility
 
-// NSAccessibilityElement protocol methods
-
-- (id)accessibilityValue {
+- (JavaComponentAccessibility *)accessibleSelection {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject axContext = [self axContextWithEnv:env];
     if (axContext == NULL) return nil;
@@ -42,17 +40,17 @@ static jmethodID sjm_getAccessibleSelection = NULL;
     if (axSelectedChild == NULL) {
         return nil;
     }
-    GET_ACCESSIBLENAME_METHOD_RETURN(nil);
-    jobject childName = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleName, axSelectedChild, fComponent);
-    CHECK_EXCEPTION();
-    if (childName == NULL) {
-        (*env)->DeleteLocalRef(env, axSelectedChild);
-        return nil;
-    }
-    NSString *selectedText = JavaStringToNSString(env, childName);
-    (*env)->DeleteLocalRef(env, axSelectedChild);
-    (*env)->DeleteLocalRef(env, childName);
-    return selectedText;
+    return [JavaComponentAccessibility createWithAccessible:axSelectedChild withEnv:env withView:fView];
+}
+
+// NSAccessibilityElement protocol methods
+
+- (id)accessibilityValue {
+    return [[self accessibleSelection] accessibilityLabel];
+}
+
+- (NSArray *)accessibilitySelectedChildren {
+    return [NSArray arrayWithObject:[self accessibleSelection]];
 }
 
 @end
