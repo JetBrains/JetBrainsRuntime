@@ -1972,6 +1972,29 @@ JNI_COCOA_ENTER(env);
 JNI_COCOA_EXIT(env);
 }
 
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeRaiseLevel
+(JNIEnv *env, jclass clazz, jlong windowPtr, jboolean popup, jboolean onlyIfParentIsActive)
+{
+JNI_COCOA_ENTER(env);
+
+    NSWindow *nsWindow = OBJC(windowPtr);
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        AWTWindow *window = (AWTWindow*)[nsWindow delegate];
+        if (onlyIfParentIsActive) {
+            AWTWindow *parent = window;
+            do {
+                parent = parent.ownerWindow;
+            } while (parent != nil && !parent.nsWindow.isMainWindow);
+            if (parent == nil) {
+                return;
+            }
+        }
+        [nsWindow setLevel: popup ? NSPopUpMenuWindowLevel : NSFloatingWindowLevel];
+    }];
+
+JNI_COCOA_EXIT(env);
+}
+
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
  * Method:    nativeDelayShowing
