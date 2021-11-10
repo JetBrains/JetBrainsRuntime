@@ -45,7 +45,6 @@ public final class FontUtilities {
 
     public static boolean isMacOSX;
     public static boolean isMacOSX14;
-    public static boolean isMacOSX16;
 
     public static boolean useJDKScaler;
 
@@ -71,10 +70,9 @@ public final class FontUtilities {
                 isMacOSX = osName.contains("OS X"); // TODO: MacOSX
                 if (isMacOSX) {
                     // os.version has values like 10.13.6, 10.14.6
-                    // If it is not positively recognised as 10.13 (10.15) or less,
-                    // assume it means 10.14 (10.16) or some later version.
+                    // If it is not positively recognised as 10.13 or less,
+                    // assume it means 10.14 or some later version.
                     isMacOSX14 = true;
-                    isMacOSX16 = true;
                     String version = System.getProperty("os.version", "");
                     if (version.startsWith("10.")) {
                         version = version.substring(3);
@@ -85,7 +83,6 @@ public final class FontUtilities {
                         try {
                             int v = Integer.parseInt(version);
                             isMacOSX14 = (v >= 14);
-                            isMacOSX16 = (v >= 16);
                         } catch (NumberFormatException e) {
                         }
                      }
