@@ -1,6 +1,7 @@
 [![official JetBrains project](http://jb.gg/badges/official.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
 
-# Welcome to JetBrains Runtime!
+# Welcome to JetBrains Runtime! 
+<a name="jetbrains-runtime"></a>
 
 JetBrains Runtime is a fork of [OpenJDK](https://github.com/openjdk/jdk) available for Windows, Mac OS X, and Linux.
 It includes a number enhancements in font rendering, HiDPI support, ligatures, performance improvements, and bugfixes.
@@ -11,7 +12,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 
 | IDE Version | Latest JBR | Date Released |
 |  ---        | ---        | ---           |
-| 2021.3      | [11_0_13-b1751.16](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_13b1751.16) | 2-Nov-2021 |
+| 2021.3      | [11_0_13-b1751.19](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_13b1751.19) | 9-Nov-2021 |
 | 2021.2      | [11_0_12-b1504.40](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jb11_0_12-b1504.40) | 28-Sep-2021 |
 | 2021.1      | [11.0.11+9-b1341.60](https://confluence.jetbrains.com/pages/viewpage.action?pageId=218857477) | 15-Jun-2021 |
 | 2020.3      | [11_0_11-b1145.115](https://confluence.jetbrains.com/pages/viewpage.action?pageId=219349001) | 21-Jun-2021 |
