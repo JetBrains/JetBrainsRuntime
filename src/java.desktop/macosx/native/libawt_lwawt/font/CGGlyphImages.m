@@ -683,9 +683,12 @@ CGGI_CreateImageForGlyph
         // which calculates glyph metrics.
 
         CGAffineTransform matrix = CGContextGetTextMatrix(canvas->context);
-        CTFontRef sizedFont = CTFontCreateCopyWithSymbolicTraits(font, strike->fSize, NULL, 0, 0);
+        // Set actual font size from transformation matrix for color glyphs
+        CGFloat fontSize = glyphDescriptor != &argb ? strike->fSize :
+                           sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c));
+        CTFontRef sizedFont = CTFontCreateCopyWithSymbolicTraits(font, fontSize, NULL, 0, 0);
 
-        CGFloat normFactor = 1.0 / strike->fSize;
+        CGFloat normFactor = 1.0 / fontSize;
         CGAffineTransform normalizedMatrix = CGAffineTransformScale(matrix, normFactor, normFactor);
         CGContextSetTextMatrix(canvas->context, normalizedMatrix);
 
