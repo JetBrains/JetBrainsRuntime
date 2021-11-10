@@ -1627,9 +1627,6 @@ void MetaspaceShared::link_and_cleanup_shared_classes(TRAPS) {
   // We need to iterate because verification may cause additional classes
   // to be loaded.
   LinkSharedClassesClosure link_closure(THREAD);
-  // To get a consistent list of classes we need MultiArray_lock to ensure
-  // array classes aren't created.
-  MutexLocker locker(MultiArray_lock);
   do {
     link_closure.reset();
     ClassLoaderDataGraph::loaded_classes_do(&link_closure);
