@@ -904,6 +904,12 @@ setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder
       float cr = (((color) >> 16) & (0xFF))/255.0f;
       float cg = (((color) >> 8) & 0xFF)/255.0f;
       float cb = ((color) & 0xFF)/255.0f;
+      // Convert from ARGB_PRE
+      if (ca > 0.0f) {
+          cr /= ca;
+          cg /= ca;
+          cb /= ca;
+      }
       float inv_light_gamma = 1.666f;
       float inv_dark_gamma = 0.333f;
       float inv_light_exp = 0.454f;
