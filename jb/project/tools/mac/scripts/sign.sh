@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Copyright 2000-2021 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 APP_DIRECTORY=$1
 JB_CERT=$2
 
@@ -25,30 +26,17 @@ find "$APP_DIRECTORY" -name '*.cstemp' -exec rm '{}' \;
 log "Signing libraries and executables..."
 # -perm +111 searches for executables
 for f in \
-   "Contents/Home/bin" \
-   "Contents/Home/lib"; do
+  "Contents/Home/lib" "Contents/MacOS" \
+  "Contents/Home/Frameworks" \
+  "Contents/Frameworks"; do
   if [ -d "$APP_DIRECTORY/$f" ]; then
     find "$APP_DIRECTORY/$f" \
-      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -perm +111 \) \
-      -exec codesign --timestamp --force \
+      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -name "*.node" -o -perm +111 \) \
+      -exec codesign --timestamp \
       -v -s "$JB_CERT" --options=runtime \
       --entitlements entitlements.xml {} \;
   fi
 done
-
-if [ -d "$APP_DIRECTORY/Contents/Frameworks" ]; then
-  log "Signing frameworks..."
-  for f in $APP_DIRECTORY/Contents/Frameworks/*; do
-    find "$f" \
-      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" \) \
-      -exec codesign --timestamp --force \
-      -v -s "$JB_CERT" \
-      --entitlements entitlements.xml {} \;
-    codesign --timestamp --force \
-      -v -s "$JB_CERT" --options=runtime \
-      --entitlements entitlements.xml "$f"
-  done
-fi
 
 log "Signing libraries in jars in $PWD"
 
@@ -56,7 +44,7 @@ log "Signing libraries in jars in $PWD"
 # `-e` prevents `grep -q && printf` loginc
 # with `-o pipefail` there's no input for 'while' loop
 find "$APP_DIRECTORY" -name '*.jar' \
-  -exec sh -c "set -u; unzip -l \"\$0\" | grep -q -e '\.dylib\$' -e '\.jnilib\$' -e '\.so\$' -e '^jattach\$' && printf \"\$0\0\" " {} \; |
+  -exec sh -c "set -u; unzip -l \"\$0\" | grep -q -e '\.dylib\$' -e '\.jnilib\$' -e '\.so\$' -e '\.tbd\$' -e '^jattach\$' && printf \"\$0\0\" " {} \; |
   while IFS= read -r -d $'\0' file; do
     log "Processing libraries in $file"
 
@@ -67,12 +55,13 @@ find "$APP_DIRECTORY" -name '*.jar' \
     cp "$file" jarfolder && (cd jarfolder && jar xf "$filename" && rm "$filename")
 
     find jarfolder \
-      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "jattach" \) \
-      -exec codesign --timestamp --force \
+      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -name "jattach" \) \
+      -exec codesign --timestamp \
+      --force \
       -v -s "$JB_CERT" --options=runtime \
       --entitlements entitlements.xml {} \;
 
-    (cd jarfolder; zip -q -r -o ../jar.jar .)
+    (cd jarfolder; zip -q -r -o -0 ../jar.jar .)
     mv jar.jar "$file"
   done
 
@@ -80,11 +69,11 @@ rm -rf jarfolder jar.jar
 
 log "Signing other files..."
 for f in \
-  "Contents/MacOS"; do
+  "Contents/jbr/Contents/Home/bin"; do
   if [ -d "$APP_DIRECTORY/$f" ]; then
     find "$APP_DIRECTORY/$f" \
-      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -perm +111 \) \
-      -exec codesign --timestamp --force \
+      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -perm +111 \) \
+      -exec codesign --timestamp \
       -v -s "$JB_CERT" --options=runtime \
       --entitlements entitlements.xml {} \;
   fi

@@ -13,7 +13,7 @@ USERNAME=$3
 PASSWORD=$4
 CODESIGN_STRING=$5
 NOTARIZE=$6
-BUNDLE_ID=$7
+BUNDLE_ID=$(echo $7".jdk" | sed 's/_/\./g')
 
 cd "$(dirname "$0")"
 
@@ -92,6 +92,7 @@ while [[ $attempt -le $limit ]]; do
     log "Signing done"
     codesign -v "$APPLICATION_PATH" -vvvvv
     log "Check sign done"
+    spctl -a -v $APPLICATION_PATH
     ((attempt += limit))
   fi
 done
@@ -102,7 +103,7 @@ if [ "$NOTARIZE" = "yes" ]; then
   log "Notarizing..."
   # shellcheck disable=SC1090
   source "$HOME/.notarize_token"
-  APP_NAME=$(echo ${INPUT_FILE} | awk -F"." '{ print $1 }')
+  APP_NAME=$(echo ${INPUT_FILE} | awk -F".tar" '{ print $1 }')
   # Since notarization tool uses same file for upload token we have to trick it into using different folders, hence fake root
   # Also it leaves copy of zip file in TMPDIR, so notarize.sh overrides it and uses FAKE_ROOT as location for temp TMPDIR
   FAKE_ROOT="$(pwd)/fake-root"

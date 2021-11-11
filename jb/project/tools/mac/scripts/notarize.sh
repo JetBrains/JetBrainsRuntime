@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 APP_DIRECTORY=$1
 APPL_USER=$2
@@ -6,6 +6,8 @@ APPL_PASSWORD=$3
 APP_NAME=$4
 BUNDLE_ID=$5
 FAKE_ROOT="${6:-fake-root}"
+
+JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 
 if [[ -z "$APP_DIRECTORY" ]] || [[ -z "$APPL_USER" ]] || [[ -z "$APPL_PASSWORD" ]]; then
   echo "Usage: $0 AppDirectory Username Password"
@@ -64,7 +66,7 @@ log "Notarizing $file..."
 rm -rf "altool.init.out" "altool.check.out"
 altool-upload "$file"
 
-rm -rf "$file"
+#rm -rf "$file"
 
 notarization_info="$(grep -e "RequestUUID" "altool.init.out" | grep -oE '([0-9a-f-]{36})')"
 
