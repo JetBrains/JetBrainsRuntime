@@ -33,7 +33,7 @@ for f in \
     find "$APP_DIRECTORY/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -name "*.node" -o -perm +111 \) \
       -exec codesign --timestamp \
-      -v -s "$JB_CERT" --options=runtime \
+      -v -s "$JB_CERT" --options=runtime --force \
       --entitlements entitlements.xml {} \;
   fi
 done
@@ -69,12 +69,12 @@ rm -rf jarfolder jar.jar
 
 log "Signing other files..."
 for f in \
-  "Contents/jbr/Contents/Home/bin"; do
+  "Contents/Home/bin"; do
   if [ -d "$APP_DIRECTORY/$f" ]; then
     find "$APP_DIRECTORY/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -perm +111 \) \
       -exec codesign --timestamp \
-      -v -s "$JB_CERT" --options=runtime \
+      -v -s "$JB_CERT" --options=runtime --force \
       --entitlements entitlements.xml {} \;
   fi
 done
