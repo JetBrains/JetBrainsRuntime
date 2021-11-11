@@ -323,7 +323,10 @@ static const char *grayGammaTextShaderSource =
     "{"
         "float a = src_adj.a;"
         "vec3 col = src_adj.rgb;"
-
+        // Convert from ARGB_PRE
+        "if (a > 0.0) {"
+           "col = col/a;"
+        "}"
         // calculate brightness of the fragment
         "float b = dot(col, vec3(1.0/3.0, 1.0/3.0, 1.0/3.0))*a;"
 
