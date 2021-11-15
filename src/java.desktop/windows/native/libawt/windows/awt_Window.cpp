@@ -1720,9 +1720,8 @@ void AwtWindow::SendWindowEvent(jint id, HWND opposite,
     env->DeleteLocalRef(target); target = NULL;
     CHECK_NULL(event);
 
-    if (AwtComponent::sm_priorityFocusEvents &&
-        (id == java_awt_event_WindowEvent_WINDOW_GAINED_FOCUS ||
-         id == java_awt_event_WindowEvent_WINDOW_LOST_FOCUS))
+    if (id == java_awt_event_WindowEvent_WINDOW_GAINED_FOCUS ||
+        id == java_awt_event_WindowEvent_WINDOW_LOST_FOCUS)
     {
         SendPriorityEvent(event);
     } else {
