@@ -32,6 +32,8 @@ import java.util.Locale;
 
 import javax.swing.UIManager;
 import sun.swing.SwingUtilities2;
+import sun.swing.text.GlyphViewAccessor;
+
 import static sun.swing.SwingUtilities2.IMPLIED_CR;
 
 /**
@@ -787,7 +789,17 @@ public class GlyphView extends View implements TabableView, Cloneable {
         return breakSpot;
     }
 
-    protected int[] calcBreakSpots(BreakIterator breaker) {
+    static {
+        GlyphViewAccessor.setAccessor(new GlyphViewAccessor() {
+            @Override
+            public int[] calcBreakSpots(GlyphView glyphView, BreakIterator breaker) {
+                return glyphView.calcBreakSpots(breaker);
+            }
+        });
+    }
+
+    // TODO: convert to protected method (removing accessor) when upstreaming the fix
+    int[] calcBreakSpots(BreakIterator breaker) {
         int start = getStartOffset();
         int end = getEndOffset();
         int[] bs = new int[end + 1 - start];

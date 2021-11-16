@@ -24,6 +24,8 @@
  */
 package javax.swing.text.html;
 
+import sun.swing.text.GlyphViewAccessor;
+
 import java.awt.*;
 import java.text.BreakIterator;
 import java.util.Locale;
@@ -242,7 +244,7 @@ public class InlineView extends LabelView {
                     Container c = getContainer();
                     Locale locale = (c == null ? Locale.getDefault() : c.getLocale());
                     BreakIterator breaker = BreakIterator.getCharacterInstance(locale);
-                    int[] breakSpots = calcBreakSpots(breaker);
+                    int[] breakSpots = GlyphViewAccessor.getAccessor().calcBreakSpots(this, breaker);
                     int lastBreak = endOffset;
                     for (int breakSpot : breakSpots) {
                         wrapAnywhereMinimumSpan = Math.max(wrapAnywhereMinimumSpan,
