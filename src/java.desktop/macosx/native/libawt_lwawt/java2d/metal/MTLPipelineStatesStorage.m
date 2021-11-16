@@ -307,7 +307,7 @@ static void setBlendingFactors(
 ) {
     const long compositeRule = composite != nil ? [composite getRule] : RULE_Src;
 
-    if ((compositeRule == RULE_Src || compositeRule == RULE_SrcOver) &&
+    if (compositeRule == RULE_Src &&
         (composite == nil || FLT_GE([composite getExtraAlpha], 1.0f)) &&
         (renderOptions->srcFlags.isOpaque))
     {
