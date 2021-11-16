@@ -495,8 +495,10 @@ public class CSS implements Serializable {
 
         /**
          * CSS attribute "overflow-wrap".
+         *
+         * TODO: make public when upstreaming the fix
          */
-        public static final Attribute OVERFLOW_WRAP =
+        static final Attribute OVERFLOW_WRAP =
                 new Attribute("overflow-wrap", "normal", true);
 
         /**
