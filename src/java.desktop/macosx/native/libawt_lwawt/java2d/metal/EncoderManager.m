@@ -40,12 +40,10 @@ const SurfaceRasterFlags defaultRasterFlags = { JNI_FALSE, JNI_TRUE };
 - (id)init;
 - (void)dealloc;
 
-- (void)     reset:(id<MTLTexture>)destination
-       isDstOpaque:(jboolean)isDstOpaque
-isDstPremultiplied:(jboolean)isDstPremultiplied
-              isAA:(jboolean)isAA
-         isGMCText:(jboolean)isGMCText
-             isLCD:(jboolean)isLCD;
+- (void)reset:(id<MTLTexture>)destination
+         isAA:(jboolean)isAA
+    isGMCText:(jboolean)isGMCText
+        isLCD:(jboolean)isLCD;
 
 - (void)updateEncoder:(id<MTLRenderCommandEncoder>)encoder
               context:(MTLContext *)mtlc
@@ -63,7 +61,6 @@ isDstPremultiplied:(jboolean)isDstPremultiplied
 
     // Persistent encoder properties
     id<MTLTexture> _destination;
-    SurfaceRasterFlags _dstFlags;
 
     jboolean _isAA;
     jboolean _isGMCText;
@@ -121,14 +118,10 @@ isDstPremultiplied:(jboolean)isDstPremultiplied
 }
 
 - (void)reset:(id<MTLTexture>)destination
-           isDstOpaque:(jboolean)isDstOpaque
-    isDstPremultiplied:(jboolean)isDstPremultiplied
-                  isAA:(jboolean)isAA
-                  isGMCText:(jboolean)isGMCText
-                  isLCD:(jboolean)isLCD {
+         isAA:(jboolean)isAA
+    isGMCText:(jboolean)isGMCText
+        isLCD:(jboolean)isLCD {
     _destination = destination;
-    _dstFlags.isOpaque = isDstOpaque;
-    _dstFlags.isPremultiplied = isDstPremultiplied;
     _isAA = isAA;
     _isGMCText = isGMCText;
     _isLCD = isLCD;
@@ -286,20 +279,20 @@ isDstPremultiplied:(jboolean)isDstPremultiplied
 
 - (id<MTLRenderCommandEncoder> _Nonnull)getAARenderEncoder:(const BMTLSDOps * _Nonnull)dstOps {
   id<MTLTexture> dstTxt = dstOps->pTexture;
-  RenderOptions roptions = {JNI_FALSE, JNI_TRUE, INTERPOLATION_NEAREST_NEIGHBOR, defaultRasterFlags, {dstOps->isOpaque, JNI_TRUE}, JNI_FALSE, JNI_FALSE, JNI_FALSE};
+  RenderOptions roptions = {JNI_FALSE, JNI_TRUE, INTERPOLATION_NEAREST_NEIGHBOR, defaultRasterFlags, JNI_FALSE, JNI_FALSE, JNI_FALSE};
   return [self getEncoder:dstTxt renderOptions:&roptions];
 }
 
 - (id<MTLRenderCommandEncoder> _Nonnull)getAAShaderRenderEncoder:(const BMTLSDOps * _Nonnull)dstOps
 {
-    RenderOptions roptions = {JNI_FALSE, JNI_FALSE, INTERPOLATION_NEAREST_NEIGHBOR, defaultRasterFlags, {dstOps->isOpaque, JNI_TRUE}, JNI_FALSE, JNI_FALSE, JNI_TRUE};
+    RenderOptions roptions = {JNI_FALSE, JNI_FALSE, INTERPOLATION_NEAREST_NEIGHBOR, defaultRasterFlags, JNI_FALSE, JNI_FALSE, JNI_TRUE};
     return [self getEncoder:dstOps->pTexture renderOptions:&roptions];
 }
 
 - (id<MTLRenderCommandEncoder> _Nonnull)getRenderEncoder:(id<MTLTexture> _Nonnull)dest
                                              isDstOpaque:(bool)isOpaque
 {
-    RenderOptions roptions = {JNI_FALSE, JNI_FALSE, INTERPOLATION_NEAREST_NEIGHBOR, defaultRasterFlags, {isOpaque, JNI_TRUE}, JNI_FALSE, JNI_FALSE, JNI_FALSE};
+    RenderOptions roptions = {JNI_FALSE, JNI_FALSE, INTERPOLATION_NEAREST_NEIGHBOR, defaultRasterFlags, JNI_FALSE, JNI_FALSE, JNI_FALSE};
     return [self getEncoder:dest renderOptions:&roptions];
 }
 
@@ -327,7 +320,7 @@ isDstPremultiplied:(jboolean)isDstPremultiplied
                                                isSrcOpaque:(bool)isSrcOpaque
                                                isDstOpaque:(bool)isDstOpaque
 {
-    RenderOptions roptions = {JNI_TRUE, JNI_FALSE, INTERPOLATION_NEAREST_NEIGHBOR, {isSrcOpaque, JNI_TRUE }, {isDstOpaque, JNI_TRUE}, JNI_FALSE, JNI_TRUE, JNI_FALSE};
+    RenderOptions roptions = {JNI_TRUE, JNI_FALSE, INTERPOLATION_NEAREST_NEIGHBOR, {isSrcOpaque, JNI_TRUE }, JNI_FALSE, JNI_TRUE, JNI_FALSE};
     return [self getEncoder:dest renderOptions:&roptions];
 }
 
@@ -337,7 +330,7 @@ isDstPremultiplied:(jboolean)isDstPremultiplied
                                     interpolation:(int)interpolation
                                              isAA:(jboolean)isAA
 {
-    RenderOptions roptions = {JNI_TRUE, isAA, interpolation, { isSrcOpaque, JNI_TRUE }, {isDstOpaque, JNI_TRUE}, JNI_FALSE, JNI_FALSE, JNI_FALSE};
+    RenderOptions roptions = {JNI_TRUE, isAA, interpolation, { isSrcOpaque, JNI_TRUE }, JNI_FALSE, JNI_FALSE, JNI_FALSE};
     return [self getEncoder:dest renderOptions:&roptions];
 }
 
@@ -354,7 +347,7 @@ isDstPremultiplied:(jboolean)isDstPremultiplied
                                         gammaCorrection:(bool)gmc
 {
     RenderOptions roptions = {JNI_TRUE, JNI_FALSE, INTERPOLATION_NEAREST_NEIGHBOR, { isSrcOpaque, JNI_TRUE },
-                              {dstOps->isOpaque, JNI_TRUE}, gmc, JNI_FALSE, JNI_FALSE};
+                              gmc, JNI_FALSE, JNI_FALSE};
     return [self getEncoder:dstOps->pTexture renderOptions:&roptions];
 }
 
@@ -437,8 +430,6 @@ isDstPremultiplied:(jboolean)isDstPremultiplied
     _encoder = [[cbw getCommandBuffer] renderCommandEncoderWithDescriptor:rpd];
 
     [_encoderStates reset:dest
-              isDstOpaque:renderOptions->dstFlags.isOpaque
-       isDstPremultiplied:YES
                      isAA:renderOptions->isAA
                 isGMCText:renderOptions->isGMCText
                     isLCD:renderOptions->isLCD];
