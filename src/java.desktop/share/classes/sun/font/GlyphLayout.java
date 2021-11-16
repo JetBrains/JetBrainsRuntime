@@ -81,6 +81,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import static java.lang.Character.*;
 
 public final class GlyphLayout {
+    /**
+     * A flag to layoutGlyphVector requesting to disable detection of paired characters
+     * when splitting text into scripts.
+     *
+     * TODO: move to java.awt.Font when upstreaming the fix
+     */
+    private static final int LAYOUT_NO_PAIRED_CHARS_AT_SCRIPT_SPLIT = 8;
+
     // data for glyph vector
     private GVData _gvdata;
 
@@ -360,7 +368,7 @@ public final class GlyphLayout {
 
         init(count);
 
-        boolean handlePairedChars = (flags & Font.LAYOUT_NO_PAIRED_CHARS_AT_SCRIPT_SPLIT) == 0;
+        boolean handlePairedChars = (flags & LAYOUT_NO_PAIRED_CHARS_AT_SCRIPT_SPLIT) == 0;
 
         // need to set after init
         // go through the back door for this
