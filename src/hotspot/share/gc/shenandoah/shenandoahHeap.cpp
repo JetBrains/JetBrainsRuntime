@@ -1735,7 +1735,9 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
       }
 
     case _degenerated_mark:
-      op_final_mark();
+      if (is_concurrent_mark_in_progress()) {
+        op_final_mark();
+      }
       if (cancelled_gc()) {
         op_degenerated_fail();
         return;
