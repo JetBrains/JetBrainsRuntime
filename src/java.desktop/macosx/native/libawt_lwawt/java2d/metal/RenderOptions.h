@@ -35,7 +35,6 @@ typedef struct {
     jboolean isAA;
     int interpolation;
     SurfaceRasterFlags srcFlags;
-    SurfaceRasterFlags dstFlags;
     jboolean isGMCText;
     jboolean isLCD;
     jboolean isAAShader;

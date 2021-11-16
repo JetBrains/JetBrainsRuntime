@@ -488,8 +488,7 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via sampling]");
 #endif //TRACE_ISOBLIT
     drawTex2Tex(mtlc, srcTex, dstTex,
-            [mtlc.composite getRule] == java_awt_AlphaComposite_SRC ? JNI_TRUE : srcOps->isOpaque,
-            dstOps->isOpaque,
+            srcOps->isOpaque, dstOps->isOpaque,
             hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 }
 
@@ -597,7 +596,8 @@ MTLBlitLoops_Blit(JNIEnv *env,
 
 #ifdef TRACE_BLIT
             J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE,
-                    "MTLBlitLoops_Blit [tx=%d, xf=%d, AC=%s]: bdst=%s, src=%p (%dx%d) O=%d premul=%d | (%d, %d, %d, %d)->(%1.2f, %1.2f, %1.2f, %1.2f)",
+                    "MTLBlitLoops_Blit srctype=%d [tx=%d, xf=%d, AC=%s]: bdst=%s, src=%p (%dx%d) O=%d premul=%d | (%d, "
+                    "%d, %d, %d)->(%1.2f, %1.2f, %1.2f, %1.2f)", srctype,
                     texture, xform, [mtlc getCompositeDescription].cString,
                     getSurfaceDescription(dstOps).cString, srcOps,
                     sx2 - sx1, sy2 - sy1,
