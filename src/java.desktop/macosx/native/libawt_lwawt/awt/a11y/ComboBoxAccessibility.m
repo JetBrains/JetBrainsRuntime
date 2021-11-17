@@ -53,4 +53,9 @@ DECLARE_CLASS_ONLY(sjc_CAccessibility);
     return [[self accessibleSelection] accessibilityLabel];
 }
 
+- (NSArray *)accessibilitySelectedChildren
+{
+    return [NSArray arrayWithObject:[self accessibleSelection]];
+}
+
 @end
