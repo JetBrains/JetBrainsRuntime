@@ -170,12 +170,16 @@ final class CAccessible extends CFRetainedResource implements Accessible {
                         treeNodeCollapsed(ptr);
                     }
 
+                    if (thisRole == AccessibleRole.COMBO_BOX) {
+                        selectionChanged(ptr);
+                    }
+
                     if (thisRole == AccessibleRole.POPUP_MENU) {
-                        if ( newValue != null &&
-                                ((AccessibleState)newValue) == AccessibleState.VISIBLE ) {
+                        if (newValue != null &&
+                                ((AccessibleState) newValue) == AccessibleState.VISIBLE) {
                             menuOpened(ptr);
-                        } else if ( oldValue != null &&
-                                ((AccessibleState)oldValue) == AccessibleState.VISIBLE ) {
+                        } else if (oldValue != null &&
+                                ((AccessibleState) oldValue) == AccessibleState.VISIBLE) {
                             menuClosed(ptr);
                         }
                     } else if (thisRole == AccessibleRole.MENU_ITEM ||
