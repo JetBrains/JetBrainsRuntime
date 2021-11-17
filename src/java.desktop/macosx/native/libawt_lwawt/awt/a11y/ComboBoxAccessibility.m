@@ -59,4 +59,9 @@ static jmethodID sjm_getAccessibleName = NULL;
     return [[self accessibleSelection] accessibilityLabel];
 }
 
+- (NSArray *)accessibilitySelectedChildren
+{
+    return [NSArray arrayWithObject:[self accessibleSelection]];
+}
+
 @end
