@@ -809,6 +809,19 @@ bool BlockBegin::try_merge(ValueStack* new_state) {
         }
       }
 
+      for_each_stack_value(existing_state, index, existing_value) {
+        if ( !(existing_value->as_Phi() != NULL && existing_value->as_Phi()->block() == this)) {
+          TRACE_PHI(tty->print_cr("Re-entered loop head without existing phi for stack - bailout"));
+          return false;
+        }
+      }
+      for_each_local_value(existing_state, index, existing_value) {
+        if (!(existing_value == new_state->local_at(index) || (existing_value->as_Phi() != NULL && existing_value->as_Phi()->as_Phi()->block() == this))) {
+          TRACE_PHI(tty->print_cr("Re-entered loop head without existing phi for modified local - bailout"));
+          return false;
+        }
+      }
+
 #ifdef ASSERT
       // check that all necessary phi functions are present
       for_each_stack_value(existing_state, index, existing_value) {
