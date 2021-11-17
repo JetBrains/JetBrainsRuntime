@@ -160,7 +160,11 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     // This may change when later fixing issues which currently
                     // exist for combo boxes, but for now the following is only
                     // for JPopupMenus, not for combobox menus.
-                    if (parentRole != AccessibleRole.COMBO_BOX) {
+                    if (thisRole == AccessibleRole.COMBO_BOX) {
+                        selectionChanged(ptr);
+                    }
+
+//                    if (parentRole != AccessibleRole.COMBO_BOX) {
                         if (thisRole == AccessibleRole.POPUP_MENU) {
                             if ( newValue != null &&
                                  ((AccessibleState)newValue) == AccessibleState.VISIBLE ) {
@@ -174,7 +178,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
                                  ((AccessibleState)newValue) == AccessibleState.FOCUSED ) {
                                 menuItemSelected(ptr);
                             }
-                        }
+//                        }
                     }
 
                     // Do send check box state changes to native side
