@@ -57,6 +57,7 @@
 // https://gcc.gnu.org/gcc-8/changes.html
 #if !defined(__clang_major__) && (__GNUC__ >= 8)
 #define PRAGMA_STRINGOP_TRUNCATION_IGNORED PRAGMA_DISABLE_GCC_WARNING("-Wstringop-truncation")
+#define PRAGMA_MAYBE_UNINITIALIZED_IGNORED PRAGMA_DISABLE_GCC_WARNING("-Wmaybe-uninitialized")
 #endif
 
 #if defined(__clang_major__) && \
@@ -82,6 +83,10 @@
 
 #ifndef PRAGMA_STRINGOP_TRUNCATION_IGNORED
 #define PRAGMA_STRINGOP_TRUNCATION_IGNORED
+#endif
+
+#ifndef PRAGMA_MAYBE_UNINITIALIZED_IGNORED
+#define PRAGMA_MAYBE_UNINITIALIZED_IGNORED
 #endif
 
 #ifndef PRAGMA_FORMAT_NONLITERAL_IGNORED
