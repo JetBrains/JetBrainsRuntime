@@ -297,7 +297,12 @@ recompute:
     fw = 0.0;
     for (i=jz;i>=0;i--) fw += fq[i];
     y[0] = (ih==0)? fw: -fw;
+
+PRAGMA_DIAG_PUSH
+PRAGMA_MAYBE_UNINITIALIZED_IGNORED
     fw = fq[0]-fw;
+PRAGMA_DIAG_POP
+
     for (i=1;i<=jz;i++) fw += fq[i];
     y[1] = (ih==0)? fw: -fw;
     break;
