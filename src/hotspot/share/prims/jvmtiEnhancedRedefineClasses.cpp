@@ -54,7 +54,9 @@
 #include "utilities/events.hpp"
 #include "oops/constantPool.inline.hpp"
 #include "gc/cms/cmsHeap.hpp"
+#if INCLUDE_G1GC
 #include "gc/g1/g1CollectedHeap.hpp"
+#endif
 #include "gc/shared/dcevmSharedGC.hpp"
 
 Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
@@ -534,16 +536,21 @@ void VM_EnhancedRedefineClasses::doit() {
     // mark such nmethod's as "scavengable".
     // For now, mark all nmethod's as scavengable that are not scavengable already
     if (ScavengeRootsInCode) {
+#if INCLUDE_G1GC
       if (UseG1GC) {
         // G1 holds references to nmethods in regions based on oops values. Since oops in nmethod can be changed in ChangePointers* closures
         // we unregister nmethods from G1 heap, then closures are processed (oops are changed) and finally we register nmethod to G1 again
         CodeCache::nmethods_do(unregister_nmethod_g1);
       } else {
+#endif
         CodeCache::nmethods_do(mark_as_scavengable);
+#if INCLUDE_G1GC
       }
+#endif
     }
 
     Universe::heap()->ensure_parsability(false);
+#if INCLUDE_G1GC
     if (UseG1GC) {
       if (log_is_enabled(Info, redefine, class, timer)) {
         _timer_heap_iterate.start();
@@ -552,19 +559,24 @@ void VM_EnhancedRedefineClasses::doit() {
       G1CollectedHeap::heap()->object_par_iterate(&objectClosure);
       _timer_heap_iterate.stop();
     } else {
+#endif
       if (log_is_enabled(Info, redefine, class, timer)) {
         _timer_heap_iterate.start();
       }
       Universe::heap()->object_iterate(&objectClosure);
       _timer_heap_iterate.stop();
+#if INCLUDE_G1GC
     }
+#endif
 
     Universe::root_oops_do(&oopClosureNoBarrier);
 
+#if INCLUDE_G1GC
     if (UseG1GC) {
       // this should work also for other GCs
       CodeCache::nmethods_do(register_nmethod_g1);
     }
+#endif
 
   }
   log_trace(redefine, class, obsolete, metadata)("After updating instances");
