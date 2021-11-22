@@ -41,6 +41,7 @@ public class ObsoleteFlagErrorMessage {
 
     // Case 1: Newly obsolete flags with extra junk appended should not be treated as newly obsolete (8060449)
     ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+        "-XX:-IgnoreUnrecognizedVMOptions",
         "-XX:" + flag + "PlusJunk", "-version");
 
     OutputAnalyzer output = new OutputAnalyzer(pb.start());
@@ -49,6 +50,7 @@ public class ObsoleteFlagErrorMessage {
 
     // Case 2: Newly obsolete flags should be recognized as newly obsolete (8073989)
     ProcessBuilder pb2 = ProcessTools.createJavaProcessBuilder(
+        "-XX:-IgnoreUnrecognizedVMOptions",
         "-XX:+" + flag, "-version");
 
     OutputAnalyzer output2 = new OutputAnalyzer(pb2.start());
