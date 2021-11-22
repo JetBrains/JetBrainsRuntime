@@ -154,6 +154,8 @@ final class XWM
               return "Awesome";
           case DWM_WM:
               return "DWM";
+          case XWM.I3_WM:
+              return "I3WM";
           case UNDETERMINED_WM:
           default:
               return "Undetermined WM";
@@ -1483,6 +1485,8 @@ final class XWM
               return true;
           case XWM.ENLIGHTEN_WM:
               /* At least E16 is buggy. */
+              return true;
+          case XWM.I3_WM:
               return true;
           default:
               return false;
