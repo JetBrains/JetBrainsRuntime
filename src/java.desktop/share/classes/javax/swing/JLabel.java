@@ -1086,7 +1086,8 @@ public class JLabel extends JComponent implements SwingConstants, Accessible
             if (name == null) {
                 name = super.getAccessibleName();
             }
-            if ((JLabel.this.getIcon() != null) && name.isEmpty()) {
+            if ((JLabel.this.getIcon() != null) &&
+                    (name == null || name.isEmpty())) {
                 name = "Image";
             }
             return name;
