@@ -98,7 +98,7 @@ public class XKeyboardFocusManagerPeer extends KeyboardFocusManagerPeerImpl {
     {
         return KeyboardFocusManagerPeerImpl.deliverFocus(lightweightChild,
                                                          target,
-                                                         false,
+                                                         true,
                                                          cause,
                                                          getInstance().getCurrentFocusOwner());
     }
