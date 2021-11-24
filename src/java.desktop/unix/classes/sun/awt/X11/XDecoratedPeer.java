@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import sun.awt.IconInfo;
+import sun.awt.PeerEvent;
 import sun.util.logging.PlatformLogger;
 
 import sun.awt.AWTAccessor;
@@ -1306,7 +1307,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
              * WM_TAKE_FOCUS (when FocusIn is generated via XSetInputFocus call) but
              * definetely before the Frame gets FocusIn event (when this method is called).
              */
-            postEvent(new InvocationEvent(target, new Runnable() {
+            postEvent(new PeerEvent(target, new Runnable() {
                 public void run() {
                     XWindowPeer fw = null;
                     synchronized (getStateLock()) {
@@ -1318,7 +1319,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
                     }
                     fw.handleWindowFocusIn_Dispatch();
                 }
-            }));
+            }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
         }
     }
 
