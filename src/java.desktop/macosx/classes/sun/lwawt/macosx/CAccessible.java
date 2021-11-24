@@ -89,6 +89,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
     private static native void treeNodeExpanded(long ptr);
     private static native void treeNodeCollapsed(long ptr);
     private static native void selectedCellsChanged(long ptr);
+    private static native void tableContentCacheClear(long ptr);
 
     private Accessible accessible;
 
@@ -145,6 +146,13 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     timer.start();
                 } else if (name.equals(ACCESSIBLE_TABLE_MODEL_CHANGED)) {
                     execute(ptr -> valueChanged(ptr));
+                    if (CAccessible.getSwingAccessible(CAccessible.this) != null) {
+                        Accessible a = CAccessible.getSwingAccessible(CAccessible.this);
+                        AccessibleContext ac = a.getAccessibleContext();
+                        if ((ac != null) && (ac.getAccessibleRole() == AccessibleRole.TABLE)) {
+                            execute(ptr -> tableContentCacheClear(ptr));
+                        }
+                    }
                 } else if (name.equals(ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY)) {
                     if (newValue == null || newValue instanceof AccessibleContext) {
                         activeDescendant = (AccessibleContext)newValue;
