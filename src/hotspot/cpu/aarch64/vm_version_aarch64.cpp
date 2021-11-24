@@ -217,6 +217,9 @@ void VM_Version::initialize() {
       warning("UseAESIntrinsics enabled, but UseAES not, enabling");
       UseAES = true;
     }
+    if (FLAG_IS_DEFAULT(UseAESCTRIntrinsics)) {
+      FLAG_SET_DEFAULT(UseAESCTRIntrinsics, false);
+    }
   } else {
     if (UseAES) {
       warning("AES instructions are not available on this CPU");
@@ -226,11 +229,10 @@ void VM_Version::initialize() {
       warning("AES intrinsics are not available on this CPU");
       FLAG_SET_DEFAULT(UseAESIntrinsics, false);
     }
-  }
-
-  if (UseAESCTRIntrinsics) {
-    warning("AES/CTR intrinsics are not available on this CPU");
-    FLAG_SET_DEFAULT(UseAESCTRIntrinsics, false);
+    if (UseAESCTRIntrinsics) {
+      warning("AES/CTR intrinsics are not available on this CPU");
+      FLAG_SET_DEFAULT(UseAESCTRIntrinsics, false);
+    }
   }
 
   if (FLAG_IS_DEFAULT(UseCRC32Intrinsics)) {
