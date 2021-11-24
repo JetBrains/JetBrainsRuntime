@@ -154,6 +154,7 @@ module java.base {
         java.management,
         java.naming,
         java.rmi,
+        jdk.charsets,
         jdk.jartool,
         jdk.jlink,
         jdk.net,
