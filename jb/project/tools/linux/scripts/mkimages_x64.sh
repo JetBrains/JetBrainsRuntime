@@ -50,7 +50,9 @@ function do_configure {
     --with-version-build="$JDK_BUILD_NUMBER" \
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
-    --enable-cds=yes || do_exit $?
+    --enable-cds=yes \
+    $REPRODUCIBLE_BUILD_OPTS \
+    || do_exit $?
 }
 
 function create_image_bundle {
@@ -79,8 +81,14 @@ function create_image_bundle {
   [ -f "$IMAGES_DIR"/"$__arch_name"/lib/jcef_helper ] && chmod a+x "$IMAGES_DIR"/"$__arch_name"/lib/jcef_helper
 
   echo Creating "$JBR".tar.gz ...
-  tar -pcf "$JBR".tar -C "$IMAGES_DIR" "$__arch_name" || do_exit $?
+
+  (cd "$IMAGES_DIR" &&
+    find "$__arch_name" -print0 | LC_ALL=C sort -z | \
+    tar $REPRODUCIBLE_TAR_OPTS \
+      --no-recursion --null -T - -cf "$JBR".tar) || do_exit $?
+  mv "$IMAGES_DIR"/"$JBR".tar ./"$JBR".tar
   [ -f "$JBR".tar.gz ] && rm "$JBR.tar.gz"
+  touch -c -d "@$SOURCE_DATE_EPOCH" "$JBR".tar
   gzip "$JBR".tar || do_exit $?
   rm -rf "${IMAGES_DIR:?}"/"$__arch_name"
 }
