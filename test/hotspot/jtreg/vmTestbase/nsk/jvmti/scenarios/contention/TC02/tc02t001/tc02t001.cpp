@@ -27,9 +27,7 @@
 #include "agent_common.h"
 #include "jvmti_tools.h"
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
 /* ========================================================================== */
 
@@ -391,6 +389,4 @@ Java_nsk_jvmti_scenarios_contention_TC02_tc02t001_enterEventsCount(JNIEnv* jni, 
 
 /* ========================================================================== */
 
-#ifdef __cplusplus
 }
-#endif
