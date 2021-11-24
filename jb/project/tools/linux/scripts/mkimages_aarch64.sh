@@ -35,7 +35,9 @@ sh configure \
   --with-version-build="${JDK_BUILD_NUMBER}" \
   --with-version-opt=b${build_number} \
   --with-boot-jdk=${BOOT_JDK} \
-  --enable-cds=yes || exit $?
+  --enable-cds=yes \
+  $REPRODUCIBLE_BUILD_OPTS \
+  || exit $?
 make clean CONF=linux-aarch64-server-release || exit $?
 make images CONF=linux-aarch64-server-release test-image || exit $?
 
@@ -54,9 +56,11 @@ echo Creating $JBSDK.tar.gz ...
 sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
 mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
 
-tar -pcf $JBSDK.tar \
+# NB: --sort=name requires tar1.28
+tar $REPRODUCIBLE_TAR_OPTS --sort=name -pcf $JBSDK.tar \
   --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
   -C $BASE_DIR ${JBRSDK_BUNDLE} || exit $?
+touch -c -d @$SOURCE_DATE_EPOCH $JBRSDK.tar
 gzip $JBSDK.tar || exit $?
 
 JBR_BUNDLE=jbr
@@ -75,7 +79,8 @@ echo Modifying release info ...
 grep -v \"^JAVA_VERSION\" ${JSDK}/release | grep -v \"^MODULES\" >> ${BASE_DIR}/${JBR_BUNDLE}/release
 
 echo Creating $JBR.tar.gz ...
-tar -pcf $JBR.tar -C $BASE_DIR ${JBR_BUNDLE} || exit $?
+tar $REPRODUCIBLE_TAR_OPTS --sort=name -pcf $JBR.tar -C $BASE_DIR ${JBR_BUNDLE} || exit $?
+touch -c -d @$SOURCE_DATE_EPOCH $JBR.tar
 gzip $JBR.tar || exit $?
 
 JBRSDK_TEST=$JBRSDK_BASE_NAME-linux-test-aarch64-b$build_number
