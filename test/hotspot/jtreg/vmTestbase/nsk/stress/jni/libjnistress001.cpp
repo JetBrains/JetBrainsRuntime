@@ -28,9 +28,7 @@
 #include <stdlib.h>
 #include "jnihelper.h"
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
 #define DIGESTLENGTH 16
 
@@ -245,6 +243,4 @@ Java_nsk_stress_jni_JNIter001_jnistress1(JNIEnv *env, jobject jobj, jstring jstr
     return(env->NewString(javachars->str[index-1],elem_len));
 }
 
-#ifdef __cplusplus
 }
-#endif
