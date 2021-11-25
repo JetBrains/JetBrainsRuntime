@@ -128,7 +128,7 @@ function create_jbr {
   mkdir -p ${JRE_CONTENTS}
 
   JBR=${JBR_BASE_NAME}-osx-${architecture}-b${build_number}
-  PKG_NAME=${JBR_BASE_NAME}-b${build_number}
+  PKG_NAME=${JBR_BASE_NAME}-${architecture}-b${build_number}
 
   echo Running jlink....
   ${BASE_DIR}/$JBRSDK_BUNDLE/Contents/Home/bin/jlink \
@@ -218,7 +218,7 @@ if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
   [ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
 
-  PKG_NAME=${JBRSDK_BASE_NAME}-b${build_number}
+  PKG_NAME=${JBRSDK_BASE_NAME}-${architecture}-b${build_number}
 
   COPYFILE_DISABLE=1 tar -pczf ${JBR}.tar.gz --exclude='*.dSYM' --exclude='man' -C ${BASE_DIR} ${PKG_NAME} || do_exit $?
 
