@@ -25,14 +25,14 @@
 
 package sun.lwawt.macosx;
 
-import java.awt.Component;
+import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.security.PrivilegedAction;
 
 import javax.accessibility.Accessible;
 import javax.accessibility.AccessibleContext;
-import javax.swing.JProgressBar;
-import javax.swing.JSlider;
+import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -48,6 +48,20 @@ import sun.awt.AWTAccessor;
 
 
 class CAccessible extends CFRetainedResource implements Accessible {
+    private static Timer timer = null;
+    private final static int SELECTED_CHILDREN_MILLISECONDS_DEFAULT = 100;
+    private static int SELECTED_CHILDREN_MILLISECONDS;
+
+    static {
+        int scms = java.security.AccessController.doPrivileged(new PrivilegedAction<Integer>() {
+                    @Override
+                    public Integer run() {
+                        return Integer.getInteger("sun.lwawt.macosx.CAccessible.selectedChildrenMilliSeconds",
+                                SELECTED_CHILDREN_MILLISECONDS_DEFAULT);
+                    }
+                });
+        SELECTED_CHILDREN_MILLISECONDS = scms >= 0 ? scms : SELECTED_CHILDREN_MILLISECONDS_DEFAULT;
+    }
 
     public static CAccessible getCAccessible(final Accessible a) {
         if (a == null) return null;
@@ -120,23 +134,29 @@ class CAccessible extends CFRetainedResource implements Accessible {
 
         @Override
         public void propertyChange(PropertyChangeEvent e) {
+            assert EventQueue.isDispatchThread();
             String name = e.getPropertyName();
             if ( ptr != 0 ) {
                 Object newValue = e.getNewValue();
                 Object oldValue = e.getOldValue();
                 if (name.compareTo(ACCESSIBLE_CARET_PROPERTY) == 0) {
-                    selectedTextChanged(ptr);
+                    execute(ptr -> selectedTextChanged(ptr));
                 } else if (name.compareTo(ACCESSIBLE_TEXT_PROPERTY) == 0 ) {
-                    valueChanged(ptr);
+                    execute(ptr -> valueChanged(ptr));
                 } else if (name.compareTo(ACCESSIBLE_SELECTION_PROPERTY) == 0 ) {
-                    selectionChanged(ptr);
+                    if (timer != null) {
+                        timer.stop();
+                    }
+                    timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> execute(ptr -> selectionChanged(ptr)));
+                    timer.setRepeats(false);
+                    timer.start();
                 } else if (name.compareTo(ACCESSIBLE_TABLE_MODEL_CHANGED) == 0) {
-                    valueChanged(ptr);
+                    execute(ptr -> valueChanged(ptr));
                     if (CAccessible.getSwingAccessible(CAccessible.this) != null) {
                         Accessible a = CAccessible.getSwingAccessible(CAccessible.this);
                         AccessibleContext ac = a.getAccessibleContext();
                         if ((ac != null) && (ac.getAccessibleRole() == AccessibleRole.TABLE)) {
-                            tableContentCacheClear(ptr);
+                            execute(ptr -> tableContentCacheClear(ptr));
                         }
                     }
                 } else if (name.compareTo(ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY) == 0 ) {
@@ -152,7 +172,12 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         parentRole = parentAccessible.getAccessibleContext().getAccessibleRole();
                     }
                     if (thisRole == AccessibleRole.COMBO_BOX) {
-                        selectionChanged(ptr);
+                        if (timer != null) {
+                            timer.stop();
+                        }
+                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> execute(ptr -> selectionChanged(ptr)));
+                        timer.setRepeats(false);
+                        timer.start();
                     }
                     // At least for now don't handle combo box menu state changes.
                     // This may change when later fixing issues which currently
@@ -162,15 +187,15 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         if (thisRole == AccessibleRole.POPUP_MENU) {
                             if ( newValue != null &&
                                  ((AccessibleState)newValue) == AccessibleState.VISIBLE ) {
-                                    menuOpened(ptr);
+                                execute(ptr -> menuOpened(ptr));
                             } else if ( oldValue != null &&
                                         ((AccessibleState)oldValue) == AccessibleState.VISIBLE ) {
-                                menuClosed(ptr);
+                                execute(ptr -> menuClosed(ptr));
                             }
                         } else if (thisRole == AccessibleRole.MENU_ITEM) {
                             if ( newValue != null &&
                                  ((AccessibleState)newValue) == AccessibleState.FOCUSED ) {
-                                menuItemSelected(ptr);
+                                execute(ptr -> menuItemSelected(ptr));
                             }
                         //}
                     }
