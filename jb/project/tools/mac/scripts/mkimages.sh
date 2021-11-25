@@ -201,7 +201,7 @@ make images CONF=$CONF_NAME || do_exit $?
 JSDK=build/${CONF_NAME}/images/jdk-bundle
 
 BASE_DIR=jre
-JBRSDK_BUNDLE=jbrsdk
+JBRSDK_BUNDLE=${JBRSDK_BASE_NAME}-b${build_number}
 
 rm -rf $BASE_DIR
 mkdir $BASE_DIR || do_exit $?
@@ -217,10 +217,15 @@ if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
   sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
   [ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
+
+  PKG_NAME=${JBRSDK_BASE_NAME}-b${build_number}
+
+  COPYFILE_DISABLE=1 tar -pczf ${JBR}.tar.gz --exclude='*.dSYM' --exclude='man' -C ${BASE_DIR} ${PKG_NAME} || do_exit $?
+
   COPYFILE_DISABLE=1 tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
     --exclude='.DS_Store' --exclude='*~' \
     --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
-    ${JBRSDK_BUNDLE} || do_exit $?
+    ${PKG_NAME} || do_exit $?
 fi
 
 create_jbr || do_exit $?
