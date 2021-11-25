@@ -128,6 +128,7 @@ function create_jbr {
   mkdir -p ${JRE_CONTENTS}
 
   JBR=${JBR_BASE_NAME}-osx-${architecture}-b${build_number}
+  PKG_NAME=${JBR_BASE_NAME}-b${build_number}
 
   echo Running jlink....
   ${BASE_DIR}/$JBRSDK_BUNDLE/Contents/Home/bin/jlink \
@@ -148,10 +149,10 @@ function create_jbr {
   fi
 
   echo Creating ${JBR}.tar.gz ...
-  rm -rf ${BASE_DIR}/jbr
-  cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
+  rm -rf ${BASE_DIR}/${PKG_NAME}
+  cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/${PKG_NAME}
 
-  COPYFILE_DISABLE=1 tar -pczf ${JBR}.tar.gz --exclude='*.dSYM' --exclude='man' -C ${BASE_DIR} jbr || do_exit $?
+  COPYFILE_DISABLE=1 tar -pczf ${JBR}.tar.gz --exclude='*.dSYM' --exclude='man' -C ${BASE_DIR} ${PKG_NAME} || do_exit $?
   rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 }
 
@@ -193,7 +194,7 @@ esac
 
 if [ -z "$INC_BUILD" ]; then
   do_configure || do_exit $?
-  make clean CONF=$RELEASE_NAME || do_exit $?
+  make clean CONF=$CONF_NAME || do_exit $?
 fi
 make images CONF=$CONF_NAME || do_exit $?
 

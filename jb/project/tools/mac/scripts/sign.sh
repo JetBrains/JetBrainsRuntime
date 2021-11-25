@@ -1,8 +1,11 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # Copyright 2000-2021 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 APP_DIRECTORY=$1
-JB_CERT=$2
+APP_NAME=$2
+BUNDLE_ID=$3
+JB_CERT=$4
+
 
 if [[ -z "$APP_DIRECTORY" ]] || [[ -z "$JB_CERT" ]]; then
   echo "Usage: $0 AppDirectory CertificateID"
@@ -90,6 +93,19 @@ codesign --timestamp \
   -v -s "$JB_CERT" --options=runtime \
   --force \
   --entitlements entitlements.xml "$APP_DIRECTORY"
+
+BUILD_NAME=$(echo $APP_DIRECTORY | awk -F"/" '{ print $2 }')
+
+log "Creating $BUILD_NAME.pkg..."
+rm -rf "$BUILD_NAME.pkg"
+pkgbuild --identifier $BUNDLE_ID --sign "Developer ID Installer: JetBrains s.r.o. (2ZEFAR8TH3)" --root $APP_DIRECTORY \
+    --install-location /Library/Java/JavaVirtualMachines/${BUILD_NAME} ${APP_NAME}.pkg
+
+#log "Signing whole app..."
+#codesign --timestamp \
+#  -v -s "$JB_CERT" --options=runtime \
+#  --force \
+#  --entitlements entitlements.xml $APP_NAME.pkg
 
 log "Verifying java is not broken"
 find "$APP_DIRECTORY" \

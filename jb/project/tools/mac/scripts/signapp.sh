@@ -13,7 +13,8 @@ USERNAME=$3
 PASSWORD=$4
 CODESIGN_STRING=$5
 NOTARIZE=$6
-BUNDLE_ID=$(echo $7".jdk" | sed 's/_/\./g')
+#BUNDLE_ID=$(echo $7".jdk" | sed 's/_/\./g')
+BUNDLE_ID=$7
 
 cd "$(dirname "$0")"
 
@@ -43,6 +44,7 @@ fi
 log "$INPUT_FILE extracted and removed"
 
 APPLICATION_PATH="$EXPLODED/$BUILD_NAME"
+APP_NAME=$(echo ${INPUT_FILE} | awk -F".tar" '{ print $1 }')
 
 find "$APPLICATION_PATH/Contents/Home/bin" \
   -maxdepth 1 -type f -name '*.jnilib' -print0 |
@@ -79,7 +81,7 @@ limit=3
 set +e
 while [[ $attempt -le $limit ]]; do
   log "Signing (attempt $attempt) $APPLICATION_PATH ..."
-  ./sign.sh "$APPLICATION_PATH" "$CODESIGN_STRING"
+  ./sign.sh "$APPLICATION_PATH" "$APP_NAME" "$BUNDLE_ID" "$CODESIGN_STRING"
   ec=$?
   if [[ $ec -ne 0 ]]; then
     ((attempt += 1))
@@ -103,13 +105,12 @@ if [ "$NOTARIZE" = "yes" ]; then
   log "Notarizing..."
   # shellcheck disable=SC1090
   source "$HOME/.notarize_token"
-  APP_NAME=$(echo ${INPUT_FILE} | awk -F".tar" '{ print $1 }')
   # Since notarization tool uses same file for upload token we have to trick it into using different folders, hence fake root
   # Also it leaves copy of zip file in TMPDIR, so notarize.sh overrides it and uses FAKE_ROOT as location for temp TMPDIR
   FAKE_ROOT="$(pwd)/fake-root"
   mkdir -p "$FAKE_ROOT"
   echo "Notarization will use fake root: $FAKE_ROOT"
-  ./notarize.sh "$APPLICATION_PATH" "$APPLE_USERNAME" "$APPLE_PASSWORD" "$APP_NAME" "$BUNDLE_ID" "$FAKE_ROOT"
+  ./notarize.sh "$APPLICATION_PATH" "$APPLE_USERNAME" "$APPLE_PASSWORD" "$APP_NAME.pkg" "$BUNDLE_ID" "$FAKE_ROOT"
   rm -rf "$FAKE_ROOT"
 
   set +e

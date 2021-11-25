@@ -56,15 +56,16 @@ function altool-upload() {
 #immediately exit script with an error if a command fails
 set -euo pipefail
 
-file="$APP_NAME.zip"
+#file="$APP_NAME.pkg"
+#log "Zipping $file..."
+#rm -rf "$file"
+#pkgbuild --identifier com.jetbrains.jbr --root $APP_DIRECTORY \
+#    --install-location /Library/Java/JavaVirtualMachines/${APP_NAME} ${APP_NAME}.pkg
+#ditto -c -k --sequesterRsrc --keepParent "$APP_DIRECTORY" "$file"
 
-log "Zipping $file..."
-rm -rf "$file"
-ditto -c -k --sequesterRsrc --keepParent "$APP_DIRECTORY" "$file"
-
-log "Notarizing $file..."
+log "Notarizing $APP_NAME..."
 rm -rf "altool.init.out" "altool.check.out"
-altool-upload "$file"
+altool-upload "$APP_NAME"
 
 #rm -rf "$file"
 
