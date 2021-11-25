@@ -26,13 +26,17 @@
 package sun.lwawt.macosx;
 
 import java.awt.Component;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.security.PrivilegedAction;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.accessibility.Accessible;
 import javax.accessibility.AccessibleContext;
-import javax.swing.JProgressBar;
-import javax.swing.JSlider;
+import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -48,6 +52,24 @@ import sun.awt.AWTAccessor;
 
 
 class CAccessible extends CFRetainedResource implements Accessible {
+    private final static AtomicReference<Timer> timer = new AtomicReference<Timer>();
+    private final static int SELECTED_CHILDREN_MILI_SECONDS_DEFAULT = 100;
+    private static int SELECTED_CHILDREN_MILI_SECONDS;
+
+    static {
+        AtomicInteger selectedCildrenMiliSecondsRef = new AtomicInteger();
+        java.security.AccessController.doPrivileged(
+                new PrivilegedAction<Void>() {
+                    @Override
+                    public Void run() {
+                        selectedCildrenMiliSecondsRef.set(
+                                Integer.getInteger("sun.lwawt.macosx.CAccessible.selectedChildrenMiliSeconds",
+                                        SELECTED_CHILDREN_MILI_SECONDS_DEFAULT));
+                        return null;
+                    }
+                });
+        SELECTED_CHILDREN_MILI_SECONDS = selectedCildrenMiliSecondsRef.get();
+    }
 
     public static CAccessible getCAccessible(final Accessible a) {
         if (a == null) return null;
@@ -129,7 +151,18 @@ class CAccessible extends CFRetainedResource implements Accessible {
                 } else if (name.compareTo(ACCESSIBLE_TEXT_PROPERTY) == 0 ) {
                     valueChanged(ptr);
                 } else if (name.compareTo(ACCESSIBLE_SELECTION_PROPERTY) == 0 ) {
-                    selectionChanged(ptr);
+                    Timer newTimer = new Timer(SELECTED_CHILDREN_MILI_SECONDS, new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            selectionChanged(ptr);
+                        }
+                    });
+                    newTimer.setRepeats(false);
+                    Timer oldTimer = timer.getAndSet(newTimer);
+                    if (oldTimer != null) {
+                        oldTimer.stop();
+                    }
+                    newTimer.start();
                 } else if (name.compareTo(ACCESSIBLE_TABLE_MODEL_CHANGED) == 0) {
                     valueChanged(ptr);
                     if (CAccessible.getSwingAccessible(CAccessible.this) != null) {
