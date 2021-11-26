@@ -26,13 +26,9 @@
 package sun.lwawt.macosx;
 
 import java.awt.Component;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.security.PrivilegedAction;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import javax.accessibility.Accessible;
 import javax.accessibility.AccessibleContext;
@@ -52,24 +48,19 @@ import sun.awt.AWTAccessor;
 
 
 class CAccessible extends CFRetainedResource implements Accessible {
-    private final static AtomicReference<Timer> timer = new AtomicReference<Timer>();
-    private final static int SELECTED_CHILDREN_MILI_SECONDS_DEFAULT = 100;
-    private static int SELECTED_CHILDREN_MILI_SECONDS;
+    private static Timer timer = null;
+    private final static int SELECTED_CHILDREN_MILLISECONDS_DEFAULT = 100;
+    private static int SELECTED_CHILDREN_MILLISECONDS;
 
     static {
-        AtomicInteger selectedCildrenMiliSecondsRef = new AtomicInteger();
-        java.security.AccessController.doPrivileged(
-                new PrivilegedAction<Void>() {
+        int scms = java.security.AccessController.doPrivileged(new PrivilegedAction<Integer>() {
                     @Override
-                    public Void run() {
-                        selectedCildrenMiliSecondsRef.set(
-                                Integer.getInteger("sun.lwawt.macosx.CAccessible.selectedChildrenMiliSeconds",
-                                        SELECTED_CHILDREN_MILI_SECONDS_DEFAULT));
-                        return null;
+                    public Integer run() {
+                        return Integer.getInteger("sun.lwawt.macosx.CAccessible.selectedChildrenMilliSeconds",
+                                SELECTED_CHILDREN_MILLISECONDS_DEFAULT);
                     }
                 });
-        int scms = selectedCildrenMiliSecondsRef.get();
-        SELECTED_CHILDREN_MILI_SECONDS = scms >= 0 ? scms : SELECTED_CHILDREN_MILI_SECONDS_DEFAULT;
+        SELECTED_CHILDREN_MILLISECONDS = scms >= 0 ? scms : SELECTED_CHILDREN_MILLISECONDS_DEFAULT;
     }
 
     public static CAccessible getCAccessible(final Accessible a) {
@@ -152,13 +143,10 @@ class CAccessible extends CFRetainedResource implements Accessible {
                 } else if (name.compareTo(ACCESSIBLE_TEXT_PROPERTY) == 0 ) {
                     valueChanged(ptr);
                 } else if (name.compareTo(ACCESSIBLE_SELECTION_PROPERTY) == 0 ) {
-                    Timer newTimer = new Timer(SELECTED_CHILDREN_MILI_SECONDS, actionEvent -> selectionChanged(ptr));
-                    newTimer.setRepeats(false);
-                    Timer oldTimer = timer.getAndSet(newTimer);
-                    if (oldTimer != null) {
-                        oldTimer.stop();
-                    }
-                    newTimer.start();
+                    if (timer != null) timer.stop();
+                    timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));;
+                    timer.setRepeats(false);
+                    timer.start();
                 } else if (name.compareTo(ACCESSIBLE_TABLE_MODEL_CHANGED) == 0) {
                     valueChanged(ptr);
                     if (CAccessible.getSwingAccessible(CAccessible.this) != null) {
@@ -181,7 +169,10 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         parentRole = parentAccessible.getAccessibleContext().getAccessibleRole();
                     }
                     if (thisRole == AccessibleRole.COMBO_BOX) {
-                        selectionChanged(ptr);
+                        if (timer != null) timer.stop();
+                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));;
+                        timer.setRepeats(false);
+                        timer.start();
                     }
                     // At least for now don't handle combo box menu state changes.
                     // This may change when later fixing issues which currently
