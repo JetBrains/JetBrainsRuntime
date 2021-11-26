@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Microsoft Corporation. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Microsoft Corporation. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,10 +59,10 @@ public class Win32AARCH64JavaThreadPDAccess implements JavaThreadPDAccess {
 
   private static synchronized void initialize(TypeDataBase db) {
     Type type = db.lookupType("JavaThread");
-    osThreadField           = type.getAddressField("_osthread");
+    osThreadField = type.getAddressField("_osthread");
 
     Type anchorType = db.lookupType("JavaFrameAnchor");
-    lastJavaFPField         = anchorType.getAddressField("_last_Java_fp");
+    lastJavaFPField = anchorType.getAddressField("_last_Java_fp");
 
     Type osThreadType = db.lookupType("OSThread");
     osThreadThreadIDField = osThreadType.getField("_thread_id");

@@ -2411,6 +2411,8 @@ LONG Handle_Exception(struct _EXCEPTION_POINTERS* exceptionInfo,
   #define PC_NAME Rip
 #elif defined(_M_IX86)
   #define PC_NAME Eip
+#elif defined(_M_ARM64)
+  #define PC_NAME Pc
 #else
   #error unknown architecture
 #endif
@@ -2756,7 +2758,7 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
         tty->print_raw_cr("An unrecoverable stack overflow has occurred.");
 #if !defined(USE_VECTORED_EXCEPTION_HANDLING)
         report_error(t, exception_code, pc, exception_record,
-                      exceptionInfo->ContextRecord);
+                     exceptionInfo->ContextRecord);
 #endif
         return EXCEPTION_CONTINUE_SEARCH;
       }
@@ -2837,7 +2839,7 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
 #ifdef _M_ARM64
     if (in_java &&
         (exception_code == EXCEPTION_ILLEGAL_INSTRUCTION ||
-          exception_code == EXCEPTION_ILLEGAL_INSTRUCTION_2)) {
+         exception_code == EXCEPTION_ILLEGAL_INSTRUCTION_2)) {
       if (nativeInstruction_at(pc)->is_sigill_zombie_not_entrant()) {
         if (TraceTraps) {
           tty->print_cr("trap: zombie_not_entrant");
@@ -2909,7 +2911,7 @@ LONG WINAPI topLevelUnhandledExceptionFilter(struct _EXCEPTION_POINTERS* excepti
   if (InterceptOSException) goto exit;
   DWORD exception_code = exceptionInfo->ExceptionRecord->ExceptionCode;
 #if defined(_M_ARM64)
-  address pc = (address)exceptionInfo->ContextRecord->Pc;
+  address pc = (address) exceptionInfo->ContextRecord->Pc;
 #elif defined(_M_AMD64)
   address pc = (address) exceptionInfo->ContextRecord->Rip;
 #else
@@ -2919,7 +2921,7 @@ LONG WINAPI topLevelUnhandledExceptionFilter(struct _EXCEPTION_POINTERS* excepti
 
   if (exception_code != EXCEPTION_BREAKPOINT) {
     report_error(t, exception_code, pc, exceptionInfo->ExceptionRecord,
-                exceptionInfo->ContextRecord);
+                 exceptionInfo->ContextRecord);
   }
 exit:
   return previousUnhandledExceptionFilter ? previousUnhandledExceptionFilter(exceptionInfo) : EXCEPTION_CONTINUE_SEARCH;
