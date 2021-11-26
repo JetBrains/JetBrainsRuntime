@@ -34,7 +34,7 @@ mkdir "$BACKUP_JMODS"
 log "Unzipping $INPUT_FILE to $EXPLODED ..."
 tar -xzvf "$INPUT_FILE" --directory $EXPLODED
 BUILD_NAME="$(ls "$EXPLODED")"
-sed -i '' s/BNDL/APPL/ $EXPLODED/$BUILD_NAME/Contents/Info.plist
+#sed -i '' s/BNDL/APPL/ $EXPLODED/$BUILD_NAME/Contents/Info.plist
 rm -f $EXPLODED/$BUILD_NAME/Contents/CodeResources
 rm "$INPUT_FILE"
 if test -d $EXPLODED/$BUILD_NAME/Contents/Home/jmods; then
@@ -129,7 +129,7 @@ log "Zipping $BUILD_NAME to $INPUT_FILE ..."
     mv $BACKUP_JMODS/jmods $EXPLODED/$BUILD_NAME/Contents/Home
   fi
 
-  tar -pczvf $INPUT_FILE --exclude='*.dSYM' --exclude='man' -C $EXPLODED $BUILD_NAME
+  tar -pczvf $INPUT_FILE --exclude='man' -C $EXPLODED $BUILD_NAME
   log "Finished zipping"
 )
 rm -rf "$EXPLODED"
