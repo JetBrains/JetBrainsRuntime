@@ -220,6 +220,9 @@ if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
 
   PKG_NAME=${JBRSDK_BASE_NAME}-${architecture}-b${build_number}
 
+  rm -rf ${BASE_DIR}/${PKG_NAME}
+  cp -R ${BASE_DIR}/${JBRSDK_BUNDLE} ${BASE_DIR}/${PKG_NAME}
+
   COPYFILE_DISABLE=1 tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
     --exclude='.DS_Store' --exclude='*~' \
     --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
