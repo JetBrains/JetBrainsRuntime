@@ -141,7 +141,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
                 if (name.compareTo(ACCESSIBLE_CARET_PROPERTY) == 0) {
                     execute(ptr -> selectedTextChanged(ptr));
                 } else if (name.compareTo(ACCESSIBLE_TEXT_PROPERTY) == 0 ) {
-                    execute(ptr1 -> valueChanged(ptr));
+                    execute(ptr -> valueChanged(ptr));
                 } else if (name.compareTo(ACCESSIBLE_SELECTION_PROPERTY) == 0 ) {
                     execute(ptr -> {
                         if (timer == null) {
@@ -151,12 +151,12 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         timer.restart();
                     });
                 } else if (name.compareTo(ACCESSIBLE_TABLE_MODEL_CHANGED) == 0) {
-                    execute(ptr1 -> valueChanged(ptr));
+                    execute(ptr -> valueChanged(ptr));
                     if (CAccessible.getSwingAccessible(CAccessible.this) != null) {
                         Accessible a = CAccessible.getSwingAccessible(CAccessible.this);
                         AccessibleContext ac = a.getAccessibleContext();
                         if ((ac != null) && (ac.getAccessibleRole() == AccessibleRole.TABLE)) {
-                            execute(ptr1 -> tableContentCacheClear(ptr));
+                            execute(ptr -> tableContentCacheClear(ptr));
                         }
                     }
                 } else if (name.compareTo(ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY) == 0 ) {
@@ -188,15 +188,15 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         if (thisRole == AccessibleRole.POPUP_MENU) {
                             if ( newValue != null &&
                                  ((AccessibleState)newValue) == AccessibleState.VISIBLE ) {
-                                execute(ptr1 -> menuOpened(ptr));
+                                execute(ptr -> menuOpened(ptr));
                             } else if ( oldValue != null &&
                                         ((AccessibleState)oldValue) == AccessibleState.VISIBLE ) {
-                                execute(ptr1 -> menuClosed(ptr));
+                                execute(ptr -> menuClosed(ptr));
                             }
                         } else if (thisRole == AccessibleRole.MENU_ITEM) {
                             if ( newValue != null &&
                                  ((AccessibleState)newValue) == AccessibleState.FOCUSED ) {
-                                execute(ptr1 -> menuItemSelected(ptr));
+                                execute(ptr -> menuItemSelected(ptr));
                             }
                         //}
                     }
