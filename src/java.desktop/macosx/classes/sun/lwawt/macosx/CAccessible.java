@@ -143,10 +143,11 @@ class CAccessible extends CFRetainedResource implements Accessible {
                 } else if (name.compareTo(ACCESSIBLE_TEXT_PROPERTY) == 0 ) {
                     valueChanged(ptr);
                 } else if (name.compareTo(ACCESSIBLE_SELECTION_PROPERTY) == 0 ) {
-                    if (timer != null) timer.stop();
-                    timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));;
-                    timer.setRepeats(false);
-                    timer.start();
+                    if (timer == null) {
+                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));;
+                        timer.setRepeats(false);
+                    }
+                    timer.restart();
                 } else if (name.compareTo(ACCESSIBLE_TABLE_MODEL_CHANGED) == 0) {
                     valueChanged(ptr);
                     if (CAccessible.getSwingAccessible(CAccessible.this) != null) {
@@ -169,10 +170,11 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         parentRole = parentAccessible.getAccessibleContext().getAccessibleRole();
                     }
                     if (thisRole == AccessibleRole.COMBO_BOX) {
-                        if (timer != null) timer.stop();
-                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));
-                        timer.setRepeats(false);
-                        timer.start();
+                        if (timer == null) {
+                            timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));
+                            timer.setRepeats(false);
+                        }
+                        timer.restart();
                     }
                     // At least for now don't handle combo box menu state changes.
                     // This may change when later fixing issues which currently
