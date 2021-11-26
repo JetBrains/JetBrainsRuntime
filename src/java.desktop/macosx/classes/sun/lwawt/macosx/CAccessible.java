@@ -68,7 +68,8 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         return null;
                     }
                 });
-        SELECTED_CHILDREN_MILI_SECONDS = selectedCildrenMiliSecondsRef.get();
+        int scms = selectedCildrenMiliSecondsRef.get();
+        SELECTED_CHILDREN_MILI_SECONDS = scms >= 0 ? scms : SELECTED_CHILDREN_MILI_SECONDS_DEFAULT;
     }
 
     public static CAccessible getCAccessible(final Accessible a) {
@@ -151,12 +152,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
                 } else if (name.compareTo(ACCESSIBLE_TEXT_PROPERTY) == 0 ) {
                     valueChanged(ptr);
                 } else if (name.compareTo(ACCESSIBLE_SELECTION_PROPERTY) == 0 ) {
-                    Timer newTimer = new Timer(SELECTED_CHILDREN_MILI_SECONDS, new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            selectionChanged(ptr);
-                        }
-                    });
+                    Timer newTimer = new Timer(SELECTED_CHILDREN_MILI_SECONDS, e1 -> selectionChanged(ptr));
                     newTimer.setRepeats(false);
                     Timer oldTimer = timer.getAndSet(newTimer);
                     if (oldTimer != null) {
