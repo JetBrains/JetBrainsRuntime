@@ -139,24 +139,24 @@ class CAccessible extends CFRetainedResource implements Accessible {
                 Object newValue = e.getNewValue();
                 Object oldValue = e.getOldValue();
                 if (name.compareTo(ACCESSIBLE_CARET_PROPERTY) == 0) {
-                    new CFRetainedResource(ptr, false).execute(ptr -> selectedTextChanged(ptr));
+                    execute(ptr -> selectedTextChanged(ptr));
                 } else if (name.compareTo(ACCESSIBLE_TEXT_PROPERTY) == 0 ) {
-                    new CFRetainedResource(ptr, false).execute(ptr1 -> valueChanged(ptr));
+                    execute(ptr1 -> valueChanged(ptr));
                 } else if (name.compareTo(ACCESSIBLE_SELECTION_PROPERTY) == 0 ) {
-                    if (timer == null) {
-                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> {
-                            new CFRetainedResource(ptr, false).execute(ptr1 -> selectionChanged(ptr));
-                        });;
-                        timer.setRepeats(false);
-                    }
-                    timer.restart();
+                    execute(ptr -> {
+                        if (timer == null) {
+                            timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));
+                            timer.setRepeats(false);
+                        }
+                        timer.restart();
+                    });
                 } else if (name.compareTo(ACCESSIBLE_TABLE_MODEL_CHANGED) == 0) {
-                    new CFRetainedResource(ptr, false).execute(ptr1 -> valueChanged(ptr));
+                    execute(ptr1 -> valueChanged(ptr));
                     if (CAccessible.getSwingAccessible(CAccessible.this) != null) {
                         Accessible a = CAccessible.getSwingAccessible(CAccessible.this);
                         AccessibleContext ac = a.getAccessibleContext();
                         if ((ac != null) && (ac.getAccessibleRole() == AccessibleRole.TABLE)) {
-                            new CFRetainedResource(ptr, false).execute(ptr1 -> tableContentCacheClear(ptr));
+                            execute(ptr1 -> tableContentCacheClear(ptr));
                         }
                     }
                 } else if (name.compareTo(ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY) == 0 ) {
@@ -172,13 +172,13 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         parentRole = parentAccessible.getAccessibleContext().getAccessibleRole();
                     }
                     if (thisRole == AccessibleRole.COMBO_BOX) {
-                        if (timer == null) {
-                            timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> {
-                                new CFRetainedResource(ptr, false).execute(ptr1 -> selectionChanged(ptr));
-                            });;
-                            timer.setRepeats(false);
-                        }
-                        timer.restart();
+                        execute(ptr -> {
+                                    if (timer == null) {
+                                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));
+                                    timer.setRepeats(false);
+                                }
+                                timer.restart();
+                    });
                     }
                     // At least for now don't handle combo box menu state changes.
                     // This may change when later fixing issues which currently
@@ -188,15 +188,15 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         if (thisRole == AccessibleRole.POPUP_MENU) {
                             if ( newValue != null &&
                                  ((AccessibleState)newValue) == AccessibleState.VISIBLE ) {
-                                new CFRetainedResource(ptr, false).execute(ptr1 -> menuOpened(ptr));
+                                execute(ptr1 -> menuOpened(ptr));
                             } else if ( oldValue != null &&
                                         ((AccessibleState)oldValue) == AccessibleState.VISIBLE ) {
-                                new CFRetainedResource(ptr, false).execute(ptr1 -> menuClosed(ptr));
+                                execute(ptr1 -> menuClosed(ptr));
                             }
                         } else if (thisRole == AccessibleRole.MENU_ITEM) {
                             if ( newValue != null &&
                                  ((AccessibleState)newValue) == AccessibleState.FOCUSED ) {
-                                new CFRetainedResource(ptr, false).execute(ptr1 -> menuItemSelected(ptr));
+                                execute(ptr1 -> menuItemSelected(ptr));
                             }
                         //}
                     }
