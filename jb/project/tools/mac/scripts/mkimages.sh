@@ -201,7 +201,7 @@ make images CONF=$CONF_NAME || do_exit $?
 JSDK=build/${CONF_NAME}/images/jdk-bundle
 
 BASE_DIR=jre
-JBRSDK_BUNDLE=${JBRSDK_BASE_NAME}-${architecture}-b${build_number}
+JBRSDK_BUNDLE=${JBRSDK_BASE_NAME}-b${build_number}
 
 rm -rf $BASE_DIR
 mkdir $BASE_DIR || do_exit $?
