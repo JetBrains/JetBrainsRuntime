@@ -90,6 +90,19 @@ class JDK_Version {
                   _thread_park_blocker(false), _post_vm_init_hook_enabled(false)
                   {}
 
+  /**
+   * Letting MSVC generate the copy constructor results in incorrect ARM64 codegen
+   * on argument passing, triggering an assert failure in version_less_than()
+   * in src/hotspot/share/runtime/arguments.cpp. This trivial hand-written
+   * copy constructor works around the issue.
+   * https://developercommunity.visualstudio.com/t/arm64-incorrect-code-gen-when-compiler-decides-to/1541140
+   */
+  JDK_Version(const JDK_Version &v) :
+      _major(v._major), _minor(v._minor), _security(v._security), _patch(v._patch),
+      _build(v._build), _thread_park_blocker(v._thread_park_blocker),
+      _post_vm_init_hook_enabled(v._post_vm_init_hook_enabled)
+      {}
+
   JDK_Version(uint8_t major, uint8_t minor = 0, uint8_t security = 0,
               uint8_t patch = 0, uint8_t build = 0,
               bool thread_park_blocker = false, bool post_vm_init_hook_enabled = false) :
