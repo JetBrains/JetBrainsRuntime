@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 1997, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2014, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +22,13 @@
  *
  */
 
-#ifndef CPU_AARCH64_VM_ICACHE_AARCH64_HPP
-#define CPU_AARCH64_VM_ICACHE_AARCH64_HPP
+#ifndef OS_CPU_WINDOWS_AARCH64_PAUTH_WINDOWS_AARCH64_INLINE_HPP
+#define OS_CPU_WINDOWS_AARCH64_PAUTH_WINDOWS_AARCH64_INLINE_HPP
 
-#include OS_CPU_HEADER(icache)
+inline address pauth_strip_pointer(address ptr) {
+  // No PAC support in windows as of yet.
+  return ptr;
+}
 
-#endif // CPU_AARCH64_VM_ICACHE_AARCH64_HPP
+#endif // OS_CPU_WINDOWS_AARCH64_PAUTH_WINDOWS_AARCH64_INLINE_HPP
+

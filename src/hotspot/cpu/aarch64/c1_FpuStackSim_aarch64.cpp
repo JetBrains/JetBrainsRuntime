@@ -28,3 +28,6 @@
 //--------------------------------------------------------
 
 // No FPU stack on AARCH64
+
+// This include is needed to avoid MSVC error C1010 on Windows.
+#include "precompiled.hpp"

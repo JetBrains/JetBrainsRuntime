@@ -297,7 +297,7 @@ void MacroAssembler::safepoint_poll(Label& slow_path) {
     ldr(rscratch1, Address(rthread, Thread::polling_page_offset()));
     tbnz(rscratch1, exact_log2(SafepointMechanism::poll_bit()), slow_path);
   } else {
-    unsigned long offset;
+    uint64_t offset;
     adrp(rscratch1, ExternalAddress(SafepointSynchronize::address_of_state()), offset);
     ldrw(rscratch1, Address(rscratch1, offset));
     assert(SafepointSynchronize::_not_synchronized == 0, "rewrite this code");
@@ -1492,7 +1492,7 @@ void MacroAssembler::movptr(Register r, uintptr_t imm64) {
 #ifndef PRODUCT
   {
     char buffer[64];
-    snprintf(buffer, sizeof(buffer), "0x%"PRIX64, (uint64_t)imm64);
+    snprintf(buffer, sizeof(buffer), PTR64_FORMAT, imm64);
     block_comment(buffer);
   }
 #endif
@@ -1555,7 +1555,7 @@ void MacroAssembler::mov_immediate64(Register dst, uint64_t imm64)
 #ifndef PRODUCT
   {
     char buffer[64];
-    snprintf(buffer, sizeof(buffer), "0x%"PRIX64, imm64);
+    snprintf(buffer, sizeof(buffer), PTR64_FORMAT, imm64);
     block_comment(buffer);
   }
 #endif
@@ -1668,7 +1668,7 @@ void MacroAssembler::mov_immediate32(Register dst, uint32_t imm32)
 #ifndef PRODUCT
     {
       char buffer[64];
-      snprintf(buffer, sizeof(buffer), "0x%"PRIX32, imm32);
+      snprintf(buffer, sizeof(buffer), PTR32_FORMAT, imm32);
       block_comment(buffer);
     }
 #endif
@@ -4207,7 +4207,7 @@ void MacroAssembler::get_polling_page(Register dest, address page, relocInfo::re
   if (SafepointMechanism::uses_thread_local_poll()) {
     ldr(dest, Address(rthread, Thread::polling_page_offset()));
   } else {
-    unsigned long off;
+    uint64_t off;
     adrp(dest, Address(page, rtype), off);
     assert(off == 0, "polling page must be page aligned");
   }
@@ -4805,7 +4805,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
     Register cnt1, Register cnt2, Register result, Register tmp1, Register tmp2,
     FloatRegister vtmp1, FloatRegister vtmp2, FloatRegister vtmp3, int ae) {
   Label DONE, SHORT_LOOP, SHORT_STRING, SHORT_LAST, TAIL, STUB,
-      DIFFERENCE, NEXT_WORD, SHORT_LOOP_TAIL, SHORT_LAST2, SHORT_LAST_INIT,
+      DIFF, NEXT_WORD, SHORT_LOOP_TAIL, SHORT_LAST2, SHORT_LAST_INIT,
       SHORT_LOOP_START, TAIL_CHECK;
 
   const int STUB_THRESHOLD = 64 + 8;
@@ -4892,7 +4892,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
     adds(cnt2, cnt2, isUL ? 4 : 8);
     br(GE, TAIL);
     eor(rscratch2, tmp1, tmp2);
-    cbnz(rscratch2, DIFFERENCE);
+    cbnz(rscratch2, DIFF);
     // main loop
     bind(NEXT_WORD);
     if (str1_isL == str2_isL) {
@@ -4918,10 +4918,10 @@ void MacroAssembler::string_compare(Register str1, Register str2,
 
     eor(rscratch2, tmp1, tmp2);
     cbz(rscratch2, NEXT_WORD);
-    b(DIFFERENCE);
+    b(DIFF);
     bind(TAIL);
     eor(rscratch2, tmp1, tmp2);
-    cbnz(rscratch2, DIFFERENCE);
+    cbnz(rscratch2, DIFF);
     // Last longword.  In the case where length == 4 we compare the
     // same longword twice, but that's still faster than another
     // conditional branch.
@@ -4945,7 +4945,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
 
     // Find the first different characters in the longwords and
     // compute their difference.
-    bind(DIFFERENCE);
+    bind(DIFF);
     rev(rscratch2, rscratch2);
     clz(rscratch2, rscratch2);
     andr(rscratch2, rscratch2, isLL ? -8 : -16);
