@@ -170,7 +170,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     }
                     if (thisRole == AccessibleRole.COMBO_BOX) {
                         if (timer != null) timer.stop();
-                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));;
+                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));
                         timer.setRepeats(false);
                         timer.start();
                     }
