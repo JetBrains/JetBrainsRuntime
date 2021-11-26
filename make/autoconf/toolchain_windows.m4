@@ -577,8 +577,8 @@ AC_DEFUN([TOOLCHAIN_SETUP_MSVC_DLL],
       else
         CYGWIN_VC_TOOLS_REDIST_DIR="$VCToolsRedistDir"
         BASIC_FIXUP_PATH(CYGWIN_VC_TOOLS_REDIST_DIR)
-        # Probe: Using well-known location from VS 2017
-        POSSIBLE_MSVC_DLL="`ls $CYGWIN_VC_INSTALL_DIR/Redist/MSVC/*/$vs_target_cpu/Microsoft.VC${VS_VERSION_INTERNAL}.CRT/$DLL_NAME`"
+        # Probe: Using well-known location from VS 2017 and VS 2019
+        POSSIBLE_MSVC_DLL="`ls $CYGWIN_VC_TOOLS_REDIST_DIR/$vs_target_cpu/Microsoft.VC${VS_VERSION_INTERNAL}.CRT/$DLL_NAME`"
       fi
       # In case any of the above finds more than one file, loop over them.
       for possible_msvc_dll in $POSSIBLE_MSVC_DLL; do
