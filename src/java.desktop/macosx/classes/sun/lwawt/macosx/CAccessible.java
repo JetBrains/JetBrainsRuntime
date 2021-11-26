@@ -139,22 +139,24 @@ class CAccessible extends CFRetainedResource implements Accessible {
                 Object newValue = e.getNewValue();
                 Object oldValue = e.getOldValue();
                 if (name.compareTo(ACCESSIBLE_CARET_PROPERTY) == 0) {
-                    selectedTextChanged(ptr);
+                    new CFRetainedResource(ptr, false).execute(ptr -> selectedTextChanged(ptr));
                 } else if (name.compareTo(ACCESSIBLE_TEXT_PROPERTY) == 0 ) {
-                    valueChanged(ptr);
+                    new CFRetainedResource(ptr, false).execute(ptr1 -> valueChanged(ptr));
                 } else if (name.compareTo(ACCESSIBLE_SELECTION_PROPERTY) == 0 ) {
                     if (timer == null) {
-                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));;
+                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> {
+                            new CFRetainedResource(ptr, false).execute(ptr1 -> selectionChanged(ptr));
+                        });;
                         timer.setRepeats(false);
                     }
                     timer.restart();
                 } else if (name.compareTo(ACCESSIBLE_TABLE_MODEL_CHANGED) == 0) {
-                    valueChanged(ptr);
+                    new CFRetainedResource(ptr, false).execute(ptr1 -> valueChanged(ptr));
                     if (CAccessible.getSwingAccessible(CAccessible.this) != null) {
                         Accessible a = CAccessible.getSwingAccessible(CAccessible.this);
                         AccessibleContext ac = a.getAccessibleContext();
                         if ((ac != null) && (ac.getAccessibleRole() == AccessibleRole.TABLE)) {
-                            tableContentCacheClear(ptr);
+                            new CFRetainedResource(ptr, false).execute(ptr1 -> tableContentCacheClear(ptr));
                         }
                     }
                 } else if (name.compareTo(ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY) == 0 ) {
@@ -171,7 +173,9 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     }
                     if (thisRole == AccessibleRole.COMBO_BOX) {
                         if (timer == null) {
-                            timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));
+                            timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> {
+                                new CFRetainedResource(ptr, false).execute(ptr1 -> selectionChanged(ptr));
+                            });;
                             timer.setRepeats(false);
                         }
                         timer.restart();
@@ -184,15 +188,15 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         if (thisRole == AccessibleRole.POPUP_MENU) {
                             if ( newValue != null &&
                                  ((AccessibleState)newValue) == AccessibleState.VISIBLE ) {
-                                    menuOpened(ptr);
+                                new CFRetainedResource(ptr, false).execute(ptr1 -> menuOpened(ptr));
                             } else if ( oldValue != null &&
                                         ((AccessibleState)oldValue) == AccessibleState.VISIBLE ) {
-                                menuClosed(ptr);
+                                new CFRetainedResource(ptr, false).execute(ptr1 -> menuClosed(ptr));
                             }
                         } else if (thisRole == AccessibleRole.MENU_ITEM) {
                             if ( newValue != null &&
                                  ((AccessibleState)newValue) == AccessibleState.FOCUSED ) {
-                                menuItemSelected(ptr);
+                                new CFRetainedResource(ptr, false).execute(ptr1 -> menuItemSelected(ptr));
                             }
                         //}
                     }
