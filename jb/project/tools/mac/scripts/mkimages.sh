@@ -216,9 +216,6 @@ if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
   fi
   sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release | sed 's/jbr/jbrsdk/g' > release
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
-  sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Info.plist | sed 's/jbr/jbrsdk/g' > Info.plist
-  mv Info.plist ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents
-
   [ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
 
   PKG_NAME=${JBRSDK_BASE_NAME}-${architecture}-b${build_number}
