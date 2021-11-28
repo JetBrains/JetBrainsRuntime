@@ -178,8 +178,9 @@ class ConstantPoolCacheEntry {
     tos_state_bits             = 4,
     tos_state_mask             = right_n_bits(tos_state_bits),
     tos_state_shift            = BitsPerInt - tos_state_bits,  // see verify_tos_state_shift below
-    // (DCEVM) We need to remember entries which has resolved reference indices as we don't want to clean them
-    is_resolved_ref_shift      = 27,
+    // (DCEVM) dcevm additional indicator, that f1 is NULL. DCEVM need to keep the old value of the f1 until the
+    //         cache entry is reresolved to avoid race condition
+    is_f1_null_dcevm_shift     = 27,
     // misc. option bits; can be any bit position in [16..27]
     is_field_entry_shift       = 26,  // (F) is it a field or a method?
     has_method_type_shift      = 25,  // (M) does the call site have a MethodType?
@@ -213,7 +214,6 @@ class ConstantPoolCacheEntry {
   void initialize_resolved_reference_index(int ref_index) {
     assert(_f2 == 0, "set once");  // note: ref_index might be zero also
     _f2 = ref_index;
-    _flags = 1 << is_resolved_ref_shift;
   }
 
   void set_field(                                // sets entry to resolved field state
@@ -363,7 +363,6 @@ class ConstantPoolCacheEntry {
   bool is_method_entry() const                   { return (_flags & (1 << is_field_entry_shift))    == 0; }
   bool is_field_entry() const                    { return (_flags & (1 << is_field_entry_shift))    != 0; }
   bool is_long() const                           { return flag_state() == ltos; }
-  bool is_resolved_reference() const             { return (_flags & (1 << is_resolved_ref_shift))   != 0; }
   bool is_double() const                         { return flag_state() == dtos; }
   TosState flag_state() const                    { assert((uint)number_of_states <= (uint)tos_state_mask+1, "");
                                                    return (TosState)((_flags >> tos_state_shift) & tos_state_mask); }
@@ -407,6 +406,7 @@ class ConstantPoolCacheEntry {
 
   void verify_just_initialized(bool f2_used);
   void reinitialize(bool f2_used);
+
 };
 
 

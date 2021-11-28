@@ -450,6 +450,8 @@ void ConstantPoolCacheEntry::set_method_handle_common(const constantPoolHandle& 
 
   release_set_f1(adapter());  // This must be the last one to set (see NOTE above)!
 
+  OrderAccess::release_store(&_flags, _flags & ~(1u << is_f1_null_dcevm_shift));
+
   // The interpreter assembly code does not check byte_2,
   // but it is used by is_resolved, method_if_resolved, etc.
   set_bytecode_1(invoke_code);
@@ -654,16 +656,8 @@ void ConstantPoolCacheEntry::clear_entry() {
   _indices = constant_pool_index();
 
   if (clearData) {
-    if (!is_resolved_reference()) {
-      _f2 = 0;
-    }
-    // FIXME: (DCEVM) we want to clear flags, but parameter size is actually used
-    // after we return from the method, before entry is re-initialized. So let's
-    // keep parameter size the same.
-    // For example, it's used in TemplateInterpreterGenerator::generate_return_entry_for
-    // Also, we need to keep flag marking entry as one containing resolved_reference
-    _flags &= parameter_size_mask | (1 << is_resolved_ref_shift);
-    _f1 = NULL;
+     // DCEVM: do not clear f1 now, since it can be used before cache entry is re-resolved
+    _flags |= (1 << is_f1_null_dcevm_shift);
   }
 }
 
