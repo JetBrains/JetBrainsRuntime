@@ -2387,7 +2387,7 @@ JVM_QUICK_ENTRY(void, JVM_GetClassCPTypes(JNIEnv *env, jclass cls, unsigned char
     ConstantPool* cp = InstanceKlass::cast(k)->constants();
     for (int index = cp->length() - 1; index >= 0; index--) {
       constantTag tag = cp->tag_at(index);
-      types[index] = (tag.is_unresolved_klass()) ? JVM_CONSTANT_Class : tag.value();
+      types[index] = (tag.is_unresolved_klass()) ? (unsigned char) JVM_CONSTANT_Class : tag.value();
     }
   }
 JVM_END
