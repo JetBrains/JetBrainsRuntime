@@ -218,10 +218,7 @@ if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
   [ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
 
-  PKG_NAME=${JBRSDK_BASE_NAME}-b${build_number}
-
-  rm -rf ${BASE_DIR}/${PKG_NAME}
-  cp -R ${BASE_DIR}/${JBRSDK_BUNDLE} ${BASE_DIR}/${PKG_NAME}
+  PKG_NAME=${JBRSDK_BUNDLE}
 
   COPYFILE_DISABLE=1 tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
     --exclude='.DS_Store' --exclude='*~' --exclude='*.dSYM' --exclude='man' \
