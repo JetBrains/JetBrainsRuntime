@@ -448,9 +448,9 @@ void ConstantPoolCacheEntry::set_method_handle_common(const constantPoolHandle& 
     resolved_references->obj_at_put(method_type_index, method_type());
   }
 
-  release_set_f1(adapter());  // This must be the last one to set (see NOTE above)!
-
   OrderAccess::release_store(&_flags, _flags & ~(1u << is_f1_null_dcevm_shift));
+
+  release_set_f1(adapter());  // This must be the last one to set (see NOTE above)!
 
   // The interpreter assembly code does not check byte_2,
   // but it is used by is_resolved, method_if_resolved, etc.
