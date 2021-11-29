@@ -147,8 +147,7 @@ static int prepare() {
     }
 
     /* get all live threads */
-    if (!NSK_JVMTI_VERIFY(
-            NSK_CPP_STUB3(GetAllThreads, jvmti, &allThreadsCount, &allThreadsList)))
+    if (!NSK_JVMTI_VERIFY(jvmti->GetAllThreads(&allThreadsCount, &allThreadsList)))
         return NSK_FALSE;
 
     if (!NSK_VERIFY(allThreadsCount > 0 && allThreadsList != NULL))
@@ -162,8 +161,7 @@ static int prepare() {
             return NSK_FALSE;
 
         /* get thread name (info) */
-        if (!NSK_JVMTI_VERIFY(
-                NSK_CPP_STUB3(GetThreadInfo, jvmti, allThreadsList[i], &threadInfo)))
+        if (!NSK_JVMTI_VERIFY(jvmti->GetThreadInfo(allThreadsList[i], &threadInfo)))
             return NSK_FALSE;
 
         /* find by name */
@@ -181,8 +179,7 @@ static int prepare() {
     }
 
     /* deallocate all threads list */
-    if (!NSK_JVMTI_VERIFY(
-            NSK_CPP_STUB2(Deallocate, jvmti, (unsigned char*)allThreadsList)))
+    if (!NSK_JVMTI_VERIFY(jvmti->Deallocate((unsigned char*)allThreadsList)))
         return NSK_FALSE;
 
     /* check if all tested threads found */
@@ -201,7 +198,7 @@ static int prepare() {
     /* make global refs */
     for (i = 0; i < THREADS_COUNT; i++) {
         if (!NSK_JNI_VERIFY(jni, (threadsDesc[i].thread = (jthread)
-                NSK_CPP_STUB2(NewGlobalRef, jni, threadsDesc[i].thread)) != NULL))
+                jni->NewGlobalRef(threadsDesc[i].thread)) != NULL))
             return NSK_FALSE;
     }
 
@@ -217,13 +214,11 @@ static int suspendThreadsIndividually(int suspend) {
     for (i = 0; i < THREADS_COUNT; i++) {
         if (suspend) {
             NSK_DISPLAY2("    suspend thread #%d (%s)\n", i, threadsDesc[i].threadName);
-            if (!NSK_JVMTI_VERIFY(
-                    NSK_CPP_STUB2(SuspendThread, jvmti, threadsDesc[i].thread)))
+            if (!NSK_JVMTI_VERIFY(jvmti->SuspendThread(threadsDesc[i].thread)))
                 nsk_jvmti_setFailStatus();
         } else {
             NSK_DISPLAY2("    resume thread #%d (%s)\n", i, threadsDesc[i].threadName);
-            if (!NSK_JVMTI_VERIFY(
-                    NSK_CPP_STUB2(ResumeThread, jvmti, threadsDesc[i].thread)))
+            if (!NSK_JVMTI_VERIFY(jvmti->ResumeThread(threadsDesc[i].thread)))
                 nsk_jvmti_setFailStatus();
         }
     }
@@ -253,9 +248,7 @@ static int checkThreads(int suspended, const char* kind) {
         NSK_DISPLAY2("  thread #%d (%s):\n", i, threadsDesc[i].threadName);
 
         /* get frame count */
-        if (!NSK_JVMTI_VERIFY(
-                NSK_CPP_STUB3(GetFrameCount, jvmti,
-                                    threadsDesc[i].thread, &frameCount))) {
+        if (!NSK_JVMTI_VERIFY(jvmti->GetFrameCount(threadsDesc[i].thread, &frameCount))) {
             nsk_jvmti_setFailStatus();
             return NSK_TRUE;
         }
@@ -264,8 +257,7 @@ static int checkThreads(int suspended, const char* kind) {
 
         /* get stack trace */
         if (!NSK_JVMTI_VERIFY(
-                NSK_CPP_STUB6(GetStackTrace, jvmti, threadsDesc[i].thread,
-                                    0, MAX_STACK_SIZE, frameStack, &frameStackSize))) {
+                jvmti->GetStackTrace(threadsDesc[i].thread, 0, MAX_STACK_SIZE, frameStack, &frameStackSize))) {
             nsk_jvmti_setFailStatus();
             return NSK_TRUE;
         }
@@ -318,7 +310,7 @@ static int clean() {
 
     /* dispose global references to threads */
     for (i = 0; i < THREADS_COUNT; i++) {
-        NSK_TRACE(NSK_CPP_STUB2(DeleteGlobalRef, jni, threadsDesc[i].thread));
+        NSK_TRACE(jni->DeleteGlobalRef(threadsDesc[i].thread));
     }
 
     return NSK_TRUE;
@@ -396,8 +388,7 @@ jint Agent_Initialize(JavaVM *jvm, char *options, void *reserved) {
         jvmtiCapabilities suspendCaps;
         memset(&suspendCaps, 0, sizeof(suspendCaps));
         suspendCaps.can_suspend = 1;
-        if (!NSK_JVMTI_VERIFY(
-                NSK_CPP_STUB2(AddCapabilities, jvmti, &suspendCaps)))
+        if (!NSK_JVMTI_VERIFY(jvmti->AddCapabilities(&suspendCaps)))
             return JNI_ERR;
     }
 
