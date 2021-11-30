@@ -66,7 +66,9 @@ function do_configure {
       --enable-cds=no \
       --with-extra-cflags="-F$(pwd)/Frameworks" \
       --with-extra-cxxflags="-F$(pwd)/Frameworks" \
-      --with-extra-ldflags="-F$(pwd)/Frameworks" || do_exit $?
+      --with-extra-ldflags="-F$(pwd)/Frameworks" \
+      $REPRODUCIBLE_BUILD_OPTS \
+      || do_exit $?
   else
     sh configure \
       $WITH_DEBUG_LEVEL \
@@ -77,7 +79,9 @@ function do_configure {
       --with-version-build="$JDK_BUILD_NUMBER" \
       --with-version-opt=b"$build_number" \
       --with-boot-jdk="$BOOT_JDK" \
-      --enable-cds=yes || do_exit $?
+      --enable-cds=yes \
+      $REPRODUCIBLE_BUILD_OPTS \
+      || do_exit $?
   fi
 }
 
@@ -120,7 +124,14 @@ function create_image_bundle {
   [ -n "$bundle_type" ] && (cp -a $JCEF_PATH/Frameworks "$JRE_CONTENTS" || do_exit $?)
 
   echo Creating "$JBR".tar.gz ...
-  COPYFILE_DISABLE=1 tar -pczf "$JBR".tar.gz --exclude='*.dSYM' --exclude='man' -C "$tmp" "$__arch_name" || do_exit $?
+  # Normalize timestamp
+  find "$tmp"/"$__arch_name" -print0 | xargs -0 touch -c -h -t "$TOUCH_TIME"
+
+  (cd "$tmp" &&
+      find "$__arch_name" -print0 | LC_ALL=C sort -z | \
+      COPYFILE_DISABLE=1 tar $REPRODUCIBLE_TAR_OPTS  --no-recursion --null -T - \
+                             -czf "$JBR".tar.gz --exclude='*.dSYM' --exclude='man') || do_exit $?
+  mv "$tmp"/"$JBR".tar.gz  "$JBR".tar.gz
   rm -rf "$tmp"
 }
 
