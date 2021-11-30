@@ -6,14 +6,30 @@ do_reset_changes=0
 do_reset_dcevm=0
 HEAD_REVISION=0
 
+OS_NAME=$(uname -s)
 # Enable reproducible builds
 TZ=UTC
 export TZ
 SOURCE_DATE_EPOCH="$(git log -1 --pretty=%ct)"
 export SOURCE_DATE_EPOCH
-COPYRIGHT_YEAR="$(date --utc --date=@$SOURCE_DATE_EPOCH +%Y)"
-BUILD_TIME="$(date --utc --date=@$SOURCE_DATE_EPOCH +%F)"
-REPRODUCIBLE_TAR_OPTS="--mtime=@$SOURCE_DATE_EPOCH --owner=0 --group=0 --numeric-owner --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime"
+
+case "$OS_NAME" in
+    Linux)
+        COPYRIGHT_YEAR="$(date --utc --date=@$SOURCE_DATE_EPOCH +%Y)"
+        BUILD_TIME="$(date --utc --date=@$SOURCE_DATE_EPOCH +%F)"
+        REPRODUCIBLE_TAR_OPTS="--mtime=@$SOURCE_DATE_EPOCH --owner=0 --group=0 --numeric-owner --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime"
+        ;;
+    Darwin)
+        COPYRIGHT_YEAR="$(date -u -r $SOURCE_DATE_EPOCH +%Y)"
+        BUILD_TIME="$(date -u -r $SOURCE_DATE_EPOCH +%F)"
+        TOUCH_TIME="$(date -u -r $SOURCE_DATE_EPOCH +%Y%m%d%H%M.%S)"
+        REPRODUCIBLE_TAR_OPTS="--uid 0 --gid 0 --numeric-owner"
+        ;;
+    *)
+        # TODO: Windows
+        ;;
+esac
+
 REPRODUCIBLE_BUILD_OPTS="--enable-reproducible-build
   --with-source-date=$SOURCE_DATE_EPOCH
   --with-hotspot-build-time=$BUILD_TIME
