@@ -1,0 +1,47 @@
+# NOTE: This Dockerfile is meant to be used from the mkdocker_aarch64.sh script.
+
+# Pull a concrete version of Linux that does NOT recieve updates after it's
+# been created.  This is so that the image is as stable as possible to make
+# image creation reproducible.
+# NB: this also means there may be no security-related fixes there, need to
+# move the version to the next manually.
+FROM arm64v8/ubuntu:focal-20211006
+
+# Install the necessary build tools
+RUN export DEBIAN_FRONTEND=noninteractive \
+    export DEBCONF_NONINTERACTIVE_SEEN=true && \
+    echo 'tzdata tzdata/Areas select Etc' | debconf-set-selections; \
+    echo 'tzdata tzdata/Zones/Etc select UTC' | debconf-set-selections; \
+    apt-get update -qy && \
+    apt-get install -qy \
+        autoconf \
+        build-essential \
+        bzip2 \
+        file \
+        g++-10=10.3.0-1ubuntu1~20.04 \
+        gcc-10=10.3.0-1ubuntu1~20.04 \
+        git \
+        libasound2-dev \
+        libcups2-dev \
+        libfontconfig1-dev \
+        libx11-dev \
+        libxext-dev \
+        libxrandr-dev \
+        libxrender-dev \
+        libxt-dev \
+        libxtst-dev \
+        make \
+        tar \
+        unzip \
+        zip && \
+   update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10 && \
+   apt-get clean -qy && \
+   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Set up boot JDK for building
+COPY boot_jdk.tar.gz /jdk17/
+RUN cd /jdk17 && tar --strip-components=1 -xzf boot_jdk.tar.gz && rm /jdk17/boot_jdk.tar.gz
+ENV BOOT_JDK=/jdk17
+
+RUN git config --global user.email "teamcity@jetbrains.com" && \
+    git config --global user.name "builduser"
