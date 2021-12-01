@@ -35,7 +35,7 @@
  *                   TestMemoryMXBeans
  *                   -1 256
  *
- * @run main/othervm -Xmx256m -Xmx256m
+ * @run main/othervm -Xms256m -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   TestMemoryMXBeans
  *                   256 256
