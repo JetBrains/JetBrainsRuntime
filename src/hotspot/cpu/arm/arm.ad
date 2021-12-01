@@ -5317,7 +5317,7 @@ instruct loadConD(regD dst, immD src, iRegP tmp) %{
 // Must be safe to execute with invalid address (cannot fault).
 
 instruct prefetchAlloc_mp( memoryP mem ) %{
-  predicate(os::is_MP());
+  predicate(VM_Version::has_multiprocessing_extensions());
   match( PrefetchAllocation mem );
   ins_cost(MEMORY_REF_COST);
   size(4);
@@ -5334,7 +5334,7 @@ instruct prefetchAlloc_mp( memoryP mem ) %{
 %}
 
 instruct prefetchAlloc_sp( memoryP mem ) %{
-  predicate(!os::is_MP());
+  predicate(!VM_Version::has_multiprocessing_extensions());
   match( PrefetchAllocation mem );
   ins_cost(MEMORY_REF_COST);
   size(4);

@@ -54,6 +54,7 @@ class VM_Version: public Abstract_VM_Version {
   static bool has_simd()               { return _has_simd; }
   static bool has_vfp()                { return has_simd(); }
   static bool simd_math_is_compliant() { return true; }
+  static bool has_multiprocessing_extensions() { return true; }
 
   static bool prefer_moves_over_load_literal() { return true; }
 
@@ -64,6 +65,7 @@ class VM_Version: public Abstract_VM_Version {
     vfp = 0,
     vfp3_32 = 1,
     simd = 2,
+    mp_ext = 3
   };
 
   enum Feature_Flag_Set {
@@ -73,6 +75,7 @@ class VM_Version: public Abstract_VM_Version {
     vfp_m     = 1 << vfp,
     vfp3_32_m = 1 << vfp3_32,
     simd_m    = 1 << simd,
+    mp_ext_m  = 1 << mp_ext
   };
 
   // The value stored by "STR PC, [addr]" instruction can be either
@@ -115,6 +118,7 @@ class VM_Version: public Abstract_VM_Version {
   static bool has_vfp()             { return (_features & vfp_m) != 0; }
   static bool has_vfp3_32()         { return (_features & vfp3_32_m) != 0; }
   static bool has_simd()            { return (_features & simd_m) != 0; }
+  static bool has_multiprocessing_extensions() { return (_features & mp_ext_m) != 0; }
 
   static bool simd_math_is_compliant() { return false; }
 
