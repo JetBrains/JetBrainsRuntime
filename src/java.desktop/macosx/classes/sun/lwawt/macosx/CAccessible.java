@@ -25,7 +25,7 @@
 
 package sun.lwawt.macosx;
 
-import java.awt.Component;
+import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.security.PrivilegedAction;
@@ -134,6 +134,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
 
         @Override
         public void propertyChange(PropertyChangeEvent e) {
+            assert EventQueue.isDispatchThread();
             String name = e.getPropertyName();
             if ( ptr != 0 ) {
                 Object newValue = e.getNewValue();
