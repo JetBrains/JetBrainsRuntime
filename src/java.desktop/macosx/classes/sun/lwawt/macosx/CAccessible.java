@@ -143,14 +143,12 @@ class CAccessible extends CFRetainedResource implements Accessible {
                 } else if (name.compareTo(ACCESSIBLE_TEXT_PROPERTY) == 0 ) {
                     execute(ptr -> valueChanged(ptr));
                 } else if (name.compareTo(ACCESSIBLE_SELECTION_PROPERTY) == 0 ) {
-                    execute(ptr -> {
-                        if (timer != null) {
-                            timer.stop();
-                        }
-                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));
-                        timer.setRepeats(false);
-                        timer.start();
-                    });
+                    if (timer != null) {
+                        timer.stop();
+                    }
+                    timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> execute(ptr -> selectionChanged(ptr)));
+                    timer.setRepeats(false);
+                    timer.start();
                 } else if (name.compareTo(ACCESSIBLE_TABLE_MODEL_CHANGED) == 0) {
                     execute(ptr -> valueChanged(ptr));
                     if (CAccessible.getSwingAccessible(CAccessible.this) != null) {
@@ -173,14 +171,12 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         parentRole = parentAccessible.getAccessibleContext().getAccessibleRole();
                     }
                     if (thisRole == AccessibleRole.COMBO_BOX) {
-                        execute(ptr -> {
-                                    if (timer != null) {
-                                        timer.stop();
-                                }
-                            timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> selectionChanged(ptr));
-                            timer.setRepeats(false);
-                                timer.start();
-                    });
+                        if (timer != null) {
+                            timer.stop();
+                        }
+                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> execute(ptr -> selectionChanged(ptr)));
+                        timer.setRepeats(false);
+                        timer.start();
                     }
                     // At least for now don't handle combo box menu state changes.
                     // This may change when later fixing issues which currently
