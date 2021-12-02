@@ -25,13 +25,14 @@
 
 package sun.lwawt.macosx;
 
-import java.awt.Component;
+import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.security.PrivilegedAction;
 
 import javax.accessibility.Accessible;
 import javax.accessibility.AccessibleContext;
-import javax.swing.JTabbedPane;
+import javax.swing.*;
 
 import static javax.accessibility.AccessibleContext.ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY;
 import static javax.accessibility.AccessibleContext.ACCESSIBLE_CARET_PROPERTY;
@@ -48,6 +49,20 @@ import sun.awt.AWTAccessor;
 
 
 class CAccessible extends CFRetainedResource implements Accessible {
+    private static Timer timer = null;
+    private final static int SELECTED_CHILDREN_MILLISECONDS_DEFAULT = 100;
+    private static int SELECTED_CHILDREN_MILLISECONDS;
+
+    static {
+        @SuppressWarnings("removal") int scms = java.security.AccessController.doPrivileged(new PrivilegedAction<Integer>() {
+            @Override
+            public Integer run() {
+                return Integer.getInteger("sun.lwawt.macosx.CAccessible.selectedChildrenMilliSeconds",
+                        SELECTED_CHILDREN_MILLISECONDS_DEFAULT);
+            }
+        });
+        SELECTED_CHILDREN_MILLISECONDS = scms >= 0 ? scms : SELECTED_CHILDREN_MILLISECONDS_DEFAULT;
+    }
 
     public static CAccessible getCAccessible(final Accessible a) {
         if (a == null) return null;
@@ -112,19 +127,25 @@ class CAccessible extends CFRetainedResource implements Accessible {
 
         @Override
         public void propertyChange(PropertyChangeEvent e) {
+            assert EventQueue.isDispatchThread();
             String name = e.getPropertyName();
             if ( ptr != 0 ) {
                 Object newValue = e.getNewValue();
                 Object oldValue = e.getOldValue();
-                if (name.compareTo(ACCESSIBLE_CARET_PROPERTY) == 0) {
-                    selectedTextChanged(ptr);
-                } else if (name.compareTo(ACCESSIBLE_TEXT_PROPERTY) == 0) {
-                    valueChanged(ptr);
-                } else if (name.compareTo(ACCESSIBLE_SELECTION_PROPERTY) == 0) {
-                    selectionChanged(ptr);
-                } else if (name.compareTo(ACCESSIBLE_TABLE_MODEL_CHANGED) == 0) {
-                    valueChanged(ptr);
-                } else if (name.compareTo(ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY) == 0 ) {
+                if (name.equals(ACCESSIBLE_CARET_PROPERTY)) {
+                    execute(ptr -> selectedTextChanged(ptr));
+                } else if (name.equals(ACCESSIBLE_TEXT_PROPERTY)) {
+                    execute(ptr -> valueChanged(ptr));
+                } else if (name.equals(ACCESSIBLE_SELECTION_PROPERTY)) {
+                    if (timer != null) {
+                        timer.stop();
+                    }
+                    timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> execute(ptr -> selectionChanged(ptr)));
+                    timer.setRepeats(false);
+                    timer.start();
+                } else if (name.equals(ACCESSIBLE_TABLE_MODEL_CHANGED)) {
+                    execute(ptr -> valueChanged(ptr));
+                } else if (name.equals(ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY)) {
                     if (newValue == null || newValue instanceof AccessibleContext) {
                         activeDescendant = (AccessibleContext)newValue;
                         if (newValue instanceof Accessible) {
@@ -135,7 +156,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
                                 if (p != null) {
                                     AccessibleContext pac = p.getAccessibleContext();
                                     if ((pac != null) && (pac.getAccessibleRole() == AccessibleRole.TABLE)) {
-                                        selectedCellsChanged(ptr);
+                                        execute(ptr -> selectedCellsChanged(ptr));
                                     }
                                 }
                             }
@@ -151,9 +172,9 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     }
 
                     if (newValue == AccessibleState.EXPANDED) {
-                        treeNodeExpanded(ptr);
+                        execute(ptr -> treeNodeExpanded(ptr));
                     } else if (newValue == AccessibleState.COLLAPSED) {
-                        treeNodeCollapsed(ptr);
+                        execute(ptr -> treeNodeCollapsed(ptr));
                     }
 
                     // At least for now don't handle combo box menu state changes.
@@ -161,41 +182,44 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     // exist for combo boxes, but for now the following is only
                     // for JPopupMenus, not for combobox menus.
                     if (thisRole == AccessibleRole.COMBO_BOX) {
-                        selectionChanged(ptr);
+                        if (timer != null) {
+                            timer.stop();
+                        }
+                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> execute(ptr -> selectionChanged(ptr)));
+                        timer.setRepeats(false);
+                        timer.start();
                     }
 
-//                    if (parentRole != AccessibleRole.COMBO_BOX) {
-                        if (thisRole == AccessibleRole.POPUP_MENU) {
-                            if ( newValue != null &&
-                                 ((AccessibleState)newValue) == AccessibleState.VISIBLE ) {
-                                    menuOpened(ptr);
-                            } else if ( oldValue != null &&
-                                        ((AccessibleState)oldValue) == AccessibleState.VISIBLE ) {
-                                menuClosed(ptr);
-                            }
-                        } else if (thisRole == AccessibleRole.MENU_ITEM) {
-                            if ( newValue != null &&
-                                 ((AccessibleState)newValue) == AccessibleState.FOCUSED ) {
-                                menuItemSelected(ptr);
-                            }
-//                        }
+                    if (thisRole == AccessibleRole.POPUP_MENU) {
+                        if (newValue != null &&
+                                ((AccessibleState) newValue) == AccessibleState.VISIBLE) {
+                            execute(ptr -> menuOpened(ptr));
+                        } else if (oldValue != null &&
+                                ((AccessibleState) oldValue) == AccessibleState.VISIBLE) {
+                            execute(ptr -> menuClosed(ptr));
+                        }
+                    } else if (thisRole == AccessibleRole.MENU_ITEM) {
+                        if (newValue != null &&
+                                ((AccessibleState) newValue) == AccessibleState.FOCUSED) {
+                            execute(ptr -> menuItemSelected(ptr));
+                        }
                     }
 
                     // Do send check box state changes to native side
                     if (thisRole == AccessibleRole.CHECK_BOX) {
-                        valueChanged(ptr);
+                        execute(ptr -> valueChanged(ptr));
                     }
                 } else if (name.compareTo(ACCESSIBLE_NAME_PROPERTY) == 0) {
                     //for now trigger only for JTabbedPane.
                     if (e.getSource() instanceof JTabbedPane) {
-                        titleChanged(ptr);
+                        execute(ptr -> titleChanged(ptr));
                     }
                 } else if (name.compareTo(ACCESSIBLE_VALUE_PROPERTY) == 0) {
                     AccessibleRole thisRole = accessible.getAccessibleContext()
                                                         .getAccessibleRole();
                     if (thisRole == AccessibleRole.SLIDER ||
                             thisRole == AccessibleRole.PROGRESS_BAR) {
-                        valueChanged(ptr);
+                        execute(ptr -> valueChanged(ptr));
                     }
                 }
             }
