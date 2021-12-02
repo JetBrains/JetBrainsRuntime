@@ -1,1 +1,2 @@
 sanity/client/SwingSet/src/TreeDemoTest.java                                                  JBR-3389 macosx-all
+java/awt/dnd/RemoveDropTargetCrashTest/RemoveDropTargetCrashTest.java                         JBR-4042 macosx-all
