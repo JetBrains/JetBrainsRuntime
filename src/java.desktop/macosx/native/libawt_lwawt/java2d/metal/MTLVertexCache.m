@@ -44,7 +44,6 @@ static jint vertexCacheIndex = 0;
 
 static MTLPooledTextureHandle * maskCacheTex = NULL;
 static jint maskCacheIndex = 0;
-static bool gammaCorrection = NO;
 static id<MTLRenderCommandEncoder> encoder = NULL;
 
 #define MTLVC_ADD_VERTEX(TX, TY, DX, DY, DZ) \
@@ -148,9 +147,12 @@ MTLVertexCache_InitMaskCache(MTLContext *mtlc) {
     }
     // init special fully opaque tile in the upper-right corner of
     // the mask cache texture
-
-    char tile[MTLVC_MASK_CACHE_TILE_SIZE];
-    memset(tile, 0xff, MTLVC_MASK_CACHE_TILE_SIZE);
+    static char tile[MTLVC_MASK_CACHE_TILE_SIZE];
+    static char* pTile = NULL;
+    if (!pTile) {
+        memset(tile, 0xff, MTLVC_MASK_CACHE_TILE_SIZE);
+        pTile = tile;
+    }
 
     jint texx = MTLVC_MASK_CACHE_TILE_WIDTH * (MTLVC_MASK_CACHE_WIDTH_IN_TILES - 1);
 
@@ -187,7 +189,7 @@ MTLVertexCache_EnableMaskCache(MTLContext *mtlc, BMTLSDOps *dstOps)
             return;
         }
     }
-  MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps, gammaCorrection);
+    MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps, NO);
 }
 
 void
@@ -199,7 +201,6 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_DisableMaskCache");
     MTLVertexCache_FlushVertexCache(mtlc);
     maskCacheIndex = 0;
-    gammaCorrection = NO;
     free(vertexCache);
     vertexCache = NULL;
 }
@@ -207,7 +208,6 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 void
 MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps, bool gmc) {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_CreateSamplingEncoder");
-    gammaCorrection = gmc;
     encoder = [mtlc.encoderManager getTextEncoder:dstOps
                                       isSrcOpaque:NO
                                   gammaCorrection:gmc];
