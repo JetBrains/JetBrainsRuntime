@@ -96,6 +96,7 @@ import jdk.internal.net.http.hpack.DecodingCallback;
  */
 class Stream<T> extends ExchangeImpl<T> {
 
+    private static final String COOKIE_HEADER = "Cookie";
     final Logger debug = Utils.getDebugLogger(this::dbgString, Utils.DEBUG);
 
     final ConcurrentLinkedQueue<Http2Frame> inputQ = new ConcurrentLinkedQueue<>();
@@ -238,7 +239,7 @@ class Stream<T> extends ExchangeImpl<T> {
                         debug.log("already completed: dropping error %s", (Object) t);
                 }
             } catch (Throwable x) {
-                Log.logError("Subscriber::onError threw exception: {0}", (Object) t);
+                Log.logError("Subscriber::onError threw exception: {0}", t);
             } finally {
                 cancelImpl(t);
                 drainInputQueue();
@@ -321,10 +322,7 @@ class Stream<T> extends ExchangeImpl<T> {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("streamid: ")
-                .append(streamid);
-        return sb.toString();
+        return "streamid: " + streamid;
     }
 
     private void receiveDataFrame(DataFrame df) {
@@ -372,7 +370,6 @@ class Stream<T> extends ExchangeImpl<T> {
         return sendBodyImpl().thenApply( v -> this);
     }
 
-    @SuppressWarnings("unchecked")
     Stream(Http2Connection connection,
            Exchange<T> e,
            WindowController windowController)
@@ -424,7 +421,7 @@ class Stream<T> extends ExchangeImpl<T> {
                 incoming_priority((PriorityFrame) frame);
                 break;
             default:
-                String msg = "Unexpected frame: " + frame.toString();
+                String msg = "Unexpected frame: " + frame;
                 throw new IOException(msg);
         }
     }
@@ -626,10 +623,16 @@ class Stream<T> extends ExchangeImpl<T> {
         // Filter context restricted from userHeaders
         userh = HttpHeaders.of(userh.map(), Utils.CONTEXT_RESTRICTED(client()));
 
+        // Don't override Cookie values that have been set by the CookieHandler.
         final HttpHeaders uh = userh;
+        BiPredicate<String, String> overrides =
+                (k, v) -> COOKIE_HEADER.equalsIgnoreCase(k)
+                          || uh.firstValue(k).isEmpty();
 
         // Filter any headers from systemHeaders that are set in userHeaders
-        sysh = HttpHeaders.of(sysh.map(), (k,v) -> uh.firstValue(k).isEmpty());
+        //   except for "Cookie:" - user cookies will be appended to system
+        //   cookies
+        sysh = HttpHeaders.of(sysh.map(), overrides);
 
         OutgoingHeaders<Stream<T>> f = new OutgoingHeaders<>(sysh, userh, this);
         if (contentLength == 0) {
