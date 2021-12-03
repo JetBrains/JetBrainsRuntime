@@ -53,9 +53,8 @@ class CAccessible extends CFRetainedResource implements Accessible {
     private final static int SELECTED_CHILDREN_MILLISECONDS_DEFAULT = 100;
     private static int SELECTED_CHILDREN_MILLISECONDS;
 
-    @SuppressWarnings("removal")
-    private static void loadAWTLibrary() {
-        int scms = java.security.AccessController.doPrivileged(new PrivilegedAction<Integer>() {
+    static {
+        @SuppressWarnings("removal") int scms = java.security.AccessController.doPrivileged(new PrivilegedAction<Integer>() {
             @Override
             public Integer run() {
                 return Integer.getInteger("sun.lwawt.macosx.CAccessible.selectedChildrenMilliSeconds",
