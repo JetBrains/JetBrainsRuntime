@@ -108,7 +108,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         return mapper;
     }
 
-    protected int convertToGlyph(int unicode) {
+    private int convertToGlyph(int unicode) {
 
         for (int slot = 0; slot < font.numSlots; slot++) {
             if (!hasExcludes || !font.isExcludedChar(slot, unicode)) {

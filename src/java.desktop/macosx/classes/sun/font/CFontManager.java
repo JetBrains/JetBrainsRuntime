@@ -30,20 +30,27 @@ import java.io.File;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.plaf.FontUIResource;
 
 import sun.awt.FontConfiguration;
 import sun.awt.HeadlessToolkit;
 import sun.lwawt.macosx.*;
+import sun.security.action.GetBooleanAction;
 import sun.util.logging.PlatformLogger;
 
 public final class CFontManager extends SunFontManager {
     private static Hashtable<String, Font2D> genericFonts = new Hashtable<String, Font2D>();
+    private final Map<String, Font2D> fallbackFonts = new ConcurrentHashMap<>();
+    private final List<String> extFallbackVariants = new ArrayList<>();
 
     @Override
     protected FontConfiguration createFontConfiguration() {
@@ -230,6 +237,7 @@ public final class CFontManager extends SunFontManager {
                     public Object run() {
                         if (!loadedAllFonts) {
                            loadNativeFonts();
+                           collectAdditionalFallbackVariants();
                            loadedAllFonts = true;
                         }
                         return null;
@@ -337,4 +345,40 @@ public final class CFontManager extends SunFontManager {
     @Override
     protected void populateFontFileNameMap(HashMap<String, String> fontToFileMap, HashMap<String, String> fontToFamilyNameMap,
             HashMap<String, ArrayList<String>> familyToFontListMap, Locale locale) {}
+
+    @SuppressWarnings("removal")
+    private void collectAdditionalFallbackVariants() {
+        if (AccessController.doPrivileged(new GetBooleanAction("mac.ext.font.fallback"))) {
+            for (String fontName : genericFonts.keySet()) {
+                boolean accept = false;
+                if (fontName.equals("ArialUnicodeMS")) {
+                    accept = true;
+                } else if (fontName.startsWith("NotoSans")) {
+                    int pos = fontName.indexOf('-');
+                    accept = pos == -1 || fontName.substring(pos + 1).equals("Regular");
+                }
+                if (accept) {
+                    extFallbackVariants.add(fontName);
+                }
+            }
+            Collections.sort(extFallbackVariants); // ensure predictable order
+        }
+    }
+
+    List<String> getAdditionalFallbackVariants() {
+        return extFallbackVariants;
+    }
+
+    Font2D getOrCreateFallbackFont(String fontName) {
+        Font2D font2D = findFont2D(fontName, Font.PLAIN, FontManager.NO_FALLBACK);
+        if (font2D != null || fontName.startsWith(".")) {
+            return font2D;
+        } else {
+            // macOS doesn't list some system fonts in [NSFontManager availableFontFamilies] output,
+            // so they are not registered in font manager as part of 'loadNativeFonts'.
+            // These fonts are present in [NSFontManager availableFonts] output though,
+            // and can be accessed in the same way as other system fonts.
+            return fallbackFonts.computeIfAbsent(fontName, name -> new CFont(name, null, null));
+        }
+    }
 }
