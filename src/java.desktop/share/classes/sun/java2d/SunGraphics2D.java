@@ -668,7 +668,7 @@ public final class SunGraphics2D
             }
         }
 
-        info.font2D = FontUtilities.getFont2D(font);
+        info.font2D = FontUtilities.getFont2DWithSubstitution(font);
 
         int fmhint = fractionalMetricsHint;
         if (fmhint == SunHints.INTVAL_FRACTIONALMETRICS_DEFAULT) {

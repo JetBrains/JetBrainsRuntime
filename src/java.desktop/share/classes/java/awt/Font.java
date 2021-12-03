@@ -56,6 +56,7 @@ import sun.font.FontAccess;
 import sun.font.FontDesignMetrics;
 import sun.font.FontManager;
 import sun.font.FontManagerFactory;
+import sun.font.FontSubstitution;
 import sun.font.FontUtilities;
 import sun.font.GlyphLayout;
 import sun.font.FontLineMetrics;
@@ -232,6 +233,11 @@ public class Font implements java.io.Serializable
     private static class FontAccessImpl extends FontAccess {
         public Font2D getFont2D(Font font) {
             return font.getFont2D();
+        }
+
+        @Override
+        public Font2D getFont2DWithSubstitution(Font font) {
+            return font.getFont2DWithSubstitution();
         }
 
         public void setFont2D(Font font, Font2DHandle handle) {
@@ -508,6 +514,11 @@ public class Font implements java.io.Serializable
          * original one is marked invalid
          */
         return font2DHandle.font2D;
+    }
+
+    private Font2D getFont2DWithSubstitution() {
+        Font2D font2D = getFont2D();
+        return font2D instanceof FontSubstitution ? ((FontSubstitution) font2D).getCompositeFont2D() : font2D;
     }
 
     /**
@@ -2187,7 +2198,7 @@ public class Font implements java.io.Serializable
      * @since 1.2
      */
     public boolean canDisplay(char c){
-        return getFont2D().canDisplay(c);
+        return getFont2DWithSubstitution().canDisplay(c);
     }
 
     /**
@@ -2208,7 +2219,7 @@ public class Font implements java.io.Serializable
             throw new IllegalArgumentException("invalid code point: " +
                                                Integer.toHexString(codePoint));
         }
-        return getFont2D().canDisplay(codePoint);
+        return getFont2DWithSubstitution().canDisplay(codePoint);
     }
 
     /**
@@ -2229,7 +2240,7 @@ public class Font implements java.io.Serializable
      * @since 1.2
      */
     public int canDisplayUpTo(String str) {
-        Font2D font2d = getFont2D();
+        Font2D font2d = getFont2DWithSubstitution();
         int len = str.length();
         for (int i = 0; i < len; i++) {
             char c = str.charAt(i);
@@ -2267,7 +2278,7 @@ public class Font implements java.io.Serializable
      * @since 1.2
      */
     public int canDisplayUpTo(char[] text, int start, int limit) {
-        Font2D font2d = getFont2D();
+        Font2D font2d = getFont2DWithSubstitution();
         for (int i = start; i < limit; i++) {
             char c = text[i];
             if (font2d.canDisplay(c)) {
@@ -2302,7 +2313,7 @@ public class Font implements java.io.Serializable
      * @since 1.2
      */
     public int canDisplayUpTo(CharacterIterator iter, int start, int limit) {
-        Font2D font2d = getFont2D();
+        Font2D font2d = getFont2DWithSubstitution();
         char c = iter.setIndex(start);
         for (int i = start; i < limit; i++, c = iter.next()) {
             if (font2d.canDisplay(c)) {

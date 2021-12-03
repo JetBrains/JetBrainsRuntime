@@ -195,8 +195,7 @@ public class StandardGlyphVector extends GlyphVector {
 
             // how do we know its a base glyph
             // for now, it is if the natural advance of the glyph is non-zero
-            Font2D f2d = FontUtilities.getFont2D(font);
-            FontStrike strike = f2d.getStrike(font, frc);
+            FontStrike strike = font2D.getStrike(font, frc);
 
             float[] deltas = { trackPt.x, trackPt.y };
             for (int j = 0; j < deltas.length; ++j) {
@@ -1127,10 +1126,7 @@ public class StandardGlyphVector extends GlyphVector {
     }
 
     private void initFontData() {
-        font2D = FontUtilities.getFont2D(font);
-        if (Font2D.fontSubstitutionEnabled && font2D instanceof FontSubstitution) {
-           font2D = ((FontSubstitution)font2D).getCompositeFont2D();
-        }
+        font2D = FontUtilities.getFont2DWithSubstitution(font);
         float s = font.getSize2D();
         if (font.isTransformed()) {
             ftx = font.getTransform();
@@ -1749,12 +1745,7 @@ public class StandardGlyphVector extends GlyphVector {
                                                      aa, fm);
             // Get the strike via the handle. Shouldn't matter
             // if we've invalidated the font but its an extra precaution.
-        // do we want the CompFont from CFont here ?
-        Font2D f2d = sgv.font2D;
-        if (f2d instanceof FontSubstitution) {
-           f2d = ((FontSubstitution)f2d).getCompositeFont2D();
-        }
-            FontStrike strike = f2d.handle.font2D.getStrike(desc);  // !!! getStrike(desc, false)
+            FontStrike strike = sgv.font2D.handle.font2D.getStrike(desc);  // !!! getStrike(desc, false)
 
             return new GlyphStrike(sgv, strike, dx, dy);
         }
