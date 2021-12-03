@@ -46,6 +46,7 @@
         multipleMode:(BOOL)inMultipleMode
       shouldNavigate:(BOOL)inNavigateApps
 canChooseDirectories:(BOOL)inChooseDirectories
+      canChooseFiles:(BOOL)inChooseFiles
              withEnv:(JNIEnv*)env;
 {
   if (self = [super init]) {
@@ -61,6 +62,7 @@ canChooseDirectories:(BOOL)inChooseDirectories
         fMultipleMode = inMultipleMode;
         fNavigateApps = inNavigateApps;
         fChooseDirectories = inChooseDirectories;
+        fChooseFiles = inChooseFiles;
         fPanelResult = NSCancelButton;
     }
 
@@ -119,7 +121,7 @@ canChooseDirectories:(BOOL)inChooseDirectories
         if (fMode == java_awt_FileDialog_LOAD) {
             NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
             [openPanel setAllowsMultipleSelection:fMultipleMode];
-            [openPanel setCanChooseFiles:!fChooseDirectories];
+            [openPanel setCanChooseFiles:fChooseFiles];
             [openPanel setCanChooseDirectories:fChooseDirectories];
             [openPanel setCanCreateDirectories:YES];
         }
@@ -247,8 +249,8 @@ canChooseDirectories:(BOOL)inChooseDirectories
 JNIEXPORT jobjectArray JNICALL
 Java_sun_lwawt_macosx_CFileDialog_nativeRunFileDialog
 (JNIEnv *env, jobject peer, jstring title, jint mode, jboolean multipleMode,
- jboolean navigateApps, jboolean chooseDirectories, jboolean hasFilter,
- jstring directory, jstring file)
+ jboolean navigateApps, jboolean chooseDirectories, jboolean chooseFiles,
+ jboolean hasFilter, jstring directory, jstring file)
 {
     jobjectArray returnValue = NULL;
 
@@ -267,6 +269,7 @@ JNI_COCOA_ENTER(env);
                                                          multipleMode:multipleMode
                                                        shouldNavigate:navigateApps
                                                  canChooseDirectories:chooseDirectories
+                                                       canChooseFiles:chooseFiles
                                                               withEnv:env];
 
     [ThreadUtilities performOnMainThread:@selector(safeSaveOrLoad)
