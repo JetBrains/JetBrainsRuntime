@@ -41,51 +41,6 @@ static const CGAffineTransform sInverseTX = { 1, 0, 0, -1, 0, 0 };
 #pragma mark --- CoreText Support ---
 
 
-// Translates a Unicode into a CGGlyph/CTFontRef pair
-// Returns the substituted font, and places the appropriate glyph into "glyphRef"
-CTFontRef JavaCT_CopyCTFallbackFontAndGlyphForUnicode
-(const AWTFont *font, const UTF16Char *charRef, CGGlyph *glyphRef, int count) {
-    CTFontRef fallback = JRSFontCreateFallbackFontForCharacters((CTFontRef)font->fFont, charRef, count);
-    if (fallback == NULL)
-    {
-        // use the original font if we somehow got duped into trying to fallback something we can't
-        fallback = (CTFontRef)font->fFont;
-        CFRetain(fallback);
-    }
-
-    CTFontGetGlyphsForCharacters(fallback, charRef, glyphRef, count);
-    return fallback;
-}
-
-// Translates a Java glyph code int (might be a negative unicode value) into a CGGlyph/CTFontRef pair
-// Returns the substituted font, and places the appropriate glyph into "glyph"
-CTFontRef JavaCT_CopyCTFallbackFontAndGlyphForJavaGlyphCode
-(const AWTFont *font, const jint glyphCode, CGGlyph *glyphRef)
-{
-    // negative glyph codes are really unicodes, which were placed there by the mapper
-    // to indicate we should use CoreText to substitute the character
-    if (glyphCode >= 0)
-    {
-        *glyphRef = glyphCode;
-        CFRetain(font->fFont);
-        return (CTFontRef)font->fFont;
-    }
-
-    UTF16Char character = -glyphCode;
-    return JavaCT_CopyCTFallbackFontAndGlyphForUnicode(font, &character, glyphRef, 1);
-}
-
-// Breakup a 32 bit unicode value into the component surrogate pairs
-void JavaCT_BreakupUnicodeIntoSurrogatePairs(int uniChar, UTF16Char charRef[]) {
-    int value = uniChar - 0x10000;
-    UTF16Char low_surrogate = (value & 0x3FF) | LO_SURROGATE_START;
-    UTF16Char high_surrogate = (((int)(value & 0xFFC00)) >> 10) | HI_SURROGATE_START;
-    charRef[0] = high_surrogate;
-    charRef[1] = low_surrogate;
-}
-
-
-
 /*
  * Callback for CoreText which uses the CoreTextProviderStruct to feed CT UniChars
  * We only use it for one-off lines, and don't attempt to fragment our strings
@@ -129,7 +84,7 @@ static NSDictionary* ctsDictionaryFor(const NSFont *font, BOOL useFractionalMetr
 // Itterates though each glyph, and if a transform is present for that glyph, apply it to the CGContext, and strike the glyph.
 // If there is no per-glyph transform, just strike the glyph. Advances must also be transformed on-the-spot as well.
 void JavaCT_DrawGlyphVector
-(const QuartzSDOps *qsdo, const AWTStrike *strike, const BOOL useSubstituion, const int uniChars[], const CGGlyph glyphs[], CGSize advances[], const jint g_gvTXIndicesAsInts[], const jdouble g_gvTransformsAsDoubles[], const CFIndex length)
+(const QuartzSDOps *qsdo, const AWTStrike *strike, const CGGlyph glyphs[], CGSize advances[], const jint g_gvTXIndicesAsInts[], const jdouble g_gvTransformsAsDoubles[], const CFIndex length)
 {
     CGPoint pt = { 0, 0 };
 
@@ -137,49 +92,12 @@ void JavaCT_DrawGlyphVector
     CGContextRef cgRef = qsdo->cgRef;
     CGAffineTransform ctmText = CGContextGetTextMatrix(cgRef);
 
-    BOOL saved = false;
-
     CGAffineTransform invTx = CGAffineTransformInvert(strike->fTx);
 
     NSInteger i;
     for (i = 0; i < length; i++)
     {
         CGGlyph glyph = glyphs[i];
-        int uniChar = uniChars[i];
-        // if we found a unichar instead of a glyph code, get the fallback font,
-        // find the glyph code for the fallback font, and set the font on the current context
-        if (uniChar != 0)
-        {
-            CTFontRef fallback;
-            if (uniChar > 0xFFFF) {
-                UTF16Char charRef[2];
-                JavaCT_BreakupUnicodeIntoSurrogatePairs(uniChar, charRef);
-                CGGlyph glyphTmp[2];
-                fallback = JavaCT_CopyCTFallbackFontAndGlyphForUnicode(strike->fAWTFont, (const UTF16Char *)&charRef, (CGGlyph *)&glyphTmp, 2);
-                glyph = glyphTmp[0];
-            } else {
-                const UTF16Char u = uniChar;
-                fallback = JavaCT_CopyCTFallbackFontAndGlyphForUnicode(strike->fAWTFont, &u, (CGGlyph *)&glyph, 1);
-            }
-            if (fallback) {
-                const CGFontRef cgFallback = CTFontCopyGraphicsFont(fallback, NULL);
-                CFRelease(fallback);
-
-                if (cgFallback) {
-                    if (!saved) {
-                        CGContextSaveGState(cgRef);
-                        saved = true;
-                    }
-                    CGContextSetFont(cgRef, cgFallback);
-                    CFRelease(cgFallback);
-                }
-            }
-        } else {
-            if (saved) {
-                CGContextRestoreGState(cgRef);
-                saved = false;
-            }
-        }
 
         // if we have per-glyph transformations
         int tin = (g_gvTXIndicesAsInts == NULL) ? -1 : (g_gvTXIndicesAsInts[i] - 1) * 6;
@@ -213,10 +131,6 @@ void JavaCT_DrawGlyphVector
         pt.x += advances[i].width;
         pt.y += advances[i].height;
 
-    }
-    // reset the font on the context after striking a unicode with CoreText
-    if (saved) {
-        CGContextRestoreGState(cgRef);
     }
 }
 
@@ -327,24 +241,16 @@ static jclass jc_StandardGlyphVector = NULL;
 // Checks the GlyphVector Java object for any transforms that were applied to individual characters. If none are present,
 // strike the glyphs immediately in Core Graphics. Otherwise, obtain the arrays, and defer to above.
 static inline void doDrawGlyphsPipe_checkForPerGlyphTransforms
-(JNIEnv *env, QuartzSDOps *qsdo, const AWTStrike *strike, jobject gVector, BOOL useSubstituion, int *uniChars, CGGlyph *glyphs, CGSize *advances, size_t length)
+(JNIEnv *env, QuartzSDOps *qsdo, const AWTStrike *strike, jobject gVector, CGGlyph *glyphs, CGSize *advances, size_t length)
 {
-    // if we have no character substitution, and no per-glyph transformations - strike now!
+    // if we have no per-glyph transformations - strike now!
     GET_SGV_CLASS();
     DECLARE_FIELD(jm_StandardGlyphVector_gti, jc_StandardGlyphVector, "gti", "Lsun/font/StandardGlyphVector$GlyphTransformInfo;");
     jobject gti = (*env)->GetObjectField(env, gVector, jm_StandardGlyphVector_gti);
     if (gti == 0)
     {
-        if (useSubstituion)
-        {
-            // quasi-simple case, substitution, but no per-glyph transforms
-            JavaCT_DrawGlyphVector(qsdo, strike, TRUE, uniChars, glyphs, advances, NULL, NULL, length);
-        }
-        else
-        {
-            // fast path, straight to CG without per-glyph transforms
-            CGContextShowGlyphsWithAdvances(qsdo->cgRef, glyphs, advances, length);
-        }
+        // fast path, straight to CG without per-glyph transforms
+        CGContextShowGlyphsWithAdvances(qsdo->cgRef, glyphs, advances, length);
         return;
     }
 
@@ -369,8 +275,8 @@ static inline void doDrawGlyphsPipe_checkForPerGlyphTransforms
         (*env)->DeleteLocalRef(env, g_gtiTXIndicesArray);
         return;
     }
-    // slowest case, we have per-glyph transforms, and possibly glyph substitution as well
-    JavaCT_DrawGlyphVector(qsdo, strike, useSubstituion, uniChars, glyphs, advances, g_gvTXIndicesAsInts, g_gvTransformsAsDoubles, length);
+    // slowest case, we have per-glyph transforms
+    JavaCT_DrawGlyphVector(qsdo, strike, glyphs, advances, g_gvTXIndicesAsInts, g_gvTransformsAsDoubles, length);
 
     (*env)->ReleasePrimitiveArrayCritical(env, g_gtiTransformsArray, g_gvTransformsAsDoubles, JNI_ABORT);
     (*env)->ReleasePrimitiveArrayCritical(env, g_gtiTXIndicesArray, g_gvTXIndicesAsInts, JNI_ABORT);
@@ -379,35 +285,11 @@ static inline void doDrawGlyphsPipe_checkForPerGlyphTransforms
     (*env)->DeleteLocalRef(env, g_gtiTXIndicesArray);
 }
 
-// Retrieves advances for translated unicodes
-// Uses "glyphs" as a temporary buffer for the glyph-to-unicode translation
-void JavaCT_GetAdvancesForUnichars
-(const NSFont *font, const int uniChars[], CGGlyph glyphs[], const size_t length, CGSize advances[])
-{
-    // cycle over each spot, and if we discovered a unicode to substitute, we have to calculate the advance for it
-    size_t i;
-    for (i = 0; i < length; i++)
-    {
-        UniChar uniChar = uniChars[i];
-        if (uniChar == 0) continue;
-
-        CGGlyph glyph = 0;
-        const CTFontRef fallback = JRSFontCreateFallbackFontForCharacters((CTFontRef)font, &uniChar, 1);
-        if (fallback) {
-            CTFontGetGlyphsForCharacters(fallback, &uniChar, &glyph, 1);
-            CTFontGetAdvancesForGlyphs(fallback, kCTFontDefaultOrientation, &glyph, &(advances[i]), 1);
-            CFRelease(fallback);
-        }
-
-        glyphs[i] = glyph;
-    }
-}
-
 // Fills the glyph buffer with glyphs from the GlyphVector object. Also checks to see if the glyph's positions have been
 // already caculated from GlyphVector, or we simply ask Core Graphics to make some advances for us. Pre-calculated positions
 // are translated into advances, since CG only understands advances.
 static inline void doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers
-(JNIEnv *env, QuartzSDOps *qsdo, const AWTStrike *strike, jobject gVector, CGGlyph *glyphs, int *uniChars, CGSize *advances, size_t length, jintArray glyphsArray)
+(JNIEnv *env, QuartzSDOps *qsdo, const AWTStrike *strike, jobject gVector, CGGlyph *glyphs, CGSize *advances, size_t length, jintArray glyphsArray)
 {
     // fill the glyph buffer
     jint *glyphsAsInts = (*env)->GetPrimitiveArrayCritical(env, glyphsArray, NULL);
@@ -415,24 +297,10 @@ static inline void doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers
         return;
     }
 
-    // if a glyph code from Java is negative, that means it is really a unicode value
-    // which we can use in CoreText to strike the character in another font
     size_t i;
-    BOOL complex = NO;
     for (i = 0; i < length; i++)
     {
-        jint code = glyphsAsInts[i];
-        if (code < 0)
-        {
-            complex = YES;
-            uniChars[i] = -code;
-            glyphs[i] = 0;
-        }
-        else
-        {
-            uniChars[i] = 0;
-            glyphs[i] = code;
-        }
+        glyphs[i] = glyphsAsInts[i];
     }
 
     (*env)->ReleasePrimitiveArrayCritical(env, glyphsArray, glyphsAsInts, JNI_ABORT);
@@ -483,15 +351,10 @@ static inline void doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers
         // there were no pre-calculated positions from the glyph buffer on the Java side
         AWTFont *awtFont = strike->fAWTFont;
         CTFontGetAdvancesForGlyphs((CTFontRef)awtFont->fFont, kCTFontDefaultOrientation, glyphs, advances, length);
-
-        if (complex)
-        {
-            JavaCT_GetAdvancesForUnichars(awtFont->fFont, uniChars, glyphs, length, advances);
-        }
     }
 
     // continue on to the next stage of the pipe
-    doDrawGlyphsPipe_checkForPerGlyphTransforms(env, qsdo, strike, gVector, complex, uniChars, glyphs, advances, length);
+    doDrawGlyphsPipe_checkForPerGlyphTransforms(env, qsdo, strike, gVector, glyphs, advances, length);
 }
 
 // Obtains the glyph array to determine the number of glyphs we are dealing with. If we are dealing a large number of glyphs,
@@ -515,28 +378,22 @@ static inline void doDrawGlyphsPipe_getGlyphVectorLengthAndAlloc
     {
         // if we are small enough, fit everything onto the stack
         CGGlyph glyphs[length];
-        int uniChars[length];
         CGSize advances[length];
-        doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers(env, qsdo, strike, gVector, glyphs, uniChars, advances, length, glyphsArray);
+        doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers(env, qsdo, strike, gVector, glyphs, advances, length, glyphsArray);
     }
     else
     {
         // otherwise, we should malloc and free buffers for this large run
         CGGlyph *glyphs = (CGGlyph *)malloc(sizeof(CGGlyph) * length);
-        int *uniChars = (int *)malloc(sizeof(int) * length);
         CGSize *advances = (CGSize *)malloc(sizeof(CGSize) * length);
 
-        if (glyphs == NULL || uniChars == NULL || advances == NULL)
+        if (glyphs == NULL || advances == NULL)
         {
             (*env)->DeleteLocalRef(env, glyphsArray);
             [NSException raise:NSMallocException format:@"%s-%s:%d", __FILE__, __FUNCTION__, __LINE__];
             if (glyphs)
             {
                 free(glyphs);
-            }
-            if (uniChars)
-            {
-                free(uniChars);
             }
             if (advances)
             {
@@ -545,10 +402,9 @@ static inline void doDrawGlyphsPipe_getGlyphVectorLengthAndAlloc
             return;
         }
 
-        doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers(env, qsdo, strike, gVector, glyphs, uniChars, advances, length, glyphsArray);
+        doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers(env, qsdo, strike, gVector, glyphs, advances, length, glyphsArray);
 
         free(glyphs);
-        free(uniChars);
         free(advances);
     }
 
