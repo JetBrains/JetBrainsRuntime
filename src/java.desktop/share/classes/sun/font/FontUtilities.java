@@ -171,6 +171,10 @@ public final class FontUtilities {
         return FontAccess.getFontAccess().getFont2D(font);
     }
 
+    public static Font2D getFont2DWithSubstitution(Font font) {
+        return FontAccess.getFontAccess().getFont2DWithSubstitution(font);
+    }
+
     /**
      * Return true if there any characters which would trigger layout.
      * This method considers supplementary characters to be simple,

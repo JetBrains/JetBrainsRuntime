@@ -43,6 +43,7 @@ public abstract class FontAccess {
     }
 
     public abstract Font2D getFont2D(Font f);
+    public abstract Font2D getFont2DWithSubstitution(Font f);
     public abstract void setFont2D(Font f, Font2DHandle h);
     public abstract void setWithFallback(Font f);
     public abstract boolean isCreatedFont(Font f);

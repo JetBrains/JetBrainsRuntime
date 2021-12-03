@@ -698,7 +698,7 @@ public abstract class PathGraphics extends ProxyGraphics2D {
         }
 
         Font font = g.getFont();
-        Font2D font2D = FontUtilities.getFont2D(font);
+        Font2D font2D = FontUtilities.getFont2DWithSubstitution(font);
         if (font2D.handle.font2D != font2D) {
             /* suspicious, may be a bad font. lets bail */
             return false;

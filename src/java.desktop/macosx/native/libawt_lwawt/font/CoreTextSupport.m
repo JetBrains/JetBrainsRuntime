@@ -88,161 +88,18 @@ ReleaseCTStateDictionary(CFDictionaryRef ctStateDict)
     CFRelease(ctStateDict); // GC
 }
 
-void GetFontsAndGlyphsForCharacters(CTFontRef font, CTFontRef fallbackBase,
-                                    const UniChar unicodes[], CGGlyph glyphs[], jint glyphsAsInts[],
-                                    CTFontRef actualFonts[], const size_t count)
-{
-    CTFontGetGlyphsForCharacters(font, unicodes, glyphs, count);
-    if (!fallbackBase) fallbackBase = font;
-    size_t i;
-    for (i = 0; i < count; i++) {
-        UniChar unicode = unicodes[i];
-        UniChar nextUnicode = (i+1) < count ? unicodes[i+1] : 0;
-        bool surrogatePair = unicode >= HI_SURROGATE_START && unicode <= HI_SURROGATE_END
-                             && nextUnicode >= LO_SURROGATE_START && nextUnicode <= LO_SURROGATE_END;
-
-        CGGlyph glyph = glyphs[i];
-        if (glyph > 0) {
-            glyphsAsInts[i] = glyph;
-            if (surrogatePair) i++;
-            continue;
-        }
-
-        const CTFontRef fallback = JRSFontCreateFallbackFontForCharacters(fallbackBase, &unicodes[i], surrogatePair ? 2 : 1);
-        if (fallback) {
-            CTFontGetGlyphsForCharacters(fallback, &unicodes[i], &glyphs[i], surrogatePair ? 2 : 1);
-            glyph = glyphs[i];
-            if (actualFonts && glyph > 0) {
-                actualFonts[i] = fallback;
-            } else {
-                CFRelease(fallback);
-            }
-        }
-
-        if (glyph > 0) {
-            int codePoint = surrogatePair ? (((int)(unicode - HI_SURROGATE_START)) << 10)
-                                            + nextUnicode - LO_SURROGATE_START + 0x10000 : unicode;
-            glyphsAsInts[i] = -codePoint; // set the glyph code to the negative unicode value
-        } else {
-            glyphsAsInts[i] = 0; // CoreText couldn't find a glyph for this character either
-        }
-        if (surrogatePair) i++;
-    }
-}
-
 /*
  *    Transform Unicode characters into glyphs.
  *
- *    Fills the "glyphsAsInts" array with the glyph codes for the current font,
- *    or the negative unicode value if we know the character can be hot-substituted.
- *
- *    This is the heart of "Universal Font Substitution" in Java.
+ *    Fills the "glyphsAsInts" array with the glyph codes for the current font.
  */
 void CTS_GetGlyphsAsIntsForCharacters
 (const AWTFont *font, const UniChar unicodes[], CGGlyph glyphs[], jint glyphsAsInts[], const size_t count)
 {
-    GetFontsAndGlyphsForCharacters((CTFontRef)font->fFont, (CTFontRef)font->fFallbackBase,
-                                   unicodes, glyphs, glyphsAsInts, NULL, count);
-}
+    CTFontGetGlyphsForCharacters((CTFontRef)font->fFont, unicodes, glyphs, count);
 
-/*
- *   Returns glyph code for a given Unicode character.
- *   Names of the corresponding substituted font are also returned if substitution is performed.
- */
-CGGlyph CTS_CopyGlyphAndFontNamesForCodePoint
-(const AWTFont *font, const UnicodeScalarValue codePoint, CFStringRef fontNames[])
-{
-    CTFontRef fontRef = (CTFontRef)font->fFont;
-    CTFontRef fallbackBase = (CTFontRef)font->fFallbackBase;
-    int count = codePoint >= 0x10000 ? 2 : 1;
-    UTF16Char unicodes[count];
-    if (count == 1) {
-        unicodes[0] = (UTF16Char)codePoint;
-    } else {
-        CTS_BreakupUnicodeIntoSurrogatePairs(codePoint, unicodes);
+    size_t i;
+    for (i = 0; i < count; i++) {
+        glyphsAsInts[i] = glyphs[i];
     }
-    CGGlyph glyphs[count];
-    jint glyphsAsInts[count];
-    CTFontRef actualFonts[count];
-    GetFontsAndGlyphsForCharacters(fontRef, fallbackBase, unicodes, glyphs, glyphsAsInts, actualFonts, count);
-    CGGlyph glyph = glyphs[0];
-    bool substitutionHappened = glyphsAsInts[0] < 0;
-    if (glyph > 0 && substitutionHappened) {
-        CTFontRef actualFont = actualFonts[0];
-        CFStringRef fontName = CTFontCopyPostScriptName(actualFont);
-        CFStringRef familyName = CTFontCopyFamilyName(actualFont);
-        CFRelease(actualFont);
-        fontNames[0] = fontName;
-        fontNames[1] = familyName;
-        if (!fontName || !familyName) glyph = 0;
-    }
-    return glyph;
-}
-
-/*
- * Translates a Unicode into a CGGlyph/CTFontRef pair
- * Returns the substituted font, and places the appropriate glyph into "glyphRef"
- */
-CTFontRef CTS_CopyCTFallbackFontAndGlyphForUnicode
-(const AWTFont *font, const UTF16Char *charRef, CGGlyph *glyphRef, int count) {
-    CTFontRef primary = (CTFontRef)font->fFont;
-    CTFontRef fallbackBase = (CTFontRef)font->fFallbackBase;
-    if (fallbackBase) {
-        CTFontGetGlyphsForCharacters(primary, charRef, glyphRef, count);
-        if (glyphRef[0] > 0) {
-            CFRetain(primary);
-            return primary;
-        }
-    } else {
-        fallbackBase = primary;
-    }
-    CTFontRef fallback = JRSFontCreateFallbackFontForCharacters(fallbackBase, charRef, count);
-    if (fallback == NULL)
-    {
-        // use the original font if we somehow got duped into trying to fallback something we can't
-        fallback = (CTFontRef)font->fFont;
-        CFRetain(fallback);
-    }
-
-    CTFontGetGlyphsForCharacters(fallback, charRef, glyphRef, count);
-    return fallback;
-}
-
-/*
- * Translates a Java glyph code int (might be a negative unicode value) into a CGGlyph/CTFontRef pair
- * Returns the substituted font, and places the appropriate glyph into "glyphRef"
- */
-CTFontRef CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode
-(const AWTFont *font, const jint glyphCode, CGGlyph *glyphRef)
-{
-    // negative glyph codes are really unicodes, which were placed there by the mapper
-    // to indicate we should use CoreText to substitute the character
-    if (glyphCode >= 0)
-    {
-        *glyphRef = glyphCode;
-        CFRetain(font->fFont);
-        return (CTFontRef)font->fFont;
-    }
-
-    int codePoint = -glyphCode;
-    if (codePoint >= 0x10000) {
-        UTF16Char chars[2];
-        CGGlyph glyphs[2];
-        CTS_BreakupUnicodeIntoSurrogatePairs(codePoint, chars);
-        CTFontRef result = CTS_CopyCTFallbackFontAndGlyphForUnicode(font, chars, glyphs, 2);
-        *glyphRef = glyphs[0];
-        return result;
-    } else {
-        UTF16Char character = codePoint;
-        return CTS_CopyCTFallbackFontAndGlyphForUnicode(font, &character, glyphRef, 1);
-    }
-}
-
-// Breakup a 32 bit unicode value into the component surrogate pairs
-void CTS_BreakupUnicodeIntoSurrogatePairs(int uniChar, UTF16Char charRef[]) {
-    int value = uniChar - 0x10000;
-    UTF16Char low_surrogate = (value & 0x3FF) | LO_SURROGATE_START;
-    UTF16Char high_surrogate = (((int)(value & 0xFFC00)) >> 10) | HI_SURROGATE_START;
-    charRef[0] = high_surrogate;
-    charRef[1] = low_surrogate;
 }
