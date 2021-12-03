@@ -59,6 +59,8 @@ function do_configure {
       $WITH_DEBUG_LEVEL \
       --with-vendor-name="${VENDOR_NAME}" \
       --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
+      --with-macosx-bundle-name-base=${VENDOR_VERSION_STRING} \
+      --with-macosx-bundle-id-base="com.jetbrains.jbr" \
       --with-jvm-features=shenandoahgc \
       --with-version-pre= \
       --with-version-build="${JDK_BUILD_NUMBER}" \
@@ -77,6 +79,8 @@ function do_configure {
       $WITH_DEBUG_LEVEL \
       --with-vendor-name="$VENDOR_NAME" \
       --with-vendor-version-string="$VENDOR_VERSION_STRING" \
+      --with-macosx-bundle-name-base=${VENDOR_VERSION_STRING} \
+      --with-macosx-bundle-id-base="com.jetbrains.jbr" \
       --with-jvm-features=shenandoahgc \
       --with-version-pre= \
       --with-version-build="$JDK_BUILD_NUMBER" \
