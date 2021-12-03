@@ -71,6 +71,9 @@ class CFileDialog implements FileDialogPeer {
                 @SuppressWarnings("removal")
                 boolean chooseDirectories = AccessController.doPrivileged(
                         new GetBooleanAction("apple.awt.fileDialogForDirectories"));
+                @SuppressWarnings("removal")
+                boolean chooseFiles = AccessController.doPrivileged(
+                        new GetBooleanAction("apple.awt.fileDialogForFiles"));
 
                 int dialogMode = target.getMode();
                 String title = target.getTitle();
@@ -83,6 +86,7 @@ class CFileDialog implements FileDialogPeer {
                         target.isMultipleMode(),
                         navigateApps,
                         chooseDirectories,
+                        chooseFiles,
                         target.getFilenameFilter() != null,
                         target.getDirectory(),
                         target.getFile());
@@ -168,8 +172,8 @@ class CFileDialog implements FileDialogPeer {
 
     private native String[] nativeRunFileDialog(String title, int mode,
             boolean multipleMode, boolean shouldNavigateApps,
-            boolean canChooseDirectories, boolean hasFilenameFilter,
-            String directory, String file);
+            boolean canChooseDirectories, boolean canChooseFiles,
+            boolean hasFilenameFilter, String directory, String file);
 
     @Override
     public void setDirectory(String dir) {
