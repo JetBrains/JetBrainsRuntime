@@ -1,14 +1,17 @@
-#!/bin/bash
+#!/bin/bash -x
 
-APP_DIRECTORY=$1
-JB_CERT=$2
+APPLICATION_PATH=$1
+APP_NAME=$2
+BUNDLE_ID=$3
+JB_DEVELOPER_CERT=$4
+JB_INSTALLER_CERT=$5
 
-if [[ -z "$APP_DIRECTORY" ]] || [[ -z "$JB_CERT" ]]; then
+if [[ -z "$APPLICATION_PATH" ]] || [[ -z "$JB_DEVELOPER_CERT" ]]; then
   echo "Usage: $0 AppDirectory CertificateID"
   exit 1
 fi
-if [[ ! -d "$APP_DIRECTORY" ]]; then
-  echo "AppDirectory '$APP_DIRECTORY' does not exist or not a directory"
+if [[ ! -d "$APPLICATION_PATH" ]]; then
+  echo "AppDirectory '$APPLICATION_PATH' does not exist or not a directory"
   exit 1
 fi
 
@@ -20,43 +23,30 @@ function log() {
 set -euo pipefail
 
 # Cleanup files left from previous sign attempt (if any)
-find "$APP_DIRECTORY" -name '*.cstemp' -exec rm '{}' \;
+find "$APPLICATION_PATH" -name '*.cstemp' -exec rm '{}' \;
 
 log "Signing libraries and executables..."
 # -perm +111 searches for executables
 for f in \
-   "Contents/Home/bin" \
-   "Contents/Home/lib"; do
-  if [ -d "$APP_DIRECTORY/$f" ]; then
-    find "$APP_DIRECTORY/$f" \
-      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -perm +111 \) \
-      -exec codesign --timestamp --force \
-      -v -s "$JB_CERT" --options=runtime \
+  "Contents/Home/lib" "Contents/MacOS" \
+  "Contents/Home/Frameworks" \
+  "Contents/Frameworks"; do
+  if [ -d "$APPLICATION_PATH/$f" ]; then
+    find "$APPLICATION_PATH/$f" \
+      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -name "*.node" -o -perm +111 \) \
+      -exec codesign --timestamp \
+      -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
       --entitlements entitlements.xml {} \;
   fi
 done
-
-if [ -d "$APP_DIRECTORY/Contents/Frameworks" ]; then
-  log "Signing frameworks..."
-  for f in $APP_DIRECTORY/Contents/Frameworks/*; do
-    find "$f" \
-      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" \) \
-      -exec codesign --timestamp --force \
-      -v -s "$JB_CERT" \
-      --entitlements entitlements.xml {} \;
-    codesign --timestamp --force \
-      -v -s "$JB_CERT" --options=runtime \
-      --entitlements entitlements.xml "$f"
-  done
-fi
 
 log "Signing libraries in jars in $PWD"
 
 # todo: add set -euo pipefail; into the inner sh -c
 # `-e` prevents `grep -q && printf` loginc
 # with `-o pipefail` there's no input for 'while' loop
-find "$APP_DIRECTORY" -name '*.jar' \
-  -exec sh -c "set -u; unzip -l \"\$0\" | grep -q -e '\.dylib\$' -e '\.jnilib\$' -e '\.so\$' -e '^jattach\$' && printf \"\$0\0\" " {} \; |
+find "$APPLICATION_PATH" -name '*.jar' \
+  -exec sh -c "set -u; unzip -l \"\$0\" | grep -q -e '\.dylib\$' -e '\.jnilib\$' -e '\.so\$' -e '\.tbd\$' -e '^jattach\$' && printf \"\$0\0\" " {} \; |
   while IFS= read -r -d $'\0' file; do
     log "Processing libraries in $file"
 
@@ -67,12 +57,13 @@ find "$APP_DIRECTORY" -name '*.jar' \
     cp "$file" jarfolder && (cd jarfolder && jar xf "$filename" && rm "$filename")
 
     find jarfolder \
-      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "jattach" \) \
-      -exec codesign --timestamp --force \
-      -v -s "$JB_CERT" --options=runtime \
+      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -name "jattach" \) \
+      -exec codesign --timestamp \
+      --force \
+      -v -s "$JB_DEVELOPER_CERT" --options=runtime \
       --entitlements entitlements.xml {} \;
 
-    (cd jarfolder; zip -q -r -o ../jar.jar .)
+    (cd jarfolder; zip -q -r -o -0 ../jar.jar .)
     mv jar.jar "$file"
   done
 
@@ -80,28 +71,41 @@ rm -rf jarfolder jar.jar
 
 log "Signing other files..."
 for f in \
-  "Contents/MacOS"; do
-  if [ -d "$APP_DIRECTORY/$f" ]; then
-    find "$APP_DIRECTORY/$f" \
-      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -perm +111 \) \
-      -exec codesign --timestamp --force \
-      -v -s "$JB_CERT" --options=runtime \
+  "Contents/Home/bin"; do
+  if [ -d "$APPLICATION_PATH/$f" ]; then
+    find "$APPLICATION_PATH/$f" \
+      -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -perm +111 \) \
+      -exec codesign --timestamp \
+      -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
       --entitlements entitlements.xml {} \;
   fi
 done
 
 #log "Signing executable..."
 #codesign --timestamp \
-#    -v -s "$JB_CERT" --options=runtime \
+#    -v -s "$JB_DEVELOPER_CERT" --options=runtime \
 #    --force \
-#    --entitlements entitlements.xml "$APP_DIRECTORY/Contents/MacOS/idea"
+#    --entitlements entitlements.xml "$APPLICATION_PATH/Contents/MacOS/idea"
 
 log "Signing whole app..."
 codesign --timestamp \
-  -v -s "$JB_CERT" --options=runtime \
+  -v -s "$JB_DEVELOPER_CERT" --options=runtime \
   --force \
-  --entitlements entitlements.xml "$APP_DIRECTORY"
+  --entitlements entitlements.xml "$APPLICATION_PATH"
+
+BUILD_NAME=$(echo $APPLICATION_PATH | awk -F"/" '{ print $2 }')
+
+log "Creating $APP_NAME.pkg..."
+rm -rf "$APP_NAME.pkg"
+pkgbuild --identifier $BUNDLE_ID --sign "$JB_INSTALLER_CERT" --root $APPLICATION_PATH \
+    --install-location /Library/Java/JavaVirtualMachines/${BUILD_NAME} ${APP_NAME}.pkg
+
+#log "Signing whole app..."
+#codesign --timestamp \
+#  -v -s "$JB_DEVELOPER_CERT" --options=runtime \
+#  --force \
+#  --entitlements entitlements.xml $APP_NAME.pkg
 
 log "Verifying java is not broken"
-find "$APP_DIRECTORY" \
+find "$APPLICATION_PATH" \
   -type f -name 'java' -perm +111 -exec {} -version \;
