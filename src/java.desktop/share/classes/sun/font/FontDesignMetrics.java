@@ -350,7 +350,7 @@ public final class FontDesignMetrics extends FontMetrics {
 
     private void initMatrixAndMetrics() {
 
-        Font2D font2D = FontUtilities.getFont2D(font);
+        Font2D font2D = FontUtilities.getFont2DWithSubstitution(font);
         fontStrike = font2D.getStrike(font, frc);
         StrikeMetrics metrics = fontStrike.getFontMetrics();
         this.ascent = metrics.getAscent();
