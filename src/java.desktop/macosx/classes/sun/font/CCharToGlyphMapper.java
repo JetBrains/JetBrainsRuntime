@@ -128,12 +128,8 @@ public class CCharToGlyphMapper extends CharToGlyphMapper {
         };
     }
 
-    // This mapper returns either the glyph code, or if the character can be
-    // replaced on-the-fly using CoreText substitution; the negative unicode
-    // value. If this "glyph code int" is treated as an opaque code, it will
-    // strike and measure exactly as a real glyph code - whether the character
-    // is present or not. Missing characters for any font on the system will
-    // be returned as 0, as the getMissingGlyphCode() function above indicates.
+    // Missing characters for any font on the system will be returned as 0,
+    // as the getMissingGlyphCode() function above indicates.
     private static native void nativeCharsToGlyphs(final long nativeFontPtr,
                                                    int count, char[] unicodes,
                                                    int[] glyphs);
