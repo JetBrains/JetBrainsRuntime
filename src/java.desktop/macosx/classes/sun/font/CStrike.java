@@ -359,18 +359,14 @@ public final class CStrike extends PhysicalStrike {
         }
     }
 
-    // This class stores glyph pointers, and is indexed based on glyph codes,
-    // and negative unicode values.  See the comments in
-    // CCharToGlyphMapper for more details on our glyph code strategy.
+    // This class stores glyph pointers, and is indexed based on glyph codes.
     private static class GlyphInfoCache extends CStrikeDisposer {
         private static final int FIRST_LAYER_SIZE = 256;
-        private static final int SECOND_LAYER_SIZE = 16384; // 16384 = 128x128
 
         // rdar://problem/5204197
         private final AtomicBoolean disposed = new AtomicBoolean(false);
 
         private final long[] firstLayerCache;
-        private SparseBitShiftingTwoLayerArray secondLayerCache;
         private HashMap<Integer, Long> generalCache;
 
         GlyphInfoCache(final Font2D nativeFont, final FontStrikeDesc desc) {
@@ -379,19 +375,9 @@ public final class CStrike extends PhysicalStrike {
         }
 
         public synchronized long get(final int index) {
-            if (index < 0) {
-                if (-index < SECOND_LAYER_SIZE) {
-                    // catch common unicodes
-                    if (secondLayerCache == null) {
-                        return 0L;
-                    }
-                    return secondLayerCache.get(-index);
-                }
-            } else {
-                if (index < FIRST_LAYER_SIZE) {
-                    // catch common glyphcodes
-                    return firstLayerCache[index];
-                }
+            if (index < FIRST_LAYER_SIZE) {
+                // catch common glyphcodes
+                return firstLayerCache[index];
             }
 
             if (generalCache == null) {
@@ -405,21 +391,10 @@ public final class CStrike extends PhysicalStrike {
         }
 
         public synchronized void put(final int index, final long value) {
-            if (index < 0) {
-                if (-index < SECOND_LAYER_SIZE) {
-                    // catch common unicodes
-                    if (secondLayerCache == null) {
-                        secondLayerCache = new SparseBitShiftingTwoLayerArray(SECOND_LAYER_SIZE, 7); // 128x128
-                    }
-                    secondLayerCache.put(-index, value);
-                    return;
-                }
-            } else {
-                if (index < FIRST_LAYER_SIZE) {
-                    // catch common glyphcodes
-                    firstLayerCache[index] = value;
-                    return;
-                }
+            if (index < FIRST_LAYER_SIZE) {
+                // catch common glyphcodes
+                firstLayerCache[index] = value;
+                return;
             }
 
             if (generalCache == null) {
@@ -441,14 +416,6 @@ public final class CStrike extends PhysicalStrike {
 
                     // clean out the first array
                     disposeLongArray(firstLayerCache);
-
-                    // clean out the two layer arrays
-                    if (secondLayerCache != null) {
-                        final long[][] secondLayerLongArrayArray = secondLayerCache.cache;
-                        for (final long[] longArray : secondLayerLongArrayArray) {
-                            if (longArray != null) disposeLongArray(longArray);
-                        }
-                    }
 
                     // clean up everyone else
                     if (generalCache != null) {
@@ -485,56 +452,18 @@ public final class CStrike extends PhysicalStrike {
                 }
             }
         }
-
-        private static class SparseBitShiftingTwoLayerArray {
-            final long[][] cache;
-            final int shift;
-            final int secondLayerLength;
-
-            SparseBitShiftingTwoLayerArray(final int size, final int shift) {
-                this.shift = shift;
-                this.cache = new long[1 << shift][];
-                this.secondLayerLength = size >> shift;
-            }
-
-            public long get(final int index) {
-                final int firstIndex = index >> shift;
-                final long[] firstLayerRow = cache[firstIndex];
-                if (firstLayerRow == null) return 0L;
-                return firstLayerRow[index - (firstIndex * (1 << shift))];
-            }
-
-            public void put(final int index, final long value) {
-                final int firstIndex = index >> shift;
-                long[] firstLayerRow = cache[firstIndex];
-                if (firstLayerRow == null) {
-                    cache[firstIndex] = firstLayerRow = new long[secondLayerLength];
-                }
-                firstLayerRow[index - (firstIndex * (1 << shift))] = value;
-            }
-        }
     }
 
     private static class GlyphAdvanceCache {
         private static final int FIRST_LAYER_SIZE = 256;
-        private static final int SECOND_LAYER_SIZE = 16384; // 16384 = 128x128
 
         private final float[] firstLayerCache = new float[FIRST_LAYER_SIZE];
-        private SparseBitShiftingTwoLayerArray secondLayerCache;
         private HashMap<Integer, Float> generalCache;
 
         public synchronized float get(final int index) {
-            if (index < 0) {
-                if (-index < SECOND_LAYER_SIZE) {
-                    // catch common unicodes
-                    if (secondLayerCache == null) return 0;
-                    return secondLayerCache.get(-index);
-                }
-            } else {
-                if (index < FIRST_LAYER_SIZE) {
-                    // catch common glyphcodes
-                    return firstLayerCache[index];
-                }
+            if (index < FIRST_LAYER_SIZE) {
+                // catch common glyphcodes
+                return firstLayerCache[index];
             }
 
             if (generalCache == null) return 0;
@@ -544,21 +473,10 @@ public final class CStrike extends PhysicalStrike {
         }
 
         public synchronized void put(final int index, final float value) {
-            if (index < 0) {
-                if (-index < SECOND_LAYER_SIZE) {
-                    // catch common unicodes
-                    if (secondLayerCache == null) {
-                        secondLayerCache = new SparseBitShiftingTwoLayerArray(SECOND_LAYER_SIZE, 7); // 128x128
-                    }
-                    secondLayerCache.put(-index, value);
-                    return;
-                }
-            } else {
-                if (index < FIRST_LAYER_SIZE) {
-                    // catch common glyphcodes
-                    firstLayerCache[index] = value;
-                    return;
-                }
+            if (index < FIRST_LAYER_SIZE) {
+                // catch common glyphcodes
+                firstLayerCache[index] = value;
+                return;
             }
 
             if (generalCache == null) {
@@ -566,35 +484,6 @@ public final class CStrike extends PhysicalStrike {
             }
 
             generalCache.put(Integer.valueOf(index), Float.valueOf(value));
-        }
-
-        private static class SparseBitShiftingTwoLayerArray {
-            final float[][] cache;
-            final int shift;
-            final int secondLayerLength;
-
-            SparseBitShiftingTwoLayerArray(final int size, final int shift) {
-                this.shift = shift;
-                this.cache = new float[1 << shift][];
-                this.secondLayerLength = size >> shift;
-            }
-
-            public float get(final int index) {
-                final int firstIndex = index >> shift;
-                final float[] firstLayerRow = cache[firstIndex];
-                if (firstLayerRow == null) return 0L;
-                return firstLayerRow[index - (firstIndex * (1 << shift))];
-            }
-
-            public void put(final int index, final float value) {
-                final int firstIndex = index >> shift;
-                float[] firstLayerRow = cache[firstIndex];
-                if (firstLayerRow == null) {
-                    cache[firstIndex] = firstLayerRow =
-                        new float[secondLayerLength];
-                }
-                firstLayerRow[index - (firstIndex * (1 << shift))] = value;
-            }
         }
     }
 }
