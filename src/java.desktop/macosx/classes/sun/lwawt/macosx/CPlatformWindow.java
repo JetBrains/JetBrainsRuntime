@@ -73,6 +73,8 @@ import sun.lwawt.LWWindowPeer.PeerType;
 import sun.lwawt.PlatformWindow;
 import sun.security.action.GetPropertyAction;
 import sun.util.logging.PlatformLogger;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class CPlatformWindow extends CFRetainedResource implements PlatformWindow {
     private native long nativeCreateNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h);
@@ -102,6 +104,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     static native CPlatformWindow nativeGetTopmostPlatformWindowUnderMouse();
     private static native boolean nativeDelayShowing(long nsWindowPtr);
     private static native void nativeRaiseLevel(long nsWindowPtr, boolean popup, boolean onlyIfParentIsActive);
+    private static native void nativeTransparentTitleBarWithCustomHeight(long nsWindowPtr, float height);
 
     // Loger to report issues happened during execution but that do not affect functionality
     private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.CPlatformWindow");
@@ -1444,4 +1447,22 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         isInFullScreen = false;
         isFullScreenAnimationOn = false;
     }
+
+    private volatile List<Rectangle> customDecorHitTestSpots;
+
+    // called from client via reflection
+    private void setCustomDecorationHitTestSpots(List<Rectangle> hitTestSpots) {
+        this.customDecorHitTestSpots = new CopyOnWriteArrayList<>(hitTestSpots);
+    }
+
+    // called from native
+    private boolean hitTestCustomDecoration(float x, float y) {
+        List<Rectangle> spots = customDecorHitTestSpots;
+        if (spots == null) return false;
+        for (Rectangle spot : spots) {
+            if (spot.contains(x, y)) return true;
+        }
+        return false;
+    }
+
 }

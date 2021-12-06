@@ -1225,7 +1225,219 @@ AWT_ASSERT_APPKIT_THREAD;
     return lastKeyWindow;
 }
 
+- (void) setUpCustomHeader
+{
+    /**
+     * The view hierarchy looks as follows:
+     * NSThemeFrame
+     * ├─NSView (content view)
+     * └─NSTitlebarContainerView
+     *   ├─NSTitlebarView
+     *   │ ├─NSVisualEffectView (only on Big Sur and newer)
+     *   │ ├─NSView (only on Big Sur and newer)
+     *   │ ├─_NSThemeCloseWidget - Close
+     *   │ ├─_NSThemeZoomWidget - Full Screen
+     *   │ └─_NSThemeWidget - Minimize (note the different order compared to their layout)
+     *   └─_NSTitlebarDecorationView
+     */
+    NSView* themeFrame = self.nsWindow.contentView.superview;
+    NSView* titlebarContainer = [self.nsWindow standardWindowButton:NSWindowCloseButton].superview.superview;
+    NSView* titlebar = titlebarContainer.subviews[0];
+    NSView* titlebarDecoration = titlebarContainer.subviews[1];
+
+    // The following two views are only there on Big Sur and forward
+    BOOL runningAtLeastBigSur = @available(macOS 11.0, *);
+    NSView* titlebarVisualEffect = runningAtLeastBigSur ? titlebar.subviews[0] : nil;
+    NSView* titlebarBackground = runningAtLeastBigSur ? titlebar.subviews[1] : nil;
+
+    NSView* dragger = [[AWTWindowDragView alloc] initWithPlatformWindow:self.javaPlatformWindow];
+    [titlebar addSubview:dragger];
+
+    NSMutableArray* newConstraints = [[NSMutableArray alloc] init];
+
+    titlebar.translatesAutoresizingMaskIntoConstraints = NO;
+    [newConstraints addObjectsFromArray:@[
+        [titlebar.leftAnchor constraintEqualToAnchor:themeFrame.leftAnchor],
+        [titlebar.widthAnchor constraintEqualToAnchor:themeFrame.widthAnchor],
+        [titlebar.topAnchor constraintEqualToAnchor:themeFrame.topAnchor],
+        [titlebar.heightAnchor constraintEqualToConstant:_customHeaderHeight], // This is the important one
+    ]];
+
+    NSArray* viewsToChange = runningAtLeastBigSur
+        ? @[titlebarContainer, titlebarDecoration, titlebarVisualEffect, titlebarBackground, dragger]
+        : @[titlebarContainer, titlebarDecoration, dragger];
+    for (NSView* view in viewsToChange)
+    {
+        view.translatesAutoresizingMaskIntoConstraints = NO;
+        [newConstraints addObjectsFromArray:@[
+            [view.leftAnchor constraintEqualToAnchor:titlebar.leftAnchor],
+            [view.rightAnchor constraintEqualToAnchor:titlebar.rightAnchor],
+            [view.topAnchor constraintEqualToAnchor:titlebar.topAnchor],
+            [view.bottomAnchor constraintEqualToAnchor:titlebar.bottomAnchor],
+        ]];
+    }
+
+    // In some scenarios, we still have an `NSTextField` inside the `NSTitlebar` containing the window title, even
+    // though we called `setTitleVisibility` with `NSWindowTitleHidden`. We need to make it zero size because otherwise,
+    // it would swallow click events.
+    NSUInteger potentialTitleIndex = runningAtLeastBigSur ? 2 : 0;
+    NSTextField* title =
+        [titlebar.subviews[potentialTitleIndex] isKindOfClass:[NSTextField class]]
+            ? titlebar.subviews[potentialTitleIndex]
+            : nil;
+    if (title != nil)
+    {
+        title.translatesAutoresizingMaskIntoConstraints = NO;
+        [newConstraints addObjectsFromArray:@[
+            [title.heightAnchor constraintEqualToConstant:0],
+            [title.widthAnchor constraintEqualToConstant:0],
+        ]];
+    }
+
+    NSView* closeButtonView = [self.nsWindow standardWindowButton:NSWindowCloseButton];
+    NSView* miniaturizeButtonView = [self.nsWindow standardWindowButton:NSWindowMiniaturizeButton];
+    NSView* zoomButtonView = [self.nsWindow standardWindowButton:NSWindowZoomButton];
+    CGFloat horizontalButtonOffset = 20.0;
+
+    [@[closeButtonView, miniaturizeButtonView, zoomButtonView] enumerateObjectsUsingBlock:^(NSView* button, NSUInteger i, BOOL* stop)
+    {
+        button.translatesAutoresizingMaskIntoConstraints = NO;
+        [newConstraints addObjectsFromArray:@[
+            [button.centerYAnchor constraintEqualToAnchor:titlebar.centerYAnchor],
+            [button.centerXAnchor constraintEqualToAnchor:titlebar.leftAnchor constant:(_customHeaderHeight/2.0 + (i * horizontalButtonOffset))],
+        ]];
+    }];
+
+    [NSLayoutConstraint activateConstraints:newConstraints];
+}
+
+- (void) resetHeader
+{
+    NSView* themeFrame = self.nsWindow.contentView.superview;
+    NSView* titlebarContainer = [self.nsWindow standardWindowButton:NSWindowCloseButton].superview.superview;
+    NSView* titlebar = titlebarContainer.subviews[0];
+    NSView* titlebarDecoration = titlebarContainer.subviews[1];
+
+    // The following two views are only there on Big Sur and forward
+    BOOL runningAtLeastBigSur = @available(macOS 11.0, *);
+    NSView* titlebarVisualEffect = runningAtLeastBigSur ? titlebar.subviews[0] : nil;
+    NSView* titlebarBackground = runningAtLeastBigSur ? titlebar.subviews[1] : nil;
+
+    NSView* closeButtonView = [self.nsWindow standardWindowButton:NSWindowCloseButton];
+    NSView* miniaturizeButtonView = [self.nsWindow standardWindowButton:NSWindowMiniaturizeButton];
+    NSView* zoomButtonView = [self.nsWindow standardWindowButton:NSWindowZoomButton];
+
+    NSArray* changedViews = runningAtLeastBigSur
+        ? @[titlebarContainer, titlebarDecoration, titlebar, titlebarVisualEffect, titlebarBackground, closeButtonView, miniaturizeButtonView, zoomButtonView]
+        : @[titlebarContainer, titlebarDecoration, titlebar, closeButtonView, miniaturizeButtonView, zoomButtonView];
+    for (NSView* changedView in changedViews)
+    {
+        [NSLayoutConstraint deactivateConstraints:changedView.constraints];
+        changedView.translatesAutoresizingMaskIntoConstraints = YES;
+    }
+
+    NSUInteger potentialTitleIndex = runningAtLeastBigSur ? 2 : 0;
+    NSTextField* title =
+        [titlebar.subviews[potentialTitleIndex] isKindOfClass:[NSTextField class]]
+            ? titlebar.subviews[potentialTitleIndex]
+            : nil;
+    if (title != nil)
+    {
+        [NSLayoutConstraint deactivateConstraints:title.constraints];
+        title.translatesAutoresizingMaskIntoConstraints = YES;
+    }
+
+    NSUInteger draggerIndex =
+        [titlebar.subviews indexOfObjectPassingTest:^(NSView* subview, NSUInteger index, BOOL* stop)
+        {
+            return [subview isKindOfClass:[AWTWindowDragView class]];
+        }];
+    if (draggerIndex != NSNotFound) {
+        AWTWindowDragView* dragger = titlebar.subviews[draggerIndex];
+        [dragger removeFromSuperview];
+    }
+}
+
+- (void) setWindowControlsHidden: (BOOL) hidden
+{
+    [self.nsWindow standardWindowButton:NSWindowCloseButton].superview.hidden = hidden;
+}
+
+- (BOOL) isFullScreen
+{
+    NSUInteger masks = [self.nsWindow styleMask];
+    return (masks & NSWindowStyleMaskFullScreen) != 0;
+}
+
+- (void) disableTitlebar: (CGFloat) customHeaderHeight
+{
+    _customHeaderHeight = customHeaderHeight;
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        [self.nsWindow setTitlebarAppearsTransparent:YES];
+        [self.nsWindow setTitleVisibility:NSWindowTitleHidden];
+        [self.nsWindow setStyleMask:[self.nsWindow styleMask]|NSWindowStyleMaskFullSizeContentView];
+
+        if (!self.isFullScreen) {
+            [self setUpCustomHeader];
+        }
+    });
+    NSNotificationCenter* defaultCenter = [NSNotificationCenter defaultCenter];
+    NSOperationQueue* mainQueue = [NSOperationQueue mainQueue];
+    [defaultCenter addObserverForName:NSWindowWillEnterFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
+        [self resetHeader];
+    }];
+    [defaultCenter addObserverForName:NSWindowWillExitFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
+        [self setWindowControlsHidden:YES];
+    }];
+    [defaultCenter addObserverForName:NSWindowDidExitFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
+        [self setUpCustomHeader];
+        [self setWindowControlsHidden:NO];
+    }];
+    _titlebarDisabled = YES;
+}
+
 @end // AWTWindow
+
+@implementation AWTWindowDragView
+
+- (id) initWithPlatformWindow:(jobject)javaPlatformWindow {
+    self = [super init];
+    if (self == nil) return nil; // no hope
+
+    self.javaPlatformWindow = javaPlatformWindow;
+    return self;
+}
+
+- (void)mouseDown:(NSEvent *)event
+{
+    [self.window performWindowDragWithEvent:event];
+    [super mouseDown:event];
+}
+
+- (void)mouseUp:(NSEvent *)event
+{
+    BOOL result = NO;
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
+    if (platformWindow != NULL) {
+        GET_CPLATFORM_WINDOW_CLASS();
+        DECLARE_METHOD(jm_hitTestCustomDecoration, jc_CPlatformWindow, "hitTestCustomDecoration", "(FF)Z");
+        NSPoint p = event.locationInWindow;
+        NSRect frame = [self.window frame];
+        float windowHeight = frame.size.height;
+        result = (*env)->CallBooleanMethod(env, platformWindow, jm_hitTestCustomDecoration, p.x,  windowHeight - p.y) == JNI_TRUE ? YES : NO;
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, platformWindow);
+    }
+    if (event.clickCount == 2 && !result)
+    {
+        [self.window performZoom:nil];
+    }
+    [super mouseUp:event];
+}
+
+@end
 
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
@@ -2016,4 +2228,17 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeDelayShow
     JNI_COCOA_EXIT(env);
 
     return result;
+}
+
+
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeTransparentTitleBarWithCustomHeight
+(JNIEnv *env, jclass clazz, jlong windowPtr, jfloat customHeaderHeight)
+{
+    JNI_COCOA_ENTER(env);
+
+    NSWindow *nsWindow = (NSWindow *)jlong_to_ptr(windowPtr);
+    AWTWindow *window = (AWTWindow*)[nsWindow delegate];
+    [window disableTitlebar:((CGFloat) customHeaderHeight)];
+
+    JNI_COCOA_EXIT(env);
 }

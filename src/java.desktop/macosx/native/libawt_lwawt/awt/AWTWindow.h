@@ -49,6 +49,8 @@
     BOOL isJustCreated;
     NSWindowTabbingMode javaWindowTabbingMode;
     BOOL isEnterFullScreen;
+    BOOL _titlebarDisabled;
+    CGFloat _customHeaderHeight;
 }
 
 // An instance of either AWTWindow_Normal or AWTWindow_Panel
@@ -102,6 +104,11 @@
               frameRect:(NSRect)rect
               styleMask:(NSUInteger)styleMask
             contentView:(NSView *)view;
+@end
+
+@interface AWTWindowDragView : NSView
+@property (nonatomic) jobject javaPlatformWindow;
+- (id) initWithPlatformWindow:(jobject)javaPlatformWindow;
 @end
 
 #endif _AWTWINDOW_H
