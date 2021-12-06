@@ -139,6 +139,8 @@ class UnixDomainSockets {
             return UnixDomainSocketAddress.of(path);
         } catch (InvalidPathException e) {
             throw new BindException("Invalid temporary directory");
+        } catch (IllegalArgumentException e) {
+            throw new UnsupportedOperationException("Unix Domain Sockets not supported on non-default file system");
         }
     }
 

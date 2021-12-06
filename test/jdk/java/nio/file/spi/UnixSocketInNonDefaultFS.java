@@ -23,18 +23,16 @@
 
 /**
  * @test
- * @summary Verifies that UNIX socket doesn't throw when opened with
- *          a non-default file system installed. NB: the opened socket isn't
- *          supposed to be useable.
+ * @summary Verifies that an attempt to call SelectorProvider.provider().openSelector()
+ *          on a non-default file system succeeds.
  * @library /test/lib
  * @build TestProvider UnixSocketInNonDefaultFS
  * @run main/othervm -Djava.nio.file.spi.DefaultFileSystemProvider=TestProvider UnixSocketInNonDefaultFS
  */
-import java.nio.channels.ServerSocketChannel;
-import java.net.StandardProtocolFamily;
+import java.nio.channels.spi.SelectorProvider;
 
 public class UnixSocketInNonDefaultFS {
     public static void main(String args[]) throws java.io.IOException {
-        ServerSocketChannel server = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
+        SelectorProvider.provider().openSelector();
     }
 }
