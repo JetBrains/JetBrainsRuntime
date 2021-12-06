@@ -24,8 +24,6 @@ source jb/project/tools/common/scripts/common.sh
 
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
 
-[ -z "$bundle_type" ] && (git apply -p0 < jb/project/tools/patches/exclude_jcef_module.patch || exit $?)
-
 sh configure \
   --with-debug-level=release \
   --with-vendor-name="${VENDOR_NAME}" \
