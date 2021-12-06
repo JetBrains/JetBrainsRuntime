@@ -83,10 +83,11 @@ static NSString* uiBoldName = nil;
         (uiBoldName != nil && [name isEqualTo:uiBoldName])) {
         if (style & java_awt_Font_BOLD) {
             nsFont = [NSFont boldSystemFontOfSize:1.0];
+            nsFallbackBase = [NSFont fontWithName:@"LucidaGrande-Bold" size:1.0];
         } else {
             nsFont = [NSFont systemFontOfSize:1.0];
+            nsFallbackBase = [NSFont fontWithName:@"LucidaGrande" size:1.0];
         }
-        nsFallbackBase = [NSFont fontWithName:@"Lucida Grande" size:1.0];
 #ifdef DEBUG
         NSLog(@"nsFont-name is : %@", nsFont.familyName);
         NSLog(@"nsFont-family is : %@", nsFont.fontName);
