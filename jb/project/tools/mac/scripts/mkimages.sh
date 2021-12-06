@@ -45,12 +45,6 @@ BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 16)}
 
 source jb/project/tools/common/scripts/common.sh
 
-function copyJNF {
-  __contents_dir=$1
-    mkdir -p ${__contents_dir}/Frameworks
-    cp -Rp Frameworks/JavaNativeFoundation.framework ${__contents_dir}/Frameworks
-}
-
 function do_configure {
   if [[ "${architecture}" == *aarch64* ]]; then
     sh configure \
@@ -118,12 +112,6 @@ function create_image_bundle {
 
   cp -R "$JSDK"/../MacOS "$JRE_CONTENTS"
   cp "$JSDK"/../Info.plist "$JRE_CONTENTS"
-
-  if [[ "${architecture}" == *aarch64* ]]; then
-    # we can't notarize this library as usual framework (with headers and tbd-file)
-    # but single library notarizes correctly
-    copyJNF $JRE_CONTENTS
-  fi
 
   [ -n "$bundle_type" ] && (cp -a $JCEF_PATH/Frameworks "$JRE_CONTENTS" || do_exit $?)
 
