@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,9 @@
  * The zip file system provider can be created by
  * {@link java.nio.file.FileSystems#newFileSystem
  * FileSystems.newFileSystem} if installed.
+ *
+ * The Zip file system provider does not support opening an existing Zip file
+ * that contains entries with "." or ".." in its name elements.
  *
  * @provides java.nio.file.spi.FileSystemProvider
  * @moduleGraph
