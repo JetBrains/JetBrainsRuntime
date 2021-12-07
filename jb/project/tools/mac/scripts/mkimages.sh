@@ -47,12 +47,6 @@ architecture=${architecture:=x64}
 
 source jb/project/tools/common.sh
 
-function copyJNF {
-  __contents_dir=$1
-    mkdir -p ${__contents_dir}/Frameworks
-    cp -Rp Frameworks/JavaNativeFoundation.framework ${__contents_dir}/Frameworks
-}
-
 function do_configure {
   if [[ "${architecture}" == *aarch64* ]]; then
     # NOTE: aot, cds aren't supported yet
@@ -135,11 +129,6 @@ function create_jbr {
   cp ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Info.plist ${JRE_CONTENTS}
 
   rm -rf ${JRE_CONTENTS}/Frameworks || do_exit $?
-  if [[ "${architecture}" == *aarch64* ]]; then
-    # we can't notarize this library as usual framework (with headers and tbd-file)
-    # but single library notarizes correctly
-    copyJNF ${JRE_CONTENTS}
-  fi
   if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
     cp -a ${JCEF_PATH}/Frameworks ${JRE_CONTENTS} || do_exit $?
   fi
@@ -207,9 +196,6 @@ if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "
 fi
 if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
   echo Creating $JBSDK.tar.gz ...
-  if [[ "${architecture}" == *aarch64* ]]; then
-    copyJNF $BASE_DIR/$JBRSDK_BUNDLE/Contents
-  fi
   sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
   [ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
