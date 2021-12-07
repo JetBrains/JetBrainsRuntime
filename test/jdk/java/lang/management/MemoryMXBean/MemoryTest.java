@@ -26,11 +26,23 @@
  * @bug     4530538
  * @summary Basic unit test of MemoryMXBean.getMemoryPools() and
  *          MemoryMXBean.getMemoryManager().
- * @requires vm.gc != "Z"
+ * @requires vm.gc != "Z" & vm.gc != "Shenandoah"
  * @author  Mandy Chung
  *
  * @modules jdk.management
  * @run main MemoryTest 2 3
+ */
+
+/*
+ * @test
+ * @bug     4530538
+ * @summary Basic unit test of MemoryMXBean.getMemoryPools() and
+ *          MemoryMXBean.getMemoryManager().
+ * @requires vm.gc == "Shenandoah"
+ * @author  Mandy Chung
+ *
+ * @modules jdk.management
+ * @run main MemoryTest 2 1
  */
 
 /*
