@@ -772,7 +772,7 @@ javax/sound/midi/Sequencer/MetaCallback.java 8178698 linux-all
 
 javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,windows-all
 
-javax/swing/border/TestTitledBorderLeak.java 8213531 linux-all
+javax/swing/border/TestTitledBorderLeak.java 8213531 linux-all,windows-all
 javax/swing/JButton/8151303/PressedIconTest.java 8266246 macosx-aarch64
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
 javax/swing/JComponent/7154030/bug7154030.java 8268284 macosx-all
