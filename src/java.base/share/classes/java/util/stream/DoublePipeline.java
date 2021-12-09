@@ -417,7 +417,7 @@ abstract class DoublePipeline<E_IN>
         /*
          * In the arrays allocated for the collect operation, index 0
          * holds the high-order bits of the running sum, index 1 holds
-         * the low-order bits of the sum computed via compensated
+         * the negated low-order bits of the sum computed via compensated
          * summation, and index 2 holds the simple sum used to compute
          * the proper result if the stream contains infinite values of
          * the same sign.
@@ -429,7 +429,8 @@ abstract class DoublePipeline<E_IN>
                                },
                                (ll, rr) -> {
                                    Collectors.sumWithCompensation(ll, rr[0]);
-                                   Collectors.sumWithCompensation(ll, rr[1]);
+                                   // Subtract compensation bits
+                                   Collectors.sumWithCompensation(ll, -rr[1]);
                                    ll[2] += rr[2];
                                });
 
@@ -472,7 +473,8 @@ abstract class DoublePipeline<E_IN>
                                },
                                (ll, rr) -> {
                                    Collectors.sumWithCompensation(ll, rr[0]);
-                                   Collectors.sumWithCompensation(ll, rr[1]);
+                                   // Subtract compensation bits
+                                   Collectors.sumWithCompensation(ll, -rr[1]);
                                    ll[2] += rr[2];
                                    ll[3] += rr[3];
                                });
