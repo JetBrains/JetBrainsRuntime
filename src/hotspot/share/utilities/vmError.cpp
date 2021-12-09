@@ -1754,8 +1754,8 @@ static void crash_with_sigfpe() {
 // crash with sigsegv at non-null address.
 static void crash_with_segfault() {
 
-  char* const crash_addr = (char*) VMError::get_segfault_address();
-  *crash_addr = 'X';
+  int* crash_addr = reinterpret_cast<int*>(VMError::get_segfault_address());
+  *crash_addr = 1;
 
 } // end: crash_with_segfault
 
