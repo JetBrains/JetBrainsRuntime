@@ -768,7 +768,7 @@ static NSString* parentRole(NSAccessibilityRole nsRole)
 
     point.y += size.height;
     // Now make it into Cocoa screen coords.
-    point.y = [[[[self view] window] screen] frame].size.height - point.y;
+    point.y = [[NSScreen screens][0] frame].size.height - point.y;
 
     return NSMakeRect(point.x, point.y, size.width, size.height);
 }
@@ -1085,7 +1085,7 @@ static NSNumber* JavaNumberToNSNumber(JNIEnv *env, jobject jnumber) {
                                  "(Ljava/awt/Container;FF)Ljavax/accessibility/Accessible;", nil);
 
     // Make it into java screen coords
-    point.y = [[[[self view] window] screen] frame].size.height - point.y;
+    point.y = [[NSScreen screens][0] frame].size.height - point.y;
 
     jobject jparent = fComponent;
 
