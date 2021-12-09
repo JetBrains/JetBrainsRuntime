@@ -12,6 +12,8 @@ TZ=UTC
 export TZ
 SOURCE_DATE_EPOCH="$(git log -1 --pretty=%ct)"
 export SOURCE_DATE_EPOCH
+USER=builduser
+export USER
 
 case "$OS_NAME" in
     Linux)
@@ -34,8 +36,7 @@ REPRODUCIBLE_BUILD_OPTS="--enable-reproducible-build
   --with-source-date=$SOURCE_DATE_EPOCH
   --with-hotspot-build-time=$BUILD_TIME
   --with-copyright-year=$COPYRIGHT_YEAR
-  --with-native-debug-symbols=none
-  --with-build-user=builduser"
+  --with-native-debug-symbols=none"
 
 function do_exit() {
   exit_code=$1
