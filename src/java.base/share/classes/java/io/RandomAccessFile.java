@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1994, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,11 @@
 
 package java.io;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.OpenOption;
+import java.nio.file.StandardOpenOption;
+import java.util.Set;
 
 import jdk.internal.access.JavaIORandomAccessFileAccess;
 import jdk.internal.access.SharedSecrets;
@@ -138,6 +142,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @see        java.lang.SecurityException
      * @see        java.lang.SecurityManager#checkRead(java.lang.String)
      * @see        java.lang.SecurityManager#checkWrite(java.lang.String)
+     * @revised 1.4
      */
     public RandomAccessFile(String pathname, String mode)
         throws FileNotFoundException
@@ -279,11 +284,17 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (file.isInvalid()) {
             throw new FileNotFoundException("Invalid file path");
         }
-        fd = new FileDescriptor();
-        fd.attach(this);
-        path = name;
-        open(name, imode);
-        FileCleanable.register(fd);   // open sets the fd, register the cleanup
+        if (file.isFromNonDefaultFileSystem()) {
+            fd = null; // TODO: may actually fake a non-null one
+            path = file.getPath();
+            open(file, imode);
+        } else {
+            fd = new FileDescriptor();
+            fd.attach(this);
+            path = name;
+            open(name, imode);
+            FileCleanable.register(fd);   // open sets the fd, register the cleanup
+        }
     }
 
     /**
@@ -295,7 +306,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @see        java.io.FileDescriptor
      */
     public final FileDescriptor getFD() throws IOException {
-        return fd;
+        // TODO: may need to fake non-null fd in case of a non-default FileSystem for LogFile's sake (see)
+        if (fd != null) {
+            return fd;
+        }
+        throw new IOException();
     }
 
     /**
@@ -366,6 +381,29 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         open0(name, mode);
     }
 
+    private void open(File file, int mode)
+            throws FileNotFoundException {
+        final Set<OpenOption> options = Set.of(StandardOpenOption.READ);
+        if ((mode & O_RDWR) == O_RDWR) {
+            options.add(StandardOpenOption.WRITE);
+        }
+        if ((mode & O_TEMPORARY) == O_TEMPORARY) {
+            options.add(StandardOpenOption.DELETE_ON_CLOSE);
+        }
+        if ((mode & O_SYNC) == O_SYNC) {
+            options.add(StandardOpenOption.SYNC);
+        }
+        if ((mode & O_DSYNC) == O_DSYNC) {
+            options.add(StandardOpenOption.DSYNC);
+        }
+        try {
+            channel = ((ProxyFileSystem)file.getTheFileSystem()).
+                    newFileChannel(file.toPath(), options);
+        } catch (IOException e) {
+            throw new FileNotFoundException(path + "(" + e.getMessage() + ")");
+        }
+    }
+
     // 'Read' primitives
 
     /**
@@ -387,7 +425,16 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceRead0();
         }
-        return read0();
+
+        if (fd != null) {
+            return read0();
+        } else {
+            // Really same to FileInputStream.read()
+            final ByteBuffer buffer = ByteBuffer.allocate(1);
+            final int nRead = channel.read(buffer);
+            buffer.rewind();
+            return nRead == 1 ? buffer.get() : -1;
+        }
     }
 
     private native int read0() throws IOException;
@@ -475,7 +522,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      *             {@code b.length - off}
      */
     public int read(byte[] b, int off, int len) throws IOException {
-        return readBytes(b, off, len);
+        if (fd != null) {
+            return readBytes(b, off, len);
+        } else {
+            final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+            final int nRead = channel.read(buffer);
+            return nRead;
+        }
     }
 
     /**
@@ -498,7 +551,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     NullPointerException If {@code b} is {@code null}.
      */
     public int read(byte[] b) throws IOException {
-        return readBytes(b, 0, b.length);
+        if (fd != null) {
+            return readBytes(b, 0, b.length);
+        } else {
+            final ByteBuffer buffer = ByteBuffer.wrap(b);
+            final int nRead = channel.read(buffer);
+            return nRead;
+        }
     }
 
     /**
@@ -602,7 +661,14 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private void implWrite(int b) throws IOException {
         boolean attempted = Blocker.begin(sync);
         try {
-            write0(b);
+            if (fd != null) {
+                write0(b);
+            } else {
+                final byte[] array = new byte[1];
+                array[0] = (byte) b;
+                final ByteBuffer buffer = ByteBuffer.wrap(array);
+                channel.write(buffer);
+            }
         } finally {
             Blocker.end(attempted);
         }
@@ -644,7 +710,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private void implWriteBytes(byte[] b, int off, int len) throws IOException {
         boolean attempted = Blocker.begin(sync);
         try {
-            writeBytes0(b, off, len);
+            if (fd != null) {
+                writeBytes(b, 0, b.length);
+            } else {
+                writeBytesToChannel(b, 0, b.length);
+            }
         } finally {
             Blocker.end(attempted);
         }
@@ -667,6 +737,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
     private native void writeBytes0(byte[] b, int off, int len) throws IOException;
 
+    private void writeBytesToChannel(byte b[], int off, int len) throws IOException {
+        final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+        channel.write(buffer);
+    }
+
     /**
      * Writes {@code b.length} bytes from the specified byte array
      * to this file, starting at the current file pointer.
@@ -674,7 +749,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @param      b   the data.
      * @throws     IOException  if an I/O error occurs.
      */
-    public void write(byte[] b) throws IOException {
+    public void write(byte b[]) throws IOException {
         writeBytes(b, 0, b.length);
     }
 
@@ -701,7 +776,15 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      *             at which the next read or write occurs.
      * @throws     IOException  if an I/O error occurs.
      */
-    public native long getFilePointer() throws IOException;
+    public long getFilePointer() throws IOException {
+        if (fd != null) {
+            return getFilePointer0();
+        } else {
+            return channel.position();
+        }
+    }
+
+    private native long getFilePointer0() throws IOException;
 
     /**
      * Sets the file-pointer offset, measured from the beginning of this
@@ -720,8 +803,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     public void seek(long pos) throws IOException {
         if (pos < 0) {
             throw new IOException("Negative seek offset");
+        } else {
+            if (fd != null) {
+                seek0(pos);
+            } else {
+                channel.position(pos);
+            }
         }
-        seek0(pos);
     }
 
     private native void seek0(long pos) throws IOException;
@@ -733,7 +821,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     IOException  if an I/O error occurs.
      */
     public long length() throws IOException {
-        return length0();
+        if (fd != null) {
+            return length0();
+        } else {
+            return channel.size();
+        }
     }
 
     private native long length0() throws IOException;
@@ -765,7 +857,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @since      1.2
      */
     public void setLength(long newLength) throws IOException {
-        setLength0(newLength);
+        if (fd != null) {
+            setLength0(newLength);
+        } else {
+            channel.truncate(newLength);
+        }
     }
 
     private native void setLength0(long newLength) throws IOException;
@@ -804,11 +900,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             fc.close();
         }
 
-        fd.closeAll(new Closeable() {
-            public void close() throws IOException {
-               fd.close();
-           }
-        });
+        if (fd != null) {
+            fd.closeAll(new Closeable() {
+                public void close() throws IOException {
+                   fd.close();
+               }
+            });
+        }
     }
 
     //

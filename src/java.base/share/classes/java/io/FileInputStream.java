@@ -25,8 +25,16 @@
 
 package java.io;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.OpenOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.Set;
+
+import jdk.internal.misc.VM;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.event.FileReadEvent;
 import sun.nio.ch.FileChannelImpl;
@@ -109,6 +117,19 @@ public class FileInputStream extends InputStream
      * @see        java.lang.SecurityManager#checkRead(java.lang.String)
      */
     public FileInputStream(String name) throws FileNotFoundException {
+        // TODO: may want to wrap name in a URI if -Djava.io.nio.fs.provider was specified
+        // so that the necessary filesystem gets picked up
+        /*if (name != null && VM.isBooted() && System.getProperty("java.io.nio.fs.provider") != null
+                && name.startsWith("/")) {
+            try {
+                this(new File(new URI("file", null, name, null)));
+            } catch (URISyntaxException e) {
+                e.printStackTrace();
+                throw new InternalError(e);
+            }
+        } else {
+            this(name != null ? new File(name) : null);
+        }*/
         this(name != null ? new File(name) : null);
     }
 
@@ -153,11 +174,17 @@ public class FileInputStream extends InputStream
         if (file.isInvalid()) {
             throw new FileNotFoundException("Invalid file path");
         }
-        fd = new FileDescriptor();
-        fd.attach(this);
-        path = name;
-        open(name);
-        FileCleanable.register(fd);       // open set the fd, register the cleanup
+        if (file.isFromNonDefaultFileSystem()) {
+            fd = null;
+            path = file.getPath();
+            open(file);
+        } else {
+            fd = new FileDescriptor();
+            fd.attach(this);
+            path = name;
+            open(name);
+            FileCleanable.register(fd);       // open set the fd, register the cleanup
+        }
     }
 
     /**
@@ -219,6 +246,15 @@ public class FileInputStream extends InputStream
         open0(name);
     }
 
+    private void open(File file) throws FileNotFoundException {
+        try {
+            channel = ((ProxyFileSystem)file.getTheFileSystem()).
+                    newFileChannel(file.toPath(), Set.of(StandardOpenOption.READ));
+        } catch (IOException e) {
+            throw new FileNotFoundException(path + "(" + e.getMessage() + ")");
+        }
+    }
+
     /**
      * Reads a byte of data from this input stream. This method blocks
      * if no input is yet available.
@@ -232,7 +268,14 @@ public class FileInputStream extends InputStream
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceRead0();
         }
-        return read0();
+        if (fd != null) {
+            return read0();
+        } else {
+            final ByteBuffer buffer = ByteBuffer.allocate(1);
+            final int nRead = channel.read(buffer);
+            buffer.rewind();
+            return nRead == 1 ? buffer.get() : -1;
+        }
     }
 
     private native int read0() throws IOException;
@@ -292,7 +335,7 @@ public class FileInputStream extends InputStream
      * stream into an array of bytes. This method blocks until some input
      * is available.
      *
-     * @param      b   {@inheritDoc}
+     * @param      b   the buffer into which the data is read.
      * @return     the total number of bytes read into the buffer, or
      *             {@code -1} if there is no more data because the end of
      *             the file has been reached.
@@ -303,7 +346,14 @@ public class FileInputStream extends InputStream
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceReadBytes(b, 0, b.length);
         }
-        return readBytes(b, 0, b.length);
+
+        if (fd != null) {
+            return readBytes(b, 0, b.length);
+        } else {
+            final ByteBuffer buffer = ByteBuffer.wrap(b);
+            final int nRead = channel.read(buffer);
+            return nRead;
+        }
     }
 
     /**
@@ -325,7 +375,12 @@ public class FileInputStream extends InputStream
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceReadBytes(b, off, len);
         }
-        return readBytes(b, off, len);
+        if (fd != null) {
+            return readBytes(b, off, len);
+        } else {
+            final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+            return channel.read(buffer);
+        }
     }
 
     @Override
@@ -435,12 +490,20 @@ public class FileInputStream extends InputStream
     }
 
     private long length() throws IOException {
-        return length0();
+        if (fd != null) {
+            return length0();
+        } else {
+            return channel.size();
+        }
     }
     private native long length0() throws IOException;
 
     private long position() throws IOException {
-        return position0();
+        if (fd != null) {
+            return position0();
+        } else {
+            return channel.position();
+        }
     }
     private native long position0() throws IOException;
 
@@ -470,7 +533,13 @@ public class FileInputStream extends InputStream
      */
     @Override
     public long skip(long n) throws IOException {
-        return skip0(n);
+        if (fd != null) {
+            return skip0(n);
+        } else {
+            final long startPos = channel.position();
+            channel.position(startPos + n);
+            return channel.position() - startPos;
+        }
     }
 
     private native long skip0(long n) throws IOException;
@@ -492,9 +561,20 @@ public class FileInputStream extends InputStream
      * @throws     IOException  if this file input stream has been closed by calling
      *             {@code close} or an I/O error occurs.
      */
-    @Override
     public int available() throws IOException {
-        return available0();
+        if (fd != null) {
+            return available0();
+        } else {
+            // TODO: actually, the above implementation is a bit more sophisticated and
+            // can handle FIFOs correctly, for instance (see handleAvailable() in io_util_md.c).
+            // Then again, it's unlikely that remote FIFO are expected to work exactly the same as the local ones.
+            final long totalBytes = channel.size();
+            if (totalBytes > 0) {
+                final long availBytes = totalBytes - channel.position();
+                return (availBytes >= (long)Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int)availBytes;
+            }
+            return 0;
+        }
     }
 
     private native int available0() throws IOException;
@@ -540,11 +620,13 @@ public class FileInputStream extends InputStream
             fc.close();
         }
 
-        fd.closeAll(new Closeable() {
-            public void close() throws IOException {
-               fd.close();
-           }
-        });
+        if (fd != null) {
+            fd.closeAll(new Closeable() {
+                public void close() throws IOException {
+                    fd.close();
+                }
+            });
+        }
     }
 
     /**
@@ -561,7 +643,8 @@ public class FileInputStream extends InputStream
         if (fd != null) {
             return fd;
         }
-        throw new IOException();
+        if (channel != null) throw new UnsupportedOperationException("FileDescriptor not supported for files from non-default filesystems");
+        else throw new IOException();
     }
 
     /**

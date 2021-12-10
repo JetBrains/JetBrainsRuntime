@@ -25,7 +25,12 @@
 
 package java.io;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.OpenOption;
+import java.nio.file.StandardOpenOption;
+import java.util.Set;
+
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.event.FileWriteEvent;
@@ -230,12 +235,18 @@ public class FileOutputStream extends OutputStream
         if (file.isInvalid()) {
             throw new FileNotFoundException("Invalid file path");
         }
-        this.fd = new FileDescriptor();
-        fd.attach(this);
-        this.path = name;
 
-        open(name, append);
-        FileCleanable.register(fd);   // open sets the fd, register the cleanup
+        if (file.isFromNonDefaultFileSystem()) {
+            fd = null;
+            path = file.getPath();
+            open(file, append);
+        } else {
+            this.fd = new FileDescriptor();
+            fd.attach(this);
+            this.path = name;
+            open(name, append);
+            FileCleanable.register(fd);   // open sets the fd, register the cleanup
+        }
     }
 
     /**
@@ -295,6 +306,19 @@ public class FileOutputStream extends OutputStream
         open0(name, append);
     }
 
+    private void open(File file, boolean append)
+        throws FileNotFoundException {
+        final Set<OpenOption> options = append
+                ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+                : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        try {
+            channel = ((ProxyFileSystem)file.getTheFileSystem()).
+                    newFileChannel(file.toPath(), options);
+        } catch (IOException e) {
+            throw new FileNotFoundException(path + "(" + e.getMessage() + ")");
+        }
+    }
+
     /**
      * Writes the specified byte to this file output stream.
      *
@@ -333,7 +357,14 @@ public class FileOutputStream extends OutputStream
             traceWrite(b, append);
             return;
         }
-        write(b, append);
+        if (fd != null) {
+            write(b, FD_ACCESS.getAppend(fd));
+        } else {
+            final byte[] array = new byte[1];
+            array[0] = (byte) b;
+            final ByteBuffer buffer = ByteBuffer.wrap(array);
+            channel.write(buffer);
+        }
     }
 
     /**
@@ -363,6 +394,11 @@ public class FileOutputStream extends OutputStream
         }
     }
 
+    private void writeBytesToChannel(byte b[], int off, int len)throws IOException {
+        final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+        channel.write(buffer);
+    }
+
     /**
      * Writes {@code b.length} bytes from the specified byte array
      * to this file output stream.
@@ -377,7 +413,11 @@ public class FileOutputStream extends OutputStream
             traceWriteBytes(b, 0, b.length, append);
             return;
         }
-        writeBytes(b, 0, b.length, append);
+        if (fd != null) {
+            writeBytes(b, 0, b.length, FD_ACCESS.getAppend(fd));
+        } else {
+            writeBytesToChannel(b, 0, b.length);
+        }
     }
 
     /**
@@ -397,7 +437,11 @@ public class FileOutputStream extends OutputStream
             traceWriteBytes(b, off, len, append);
             return;
         }
-        writeBytes(b, off, len, append);
+        if (fd != null) {
+            writeBytes(b, off, len, FD_ACCESS.getAppend(fd));
+        } else {
+            writeBytesToChannel(b, off, len);
+        }
     }
 
     /**
@@ -442,11 +486,13 @@ public class FileOutputStream extends OutputStream
             fc.close();
         }
 
-        fd.closeAll(new Closeable() {
-            public void close() throws IOException {
-               fd.close();
-           }
-        });
+        if (fd != null) {
+            fd.closeAll(new Closeable() {
+                public void close() throws IOException {
+                    fd.close();
+                }
+            });
+        }
     }
 
     /**
@@ -463,7 +509,11 @@ public class FileOutputStream extends OutputStream
         if (fd != null) {
             return fd;
         }
-        throw new IOException();
+        // This is used in ProcessImpl, but as mere integers, so
+         // there's little chance in making it work with a remote
+         // filesystem...
+         if (channel != null) throw new UnsupportedOperationException("FileDescriptor not supported for files from non-default filesystems");
+         else throw new IOException();
      }
 
     /**

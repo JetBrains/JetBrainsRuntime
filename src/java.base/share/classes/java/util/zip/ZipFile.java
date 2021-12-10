@@ -246,7 +246,7 @@ public class ZipFile implements ZipConstants, Closeable {
                                                Integer.toHexString(mode));
         }
         String name = file.getPath();
-        file = new File(name);
+        file = File.fromFile(file);
         @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {

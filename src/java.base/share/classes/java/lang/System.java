@@ -2323,6 +2323,7 @@ public final class System {
         try {
             bootLayer = ModuleBootstrap.boot();
         } catch (Exception | Error e) {
+            printStackTrace = true;
             logInitException(printToStderr, printStackTrace,
                              "Error occurred during initialization of boot layer", e);
             return -1; // JNI_ERR
