@@ -769,6 +769,9 @@ public interface Path
         if (getFileSystem() == FileSystems.getDefault()) {
             return new File(toString());
         } else {
+            // TODO: probably need to return a File associated with this filesystem (?)
+            // Like
+            // return new File(new URI(getFileSystem().provider().getScheme(), null, toString(), null));
             throw new UnsupportedOperationException("Path not associated with "
                     + "default file system.");
         }

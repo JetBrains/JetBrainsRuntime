@@ -25,9 +25,15 @@
 
 package java.io;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.FileSystems;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import jdk.internal.misc.Blocker;
+import java.util.Set;
+
+import jdk.internal.misc.VM;
 import jdk.internal.util.ArraysSupport;
 import sun.nio.ch.FileChannelImpl;
 
@@ -103,6 +109,19 @@ public class FileInputStream extends InputStream
      * @see        java.lang.SecurityManager#checkRead(java.lang.String)
      */
     public FileInputStream(String name) throws FileNotFoundException {
+        // TODO: may want to wrap name in a URI if -Djava.io.nio.fs.provider was specified
+        // so that the necessary filesystem gets picked up
+        /*if (name != null && VM.isBooted() && System.getProperty("java.io.nio.fs.provider") != null
+                && name.startsWith("/")) {
+            try {
+                this(new File(new URI("file", null, name, null)));
+            } catch (URISyntaxException e) {
+                e.printStackTrace();
+                throw new InternalError(e);
+            }
+        } else {
+            this(name != null ? new File(name) : null);
+        }*/
         this(name != null ? new File(name) : null);
     }
 
@@ -228,7 +247,15 @@ public class FileInputStream extends InputStream
     public int read() throws IOException {
         long comp = Blocker.begin();
         try {
-            return read0();
+            if (!VM.isBooted()) {
+                return read0();
+            } else {
+                getChannel();
+                final ByteBuffer buffer = ByteBuffer.allocate(1);
+                final int nRead = channel.read(buffer);
+                buffer.rewind();
+                return nRead == 1 ? (buffer.get() & 0xFF) : -1;
+            }
         } finally {
             Blocker.end(comp);
         }
@@ -250,7 +277,7 @@ public class FileInputStream extends InputStream
      * stream into an array of bytes. This method blocks until some input
      * is available.
      *
-     * @param      b   {@inheritDoc}
+     * @param      b   the buffer into which the data is read.
      * @return     the total number of bytes read into the buffer, or
      *             {@code -1} if there is no more data because the end of
      *             the file has been reached.
@@ -260,10 +287,18 @@ public class FileInputStream extends InputStream
     public int read(byte[] b) throws IOException {
         long comp = Blocker.begin();
         try {
-            return readBytes(b, 0, b.length);
+            if (!VM.isBooted()) {
+                return readBytes(b, 0, b.length);
+            } else {
+                getChannel();
+                final ByteBuffer buffer = ByteBuffer.wrap(b);
+                final int nRead = channel.read(buffer);
+                return nRead;
+            }
         } finally {
             Blocker.end(comp);
         }
+
     }
 
     /**
@@ -284,7 +319,13 @@ public class FileInputStream extends InputStream
     public int read(byte[] b, int off, int len) throws IOException {
         long comp = Blocker.begin();
         try {
-            return readBytes(b, off, len);
+            if (!VM.isBooted()) {
+                return readBytes(b, off, len);
+            } else {
+                getChannel();
+                final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                return channel.read(buffer);
+            }
         } finally {
             Blocker.end(comp);
         }
@@ -396,21 +437,32 @@ public class FileInputStream extends InputStream
     private long length() throws IOException {
         long comp = Blocker.begin();
         try {
-            return length0();
+            if (fd != null) {
+                return length0();
+            } else {
+                return channel.size();
+            }
         } finally {
             Blocker.end(comp);
         }
     }
+
     private native long length0() throws IOException;
 
     private long position() throws IOException {
         long comp = Blocker.begin();
         try {
-            return position0();
+            if (!VM.isBooted()) {
+                return position0();
+            } else {
+                getChannel();
+                return channel.position();
+            }
         } finally {
             Blocker.end(comp);
         }
     }
+
     private native long position0() throws IOException;
 
     /**
@@ -441,7 +493,14 @@ public class FileInputStream extends InputStream
     public long skip(long n) throws IOException {
         long comp = Blocker.begin();
         try {
-            return skip0(n);
+            if (!VM.isBooted()) {
+                return skip0(n);
+            } else {
+                getChannel();
+                final long startPos = channel.position();
+                channel.position(startPos + n);
+                return channel.position() - startPos;
+            }
         } finally {
             Blocker.end(comp);
         }
@@ -466,7 +525,6 @@ public class FileInputStream extends InputStream
      * @throws     IOException  if this file input stream has been closed by calling
      *             {@code close} or an I/O error occurs.
      */
-    @Override
     public int available() throws IOException {
         long comp = Blocker.begin();
         try {
@@ -523,8 +581,8 @@ public class FileInputStream extends InputStream
 
         fd.closeAll(new Closeable() {
             public void close() throws IOException {
-               fd.close();
-           }
+                fd.close();
+            }
         });
     }
 
@@ -539,10 +597,7 @@ public class FileInputStream extends InputStream
      * @see        java.io.FileDescriptor
      */
     public final FileDescriptor getFD() throws IOException {
-        if (fd != null) {
-            return fd;
-        }
-        throw new IOException();
+        return fd;
     }
 
     /**

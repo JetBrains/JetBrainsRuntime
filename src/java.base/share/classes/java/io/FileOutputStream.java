@@ -25,10 +25,17 @@
 
 package java.io;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.FileSystems;
+import java.nio.file.OpenOption;
+import java.nio.file.StandardOpenOption;
+import java.util.Set;
+
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.misc.Blocker;
+import jdk.internal.misc.VM;
 import sun.nio.ch.FileChannelImpl;
 
 
@@ -223,10 +230,11 @@ public class FileOutputStream extends OutputStream
         if (file.isInvalid()) {
             throw new FileNotFoundException("Invalid file path");
         }
+
+
         this.fd = new FileDescriptor();
         fd.attach(this);
         this.path = name;
-
         open(name, append);
         FileCleanable.register(fd);   // open sets the fd, register the cleanup
     }
@@ -292,6 +300,18 @@ public class FileOutputStream extends OutputStream
         }
     }
 
+    private void open(File file, boolean append)
+        throws FileNotFoundException {
+        final Set<OpenOption> options = append
+                ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+                : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        try {
+            channel = FileSystems.getDefault().provider().newFileChannel(file.toPath(), options);
+        } catch (IOException e) {
+            throw new FileNotFoundException(path + "(" + e.getMessage() + ")");
+        }
+    }
+
     /**
      * Writes the specified byte to this file output stream.
      *
@@ -310,10 +330,17 @@ public class FileOutputStream extends OutputStream
      */
     @Override
     public void write(int b) throws IOException {
-        boolean append = FD_ACCESS.getAppend(fd);
         long comp = Blocker.begin();
         try {
-            write(b, append);
+            if (!VM.isBooted()) {
+                write(b, FD_ACCESS.getAppend(fd));
+            } else {
+                getChannel();
+                final byte[] array = new byte[1];
+                array[0] = (byte) b;
+                final ByteBuffer buffer = ByteBuffer.wrap(array);
+                channel.write(buffer);
+            }
         } finally {
             Blocker.end(comp);
         }
@@ -331,6 +358,11 @@ public class FileOutputStream extends OutputStream
     private native void writeBytes(byte[] b, int off, int len, boolean append)
         throws IOException;
 
+    private void writeBytesToChannel(byte b[], int off, int len)throws IOException {
+        final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+        channel.write(buffer);
+    }
+
     /**
      * Writes {@code b.length} bytes from the specified byte array
      * to this file output stream.
@@ -340,10 +372,14 @@ public class FileOutputStream extends OutputStream
      */
     @Override
     public void write(byte[] b) throws IOException {
-        boolean append = FD_ACCESS.getAppend(fd);
         long comp = Blocker.begin();
         try {
-            writeBytes(b, 0, b.length, append);
+            if (!VM.isBooted()) {
+                writeBytes(b, 0, b.length, FD_ACCESS.getAppend(fd));
+            } else {
+                getChannel();
+                writeBytesToChannel(b, 0, b.length);
+            }
         } finally {
             Blocker.end(comp);
         }
@@ -361,10 +397,14 @@ public class FileOutputStream extends OutputStream
      */
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
-        boolean append = FD_ACCESS.getAppend(fd);
         long comp = Blocker.begin();
         try {
-            writeBytes(b, off, len, append);
+            if (!VM.isBooted()) {
+                writeBytes(b, off, len, FD_ACCESS.getAppend(fd));
+            } else {
+                getChannel();
+                writeBytesToChannel(b, off, len);
+            }
         } finally {
             Blocker.end(comp);
         }
@@ -416,8 +456,8 @@ public class FileOutputStream extends OutputStream
 
         fd.closeAll(new Closeable() {
             public void close() throws IOException {
-               fd.close();
-           }
+                fd.close();
+            }
         });
     }
 
@@ -431,12 +471,9 @@ public class FileOutputStream extends OutputStream
      * @throws     IOException  if an I/O error occurs.
      * @see        java.io.FileDescriptor
      */
-     public final FileDescriptor getFD()  throws IOException {
-        if (fd != null) {
-            return fd;
-        }
-        throw new IOException();
-     }
+    public final FileDescriptor getFD() throws IOException {
+        return fd;
+    }
 
     /**
      * Returns the unique {@link java.nio.channels.FileChannel FileChannel}
