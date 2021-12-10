@@ -90,7 +90,7 @@ Java_java_io_RandomAccessFile_writeBytes(JNIEnv *env,
 }
 
 JNIEXPORT jlong JNICALL
-Java_java_io_RandomAccessFile_getFilePointer(JNIEnv *env, jobject this) {
+Java_java_io_RandomAccessFile_getFilePointer0(JNIEnv *env, jobject this) {
     FD fd;
     jlong ret;
 
@@ -106,7 +106,7 @@ Java_java_io_RandomAccessFile_getFilePointer(JNIEnv *env, jobject this) {
 }
 
 JNIEXPORT jlong JNICALL
-Java_java_io_RandomAccessFile_length(JNIEnv *env, jobject this) {
+Java_java_io_RandomAccessFile_length0(JNIEnv *env, jobject this) {
 
     FD fd;
     jlong length = jlong_zero;
@@ -141,7 +141,7 @@ Java_java_io_RandomAccessFile_seek0(JNIEnv *env,
 }
 
 JNIEXPORT void JNICALL
-Java_java_io_RandomAccessFile_setLength(JNIEnv *env, jobject this,
+Java_java_io_RandomAccessFile_setLength0(JNIEnv *env, jobject this,
                                         jlong newLength)
 {
     FD fd;

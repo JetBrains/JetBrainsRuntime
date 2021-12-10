@@ -35,6 +35,8 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+
+import jdk.internal.misc.VM;
 import sun.security.action.GetPropertyAction;
 
 /**
@@ -149,10 +151,9 @@ public class File
     implements Serializable, Comparable<File>
 {
 
-    /**
-     * The FileSystem object representing the platform's local file system.
-     */
-    private static final FileSystem fs = DefaultFileSystem.getFileSystem();
+    private final FileSystem fs;
+
+    private static final FileSystem bootFs = DefaultFileSystem.getFileSystem();
 
     /**
      * This abstract pathname's normalized pathname string. A normalized
@@ -213,7 +214,7 @@ public class File
      *
      * @see     java.lang.System#getProperty(java.lang.String)
      */
-    public static final char separatorChar = fs.getSeparator();
+    public static final char separatorChar = bootFs.getSeparator();
 
     /**
      * The system-dependent default name-separator character, represented as a
@@ -232,7 +233,7 @@ public class File
      *
      * @see     java.lang.System#getProperty(java.lang.String)
      */
-    public static final char pathSeparatorChar = fs.getPathSeparator();
+    public static final char pathSeparatorChar = bootFs.getPathSeparator();
 
     /**
      * The system-dependent path-separator character, represented as a string
@@ -247,9 +248,19 @@ public class File
     /**
      * Internal constructor for already-normalized pathname strings.
      */
-    private File(String pathname, int prefixLength) {
+    private File(String pathname, int prefixLength, FileSystem fs) {
+        this.fs = fs;
         this.path = pathname;
         this.prefixLength = prefixLength;
+    }
+
+    private File(String pathname, FileSystem fs) {
+        if (pathname == null) {
+            throw new NullPointerException();
+        }
+        this.fs = fs;
+        this.path = this.fs.normalize(pathname);
+        this.prefixLength = this.fs.prefixLength(this.path);
     }
 
     /**
@@ -260,6 +271,7 @@ public class File
     private File(String child, File parent) {
         assert parent.path != null;
         assert (!parent.path.isEmpty());
+        this.fs = parent.fs;
         this.path = fs.resolve(parent.path, child);
         this.prefixLength = parent.prefixLength;
     }
@@ -274,11 +286,7 @@ public class File
      *          If the {@code pathname} argument is {@code null}
      */
     public File(String pathname) {
-        if (pathname == null) {
-            throw new NullPointerException();
-        }
-        this.path = fs.normalize(pathname);
-        this.prefixLength = fs.prefixLength(this.path);
+        this(pathname, fileSystemFor(pathname));
     }
 
     /* Note: The two-argument File constructors do not interpret an empty
@@ -317,6 +325,8 @@ public class File
         if (child == null) {
             throw new NullPointerException();
         }
+        this.fs = fileSystemFor(parent);
+
         if (parent != null) {
             if (parent.isEmpty()) {
                 this.path = fs.resolve(fs.getDefaultParent(),
@@ -361,6 +371,7 @@ public class File
             throw new NullPointerException();
         }
         if (parent != null) {
+            this.fs = parent.fs;
             if (parent.path.isEmpty()) {
                 this.path = fs.resolve(fs.getDefaultParent(),
                                        fs.normalize(child));
@@ -369,6 +380,7 @@ public class File
                                        fs.normalize(child));
             }
         } else {
+            this.fs = bootFs;
             this.path = fs.normalize(child);
         }
         this.prefixLength = fs.prefixLength(this.path);
@@ -419,8 +431,11 @@ public class File
         if (uri.isOpaque())
             throw new IllegalArgumentException("URI is not hierarchical");
         String scheme = uri.getScheme();
-        if ((scheme == null) || !scheme.equalsIgnoreCase("file"))
+
+        this.fs = fileSystemFor(uri);
+        /* else if ((scheme == null) || !scheme.equalsIgnoreCase("file"))
             throw new IllegalArgumentException("URI scheme is not \"file\"");
+            */
         if (uri.getRawAuthority() != null)
             throw new IllegalArgumentException("URI has an authority component");
         if (uri.getRawFragment() != null)
@@ -439,7 +454,21 @@ public class File
         this.prefixLength = fs.prefixLength(this.path);
     }
 
+    private final static String customPrefix = System.getProperty("java.io.fs.prefix", "/fsd::");
+    private static FileSystem fileSystemFor(String pathname) {
+        return VM.isBooted() && System.getProperty("java.io.nio.fs.provider") != null
+                && pathname != null && pathname.startsWith(customPrefix)
+                ? ProxyFileSystem.instance("file")
+                : bootFs;
+    }
 
+    private static FileSystem fileSystemFor(URI uri) {
+        final String scheme = uri.getScheme();
+        // See Path.of(URI)
+        return VM.isBooted() && System.getProperty("java.io.nio.fs.provider") != null && scheme != null
+               ? ProxyFileSystem.instance(scheme)
+               : bootFs;
+    }
     /* -- Path-component accessors -- */
 
     /**
@@ -503,7 +532,7 @@ public class File
         if (getClass() != File.class) {
             p = fs.normalize(p);
         }
-        return new File(p, this.prefixLength);
+        return new File(p, this.prefixLength, this.fs);
     }
 
     /**
@@ -578,7 +607,7 @@ public class File
         if (getClass() != File.class) {
             absPath = fs.normalize(absPath);
         }
-        return new File(absPath, fs.prefixLength(absPath));
+        return new File(absPath, fs.prefixLength(absPath), this.fs);
     }
 
     /**
@@ -652,7 +681,7 @@ public class File
         if (getClass() != File.class) {
             canonPath = fs.normalize(canonPath);
         }
-        return new File(canonPath, fs.prefixLength(canonPath));
+        return new File(canonPath, fs.prefixLength(canonPath), this.fs);
     }
 
     private static String slashify(String path, boolean isDirectory) {
@@ -1848,7 +1877,10 @@ public class File
      * @see java.nio.file.FileStore
      */
     public static File[] listRoots() {
-        return fs.listRoots();
+        // TODO: this one is static, but we can look at the value of 'java.io.nio.fs.provider'
+        // and ask the nio provider for its roots. Probably no needs to even guard this with
+        // VM.isBooted() as the only use I can see is in the awt FileChooser.
+        return bootFs.listRoots();
     }
 
 
@@ -2008,14 +2040,14 @@ public class File
             String nus = Long.toUnsignedString(n);
 
             // Use only the file name from the supplied prefix
-            prefix = (new File(prefix)).getName();
+            prefix = (new File(prefix, dir.getTheFileSystem())).getName();
 
             int prefixLength = prefix.length();
             int nusLength = nus.length();
             int suffixLength = suffix.length();;
 
             String name;
-            int nameMax = fs.getNameMax(dir.getPath());
+            int nameMax = dir.getTheFileSystem().getNameMax(dir.getPath());
             int excess = prefixLength + nusLength + suffixLength - nameMax;
             if (excess <= 0) {
                 name = prefix + nus + suffix;
@@ -2053,7 +2085,7 @@ public class File
             }
 
             // Normalize the path component
-            name = fs.normalize(name);
+            name = dir.getTheFileSystem().normalize(name);
 
             File f = new File(dir, name);
             if (!name.equals(f.getName()) || f.isInvalid()) {
@@ -2165,9 +2197,9 @@ public class File
                     throw se;
                 }
             }
-        } while (fs.hasBooleanAttributes(f, FileSystem.BA_EXISTS));
+        } while (bootFs.hasBooleanAttributes(f, FileSystem.BA_EXISTS));
 
-        if (!fs.createFileExclusively(f.getPath()))
+        if (!bootFs.createFileExclusively(f.getPath()))
             throw new IOException("Unable to create temporary file");
 
         return f;
@@ -2213,6 +2245,7 @@ public class File
     public static File createTempFile(String prefix, String suffix)
         throws IOException
     {
+        // TODO: if we want that to work on a non-default filesystem, we better be very creative about how to make this happen...
         return createTempFile(prefix, suffix, null);
     }
 
@@ -2384,11 +2417,33 @@ public class File
             synchronized (this) {
                 result = filePath;
                 if (result == null) {
-                    result = FileSystems.getDefault().getPath(path);
+                    if (fs instanceof ProxyFileSystem) {
+                        result = ((ProxyFileSystem)fs).getPath(path);
+                    } else {
+                        result = FileSystems.getDefault().getPath(path);
+                    }
                     filePath = result;
                 }
             }
         }
         return result;
+    }
+
+    FileSystem getTheFileSystem() {
+        return fs;
+    }
+
+    boolean isFromNonDefaultFileSystem() {
+        return fs != bootFs;
+    }
+
+    /**
+     * Dummy
+     * @param other source
+     * @return new File with the same FileSystem as source
+     */
+    public static File fromFile(File other) {
+        // TODO: make this private to pass JCK
+        return new File(other.path, other.prefixLength, other.fs);
     }
 }
