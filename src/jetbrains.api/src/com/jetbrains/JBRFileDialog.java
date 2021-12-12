@@ -23,22 +23,39 @@
  * questions.
  */
 
-package com.jetbrains.desktop;
+package com.jetbrains;
 
-import com.jetbrains.internal.JBRApi;
+import java.awt.*;
 
-import java.lang.invoke.MethodHandles;
+public interface JBRFileDialog {
 
-/**
- * This class contains mapping between JBR API interfaces and implementation in {@code java.desktop} module.
- */
-public class JBRApiModule {
-    static {
-        JBRApi.registerModule(MethodHandles.lookup(), JBRApiModule.class.getModule()::addExports)
-                .service("com.jetbrains.ExtendedGlyphCache", null)
-                    .withStatic("getSubpixelResolution", "sun.font.FontUtilities")
-                .service("com.jetbrains.JBRFileDialogService", null)
-                    .withStatic("getFileDialog", "com.jetbrains.desktop.JBRFileDialog", "get")
-                .proxy("com.jetbrains.JBRFileDialog", "com.jetbrains.desktop.JBRFileDialog");
+    /*CONST com.jetbrains.desktop.JBRFileDialog.*_HINT*/
+
+    static JBRFileDialog get(FileDialog dialog) {
+        if (JBRFileDialogService.INSTANCE == null) return null;
+        else return JBRFileDialogService.INSTANCE.getFileDialog(dialog);
     }
+
+    /**
+     * Set JBR-specific file dialog hints:
+     * <ul>
+     *     <li>SELECT_FILES_HINT, SELECT_DIRECTORIES_HINT - Whether to select files, directories or both
+     *     (used when common file dialogs are enabled on Windows, or on macOS),
+     *     both unset bits are treated as a default platform-specific behavior</li>
+     *     <li>CREATE_DIRECTORIES_HINT - Whether to allow creating directories or not (used on macOS)</li>
+     * </ul>
+     */
+    void setHints(int hints);
+
+    /**
+     * @see #setHints(int) 
+     */
+    int getHints();
+
+    void setLocalizationStrings(String openButtonText, String selectFolderButtonText);
+}
+
+interface JBRFileDialogService {
+    JBRFileDialogService INSTANCE = JBR.getService(JBRFileDialogService.class);
+    JBRFileDialog getFileDialog(FileDialog dialog);
 }
