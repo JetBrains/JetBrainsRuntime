@@ -169,6 +169,7 @@ public class Gensrc {
                     .map(fullName -> {
                         if (fullName.indexOf('$') != -1) return null; // Only top level services can be public
                         Path path = src.resolve(fullName.replace('.', '/') + ".java");
+                        if (!Files.exists(path)) return null;
                         String name = fullName.substring(fullName.lastIndexOf('.') + 1);
                         try {
                             String content = Files.readString(path);
