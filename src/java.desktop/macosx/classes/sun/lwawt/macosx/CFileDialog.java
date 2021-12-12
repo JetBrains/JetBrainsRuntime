@@ -53,9 +53,12 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.util.List;
 
+import com.jetbrains.desktop.JBRFileDialog;
 import sun.awt.AWTAccessor;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
+
+import static com.jetbrains.desktop.JBRFileDialog.*;
 
 final class CFileDialog implements FileDialogPeer {
 
@@ -67,8 +70,16 @@ final class CFileDialog implements FileDialogPeer {
         public void run() {
             try {
                 boolean navigateApps = !Boolean.getBoolean("apple.awt.use-file-dialog-packages");
-                boolean chooseDirectories = Boolean.getBoolean("apple.awt.fileDialogForDirectories");
-                boolean chooseFiles = Boolean.getBoolean("apple.awt.fileDialogForFiles");
+
+                JBRFileDialog jbrDialog = JBRFileDialog.get(target);
+                boolean createDirectories = (jbrDialog.getHints() & CREATE_DIRECTORIES_HINT) != 0;
+                boolean chooseDirectories = (jbrDialog.getHints() & SELECT_DIRECTORIES_HINT) != 0;
+                boolean chooseFiles = (jbrDialog.getHints() & SELECT_FILES_HINT) != 0;
+                if (!chooseDirectories && !chooseFiles) { // Fallback to default
+                    boolean dir = Boolean.getBoolean("apple.awt.fileDialogForDirectories");
+                    chooseFiles = !dir;
+                    chooseDirectories = dir;
+                }
 
                 int dialogMode = target.getMode();
                 String title = target.getTitle();
@@ -82,6 +93,7 @@ final class CFileDialog implements FileDialogPeer {
                         navigateApps,
                         chooseDirectories,
                         chooseFiles,
+                        createDirectories,
                         target.getFilenameFilter() != null,
                         target.getDirectory(),
                         target.getFile());
@@ -176,7 +188,8 @@ final class CFileDialog implements FileDialogPeer {
     private native String[] nativeRunFileDialog(String title, int mode,
             boolean multipleMode, boolean shouldNavigateApps,
             boolean canChooseDirectories, boolean canChooseFiles,
-            boolean hasFilenameFilter, String directory, String file);
+            boolean canCreateDirectories, boolean hasFilenameFilter,
+            String directory, String file);
 
     @Override
     public void setDirectory(String dir) {
