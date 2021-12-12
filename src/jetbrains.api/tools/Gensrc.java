@@ -17,9 +17,8 @@
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,7 +37,7 @@ import static java.util.regex.Pattern.compile;
  */
 public class Gensrc {
 
-    private static Path srcroot, src, templates, gensrc;
+    private static Path srcroot, src, gensrc;
     private static String apiVersion;
     private static JBRModules modules;
 
@@ -53,7 +52,6 @@ public class Gensrc {
         srcroot = Path.of(args[0]);
         Path module = srcroot.resolve("jetbrains.api");
         src = module.resolve("src");
-        templates = module.resolve("templates");
         Path output = Path.of(args[1]);
         gensrc = output.resolve("gensrc");
         Files.createDirectories(gensrc);
@@ -62,10 +60,65 @@ public class Gensrc {
         props.load(Files.newInputStream(module.resolve("version.properties")));
         apiVersion = args[2] + "." + props.getProperty("VERSION");
         Files.writeString(output.resolve("jbr-api.version"), apiVersion,
-                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                CREATE, WRITE, TRUNCATE_EXISTING);
 
         modules = new JBRModules();
-        JBR.generate();
+        generateFiles();
+    }
+
+    private static void generateFiles() throws IOException {
+        Files.walkFileTree(src, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                try {
+                    Path rel = src.relativize(file);
+                    Path output = gensrc.resolve(rel);
+                    Files.createDirectories(output.getParent());
+                    String content = generateContent(file.getFileName().toString(), Files.readString(file));
+                    Files.writeString(output, content, CREATE, WRITE, TRUNCATE_EXISTING);
+                    return FileVisitResult.CONTINUE;
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }
+        });
+    }
+
+    private static String generateContent(String fileName, String content) throws IOException {
+        return switch (fileName) {
+            case "JBR.java" -> JBR.generate(content);
+            default -> generate(content);
+        };
+    }
+
+    private static String generate(String content) throws IOException {
+        Pattern pattern = compile("/\\*CONST ((?:[a-zA-Z0-9]+\\.)+)([a-zA-Z0-9_*]+)\s*\\*/");
+        for (;;) {
+            Matcher matcher = pattern.matcher(content);
+            if (!matcher.find()) return content;
+            String placeholder = matcher.group(0), file = matcher.group(1), name = matcher.group(2);
+            file = file.substring(0, file.length() - 1).replace('.', '/') + ".java";
+            List<String> statements = new ArrayList<>();
+            for (Path module : modules.paths) {
+                Path f = module.resolve("share/classes").resolve(file);
+                if (Files.exists(f)) {
+                    Pattern namePattern = compile(name.replaceAll("\\*", "[a-zA-Z0-9_]+") + "\s*=");
+                    Pattern statementPattern = compile("((?:(?:public|protected|private|static|final)\s+){2,3})([a-zA-Z0-9]+)\s+([^;]+);");
+                    Matcher statementMatcher = statementPattern.matcher(Files.readString(f));
+                    while (statementMatcher.find()) {
+                        String mods = statementMatcher.group(1);
+                        if (!mods.contains("static") || !mods.contains("final")) continue;
+                        for (String s : statementMatcher.group(3).split(",")) {
+                            if (!namePattern.matcher(s).find()) continue;
+                            statements.add("public static final " + statementMatcher.group(2) + " " + s.strip() + ";");
+                        }
+                    }
+                    break;
+                }
+            }
+            if (statements.isEmpty()) throw new RuntimeException("Constant not found: " + placeholder);
+            content = replaceTemplate(content, placeholder, statements, true);
+        }
     }
 
     private static String findRegex(String src, Pattern regex) {
@@ -74,7 +127,7 @@ public class Gensrc {
         return matcher.group(1);
     }
 
-    private static String replaceTemplate(String src, String placeholder, Iterable<String> statements) {
+    private static String replaceTemplate(String src, String placeholder, Iterable<String> statements, boolean compact) {
         int placeholderIndex = src.indexOf(placeholder);
         int indent = 0;
         while (placeholderIndex - indent >= 1 && src.charAt(placeholderIndex - indent - 1) == ' ') indent++;
@@ -84,7 +137,7 @@ public class Gensrc {
         StringBuilder sb = new StringBuilder(before);
         boolean firstStatement = true;
         for (String s : statements) {
-            if (!firstStatement) sb.append('\n');
+            if (!firstStatement && !compact) sb.append('\n');
             sb.append(s.indent(indent));
             firstStatement = false;
         }
@@ -97,19 +150,11 @@ public class Gensrc {
      */
     private static class JBR {
 
-        private static void generate() throws IOException {
-            String jbrFileName = "com/jetbrains/JBR.java";
-            Path output = gensrc.resolve(jbrFileName);
-            Files.createDirectories(output.getParent());
-            String content = generate(Files.readString(templates.resolve(jbrFileName)));
-            Files.writeString(output, content, CREATE, WRITE, TRUNCATE_EXISTING);
-        }
-
         private static String generate(String content) {
             Service[] interfaces = findPublicServiceInterfaces();
             List<String> statements = new ArrayList<>();
             for (Service i : interfaces) statements.add(generateMethodsForService(i));
-            content = replaceTemplate(content, "/*GENERATED_METHODS*/", statements);
+            content = replaceTemplate(content, "/*GENERATED_METHODS*/", statements, false);
             content = content.replace("/*KNOWN_SERVICES*/",
                     modules.services.stream().map(s -> "\"" + s + "\"").collect(Collectors.joining(", ")));
             content = content.replace("/*KNOWN_PROXIES*/",
@@ -124,6 +169,7 @@ public class Gensrc {
                     .map(fullName -> {
                         if (fullName.indexOf('$') != -1) return null; // Only top level services can be public
                         Path path = src.resolve(fullName.replace('.', '/') + ".java");
+                        if (!Files.exists(path)) return null;
                         String name = fullName.substring(fullName.lastIndexOf('.') + 1);
                         try {
                             String content = Files.readString(path);
@@ -181,13 +227,14 @@ public class Gensrc {
      */
     private static class JBRModules {
 
+        private final Path[] paths;
         private final Set<String> proxies = new HashSet<>(), services = new HashSet<>();
 
         private JBRModules() throws IOException {
             String[] moduleNames = findJBRApiModules();
-            Path[] potentialModules = findPotentialJBRApiContributorModules();
+            paths = findPotentialJBRApiContributorModules();
             for (String moduleName : moduleNames) {
-                Path module = findJBRApiModuleFile(moduleName, potentialModules);
+                Path module = findJBRApiModuleFile(moduleName, paths);
                 findInModule(Files.readString(module));
             }
         }
