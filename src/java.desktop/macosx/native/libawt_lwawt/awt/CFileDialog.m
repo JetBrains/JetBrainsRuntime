@@ -47,6 +47,7 @@
       shouldNavigate:(BOOL)inNavigateApps
 canChooseDirectories:(BOOL)inChooseDirectories
       canChooseFiles:(BOOL)inChooseFiles
+canCreateDirectories:(BOOL)inCreateDirectories
              withEnv:(JNIEnv*)env;
 {
   if (self = [super init]) {
@@ -63,6 +64,7 @@ canChooseDirectories:(BOOL)inChooseDirectories
         fNavigateApps = inNavigateApps;
         fChooseDirectories = inChooseDirectories;
         fChooseFiles = inChooseFiles;
+        fCreateDirectories = inCreateDirectories;
         fPanelResult = NSCancelButton;
     }
 
@@ -123,7 +125,7 @@ canChooseDirectories:(BOOL)inChooseDirectories
             [openPanel setAllowsMultipleSelection:fMultipleMode];
             [openPanel setCanChooseFiles:fChooseFiles];
             [openPanel setCanChooseDirectories:fChooseDirectories];
-            [openPanel setCanCreateDirectories:YES];
+            [openPanel setCanCreateDirectories:fCreateDirectories];
         }
 
         [thePanel setDelegate:self];
@@ -243,13 +245,11 @@ canChooseDirectories:(BOOL)inChooseDirectories
 /*
  * Class:     sun_lwawt_macosx_CFileDialog
  * Method:    nativeRunFileDialog
- * Signature: (Ljava/lang/String;ILjava/io/FilenameFilter;
- *             Ljava/lang/String;Ljava/lang/String;)[Ljava/lang/String;
  */
 JNIEXPORT jobjectArray JNICALL
 Java_sun_lwawt_macosx_CFileDialog_nativeRunFileDialog
 (JNIEnv *env, jobject peer, jstring title, jint mode, jboolean multipleMode,
- jboolean navigateApps, jboolean chooseDirectories, jboolean chooseFiles,
+ jboolean navigateApps, jboolean chooseDirectories, jboolean chooseFiles, jboolean createDirectories,
  jboolean hasFilter, jstring directory, jstring file)
 {
     jobjectArray returnValue = NULL;
@@ -270,6 +270,7 @@ JNI_COCOA_ENTER(env);
                                                        shouldNavigate:navigateApps
                                                  canChooseDirectories:chooseDirectories
                                                        canChooseFiles:chooseFiles
+                                                 canCreateDirectories:createDirectories
                                                               withEnv:env];
 
     [ThreadUtilities performOnMainThread:@selector(safeSaveOrLoad)
