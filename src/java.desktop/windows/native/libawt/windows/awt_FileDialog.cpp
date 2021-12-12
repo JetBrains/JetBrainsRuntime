@@ -29,6 +29,7 @@
 #include "awt_Dialog.h"
 #include "awt_Toolkit.h"
 #include "ComCtl32Util.h"
+#include "com_jetbrains_desktop_JBRFileDialog.h"
 #include <commdlg.h>
 #include <cderr.h>
 #include <shlobj.h>
@@ -53,10 +54,10 @@ jfieldID AwtFileDialog::modeID;
 jfieldID AwtFileDialog::dirID;
 jfieldID AwtFileDialog::fileID;
 jfieldID AwtFileDialog::filterID;
+jfieldID AwtFileDialog::jbrDialogID;
 jfieldID AwtFileDialog::openButtonTextID;
 jfieldID AwtFileDialog::selectFolderButtonTextID;
-jfieldID AwtFileDialog::folderPickerModeID;
-jfieldID AwtFileDialog::fileExclusivePickerModeID;
+jfieldID AwtFileDialog::hintsID;
 
 class CoTaskStringHolder {
 public:
@@ -746,16 +747,6 @@ HRESULT CreateShellItem(LPTSTR path, IShellItemPtr& shellItem) {
     return ::SHCreateItemInKnownFolder(FOLDERID_ComputerFolder, 0, path, IID_PPV_ARGS(&shellItem));
 }
 
-CoTaskStringHolder GetShortName(LPTSTR path) {
-    CoTaskStringHolder shortName;
-    OLE_TRY
-    IShellItemPtr shellItem;
-    OLE_HRT(CreateShellItem(path, shellItem));
-    OLE_HRT(shellItem->GetDisplayName(SIGDN_PARENTRELATIVE, &shortName));
-    OLE_CATCH
-    return SUCCEEDED(OLE_HR) ? shortName : CoTaskStringHolder();
-}
-
 void AttachString(JNIEnv *env, const jstring string, SmartHolder<WCHAR[]> &holder) {
     if (JNU_IsNull(env, string)) {
         holder.Attach(nullptr);
@@ -770,9 +761,9 @@ void AttachString(JNIEnv *env, const jstring string, SmartHolder<WCHAR[]> &holde
     }
 }
 
-void SaveCommonDialogLocalizationData(JNIEnv *env, const jobject fileDialog, FileDialogData &data) {
-    jstring openButtonText = static_cast<jstring>(env->GetObjectField(fileDialog, AwtFileDialog::openButtonTextID));
-    jstring selectFolderButtonText = static_cast<jstring>(env->GetObjectField(fileDialog, AwtFileDialog::selectFolderButtonTextID));
+void SaveCommonDialogLocalizationData(JNIEnv *env, const jobject jbrFileDialog, FileDialogData &data) {
+    jstring openButtonText = static_cast<jstring>(env->GetObjectField(jbrFileDialog, AwtFileDialog::openButtonTextID));
+    jstring selectFolderButtonText = static_cast<jstring>(env->GetObjectField(jbrFileDialog, AwtFileDialog::selectFolderButtonTextID));
 
     AttachString(env, openButtonText, data.openButtonText);
     AttachString(env, selectFolderButtonText, data.selectFolderButtonText);
@@ -922,12 +913,17 @@ AwtFileDialog::Show(void *p)
             GUID fileDialogMode = mode == java_awt_FileDialog_LOAD ? CLSID_FileOpenDialog : CLSID_FileSaveDialog;
             OLE_HRT(pfd.CreateInstance(fileDialogMode));
 
-            bool folderPickerMode = env->GetBooleanField(target, AwtFileDialog::folderPickerModeID);
-            bool fileExclusivePickerMode = env->GetBooleanField(target, AwtFileDialog::fileExclusivePickerModeID);
+            jobject jbrDialog = env->GetObjectField(target, AwtFileDialog::jbrDialogID);
+            jint hints = env->GetIntField(jbrDialog, AwtFileDialog::hintsID);
+            bool folderPickerMode = hints & com_jetbrains_desktop_JBRFileDialog_SELECT_DIRECTORIES_HINT;
+            bool fileExclusivePickerMode = hints & com_jetbrains_desktop_JBRFileDialog_SELECT_FILES_HINT;
+            if (folderPickerMode && fileExclusivePickerMode) {
+                folderPickerMode = fileExclusivePickerMode = false;
+            }
             data.ignoreCustomizations = folderPickerMode || fileExclusivePickerMode || mode == java_awt_FileDialog_SAVE;
             data.fileDialog = pfd;
             data.peer = peer;
-            SaveCommonDialogLocalizationData(env, target, data);
+            SaveCommonDialogLocalizationData(env, jbrDialog, data);
             OLE_HRT(CDialogEventHandler_CreateInstance(&data, IID_PPV_ARGS(&pfde)));
             OLE_HRT(pfd->Advise(pfde, &dwCookie));
 
@@ -958,12 +954,9 @@ AwtFileDialog::Show(void *p)
             }
 
             {
-                CoTaskStringHolder shortName = GetShortName(fileBuffer);
-                if (shortName) {
-                    OLE_TRY
-                    OLE_HRT(pfd->SetFileName(shortName));
-                    OLE_CATCH
-                }
+                OLE_TRY
+                OLE_HRT(pfd->SetFileName(fileBuffer));
+                OLE_CATCH
             }
 
             OLE_CATCH
@@ -985,6 +978,7 @@ AwtFileDialog::Show(void *p)
                     CoTaskStringHolder filePath;
                     OLE_HRT(psiResult->GetDisplayName(SIGDN_FILESYSPATH, &filePath));
                     size_t filePathLength = _tcslen(filePath);
+                    data.resultSize = filePathLength;
                     data.result.Attach(new TCHAR[filePathLength + 1]);
                     _tcscpy_s(data.result, filePathLength + 1, filePath);
                     OLE_CATCH
@@ -1216,6 +1210,15 @@ Java_sun_awt_windows_WFileDialogPeer_initIDs(JNIEnv *env, jclass cls)
         env->GetFieldID(cls, "filter", "Ljava/io/FilenameFilter;");
     DASSERT(AwtFileDialog::filterID != NULL);
 
+    AwtFileDialog::jbrDialogID =
+        env->GetFieldID(cls, "jbrDialog", "Lcom/jetbrains/desktop/JBRFileDialog;");
+    DASSERT(AwtFileDialog::jbrDialogID != NULL);
+    CHECK_NULL(AwtFileDialog::jbrDialogID);
+
+    /* com.jetbrains.desktop.JBRFileDialog fields */
+    cls = env->FindClass("com/jetbrains/desktop/JBRFileDialog");
+    CHECK_NULL(cls);
+
     AwtFileDialog::openButtonTextID =
         env->GetFieldID(cls, "openButtonText", "Ljava/lang/String;");
     DASSERT(AwtFileDialog::openButtonTextID != NULL);
@@ -1226,13 +1229,9 @@ Java_sun_awt_windows_WFileDialogPeer_initIDs(JNIEnv *env, jclass cls)
     DASSERT(AwtFileDialog::selectFolderButtonTextID != NULL);
     CHECK_NULL(AwtFileDialog::selectFolderButtonTextID);
 
-    AwtFileDialog::folderPickerModeID = env->GetFieldID(cls, "folderPickerMode", "Z");
-    DASSERT(AwtFileDialog::folderPickerModeID != NULL);
-    CHECK_NULL(AwtFileDialog::folderPickerModeID);
-
-    AwtFileDialog::fileExclusivePickerModeID = env->GetFieldID(cls, "fileExclusivePickerMode", "Z");
-    DASSERT(AwtFileDialog::fileExclusivePickerModeID != NULL);
-    CHECK_NULL(AwtFileDialog::fileExclusivePickerModeID);
+    AwtFileDialog::hintsID = env->GetFieldID(cls, "hints", "I");
+    DASSERT(AwtFileDialog::hintsID != NULL);
+    CHECK_NULL(AwtFileDialog::hintsID);
 
     CATCH_BAD_ALLOC;
 }
