@@ -66,6 +66,10 @@ public class JBR {
 
     private JBR() {}
 
+    static <T> T getService(Class<T> interFace) {
+        return api == null ? null : api.getService(interFace);
+    }
+
     /**
      * @return true when running on JBR which implements JBR API
      */
