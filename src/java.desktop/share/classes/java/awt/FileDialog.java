@@ -33,6 +33,7 @@ import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.lang.annotation.Native;
 
+import com.jetbrains.desktop.JBRFileDialog;
 import sun.awt.AWTAccessor;
 
 /**
@@ -631,43 +632,35 @@ public class FileDialog extends Dialog {
     }
 
     /**
-     * Text for "Open" button (used when common file dialogs are enabled on
-     * Windows).
-     */
-    private String openButtonText;
-
-    /**
-     * Text for "Select Folder" button (used when common file dialogs are
-     * enabled on Windows).
-     */
-    private String selectFolderButtonText;
-
-    /**
      * Called using reflection; sets localization strings used when common
      * file dialogs are enabled on Windows.
      */
+    @Deprecated(forRemoval = true)
     private void setLocalizationStrings(String openButtonText, String selectFolderButtonText) {
-        this.openButtonText = openButtonText;
-        this.selectFolderButtonText = selectFolderButtonText;
+        jbrDialog.openButtonText = openButtonText;
+        jbrDialog.selectFolderButtonText = selectFolderButtonText;
     }
 
-    /**
-     * Whether to enable folder picker mode (used when common file dialogs are
-     * enabled on Windows).
-     */
-    private boolean folderPickerMode;
-
+    @Deprecated(forRemoval = true)
     private void setFolderPickerMode(boolean folderPickerMode) {
-        this.folderPickerMode = folderPickerMode;
+        int hints = jbrDialog.getHints();
+        if (folderPickerMode) {
+            hints |= JBRFileDialog.SELECT_DIRECTORIES_HINT;
+        } else {
+            hints &= ~JBRFileDialog.SELECT_DIRECTORIES_HINT;
+        }
     }
 
-    /**
-     * Whether to enable exclusive file picker mode, with no folder picker
-     * available (used when common file dialogs are enabled on Windows).
-     */
-    private boolean fileExclusivePickerMode;
-
+    @Deprecated(forRemoval = true)
     private void setFileExclusivePickerMode(boolean fileExclusivePickerMode) {
-        this.fileExclusivePickerMode = fileExclusivePickerMode;
+        int hints = jbrDialog.getHints();
+        if (fileExclusivePickerMode) {
+            hints |= JBRFileDialog.SELECT_FILES_HINT;
+        } else {
+            hints &= ~JBRFileDialog.SELECT_FILES_HINT;
+            jbrDialog.setHints(hints);
+        }
     }
+
+    private final JBRFileDialog jbrDialog = new JBRFileDialog();
 }
