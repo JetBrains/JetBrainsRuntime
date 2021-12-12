@@ -35,7 +35,7 @@ public class CheckVersion {
             }
     );
 
-    private static Path module, gensrc;
+    private static Path gensrc;
 
     /**
      * <ul>
@@ -45,10 +45,9 @@ public class CheckVersion {
      * </ul>
      */
     public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
-        module = Path.of(args[0]);
+        Path versionFile = Path.of(args[0]).resolve("version.properties");
         gensrc = Path.of(args[1]);
         boolean error = args[2].equals("true");
-        Path versionFile = module.resolve("version.properties");
 
         Properties props = new Properties();
         props.load(Files.newInputStream(versionFile));
@@ -72,7 +71,6 @@ public class CheckVersion {
 
         private static String calculate() throws NoSuchAlgorithmException, IOException {
             MessageDigest hash = MessageDigest.getInstance("MD5");
-            calculate(module.resolve("src"), hash);
             calculate(gensrc, hash);
             byte[] digest = hash.digest();
             StringBuilder result = new StringBuilder();

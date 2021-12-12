@@ -47,6 +47,8 @@
         multipleMode:(BOOL)inMultipleMode
       shouldNavigate:(BOOL)inNavigateApps
 canChooseDirectories:(BOOL)inChooseDirectories
+      canChooseFiles:(BOOL)inChooseFiles
+canCreateDirectories:(BOOL)inCreateDirectories
              withEnv:(JNIEnv*)env;
 {
     if (self == [super init]) {
@@ -64,6 +66,8 @@ canChooseDirectories:(BOOL)inChooseDirectories
         fMultipleMode = inMultipleMode;
         fNavigateApps = inNavigateApps;
         fChooseDirectories = inChooseDirectories;
+        fChooseFiles = inChooseFiles;
+        fCreateDirectories = inCreateDirectories;
         fPanelResult = NSCancelButton;
     }
 
@@ -126,9 +130,9 @@ canChooseDirectories:(BOOL)inChooseDirectories
         if (fMode == java_awt_FileDialog_LOAD) {
             NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
             [openPanel setAllowsMultipleSelection:fMultipleMode];
-            [openPanel setCanChooseFiles:YES];
-            [openPanel setCanChooseDirectories:YES];
-            [openPanel setCanCreateDirectories:YES];
+            [openPanel setCanChooseFiles:fChooseFiles];
+            [openPanel setCanChooseDirectories:fChooseDirectories];
+            [openPanel setCanCreateDirectories:fCreateDirectories];
         }
 
         [thePanel setDelegate:self];
@@ -222,7 +226,7 @@ canChooseDirectories:(BOOL)inChooseDirectories
 
 - (NSMenuItem *) createEditMenu {
     NSMenu *editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
-    
+
     NSMenuItem *cutItem = [[NSMenuItem alloc] initWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
     [editMenu addItem:cutItem];
     [cutItem release];
@@ -293,13 +297,11 @@ canChooseDirectories:(BOOL)inChooseDirectories
 /*
  * Class:     sun_lwawt_macosx_CFileDialog
  * Method:    nativeRunFileDialog
- * Signature: (Ljava/lang/String;ILjava/io/FilenameFilter;
- *             Ljava/lang/String;Ljava/lang/String;)[Ljava/lang/String;
  */
 JNIEXPORT jobjectArray JNICALL
 Java_sun_lwawt_macosx_CFileDialog_nativeRunFileDialog
 (JNIEnv *env, jobject peer, jlong ownerPtr, jstring title, jint mode, jboolean multipleMode,
- jboolean navigateApps, jboolean chooseDirectories, jboolean hasFilter,
+ jboolean navigateApps, jboolean chooseDirectories, jboolean chooseFiles, jboolean createDirectories, jboolean hasFilter,
  jstring directory, jstring file)
 {
     jobjectArray returnValue = NULL;
@@ -320,6 +322,8 @@ JNI_COCOA_ENTER(env);
                                                          multipleMode:multipleMode
                                                        shouldNavigate:navigateApps
                                                  canChooseDirectories:chooseDirectories
+                                                       canChooseFiles:chooseFiles
+                                                 canCreateDirectories:createDirectories
                                                               withEnv:env];
 
     [ThreadUtilities performOnMainThread:@selector(safeSaveOrLoad)

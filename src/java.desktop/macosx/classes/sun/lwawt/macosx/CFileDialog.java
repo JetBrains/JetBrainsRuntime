@@ -39,6 +39,7 @@ import sun.lwawt.LWWindowPeer;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.jetbrains.desktop.JBRFileDialog;
 import sun.awt.AWTAccessor;
 import sun.java2d.pipe.Region;
 import sun.lwawt.LWWindowPeer;
@@ -46,6 +47,8 @@ import sun.security.action.GetBooleanAction;
 import sun.util.logging.PlatformLogger;
 
 import javax.swing.*;
+
+import static com.jetbrains.desktop.JBRFileDialog.*;
 
 class CFileDialog implements FileDialogPeer {
 
@@ -58,8 +61,11 @@ class CFileDialog implements FileDialogPeer {
             try {
                 boolean navigateApps = !AccessController.doPrivileged(
                         new GetBooleanAction("apple.awt.use-file-dialog-packages"));
-                boolean chooseDirectories = AccessController.doPrivileged(
-                        new GetBooleanAction("apple.awt.fileDialogForDirectories"));
+
+                JBRFileDialog jbrDialog = JBRFileDialog.get(target);
+                boolean createDirectories = (jbrDialog.getHints() & CREATE_DIRECTORIES_HINT) != 0;
+                boolean chooseDirectories = (jbrDialog.getHints() & SELECT_DIRECTORIES_HINT) != 0;
+                boolean chooseFiles = (jbrDialog.getHints() & SELECT_FILES_HINT) != 0;
 
                 int dialogMode = target.getMode();
                 String title = (target.getTitle() == null) ? "" : target.getTitle();
@@ -71,7 +77,9 @@ class CFileDialog implements FileDialogPeer {
                             dialogMode,
                             target.isMultipleMode(),
                             navigateApps,
-                            chooseDirectories,
+                            chooseDirectories || !chooseFiles,
+                            chooseFiles || !chooseDirectories,
+                            createDirectories,
                             target.getFilenameFilter() != null,
                             target.getDirectory(),
                             target.getFile());
@@ -175,7 +183,8 @@ class CFileDialog implements FileDialogPeer {
 
     private native String[] nativeRunFileDialog(long ownerPtr, String title, int mode,
             boolean multipleMode, boolean shouldNavigateApps,
-            boolean canChooseDirectories, boolean hasFilenameFilter,
+            boolean canChooseDirectories, boolean canChooseFiles,
+            boolean canCreateDirectories, boolean hasFilenameFilter,
             String directory, String file);
 
     @Override
