@@ -57,8 +57,11 @@
     // Can the dialog choose directories ?
     BOOL fChooseDirectories;
 
-    // Can the dialog choose directories ?
+    // Can the dialog choose files ?
     BOOL fChooseFiles;
+
+    // Can the dialog create directories ?
+    BOOL fCreateDirectories;
 
     // Contains the absolute paths of the selected files as URLs
     NSArray *fURLs;
@@ -75,6 +78,7 @@
        shouldNavigate:(BOOL)inNavigateApps
  canChooseDirectories:(BOOL)inChooseDirectories
        canChooseFiles:(BOOL)inChooseFiles
+ canCreateDirectories:(BOOL)inCreateDirectories
               withEnv:(JNIEnv*)env;
 
 // Invoked from the main thread
