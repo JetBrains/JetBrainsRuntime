@@ -1246,7 +1246,8 @@ AWT_ASSERT_APPKIT_THREAD;
     NSView* titlebarDecoration = titlebarContainer.subviews[1];
 
     // The following two views are only there on Big Sur and forward
-    BOOL runningAtLeastBigSur = @available(macOS 11.0, *);
+    BOOL runningAtLeastBigSur = [[NSProcessInfo processInfo] operatingSystemVersion].majorVersion >= 11;
+    
     NSView* titlebarVisualEffect = runningAtLeastBigSur ? titlebar.subviews[0] : nil;
     NSView* titlebarBackground = runningAtLeastBigSur ? titlebar.subviews[1] : nil;
 
@@ -1319,7 +1320,7 @@ AWT_ASSERT_APPKIT_THREAD;
     NSView* titlebarDecoration = titlebarContainer.subviews[1];
 
     // The following two views are only there on Big Sur and forward
-    BOOL runningAtLeastBigSur = @available(macOS 11.0, *);
+    BOOL runningAtLeastBigSur = [[NSProcessInfo processInfo] operatingSystemVersion].majorVersion >= 11;
     NSView* titlebarVisualEffect = runningAtLeastBigSur ? titlebar.subviews[0] : nil;
     NSView* titlebarBackground = runningAtLeastBigSur ? titlebar.subviews[1] : nil;
 
