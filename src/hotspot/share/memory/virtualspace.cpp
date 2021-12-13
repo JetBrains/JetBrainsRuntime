@@ -196,7 +196,8 @@ void ReservedSpace::initialize(size_t size, size_t alignment, bool large,
         base = NULL;
       }
     } else {
-      base = os::reserve_memory(size, NULL, alignment, _fd_for_heap);
+      base = MACOS_ONLY(os::reserve_memory(size, NULL, alignment, _fd_for_heap, _executable))
+             NOT_MACOS(os::reserve_memory(size, NULL, alignment, _fd_for_heap));
     }
 
     if (base == NULL) return;
@@ -990,7 +991,8 @@ void VirtualSpace::shrink_by(size_t size) {
     assert(middle_high_boundary() <= aligned_upper_new_high &&
            aligned_upper_new_high + upper_needs <= upper_high_boundary(),
            "must not shrink beyond region");
-    if (!os::uncommit_memory(aligned_upper_new_high, upper_needs)) {
+    if (MACOS_ONLY(!os::uncommit_memory(aligned_upper_new_high, upper_needs, _executable))
+        NOT_MACOS(!os::uncommit_memory(aligned_upper_new_high, upper_needs))) {
       debug_only(warning("os::uncommit_memory failed"));
       return;
     } else {
@@ -1001,7 +1003,8 @@ void VirtualSpace::shrink_by(size_t size) {
     assert(lower_high_boundary() <= aligned_middle_new_high &&
            aligned_middle_new_high + middle_needs <= middle_high_boundary(),
            "must not shrink beyond region");
-    if (!os::uncommit_memory(aligned_middle_new_high, middle_needs)) {
+    if (MACOS_ONLY(!os::uncommit_memory(aligned_middle_new_high, middle_needs, _executable))
+        NOT_MACOS(!os::uncommit_memory(aligned_middle_new_high, middle_needs))) {
       debug_only(warning("os::uncommit_memory failed"));
       return;
     } else {
@@ -1012,7 +1015,8 @@ void VirtualSpace::shrink_by(size_t size) {
     assert(low_boundary() <= aligned_lower_new_high &&
            aligned_lower_new_high + lower_needs <= lower_high_boundary(),
            "must not shrink beyond region");
-    if (!os::uncommit_memory(aligned_lower_new_high, lower_needs)) {
+    if (MACOS_ONLY(!os::uncommit_memory(aligned_lower_new_high, lower_needs, _executable))
+        NOT_MACOS(!os::uncommit_memory(aligned_lower_new_high, lower_needs))) {
       debug_only(warning("os::uncommit_memory failed"));
       return;
     } else {
