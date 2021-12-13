@@ -1394,7 +1394,6 @@ AWT_ASSERT_APPKIT_THREAD;
         [self setUpCustomHeader];
         [self setWindowControlsHidden:NO];
     }];
-    _titlebarDisabled = YES;
 }
 
 @end // AWTWindow

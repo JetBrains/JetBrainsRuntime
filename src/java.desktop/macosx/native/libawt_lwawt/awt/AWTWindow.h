@@ -49,7 +49,6 @@
     BOOL isJustCreated;
     NSWindowTabbingMode javaWindowTabbingMode;
     BOOL isEnterFullScreen;
-    BOOL _titlebarDisabled;
     CGFloat _customHeaderHeight;
 }
 
