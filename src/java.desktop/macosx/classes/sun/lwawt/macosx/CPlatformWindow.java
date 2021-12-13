@@ -104,7 +104,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     static native CPlatformWindow nativeGetTopmostPlatformWindowUnderMouse();
     private static native boolean nativeDelayShowing(long nsWindowPtr);
     private static native void nativeRaiseLevel(long nsWindowPtr, boolean popup, boolean onlyIfParentIsActive);
-    private static native void nativeTransparentTitleBarWithCustomHeight(long nsWindowPtr, float height);
+    private static native void nativeSetTransparentTitleBarHeight(long nsWindowPtr, float height);
 
     // Loger to report issues happened during execution but that do not affect functionality
     private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.CPlatformWindow");
@@ -137,6 +137,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     public static final String WINDOW_TRANSPARENT_TITLE_BAR = "apple.awt.transparentTitleBar";
     public static final String WINDOW_TITLE_VISIBLE = "apple.awt.windowTitleVisible";
     public static final String WINDOW_APPEARANCE = "apple.awt.windowAppearance";
+    public static final String WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT = "apple.awt.windowTransparentTitleBarHeight";
 
     // This system property is named as jdk.* because it is not specific to AWT
     // and it is also used in JavaFX
@@ -283,6 +284,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             public void applyProperty(final CPlatformWindow c, final Object value) {
                 if (value != null && (value instanceof String)) {
                     c.execute(ptr -> nativeSetNSWindowAppearance(ptr, (String) value));
+                }
+            }
+        },
+        new Property<CPlatformWindow>(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT) {
+            public void applyProperty(final CPlatformWindow c, final Object value) {
+                if (value != null && (value instanceof Float)) {
+                    c.execute(ptr -> nativeSetTransparentTitleBarHeight(ptr, (float) value));
                 }
             }
         }

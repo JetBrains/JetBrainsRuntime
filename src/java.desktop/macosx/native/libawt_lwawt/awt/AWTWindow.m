@@ -2231,7 +2231,7 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeDelayShow
 }
 
 
-JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeTransparentTitleBarWithCustomHeight
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetTransparentTitleBarHeight
 (JNIEnv *env, jclass clazz, jlong windowPtr, jfloat customHeaderHeight)
 {
     JNI_COCOA_ENTER(env);
