@@ -122,15 +122,6 @@ public class TestDialogTypeAhead extends Applet
         b.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent e) {
                     System.err.println("B pressed");
-
-                    EventQueue.invokeLater(new Runnable() {
-                            public void run() {
-                                waitTillShown(d);
-                                TestDialogTypeAhead.this.d.toFront();
-                                TestDialogTypeAhead.this.moveMouseOver(d);
-                            }
-                        });
-
                     d.setVisible(true);
                 }
             });
@@ -161,6 +152,9 @@ public class TestDialogTypeAhead extends Applet
 
         robot.keyPress(KeyEvent.VK_SPACE);
         robot.keyRelease(KeyEvent.VK_SPACE);
+        waitTillShown(d);
+        d.toFront();
+        moveMouseOver(d);
         try {
             robotSema.doWait(1000);
         } catch (InterruptedException ie) {
