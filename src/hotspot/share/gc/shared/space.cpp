@@ -436,25 +436,25 @@ int CompactibleSpace::space_index(oop obj) {
     index++;
   }
 
-  tty->print_cr("could not compute space_index for %08xh", cast_from_oop<HeapWord*>(obj));
+  tty->print_cr("could not compute space_index for " INTPTR_FORMAT, p2i(cast_from_oop<HeapWord*>(obj)));
   index = 0;
 
   Generation* gen = heap->old_gen();
-  tty->print_cr("  generation %s: %08xh - %08xh", gen->name(), gen->reserved().start(), gen->reserved().end());
+  tty->print_cr("  generation %s: " INTPTR_FORMAT " - " INTPTR_FORMAT, gen->name(), p2i(gen->reserved().start()), p2i(gen->reserved().end()));
 
   space = gen->first_compaction_space();
   while (space != NULL) {
-    tty->print_cr("    %2d space %08xh - %08xh", index, space->bottom(), space->end());
+    tty->print_cr("    %2d space " INTPTR_FORMAT " - " INTPTR_FORMAT, index, p2i(space->bottom()), p2i(space->end()));
     space = space->next_compaction_space();
     index++;
   }
 
   gen = heap->young_gen();
-  tty->print_cr("  generation %s: %08xh - %08xh", gen->name(), gen->reserved().start(), gen->reserved().end());
+  tty->print_cr("  generation %s: " INTPTR_FORMAT " - " INTPTR_FORMAT, gen->name(), p2i(gen->reserved().start()), p2i(gen->reserved().end()));
 
   space = gen->first_compaction_space();
   while (space != NULL) {
-    tty->print_cr("    %2d space %08xh - %08xh", index, space->bottom(), space->end());
+    tty->print_cr("    %2d space " INTPTR_FORMAT " - " INTPTR_FORMAT, index, p2i(space->bottom()), p2i(space->end()));
     space = space->next_compaction_space();
     index++;
   }
