@@ -1732,6 +1732,7 @@ void LIR_Assembler::arith_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
         default: ShouldNotReachHere();
         }
         break;
+      default:
         ShouldNotReachHere();
       }
     } else {
