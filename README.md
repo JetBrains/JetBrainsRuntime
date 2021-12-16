@@ -10,12 +10,12 @@ It includes a number enhancements in font rendering, HiDPI support, ligatures, p
 Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. The full list
 can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntime/releases).
 
-| IDE Version | Latest JBR | Date Released |
+| IDE Version | Latest JBR                                                                                        | Date Released |
 |  ---        | ---        | ---           |
-| 2021.3      | [11_0_13-b1751.19](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_13b1751.19) | 9-Nov-2021 |
-| 2021.2      | [11_0_13-b1504.49](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jb11_0_13-b1504.49) | 15-Nov-2021 |
-| 2021.1      | [11.0.11+9-b1341.60](https://confluence.jetbrains.com/pages/viewpage.action?pageId=218857477) | 15-Jun-2021 |
-| 2020.3      | [11_0_11-b1145.115](https://confluence.jetbrains.com/pages/viewpage.action?pageId=219349001) | 21-Jun-2021 |
+| 2021.3      | [11_0_13-b1751.21](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_13b1751.21) | 9-Dec-2021    |
+| 2021.2      | [11_0_13-b1504.49](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jb11_0_13-b1504.49) | 15-Nov-2021   |
+| 2021.1      | [11.0.11+9-b1341.60](https://confluence.jetbrains.com/pages/viewpage.action?pageId=218857477)     | 15-Jun-2021   |
+| 2020.3      | [11_0_11-b1145.115](https://confluence.jetbrains.com/pages/viewpage.action?pageId=219349001)      | 21-Jun-2021   |
 
 ## Contents
 - [Welcome to JetBrains Runtime](#jetbrains-runtime)
