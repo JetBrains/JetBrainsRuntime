@@ -55,17 +55,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Vector;
 
-import javax.accessibility.Accessible;
-import javax.accessibility.AccessibleAction;
-import javax.accessibility.AccessibleComponent;
-import javax.accessibility.AccessibleContext;
-import javax.accessibility.AccessibleIcon;
-import javax.accessibility.AccessibleRole;
-import javax.accessibility.AccessibleSelection;
-import javax.accessibility.AccessibleState;
-import javax.accessibility.AccessibleStateSet;
-import javax.accessibility.AccessibleText;
-import javax.accessibility.AccessibleValue;
+import javax.accessibility.*;
 import javax.swing.event.EventListenerList;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
@@ -3051,6 +3041,27 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
          }
 
     // AccessibleContext methods
+
+
+        @Override
+        public AccessibleTable getAccessibleTable() {
+                 return new AccessibleList<E>(JList.this.getModel(), JList.this.getSelectionModel()) {
+                     @Override
+                     public Accessible getAccessibleAt(int r, int c) {
+                         if ((r >= 0) && (r < getAccessibleRowCount())) {
+                             E o = getElementAt(r);
+                             if (o != null) {
+                                 Component component = JList.this.getCellRenderer().getListCellRendererComponent(JList.this, o, r,
+                                         JList.this.isSelectedIndex(r), false);
+                                 if (component instanceof Accessible) {
+                                     return (Accessible) component;
+                                 }
+                             }
+                         }
+                         return null;
+                     }
+                 };
+        }
 
         /**
          * Get the state set of this object.

@@ -47,17 +47,7 @@ import java.util.Arrays;
 import java.util.function.Function;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.accessibility.Accessible;
-import javax.accessibility.AccessibleAction;
-import javax.accessibility.AccessibleComponent;
-import javax.accessibility.AccessibleContext;
-import javax.accessibility.AccessibleRole;
-import javax.accessibility.AccessibleSelection;
-import javax.accessibility.AccessibleState;
-import javax.accessibility.AccessibleStateSet;
-import javax.accessibility.AccessibleTable;
-import javax.accessibility.AccessibleText;
-import javax.accessibility.AccessibleValue;
+import javax.accessibility.*;
 import javax.swing.Icon;
 import javax.swing.JComponent;
 import javax.swing.JEditorPane;
@@ -568,9 +558,10 @@ class CAccessibility implements PropertyChangeListener {
                 if (pac == null) return;
                 AccessibleSelection as = pac.getAccessibleSelection();
                 if (as == null) return;
-                if (parent instanceof JList) {
-                    ((JList) parent).setSelectedIndex(i);
-                    return;
+                AccessibleTable pat = pac.getAccessibleTable();
+                if ((pat != null) && (pat instanceof AccessibleList)) {
+                    ((AccessibleList) pat).setSelectionInterval(i, i);
+                        return;
                 }
                 as.addAccessibleSelection(i);
             }
