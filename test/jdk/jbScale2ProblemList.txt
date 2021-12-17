@@ -1,0 +1,2 @@
+java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.java               JBR-890  generic-all
+java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.java                   JBR-1011 generic-all
