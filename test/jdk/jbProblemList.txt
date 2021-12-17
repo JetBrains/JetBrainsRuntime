@@ -471,6 +471,7 @@ java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 71
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java 6848810 macosx-all,linux-all
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java 8194751 linux-all
 java/awt/image/VolatileImage/BitmaskVolatileImage.java 8133102 linux-all
+java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java 8134231 windows-all,linux-all
 java/awt/SplashScreen/MultiResolutionSplash/unix/UnixMultiResolutionSplashTest.java 8203004 linux-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java 7107528 linux-all,macosx-all
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java 8080676 linux-all
