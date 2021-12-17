@@ -888,7 +888,6 @@ com/sun/jdi/RedefineCrossEvent.java                             8194308    gener
 
 # jdk_jfr
 
-jdk/jfr/event/io/TestInstrumentation.java                       8202142    generic-all
 jdk/jfr/event/sampling/TestNative.java                          8202142    generic-all
 jdk/jfr/event/runtime/TestNetworkUtilizationEvent.java          8228990,8229370    generic-all
 jdk/jfr/event/compiler/TestCodeSweeper.java                     8225209    generic-all
