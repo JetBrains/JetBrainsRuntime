@@ -4005,6 +4005,10 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
 
   setup_hotswap_agent();
 
+  if (AllowEnhancedClassRedefinition) {
+    UseEmptySlotsInSupers = false;
+  }
+
 #if !INCLUDE_CDS
   if (DumpSharedSpaces || RequireSharedSpaces) {
     jio_fprintf(defaultStream::error_stream(),
