@@ -1073,7 +1073,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
 
     cur_klass = new_class->super();
     while (cur_klass != NULL) {
-      if (!the_class->is_subclass_of(cur_klass->old_version())) {
+      if (!the_class->is_subclass_of(cur_klass->is_redefining() ? cur_klass->old_version() : cur_klass)) {
         log_info(redefine, class, load)("added super class %s", cur_klass->name()->as_C_string());
         result = result | Klass::ModifyClass | Klass::ModifyInstances;
       }
