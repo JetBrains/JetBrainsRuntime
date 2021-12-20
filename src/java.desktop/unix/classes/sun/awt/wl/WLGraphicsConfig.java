@@ -5,6 +5,10 @@ import java.awt.GraphicsDevice;
 import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.awt.image.ColorModel;
+import java.awt.image.DirectColorModel;
+import sun.java2d.SurfaceData;
+import sun.java2d.loops.SurfaceType;
+import sun.java2d.wl.WLSurfaceData;
 
 public class WLGraphicsConfig extends GraphicsConfiguration {
     private final WLGraphicsDevice device;
@@ -21,7 +25,7 @@ public class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public ColorModel getColorModel() {
-        throw new UnsupportedOperationException();
+        return new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
     }
 
     @Override
@@ -42,5 +46,13 @@ public class WLGraphicsConfig extends GraphicsConfiguration {
     @Override
     public Rectangle getBounds() {
         return bounds;
+    }
+
+    public SurfaceType getSurfaceType() {
+        return SurfaceType.IntArgb;
+    }
+
+    public SurfaceData createSurfaceData(WLFramePeer peer) {
+        return WLSurfaceData.createData(peer);
     }
 }
