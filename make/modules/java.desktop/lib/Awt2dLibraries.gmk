@@ -190,7 +190,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         #
 
-    LIBAWT_XAWT_EXCLUDES := medialib debug
+    LIBAWT_XAWT_EXCLUDES := medialib debug wl
 
     LIBAWT_XAWT_EXTRA_HEADER_DIRS := \
         $(LIBAWT_DEFAULT_HEADER_DIRS) \
@@ -271,8 +271,8 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         #
 
-    LIBAWT_WLAWT_EXCLUDES := medialib debug opengl
-    LIBAWT_WLAWT_EXCLUDE_FILES := common/awt/X11Color.c
+    LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11
+    LIBAWT_WLAWT_EXCLUDE_FILES := common/awt/X11Color.c common/awt/awt_Font.c common/awt/fontpath.c
 
     LIBAWT_WLAWT_EXTRA_HEADER_DIRS := \
         $(LIBAWT_DEFAULT_HEADER_DIRS) \
@@ -281,6 +281,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/awt/debug \
         common/awt/systemscale \
         common/font \
+        common/java2d/wl \
         #
 
     LIBAWT_WLAWT_CFLAGS += -DWLAWT \
@@ -305,7 +306,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
 
     $(eval $(call SetupJdkLibrary, BUILD_LIBAWT_WLAWT, \
         NAME := awt_wlawt, \
-        EXCLUDE_FILES := $(LIBAWT_WLAWT_EXCLUDE_FILES) \
+        EXCLUDE_FILES := $(LIBAWT_WLAWT_EXCLUDE_FILES), \
         EXTRA_SRC := $(LIBAWT_WLAWT_EXTRA_SRC), \
         EXTRA_HEADER_DIRS := $(LIBAWT_WLAWT_EXTRA_HEADER_DIRS), \
         EXCLUDES := $(LIBAWT_WLAWT_EXCLUDES), \
