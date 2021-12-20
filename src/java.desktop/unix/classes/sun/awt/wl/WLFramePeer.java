@@ -1,5 +1,7 @@
 package sun.awt.wl;
 
+import java.awt.Toolkit;
+import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
 
 import java.awt.AWTEvent;
@@ -29,12 +31,28 @@ import java.awt.peer.ContainerPeer;
 import java.awt.peer.FramePeer;
 
 public class WLFramePeer implements FramePeer {
+
     private final Frame target;
+
     private long nativePtr;
+    SurfaceData surfaceData;
+    private WLGraphicsConfig graphicsConfig;
+
+    static {
+        initIDs();
+    }
 
     public WLFramePeer(Frame target) {
         this.target = target;
         this.nativePtr = nativeCreateFrame();
+        initGraphicsConfiguration();
+        this.surfaceData = graphicsConfig.createSurfaceData(this);
+    }
+
+    private static native void initIDs();
+
+    public Frame getTarget() {
+        return target;
     }
 
     @Override
@@ -102,7 +120,12 @@ public class WLFramePeer implements FramePeer {
 
     @Override
     public ColorModel getColorModel() {
-        throw new UnsupportedOperationException();
+        if (graphicsConfig != null) {
+            return graphicsConfig.getColorModel ();
+        }
+        else {
+            return Toolkit.getDefaultToolkit().getColorModel();
+        }
     }
 
     @Override
@@ -160,9 +183,16 @@ public class WLFramePeer implements FramePeer {
         throw new UnsupportedOperationException();
     }
 
+    protected void initGraphicsConfiguration() {
+        graphicsConfig = (WLGraphicsConfig) target.getGraphicsConfiguration();
+    }
+
     @Override
     public GraphicsConfiguration getGraphicsConfiguration() {
-        throw new UnsupportedOperationException();
+        if (graphicsConfig == null) {
+            initGraphicsConfiguration();
+        }
+        return graphicsConfig;
     }
 
     @Override
@@ -342,6 +372,8 @@ public class WLFramePeer implements FramePeer {
     private native void nativeShowFrame(long ptr, int width, int height);
     private native void nativeHideFrame(long ptr);
     private native void nativeDisposeFrame(long ptr);
+
+    private native long getWLSurface();
 
     // called from native code
     private void postWindowClosing() {
