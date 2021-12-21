@@ -1281,3 +1281,5 @@ jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java                   
 jb/java/awt/Focus/ChainOfPopupsFocusTest.java                                       JBR-1518 linux-all
 
 java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
+
+jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest3838.java                    JBR-3838 windows-all

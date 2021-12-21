@@ -212,3 +212,5 @@ jb/sun/lwawt/macosx/NSEvent/nsevent422.sh                                       
 
 jb/java/jcef/MouseEventTest.java                                                            JBR-2750 linux-all
 jb/java/jcef/MouseEventAfterHideAndShowBrowserTest.java                                     JBR-2750 linux-all
+
+jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest3838.java                            JBR-3838 windows-all
