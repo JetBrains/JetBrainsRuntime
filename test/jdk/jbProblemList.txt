@@ -1281,3 +1281,5 @@ jb/java/jcef/MouseEventTest.java                                                
 jb/java/jcef/MouseEventAfterHideAndShowBrowserTest.java                             JBR-2750 linux-all
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java                       nobug windows-6.1 not supported on Windows 7
 jb/java/awt/Focus/ChainOfPopupsFocusTest.java                                       JBR-1518 linux-all
+
+jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest3838.java                    JBR-3838 windows-all
