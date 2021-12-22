@@ -1605,10 +1605,10 @@ final public class AccessBridge {
 
                                 AffineTransform at = getTransformFromContext(ac);
                                 if (at != null) {
-                                    r.x = (int)(r.x * at.getScaleX());
-                                    r.y = (int)(r.y * at.getScaleY());
-                                    r.width = (int)(r.width * at.getScaleX());
-                                    r.height = (int)(r.height * at.getScaleY());
+                                    r.x = (int) Math.floor(r.x * at.getScaleX());
+                                    r.y = (int) Math.floor(r.y * at.getScaleY());
+                                    r.width = (int) Math.ceil(r.width * at.getScaleX());
+                                    r.height = (int) Math.ceil(r.height * at.getScaleY());
                                 }
                                 return r;
                             }
@@ -2287,10 +2287,10 @@ final public class AccessBridge {
                         if (rect != null) {
                             AffineTransform transform = getTransformFromContext(ac);
                             if (transform != null) {
-                                rect.x = (int)(rect.x * transform.getScaleX());
-                                rect.y = (int)(rect.y * transform.getScaleY());
-                                rect.width = (int)(rect.width * transform.getScaleX());
-                                rect.height = (int)(rect.height * transform.getScaleY());
+                                rect.x = (int) Math.floor(rect.x * transform.getScaleX());
+                                rect.y = (int) Math.floor(rect.y * transform.getScaleY());
+                                rect.width = (int) Math.ceil(rect.width * transform.getScaleX());
+                                rect.height = (int) Math.ceil(rect.height * transform.getScaleY());
                             }
 
                             String s = at.getAtIndex(AccessibleText.CHARACTER, index);
