@@ -599,7 +599,6 @@ static StatusWindow *createStatusWindow(Window parent) {
     int screen = 0;
     int i;
     AwtGraphicsConfigDataPtr adata;
-    extern int awt_numScreens;
     /*hardcode the size right now, should get the size base on font*/
     int width=80, height=22;
     Window rootWindow;
@@ -610,20 +609,20 @@ static StatusWindow *createStatusWindow(Window parent) {
 
     attrib.override_redirect = True;
     attribmask = CWOverrideRedirect;
-    for (i = 0; i < awt_numScreens; i++) {
-        if (RootWindow(dpy, i) == rootWindow) {
-            screen = i;
-            break;
-        }
+    XGetWindowAttributes(dpy, parent, &xwa);
+    bw = 2; /*xwa.border_width does not have the correct value*/
+
+    if (xwa.screen != NULL) {
+        screen = XScreenNumberOfScreen(xwa.screen);
     }
     adata = getDefaultConfig(screen);
+    if (NULL == adata || NULL == adata->AwtColorMatch) {
+        return NULL;
+    }
     bg    = adata->AwtColorMatch(255, 255, 255, adata);
     fg    = adata->AwtColorMatch(0, 0, 0, adata);
     light = adata->AwtColorMatch(195, 195, 195, adata);
     dim   = adata->AwtColorMatch(128, 128, 128, adata);
-
-    XGetWindowAttributes(dpy, parent, &xwa);
-    bw = 2; /*xwa.border_width does not have the correct value*/
 
     /*compare the size difference between parent container
       and shell widget, the diff should be the border frame
