@@ -738,9 +738,18 @@ public:
   }
 
 #if INCLUDE_JVMTI
-  // Redefinition locking.  Class can only be redefined by one thread at a time.
-  bool is_being_redefined() const          { return _is_being_redefined; }
-  void set_is_being_redefined(bool value)  { _is_being_redefined = value; }
+  // The flag is in access_flags so that it can be set and reset using atomic
+  // operations, and not be reset by other misc_flag settings.
+  bool is_being_redefined() const          {
+    return _access_flags.is_being_redefined();
+  }
+  void set_is_being_redefined(bool value)  {
+    if (value) {
+      _access_flags.set_is_being_redefined();
+    } else {
+      _access_flags.clear_is_being_redefined();
+    }
+  }
 
   // RedefineClasses() support for previous versions:
   void add_previous_version(InstanceKlass* ik, int emcp_method_count);
