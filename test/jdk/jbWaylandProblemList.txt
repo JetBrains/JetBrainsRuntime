@@ -1,0 +1,3 @@
+# Fedora & ArchLinux (Wayland) & Ubuntu 21.04
+sun/java2d/ClassCastExceptionForInvalidSurface.java                                 JBR-3167 linux-all
+java/awt/Frame/HugeFrame/HugeFrame.java                                             JBR-3167 linux-all
