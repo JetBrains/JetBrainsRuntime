@@ -241,6 +241,9 @@ void NativeCall::replace_mt_safe(address instr_addr, address code_buffer) {
 
 }
 
+bool NativeCall::is_displacement_aligned() {
+  return (uintptr_t) displacement_address() % 4 == 0;
+}
 
 // Similar to replace_mt_safe, but just changes the destination.  The
 // important thing is that free-running threads are able to execute this
@@ -264,16 +267,15 @@ void NativeCall::set_destination_mt_safe(address dest) {
   // Both C1 and C2 should now be generating code which aligns the patched address
   // to be within a single cache line except that C1 does not do the alignment on
   // uniprocessor systems.
-  bool is_aligned = ((uintptr_t)displacement_address() + 0) / cache_line_size ==
-                    ((uintptr_t)displacement_address() + 3) / cache_line_size;
+  bool is_aligned = is_displacement_aligned();
 
   guarantee(!os::is_MP() || is_aligned, "destination must be aligned");
 
   if (is_aligned) {
     // Simple case:  The destination lies within a single cache line.
     set_destination(dest);
-  } else if ((uintptr_t)instruction_address() / cache_line_size ==
-             ((uintptr_t)instruction_address()+1) / cache_line_size) {
+  } else if ((uintptr_t)instruction_address() / 4 ==
+             ((uintptr_t)instruction_address()+1) / 4) {
     // Tricky case:  The instruction prefix lies within a single cache line.
     intptr_t disp = dest - return_address();
 #ifdef AMD64
