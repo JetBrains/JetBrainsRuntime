@@ -77,8 +77,7 @@ define_pd_global(uintx, TypeProfileLevel, 0);
 
 define_pd_global(bool, PreserveFramePointer, false);
 
-// No performance work done here yet.
-define_pd_global(bool, CompactStrings, false);
+define_pd_global(bool, CompactStrings, true);
 
 define_pd_global(bool, ThreadLocalHandshakes, false);
 
