@@ -27,6 +27,7 @@ package com.sun.java.accessibility.internal;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.AffineTransform;
 import java.util.*;
 import java.lang.*;
 import java.lang.reflect.*;
@@ -478,6 +479,19 @@ public final class AccessBridge {
         if (parent == null) {
             return null;
         }
+        Point location = new Point(x, y);
+        InvocationUtils.invokeAndWait(new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                AffineTransform at = getTransformFromContext(parent);
+                if (at != null) {
+                    location.setLocation((int) (location.x / at.getScaleX()), (int) (location.y / at.getScaleY()));
+                }
+                return null;
+            }
+        }, parent);
+        x = location.x;
+        y = location.y;
         if (windowHandleToContextMap != null &&
             windowHandleToContextMap.containsValue(getRootAccessibleContext(parent))) {
             // Path for applications that register their top-level
@@ -1593,6 +1607,14 @@ public final class AccessBridge {
                             if (p != null) {
                                 r.x = p.x;
                                 r.y = p.y;
+
+                                AffineTransform at = getTransformFromContext(ac);
+                                if (at != null) {
+                                    r.x = (int) Math.floor(r.x * at.getScaleX());
+                                    r.y = (int) Math.floor(r.y * at.getScaleY());
+                                    r.width = (int) Math.ceil(r.width * at.getScaleX());
+                                    r.height = (int) Math.ceil(r.height * at.getScaleY());
+                                }
                                 return r;
                             }
                         } catch (Exception e) {
@@ -1733,6 +1755,21 @@ public final class AccessBridge {
                 return ac.getAccessibleValue();
             }
         }, ac);
+    }
+
+    /**
+     * return the screen coordinates transform from an AccessibleContext
+     */
+    private AffineTransform getTransformFromContext(final AccessibleContext ac) {
+        AccessibleComponent acomp = ac.getAccessibleComponent();
+        if (acomp != null) {
+            FontMetrics fm = acomp.getFontMetrics(acomp.getFont());
+            if (fm != null) {
+                return fm.getFontRenderContext().getTransform();
+            }
+        }
+
+        return null;
     }
 
     /* ===== AccessibleText methods ===== */
@@ -2253,6 +2290,14 @@ public final class AccessBridge {
                     if (at != null) {
                         Rectangle rect = at.getCharacterBounds(index);
                         if (rect != null) {
+                            AffineTransform transform = getTransformFromContext(ac);
+                            if (transform != null) {
+                                rect.x = (int) Math.floor(rect.x * transform.getScaleX());
+                                rect.y = (int) Math.floor(rect.y * transform.getScaleY());
+                                rect.width = (int) Math.ceil(rect.width * transform.getScaleX());
+                                rect.height = (int) Math.ceil(rect.height * transform.getScaleY());
+                            }
+
                             String s = at.getAtIndex(AccessibleText.CHARACTER, index);
                             if (s != null && s.equals("\n")) {
                                 rect.width = 0;
