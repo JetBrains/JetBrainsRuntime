@@ -26,10 +26,6 @@
 package sun.font;
 
 import java.awt.*;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
 import java.lang.ref.SoftReference;
 import java.util.concurrent.ConcurrentHashMap;
 import java.security.AccessController;
@@ -464,10 +460,10 @@ public final class FontUtilities {
             compMap.put(physicalFont, compFont);
         }
         FontAccess.getFontAccess().setFont2D(fuir, compFont.handle);
-        /* marking this as a created font is needed as only created fonts
-         * copy their creator's handles.
+        /* marking this as a font with fallback to make sure its
+         * handle is copied to derived fonts.
          */
-        FontAccess.getFontAccess().setCreatedFont(fuir);
+        FontAccess.getFontAccess().setWithFallback(fuir);
         return fuir;
     }
 
