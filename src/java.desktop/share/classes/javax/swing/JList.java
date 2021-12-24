@@ -3040,28 +3040,43 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
                                 Boolean.valueOf(false), Boolean.valueOf(true));
          }
 
-    // AccessibleContext methods
+         // Accessible List methods
 
+        private class AccessibleListImpl implements AccessibleList<E> {
+
+            @Override
+            public ListModel<E> getListModel() {
+                return JList.this.getModel();
+            }
+
+            @Override
+            public ListSelectionModel getListSelectionModel() {
+                return JList.this.getSelectionModel();
+            }
+
+
+            @Override
+            public Accessible getAccessibleAt(int r, int c) {
+                if ((r >= 0) && (r < getAccessibleRowCount())) {
+                    E o =  getElementAt(r);
+                    if (o != null) {
+                        Component component = JList.this.getCellRenderer().getListCellRendererComponent(JList.this, o, r,
+                                JList.this.isSelectedIndex(r), false);
+                        if (component instanceof Accessible) {
+                            return (Accessible) component;
+                        }
+                    }
+                }
+                return null;
+            }
+        }
+
+        // AccessibleContext methods
 
         @Override
         public AccessibleTable getAccessibleTable() {
-                 return new AccessibleList<E>(JList.this.getModel(), JList.this.getSelectionModel()) {
-                     @Override
-                     public Accessible getAccessibleAt(int r, int c) {
-                         if ((r >= 0) && (r < getAccessibleRowCount())) {
-                             E o = getElementAt(r);
-                             if (o != null) {
-                                 Component component = JList.this.getCellRenderer().getListCellRendererComponent(JList.this, o, r,
-                                         JList.this.isSelectedIndex(r), false);
-                                 if (component instanceof Accessible) {
-                                     return (Accessible) component;
-                                 }
-                             }
-                         }
-                         return null;
-                     }
-                 };
-        }
+                 return new AccessibleListImpl() {};
+         }
 
         /**
          * Get the state set of this object.
