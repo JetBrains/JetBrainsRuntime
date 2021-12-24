@@ -42,7 +42,7 @@ static jclass sjc_CAccessibility = NULL;
 
     jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
     NSMutableArray *children = [NSMutableArray arrayWithCapacity:arrayLen / 2];
-    int childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *)parent accessibleColCount];
+    int childIndex = [self rowNumberInTable] * [(JavaTableAccessibility *)parent accessibilityColumnCount];
 
     for (NSInteger i = 0; i < arrayLen; i += 2) {
         jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);

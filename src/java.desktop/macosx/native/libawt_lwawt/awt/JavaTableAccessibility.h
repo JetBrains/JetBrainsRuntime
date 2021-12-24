@@ -9,13 +9,8 @@
     NSMutableDictionary<NSNumber*, id> *rowCache;
 }
 
-@property(readonly) int accessibleRowCount;
-@property(readonly) int accessibleColCount;
-@property(readonly) NSArray<NSNumber *> *selectedAccessibleRows;
-@property(readonly) NSArray<NSNumber *> *selectedAccessibleColumns;
-- (BOOL)isAccessibleChildSelectedFromIndex:(int)index;
-- (int) accessibleRowAtIndex:(int)index;
-- (int) accessibleColumnAtIndex:(int)index;
+- (id)getTableInfo:(jint)info;
+- (NSArray<NSNumber *> *)getTableSelectedInfo:(jint)info;
 - (JavaTableAccessibility *)createRowForIndex:(NSNumber *)index;
 - (void)clearCache;
 
