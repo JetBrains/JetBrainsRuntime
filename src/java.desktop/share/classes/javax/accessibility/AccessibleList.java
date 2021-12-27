@@ -26,8 +26,7 @@ import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionListener;
 
 /**
- *  This is salution for 8271846 a11y API lacks setSelectedIndex method.
- *  This object provide expanded list info for a11y implementation.
+ *  This interface provide expanded list info for a11y implementation.
  */
 public interface AccessibleList<E> extends ListModel<E>, ListSelectionModel, AccessibleTable {
 
