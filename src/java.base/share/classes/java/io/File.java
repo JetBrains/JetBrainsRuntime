@@ -456,6 +456,7 @@ public class File
     }
 
     private final static String customPrefix = System.getProperty("java.io.fs.prefix", "/fsd::");
+    private final static String customUriPrefix = System.getProperty("java.io.uri.prefix", "file:/fsd::");
     private static FileSystem fileSystemFor(String pathname) {
         return VM.isBooted() && GetPropertyAction.privilegedGetProperties().getProperty("java.io.nio.fs.provider") != null
                 && pathname != null && pathname.startsWith(customPrefix)
@@ -464,11 +465,12 @@ public class File
     }
 
     private static FileSystem fileSystemFor(URI uri) {
-        final String scheme = uri.getScheme();
+        final String uriString = uri.toString();
         // See Path.of(URI)
-        return VM.isBooted() && GetPropertyAction.privilegedGetProperties().getProperty("java.io.nio.fs.provider") != null && scheme != null
-               ? ProxyFileSystem.instance(scheme)
-               : bootFs;
+        return VM.isBooted() && GetPropertyAction.privilegedGetProperties().getProperty("java.io.nio.fs.provider") != null
+                && uriString != null && uriString.startsWith(customUriPrefix)
+                ? ProxyFileSystem.instance("file")
+                : bootFs;
     }
     /* -- Path-component accessors -- */
 
