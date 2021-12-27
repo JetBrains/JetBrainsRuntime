@@ -187,11 +187,12 @@ public class URLClassPath {
      */
     URLClassPath(String cp, boolean skipEmptyElements) {
         ArrayList<URL> path = new ArrayList<>();
+        final String pathSeparator = GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
         if (cp != null) {
             // map each element of class path to a file URL
             int off = 0, next;
             do {
-                next = cp.indexOf(File.pathSeparator, off);
+                next = cp.indexOf(pathSeparator, off);
                 String element = (next == -1)
                     ? cp.substring(off)
                     : cp.substring(off, next);

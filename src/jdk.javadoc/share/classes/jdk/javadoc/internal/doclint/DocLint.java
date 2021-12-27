@@ -241,8 +241,9 @@ public class DocLint extends com.sun.tools.doclint.DocLint {
     }
 
     List<File> splitPath(String path) {
+        final String pathSeparator = System.getProperty("path.separator");
         List<File> files = new ArrayList<>();
-        for (String f: path.split(File.pathSeparator)) {
+        for (String f: path.split(pathSeparator)) {
             if (f.length() > 0)
                 files.add(new File(f));
         }

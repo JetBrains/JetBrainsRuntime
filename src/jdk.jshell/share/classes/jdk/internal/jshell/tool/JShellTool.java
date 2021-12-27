@@ -402,12 +402,13 @@ public class JShellTool implements MessageHandler {
         // check that the supplied string represent valid class/module paths
         // converting any ~/ to user home
         private Collection<String> validPaths(Collection<String> vals, String context, boolean isModulePath) {
+            final String pathSeparator = System.getProperty("path.separator");
             Stream<String> result = vals.stream()
-                    .map(s -> Arrays.stream(s.split(File.pathSeparator))
+                    .map(s -> Arrays.stream(s.split(pathSeparator))
                         .flatMap(sp -> toPathImpl(sp, context))
                         .filter(p -> checkValidPathEntry(p, context, isModulePath))
                         .map(p -> p.toString())
-                        .collect(Collectors.joining(File.pathSeparator)));
+                        .collect(Collectors.joining(pathSeparator)));
             if (failed) {
                 return Collections.emptyList();
             } else {

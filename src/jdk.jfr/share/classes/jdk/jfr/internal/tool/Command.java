@@ -178,7 +178,8 @@ abstract class Command {
     protected void warnForWildcardExpansion(String option, String filter) throws UserDataException {
         // Users should quote their wildcards to avoid expansion by the shell
         try {
-            if (!filter.contains(File.pathSeparator)) {
+            final String pathSeparator = System.getProperty("path.separator");
+            if (!filter.contains(pathSeparator)) {
                 Path p = Path.of(".", filter);
                 if (!Files.exists(p)) {
                     return;
@@ -326,7 +327,8 @@ abstract class Command {
     }
 
     protected static final char quoteCharacter() {
-        return File.pathSeparatorChar == ';' ? '"' : '\'';
+        final char pathSeparatorChar = System.getProperty("path.separator").charAt(0);
+        return pathSeparatorChar == ';' ? '"' : '\'';
     }
 
     private static <T> Predicate<T> recurseIfPossible(Predicate<T> filter) {

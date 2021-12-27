@@ -75,10 +75,11 @@ class ModulePathValidator {
     static int scanAllModules(PrintStream out) {
         ModulePathValidator validator = new ModulePathValidator(out);
 
+        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
         // upgrade module path
         String value = System.getProperty("jdk.module.upgrade.path");
         if (value != null) {
-            Stream.of(value.split(File.pathSeparator))
+            Stream.of(value.split(pathSeparator))
                     .map(Path::of)
                     .forEach(validator::scan);
         }
@@ -91,7 +92,7 @@ class ModulePathValidator {
         // application module path
         value = System.getProperty("jdk.module.path");
         if (value != null) {
-            Stream.of(value.split(File.pathSeparator))
+            Stream.of(value.split(pathSeparator))
                     .map(Path::of)
                     .forEach(validator::scan);
         }

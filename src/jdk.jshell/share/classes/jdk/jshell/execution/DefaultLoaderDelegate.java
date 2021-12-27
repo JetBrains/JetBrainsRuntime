@@ -254,7 +254,8 @@ class DefaultLoaderDelegate implements LoaderDelegate {
     public void addToClasspath(String cp)
             throws EngineTerminationException, InternalException {
         try {
-            for (String path : cp.split(File.pathSeparator)) {
+            final String pathSeparator = System.getProperty("path.separator");
+            for (String path : cp.split(pathSeparator)) {
                 loader.addURL(new File(path).toURI().toURL());
             }
         } catch (Exception ex) {

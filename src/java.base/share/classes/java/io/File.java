@@ -35,6 +35,7 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import jdk.internal.misc.VM;
 import sun.security.action.GetPropertyAction;
@@ -214,7 +215,7 @@ public class File
      *
      * @see     java.lang.System#getProperty(java.lang.String)
      */
-    public static final char separatorChar = bootFs.getSeparator();
+    public static final char separatorChar = getSeparatorChar();
 
     /**
      * The system-dependent default name-separator character, represented as a
@@ -233,7 +234,7 @@ public class File
      *
      * @see     java.lang.System#getProperty(java.lang.String)
      */
-    public static final char pathSeparatorChar = bootFs.getPathSeparator();
+    public static final char pathSeparatorChar = getPathSeparatorChar();
 
     /**
      * The system-dependent path-separator character, represented as a string
@@ -456,7 +457,7 @@ public class File
 
     private final static String customPrefix = System.getProperty("java.io.fs.prefix", "/fsd::");
     private static FileSystem fileSystemFor(String pathname) {
-        return VM.isBooted() && System.getProperty("java.io.nio.fs.provider") != null
+        return VM.isBooted() && GetPropertyAction.privilegedGetProperties().getProperty("java.io.nio.fs.provider") != null
                 && pathname != null && pathname.startsWith(customPrefix)
                 ? ProxyFileSystem.instance("file")
                 : bootFs;
@@ -465,7 +466,7 @@ public class File
     private static FileSystem fileSystemFor(URI uri) {
         final String scheme = uri.getScheme();
         // See Path.of(URI)
-        return VM.isBooted() && System.getProperty("java.io.nio.fs.provider") != null && scheme != null
+        return VM.isBooted() && GetPropertyAction.privilegedGetProperties().getProperty("java.io.nio.fs.provider") != null && scheme != null
                ? ProxyFileSystem.instance(scheme)
                : bootFs;
     }
@@ -2427,6 +2428,26 @@ public class File
             }
         }
         return result;
+    }
+
+    private static final String separatorStylePropertyName = "java.io.file.separator.style";
+
+    static char getSeparatorChar() {
+        final Properties props = GetPropertyAction.privilegedGetProperties();
+        if (props.containsKey(separatorStylePropertyName)) {
+            return "win".equalsIgnoreCase(props.getProperty(separatorStylePropertyName)) ? '\\' : '/';
+        } else {
+            return props.getProperty("file.separator").charAt(0);
+        }
+    }
+
+    static char getPathSeparatorChar() {
+        final Properties props = GetPropertyAction.privilegedGetProperties();
+        if (props.containsKey(separatorStylePropertyName)) {
+            return "win".equalsIgnoreCase(props.getProperty(separatorStylePropertyName)) ? ':' : ';';
+        } else {
+            return props.getProperty("path.separator").charAt(0);
+        }
     }
 
     FileSystem getTheFileSystem() {

@@ -506,6 +506,7 @@ public class Main implements DiagnosticListener<JavaFileObject> {
         String csvFile = null;
 
         try {
+            final String pathSeparator = System.getProperty("path.separator");
             while (!args.isEmpty()) {
                 String a = args.element();
                 if (a.startsWith("-")) {
@@ -513,7 +514,7 @@ public class Main implements DiagnosticListener<JavaFileObject> {
                     switch (a) {
                         case "--class-path":
                             classPath.clear();
-                            Arrays.stream(args.remove().split(File.pathSeparator))
+                            Arrays.stream(args.remove().split(pathSeparator))
                                   .map(File::new)
                                   .forEachOrdered(classPath::add);
                             break;

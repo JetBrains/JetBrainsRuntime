@@ -63,6 +63,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import jdk.internal.misc.VM;
+import sun.security.action.GetPropertyAction;
 
 /**
  * Forwards all requests to j.n.f.FileSystem obtained by name from -Djava.io.nio.fs.provider
@@ -78,7 +79,7 @@ class ProxyFileSystem extends FileSystem {
             // TODO: should use java.util.ServiceLoader for this, probably.
 
             // See also FileSystemProvider.loadInstalledProviders()
-            final String nioFsProviderName = System.getProperty("java.io.nio.fs.provider");
+            final String nioFsProviderName = GetPropertyAction.privilegedGetProperties().getProperty("java.io.nio.fs.provider");
             assert nioFsProviderName != null;
             try {
                 final Class<?> nioFsProviderClass = Class.forName(nioFsProviderName, true, ClassLoader.getSystemClassLoader());
@@ -104,8 +105,8 @@ class ProxyFileSystem extends FileSystem {
 
         this.nioFS = nioFS;
 
-        slash = nioFS.getSeparator().charAt(0); // props.getProperty("file.separator").charAt(0)
-        colon = nioFS.supportedFileAttributeViews().contains("dos") ? ';' : ':'; // props.getProperty("path.separator").charAt(0)
+        slash = File.getSeparatorChar(); //nioFS.getSeparator().charAt(0);
+        colon = File.getPathSeparatorChar(); // nioFS.supportedFileAttributeViews().contains("dos") ? ';' : ':';
     }
 
     Path getPath(String pathName) {

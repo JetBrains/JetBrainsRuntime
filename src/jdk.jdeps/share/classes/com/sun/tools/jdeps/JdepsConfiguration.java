@@ -575,7 +575,8 @@ public class JdepsConfiguration implements AutoCloseable {
             if (mpaths == null) {
                 return null;
             } else {
-                String[] dirs = mpaths.split(File.pathSeparator);
+                final String pathSeparator = System.getProperty("path.separator");
+                String[] dirs = mpaths.split(pathSeparator);
                 Path[] paths = new Path[dirs.length];
                 int i = 0;
                 for (String dir : dirs) {
@@ -594,7 +595,8 @@ public class JdepsConfiguration implements AutoCloseable {
                 return Collections.emptyList();
             }
             List<Path> paths = new ArrayList<>();
-            for (String p : cpaths.split(File.pathSeparator)) {
+            final String pathSeparator = System.getProperty("path.separator");
+            for (String p : cpaths.split(pathSeparator)) {
                 if (p.length() > 0) {
                     // wildcard to parse all JAR files e.g. -classpath dir/*
                     int i = p.lastIndexOf(".*");

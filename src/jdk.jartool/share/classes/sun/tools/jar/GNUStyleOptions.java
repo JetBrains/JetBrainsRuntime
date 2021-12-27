@@ -158,7 +158,8 @@ class GNUStyleOptions {
             },
             new Option(true, OptionType.CREATE_UPDATE, "--module-path", "-p") {
                 void process(Main jartool, String opt, String arg) {
-                    String[] dirs = arg.split(File.pathSeparator);
+                    final String pathSeparator = System.getProperty("path.separator");
+                    String[] dirs = arg.split(pathSeparator);
                     Path[] paths = new Path[dirs.length];
                     int i = 0;
                     for (String dir : dirs) {

@@ -94,7 +94,7 @@ public class JlinkTask {
             // if used multiple times, the last one wins!
             // So, clear previous values, if any.
             task.options.modulePath.clear();
-            String[] dirs = arg.split(File.pathSeparator);
+            String[] dirs = arg.split(System.getProperty("path.separator"));
             Arrays.stream(dirs)
                   .map(Paths::get)
                   .forEach(task.options.modulePath::add);

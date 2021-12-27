@@ -605,9 +605,9 @@ public final class X11FontManager extends FcFontManager {
      */
     @Override
     protected void registerFontDirs(String pathName) {
-
+        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
         StringTokenizer parser = new StringTokenizer(pathName,
-                                                     File.pathSeparator);
+                                                     pathSeparator);
         try {
             while (parser.hasMoreTokens()) {
                 String dirPath = parser.nextToken();

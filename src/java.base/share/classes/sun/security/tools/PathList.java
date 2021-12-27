@@ -25,6 +25,7 @@
 
 package sun.security.tools;
 
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.String;
@@ -51,7 +52,8 @@ public class PathList {
         } else if (pathFrom == null || pathFrom.isEmpty()) {
             return pathTo;
         } else {
-            return pathTo  + File.pathSeparator + pathFrom;
+            final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+            return pathTo  + pathSeparator + pathFrom;
         }
     }
 
@@ -63,7 +65,8 @@ public class PathList {
      * @return the resulting array of directory and JAR file URLs
      */
     public static URL[] pathToURLs(String path) {
-        StringTokenizer st = new StringTokenizer(path, File.pathSeparator);
+        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+        StringTokenizer st = new StringTokenizer(path, pathSeparator);
         URL[] urls = new URL[st.countTokens()];
         int count = 0;
         while (st.hasMoreTokens()) {

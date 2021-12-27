@@ -1069,8 +1069,9 @@ public class JmodTask {
     static abstract class AbstractPathConverter implements ValueConverter<List<Path>> {
         @Override
         public List<Path> convert(String value) {
+            final String pathSeparator = System.getProperty("path.separator");
             List<Path> paths = new ArrayList<>();
-            String[] pathElements = value.split(File.pathSeparator);
+            String[] pathElements = value.split(pathSeparator);
             for (String pathElement : pathElements) {
                 paths.add(toPath(pathElement));
             }

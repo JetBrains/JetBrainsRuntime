@@ -1319,10 +1319,11 @@ public class ICC_Profile implements Serializable {
             return f.isFile() ? f : null;
         }
         String path, dir, fullPath;
+        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
         if (!f.isFile() &&
                 (path = System.getProperty("java.iccprofile.path")) != null) {
             /* try relative to java.iccprofile.path */
-            StringTokenizer st = new StringTokenizer(path, File.pathSeparator);
+            StringTokenizer st = new StringTokenizer(path, pathSeparator);
             while (st.hasMoreTokens() && ((f == null) || (!f.isFile()))) {
                 dir = st.nextToken();
                 fullPath = dir + File.separatorChar + fileName;
@@ -1336,7 +1337,7 @@ public class ICC_Profile implements Serializable {
         if ((f == null || !f.isFile())
                 && (path = System.getProperty("java.class.path")) != null) {
             /* try relative to java.class.path */
-            StringTokenizer st = new StringTokenizer(path, File.pathSeparator);
+            StringTokenizer st = new StringTokenizer(path, pathSeparator);
             while (st.hasMoreTokens() && ((f == null) || (!f.isFile()))) {
                 dir = st.nextToken();
                 fullPath = dir + File.separatorChar + fileName;

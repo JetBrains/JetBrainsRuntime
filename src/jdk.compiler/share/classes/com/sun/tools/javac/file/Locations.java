@@ -213,8 +213,9 @@ public class Locations {
      * @return The elements of the path
      */
     private Iterable<Path> getPathEntries(String searchPath, Path emptyPathDefault) {
+        final String pathSeparator = System.getProperty("path.separator");
         ListBuffer<Path> entries = new ListBuffer<>();
-        for (String s: searchPath.split(Pattern.quote(File.pathSeparator), -1)) {
+        for (String s: searchPath.split(Pattern.quote(pathSeparator), -1)) {
             if (s.isEmpty()) {
                 if (emptyPathDefault != null) {
                     entries.add(emptyPathDefault);
@@ -1571,7 +1572,8 @@ public class Locations {
             int eq = value.indexOf('=');
             String name = value.substring(0, eq);
             List<Path> paths = new ArrayList<>();
-            for (String v : value.substring(eq + 1).split(File.pathSeparator)) {
+            final String pathSeparator = System.getProperty("path.separator");
+            for (String v : value.substring(eq + 1).split(pathSeparator)) {
                 try {
                     paths.add(Paths.get(v));
                 } catch (InvalidPathException e) {
@@ -1592,8 +1594,9 @@ public class Locations {
          * @param value the value such as may be given to a --module-source-path option
          */
         void initFromPattern(String value) {
+            final String pathSeparator = System.getProperty("path.separator");
             Collection<String> segments = new ArrayList<>();
-            for (String s: value.split(File.pathSeparator)) {
+            for (String s: value.split(pathSeparator)) {
                 expandBraces(s, segments);
             }
 

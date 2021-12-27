@@ -335,7 +335,8 @@ public class Options {
     // Helper method to join a list of source locations separated by
     // File.pathSeparator
     private static String concatenateSourceLocations(List<SourceLocation> locs) {
-        StringJoiner joiner = new StringJoiner(java.io.File.pathSeparator);
+        final String pathSeparator = System.getProperty("path.separator");
+        StringJoiner joiner = new StringJoiner(pathSeparator);
         for (SourceLocation loc : locs) {
             joiner.add(loc.getPath().toString());
         }

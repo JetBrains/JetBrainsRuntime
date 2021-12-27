@@ -53,7 +53,7 @@ class ClassLoaderHelper {
      * Empty elements will be replaced by dot.
      */
     static String[] parsePath(String ldPath) {
-        char ps = File.pathSeparatorChar;
+        final char ps = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator").charAt(0);
         ArrayList<String> paths = new ArrayList<>();
         int pathStart = 0;
         int pathEnd;

@@ -910,7 +910,8 @@ public class JavacState {
         // might be /cygdrive/c/.... which does not match c:\....
         // We need to adjust our calculated sources to be identical, if
         // necessary.
-        boolean mightNeedRewriting = File.pathSeparatorChar == ';';
+        final char pathSeparatorChar = System.getProperty("path.separator").charAt(0);
+        boolean mightNeedRewriting = pathSeparatorChar == ';';
 
         if (makefileSourceList == null)
             return;

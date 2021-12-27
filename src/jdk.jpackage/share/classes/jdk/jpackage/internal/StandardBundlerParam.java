@@ -393,7 +393,8 @@ class StandardBundlerParam<T> extends BundlerParamInfo<T> {
                     (Class<List<Path>>) (Object)List.class,
                     p -> getDefaultModulePath(),
                     (s, p) -> {
-                        List<Path> modulePath = Stream.of(s.split(File.pathSeparator))
+                        final String pathSeparator = System.getProperty("path.separator");
+                        List<Path> modulePath = Stream.of(s.split(pathSeparator))
                                 .map(Path::of)
                                 .toList();
                         Path javaBasePath = findPathOfModule(modulePath, JAVABASEJMOD);

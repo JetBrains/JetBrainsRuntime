@@ -71,8 +71,9 @@ class SourceMapper {
          * because we are on the same machine as the command
          * line originiated.
          */
+        final String pathSeparator = System.getProperty("path.separator");
         StringTokenizer st = new StringTokenizer(sourcepath,
-                                                 File.pathSeparator);
+                                                 pathSeparator);
         List<String> dirList = new ArrayList<String>();
         while (st.hasMoreTokens()) {
             String s = st.nextToken();
@@ -97,8 +98,9 @@ class SourceMapper {
         } else {
             sp = new StringBuffer(dirs[i++]);
         }
+        final String pathSeparator = System.getProperty("path.separator");
         for (; i < dirs.length; i++) {
-            sp.append(File.pathSeparator);
+            sp.append(pathSeparator);
             sp.append(dirs[i]);
         }
         return sp.toString();

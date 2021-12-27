@@ -310,13 +310,14 @@ public enum Option {
 
     /** Retrieve and verify syntax of file list argument. */
     List<Path> getFileListArg(ArgumentIterator iter, OptionHelper helper) {
+        final String pathSeparator = System.getProperty("path.separator");
         if (!iter.hasNext()) {
             helper.reportError(arg + " must be followed by a list of files " +
-                              "separated by " + File.pathSeparator);
+                              "separated by " + pathSeparator);
             return null;
         }
         List<Path> result = new ArrayList<>();
-        for (String pathStr : iter.next().split(File.pathSeparator))
+        for (String pathStr : iter.next().split(pathSeparator))
             result.add(Paths.get(pathStr));
         return result;
     }

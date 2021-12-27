@@ -370,7 +370,8 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
     } else {
        // remove path part, if any.
        file = f.getName();
-       StringTokenizer st = new StringTokenizer(imagePath, File.pathSeparator);
+      final String pathSeparator = System.getProperty("path.separator");
+       StringTokenizer st = new StringTokenizer(imagePath, pathSeparator);
        while (st.hasMoreTokens()) {
           f = new File(st.nextToken(), file);
           if (f.exists()) {

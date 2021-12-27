@@ -413,8 +413,9 @@ public class RegistryImpl extends java.rmi.server.RemoteServer
      * form so that reserved characters can safely appear in the path.
      */
     private static URL[] pathToURLs(String path) {
+        final String pathSeparator = System.getProperty("path.separator");
         List<URL> paths = new ArrayList<>();
-        for (String entry: path.split(File.pathSeparator)) {
+        for (String entry: path.split(pathSeparator)) {
             Path p = Paths.get(entry);
             try {
                 p = p.toRealPath();

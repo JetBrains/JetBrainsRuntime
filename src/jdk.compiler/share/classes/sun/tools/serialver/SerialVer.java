@@ -51,7 +51,8 @@ public class SerialVer {
      * specified classpath.
      */
     static void initializeLoader(String cp) throws IOException {
-        String[] paths = cp.split(File.pathSeparator);
+        final String pathSeparator = System.getProperty("path.separator");
+        String[] paths = cp.split(pathSeparator);
         int count = paths.length;
         URL[] urls = new URL[count];
         for (int i = 0; i < count; i++) {

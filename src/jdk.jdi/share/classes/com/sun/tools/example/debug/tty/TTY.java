@@ -820,8 +820,9 @@ public class TTY implements EventNotifier {
     }
 
     private static void usage() {
+        final String pathSeparator = System.getProperty("path.separator");
         MessageOutput.println("zz usage text", new Object [] {progname,
-                                                     File.pathSeparator});
+                                                     pathSeparator});
         System.exit(0);
     }
 

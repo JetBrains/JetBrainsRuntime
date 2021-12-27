@@ -669,6 +669,7 @@ public class Start {
         String userDocletPath = null;
         String userDocletName = null;
 
+        final String pathSeparator = System.getProperty("path.separator");
         // Step 1: loop through the args, set locale early on, if found.
         for (int i = 0; i < argv.size(); i++) {
             String arg = argv.get(i);
@@ -706,7 +707,7 @@ public class Start {
                 if (userDocletPath == null) {
                     userDocletPath = argv.get(i);
                 } else {
-                    userDocletPath += File.pathSeparator + argv.get(i);
+                    userDocletPath += pathSeparator + argv.get(i);
                 }
             }
         }
@@ -720,7 +721,7 @@ public class Start {
                     if (!fileManager.hasLocation(DOCLET_PATH)) {
                         List<File> paths = new ArrayList<>();
                         if (userDocletPath != null) {
-                            for (String pathname : userDocletPath.split(File.pathSeparator)) {
+                            for (String pathname : userDocletPath.split(pathSeparator)) {
                                 paths.add(new File(pathname));
                             }
                         }

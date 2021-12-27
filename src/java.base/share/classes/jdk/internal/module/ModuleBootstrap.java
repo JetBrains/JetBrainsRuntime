@@ -581,7 +581,8 @@ public final class ModuleBootstrap {
         if (s == null) {
             return null;
         } else {
-            String[] dirs = s.split(File.pathSeparator);
+            final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+            String[] dirs = s.split(pathSeparator);
             Path[] paths = new Path[dirs.length];
             int i = 0;
             for (String dir: dirs) {
@@ -596,8 +597,9 @@ public final class ModuleBootstrap {
      * value of the --patch-module options.
      */
     private static ModulePatcher initModulePatcher() {
+        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
         Map<String, List<String>> map = decode("jdk.module.patch.",
-                                               File.pathSeparator,
+                                               pathSeparator,
                                                false);
         return new ModulePatcher(map);
     }

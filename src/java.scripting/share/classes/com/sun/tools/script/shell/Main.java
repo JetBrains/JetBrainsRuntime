@@ -500,7 +500,8 @@ public class Main {
      * @return the resulting array of directory and JAR file URLs
      */
     private static URL[] pathToURLs(String path) {
-        String[] components = path.split(File.pathSeparator);
+        final String pathSeparator = System.getProperty("path.separator");
+        String[] components = path.split(pathSeparator);
         URL[] urls = new URL[components.length];
         int count = 0;
         while(count < components.length) {

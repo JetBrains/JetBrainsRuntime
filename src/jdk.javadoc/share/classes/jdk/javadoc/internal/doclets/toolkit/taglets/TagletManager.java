@@ -228,8 +228,9 @@ public class TagletManager {
     public void initTagletPath(JavaFileManager fileManager) throws IOException {
         if (fileManager instanceof StandardJavaFileManager sfm) {
             if (tagletPath != null) {
+                final String pathSeparator = System.getProperty("path.separator");
                 List<File> paths = new ArrayList<>();
-                for (String pathname : tagletPath.split(File.pathSeparator)) {
+                for (String pathname : tagletPath.split(pathSeparator)) {
                     paths.add(new File(pathname));
                 }
                 sfm.setLocation(TAGLET_PATH, paths);

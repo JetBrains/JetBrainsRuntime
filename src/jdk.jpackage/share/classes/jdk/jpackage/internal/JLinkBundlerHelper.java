@@ -201,10 +201,11 @@ final class JLinkBundlerHelper {
     }
 
     private static String getPathList(List<Path> pathList) {
+        final String pathSeparator = System.getProperty("path.separator");
         return pathList.stream()
                 .map(Path::toString)
                 .map(Matcher::quoteReplacement)
-                .collect(Collectors.joining(File.pathSeparator));
+                .collect(Collectors.joining(pathSeparator));
     }
 
     private static String getStringList(Set<String> strings) {

@@ -1021,7 +1021,8 @@ public class JConsole extends JFrame
      * @return the resulting array of directory and JAR file URLs
      */
     private static URL[] pathToURLs(String path) throws MalformedURLException {
-        String[] names = path.split(File.pathSeparator);
+        final String pathSeparator = System.getProperty("path.separator");
+        String[] names = path.split(pathSeparator);
         URL[] urls = new URL[names.length];
         int count = 0;
         for (String f : names) {

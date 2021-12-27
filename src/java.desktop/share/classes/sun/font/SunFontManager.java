@@ -516,13 +516,14 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                      */
                     fontPath = getPlatformFontPath(noType1Font);
 
+                    final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
                     if (extraFontPath != null) {
-                        fontPath = extraFontPath + File.pathSeparator + fontPath;
+                        fontPath = extraFontPath + pathSeparator + fontPath;
                     }
                     if (appendToPath) {
-                        fontPath += File.pathSeparator + dbgFontPath;
+                        fontPath += pathSeparator + dbgFontPath;
                     } else if (prependToPath) {
-                        fontPath = dbgFontPath + File.pathSeparator + fontPath;
+                        fontPath = dbgFontPath + pathSeparator + fontPath;
                     } else {
                         fontPath = dbgFontPath;
                     }
@@ -2950,8 +2951,9 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         }
 
         String path = getPlatformFontPath(noType1Fonts);
+        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
         StringTokenizer parser =
-            new StringTokenizer(path, File.pathSeparator);
+            new StringTokenizer(path, pathSeparator);
         ArrayList<String> pathList = new ArrayList<>();
         try {
             while (parser.hasMoreTokens()) {
@@ -3113,9 +3115,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private void registerFontsOnPath(String pathName,
                                      boolean useJavaRasterizer, int fontRank,
                                      boolean defer, boolean resolveSymLinks) {
-
-        StringTokenizer parser = new StringTokenizer(pathName,
-                File.pathSeparator);
+        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+        StringTokenizer parser = new StringTokenizer(pathName, pathSeparator);
         try {
             while (parser.hasMoreTokens()) {
                 registerFontsInDir(parser.nextToken(),

@@ -305,7 +305,7 @@ public class DeployParams {
             if (existingValue instanceof String && value instanceof String) {
                 String delim = "\n\n";
                 if (key.equals(StandardBundlerParam.MODULE_PATH.getID())) {
-                    delim = File.pathSeparator;
+                    delim = System.getProperty("path.separator");
                 } else if (key.equals(
                         StandardBundlerParam.ADD_MODULES.getID())) {
                     delim = ",";

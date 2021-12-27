@@ -121,7 +121,7 @@ class TaskFactory {
     }
 
     void addToClasspath(String path) {
-        classpath = classpath + File.pathSeparator + path;
+        classpath = classpath + System.getProperty("path.separator") + path;
         List<String> args = new ArrayList<>();
         args.add(classpath);
         fileManager().handleOption("-classpath", args.iterator());

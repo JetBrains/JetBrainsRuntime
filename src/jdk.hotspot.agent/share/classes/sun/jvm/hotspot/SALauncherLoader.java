@@ -64,8 +64,9 @@ public class SALauncherLoader extends URLClassLoader {
     public SALauncherLoader(ClassLoader parent) {
         super(getClassPath(), parent);
         String salibpath = System.getProperty("sa.library.path");
+        final String pathSeparator = System.getProperty("path.separator");
         if (salibpath != null) {
-            libpaths = salibpath.split(File.pathSeparator);
+            libpaths = salibpath.split(pathSeparator);
         } else {
             libpaths = new String[0];
         }
@@ -133,7 +134,8 @@ public class SALauncherLoader extends URLClassLoader {
     }
 
     private static File[] getClassPath(String cp) {
-        String[] tmp = cp.split(File.pathSeparator);
+        final String pathSeparator = System.getProperty("path.separator");
+        String[] tmp = cp.split(pathSeparator);
         File[] paths = new File[tmp.length];
         for (int i = 0; i < paths.length; i++) {
             paths[i] = new File(tmp[i].equals("")? "." : tmp[i]);

@@ -510,8 +510,9 @@ public final class LauncherHelper {
      */
     static void printHelpMessage(boolean printToStderr) {
         initOutput(printToStderr);
+        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
         outBuf = outBuf.append(getLocalizedMessage("java.launcher.opt.footer",
-                File.pathSeparator));
+                pathSeparator));
         ostream.println(outBuf.toString());
     }
 
@@ -520,11 +521,12 @@ public final class LauncherHelper {
      */
     static void printXUsageMessage(boolean printToStderr) {
         initOutput(printToStderr);
+        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
         ostream.println(getLocalizedMessage("java.launcher.X.usage",
-                File.pathSeparator));
+                pathSeparator));
         if (System.getProperty("os.name").contains("OS X")) {
             ostream.println(getLocalizedMessage("java.launcher.X.macosx.usage",
-                        File.pathSeparator));
+                        pathSeparator));
         }
     }
 

@@ -85,7 +85,7 @@ public class CLIHelp {
                     break;
             }
             Log.info(MessageFormat.format(I18N.getString("MSG_Help"),
-                    File.pathSeparator, types, pLaunchOptions,
+                    System.getProperty("path.separator"), types, pLaunchOptions,
                     pInstallOptions, pInstallDir));
         }
     }
