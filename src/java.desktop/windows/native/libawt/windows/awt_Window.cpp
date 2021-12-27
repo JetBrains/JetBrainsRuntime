@@ -1935,8 +1935,8 @@ MsgRouting AwtWindow::WmMove(int x, int y)
         RECT parentRect;
         VERIFY(::GetWindowRect(parent->GetHWnd(), &parentRect));
         // Convert the owner's origin to user space
-        int parentUsrX = device->ScaleDownDX(parentRect.left);
-        int parentUsrY = device->ScaleDownDY(parentRect.top);
+        int parentUsrX = device->ScaleDownX(parentRect.left);
+        int parentUsrY = device->ScaleDownY(parentRect.top);
 
         // Calc the offset from the owner's client area in device space
         int offsetDevX = rect.x - parentRect.left - parentInsets.left;

@@ -703,8 +703,8 @@ void AwtWin32GraphicsDevice::ScaleDownDPoint(POINT *pt)
 
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
-    pt->x = device == NULL ? pt->x : device->ScaleDownDX(pt->x);
-    pt->y = device == NULL ? pt->y : device->ScaleDownDY(pt->y);
+    pt->x = device == NULL ? pt->x : device->ScaleDownX(pt->x);
+    pt->y = device == NULL ? pt->y : device->ScaleDownY(pt->y);
 }
 
 void AwtWin32GraphicsDevice::InitDesktopScales()

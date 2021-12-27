@@ -1003,8 +1003,8 @@ void AwtComponent::ReshapeNoScale(int x, int y, int w, int h)
         RECT parentRect;
         VERIFY(::GetWindowRect(parent->GetHWnd(), &parentRect));
         // Convert the owner's origin to user space
-        int parentUsrX = device->ScaleDownDX(parentRect.left);
-        int parentUsrY = device->ScaleDownDY(parentRect.top);
+        int parentUsrX = device->ScaleDownX(parentRect.left);
+        int parentUsrY = device->ScaleDownY(parentRect.top);
 
         // Calc the offset from the owner's client area in user space
         int offsetUsrX = usrX - parentUsrX - parentInsetsUsrX;
@@ -5308,7 +5308,7 @@ void AwtComponent::SendMouseEvent(jint id, jlong when, jint x, jint y,
                                         id, when, modifiers,
                                         ScaleDownX(x + insets.left),
                                         ScaleDownY(y + insets.top),
-                                        ScaleDownDX(xAbs), ScaleDownDY(yAbs),
+                                        ScaleDownX(xAbs), ScaleDownY(yAbs),
                                         clickCount, popupTrigger, button);
 
     if (safe_ExceptionOccurred(env)) {
@@ -5381,8 +5381,8 @@ AwtComponent::SendMouseWheelEvent(jint id, jlong when, jint x, jint y,
                                              id, when, modifiers,
                                              ScaleDownX(x + insets.left),
                                              ScaleDownY(y + insets.top),
-                                             ScaleDownDX(xAbs),
-                                             ScaleDownDY(yAbs),
+                                             ScaleDownX(xAbs),
+                                             ScaleDownY(yAbs),
                                              clickCount, popupTrigger,
                                              scrollType, scrollAmount,
                                              roundedWheelRotation, preciseWheelRotation);
@@ -5892,8 +5892,8 @@ jobject AwtComponent::_GetLocationOnScreen(void *param)
         RECT rect;
         VERIFY(::GetWindowRect(p->GetHWnd(),&rect));
         result = JNU_NewObjectByName(env, "java/awt/Point", "(II)V",
-                                     p->ScaleDownDX(rect.left),
-                                     p->ScaleDownDY(rect.top));
+                                     p->ScaleDownX(rect.left),
+                                     p->ScaleDownY(rect.top));
     }
 ret:
     env->DeleteGlobalRef(self);
