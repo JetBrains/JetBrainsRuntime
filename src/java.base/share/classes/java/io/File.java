@@ -152,7 +152,7 @@ public class File
     implements Serializable, Comparable<File>
 {
 
-    private final FileSystem fs;
+    private transient final FileSystem fs;
 
     private static final FileSystem bootFs = DefaultFileSystem.getFileSystem();
 
@@ -2368,13 +2368,18 @@ public class File
         char sep = s.readChar(); // read the previous separator char
         if (sep != separatorChar)
             pathField = pathField.replace(sep, separatorChar);
-        String path = fs.normalize(pathField);
+        // Do NOT read 'fs', use the current one.
+        final FileSystem fsField = File.fileSystemFor(pathField);
+        UNSAFE.putReference(this, FS_OFFSET, fsField);
+        final String path = fsField.normalize(pathField);
         UNSAFE.putReference(this, PATH_OFFSET, path);
-        UNSAFE.putIntVolatile(this, PREFIX_LENGTH_OFFSET, fs.prefixLength(path));
+        UNSAFE.putIntVolatile(this, PREFIX_LENGTH_OFFSET, fsField.prefixLength(path));
     }
 
     private static final jdk.internal.misc.Unsafe UNSAFE
             = jdk.internal.misc.Unsafe.getUnsafe();
+    private static final long FS_OFFSET
+            = UNSAFE.objectFieldOffset(File.class, "fs");
     private static final long PATH_OFFSET
             = UNSAFE.objectFieldOffset(File.class, "path");
     private static final long PREFIX_LENGTH_OFFSET
