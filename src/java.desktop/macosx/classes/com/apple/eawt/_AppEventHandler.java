@@ -65,6 +65,7 @@ import java.util.List;
 import java.util.Map;
 import sun.awt.AppContext;
 import sun.awt.SunToolkit;
+import sun.java2d.SunGraphicsEnvironment;
 
 class _AppEventHandler {
     private static final int NOTIFY_ABOUT = 1;
@@ -83,6 +84,7 @@ class _AppEventHandler {
     private static final int NOTIFY_SCREEN_WAKE = 14;
     private static final int NOTIFY_SYSTEM_SLEEP = 15;
     private static final int NOTIFY_SYSTEM_WAKE = 16;
+    private static final int NOTIFY_SCREEN_CHANGE_PARAMETERS = 17;
 
     private static final int REGISTER_USER_SESSION = 1;
     private static final int REGISTER_SCREEN_SLEEP = 2;
@@ -263,6 +265,10 @@ class _AppEventHandler {
                 break;
             case NOTIFY_SYSTEM_WAKE:
                 instance.systemSleepDispatcher.dispatch(new _NativeEvent(Boolean.FALSE));
+                break;
+            case NOTIFY_SCREEN_CHANGE_PARAMETERS:
+                ((SunGraphicsEnvironment)SunGraphicsEnvironment.
+                        getLocalGraphicsEnvironment()).displayChanged();
                 break;
             default:
                 System.err.println("EAWT unknown native notification: " + code);
