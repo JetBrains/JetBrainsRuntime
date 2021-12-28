@@ -854,8 +854,7 @@ class CAccessibility implements PropertyChangeListener {
         }, c);
     }
 
-    @Native
-    private static final int JAVA_AX_ROWS = 1;
+    @Native private static final int JAVA_AX_ROWS = 1;
     @Native private static final int JAVA_AX_COLS = 2;
 
     public static int getTableInfo(final Accessible a, final Component c,
