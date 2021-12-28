@@ -151,9 +151,8 @@ class MacOSXWatchService extends AbstractWatchService {
             eventStreamToWatchKey.clear();
             dirKeyToWatchKey.forEach((key, watchKey) -> watchKey.invalidate());
             dirKeyToWatchKey.clear();
-            // The watch service is already in the closed state by now; let the run loop run and notice that.
-            // The run loop should terminate naturally after having all its event sources removed.
-            watchKeysLock.notify();
+            watchKeysLock.notify(); // Let waitForEventSource() go if it was waiting
+            runLoopThread.runLoopStop(); // Force exit from CFRunLoopRun()
         }
     }
 
@@ -178,6 +177,14 @@ class MacOSXWatchService extends AbstractWatchService {
             return runLoopRef;
         }
 
+        synchronized void runLoopStop() {
+            if (runLoopRef != 0) {
+                // The run loop may have stuck in CFRunLoopRun() even though all of its input sources
+                // have been removed. Need to terminate it explicitly so that it can run to completion.
+                MacOSXWatchService.CFRunLoopStop(runLoopRef);
+            }
+        }
+
         @Override
         public void run() {
             synchronized (this) {
@@ -190,7 +197,9 @@ class MacOSXWatchService extends AbstractWatchService {
                 waitForEventSource();
             }
 
-            runLoopRef = 0; // CFRunLoopRef is no longer usable when the loop has been terminated
+            synchronized (this) {
+                runLoopRef = 0; // CFRunLoopRef is no longer usable when the loop has been terminated
+            }
         }
     }
 
@@ -448,7 +457,19 @@ class MacOSXWatchService extends AbstractWatchService {
 
                 while (!pathToDo.isEmpty()) {
                     final Path path = pathToDo.poll();
-                    createForOneDirectory(path, watchFileTree ? pathToDo : null);
+                    try {
+                        createForOneDirectory(path, watchFileTree ? pathToDo : null);
+                    } catch (IOException e) {
+                        final boolean exceptionForRootPath = relativeRootPath.equals(path);
+                        if (exceptionForRootPath) {
+                            throw e; // report to the user as the watch root may have disappeared
+                        }
+                        // Ignore for sub-directories as some may have been removed during the scan.
+                        // That's OK, those kinds of changes in the directory hierarchy is what
+                        // WatchService is used for. However, it's impossible to catch all changes
+                        // at this point, so we may fail to report some events that had occurred before
+                        // FSEventStream has been created to watch for those changes.
+                    }
                 }
             }
 
@@ -600,10 +621,6 @@ class MacOSXWatchService extends AbstractWatchService {
                 }
 
                 return snapshot;
-            }
-
-            void forEachEntry(final Consumer<Path> consumer) {
-                files.forEach((path, entry) -> consumer.accept(directory.resolve(path)));
             }
 
             void forEachDirectory(final Consumer<Path> consumer) {
@@ -799,6 +816,8 @@ class MacOSXWatchService extends AbstractWatchService {
     private static native void eventStreamStop(long eventStreamRef);
     private static native long CFRunLoopGetCurrent();
     private static native void CFRunLoopRun(final MacOSXWatchService watchService);
+    private static native void CFRunLoopStop(long runLoopRef);
+
 
     private static native void initIDs();
 

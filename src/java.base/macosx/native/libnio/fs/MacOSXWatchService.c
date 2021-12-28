@@ -232,3 +232,10 @@ Java_sun_nio_fs_MacOSXWatchService_CFRunLoopRun(__unused JNIEnv* env, __unused j
 
     traceLine(env, "run loop done on 0x%p", CFRunLoopGetCurrent());
 }
+
+JNIEXPORT void JNICALL
+Java_sun_nio_fs_MacOSXWatchService_CFRunLoopStop(__unused JNIEnv* env, __unused jclass clazz, jlong runLoopRef)
+{
+  traceLine(env, "stopping run loop 0x%p", runLoopRef);
+  CFRunLoopStop((CFRunLoopRef)runLoopRef);
+}
