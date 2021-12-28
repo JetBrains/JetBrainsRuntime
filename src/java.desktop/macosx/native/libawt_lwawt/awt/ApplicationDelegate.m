@@ -277,6 +277,7 @@ AWT_ASSERT_APPKIT_THREAD;
     [ctr addObserver:clz selector:@selector(_appDidDeactivate) name:NSApplicationDidResignActiveNotification object:nil];
     [ctr addObserver:clz selector:@selector(_appDidHide) name:NSApplicationDidHideNotification object:nil];
     [ctr addObserver:clz selector:@selector(_appDidUnhide) name:NSApplicationDidUnhideNotification object:nil];
+    [ctr addObserver:clz selector:@selector(_didChangeScreenParameters) name:NSApplicationDidChangeScreenParametersNotification object:nil];
 
     return self;
 }
@@ -530,6 +531,10 @@ AWT_ASSERT_APPKIT_THREAD;
             NSLog(@"EAWT attempting to register for unknown notification: %d", (int)notificationType);
             break;
     }
+}
+
++ (void)_didChangeScreenParameters {
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SCREEN_CHANGE_PARAMETERS];
 }
 
 // Retrieves the menu to be attached to the Dock icon (AppKit callback)
