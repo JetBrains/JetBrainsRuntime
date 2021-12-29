@@ -911,11 +911,27 @@ public final class System {
         checkKey(key);
         @SuppressWarnings("removal")
         SecurityManager sm = getSecurityManager();
-        if (sm != null) {
+        if (sm != null && !skipSecurityCheckFor(key)) {
             sm.checkPropertyAccess(key);
         }
 
         return props.getProperty(key);
+    }
+
+    private static boolean skipSecurityCheckFor(final String propertyName) {
+        return switch(propertyName) {
+            case    "java.io.fs.prefix",
+                    "java.io.uri.prefix",
+                    "java.io.nio.fs.provider",
+                    "java.io.file.separator.style",
+                    "java.io.log.file",
+                    "java.io.log.fs",
+                    "file.separator",
+                    "path.separator"
+                    -> true;
+            default
+                    -> false;
+        };
     }
 
     /**

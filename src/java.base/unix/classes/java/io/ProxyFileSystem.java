@@ -48,8 +48,6 @@
 
 package java.io;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.channels.FileChannel;
@@ -57,13 +55,10 @@ import java.nio.file.*;
 import java.nio.file.attribute.*;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
-
 import jdk.internal.misc.VM;
-import sun.security.action.GetPropertyAction;
 
 /**
  * Forwards all requests to j.n.f.FileSystem obtained by name from -Djava.io.nio.fs.provider
@@ -76,20 +71,21 @@ class ProxyFileSystem extends FileSystem {
 
     private static class InstanceHolder {
         static {
-            // TODO: should use java.util.ServiceLoader for this, probably.
+            final String nioFsProviderName = System.getProperty("java.io.nio.fs.provider");
+            ProxyFileSystem.logLine("Creating ProxyFileSystem() based on the value of -Djava.io.nio.fs.provider=" + nioFsProviderName);
 
-            // See also FileSystemProvider.loadInstalledProviders()
-            final String nioFsProviderName = GetPropertyAction.privilegedGetProperties().getProperty("java.io.nio.fs.provider");
             assert nioFsProviderName != null;
+
+            final FileSystemProvider nioFsProvider = FileSystemProvider.installedProviders().stream()
+                    .filter(p -> p.getClass().getName().equals(nioFsProviderName))
+                    .findFirst()
+                    .orElseThrow(() -> new Error("Couldn't find " + nioFsProviderName + " specified via -Djava.io.nio.fs.provider among FileSystemProvider.installedProviders()"));
+
+            ProxyFileSystem.logLine("Found NIO FileSystemProvider: " + nioFsProvider);
             try {
-                final Class<?> nioFsProviderClass = Class.forName(nioFsProviderName, true, ClassLoader.getSystemClassLoader());
-                final Constructor<?> nioFsProviderConstr = nioFsProviderClass.getConstructor(FileSystemProvider.class);
-                final FileSystemProvider defaultProvider = FileSystems.getDefault().provider();
-                final FileSystemProvider customProvider = (FileSystemProvider) nioFsProviderConstr.newInstance(defaultProvider);
-                INSTANCE = new ProxyFileSystem(customProvider.getFileSystem(
-                        new URI(customProvider.getScheme(), null, "/", null)));
-            } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException |
-                     InstantiationException | IllegalAccessException | URISyntaxException e) {
+                INSTANCE = new ProxyFileSystem(nioFsProvider.getFileSystem(new URI(nioFsProvider.getScheme(), null, "/", null)));
+                ProxyFileSystem.logLine("Successfully initialized the single instance of ProxyFileSystem");
+            } catch (URISyntaxException e) {
                 throw new Error(e);
             }
         }
@@ -107,6 +103,7 @@ class ProxyFileSystem extends FileSystem {
 
         slash = File.getSeparatorChar(); //nioFS.getSeparator().charAt(0);
         colon = File.getPathSeparatorChar(); // nioFS.supportedFileAttributeViews().contains("dos") ? ';' : ':';
+        logLine("using '" + slash + "' as slash and '" + colon + "' as colon (path separator)");
     }
 
     Path getPath(String pathName) {
@@ -122,16 +119,18 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public char getSeparator() {
+        logEntry("getSeparator");
         return slash;
     }
 
     @Override
     public char getPathSeparator() {
+        logEntry("getPathSeparator");
         return colon;
     }
 
     private Path toPath(final String pathname) {
-       return nioFS.getPath(pathname);
+        return nioFS.getPath(pathname);
     }
 
     private Path toPath(final File f) {
@@ -140,12 +139,14 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public String normalize(String pathname) {
+        logEntry("normalize");
         final String normalized = toPath(pathname).normalize().toString();
         return normalized;
     }
 
     @Override
     public int prefixLength(String pathname) {
+        logEntry("prefixLength");
         // TODO: this seems quite sub-optimal
         final Path path = toPath(pathname);
         final Path rootPath = path.getRoot();
@@ -155,6 +156,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public String resolve(String parent, String child) {
+        logEntry("resolve");
         if (child.isEmpty()) return parent;
 
         return toPath(parent).resolve(child).toString();
@@ -162,11 +164,13 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public String getDefaultParent() {
+        logEntry("getDefaultParent");
         return String.valueOf(slash);
     }
 
     @Override
     public String fromURIPath(String path) {
+        logEntry("fromURIPath");
         // Using code from WinNTFileSystem.java that seems to be universal and
         // serves Unix-style paths as well.
         String p = path;
@@ -187,22 +191,26 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public boolean isAbsolute(File f) {
+        logEntry("isAbsolute");
         return toPath(f).isAbsolute();
     }
 
     @Override
     public String resolve(File f) {
+        logEntry("resolve");
         return toPath(f).toAbsolutePath().toString();
     }
 
     @Override
     public String canonicalize(String path) throws IOException {
-            return toPath(path).toAbsolutePath().normalize().toString();
+        logEntry("canonicalize");
+        return toPath(path).toAbsolutePath().normalize().toString();
     }
 
     /* -- Attribute accessors -- */
 
     public int toBooleanAttributes(final BasicFileAttributes attrs) {
+        logEntry("toBooleanAttributes");
         int rv = BA_EXISTS;
         if (attrs.isDirectory()) {
             rv |= BA_DIRECTORY;
@@ -214,6 +222,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public int getBooleanAttributes(File f) {
+        logEntry("getBooleanAttributes");
         final Path path = toPath(f);
         try {
             final BasicFileAttributes attrs =  nioFS.provider().readAttributes(
@@ -227,11 +236,13 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public boolean hasBooleanAttributes(File f, int attributes) {
+        logEntry("hasBooleanAttributes");
         final int rv = getBooleanAttributes(f);
         return (rv & attributes) == attributes;
     }
 
     private int isHidden(File f) {
+        logEntry("isHidden");
         try {
             return nioFS.provider().isHidden(toPath(f)) ? BA_HIDDEN : 0;
         } catch (IOException ignored) {
@@ -242,6 +253,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public boolean checkAccess(File f, int access) {
+        logEntry("checkAccess");
         final Path path = toPath(f);
         try {
             final ArrayList<AccessMode> modesList = new ArrayList<>(3);
@@ -257,6 +269,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public long getLastModifiedTime(File f) {
+        logEntry("getLastModifiedTime");
         try {
             return nioFS.provider().readAttributes(
                     toPath(f), BasicFileAttributes.class).lastModifiedTime().toMillis();
@@ -268,6 +281,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public long getLength(File f) {
+        logEntry("getLength");
         try {
             return nioFS.provider().readAttributes(toPath(f), BasicFileAttributes.class).size();
         } catch (IOException ignored) {
@@ -278,6 +292,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public boolean setPermission(File f, int access, boolean enable, boolean owneronly) {
+        logEntry("setPermission");
         final Path path = toPath(f);
         try {
             final FileStore fs = nioFS.provider().getFileStore(path);
@@ -336,6 +351,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public boolean createFileExclusively(String pathName) throws IOException {
+        logEntry("createFileExclusively");
         // Roughly based on Java_java_io_WinNTFileSystem_createFileExclusively() and
         // Java_java_io_UnixFileSystem_createFileExclusively()
         final Path path = toPath(pathName);
@@ -363,6 +379,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public boolean delete(File f) {
+        logEntry("delete");
         final Path path = toPath(f);
         try {
             nioFS.provider().delete(path);
@@ -374,6 +391,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public String[] list(File f) {
+        logEntry("list");
         // Based on Java_java_io_WinNTFileSystem_list() and
         // Java_java_io_UnixFileSystem_list()
         final Path path = toPath(f);
@@ -388,6 +406,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public boolean createDirectory(File f) {
+        logEntry("createDirectory");
         final Path path = toPath(f);
         try {
             nioFS.provider().createDirectory(path);
@@ -400,6 +419,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public boolean rename(File f1, File f2) {
+        logEntry("rename");
         final Path path1 = toPath(f1);
         final Path path2 = toPath(f2);
 
@@ -414,6 +434,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public boolean setLastModifiedTime(File f, long time) {
+        logEntry("setLastModifiedTime");
         // Based on Java_java_io_UnixFileSystem_setLastModifiedTime() and
         // Java_java_io_WinNTFileSystem_setLastModifiedTime()
         final Path path = toPath(f);
@@ -430,6 +451,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public boolean setReadOnly(File f) {
+        logEntry("setReadOnly");
         return setPermission(f, ACCESS_WRITE, false, false);
     }
 
@@ -437,6 +459,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public File[] listRoots() {
+        logEntry("listRoots");
         final ArrayList<File> roots = new ArrayList<>();
         nioFS.getRootDirectories().forEach(path -> { roots.add(new File(path.toString())); } );
         return roots.toArray(new File[0]);
@@ -446,6 +469,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public long getSpace(File f, int t) {
+        logEntry("getSpace");
         // Based on Java_java_io_UnixFileSystem_getSpace() and
         // Java_java_io_WinNTFileSystem_getSpace0()
         try {
@@ -469,6 +493,7 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public int getNameMax(String path) {
+        logEntry("getNameMax");
         // This one problably doesn't have to be accurate, but there's no way
         // to get this information without a native call.
         // Also, max path component length isn't really a thing anymore in general.
@@ -477,12 +502,27 @@ class ProxyFileSystem extends FileSystem {
 
     @Override
     public int compare(File f1, File f2) {
+        logEntry("compare");
         return f1.getPath().compareTo(f2.getPath());
     }
 
     @Override
     public int hashCode(File f) {
+        logEntry("hashCode");
         return f.getPath().hashCode() ^ 1234321;
+    }
+
+    private final static boolean loggingEnabled = System.getProperty("java.io.log.fs") != null;
+    static void logLine(final String line) {
+        if (loggingEnabled) {
+            System.err.println("[ProxyFileSystem] " + line);
+        }
+    }
+
+    static void logEntry(final String methodName) {
+        if (loggingEnabled) {
+            System.err.println("[ProxyFileSystem] " + methodName + "() entered");
+        }
     }
 }
 

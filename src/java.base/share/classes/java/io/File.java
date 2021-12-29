@@ -253,6 +253,7 @@ public class File
         this.fs = fs;
         this.path = pathname;
         this.prefixLength = prefixLength;
+        logLine("File(" + pathname + ") gets filesystem " + fs);
     }
 
     private File(String pathname, FileSystem fs) {
@@ -262,6 +263,7 @@ public class File
         this.fs = fs;
         this.path = this.fs.normalize(pathname);
         this.prefixLength = this.fs.prefixLength(this.path);
+        logLine("File(" + pathname + ") gets filesystem " + fs);
     }
 
     /**
@@ -340,6 +342,7 @@ public class File
             this.path = fs.normalize(child);
         }
         this.prefixLength = fs.prefixLength(this.path);
+        logLine("File(" + this.path + ") gets filesystem " + fs);
     }
 
     /**
@@ -385,6 +388,7 @@ public class File
             this.path = fs.normalize(child);
         }
         this.prefixLength = fs.prefixLength(this.path);
+        logLine("File(" + this.path + ") gets filesystem of its parent: " + fs);
     }
 
     /**
@@ -453,12 +457,13 @@ public class File
             p = p.replace('/', File.separatorChar);
         this.path = fs.normalize(p);
         this.prefixLength = fs.prefixLength(this.path);
+        logLine("File(URI(" + uri + ")) gets filesystem " + fs);
     }
 
-    private final static String customPrefix = System.getProperty("java.io.fs.prefix", "/fsd::");
-    private final static String customUriPrefix = System.getProperty("java.io.uri.prefix", "file:/fsd::");
+    private final static String customPrefix = System.getProperty("java.io.fs.prefix", "/fsd:");
+    private final static String customUriPrefix = System.getProperty("java.io.uri.prefix", "file:/fsd:");
     private static FileSystem fileSystemFor(String pathname) {
-        return VM.isBooted() && GetPropertyAction.privilegedGetProperties().getProperty("java.io.nio.fs.provider") != null
+        return VM.isBooted() && System.getProperty("java.io.nio.fs.provider") != null
                 && pathname != null && pathname.startsWith(customPrefix)
                 ? ProxyFileSystem.instance("file")
                 : bootFs;
@@ -467,7 +472,7 @@ public class File
     private static FileSystem fileSystemFor(URI uri) {
         final String uriString = uri.toString();
         // See Path.of(URI)
-        return VM.isBooted() && GetPropertyAction.privilegedGetProperties().getProperty("java.io.nio.fs.provider") != null
+        return VM.isBooted() && System.getProperty("java.io.nio.fs.provider") != null
                 && uriString != null && uriString.startsWith(customUriPrefix)
                 ? ProxyFileSystem.instance("file")
                 : bootFs;
@@ -2440,20 +2445,20 @@ public class File
     private static final String separatorStylePropertyName = "java.io.file.separator.style";
 
     static char getSeparatorChar() {
-        final Properties props = GetPropertyAction.privilegedGetProperties();
-        if (props.containsKey(separatorStylePropertyName)) {
-            return "win".equalsIgnoreCase(props.getProperty(separatorStylePropertyName)) ? '\\' : '/';
+        final String separatorStyleProperty = System.getProperty(separatorStylePropertyName);
+        if (separatorStyleProperty != null) {
+            return "win".equalsIgnoreCase(separatorStyleProperty) ? '\\' : '/';
         } else {
-            return props.getProperty("file.separator").charAt(0);
+            return System.getProperty("file.separator").charAt(0);
         }
     }
 
     static char getPathSeparatorChar() {
-        final Properties props = GetPropertyAction.privilegedGetProperties();
-        if (props.containsKey(separatorStylePropertyName)) {
-            return "win".equalsIgnoreCase(props.getProperty(separatorStylePropertyName)) ? ':' : ';';
+        final String separatorStyleProperty = System.getProperty(separatorStylePropertyName);
+        if (separatorStyleProperty != null) {
+            return "win".equalsIgnoreCase(separatorStyleProperty) ? ':' : ';';
         } else {
-            return props.getProperty("path.separator").charAt(0);
+            return System.getProperty("path.separator").charAt(0);
         }
     }
 
@@ -2473,5 +2478,12 @@ public class File
     public static File fromFile(File other) {
         // TODO: make this private to pass JCK
         return new File(other.path, other.prefixLength, other.fs);
+    }
+
+    private final static boolean loggingEnabled = System.getProperty("java.io.log.file") != null;
+    private void logLine(final String line) {
+        if (loggingEnabled) {
+            System.err.println("[io.File] " + line);
+        }
     }
 }
