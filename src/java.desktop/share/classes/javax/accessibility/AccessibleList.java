@@ -26,7 +26,9 @@ import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionListener;
 
 /**
- *  This interface provide expanded list info for a11y implementation.
+ *  This interface provides expanded list info for a11y implementation.
+ *
+ * @author Artem Semenov
  */
 public interface AccessibleList<E> extends ListModel<E>, ListSelectionModel, AccessibleTable {
 
