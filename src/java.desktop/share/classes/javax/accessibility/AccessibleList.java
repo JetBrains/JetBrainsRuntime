@@ -32,336 +32,157 @@ import javax.swing.event.ListSelectionListener;
  */
 public interface AccessibleList<E> extends ListModel<E>, ListSelectionModel, AccessibleTable {
 
-    /**
-     * This method return list model
-     * Implementate this method for this interface methods defalt implementation
-     *
-     * @return List model
-     */
-    ListModel<E> getListModel();
-
-    /**
-     *  This method return list selection model for this interface
-     *  Implementate this method for use defolt interface method implementation
-     *
-     * @return List selection model
-     */
-    ListSelectionModel getListSelectionModel();
-
-    // ListModel implementation
+    // AccessibleTable
 
     @Override
-    public default int getSize() {
-        if (getListModel() != null) {
-            return getListModel().getSize();
-        }
-        return 0;
-    }
+    Accessible getAccessibleCaption();
 
     @Override
-    public default E getElementAt(int index) {
-        if (getListModel() != null) {
-            return getListModel().getElementAt(index);
-        }
-        return null;
-    }
+    void setAccessibleCaption(Accessible a);
 
     @Override
-    public default void addListDataListener(ListDataListener l) {
-        if (getListModel() != null) {
-            getListModel().addListDataListener(l);
-        }
-    }
+    Accessible getAccessibleSummary();
 
     @Override
-    public default void removeListDataListener(ListDataListener l) {
-        if (getListModel() != null) {
-            getListModel().removeListDataListener(l);
-        }
-    }
-
-    // ListSelectedModel implementation
+    void setAccessibleSummary(Accessible a);
 
     @Override
-    public default void setSelectionInterval(int index0, int index1) {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().setSelectionInterval(index0, index1);
-        }
-    }
+    int getAccessibleRowCount();
 
     @Override
-    public default void addSelectionInterval(int index0, int index1) {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().addSelectionInterval(index0, index1);
-        }
-    }
+    int getAccessibleColumnCount();
 
     @Override
-    public default void removeSelectionInterval(int index0, int index1) {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().removeSelectionInterval(index0, index1);
-        }
-    }
+    Accessible getAccessibleAt(int r, int c);
 
     @Override
-    public default int getMinSelectionIndex() {
-        if (getListSelectionModel() != null) {
-            return getListSelectionModel().getMinSelectionIndex();
-        }
-        return 0;
-    }
+    int getAccessibleRowExtentAt(int r, int c);
 
     @Override
-    public default int getMaxSelectionIndex() {
-        if (getListModel() != null) {
-            return getListSelectionModel().getMaxSelectionIndex();
-        }
-        return 0;
-    }
+    int getAccessibleColumnExtentAt(int r, int c);
 
     @Override
-    public default boolean isSelectedIndex(int index) {
-        if (getListSelectionModel() != null) {
-            return getListSelectionModel().isSelectedIndex(index);
-        }
-        return false;
-    }
+    AccessibleTable getAccessibleRowHeader();
 
     @Override
-    public default int getAnchorSelectionIndex() {
-        if (getListSelectionModel() != null) {
-            return getListSelectionModel().getAnchorSelectionIndex();
-        }
-        return 0;
-    }
+    void setAccessibleRowHeader(AccessibleTable table);
 
     @Override
-    public default void setAnchorSelectionIndex(int index) {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().setAnchorSelectionIndex(index);
-        }
-    }
+    AccessibleTable getAccessibleColumnHeader();
 
     @Override
-    public default int getLeadSelectionIndex() {
-        if (getListSelectionModel() != null) {
-            return getListSelectionModel().getLeadSelectionIndex();
-        }
-        return 0;
-    }
+    void setAccessibleColumnHeader(AccessibleTable table);
 
     @Override
-    public default void setLeadSelectionIndex(int index) {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().setLeadSelectionIndex(index);
-        }
-    }
+    Accessible getAccessibleRowDescription(int r);
 
     @Override
-    public default void clearSelection() {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().clearSelection();
-        }
-    }
+    void setAccessibleRowDescription(int r, Accessible a);
 
     @Override
-    public default boolean isSelectionEmpty() {
-        if (getListSelectionModel() != null) {
-            return getListSelectionModel().isSelectionEmpty();
-        }
-        return true;
-    }
+    Accessible getAccessibleColumnDescription(int c);
 
     @Override
-    public default void insertIndexInterval(int index, int length, boolean before) {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().insertIndexInterval(index, length, before);
-        }
-    }
+    void setAccessibleColumnDescription(int c, Accessible a);
 
     @Override
-    public default void removeIndexInterval(int index0, int index1) {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().removeIndexInterval(index0, index1);
-        }
-    }
+    boolean isAccessibleSelected(int r, int c);
 
     @Override
-    public default void setValueIsAdjusting(boolean valueIsAdjusting) {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().setValueIsAdjusting(valueIsAdjusting);
-        }
-    }
+    boolean isAccessibleRowSelected(int r);
 
     @Override
-    public default boolean getValueIsAdjusting() {
-        if (getListSelectionModel() != null) {
-            return  getListSelectionModel().getValueIsAdjusting();
-        }
-        return false;
-    }
+    boolean isAccessibleColumnSelected(int c);
 
     @Override
-    public default void setSelectionMode(int selectionMode) {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().setSelectionMode(selectionMode);
-        }
-    }
+    int[] getSelectedAccessibleRows();
 
     @Override
-    public default int getSelectionMode() {
-        if (getListSelectionModel() != null) {
-            return getListSelectionModel().getSelectionMode();
-        }
-        return 0;
-    }
+    int[] getSelectedAccessibleColumns();
+
+    // ListModel
 
     @Override
-    public default void addListSelectionListener(ListSelectionListener x) {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().addListSelectionListener(x);
-        }
-    }
+    int getSize();
 
     @Override
-    public default void removeListSelectionListener(ListSelectionListener x) {
-        if (getListSelectionModel() != null) {
-            getListSelectionModel().removeListSelectionListener(x);
-        }
-    }
+    E getElementAt(int index);
 
     @Override
-    public default int[] getSelectedIndices() {
-        if (getListSelectionModel() != null) {
-            return getListSelectionModel().getSelectedIndices();
-        }
+    void addListDataListener(ListDataListener l);
+
+    @Override
+    void removeListDataListener(ListDataListener l);
+
+    // ListSelectionModel
+
+    @Override
+    void setSelectionInterval(int index0, int index1);
+
+    @Override
+    void addSelectionInterval(int index0, int index1);
+
+    @Override
+    void removeSelectionInterval(int index0, int index1);
+
+    @Override
+    int getMinSelectionIndex();
+
+    @Override
+    int getMaxSelectionIndex();
+
+    @Override
+    boolean isSelectedIndex(int index);
+
+    @Override
+    int getAnchorSelectionIndex();
+
+    @Override
+    void setAnchorSelectionIndex(int index);
+
+    @Override
+    int getLeadSelectionIndex();
+
+    @Override
+    void setLeadSelectionIndex(int index);
+
+    @Override
+    void clearSelection();
+
+    @Override
+    boolean isSelectionEmpty();
+
+    @Override
+    void insertIndexInterval(int index, int length, boolean before);
+
+    @Override
+    void removeIndexInterval(int index0, int index1);
+
+    @Override
+    void setValueIsAdjusting(boolean valueIsAdjusting);
+
+    @Override
+    boolean getValueIsAdjusting();
+
+    @Override
+    void setSelectionMode(int selectionMode);
+
+    @Override
+    int getSelectionMode();
+
+    @Override
+    void addListSelectionListener(ListSelectionListener x);
+
+    @Override
+    void removeListSelectionListener(ListSelectionListener x);
+
+    @Override
+    default int[] getSelectedIndices() {
         return ListSelectionModel.super.getSelectedIndices();
     }
 
     @Override
-    public default int getSelectedItemsCount() {
-        if (getListSelectionModel() != null) {
-            return getListSelectionModel().getSelectedItemsCount();
-        }
+    default int getSelectedItemsCount() {
         return ListSelectionModel.super.getSelectedItemsCount();
-    }
-
-    // AccessibleTable Implementation
-
-    @Override
-    public default Accessible getAccessibleCaption() {
-        return null;
-    }
-
-    @Override
-    public default void setAccessibleCaption(Accessible a) {
-
-    }
-
-    @Override
-    public default Accessible getAccessibleSummary() {
-        return null;
-    }
-
-    @Override
-    public default void setAccessibleSummary(Accessible a) {
-
-    }
-
-    @Override
-    public default int getAccessibleRowCount() {
-        if (getListModel() != null) {
-            return getListModel().getSize();
-        }
-        return -1;
-    }
-
-    @Override
-    public default int getAccessibleColumnCount() {
-        return 1;
-    }
-
-    @Override
-    public default int getAccessibleRowExtentAt(int r, int c) {
-        return 1;
-    }
-
-    @Override
-    public default int getAccessibleColumnExtentAt(int r, int c) {
-        return 1;
-    }
-
-    @Override
-    public default AccessibleTable getAccessibleRowHeader() {
-        return null;
-    }
-
-    @Override
-    public default void setAccessibleRowHeader(AccessibleTable table) {
-
-    }
-
-    @Override
-    public default AccessibleTable getAccessibleColumnHeader() {
-        return null;
-    }
-
-    @Override
-    public default void setAccessibleColumnHeader(AccessibleTable table) {
-
-    }
-
-    @Override
-    public default Accessible getAccessibleRowDescription(int r) {
-        return null;
-    }
-
-    @Override
-    public default void setAccessibleRowDescription(int r, Accessible a) {
-
-    }
-
-    @Override
-    public default Accessible getAccessibleColumnDescription(int c) {
-        return null;
-    }
-
-    @Override
-    public default void setAccessibleColumnDescription(int c, Accessible a) {
-
-    }
-
-    @Override
-    public default boolean isAccessibleSelected(int r, int c) {
-        if ((getListSelectionModel() != null) && (r >= 0) && (r< this.getAccessibleRowCount())) {
-            return getListSelectionModel().isSelectedIndex(r);
-        }
-        return false;
-    }
-
-    @Override
-    public default boolean isAccessibleRowSelected(int r) {
-        if (getListSelectionModel() != null) {
-            return getListSelectionModel().isSelectedIndex(r);
-        }
-        return false;
-    }
-
-    @Override
-    public default boolean isAccessibleColumnSelected(int c) {
-        return c== 0;
-    }
-
-    @Override
-    public default int[] getSelectedAccessibleRows() {
-        if (getListSelectionModel() != null) {
-            return getListSelectionModel().getSelectedIndices();
-        }
-        return null;
-    }
-
-    @Override
-    public default int[] getSelectedAccessibleColumns() {
-        return null;
     }
 }

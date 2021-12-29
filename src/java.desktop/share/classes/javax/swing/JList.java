@@ -3040,22 +3040,261 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
                                 Boolean.valueOf(false), Boolean.valueOf(true));
          }
 
-         // Accessible List methods
-
         private class AccessibleListImpl implements AccessibleList<E> {
 
             @Override
-            public ListModel<E> getListModel() {
-                return JList.this.getModel();
+            public Accessible getAccessibleCaption() {
+                return null;
             }
 
             @Override
-            public ListSelectionModel getListSelectionModel() {
-                return JList.this.getSelectionModel();
+            public void setAccessibleCaption(Accessible a) {
+
             }
 
+            @Override
+            public Accessible getAccessibleSummary() {
+                return null;
+            }
 
             @Override
+            public void setAccessibleSummary(Accessible a) {
+
+            }
+
+            @Override
+            public int getAccessibleRowCount() {
+                return AccessibleListImpl.this.getSize();
+            }
+
+            /**
+             *  list has one column only
+             *
+             * @return 1
+             */
+            @Override
+            public int getAccessibleColumnCount() {
+                return 1;
+            }
+
+            @Override
+            public int getAccessibleRowExtentAt(int r, int c) {
+                return 0;
+            }
+
+            @Override
+            public int getAccessibleColumnExtentAt(int r, int c) {
+                return 0;
+            }
+
+            @Override
+            public AccessibleTable getAccessibleRowHeader() {
+                return null;
+            }
+
+            @Override
+            public void setAccessibleRowHeader(AccessibleTable table) {
+
+            }
+
+            @Override
+            public AccessibleTable getAccessibleColumnHeader() {
+                return null;
+            }
+
+            @Override
+            public void setAccessibleColumnHeader(AccessibleTable table) {
+
+            }
+
+            @Override
+            public Accessible getAccessibleRowDescription(int r) {
+                return null;
+            }
+
+            @Override
+            public void setAccessibleRowDescription(int r, Accessible a) {
+
+            }
+
+            @Override
+            public Accessible getAccessibleColumnDescription(int c) {
+                return null;
+            }
+
+            @Override
+            public void setAccessibleColumnDescription(int c, Accessible a) {
+
+            }
+
+            /**
+             *  table has one column, so we only check the row
+             *
+             * @param r zero-based row of the table
+             * @param c zero-based column of the table
+             * @return row is selected
+             */
+            @Override
+            public boolean isAccessibleSelected(int r, int c) {
+                return AccessibleListImpl.this.isAccessibleRowSelected(r);
+            }
+
+            @Override
+            public boolean isAccessibleRowSelected(int r) {
+                return AccessibleListImpl.this.isSelectedIndex(r);
+            }
+
+            /**
+             *  list has selected only one column
+             *
+             * @param c zero-based column of the table
+             * @return c is first column
+             */
+            @Override
+            public boolean isAccessibleColumnSelected(int c) {
+                return c == 0;
+            }
+
+            @Override
+            public int[] getSelectedAccessibleRows() {
+                return AccessibleListImpl.this.getSelectedIndices();
+            }
+
+            @Override
+            public int[] getSelectedAccessibleColumns() {
+                return new int[] {0};
+            }
+
+            @Override
+            public int getSize() {
+                return JList.this.getModel().getSize();
+            }
+
+            @Override
+            public E getElementAt(int index) {
+                return JList.this.getModel().getElementAt(index);
+            }
+
+            @Override
+            public void addListDataListener(ListDataListener l) {
+                JList.this.getModel().addListDataListener(l);
+            }
+
+            @Override
+            public void removeListDataListener(ListDataListener l) {
+                JList.this.getModel().removeListDataListener(l);
+            }
+
+            @Override
+            public void setSelectionInterval(int index0, int index1) {
+                JList.this.getSelectionModel().setSelectionInterval(index0, index1);
+            }
+
+            @Override
+            public void addSelectionInterval(int index0, int index1) {
+                JList.this.getSelectionModel().addSelectionInterval(index0, index1);
+            }
+
+            @Override
+            public void removeSelectionInterval(int index0, int index1) {
+                JList.this.getSelectionModel().removeSelectionInterval(index0, index1);
+            }
+
+            @Override
+            public int getMinSelectionIndex() {
+                return JList.this.getSelectionModel().getMinSelectionIndex();
+            }
+
+            @Override
+            public int getMaxSelectionIndex() {
+                return JList.this.getSelectionModel().getMaxSelectionIndex();
+            }
+
+            @Override
+            public boolean isSelectedIndex(int index) {
+                return JList.this.getSelectionModel().isSelectedIndex(index);
+            }
+
+            @Override
+            public int getAnchorSelectionIndex() {
+                return JList.this.getSelectionModel().getAnchorSelectionIndex();
+            }
+
+            @Override
+            public void setAnchorSelectionIndex(int index) {
+                JList.this.getSelectionModel().setAnchorSelectionIndex(index);
+            }
+
+            @Override
+            public int getLeadSelectionIndex() {
+                return JList.this.getSelectionModel().getLeadSelectionIndex();
+            }
+
+            @Override
+            public void setLeadSelectionIndex(int index) {
+                JList.this.getSelectionModel().setLeadSelectionIndex(index);
+            }
+
+            @Override
+            public void clearSelection() {
+                JList.this.getSelectionModel().clearSelection();
+            }
+
+            @Override
+            public boolean isSelectionEmpty() {
+                return JList.this.getSelectionModel().isSelectionEmpty();
+            }
+
+            @Override
+            public void insertIndexInterval(int index, int length, boolean before) {
+                JList.this.getSelectionModel().insertIndexInterval(index, length, before);
+            }
+
+            @Override
+            public void removeIndexInterval(int index0, int index1) {
+                JList.this.getSelectionModel().removeIndexInterval(index0, index1);
+            }
+
+            @Override
+            public void setValueIsAdjusting(boolean valueIsAdjusting) {
+                JList.this.getSelectionModel().setValueIsAdjusting(valueIsAdjusting);
+            }
+
+            @Override
+            public boolean getValueIsAdjusting() {
+                return JList.this.getSelectionModel().getValueIsAdjusting();
+            }
+
+            @Override
+            public void setSelectionMode(int selectionMode) {
+                JList.this.getSelectionModel().setSelectionMode(selectionMode);
+            }
+
+            @Override
+            public int getSelectionMode() {
+                return JList.this.getSelectionModel().getSelectionMode();
+            }
+
+            @Override
+            public void addListSelectionListener(ListSelectionListener x) {
+                JList.this.getSelectionModel().addListSelectionListener(x);
+            }
+
+            @Override
+            public void removeListSelectionListener(ListSelectionListener x) {
+                JList.this.getSelectionModel().removeListSelectionListener(x);
+            }
+
+            @Override
+            public int[] getSelectedIndices() {
+                return JList.this.getSelectionModel().getSelectedIndices();
+            }
+
+            @Override
+            public int getSelectedItemsCount() {
+                return JList.this.getSelectionModel().getSelectedItemsCount();
+            }
+
             public Accessible getAccessibleAt(int r, int c) {
                 if ((r >= 0) && (r < getAccessibleRowCount())) {
                     E o =  getElementAt(r);
