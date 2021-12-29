@@ -121,7 +121,7 @@ define add_file_to_clean
     $1_CLEAN_$$($2_TARGET) := 1
     $$($1_BIN)$$($1_MODULE_SUBDIR)$$($2_TARGET) : $2
 	$(MKDIR) -p $$(@D)
-	export LC_ALL=C ; ( $(CAT) $$< && $(ECHO) "" ) \
+	( $(CAT) $$< && $(ECHO) "" ) \
 	    | $(SED) -e 's/\([^\\]\):/\1\\:/g' -e 's/\([^\\]\)=/\1\\=/g' \
 	        -e 's/\([^\\]\)!/\1\\!/g' -e 's/^[ 	]*#.*/#/g' \
 	    | $(SED) -f "$(TOPDIR)/make/common/support/unicode2x.sed" \
