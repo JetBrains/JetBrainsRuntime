@@ -1319,7 +1319,7 @@ public class ICC_Profile implements Serializable {
             return f.isFile() ? f : null;
         }
         String path, dir, fullPath;
-        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+        final String pathSeparator = System.getProperty("path.separator");
         if (!f.isFile() &&
                 (path = System.getProperty("java.iccprofile.path")) != null) {
             /* try relative to java.iccprofile.path */

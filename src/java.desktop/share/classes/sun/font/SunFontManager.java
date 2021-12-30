@@ -516,7 +516,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                      */
                     fontPath = getPlatformFontPath(noType1Font);
 
-                    final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+                    final String pathSeparator = System.getProperty("path.separator");
                     if (extraFontPath != null) {
                         fontPath = extraFontPath + pathSeparator + fontPath;
                     }
@@ -2951,7 +2951,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         }
 
         String path = getPlatformFontPath(noType1Fonts);
-        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+        final String pathSeparator = System.getProperty("path.separator");
         StringTokenizer parser =
             new StringTokenizer(path, pathSeparator);
         ArrayList<String> pathList = new ArrayList<>();
@@ -3115,7 +3115,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private void registerFontsOnPath(String pathName,
                                      boolean useJavaRasterizer, int fontRank,
                                      boolean defer, boolean resolveSymLinks) {
-        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+        final String pathSeparator = System.getProperty("path.separator");
         StringTokenizer parser = new StringTokenizer(pathName, pathSeparator);
         try {
             while (parser.hasMoreTokens()) {

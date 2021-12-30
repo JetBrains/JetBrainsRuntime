@@ -187,7 +187,7 @@ public class URLClassPath {
      */
     URLClassPath(String cp, boolean skipEmptyElements) {
         ArrayList<URL> path = new ArrayList<>();
-        final String pathSeparator = GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+        final String pathSeparator = System.getProperty("path.separator");
         if (cp != null) {
             // map each element of class path to a file URL
             int off = 0, next;

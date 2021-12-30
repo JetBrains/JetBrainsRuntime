@@ -52,7 +52,7 @@ public class PathList {
         } else if (pathFrom == null || pathFrom.isEmpty()) {
             return pathTo;
         } else {
-            final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+            final String pathSeparator = System.getProperty("path.separator");
             return pathTo  + pathSeparator + pathFrom;
         }
     }
@@ -65,7 +65,7 @@ public class PathList {
      * @return the resulting array of directory and JAR file URLs
      */
     public static URL[] pathToURLs(String path) {
-        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+        final String pathSeparator = System.getProperty("path.separator");
         StringTokenizer st = new StringTokenizer(path, pathSeparator);
         URL[] urls = new URL[st.countTokens()];
         int count = 0;

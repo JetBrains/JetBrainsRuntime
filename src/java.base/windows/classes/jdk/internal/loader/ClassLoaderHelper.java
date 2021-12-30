@@ -49,7 +49,7 @@ class ClassLoaderHelper {
      */
     static String[] parsePath(String ldPath) {
         int ldLen = ldPath.length();
-        char ps = GetPropertyAction.privilegedGetProperties().getProperty("path.separator").charAt(0);
+        char ps = System.getProperty("path.separator").charAt(0);
         int psCount = 0;
 
         if (ldPath.indexOf('\"') >= 0) {

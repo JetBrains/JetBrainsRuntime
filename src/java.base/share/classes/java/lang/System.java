@@ -925,9 +925,7 @@ public final class System {
                     "java.io.nio.fs.provider",
                     "java.io.file.separator.style",
                     "java.io.log.file",
-                    "java.io.log.fs",
-                    "file.separator",
-                    "path.separator"
+                    "java.io.log.fs"
                     -> true;
             default
                     -> false;

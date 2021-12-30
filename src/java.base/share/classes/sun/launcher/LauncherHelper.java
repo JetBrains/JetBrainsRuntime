@@ -510,7 +510,7 @@ public final class LauncherHelper {
      */
     static void printHelpMessage(boolean printToStderr) {
         initOutput(printToStderr);
-        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+        final String pathSeparator = System.getProperty("path.separator");
         outBuf = outBuf.append(getLocalizedMessage("java.launcher.opt.footer",
                 pathSeparator));
         ostream.println(outBuf.toString());
@@ -521,7 +521,7 @@ public final class LauncherHelper {
      */
     static void printXUsageMessage(boolean printToStderr) {
         initOutput(printToStderr);
-        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+        final String pathSeparator = System.getProperty("path.separator");
         ostream.println(getLocalizedMessage("java.launcher.X.usage",
                 pathSeparator));
         if (System.getProperty("os.name").contains("OS X")) {

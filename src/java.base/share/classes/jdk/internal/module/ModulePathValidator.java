@@ -75,7 +75,7 @@ class ModulePathValidator {
     static int scanAllModules(PrintStream out) {
         ModulePathValidator validator = new ModulePathValidator(out);
 
-        final String pathSeparator = sun.security.action.GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+        final String pathSeparator = System.getProperty("path.separator");
         // upgrade module path
         String value = System.getProperty("jdk.module.upgrade.path");
         if (value != null) {

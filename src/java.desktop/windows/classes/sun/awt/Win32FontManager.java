@@ -140,7 +140,7 @@ public final class Win32FontManager extends SunFontManager {
          * This is playing it safe as we would want to find fonts in the
          * JRE font directory ahead of those in the system directory
          */
-        final String pathSeparator = GetPropertyAction.privilegedGetProperties().getProperty("path.separator");
+        final String pathSeparator = System.getProperty("path.separator");
         String tmpFontPath = jreFontDirName+pathSeparator+fontPath;
         StringTokenizer parser = new StringTokenizer(tmpFontPath,
                                                      pathSeparator);
