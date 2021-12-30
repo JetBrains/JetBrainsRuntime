@@ -1,24 +1,8 @@
 #!/bin/bash -x
 
-# The following parameters must be specified:
-#   JBSDK_VERSION    - specifies the current version of OpenJDK e.g. 11_0_6
-#   JDK_BUILD_NUMBER - specifies the number of OpenJDK build or the value of --with-version-build argument to configure
-#   build_number     - specifies the number of JetBrainsRuntime build
+# The following parameter must be specified:
+#   build_number - specifies the number of JetBrainsRuntime build
 #
-# jbrsdk-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
-# jbr-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
-#
-# $ ./java --version
-# openjdk 11.0.6 2020-01-14
-# OpenJDK Runtime Environment (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number})
-# OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
-#
-
-JBSDK_VERSION=$1
-JDK_BUILD_NUMBER=$2
-build_number=$3
-
-JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 
 source jb/project/tools/common/scripts/common.sh
 
