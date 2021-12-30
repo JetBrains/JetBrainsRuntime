@@ -478,7 +478,7 @@ class Metacity implements SynthConstants {
 
         public Object run() {
             if (type == GET_THEME_DIR) {
-                String sep = File.separator;
+                String sep = "" + System.getProperty("file.separator").charAt(0);
                 String[] dirs = new String[] {
                     userHome + sep + ".themes",
                     System.getProperty("swing.metacitythemedir"),

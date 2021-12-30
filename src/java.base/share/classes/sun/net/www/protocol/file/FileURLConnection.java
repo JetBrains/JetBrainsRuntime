@@ -221,8 +221,9 @@ public class FileURLConnection extends URLConnection {
      */
     public Permission getPermission() throws IOException {
         if (permission == null) {
+            final char separatorChar = System.getProperty("file.separator").charAt(0);
             String decodedPath = ParseUtil.decode(url.getPath());
-            if (File.separatorChar == '/') {
+            if (separatorChar == '/') {
                 permission = new FilePermission(decodedPath, "read");
             } else {
                 // decode could return /c:/x/y/z.
@@ -231,7 +232,7 @@ public class FileURLConnection extends URLConnection {
                     decodedPath = decodedPath.substring(1);
                 }
                 permission = new FilePermission(
-                        decodedPath.replace('/', File.separatorChar), "read");
+                        decodedPath.replace('/', separatorChar), "read");
             }
         }
         return permission;

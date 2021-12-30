@@ -1418,7 +1418,8 @@ public class JShellTool implements MessageHandler {
     }
 
     static Path toPathResolvingUserHome(String pathString) {
-        if (pathString.replace(File.separatorChar, '/').startsWith("~/"))
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        if (pathString.replace(separatorChar, '/').startsWith("~/"))
             return Paths.get(System.getProperty("user.home"), pathString.substring(2));
         else
             return Paths.get(pathString);

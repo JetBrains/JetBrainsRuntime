@@ -211,11 +211,11 @@ public class JarIndex {
         }
 
         String currentJar = null;
-
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         for (int i = 0; i < files.length; i++) {
             currentJar = files[i];
             ZipFile zrf = new ZipFile(currentJar.replace
-                                      ('/', File.separatorChar));
+                                      ('/', separatorChar));
 
             Enumeration<? extends ZipEntry> entries = zrf.entries();
             while(entries.hasMoreElements()) {

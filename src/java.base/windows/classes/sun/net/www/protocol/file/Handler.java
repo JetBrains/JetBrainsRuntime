@@ -51,6 +51,7 @@ public class Handler extends URLStreamHandler {
 
 
     protected void parseURL(URL u, String spec, int start, int limit) {
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         /*
          * Ugly backwards compatibility. Flip any file separator
          * characters to be forward slashes. This is a nop on Unix
@@ -64,7 +65,7 @@ public class Handler extends URLStreamHandler {
          * as a non-seperator character the damage of veering away from the
          * specification is presumably limited.
          */
-        super.parseURL(u, spec.replace(File.separatorChar, '/'), start, limit);
+        super.parseURL(u, spec.replace(separatorChar, '/'), start, limit);
     }
 
     public synchronized URLConnection openConnection(URL url)

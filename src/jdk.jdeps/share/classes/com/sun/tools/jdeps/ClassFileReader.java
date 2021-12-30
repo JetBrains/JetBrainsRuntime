@@ -116,6 +116,8 @@ public class ClassFileReader implements Closeable {
         return this.entries;
     }
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
+
     /**
      * Returns the ClassFile matching the given binary name
      * or a fully-qualified class name.
@@ -123,14 +125,14 @@ public class ClassFileReader implements Closeable {
     public ClassFile getClassFile(String name) throws IOException {
         if (name.indexOf('.') > 0) {
             int i = name.lastIndexOf('.');
-            String pathname = name.replace('.', File.separatorChar) + ".class";
+            String pathname = name.replace('.', separatorChar) + ".class";
             if (baseFileName.equals(pathname) ||
                     baseFileName.equals(pathname.substring(0, i) + "$" +
                                         pathname.substring(i+1, pathname.length()))) {
                 return readClassFile(path);
             }
         } else {
-            if (baseFileName.equals(name.replace('/', File.separatorChar) + ".class")) {
+            if (baseFileName.equals(name.replace('/', separatorChar) + ".class")) {
                 return readClassFile(path);
             }
         }
@@ -221,7 +223,7 @@ public class ClassFileReader implements Closeable {
                 return stream.filter(ClassFileReader::isClass)
                              .map(path::relativize)
                              .map(Path::toString)
-                             .map(p -> p.replace(File.separatorChar, '/'))
+                             .map(p -> p.replace(separatorChar, '/'))
                              .collect(Collectors.toSet());
             } catch (IOException e) {
                 throw new UncheckedIOException(e);

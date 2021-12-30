@@ -858,12 +858,13 @@ public class Config {
      * The method returns null if it cannot find a Java config file.
      */
     private String getJavaFileName() {
+        final char fileSeparator = System.getProperty("file.separator").charAt(0);
         String name = GetPropertyAction
                 .privilegedGetProperty("java.security.krb5.conf");
         if (name == null) {
             name = GetPropertyAction.privilegedGetProperty("java.home")
-                    + File.separator + "conf" + File.separator + "security"
-                    + File.separator + "krb5.conf";
+                    + fileSeparator + "conf" + fileSeparator + "security"
+                    + fileSeparator + "krb5.conf";
             if (!fileExists(name)) {
                 name = null;
             }

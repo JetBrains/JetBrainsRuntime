@@ -2055,7 +2055,7 @@ public class Main {
     void loadKeyStore(String keyStoreName, boolean prompt) {
 
         if (!nullStream && keyStoreName == null) {
-            keyStoreName = System.getProperty("user.home") + File.separator
+            keyStoreName = System.getProperty("user.home") + System.getProperty("file.separator").charAt(0)
                 + ".keystore";
         }
 
@@ -2099,7 +2099,8 @@ public class Main {
                 if (nullStream) {
                     store.load(null, storepass);
                 } else {
-                    keyStoreName = keyStoreName.replace(File.separatorChar, '/');
+                    final char separatorChar = System.getProperty("file.separator").charAt(0);
+                    keyStoreName = keyStoreName.replace(separatorChar, '/');
                     URL url = null;
                     try {
                         url = new URL(keyStoreName);

@@ -43,14 +43,15 @@ public class PlatformSupport {
          */
         String tmpdir = VMSupport.getVMTemporaryDirectory();
 
+        final char fileSeparator = System.getProperty("file.separator").charAt(0);
         /*
          * Assure that the string returned has a trailing File.separator
          * character. This check was added because the Linux implementation
          * changed such that the java.io.tmpdir string no longer terminates
          * with a File.separator character.
          */
-        if (tmpdir.lastIndexOf(File.separator) != (tmpdir.length()-1)) {
-            tmpdir = tmpdir + File.separator;
+        if (tmpdir.lastIndexOf(fileSeparator) != (tmpdir.length()-1)) {
+            tmpdir = tmpdir + fileSeparator;
         }
         tmpDirName = tmpdir;
     }

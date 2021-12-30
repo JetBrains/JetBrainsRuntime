@@ -1864,9 +1864,10 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
    }
 
    private void dumpKlass(InstanceKlass kls) throws IOException {
+       final char separatorChar = System.getProperty("file.separator").charAt(0);
       String klassName = kls.getName().asString();
-      klassName = klassName.replace('/', File.separatorChar);
-      int index = klassName.lastIndexOf(File.separatorChar);
+      klassName = klassName.replace('/', separatorChar);
+      int index = klassName.lastIndexOf(separatorChar);
       File dir = null;
       if (index != -1) {
         String dirName = klassName.substring(0, index);
@@ -1876,7 +1877,7 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
       }
 
       dir.mkdirs();
-      File f = new File(dir, klassName.substring(klassName.lastIndexOf(File.separatorChar) + 1)
+      File f = new File(dir, klassName.substring(klassName.lastIndexOf(separatorChar) + 1)
                               + ".class");
       f.createNewFile();
       FileOutputStream fis = new FileOutputStream(f);

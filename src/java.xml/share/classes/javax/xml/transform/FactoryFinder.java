@@ -222,8 +222,9 @@ class FactoryFinder {
             if (firstTime) {
                 synchronized (cacheProps) {
                     if (firstTime) {
-                        String configFile = SecuritySupport.getSystemProperty("java.home") + File.separator +
-                            "conf" + File.separator + "jaxp.properties";
+                        final char fileSeparator = System.getProperty("file.separator").charAt(0);
+                        String configFile = SecuritySupport.getSystemProperty("java.home") + fileSeparator +
+                            "conf" + fileSeparator + "jaxp.properties";
                         File f = new File(configFile);
                         firstTime = false;
                         if (SecuritySupport.doesFileExist(f)) {

@@ -112,12 +112,13 @@ public class Class2HTML {
 
 
     public static void main( final String[] argv ) throws IOException {
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         final String[] file_name = new String[argv.length];
         int files = 0;
         ClassParser parser = null;
         JavaClass java_class = null;
         String zip_file = null;
-        final char sep = File.separatorChar;
+        final char sep = separatorChar;
         String dir = "." + sep; // Where to store HTML files
         /* Parse command line arguments.
          */

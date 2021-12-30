@@ -113,10 +113,11 @@ class CFileDialog implements FileDialogPeer {
                         files[i] = new File(userFileNames[i]);
                     }
 
+                    final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
                     directory = files[0].getParent();
                     // make sure directory always ends in '/'
-                    if (!directory.endsWith(File.separator)) {
-                        directory = directory + File.separator;
+                    if (!directory.endsWith(fileSeparator)) {
+                        directory = directory + fileSeparator;
                     }
 
                     file = files[0].getName(); // pick any file

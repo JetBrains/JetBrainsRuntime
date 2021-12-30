@@ -782,6 +782,7 @@ public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceTyp
 
     String baseSourceDir() {
         if (baseSourceDir == null) {
+            final char separatorChar = System.getProperty("file.separator").charAt(0);
             String typeName = name();
             StringBuilder sb = new StringBuilder(typeName.length() + 10);
             int index = 0;
@@ -789,7 +790,7 @@ public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceTyp
 
             while ((nextIndex = typeName.indexOf('.', index)) > 0) {
                 sb.append(typeName.substring(index, nextIndex));
-                sb.append(java.io.File.separatorChar);
+                sb.append(separatorChar);
                 index = nextIndex + 1;
             }
             baseSourceDir = sb.toString();

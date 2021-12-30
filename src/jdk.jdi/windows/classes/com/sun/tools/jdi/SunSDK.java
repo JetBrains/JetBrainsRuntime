@@ -40,7 +40,7 @@ class SunSDK {
         File jreHome = new File(System.getProperty("java.home"));
         File jreParent = new File(jreHome.getParent());
 
-        String jdwpLibName = "bin" + File.separator +
+        String jdwpLibName = "bin" + System.getProperty("file.separator").charAt(0) +
                              System.mapLibraryName("jdwp");
         File jdwpLib = new File(jreParent, jdwpLibName);
         return jdwpLib.exists() ? jreParent.getAbsolutePath() : null;

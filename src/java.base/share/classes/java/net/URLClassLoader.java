@@ -728,19 +728,21 @@ public class URLClassLoader extends SecureClassLoader implements Closeable {
             urlConnection = null;
         }
 
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        final String separator = "" + separatorChar;
         if (p instanceof FilePermission) {
             // if the permission has a separator char on the end,
             // it means the codebase is a directory, and we need
             // to add an additional permission to read recursively
             String path = p.getName();
-            if (path.endsWith(File.separator)) {
+            if (path.endsWith(separator)) {
                 path += "-";
                 p = new FilePermission(path, SecurityConstants.FILE_READ_ACTION);
             }
         } else if ((p == null) && (url.getProtocol().equals("file"))) {
-            String path = url.getFile().replace('/', File.separatorChar);
+            String path = url.getFile().replace('/', separatorChar);
             path = ParseUtil.decode(path);
-            if (path.endsWith(File.separator))
+            if (path.endsWith(separator))
                 path += "-";
             p = new FilePermission(path, SecurityConstants.FILE_READ_ACTION);
         } else {

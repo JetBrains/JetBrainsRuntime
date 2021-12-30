@@ -452,9 +452,10 @@ final class DesktopIntegration {
 
                 processedMimeTypes.add(mimeType);
 
+                final char separatorChar = System.getProperty("file.separator").charAt(0);
                 // Create icon name for mime type from mime type.
                 DesktopFile faIconFile = new DesktopFile(mimeType.replace(
-                        File.separatorChar, '-') + IOUtils.getSuffix(
+                        separatorChar, '-') + IOUtils.getSuffix(
                                 assoc.data.iconPath));
 
                 IOUtils.copyFile(assoc.data.iconPath,

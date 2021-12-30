@@ -273,8 +273,9 @@ class FactoryFinder {
             if (firstTime) {
                 synchronized (cacheProps) {
                     if (firstTime) {
-                        configFile = SecuritySupport.getSystemProperty("java.home") + File.separator +
-                            "conf" + File.separator + "stax.properties";
+                        final char fileSeparator = System.getProperty("file.separator").charAt(0);
+                        configFile = SecuritySupport.getSystemProperty("java.home") + fileSeparator +
+                            "conf" + fileSeparator + "stax.properties";
                         final File fStax = new File(configFile);
                         firstTime = false;
                         if (SecuritySupport.doesFileExist(fStax)) {
@@ -282,8 +283,8 @@ class FactoryFinder {
                             cacheProps.load(SecuritySupport.getFileInputStream(fStax));
                         }
                         else {
-                            configFile = SecuritySupport.getSystemProperty("java.home") + File.separator +
-                                "conf" + File.separator + "jaxp.properties";
+                            configFile = SecuritySupport.getSystemProperty("java.home") + fileSeparator +
+                                "conf" + fileSeparator + "jaxp.properties";
                             final File fJaxp = new File(configFile);
                             if (SecuritySupport.doesFileExist(fJaxp)) {
                                 dPrint(()->"Read properties file "+fJaxp);

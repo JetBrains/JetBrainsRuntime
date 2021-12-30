@@ -565,7 +565,8 @@ public final class ModulePatcher {
         if (parent == null) {
             return warnIfModuleInfo(top, entry.toString());
         } else {
-            return parent.toString().replace(File.separatorChar, '.');
+            final char separatorChar = System.getProperty("file.separator").charAt(0);
+            return parent.toString().replace(separatorChar, '.');
         }
     }
 

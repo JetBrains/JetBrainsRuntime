@@ -455,6 +455,7 @@ public class MLet extends java.net.URLClassLoader
          return getMBeansFromURL(url.toString());
      }
 
+     private static final char separatorChar = System.getProperty("separatorChar").charAt(0);
      /**
       * Loads a text file containing MLET tags that define the MBeans to
       * be added to the MBean server. The location of the text file is specified by
@@ -490,7 +491,7 @@ public class MLet extends java.net.URLClassLoader
              MLET_LOGGER.log(Level.TRACE, "URL is null");
              throw new ServiceNotFoundException("The specified URL is null");
          } else {
-             url = url.replace(File.separatorChar,'/');
+             url = url.replace(separatorChar,'/');
          }
          if (MLET_LOGGER.isLoggable(Level.TRACE)) {
              MLET_LOGGER.log(Level.TRACE, "<URL = " + url + ">");
@@ -1049,10 +1050,10 @@ public class MLet extends java.net.URLClassLoader
          // requested a load for "foo" on Solaris SPARC 5.7 we try to
          // load "SunOS/sparc/5.7/lib/libfoo.so" from the JAR file.
          //
-         nativelibname = removeSpace(System.getProperty("os.name")) + File.separator +
-             removeSpace(System.getProperty("os.arch")) + File.separator +
-             removeSpace(System.getProperty("os.version")) + File.separator +
-             "lib" + File.separator + nativelibname;
+         nativelibname = removeSpace(System.getProperty("os.name")) + separatorChar +
+             removeSpace(System.getProperty("os.arch")) + separatorChar +
+             removeSpace(System.getProperty("os.version")) + separatorChar +
+             "lib" + separatorChar + nativelibname;
          if (MLET_LOGGER.isLoggable(Level.TRACE)) {
              MLET_LOGGER.log(Level.TRACE,
                      "loadLibraryAsResource(" + nativelibname + ")");
@@ -1136,7 +1137,7 @@ public class MLet extends java.net.URLClassLoader
      private synchronized String loadLibraryAsResource(String libname) {
          try {
              InputStream is = getResourceAsStream(
-                     libname.replace(File.separatorChar,'/'));
+                     libname.replace(separatorChar,'/'));
              if (is != null) {
                  try {
                      File directory = new File(libraryDirectory);
@@ -1214,7 +1215,7 @@ public class MLet extends java.net.URLClassLoader
      private Object loadSerializedObject(URL codebase, String filename)
              throws IOException, ClassNotFoundException {
         if (filename != null) {
-            filename = filename.replace(File.separatorChar,'/');
+            filename = filename.replace(separatorChar,'/');
         }
         if (MLET_LOGGER.isLoggable(Level.TRACE)) {
             MLET_LOGGER.log(Level.TRACE, codebase.toString() + filename);

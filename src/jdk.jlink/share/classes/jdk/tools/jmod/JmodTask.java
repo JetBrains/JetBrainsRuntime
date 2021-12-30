@@ -709,21 +709,22 @@ public class JmodTask {
                      .collect(Collectors.toSet());
         }
 
+        private static final char separatorChar = System.getProperty("file.separator").charAt(0);
         /**
          * Returns true if it's a .class or a resource with an effective
          * package name.
          */
         boolean isResource(String name) {
-            name = name.replace(File.separatorChar, '/');
+            name = name.replace(separatorChar, '/');
             return name.endsWith(".class") || Resources.canEncapsulate(name);
         }
 
 
         String toPackageName(Path path) {
             String name = path.toString();
-            int index = name.lastIndexOf(File.separatorChar);
+            int index = name.lastIndexOf(separatorChar);
             if (index != -1)
-                return name.substring(0, index).replace(File.separatorChar, '.');
+                return name.substring(0, index).replace(separatorChar, '.');
 
             if (name.endsWith(".class") && !name.equals(MODULE_INFO)) {
                 IOException e = new IOException(name  + " in the unnamed package");

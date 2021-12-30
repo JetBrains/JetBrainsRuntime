@@ -177,8 +177,9 @@ public class SecuritySupport {
             if (firstTime) {
                 synchronized (cacheProps) {
                     if (firstTime) {
-                        String configFile = getSystemProperty("java.home") + File.separator
-                                + "conf" + File.separator + "jaxp.properties";
+                        final char fileSeparator = System.getProperty("file.separator").charAt(0);
+                        String configFile = getSystemProperty("java.home") + fileSeparator
+                                + "conf" + fileSeparator + "jaxp.properties";
                         File f = new File(configFile);
                         if (isFileExists(f)) {
                             is = getFileInputStream(f);

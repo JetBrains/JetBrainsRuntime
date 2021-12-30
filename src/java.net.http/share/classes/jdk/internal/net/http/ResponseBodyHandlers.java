@@ -188,8 +188,9 @@ public final class ResponseBodyHandlers {
             @SuppressWarnings("removal")
             SecurityManager sm = System.getSecurityManager();
             if (sm != null) {
+                final char separatorChar = System.getProperty("file.separator").charAt(0);
                 FilePermission writePermission = new FilePermission(fn, "write");
-                String writePathPerm = fn + File.separatorChar + "*";
+                String writePathPerm = fn + separatorChar + "*";
                 FilePermission writeInDirPermission = new FilePermission(writePathPerm, "write");
                 sm.checkPermission(writeInDirPermission);
                 FilePermission readPermission = new FilePermission(fn, "read");

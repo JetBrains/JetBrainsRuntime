@@ -1174,7 +1174,7 @@ public class URLClassPath {
          * @throws MalformedURLException
          */
         static URL tryResolveNonFile(URL base, String input) throws MalformedURLException {
-            String child = input.replace(File.separatorChar, '/');
+            String child = input.replace(separatorChar, '/');
             if (isRelative(child)) {
                 URL url = new URL(base, child);
                 String bp = base.getPath();
@@ -1203,6 +1203,8 @@ public class URLClassPath {
         }
     }
 
+    private final static char separatorChar = System.getProperty("file.separator").charAt(0);
+
     /*
      * Nested class used to represent a loader of classes and resources
      * from a file URL that refers to a directory.
@@ -1216,7 +1218,7 @@ public class URLClassPath {
          */
         private FileLoader(URL url) throws IOException {
             super(url);
-            String path = url.getFile().replace('/', File.separatorChar);
+            String path = url.getFile().replace('/', separatorChar);
             path = ParseUtil.decode(path);
             dir = (new File(path)).getCanonicalFile();
         }
@@ -1250,14 +1252,14 @@ public class URLClassPath {
 
                 final File file;
                 if (name.indexOf("..") != -1) {
-                    file = (new File(dir, name.replace('/', File.separatorChar)))
+                    file = (new File(dir, name.replace('/', separatorChar)))
                           .getCanonicalFile();
                     if ( !((file.getPath()).startsWith(dir.getPath())) ) {
                         /* outside of base dir */
                         return null;
                     }
                 } else {
-                    file = new File(dir, name.replace('/', File.separatorChar));
+                    file = new File(dir, name.replace('/', separatorChar));
                 }
 
                 if (file.exists()) {

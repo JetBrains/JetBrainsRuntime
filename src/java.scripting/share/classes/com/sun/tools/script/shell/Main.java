@@ -526,13 +526,14 @@ public class Main {
      * @return the resulting directory or JAR file URL, or null if unknown
      */
     private static URL fileToURL(File file) {
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         String name;
         try {
             name = file.getCanonicalPath();
         } catch (IOException e) {
             name = file.getAbsolutePath();
         }
-        name = name.replace(File.separatorChar, '/');
+        name = name.replace(separatorChar, '/');
         if (!name.startsWith("/")) {
             name = "/" + name;
         }

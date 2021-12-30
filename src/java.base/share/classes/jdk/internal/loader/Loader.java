@@ -623,6 +623,8 @@ public final class Loader extends SecureClassLoader {
 
     // -- permissions
 
+    private static final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
+
     /**
      * Returns the permissions for the given CodeSource.
      */
@@ -641,7 +643,7 @@ public final class Loader extends SecureClassLoader {
                 // for directories then need recursive access
                 if (p instanceof FilePermission) {
                     String path = p.getName();
-                    if (path.endsWith(File.separator)) {
+                    if (path.endsWith(fileSeparator)) {
                         path += "-";
                         p = new FilePermission(path, "read");
                     }

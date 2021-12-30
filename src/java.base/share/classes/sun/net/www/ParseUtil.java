@@ -70,8 +70,9 @@ public final class ParseUtil {
      * dependent File.separatorChar.
      */
     public static String encodePath(String path, boolean flag) {
-        if (flag && File.separatorChar != '/') {
-            return encodePath(path, 0, File.separatorChar);
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        if (flag && separatorChar != '/') {
+            return encodePath(path, 0, separatorChar);
         } else {
             int index = firstEncodeIndex(path);
             if (index > -1) {

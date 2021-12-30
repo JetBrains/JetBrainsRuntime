@@ -212,7 +212,8 @@ public class KeyTab implements KeyTabConstants {
                             .privilegedGetProperty("user.dir");
                 }
 
-                kname = user_home + File.separator  + "krb5.keytab";
+                final char fileSeparator = System.getProperty("file.separator").charAt(0);
+                kname = user_home + fileSeparator  + "krb5.keytab";
             }
             defaultTabName = kname;
             return kname;

@@ -82,6 +82,8 @@ public class FcFontConfiguration extends FontConfiguration {
         init();
     }
 
+    private static final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
+
     @Override
     public synchronized boolean init() {
         if (fcCompFonts != null) {
@@ -118,7 +120,7 @@ public class FcFontConfiguration extends FontConfiguration {
         if (javaHome == null) {
             throw new Error("java.home property not set");
         }
-        String javaLib = javaHome + File.separator + "lib";
+        String javaLib = javaHome + fileSeparator + "lib";
         getInstalledFallbackFonts(javaLib);
 
         return true;
@@ -351,7 +353,7 @@ public class FcFontConfiguration extends FontConfiguration {
             }
             String userDir = System.getProperty("user.home");
             String version = System.getProperty("java.version");
-            String fs = File.separator;
+            String fs = fileSeparator;
             String dir = userDir+fs+".java"+fs+"fonts"+fs+version;
             Locale locale = SunToolkit.getStartupLocale();
             String lang = locale.getLanguage();

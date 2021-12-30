@@ -102,6 +102,7 @@ public class WindowsPlacesBar extends JToolBar
 
         buttons = new JToggleButton[files.length];
         buttonGroup = new ButtonGroup();
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         for (int i = 0; i < files.length; i++) {
             if (fsv.isFileSystemRoot(files[i])) {
                 // Create special File wrapper for drive path
@@ -109,7 +110,7 @@ public class WindowsPlacesBar extends JToolBar
             }
 
             String folderName = fsv.getSystemDisplayName(files[i]);
-            int index = folderName.lastIndexOf(File.separatorChar);
+            int index = folderName.lastIndexOf(separatorChar);
             if (index >= 0 && index < folderName.length() - 1) {
                 folderName = folderName.substring(index + 1);
             }

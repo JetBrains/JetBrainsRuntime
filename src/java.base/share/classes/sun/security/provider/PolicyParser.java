@@ -240,6 +240,8 @@ public class PolicyParser {
         return grantEntries.removeElement(ge);
     }
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
+
     /**
      * Returns the (possibly expanded) keystore location, or null if the
      * expansion fails.
@@ -248,7 +250,7 @@ public class PolicyParser {
         try {
             if (keyStoreUrlString!=null && keyStoreUrlString.length()!=0) {
                 return expand(keyStoreUrlString, true).replace
-                                                (File.separatorChar, '/');
+                                                (separatorChar, '/');
             }
         } catch (PropertyExpander.ExpandException peee) {
             if (debug != null) {
@@ -283,7 +285,7 @@ public class PolicyParser {
         try {
             if (storePassURL!=null && storePassURL.length()!=0) {
                 return expand(storePassURL, true).replace
-                                                (File.separatorChar, '/');
+                                                (separatorChar, '/');
             }
         } catch (PropertyExpander.ExpandException peee) {
             if (debug != null) {
@@ -566,7 +568,7 @@ public class PolicyParser {
             if (e.signedBy != null) e.signedBy = expand(e.signedBy);
             if (e.codeBase != null) {
                 e.codeBase = expand(e.codeBase, true).replace
-                                    (File.separatorChar, '/');
+                                    (separatorChar, '/');
             }
         } catch (PropertyExpander.ExpandException peee) {
             if (debug != null) {

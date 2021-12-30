@@ -283,13 +283,14 @@ public final class ConfigFile extends Configuration {
                 }
             }
 
+            final char separatorChar = System.getProperty("file.separator").charAt(0);
             int n = 1;
             String config_url;
             while ((config_url = Security.getProperty
                                      ("login.config.url."+n)) != null) {
                 try {
                     config_url = PropertyExpander.expand
-                        (config_url).replace(File.separatorChar, '/');
+                        (config_url).replace(separatorChar, '/');
                     if (debugConfig != null) {
                         debugConfig.println("\tReading config: " + config_url);
                     }
@@ -310,7 +311,7 @@ public final class ConfigFile extends Configuration {
                                 "from ~/.java.login.config");
                 }
                 config_url = System.getProperty("user.home");
-                String userConfigFile = config_url + File.separatorChar +
+                String userConfigFile = config_url + separatorChar +
                                         ".java.login.config";
 
                 // No longer throws an exception when there's no config file

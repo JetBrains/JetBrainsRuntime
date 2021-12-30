@@ -1320,13 +1320,15 @@ public class ICC_Profile implements Serializable {
         }
         String path, dir, fullPath;
         final String pathSeparator = System.getProperty("path.separator");
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+
         if (!f.isFile() &&
                 (path = System.getProperty("java.iccprofile.path")) != null) {
             /* try relative to java.iccprofile.path */
             StringTokenizer st = new StringTokenizer(path, pathSeparator);
             while (st.hasMoreTokens() && ((f == null) || (!f.isFile()))) {
                 dir = st.nextToken();
-                fullPath = dir + File.separatorChar + fileName;
+                fullPath = dir + separatorChar + fileName;
                 f = new File(fullPath);
                 if (!isChildOf(f, dir)) {
                     f = null;
@@ -1340,7 +1342,7 @@ public class ICC_Profile implements Serializable {
             StringTokenizer st = new StringTokenizer(path, pathSeparator);
             while (st.hasMoreTokens() && ((f == null) || (!f.isFile()))) {
                 dir = st.nextToken();
-                fullPath = dir + File.separatorChar + fileName;
+                fullPath = dir + separatorChar + fileName;
                 f = new File(fullPath);
             }
         }
@@ -1370,10 +1372,11 @@ public class ICC_Profile implements Serializable {
      */
     private static boolean isChildOf(File f, String dirName) {
         try {
+            final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
             File dir = new File(dirName);
             String canonicalDirName = dir.getCanonicalPath();
-            if (!canonicalDirName.endsWith(File.separator)) {
-                canonicalDirName += File.separator;
+            if (!canonicalDirName.endsWith(fileSeparator)) {
+                canonicalDirName += fileSeparator;
             }
             String canonicalFileName = f.getCanonicalPath();
             return canonicalFileName.startsWith(canonicalDirName);

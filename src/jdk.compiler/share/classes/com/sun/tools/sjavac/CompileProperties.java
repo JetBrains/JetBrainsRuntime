@@ -136,8 +136,9 @@ public class CompileProperties implements Transformer {
                         escape((String)p.get(key)) + "\" },\n");
         }
 
+        final char fileSeparator = System.getProperty("file.separator").charAt(0);
         // Create dest file name. It is derived from the properties file name.
-        String destFilename = destRoot.getPath()+File.separator+pkgNameF+File.separator+classname+".java";
+        String destFilename = destRoot.getPath()+fileSeparator+pkgNameF+fileSeparator+classname+".java";
         File dest = new File(destFilename);
 
         // Make sure the dest directories exist.
@@ -162,9 +163,11 @@ public class CompileProperties implements Transformer {
             return true;
         }
 
-        String packageString = "package " + pkgNameF.replace(File.separatorChar,'.') + ";\n\n";
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        final String separator = "" + separatorChar;
+        String packageString = "package " + pkgNameF.replace(separatorChar,'.') + ";\n\n";
 
-        Log.info("Compiling property file "+pkgNameF+File.separator+src.getName());
+        Log.info("Compiling property file "+pkgNameF+separator+src.getName());
         try (Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(dest)))) {
             MessageFormat format = new MessageFormat(FORMAT);
             writer.write(format.format(new Object[] { packageString, classname, superClass, data }));

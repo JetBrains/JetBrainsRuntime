@@ -1962,7 +1962,7 @@ public class XMLEntityManager implements XMLComponent, XMLEntityResolver {
         // record the new value as the global property value
         gUserDir = userDir;
 
-        char separator = java.io.File.separatorChar;
+        char separator = System.getProperty("file.separator").charAt(0);;
         userDir = userDir.replace(separator, '/');
 
         int len = userDir.length(), ch;
@@ -2789,9 +2789,9 @@ public class XMLEntityManager implements XMLComponent, XMLEntityResolver {
      * @return Returns the fixed URI string.
      */
     protected static String fixURI(String str) {
-
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         // handle platform dependent strings
-        str = str.replace(java.io.File.separatorChar, '/');
+        str = str.replace(separatorChar, '/');
 
         // Windows fix
         if (str.length() >= 2) {

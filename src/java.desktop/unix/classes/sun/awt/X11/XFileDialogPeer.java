@@ -392,8 +392,8 @@ class XFileDialogPeer extends XDialogPeer
      * handle the selection event
      */
     void handleSelection(String file) {
-
-        int index = file.lastIndexOf(java.io.File.separatorChar);
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        int index = file.lastIndexOf(separatorChar);
 
         if (index == -1) {
             savedDir = this.dir;

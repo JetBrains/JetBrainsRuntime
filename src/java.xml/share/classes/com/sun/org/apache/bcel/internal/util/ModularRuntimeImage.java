@@ -46,8 +46,9 @@ import java.util.Map;
  */
 public class ModularRuntimeImage implements Closeable {
 
-    static final String MODULES_PATH = File.separator + "modules";
-    static final String PACKAGES_PATH = File.separator + "packages";
+    private static final char fileSeparator = System.getProperty("file.separator").charAt(0);
+    static final String MODULES_PATH = fileSeparator + "modules";
+    static final String PACKAGES_PATH = fileSeparator + "packages";
 
     private final URLClassLoader classLoader;
     private final FileSystem fileSystem;

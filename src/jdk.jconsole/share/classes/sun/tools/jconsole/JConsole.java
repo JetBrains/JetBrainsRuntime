@@ -1046,7 +1046,8 @@ public class JConsole extends JFrame
         } catch (IOException e) {
             name = file.getAbsolutePath();
         }
-        name = name.replace(File.separatorChar, '/');
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        name = name.replace(separatorChar, '/');
         if (!name.startsWith("/")) {
             name = "/" + name;
         }

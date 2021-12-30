@@ -81,14 +81,15 @@ public abstract class FileSystemView {
      * @return the file system view
      */
     public static FileSystemView getFileSystemView() {
-        if(File.separatorChar == '\\') {
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        if(separatorChar == '\\') {
             if(windowsFileSystemView == null) {
                 windowsFileSystemView = new WindowsFileSystemView();
             }
             return windowsFileSystemView;
         }
 
-        if(File.separatorChar == '/') {
+        if(separatorChar == '/') {
             if(unixFileSystemView == null) {
                 unixFileSystemView = new UnixFileSystemView();
             }

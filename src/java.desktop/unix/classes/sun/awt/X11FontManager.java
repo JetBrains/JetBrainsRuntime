@@ -272,6 +272,8 @@ public final class X11FontManager extends FcFontManager {
         }
     }
 
+    private static final char fileSeparator = System.getProperty("file.separator").charAt(0);
+
     /* NOTE: this method needs to be executed in a privileged context.
      * The superclass constructor which is the primary caller of
      * this method executes entirely in such a context. Additionally
@@ -289,7 +291,7 @@ public final class X11FontManager extends FcFontManager {
         if (FontUtilities.debugFonts()) {
             FontUtilities.logInfo("ParseFontDir " + path);
         }
-        File fontsDotDir = new File(path + File.separator + "fonts.dir");
+        File fontsDotDir = new File(path + fileSeparator + "fonts.dir");
         FileReader fr = null;
         try {
             if (fontsDotDir.canRead()) {
@@ -387,7 +389,7 @@ public final class X11FontManager extends FcFontManager {
                                 xFontDirsMap.put(fontID, path);
                                 fullPath = file.getCanonicalPath();
                             } catch (IOException e) {
-                                fullPath = path + File.separator + fileName;
+                                fullPath = path + fileSeparator + fileName;
                             }
                             Vector<String> xVal = xlfdMap.get(fullPath);
                             if (FontUtilities.debugFonts()) {
@@ -677,7 +679,7 @@ public final class X11FontManager extends FcFontManager {
             return;
         }
         if (FontUtilities.isLinux) {
-            fontConfigDirs.add(jreLibDirName+File.separator+"oblique-fonts");
+            fontConfigDirs.add(jreLibDirName+fileSeparator+"oblique-fonts");
         }
         fontdirs = fontConfigDirs.toArray(new String[0]);
     }

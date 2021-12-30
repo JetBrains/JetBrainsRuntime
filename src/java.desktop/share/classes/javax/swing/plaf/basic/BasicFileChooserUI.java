@@ -1065,8 +1065,9 @@ public class BasicFileChooserUI extends FileChooserUI {
             File selectedFile = null;
             File[] selectedFiles = null;
 
+            final char separatorChar = System.getProperty("file.separator").charAt(0);
             // Unix: Resolve '~' to user's home directory
-            if (File.separatorChar == '/') {
+            if (separatorChar == '/') {
                 if (filename.startsWith("~/")) {
                     filename = System.getProperty("user.home") + filename.substring(1);
                 } else if (filename.equals("~")) {
@@ -1192,10 +1193,11 @@ public class BasicFileChooserUI extends FileChooserUI {
         }
     }
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
     private static boolean isGlobPattern(String filename) {
-        return ((File.separatorChar == '\\' && (filename.indexOf('*') >= 0
+        return ((separatorChar == '\\' && (filename.indexOf('*') >= 0
                                                   || filename.indexOf('?') >= 0))
-                || (File.separatorChar == '/' && (filename.indexOf('*') >= 0
+                || (separatorChar == '/' && (filename.indexOf('*') >= 0
                                                   || filename.indexOf('?') >= 0
                                                   || filename.indexOf('[') >= 0)));
     }
@@ -1211,7 +1213,8 @@ public class BasicFileChooserUI extends FileChooserUI {
         public void setPattern(String globPattern) {
             char[] gPat = globPattern.toCharArray();
             char[] rPat = new char[gPat.length * 2];
-            boolean isWin32 = (File.separatorChar == '\\');
+            final char separatorChar = System.getProperty("file.separator").charAt(0);
+            boolean isWin32 = (separatorChar == '\\');
             boolean inBrackets = false;
             int j = 0;
 

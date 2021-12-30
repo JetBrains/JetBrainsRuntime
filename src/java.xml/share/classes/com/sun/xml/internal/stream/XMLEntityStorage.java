@@ -371,6 +371,7 @@ public class XMLEntityStorage {
     private static char gAfterEscaping2[] = new char[128];
     private static char[] gHexChs = {'0', '1', '2', '3', '4', '5', '6', '7',
     '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
     // initialize the above 3 arrays
     static {
         for (int i = 0; i <= 0x1f; i++) {
@@ -424,7 +425,7 @@ public class XMLEntityStorage {
         // record the new value as the global property value
         gUserDir = userDir;
 
-        char separator = java.io.File.separatorChar;
+        char separator = separatorChar;
         userDir = userDir.replace(separator, '/');
 
         int len = userDir.length(), ch;
@@ -581,7 +582,7 @@ public class XMLEntityStorage {
     protected static String fixURI(String str) {
 
         // handle platform dependent strings
-        str = str.replace(java.io.File.separatorChar, '/');
+        str = str.replace(separatorChar, '/');
 
         // Windows fix
         if (str.length() >= 2) {

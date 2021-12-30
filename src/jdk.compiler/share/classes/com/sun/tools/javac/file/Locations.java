@@ -1654,9 +1654,10 @@ public class Locations {
                     p -> Files.exists(p.resolve("module-info.java"));
 
 
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         private boolean isSeparator(char ch) {
             // allow both separators on Windows
-            return (ch == File.separatorChar) || (ch == '/');
+            return (ch == separatorChar) || (ch == '/');
         }
 
         void add(Map<String, List<Path>> map, Path prefix, Path suffix) {

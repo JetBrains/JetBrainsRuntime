@@ -45,6 +45,7 @@ import com.sun.org.apache.xml.internal.serializer.utils.URI.MalformedURIExceptio
  */
 public final class SystemIDResolver
 {
+  private static final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
 
   /**
    * Get an absolute URI from a given relative URI (local path).
@@ -84,7 +85,7 @@ public final class SystemIDResolver
     String urlString;
     if (null != absolutePath)
     {
-      if (absolutePath.startsWith(File.separator))
+      if (absolutePath.startsWith(fileSeparator))
         urlString = "file://" + absolutePath;
       else
         urlString = "file:///" + absolutePath;

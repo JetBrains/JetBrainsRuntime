@@ -96,10 +96,11 @@ public class Package implements Comparable<Package> {
         Assert.check(c != -1);
         Assert.check(m.name().equals(m.name()));
         name = n;
-        dirname = n.replace('.', File.separatorChar);
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        dirname = n.replace('.', separatorChar);
         if (m.name().length() > 0) {
             // There is a module here, prefix the module dir name to the path.
-            dirname = m.dirname()+File.separatorChar+dirname;
+            dirname = m.dirname()+separatorChar+dirname;
         }
     }
 

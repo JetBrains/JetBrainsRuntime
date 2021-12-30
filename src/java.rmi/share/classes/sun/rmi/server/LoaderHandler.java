@@ -1043,6 +1043,8 @@ public final class LoaderHandler {
                                              PermissionCollection perms,
                                              boolean forLoader)
     {
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        final String fileSeparator = "" + separatorChar;
         for (int i = 0; i < urls.length; i++) {
             URL url = urls[i];
             try {
@@ -1062,10 +1064,10 @@ public final class LoaderHandler {
                          * granted.
                          */
                         String path = p.getName();
-                        int endIndex = path.lastIndexOf(File.separatorChar);
+                        int endIndex = path.lastIndexOf(separatorChar);
                         if (endIndex != -1) {
                             path = path.substring(0, endIndex+1);
-                            if (path.endsWith(File.separator)) {
+                            if (path.endsWith(fileSeparator)) {
                                 path += "-";
                             }
                             Permission p2 = new FilePermission(path, "read");

@@ -71,6 +71,7 @@ public class PropertyExpander {
         StringBuilder sb = new StringBuilder(value.length());
         int max = value.length();
         int i = 0;  // index of last character we copied
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
 
     scanner:
         while (p < max) {
@@ -104,7 +105,7 @@ public class PropertyExpander {
                 }
                 String prop = value.substring(p+2, pe);
                 if (prop.equals("/")) {
-                    sb.append(java.io.File.separatorChar);
+                    sb.append(separatorChar);
                 } else {
                     String val = System.getProperty(prop);
                     if (val != null) {

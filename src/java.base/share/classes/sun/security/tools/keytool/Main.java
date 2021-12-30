@@ -866,7 +866,7 @@ public final class Main {
 
         // Set this before inplaceImport check so we can compare name.
         if (ksfname == null) {
-            ksfname = System.getProperty("user.home") + File.separator
+            ksfname = System.getProperty("user.home") + System.getProperty("file.separator").charAt(0)
                     + ".keystore";
         }
 

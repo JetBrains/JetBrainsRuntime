@@ -49,6 +49,7 @@ import java.util.stream.Stream;
  *  deletion without notice.</b>
  */
 public class Util {
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
 
     public static String toFileSystemPath(String pkgId) {
         if (pkgId == null || pkgId.length()==0) return null;
@@ -57,13 +58,13 @@ public class Util {
             // When the module is the default empty module.
             // Do not prepend the module directory, because there is none.
             // Thus :java.foo.bar translates to java/foo/bar (or \)
-            pn = pkgId.substring(1).replace('.',File.separatorChar);
+            pn = pkgId.substring(1).replace('.',separatorChar);
         } else {
             // There is a module. Thus jdk.base:java.foo.bar translates
             // into jdk.base/java/foo/bar
             int cp = pkgId.indexOf(':');
             String mn = pkgId.substring(0,cp);
-            pn = mn+File.separatorChar+pkgId.substring(cp+1).replace('.',File.separatorChar);
+            pn = mn+separatorChar+pkgId.substring(cp+1).replace('.',separatorChar);
         }
         return pn;
     }

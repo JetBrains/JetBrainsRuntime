@@ -400,7 +400,7 @@ public abstract class Toolkit {
     private static void initAssistiveTechnologies() {
 
         // Get accessibility properties
-        final String sep = File.separator;
+        final String sep = "" + System.getProperty("file.separator").charAt(0);;
         final Properties properties = new Properties();
 
 

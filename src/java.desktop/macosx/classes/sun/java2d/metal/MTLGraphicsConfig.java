@@ -75,11 +75,13 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     private static boolean mtlAvailable;
     private static ImageCapabilities imageCaps = new MTLImageCaps();
 
+    private static final char fileSeparator = System.getProperty("file.separator").charAt(0);
+
     @SuppressWarnings("removal")
     private static final String mtlShadersLib = AccessController.doPrivileged(
             (PrivilegedAction<String>) () ->
-                    System.getProperty("java.home", "") + File.separator +
-                            "lib" + File.separator + "shaders.metallib");
+                    System.getProperty("java.home", "") + fileSeparator +
+                            "lib" + fileSeparator + "shaders.metallib");
 
 
     private BufferCapabilities bufferCaps;

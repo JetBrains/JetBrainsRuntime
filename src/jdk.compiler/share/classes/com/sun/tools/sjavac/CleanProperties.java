@@ -77,8 +77,9 @@ public class CleanProperties implements Transformer {
                              boolean incremental,
                              int numCores) {
         boolean rc = true;
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         for (String pkgName : pkgSrcs.keySet()) {
-            String pkgNameF = pkgName.replace('.',File.separatorChar);
+            String pkgNameF = pkgName.replace('.',separatorChar);
             for (URI u : pkgSrcs.get(pkgName)) {
                 File src = new File(u);
                 boolean r = clean(pkgName, pkgNameF, src, new File(destRoot), debugLevel,
@@ -122,7 +123,8 @@ public class CleanProperties implements Transformer {
                 .append("\n");
         }
 
-        String destFilename = destRoot.getPath()+File.separator+pkgNameF+File.separator+src.getName();
+        final char fileSeparator = System.getProperty("file.separator").charAt(0);
+        String destFilename = destRoot.getPath()+fileSeparator+pkgNameF+fileSeparator+src.getName();
         File dest = new File(destFilename);
 
         // Make sure the dest directories exist.
@@ -147,7 +149,7 @@ public class CleanProperties implements Transformer {
             return true;
         }
 
-        Log.info("Cleaning property file "+pkgNameF+File.separator+src.getName());
+        Log.info("Cleaning property file "+pkgNameF+fileSeparator+src.getName());
         try (Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(dest)))) {
             writer.write(data.toString());
         } catch ( IOException e ) {

@@ -68,6 +68,8 @@ public final class Resources {
         }
     }
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
+
     /**
      * Returns a resource name corresponding to the relative file path
      * between {@code dir} and {@code file}. If the file is a directory
@@ -77,7 +79,7 @@ public final class Resources {
     public static String toResourceName(Path dir, Path file) {
         String s = dir.relativize(file)
                       .toString()
-                      .replace(File.separatorChar, '/');
+                      .replace(separatorChar, '/');
         if (!s.isEmpty() && Files.isDirectory(file))
             s += "/";
         return s;
@@ -134,13 +136,13 @@ public final class Resources {
 
         // convert to file path
         Path path;
-        if (File.separatorChar == '/') {
+        if (separatorChar == '/') {
             path = fs.getPath(name);
         } else {
             // not allowed to embed file separators
-            if (name.contains(File.separator))
+            if (name.contains("" + separatorChar))
                 return null;
-            path = fs.getPath(name.replace('/', File.separatorChar));
+            path = fs.getPath(name.replace('/', separatorChar));
         }
 
         // file path not allowed to have root component

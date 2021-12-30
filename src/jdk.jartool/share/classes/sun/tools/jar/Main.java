@@ -248,6 +248,9 @@ public class Main {
 
     private boolean ok;
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
+    private static final String separator = "" + separatorChar;
+
     /**
      * Starts main program with the specified arguments.
      */
@@ -264,7 +267,7 @@ public class Main {
                     // The name of the zip file as it would appear as its own
                     // zip file entry. We use this to make sure that we don't
                     // add the zip file to itself.
-                    zname = fname.replace(File.separatorChar, '/');
+                    zname = fname.replace(separatorChar, '/');
                     if (zname.startsWith("./")) {
                         zname = zname.substring(2);
                     }
@@ -322,7 +325,7 @@ public class Main {
                 }
                 final String tmpbase = (fname == null)
                         ? "tmpjar"
-                        : fname.substring(fname.indexOf(File.separatorChar) + 1);
+                        : fname.substring(fname.indexOf(separatorChar) + 1);
 
                 tmpFile = createTemporaryFile(tmpbase, ".jar");
                 try (OutputStream out = new FileOutputStream(tmpFile)) {
@@ -625,11 +628,11 @@ public class Main {
                         }
                         /* change the directory */
                         String dir = args[++i];
-                        dir = (dir.endsWith(File.separator) ?
-                               dir : (dir + File.separator));
-                        dir = dir.replace(File.separatorChar, '/');
+                        dir = (dir.endsWith(separator) ?
+                               dir : (dir + separator));
+                        dir = dir.replace(separatorChar, '/');
 
-                        boolean hasUNC = (File.separatorChar == '\\'&&  dir.startsWith("//"));
+                        boolean hasUNC = (separatorChar == '\\'&&  dir.startsWith("//"));
                         while (dir.indexOf("//") > -1) {
                             dir = dir.replace("//", "/");
                         }
@@ -730,7 +733,7 @@ public class Main {
     }
 
     private String toEntryName(String name, Set<String> cpaths, boolean isDir) {
-        name = name.replace(File.separatorChar, '/');
+        name = name.replace(separatorChar, '/');
         if (isDir) {
             name = name.endsWith("/") ? name : name + "/";
         }
@@ -1114,7 +1117,7 @@ public class Main {
             } else {
                 i += 3; // strip any dot-dot components
             }
-            if (File.separatorChar == '\\') {
+            if (separatorChar == '\\') {
                 // the spec requests no drive letter. skip if
                 // the entry name has one.
                 while (i < len) {
@@ -1330,7 +1333,7 @@ public class Main {
             String[] files = filesMap.get(version);
             if (files != null) {
                 for (int i = 0; i < files.length; i++) {
-                    files[i] = files[i].replace(File.separatorChar, '/');
+                    files[i] = files[i].replace(separatorChar, '/');
                 }
             }
         });
@@ -1348,9 +1351,9 @@ public class Main {
         for (ZipEntry ze : zes) {
             long lastModified = ze.getTime();
             if (lastModified != -1) {
-                String name = safeName(ze.getName().replace(File.separatorChar, '/'));
+                String name = safeName(ze.getName().replace(separatorChar, '/'));
                 if (name.length() != 0) {
-                    File f = new File(name.replace('/', File.separatorChar));
+                    File f = new File(name.replace('/', separatorChar));
                     f.setLastModified(lastModified);
                 }
             }
@@ -1431,11 +1434,11 @@ public class Main {
         // name. It might cause problem on Windows platform as it skips
         // our "safe" check for leading slahs and dot-dot. So replace them
         // with '/'.
-        String name = safeName(e.getName().replace(File.separatorChar, '/'));
+        String name = safeName(e.getName().replace(separatorChar, '/'));
         if (name.length() == 0) {
             return rc;    // leading '/' or 'dot-dot' only path
         }
-        File f = new File(name.replace('/', File.separatorChar));
+        File f = new File(name.replace('/', separatorChar));
         if (e.isDirectory()) {
             if (f.exists()) {
                 if (!f.isDirectory()) {
@@ -1557,7 +1560,7 @@ public class Main {
         // class path attribute will give us jar file name with
         // '/' as separators, so we need to change them to the
         // appropriate one before we open the jar file.
-        JarFile rf = new JarFile(jar.replace('/', File.separatorChar));
+        JarFile rf = new JarFile(jar.replace('/', separatorChar));
 
         if (rf != null) {
             Manifest man = rf.getManifest();

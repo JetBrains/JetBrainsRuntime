@@ -249,6 +249,7 @@ class MLetParser {
      * Parse the document pointed by the URL urlname
      */
     public List<MLetContent> parseURL(String urlname) throws IOException {
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         // Parse the document
         //
         URL url;
@@ -256,13 +257,13 @@ class MLetParser {
             String userDir = System.getProperty("user.dir");
             String prot;
             if (userDir.charAt(0) == '/' ||
-                userDir.charAt(0) == File.separatorChar) {
+                userDir.charAt(0) == separatorChar) {
                 prot = "file:";
             } else {
                 prot = "file:/";
             }
             url =
-                new URL(prot + userDir.replace(File.separatorChar, '/') + "/");
+                new URL(prot + userDir.replace(separatorChar, '/') + "/");
             url = new URL(url, urlname);
         } else {
             url = new URL(urlname);

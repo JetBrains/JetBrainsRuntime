@@ -240,8 +240,9 @@ public final class Currency implements Serializable {
                 // look for the properties file for overrides
                 String propsFile = System.getProperty("java.util.currency.data");
                 if (propsFile == null) {
-                    propsFile = StaticProperty.javaHome() + File.separator + "lib" +
-                        File.separator + "currency.properties";
+                    final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
+                    propsFile = StaticProperty.javaHome() + fileSeparator + "lib" +
+                            fileSeparator + "currency.properties";
                 }
                 try {
                     File propFile = new File(propsFile);

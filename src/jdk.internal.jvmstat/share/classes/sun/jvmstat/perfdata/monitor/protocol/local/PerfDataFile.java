@@ -84,6 +84,8 @@ public class PerfDataFile {
      */
     private static final PlatformSupport platSupport = PlatformSupport.getInstance();
 
+    private static final char fileSeparator = System.getProperty("file.separator").charAt(0);
+
     /**
      * Get a File object for the instrumentation backing store file
      * for the JVM identified by the given local Vm Identifier.
@@ -143,11 +145,11 @@ public class PerfDataFile {
                      * is a 1.4.2 hsperfdata_<user> directory. Check for
                      * file named <lvmid> in that directory
                      */
-                    String name = f.getAbsolutePath() + File.separator + lvmid;
+                    String name = f.getAbsolutePath() + fileSeparator + lvmid;
                     candidate = new File(name);
                     // Try NameSpace Id if Host Id doesn't exist.
                     if (!candidate.exists()) {
-                        name = f.getAbsolutePath() + File.separator +
+                        name = f.getAbsolutePath() + fileSeparator +
                                platSupport.getNamespaceVmId(lvmid);
                         candidate = new File(name);
                     }
@@ -307,7 +309,7 @@ public class PerfDataFile {
      * @return String - the name of the temporary directory.
      */
     public static String getTempDirectory(String user) {
-        return getTempDirectory() + dirNamePrefix + user + File.separator;
+        return getTempDirectory() + dirNamePrefix + user + fileSeparator;
     }
 
     /**
@@ -326,7 +328,7 @@ public class PerfDataFile {
         }
 
         List<String> nameList = list.stream()
-            .map(name -> name + dirNamePrefix + userName + File.separator)
+            .map(name -> name + dirNamePrefix + userName + fileSeparator)
             .collect(Collectors.toList());
 
         return nameList;

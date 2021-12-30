@@ -179,9 +179,10 @@ class SchemaFactoryFinder  {
             }
         }
 
+        final char fileSeparator = System.getProperty("file.separator").charAt(0);
         String javah = SecuritySupport.getSystemProperty( "java.home" );
-        String configFile = javah + File.separator +
-        "conf" + File.separator + "jaxp.properties";
+        String configFile = javah + fileSeparator +
+        "conf" + fileSeparator + "jaxp.properties";
 
 
         // try to read from $java.home/conf/jaxp.properties

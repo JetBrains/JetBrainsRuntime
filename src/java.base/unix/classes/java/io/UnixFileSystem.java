@@ -220,7 +220,7 @@ class UnixFileSystem extends FileSystem {
     // (expensive) canonicalization routine to be called.
     static String parentOrNull(String path) {
         if (path == null) return null;
-        char sep = File.separatorChar;
+        char sep = System.getProperty("file.separator").charAt(0);
         int last = path.length() - 1;
         int idx = last;
         int adjacentDots = 0;

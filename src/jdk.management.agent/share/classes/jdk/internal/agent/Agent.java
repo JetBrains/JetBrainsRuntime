@@ -549,10 +549,11 @@ public class Agent {
             if (home == null) {
                 throw new Error("Can't find java.home ??");
             }
+            final char fileSeparator = System.getProperty("file.separator").charAt(0);
             StringBuilder defaultFileName = new StringBuilder(home);
-            defaultFileName.append(File.separator).append("conf");
-            defaultFileName.append(File.separator).append("management");
-            defaultFileName.append(File.separator).append("management.properties");
+            defaultFileName.append(fileSeparator).append("conf");
+            defaultFileName.append(fileSeparator).append("management");
+            defaultFileName.append(fileSeparator).append("management.properties");
             // Set file name
             fname = defaultFileName.toString();
         }

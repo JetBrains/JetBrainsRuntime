@@ -396,9 +396,10 @@ public abstract class SynthFileChooserUI extends BasicFileChooserUI implements
         }
     }
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
     private static boolean isGlobPattern(String fileName) {
-        return ((File.separatorChar == '\\' && fileName.indexOf('*') >= 0)
-                || (File.separatorChar == '/' && (fileName.indexOf('*') >= 0
+        return ((separatorChar == '\\' && fileName.indexOf('*') >= 0)
+                || (separatorChar == '/' && (fileName.indexOf('*') >= 0
                                                   || fileName.indexOf('?') >= 0
                                                   || fileName.indexOf('[') >= 0)));
     }
@@ -414,7 +415,7 @@ public abstract class SynthFileChooserUI extends BasicFileChooserUI implements
         public void setPattern(String globPattern) {
             char[] gPat = globPattern.toCharArray();
             char[] rPat = new char[gPat.length * 2];
-            boolean isWin32 = (File.separatorChar == '\\');
+            boolean isWin32 = (separatorChar == '\\');
             boolean inBrackets = false;
             int j = 0;
 

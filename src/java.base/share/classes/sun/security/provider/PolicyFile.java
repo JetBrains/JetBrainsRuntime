@@ -440,11 +440,12 @@ public class PolicyFile extends java.security.Policy {
                 int n = 1;
                 String policy_uri;
 
+                final char separatorChar = System.getProperty("file.separator").charAt(0);
                 while ((policy_uri = Security.getProperty(urlname+n)) != null) {
                     try {
                         URL policy_url = null;
                         String expanded_uri = PropertyExpander.expand
-                                (policy_uri).replace(File.separatorChar, '/');
+                                (policy_uri).replace(separatorChar, '/');
 
                         if (policy_uri.startsWith("file:${java.home}/") ||
                             policy_uri.startsWith("file:${user.home}/")) {
@@ -1618,7 +1619,8 @@ public class PolicyFile extends java.security.Policy {
                     host.equals("~") || host.equalsIgnoreCase("localhost"));
 
                 if (isLocalFile) {
-                    path = u.getFile().replace('/', File.separatorChar);
+                    final char separatorChar = System.getProperty("file.separator").charAt(0);
+                    path = u.getFile().replace('/', separatorChar);
                     path = ParseUtil.decode(path);
                 }
             }

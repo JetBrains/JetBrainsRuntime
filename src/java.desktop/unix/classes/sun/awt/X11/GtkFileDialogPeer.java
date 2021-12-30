@@ -64,6 +64,8 @@ final class GtkFileDialogPeer extends XDialogPeer implements FileDialogPeer {
     @Override
     public native void setBounds(int x, int y, int width, int height, int op);
 
+    final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
+
     /**
      * Called exclusively by the native C code.
      */
@@ -79,8 +81,8 @@ final class GtkFileDialogPeer extends XDialogPeer implements FileDialogPeer {
             // Fix 6987233: add the trailing slash if it's absent
             String with_separator = directory;
             if (directory != null) {
-                with_separator = directory.endsWith(File.separator) ?
-                        directory : (directory + File.separator);
+                with_separator = directory.endsWith(fileSeparator) ?
+                        directory : (directory + fileSeparator);
             }
             accessor.setDirectory(fd, with_separator);
             accessor.setFile(fd, filenames[0]);
@@ -181,8 +183,8 @@ final class GtkFileDialogPeer extends XDialogPeer implements FileDialogPeer {
                 && dirname != null
                 && file.getParent() == null) {
                 // File path for gtk_file_chooser_set_filename.
-                filename = dirname + (dirname.endsWith(File.separator) ? "" :
-                                              File.separator) + filename;
+                filename = dirname + (dirname.endsWith(fileSeparator) ? "" :
+                                              fileSeparator) + filename;
             }
             if (fd.getMode() == FileDialog.SAVE && file.getParent() != null) {
                 // Filename for gtk_file_chooser_set_current_name.

@@ -202,7 +202,8 @@ public class SunCommandLineLauncher extends AbstractLauncher {
 
         try {
             if (home.length() > 0) {
-                exePath = home + File.separator + "bin" + File.separator + exe;
+                final char fileSeparator = System.getProperty("file.separator").charAt(0);
+                exePath = home + fileSeparator + "bin" + fileSeparator + exe;
             } else {
                 exePath = exe;
             }

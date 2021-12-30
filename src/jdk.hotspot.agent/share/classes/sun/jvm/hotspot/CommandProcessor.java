@@ -368,6 +368,8 @@ public class CommandProcessor {
         return VM.getVM().getDebugger().parseAddress(addr);
     }
 
+    final char separatorChar = System.getProperty("file.separator").charAt(0);
+
     private final Command[] commandList = {
         new Command("reattach", true) {
             public void doit(Tokens t) {
@@ -1735,15 +1737,15 @@ public class CommandProcessor {
                 } else {
                     buf.append('.');
                 }
-                buf.append(File.separatorChar);
-                buf.append(ik.getName().asString().replace('/', File.separatorChar));
+                buf.append(separatorChar);
+                buf.append(ik.getName().asString().replace('/', separatorChar));
                 buf.append(".class");
                 String fileName = buf.toString();
                 File file = new File(fileName);
 
                 /* Dump the class file. */
                 try {
-                    int index = fileName.lastIndexOf(File.separatorChar);
+                    int index = fileName.lastIndexOf(separatorChar);
                     File dir = new File(fileName.substring(0, index));
                     dir.mkdirs();
                     try (FileOutputStream fos = new FileOutputStream(file)) {

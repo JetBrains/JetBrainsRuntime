@@ -205,10 +205,11 @@ public class KeyStoreLoginModule implements LoginModule {
     private void processOptions() {
         keyStoreURL = (String) options.get("keyStoreURL");
         if (keyStoreURL == null) {
+            final char separatorChar = System.getProperty("file.separator").charAt(0);
             keyStoreURL =
                 "file:" +
                 System.getProperty("user.home").replace(
-                    File.separatorChar, '/') +
+                    separatorChar, '/') +
                 '/' + ".keystore";
         } else if (NONE.equals(keyStoreURL)) {
             nullStream = true;

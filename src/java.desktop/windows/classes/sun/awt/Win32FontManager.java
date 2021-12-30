@@ -214,6 +214,7 @@ public final class Win32FontManager extends SunFontManager {
 
     @Override
     protected String[] getDefaultPlatformFont() {
+        final char fileSeparator = System.getProperty("file.separator").charAt(0);
         String[] info = new String[2];
         info[0] = "Arial";
         info[1] = "c:\\windows\\fonts";
@@ -224,7 +225,7 @@ public final class Win32FontManager extends SunFontManager {
                         public Object run() {
                             for (int i=0; i<dirs.length; i++) {
                                 String path =
-                                    dirs[i] + File.separator + "arial.ttf";
+                                    dirs[i] + fileSeparator + "arial.ttf";
                                 File file = new File(path);
                                 if (file.exists()) {
                                     return dirs[i];
@@ -239,7 +240,7 @@ public final class Win32FontManager extends SunFontManager {
         } else {
             info[1] = dirs[0];
         }
-        info[1] = info[1] + File.separator + "arial.ttf";
+        info[1] = info[1] + fileSeparator + "arial.ttf";
         return info;
     }
 

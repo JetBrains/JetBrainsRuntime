@@ -113,7 +113,7 @@ public class MacDmgBundler extends MacBaseInstallerBundler {
         }
         Path rootPath = Path.of(imageDir.toString()).toRealPath();
         Path volumePath = rootPath.resolve(APP_NAME.fetchFrom(params));
-        String volumeUrl = volumePath.toUri().toString() + File.separator;
+        String volumeUrl = volumePath.toUri().toString() + System.getProperty("file.separator").charAt(0);
 
         // Provide full path to backround image, so we can find it.
         Path bgFile = Path.of(rootPath.toString(), APP_NAME.fetchFrom(params),

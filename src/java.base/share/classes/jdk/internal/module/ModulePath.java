@@ -470,9 +470,10 @@ public class ModulePath implements ModuleFinder {
             }
         }
 
+        final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
         // Derive the version, and the module name if needed, from JAR file name
         String fn = jf.getName();
-        int i = fn.lastIndexOf(File.separator);
+        int i = fn.lastIndexOf(fileSeparator);
         if (i != -1)
             fn = fn.substring(i + 1);
 
@@ -752,7 +753,8 @@ public class ModulePath implements ModuleFinder {
             return Optional.empty();
         }
 
-        String pn = parent.toString().replace(File.separatorChar, '.');
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        String pn = parent.toString().replace(separatorChar, '.');
         if (Checks.isPackageName(pn)) {
             return Optional.of(pn);
         } else {

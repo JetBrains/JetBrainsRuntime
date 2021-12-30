@@ -184,12 +184,13 @@ public class Main implements DiagnosticListener<JavaFileObject> {
      * @throws IOException if an I/O error occurs
      */
     boolean doFileNames(Stream<String> filenames) throws IOException {
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         return doClassNames(
             filenames.filter(name -> name.endsWith(".class"))
                      .filter(name -> !name.endsWith("package-info.class"))
                      .filter(name -> !name.endsWith("module-info.class"))
                      .map(s -> s.replaceAll("\\.class$", ""))
-                     .map(s -> s.replace(File.separatorChar, '.'))
+                     .map(s -> s.replace(separatorChar, '.'))
                      .toList());
     }
 

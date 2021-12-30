@@ -106,7 +106,7 @@ final class TzdbZoneRulesProvider extends ZoneRulesProvider {
      */
     public TzdbZoneRulesProvider() {
         try {
-            String libDir = StaticProperty.javaHome() + File.separator + "lib";
+            String libDir = StaticProperty.javaHome() + System.getProperty("file.separator").charAt(0) + "lib";
             try (DataInputStream dis = new DataInputStream(
                      new BufferedInputStream(new FileInputStream(
                          new File(libDir, "tzdb.dat"))))) {

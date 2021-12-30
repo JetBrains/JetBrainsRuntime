@@ -292,7 +292,7 @@ public class UIManager implements Serializable
      * if <code>java.home</code> isn't defined.
      */
     private static String makeSwingPropertiesFilename() {
-        String sep = File.separator;
+        String sep = "" + System.getProperty("file.separator").charAt(0);
         // No need to wrap this in a doPrivileged as it's called from
         // a doPrivileged.
         String javaHome = System.getProperty("java.home");

@@ -217,7 +217,7 @@ public final class Security {
     private static File securityPropFile(String filename) {
         // maybe check for a system property which will specify where to
         // look. Someday.
-        String sep = File.separator;
+        String sep = "" + System.getProperty("file.separator").charAt(0);
         return new File(StaticProperty.javaHome() + sep + "conf" + sep +
                         "security" + sep + filename);
     }

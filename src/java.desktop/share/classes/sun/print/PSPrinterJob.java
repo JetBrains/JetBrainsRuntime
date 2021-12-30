@@ -365,25 +365,25 @@ public class PSPrinterJob extends RasterPrinterJob {
         if (jhome != null){
             String ulocale = SunToolkit.getStartupLocale().getLanguage();
             try {
-
-                File f = new File(jhome + File.separator +
-                                  "lib" + File.separator +
+                final char fileSeparator = System.getProperty("file.separator").charAt(0);
+                File f = new File(jhome + fileSeparator +
+                                  "lib" + fileSeparator +
                                   "psfontj2d.properties." + ulocale);
 
                 if (!f.canRead()){
 
-                    f = new File(jhome + File.separator +
-                                      "lib" + File.separator +
+                    f = new File(jhome + fileSeparator +
+                                      "lib" + fileSeparator +
                                       "psfont.properties." + ulocale);
                     if (!f.canRead()){
 
-                        f = new File(jhome + File.separator + "lib" +
-                                     File.separator + "psfontj2d.properties");
+                        f = new File(jhome + fileSeparator + "lib" +
+                                     fileSeparator + "psfontj2d.properties");
 
                         if (!f.canRead()){
 
-                            f = new File(jhome + File.separator + "lib" +
-                                         File.separator + "psfont.properties");
+                            f = new File(jhome + fileSeparator + "lib" +
+                                         fileSeparator + "psfont.properties");
 
                             if (!f.canRead()){
                                 return (Properties)null;

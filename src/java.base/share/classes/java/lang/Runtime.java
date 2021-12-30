@@ -811,7 +811,8 @@ public class Runtime {
         if (security != null) {
             security.checkLink(libname);
         }
-        if (libname.indexOf((int)File.separatorChar) != -1) {
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        if (libname.indexOf((int)separatorChar) != -1) {
             throw new UnsatisfiedLinkError(
                 "Directory separator should not appear in library name: " + libname);
         }

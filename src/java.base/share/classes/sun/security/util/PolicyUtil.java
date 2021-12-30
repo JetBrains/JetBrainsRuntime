@@ -55,7 +55,8 @@ public class PolicyUtil {
      */
     public static InputStream getInputStream(URL url) throws IOException {
         if ("file".equals(url.getProtocol())) {
-            String path = url.getFile().replace('/', File.separatorChar);
+            final char separatorChar = System.getProperty("file.separator").charAt(0);
+            String path = url.getFile().replace('/', separatorChar);
             path = ParseUtil.decode(path);
             return new FileInputStream(path);
         } else {

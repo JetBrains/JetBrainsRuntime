@@ -73,13 +73,14 @@ public class CopyFile implements Transformer {
         String dest_filename;
         File dest;
 
+        final char fileSeparator = System.getProperty("file.separator").charAt(0);
         for (String pkgName : pkgSrcs.keySet()) {
             String pkgNameF = Util.toFileSystemPath(pkgName);
             for (URI u : pkgSrcs.get(pkgName)) {
                 File src = new File(u);
                 File destDir;
-                destDir = new File(destRoot.getPath()+File.separator+pkgNameF);
-                dest_filename = destRoot.getPath()+File.separator+pkgNameF+File.separator+src.getName();
+                destDir = new File(destRoot.getPath()+fileSeparator+pkgNameF);
+                dest_filename = destRoot.getPath()+fileSeparator+pkgNameF+fileSeparator+src.getName();
                 dest = new File(dest_filename);
 
                 if (!destDir.isDirectory()) {
@@ -102,7 +103,7 @@ public class CopyFile implements Transformer {
                     continue;
                 }
 
-                Log.info("Copying "+pkgNameF+File.separator+src.getName());
+                Log.info("Copying "+pkgNameF+fileSeparator+src.getName());
 
                 try {
                     Files.copy(src.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);

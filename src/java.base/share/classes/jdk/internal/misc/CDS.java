@@ -277,8 +277,9 @@ public class CDS {
             dumpClassList(listFileName);
             String jdkHome = System.getProperty("java.home");
             String classPath = System.getProperty("java.class.path");
+            final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
             List<String> cmds = new ArrayList<String>();
-            cmds.add(jdkHome + File.separator + "bin" + File.separator + "java"); // java
+            cmds.add(jdkHome + fileSeparator + "bin" + fileSeparator + "java"); // java
             cmds.add("-cp");
             cmds.add(classPath);
             cmds.add("-Xlog:cds");

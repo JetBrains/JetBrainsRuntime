@@ -363,6 +363,9 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         initStatic();
     }
 
+    private static final char fileSeparator = System.getProperty("file.separator").charAt(0);
+
+
     @SuppressWarnings("removal")
     private static void initStatic() {
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
@@ -380,8 +383,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                 }
 
                 noType1Font = "true".equals(System.getProperty("sun.java2d.noType1Font"));
-                jreLibDirName = System.getProperty("java.home","") + File.separator + "lib";
-                jreFontDirName = jreLibDirName + File.separator + "fonts";
+                jreLibDirName = System.getProperty("java.home","") + fileSeparator + "lib";
+                jreFontDirName = jreLibDirName + fileSeparator + "fonts";
 
                 maxSoftRefCnt = Integer.getInteger("sun.java2d.font.maxSoftRefs", 10);
                 return null;
@@ -412,7 +415,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
             public Void run() {
                 File badFontFile =
-                    new File(jreFontDirName + File.separator + "badfonts.txt");
+                    new File(jreFontDirName + fileSeparator + "badfonts.txt");
                 if (badFontFile.exists()) {
                     badFonts = new ArrayList<>();
                     try (FileInputStream fis = new FileInputStream(badFontFile);
@@ -1852,14 +1855,14 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         if (f.isAbsolute()) {
             return s;
         } else if (pathDirs.length==1) {
-            return pathDirs[0] + File.separator + s;
+            return pathDirs[0] + fileSeparator + s;
         } else {
             @SuppressWarnings("removal")
             String path = AccessController.doPrivileged(
                  new PrivilegedAction<String>() {
                      public String run() {
                          for (int p = 0; p < pathDirs.length; p++) {
-                             File f = new File(pathDirs[p] +File.separator+ s);
+                             File f = new File(pathDirs[p] +fileSeparator+ s);
                              if (f.exists()) {
                                  return f.getAbsolutePath();
                              }
@@ -2999,7 +3002,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                 }
             }
             if (fullName == null) {
-                fullName = dirName + File.separator + ls[i];
+                fullName = dirName + fileSeparator + ls[i];
             }
 
             // REMIND: case compare depends on platform

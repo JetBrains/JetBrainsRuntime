@@ -71,7 +71,8 @@ public final class LazyCodeSourcePermissionCollection
                             // for directories then need recursive access
                             if (p instanceof FilePermission) {
                                 String path = p.getName();
-                                if (path.endsWith(File.separator)) {
+                                final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
+                                if (path.endsWith(fileSeparator)) {
                                     path += "-";
                                     p = new FilePermission(path,
                                             SecurityConstants.FILE_READ_ACTION);

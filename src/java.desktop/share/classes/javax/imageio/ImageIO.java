@@ -204,12 +204,13 @@ public final class ImageIO {
                         }
                     }
 
+                    final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
                     // we have to check whether we can read, write,
                     // and delete cache files.
                     // So, compose cache file path and check it.
                     String filepath = cachepath;
-                    if (!filepath.endsWith(File.separator)) {
-                        filepath += File.separator;
+                    if (!filepath.endsWith(fileSeparator)) {
+                        filepath += fileSeparator;
                     }
                     filepath += "*";
 

@@ -669,7 +669,7 @@ public final class ConnectorBootstrap {
      * @return ${JRE}/conf/management/${basename}
      **/
     private static String getDefaultFileName(String basename) {
-        final String fileSeparator = File.separator;
+        final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
         return System.getProperty("java.home") + fileSeparator + "conf" +
                 fileSeparator + "management" + fileSeparator +
                 basename;

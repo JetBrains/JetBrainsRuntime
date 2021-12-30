@@ -123,13 +123,15 @@ class JmodOutputStream extends OutputStream implements AutoCloseable {
         zos.closeEntry();
     }
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
+
     private ZipEntry newEntry(Section section, String path) throws IOException {
         if (contains(section, path)) {
             throw new IOException("duplicate entry: " + path + " in section " + section);
         }
         String prefix = section.jmodDir();
         String name = Paths.get(prefix, path).toString()
-                           .replace(File.separatorChar, '/');
+                           .replace(separatorChar, '/');
         entries.get(section).add(path);
         ZipEntry zipEntry = new ZipEntry(name);
         if (date != null) {

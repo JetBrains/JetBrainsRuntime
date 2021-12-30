@@ -686,12 +686,14 @@ public final class XSLTC {
         return _className;
     }
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
+
     /**
      * Convert for Java class name of local system file name.
      * (Replace '.' with '/' on UNIX and replace '.' by '\' on Windows/DOS.)
      */
     private String classFileName(final String className) {
-        return className.replace('.', File.separatorChar) + ".class";
+        return className.replace('.', separatorChar) + ".class";
     }
 
     /**
@@ -917,7 +919,7 @@ public final class XSLTC {
      * File separators are converted to forward slashes for ZIP files.
      */
     private String entryName(File f) throws IOException {
-        return f.getName().replace(File.separatorChar, '/');
+        return f.getName().replace(separatorChar, '/');
     }
 
     /**

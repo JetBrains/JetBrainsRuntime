@@ -173,6 +173,8 @@ public abstract class FontConfiguration {
         return exists.booleanValue();
     }
 
+    private static final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
+
     private void findFontConfigFile() {
 
         foundOsSpecificFile = true; // default assumption.
@@ -180,10 +182,10 @@ public abstract class FontConfiguration {
         if (javaHome == null) {
             throw new Error("java.home property not set");
         }
-        javaLib = javaHome + File.separator + "lib";
+        javaLib = javaHome + fileSeparator + "lib";
         String javaConfFonts = javaHome +
-                               File.separator + "conf" +
-                               File.separator + "fonts";
+                               fileSeparator + "conf" +
+                               fileSeparator + "fonts";
         String userConfigFile = System.getProperty("sun.awt.fontconfig");
         if (userConfigFile != null) {
             fontConfigFile = new File(userConfigFile);
@@ -228,8 +230,8 @@ public abstract class FontConfiguration {
     }
 
     protected void getInstalledFallbackFonts(String javaLib) {
-        String fallbackDirName = javaLib + File.separator +
-            "fonts" + File.separator + "fallback";
+        String fallbackDirName = javaLib + fileSeparator +
+            "fonts" + fileSeparator + "fallback";
 
         File fallbackDir = new File(fallbackDirName);
         if (fallbackDir.exists() && fallbackDir.isDirectory()) {
@@ -244,11 +246,11 @@ public abstract class FontConfiguration {
             installedFallbackFontFiles = new String[len];
             for (int i=0; i<numTTFs; i++) {
                 installedFallbackFontFiles[i] =
-                    fallbackDir + File.separator + ttfs[i];
+                    fallbackDir + fileSeparator + ttfs[i];
             }
             for (int i=0; i<numT1s; i++) {
                 installedFallbackFontFiles[i+numTTFs] =
-                    fallbackDir + File.separator + t1s[i];
+                    fallbackDir + fileSeparator + t1s[i];
             }
             fontManager.registerFontsInDir(fallbackDirName);
         }
@@ -284,7 +286,7 @@ public abstract class FontConfiguration {
         if (!(new File(dir)).exists()) {
             return null;
         }
-        String baseName = dir + File.separator + "fontconfig";
+        String baseName = dir + fileSeparator + "fontconfig";
         File configFile;
         String osMajorVersion = null;
         if (osVersion != null && osName != null) {

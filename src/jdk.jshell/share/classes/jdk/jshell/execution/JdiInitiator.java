@@ -156,12 +156,13 @@ public class JdiInitiator {
             String addr = listener.startListening(connectorArgs);
             debug("Listening at address: " + addr);
 
+            final char fileSeparator = System.getProperty("file.separator").charAt(0);
             // Launch the RemoteAgent requesting a connection on that address
             String javaHome = System.getProperty("java.home");
             List<String> args = new ArrayList<>();
             args.add(javaHome == null
                     ? "java"
-                    : javaHome + File.separator + "bin" + File.separator + "java");
+                    : javaHome + fileSeparator + "bin" + fileSeparator + "java");
             args.add("-agentlib:jdwp=transport=" + connector.transport().name() +
                     ",address=" + addr);
             args.addAll(remoteVMOptions);

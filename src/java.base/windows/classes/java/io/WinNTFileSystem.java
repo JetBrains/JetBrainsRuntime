@@ -393,6 +393,7 @@ class WinNTFileSystem extends FileSystem {
     private final ExpiringCache cache;
     private final ExpiringCache prefixCache;
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
     @Override
     public String canonicalize(String path) throws IOException {
         // If path is a drive letter only then skip canonicalization
@@ -433,7 +434,7 @@ class WinNTFileSystem extends FileSystem {
                              */
                             String filename = path.substring(1 + dir.length());
                             res = canonicalizeWithPrefix(resDir, filename);
-                            cache.put(dir + File.separatorChar + filename, res);
+                            cache.put(dir + separatorChar + filename, res);
                         }
                     }
                 }
@@ -462,7 +463,7 @@ class WinNTFileSystem extends FileSystem {
             String filename) throws IOException
     {
         return canonicalizeWithPrefix0(canonicalPrefix,
-                canonicalPrefix + File.separatorChar + filename);
+                canonicalPrefix + separatorChar + filename);
     }
 
     // Run the canonicalization operation assuming that the prefix
@@ -481,7 +482,7 @@ class WinNTFileSystem extends FileSystem {
     // (expensive) canonicalization routine to be called.
     private static String parentOrNull(String path) {
         if (path == null) return null;
-        char sep = File.separatorChar;
+        char sep = separatorChar;
         char altSep = '/';
         int last = path.length() - 1;
         int idx = last;

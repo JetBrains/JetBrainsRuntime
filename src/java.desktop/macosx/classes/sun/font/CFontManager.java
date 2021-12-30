@@ -147,6 +147,8 @@ public final class CFontManager extends SunFontManager {
         }
     }
 
+    private static final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
+
     @Override
     protected void registerJREFonts() {
         @SuppressWarnings("removal")
@@ -179,7 +181,7 @@ public final class CFontManager extends SunFontManager {
                     }
                 }
                 if (loadFont) {
-                    String fontPath = jreFontDirName + File.separator + f;
+                    String fontPath = jreFontDirName + fileSeparator + f;
                     loadNativeDirFonts(fontPath);
                     if (logger != null && fi != null) {
                         String verStr = getNativeFontVersion(fi.getPsName());
@@ -202,7 +204,7 @@ public final class CFontManager extends SunFontManager {
            return;
         } else {
             for (String f : files) {
-                loadNativeDirFonts(dirName+File.separator+f);
+                loadNativeDirFonts(dirName+fileSeparator+f);
             }
         }
         super.registerFontsInDir(dirName, useJavaRasterizer, fontRank, defer, resolveSymLinks);

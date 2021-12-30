@@ -108,12 +108,13 @@ public class FileLoginModule implements LoginModule {
 
     private static final String PASSWORD_FILE_NAME = "jmxremote.password";
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
     // Location of the default password file
     @SuppressWarnings("removal")
     private static final String DEFAULT_PASSWORD_FILE_NAME =
         AccessController.doPrivileged(new GetPropertyAction("java.home")) +
-        File.separatorChar + "conf" +
-        File.separatorChar + "management" + File.separatorChar +
+        separatorChar + "conf" +
+        separatorChar + "management" + separatorChar +
         PASSWORD_FILE_NAME;
 
     // Key to retrieve the stored username

@@ -237,7 +237,8 @@ public class SynthFileChooserUIImpl extends SynthFileChooserUI {
         JPopupMenu contextMenu = filePane.getComponentPopupMenu();
         if (contextMenu != null) {
             contextMenu.insert(getChangeToParentDirectoryAction(), 0);
-            if (File.separatorChar == '/') {
+            final char separatorChar = System.getProperty("file.separator").charAt(0);
+            if (separatorChar == '/') {
                 contextMenu.insert(getGoHomeAction(), 1);
             }
         }

@@ -1579,6 +1579,8 @@ public class FilePane extends JPanel implements PropertyChangeListener {
     @SuppressWarnings("serial") // JDK-implementation class
     protected class FileRenderer extends DefaultListCellRenderer  {
 
+        private static final char fileSeparator = System.getProperty("file.separator").charAt(0);
+
         public Component getListCellRendererComponent(JList<?> list, Object value,
                                                       int index, boolean isSelected,
                                                       boolean cellHasFocus) {
@@ -1598,7 +1600,7 @@ public class FilePane extends JPanel implements PropertyChangeListener {
                 setIcon(icon);
             } else {
                 if (getFileChooser().getFileSystemView().isTraversable(file)) {
-                    setText(fileName+File.separator);
+                    setText(fileName+fileSeparator);
                 }
             }
 

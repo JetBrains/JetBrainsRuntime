@@ -55,11 +55,12 @@ class SDE {
                 if (sourcePath == null) {
                     sourcePath = refType.baseSourceDir() + sourceName;
                 } else {
+                    final char separatorChar = System.getProperty("file.separator").charAt(0);
                     StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < sourcePath.length(); ++i) {
                         char ch = sourcePath.charAt(i);
                         if (ch == '/') {
-                            sb.append(File.separatorChar);
+                            sb.append(separatorChar);
                         } else {
                             sb.append(ch);
                         }

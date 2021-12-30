@@ -150,8 +150,9 @@ public class DirArchive implements Archive {
         // NOOP
     }
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
     private static String getPathName(Path path) {
-        return path.toString().replace(File.separatorChar, '/');
+        return path.toString().replace(separatorChar, '/');
     }
 
     @Override

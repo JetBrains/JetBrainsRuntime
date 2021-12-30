@@ -162,9 +162,11 @@ final class WFileDialogPeer extends WWindowPeer implements FileDialogPeer {
         }
             jFile = wFiles[1]; // choose any file
         } else {
-            int index = wFiles[0].lastIndexOf(java.io.File.separatorChar);
+            final char separatorChar = System.getProperty("file.separator").charAt(0);
+            final String separator = "" + separatorChar;
+            int index = wFiles[0].lastIndexOf(separatorChar);
             if (index == -1) {
-                jDirectory = "."+java.io.File.separator;
+                jDirectory = "."+separator;
                 jFile = wFiles[0];
             } else {
                 jDirectory = wFiles[0].substring(0, index + 1);

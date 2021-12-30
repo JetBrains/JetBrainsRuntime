@@ -674,8 +674,9 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
         return fileKinds.contains(kind);
     }
 
+    private static final char separatorChar = System.getProperty("file.separator").charAt(0);
     private static final boolean fileSystemIsCaseSensitive =
-        File.separatorChar == '/';
+        separatorChar == '/';
 
     /** Hack to make Windows case sensitive. Test whether given path
      *  ends in a string of characters with the same case as given name.
@@ -1234,7 +1235,7 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
      */
     public static String getRelativeName(File file) {
         if (!file.isAbsolute()) {
-            String result = file.getPath().replace(File.separatorChar, '/');
+            String result = file.getPath().replace(separatorChar, '/');
             if (isRelativeUri(result))
                 return result;
         }

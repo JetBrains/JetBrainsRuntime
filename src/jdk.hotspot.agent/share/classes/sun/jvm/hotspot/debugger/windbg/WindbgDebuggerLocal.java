@@ -545,6 +545,7 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
     String dbghelpPath  = null;
     String saprocPath = null;
     List<String> searchList = new ArrayList<>();
+    final char fileSeparator = System.getProperty("file.separator").charAt(0);
 
     boolean loadLibraryDEBUG =
         System.getProperty("sun.jvm.hotspot.loadLibrary.DEBUG") != null;
@@ -552,8 +553,8 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
     {
       // First place to search is co-located with saproc.dll in
       // $JAVA_HOME/jre/bin (java.home property is set to $JAVA_HOME/jre):
-      searchList.add(System.getProperty("java.home") + File.separator + "bin");
-      saprocPath = (String) searchList.get(0) + File.separator +
+      searchList.add(System.getProperty("java.home") + fileSeparator + "bin");
+      saprocPath = (String) searchList.get(0) + fileSeparator +
           "saproc.dll";
 
       // second place to search is specified by an environment variable:
@@ -566,8 +567,8 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
       // "Debugging Tools For Windows" package; so far there are three
       // name variations that we know of:
       String sysRoot = System.getenv("SYSTEMROOT");
-      DTFWHome = sysRoot + File.separator + ".." + File.separator +
-          "Program Files" + File.separator + "Debugging Tools For Windows";
+      DTFWHome = sysRoot + fileSeparator + ".." + fileSeparator +
+          "Program Files" + fileSeparator + "Debugging Tools For Windows";
       searchList.add(DTFWHome);
 
       // Only add the search path for the current CPU architecture:
@@ -578,7 +579,7 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
           searchList.add(DTFWHome + " (x64)");
       }
       // The last place to search is the system directory:
-      searchList.add(sysRoot + File.separator + "system32");
+      searchList.add(sysRoot + fileSeparator + "system32");
     }
 
     for (int i = 0; i < searchList.size(); i++) {
@@ -592,8 +593,8 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
         continue;
       }
 
-      dbgengPath = (String) searchList.get(i) + File.separator + "dbgeng.dll";
-      dbghelpPath = (String) searchList.get(i) + File.separator + "dbghelp.dll";
+      dbgengPath = (String) searchList.get(i) + fileSeparator + "dbgeng.dll";
+      dbghelpPath = (String) searchList.get(i) + fileSeparator + "dbghelp.dll";
 
       File feng = new File(dbgengPath);
       File fhelp = new File(dbghelpPath);

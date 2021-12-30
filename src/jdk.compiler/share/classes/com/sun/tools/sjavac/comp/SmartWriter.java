@@ -66,7 +66,8 @@ public class SmartWriter extends Writer {
         closed = true;
         String s = newContent.toString();
         if (!oldContent.equals(s)) {
-            int p = file.getName().lastIndexOf(File.separatorChar);
+            final char separatorChar = System.getProperty("file.separator").charAt(0);
+            int p = file.getName().lastIndexOf(separatorChar);
             try (Writer writer = file.openWriter()) {
                 writer.write(s);
             }

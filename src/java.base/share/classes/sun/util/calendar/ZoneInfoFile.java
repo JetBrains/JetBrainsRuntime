@@ -252,7 +252,8 @@ public final class ZoneInfoFile {
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
             public Void run() {
                 try {
-                    String libDir = StaticProperty.javaHome() + File.separator + "lib";
+                    final String fileSeparator = "" + System.getProperty("file.separator").charAt(0);
+                    String libDir = StaticProperty.javaHome() + fileSeparator + "lib";
                     try (DataInputStream dis = new DataInputStream(
                              new BufferedInputStream(new FileInputStream(
                                  new File(libDir, "tzdb.dat"))))) {

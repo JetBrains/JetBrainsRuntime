@@ -496,11 +496,12 @@ public class FileCredentialsCache extends CredentialsCache
          * Windows.
          */
 
+        final char fileSeparator = System.getProperty("file.separator").charAt(0);
         if (osname != null && !osname.startsWith("Windows")) {
             long uid = jdk.internal.misc.VM.getuid();
             if (uid != -1) {
-                name = File.separator + "tmp" +
-                        File.separator + stdCacheNameComponent + "_" + uid;
+                name = fileSeparator + "tmp" +
+                        fileSeparator + stdCacheNameComponent + "_" + uid;
                 if (DEBUG) {
                     System.out.println(">>>KinitOptions cache name is " +
                             name);
@@ -526,10 +527,10 @@ public class FileCredentialsCache extends CredentialsCache
         }
 
         if (user_name != null) {
-            name = user_home + File.separator  +
+            name = user_home + fileSeparator  +
                 stdCacheNameComponent + "_" + user_name;
         } else {
-            name = user_home + File.separator + stdCacheNameComponent;
+            name = user_home + fileSeparator + stdCacheNameComponent;
         }
 
         if (DEBUG) {

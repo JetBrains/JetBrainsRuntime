@@ -444,13 +444,15 @@ public class ReliableLog {
         out.write(intBuf);
     }
 
+    private static final char fileSeparator = System.getProperty("file.separator").charAt(0);
+
     /**
      * Generates a filename prepended with the stable storage directory path.
      *
      * @param name the leaf name of the file
      */
     private String fName(String name) {
-        return dir.getPath() + File.separator + name;
+        return dir.getPath() + fileSeparator + name;
     }
 
     /**

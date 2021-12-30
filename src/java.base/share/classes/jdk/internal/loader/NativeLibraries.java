@@ -260,7 +260,8 @@ public final class NativeLibraries {
      *      and registered in another NativeLibraries
      */
     public NativeLibrary loadLibrary(String name) {
-        assert name.indexOf(File.separatorChar) < 0;
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        assert name.indexOf(separatorChar) < 0;
         assert caller != null;
 
         return loadLibrary(caller, name);
@@ -276,7 +277,8 @@ public final class NativeLibraries {
      *      and registered in another NativeLibraries
      */
     public NativeLibrary loadLibrary(Class<?> fromClass, String name) {
-        assert name.indexOf(File.separatorChar) < 0;
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
+        assert name.indexOf(separatorChar) < 0;
 
         NativeLibrary lib = findFromPaths(LibraryPaths.SYS_PATHS, fromClass, name);
         if (lib == null && searchJavaLibraryPath) {

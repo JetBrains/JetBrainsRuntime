@@ -111,12 +111,13 @@ class SourceMapper {
      * Return null if not available.
      */
     File sourceFile(Location loc) {
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         try {
             String filename = loc.sourceName();
             String refName = loc.declaringType().name();
             int iDot = refName.lastIndexOf('.');
             String pkgName = (iDot >= 0)? refName.substring(0, iDot+1) : "";
-            String full = pkgName.replace('.', File.separatorChar) + filename;
+            String full = pkgName.replace('.', separatorChar) + filename;
             for (int i= 0; i < dirs.length; ++i) {
                 File path = new File(dirs[i], full);
                 if (path.exists()) {

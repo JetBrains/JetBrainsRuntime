@@ -31,7 +31,8 @@ import java.io.File;
 
 public class FilePaths {
     public static String cacerts() {
-        return StaticProperty.javaHome() + File.separator + "lib"
-                + File.separator + "security" + File.separator + "cacerts";
+        final char fileSeparator = System.getProperty("file.separator").charAt(0);
+        return StaticProperty.javaHome() + fileSeparator + "lib"
+                + fileSeparator + "security" + fileSeparator + "cacerts";
     }
 }

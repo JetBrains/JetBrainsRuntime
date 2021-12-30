@@ -140,15 +140,16 @@ public class ClassDump extends Tool {
             return;
         }
 
+        final char separatorChar = System.getProperty("file.separator").charAt(0);
         String klassName = kls.getName().asString();
-        klassName = klassName.replace('/', File.separatorChar);
+        klassName = klassName.replace('/', separatorChar);
         try {
             OutputStream os = null;
             if (jarStream != null) {
                 jarStream.putNextEntry(new JarEntry(klassName + ".class"));
                 os = jarStream;
             } else {
-                int index = klassName.lastIndexOf(File.separatorChar);
+                int index = klassName.lastIndexOf(separatorChar);
                 File dir = null;
                 if (index != -1) {
                     String dirName = klassName.substring(0, index);

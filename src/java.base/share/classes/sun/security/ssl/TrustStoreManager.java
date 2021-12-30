@@ -73,7 +73,7 @@ final class TrustStoreManager {
      *    cacerts
      */
     private static final class TrustStoreDescriptor {
-        private static final String fileSep = File.separator;
+        private static final String fileSep = "" + System.getProperty("file.separator").charAt(0);
         private static final String defaultStorePath =
                 GetPropertyAction.privilegedGetProperty("java.home") +
                 fileSep + "lib" + fileSep + "security";

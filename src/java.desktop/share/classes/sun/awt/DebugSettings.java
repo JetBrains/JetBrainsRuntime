@@ -164,9 +164,10 @@ public final class DebugSettings {
         // check if the user specified a particular settings file
         propPath = System.getProperty(PREFIX + "." + PROP_FILE, "");
         if (propPath.isEmpty()) {
+            final char fileSeparator = System.getProperty("file.separator").charAt(0);
         // otherwise get it from the user's home directory
             propPath = System.getProperty("user.home", "") +
-                        File.separator +
+                        fileSeparator +
                         PREFIX + "." + PROP_FILE;
         }
 
