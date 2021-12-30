@@ -1,45 +1,26 @@
 #!/bin/bash -x
 
 # The following parameters must be specified:
-#   JBSDK_VERSION    - specifies major version of OpenJDK e.g. 11_0_6 (instead of dots '.' underbars "_" are used)
-#   JDK_BUILD_NUMBER - specifies update release of OpenJDK build or the value of --with-version-build argument to configure
-#   build_number     - specifies the number of JetBrainsRuntime build
-#   bundle_type      - specifies bundle to be built; possible values:
-#                        <empty> or nomod - the release bundles without any additional modules (jcef)
-#                        jcef - the release bundles with jcef
-#                        fd - the fastdebug bundles which also include the jcef module
+#   build_number - specifies the number of JetBrainsRuntime build
+#   bundle_type  - specifies bundle to be built;possible values:
+#               <empty> or nomod - the release bundles without any additional modules (jcef)
+#               jcef - the release bundles with jcef
+#               fd - the fastdebug bundles which also include the jcef module
 #
-# jbrsdk-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
-# jbr-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
-#
-# $ ./java --version
-# openjdk 11.0.6 2020-01-14
-# OpenJDK Runtime Environment (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number})
-# OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
+# This script makes test-image along with JDK images when bundle_type is set to "jcef".
+# If the character 't' is added at the end of bundle_type then it also makes test-image along with JDK images.
 #
 # Environment variables:
+#   JDK_BUILD_NUMBER - specifies update release of OpenJDK build or the value of --with-version-build argument
+#               to configure
+#               By default JDK_BUILD_NUMBER is set zero
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
 #               By default JCEF binaries should be located in ./jcef_win_x64
 
-while getopts ":i?" o; do
-    case "${o}" in
-        i)
-            i="incremental build"
-            INC_BUILD=1
-            ;;
-    esac
-done
-shift $((OPTIND-1))
+source jb/project/tools/common/scripts/common.sh
 
-JBSDK_VERSION=$1
-JDK_BUILD_NUMBER=$2
-build_number=$3
-bundle_type=$4
-JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 WORK_DIR=$(pwd)
 JCEF_PATH=${JCEF_PATH:=$WORK_DIR/jcef_win_x64}
-
-source jb/project/tools/common/scripts/common.sh
 
 function do_configure {
   sh ./configure \
@@ -83,6 +64,7 @@ RELEASE_NAME=windows-x86_64-server-release
 case "$bundle_type" in
   "jcef")
     do_reset_changes=0
+    do_maketest=1
     ;;
   "dcevm")
     HEAD_REVISION=$(git rev-parse HEAD)
@@ -102,13 +84,13 @@ esac
 
 if [ -z "$INC_BUILD" ]; then
   do_configure || do_exit $?
-  if [ -z "$bundle_type" ]; then
+  if [ $do_maketest -eq 1 ]; then
     make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
   else
     make LOG=info CONF=$RELEASE_NAME clean images || do_exit $?
   fi
 else
-  if [ -z "$bundle_type" ]; then
+  if [ $do_maketest -eq 1 ]; then
     make LOG=info CONF=$RELEASE_NAME images test-image || do_exit $?
   else
     make LOG=info CONF=$RELEASE_NAME images || do_exit $?
