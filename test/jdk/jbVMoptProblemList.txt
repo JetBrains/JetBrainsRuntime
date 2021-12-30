@@ -1,0 +1,11 @@
+# the test failed in VMoptions mode
+javax/swing/JFileChooser/6520101/bug6520101.java                                    nobug  generic-all
+java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java                      nobug  generic-all
+java/awt/Window/OwnedWindowsLeak/OwnedWindowsLeak.java                              nobug  generic-all
+java/beans/Introspector/8159696/UnloadClassBeanInfo.java                            nobug  generic-all
+java/beans/Introspector/Test8027905.java                                            nobug  generic-all
+javax/imageio/plugins/png/ItxtUtf8Test.java                                         nobug  generic-all
+javax/swing/JFileChooser/FileSystemView/FileSystemViewListenerLeak.java             nobug  generic-all
+javax/swing/JProgressBar/8161664/ProgressBarMemoryLeakTest.java                     nobug  generic-all
+javax/swing/RepaintManager/DisplayListenerLeak/DisplayListenerLeak.java             nobug  generic-all
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java                 nobug  generic-all
