@@ -1,5 +1,48 @@
+#!/bin/bash -x
+
+function do_maketest() {
+  if [ "${bundle_type: -1}" == "t" ]; then
+    echo ${bundle_type%?}
+    return 1
+  else
+    echo ${bundle_type}
+    return 0
+  fi
+}
+
+function getVersionProp() {
+  grep "^${1}" make/conf/version-numbers.conf | cut -d'=' -f2
+}
+
+while getopts ":i?" o; do
+    case "${o}" in
+        i)
+            i="incremental build"
+            INC_BUILD=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+build_number=$1
+bundle_type=$2
+architecture=$3 # aarch64 or x64
+
+bundle_type=$(do_maketest)
+do_maketest=$?
+tag_prefix="jdk-"
+OPENJDK_TAG=$(git log --simplify-by-decoration --decorate=short --pretty=short | grep "$tag_prefix" | cut -d "(" -f2 | cut -d ")" -f1 | awk '{print $2}' | sort -t "-" -k 2 -g | tail -n 1)
+VERSION_FEATURE=$(getVersionProp "DEFAULT_VERSION_FEATURE")
+VERSION_INTERIM=$(getVersionProp "DEFAULT_VERSION_INTERIM")
+VERSION_UPDATE=$(getVersionProp "DEFAULT_VERSION_UPDATE")
+[[ $VERSION_UPDATE = 0 ]] && JBSDK_VERSION="$VERSION_FEATURE" || JBSDK_VERSION="${VERSION_FEATURE}.${VERSION_INTERIM}.${VERSION_UPDATE}"
+echo "##teamcity[setParameter name='env.JBSDK_VERSION' value='${JBSDK_VERSION}']"
+JDK_BUILD_NUMBER=${JDK_BUILD_NUMBER:=$(echo $OPENJDK_TAG | awk -F "-|[+]" '{print $3}')}
+[ -z $JDK_BUILD_NUMBER ] && JDK_BUILD_NUMBER=1
+echo "##teamcity[setParameter name='env.JDK_UPDATE_NUMBER' value='${JDK_BUILD_NUMBER}']"
+
 VENDOR_NAME="JetBrains s.r.o."
-VENDOR_VERSION_STRING="JBR-${JBSDK_VERSION_WITH_DOTS}.${JDK_BUILD_NUMBER}-${build_number}"
+VENDOR_VERSION_STRING="JBR-${JBSDK_VERSION}+${JDK_BUILD_NUMBER}-${build_number}"
 [ -z "$bundle_type" ] || VENDOR_VERSION_STRING="${VENDOR_VERSION_STRING}-${bundle_type}"
 
 do_reset_changes=0
