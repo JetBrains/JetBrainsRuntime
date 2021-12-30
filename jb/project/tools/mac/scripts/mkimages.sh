@@ -21,29 +21,12 @@
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
 #               By default JCEF binaries should be located in ./jcef_mac
 
-while getopts ":i?" o; do
-    case "${o}" in
-        i)
-            i="incremental build"
-            INC_BUILD=1
-            ;;
-    esac
-done
-shift $((OPTIND-1))
+min_parameters_count=3
+source jb/project/tools/common/scripts/common.sh
 
-JBSDK_VERSION=$1
-JDK_BUILD_NUMBER=$2
-build_number=$3
-bundle_type=$4
-architecture=$5 # aarch64 or x64
-enable_aot=$6 # temporary param for building test jre with aot under aarch64
-JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
-WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=./modular-sdk}"
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
 architecture=${architecture:=x64}
-BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 16)}
-
-source jb/project/tools/common/scripts/common.sh
+BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 17)}
 
 function do_configure {
   if [[ "${architecture}" == *aarch64* ]]; then
