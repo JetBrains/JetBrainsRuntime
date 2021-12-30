@@ -14,12 +14,7 @@
 # OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
 #
 
-JBSDK_VERSION=$1
-JDK_BUILD_NUMBER=$2
-build_number=$3
-
-JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
-
+min_parameters_count=1
 source jb/project/tools/common/scripts/common.sh
 
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}

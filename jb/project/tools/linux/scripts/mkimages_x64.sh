@@ -21,24 +21,10 @@
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
 #               By default JCEF binaries should be located in ./jcef_linux_x64
 
-while getopts ":i?" o; do
-    case "${o}" in
-        i)
-            i="incremental build"
-            INC_BUILD=1
-            ;;
-    esac
-done
-shift $((OPTIND-1))
-
-JBSDK_VERSION=$1
-JDK_BUILD_NUMBER=$2
-build_number=$3
-bundle_type=$4
-JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
-JCEF_PATH=${JCEF_PATH:=./jcef_linux_x64}
-
+min_parameters_count=2
 source jb/project/tools/common/scripts/common.sh
+
+JCEF_PATH=${JCEF_PATH:=./jcef_linux_x64}
 
 function do_configure {
   sh configure \
