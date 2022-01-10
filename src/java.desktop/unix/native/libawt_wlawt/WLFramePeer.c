@@ -24,12 +24,7 @@
  */
 
 #include <stdlib.h>
-#include <errno.h>
-#include <fcntl.h>
 #include <string.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/mman.h>
 #include <jni.h>
 
 #include "jni_util.h"
@@ -43,96 +38,6 @@ struct WLFrame {
     struct xdg_surface *xdg_surface;
     struct xdg_toplevel *xdg_toplevel;
 };
-
-/* Shared memory support code (from  https://wayland-book.com/) */
-static void randname(char *buf) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    long r = ts.tv_nsec;
-    for (int i = 0; i < 6; ++i) {
-        buf[i] = 'A' + (r & 15) + (r & 16) * 2;
-        r >>= 5;
-    }
-}
-
-static int create_shm_file() {
-    int retries = 100;
-    do {
-        char name[] = "/wl_shm-XXXXXX";
-        randname(name + sizeof(name) - 7);
-        --retries;
-        int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
-        if (fd >= 0) {
-            shm_unlink(name);
-            return fd;
-        }
-    } while (retries > 0 && errno == EEXIST);
-    return -1;
-}
-
-static int allocate_shm_file(size_t size) {
-    int fd = create_shm_file();
-    if (fd < 0)
-        return -1;
-    int ret;
-    do {
-        ret = ftruncate(fd, size);
-    } while (ret < 0 && errno == EINTR);
-    if (ret < 0) {
-        close(fd);
-        return -1;
-    }
-    return fd;
-}
-
-static void
-wl_buffer_release(void *data, struct wl_buffer *wl_buffer) {
-    /* Sent by the compositor when it's no longer using this buffer */
-    wl_buffer_destroy(wl_buffer);
-}
-
-static const struct wl_buffer_listener wl_buffer_listener = {
-        .release = wl_buffer_release,
-};
-
-static struct wl_buffer *createBuffer(jobject obj, int width, int height) {
-    if (width <= 0) {
-        width = 1;
-    }
-    if (height <= 0) {
-        height = 1;
-    }
-    int stride = width * 4;
-    int size = stride * height;
-
-    int fd = allocate_shm_file(size);
-    if (fd == -1) {
-        return NULL;
-    }
-    uint32_t *data = (uint32_t *)(mmap(NULL, size,
-                                                  PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
-    if (data == MAP_FAILED) {
-        close(fd);
-        return NULL;
-    }
-
-    struct wl_shm_pool *pool = wl_shm_create_pool(wl_shm, fd, size);
-    struct wl_buffer *buffer = wl_shm_pool_create_buffer(pool, 0, width, height, stride, WL_SHM_FORMAT_XRGB8888);
-    wl_shm_pool_destroy(pool);
-    close(fd);
-    /* Draw checkerboxed background */
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if ((x + y / 8 * 8) % 16 < 8)
-                data[y * width + x] = 0xFF666666;
-            else
-                data[y * width + x] = 0xFFEEEEEE;
-        }
-    }
-    munmap(data, size);
-    wl_buffer_add_listener(buffer, &wl_buffer_listener, NULL);
-    return buffer;
-}
 
 static void xdg_surface_configure(void *data,
                                   struct xdg_surface *xdg_surface, uint32_t serial) {
@@ -207,8 +112,6 @@ Java_sun_awt_wl_WLFramePeer_nativeShowFrame
     xdg_toplevel_add_listener(frame->xdg_toplevel, &xdg_toplevel_listener, frame);
     wl_surface_commit(frame->wl_surface);
     wl_display_roundtrip(wl_display); // this should process 'configure' event, and send 'ack_configure' in response
-    wl_surface_attach(frame->wl_surface, createBuffer(obj, width, height), 0, 0);
-    wl_surface_commit(frame->wl_surface);
 }
 
 static void doHide(struct WLFrame *frame) {
