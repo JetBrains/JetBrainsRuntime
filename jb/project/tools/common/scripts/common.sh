@@ -36,7 +36,7 @@ REPRODUCIBLE_BUILD_OPTS="--enable-reproducible-build
   --with-source-date=$SOURCE_DATE_EPOCH
   --with-hotspot-build-time=$BUILD_TIME
   --with-copyright-year=$COPYRIGHT_YEAR
-  --with-native-debug-symbols=none"
+  --disable-absolute-paths-in-output"
 
 function do_exit() {
   exit_code=$1
