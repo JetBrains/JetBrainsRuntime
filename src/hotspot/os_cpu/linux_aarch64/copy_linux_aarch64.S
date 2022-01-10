@@ -21,6 +21,8 @@
  * questions.
  *
  */
+        .file "copy_linux_aarch64.S"
+
         .global _Copy_conjoint_words
         .global _Copy_disjoint_words
 

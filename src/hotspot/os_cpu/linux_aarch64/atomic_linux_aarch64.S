@@ -19,7 +19,7 @@
 // or visit www.oracle.com if you need additional information or have any
 // questions.
 
-
+        .file "atomic_linux_aarch64.S"
 
         .text
 
