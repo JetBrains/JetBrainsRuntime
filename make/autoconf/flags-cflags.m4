@@ -778,6 +778,8 @@ AC_DEFUN([FLAGS_SETUP_CFLAGS_CPU_DEP],
               FILE_MACRO_CFLAGS=
           ]
       )
+      # -fdebug-prefix-map is supported by all modern versions of gcc/clang
+      DEBUG_PREFIX_CFLAGS=" -fdebug-prefix-map=${workspace_root_trailing_slash}="
     elif test "x$TOOLCHAIN_TYPE" = xmicrosoft &&
         test "x$ENABLE_REPRODUCIBLE_BUILD" = xtrue; then
       # There is a known issue with the pathmap if the mapping is made to the
@@ -808,12 +810,12 @@ AC_DEFUN([FLAGS_SETUP_CFLAGS_CPU_DEP],
       $TOOLCHAIN_CFLAGS_JVM ${$1_TOOLCHAIN_CFLAGS_JVM} \
       $OS_CFLAGS $OS_CFLAGS_JVM $CFLAGS_OS_DEF_JVM $DEBUG_CFLAGS_JVM \
       $WARNING_CFLAGS $WARNING_CFLAGS_JVM $JVM_PICFLAG $FILE_MACRO_CFLAGS \
-      $REPRODUCIBLE_CFLAGS"
+      $REPRODUCIBLE_CFLAGS $DEBUG_PREFIX_CFLAGS"
 
   CFLAGS_JDK_COMMON="$ALWAYS_CFLAGS_JDK $ALWAYS_DEFINES_JDK $TOOLCHAIN_CFLAGS_JDK \
       $OS_CFLAGS $CFLAGS_OS_DEF_JDK $DEBUG_CFLAGS_JDK $DEBUG_OPTIONS_FLAGS_JDK \
       $WARNING_CFLAGS $WARNING_CFLAGS_JDK $DEBUG_SYMBOLS_CFLAGS_JDK \
-      $FILE_MACRO_CFLAGS $REPRODUCIBLE_CFLAGS"
+      $FILE_MACRO_CFLAGS $REPRODUCIBLE_CFLAGS $DEBUG_PREFIX_CFLAGS"
 
   # Use ${$2EXTRA_CFLAGS} to block EXTRA_CFLAGS to be added to build flags.
   # (Currently we don't have any OPENJDK_BUILD_EXTRA_CFLAGS, but that might
