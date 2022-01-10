@@ -82,6 +82,14 @@ AC_DEFUN([FLAGS_SETUP_ASFLAGS],
   elif test "x$TOOLCHAIN_TYPE" = xmicrosoft; then
     BASIC_ASFLAGS="-nologo -c"
   fi
+
+  if test "x$ALLOW_ABSOLUTE_PATHS_IN_OUTPUT" = "xfalse"; then
+    if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
+      workspace_root_trailing_slash="${WORKSPACE_ROOT%/}/"
+      BASIC_ASFLAGS+=" -fdebug-prefix-map=${workspace_root_trailing_slash}="
+    fi
+  fi
+
   AC_SUBST(BASIC_ASFLAGS)
 
   if test "x$OPENJDK_TARGET_OS" = xmacosx; then
