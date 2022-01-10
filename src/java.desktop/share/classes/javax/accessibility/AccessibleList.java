@@ -177,12 +177,8 @@ public interface AccessibleList<E> extends ListModel<E>, ListSelectionModel, Acc
     void removeListSelectionListener(ListSelectionListener x);
 
     @Override
-    default int[] getSelectedIndices() {
-        return ListSelectionModel.super.getSelectedIndices();
-    }
+    int[] getSelectedIndices();
 
     @Override
-    default int getSelectedItemsCount() {
-        return ListSelectionModel.super.getSelectedItemsCount();
-    }
+    int getSelectedItemsCount();
 }
