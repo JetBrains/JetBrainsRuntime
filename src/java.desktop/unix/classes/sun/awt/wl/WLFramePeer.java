@@ -1,6 +1,7 @@
 package sun.awt.wl;
 
 import java.awt.Toolkit;
+import java.util.Objects;
 import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
 
@@ -29,6 +30,8 @@ import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
 import java.awt.peer.FramePeer;
+import sun.java2d.wl.WLSurfaceData;
+import sun.util.logging.PlatformLogger;
 
 public class WLFramePeer implements FramePeer {
 
@@ -42,10 +45,13 @@ public class WLFramePeer implements FramePeer {
         initIDs();
     }
 
+    private Color background;
+
     public WLFramePeer(Frame target) {
         this.target = target;
         this.nativePtr = nativeCreateFrame();
         initGraphicsConfiguration();
+        this.background = target.getBackground();
         this.surfaceData = graphicsConfig.createSurfaceData(this);
     }
 
@@ -69,6 +75,7 @@ public class WLFramePeer implements FramePeer {
     public void setVisible(boolean v) {
         if (v) {
             nativeShowFrame(nativePtr, target.getWidth(), target.getHeight());
+            ((WLSurfaceData)surfaceData).initSurface(this, background != null ? background.getRGB() : 0, target.getWidth(), target.getHeight());
         } else {
             nativeHideFrame(nativePtr);
         }
@@ -151,7 +158,10 @@ public class WLFramePeer implements FramePeer {
 
     @Override
     public void setBackground(Color c) {
-        throw new UnsupportedOperationException();
+        if (Objects.equals(background, c)) {
+            return;
+        }
+        background = c;
     }
 
     @Override
