@@ -47,6 +47,6 @@ public interface JBRFileDialog {
 }
 
 interface JBRFileDialogService {
-    JBRFileDialogService INSTANCE = JBR.api.getService(JBRFileDialogService.class);
+    JBRFileDialogService INSTANCE = JBR.getService(JBRFileDialogService.class);
     JBRFileDialog getFileDialog(FileDialog dialog);
 }

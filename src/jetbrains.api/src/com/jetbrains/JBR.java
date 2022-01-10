@@ -44,7 +44,7 @@ import java.lang.reflect.InvocationTargetException;
  */
 public class JBR {
 
-    static final ServiceApi api;
+    private static final ServiceApi api;
     private static final Exception bootstrapException;
     static {
         ServiceApi a = null;
@@ -66,6 +66,10 @@ public class JBR {
 
     private JBR() {}
 
+    static <T> T getService(Class<T> interFace) {
+        return api == null ? null : api.getService(interFace);
+    }
+
     /**
      * @return true when running on JBR which implements JBR API
      */
@@ -85,7 +89,7 @@ public class JBR {
     /**
      * Internal API interface, contains most basic methods for communication between client and JBR.
      */
-    interface ServiceApi {
+    private interface ServiceApi {
 
         <T> T getService(Class<T> interFace);
     }
