@@ -3314,7 +3314,7 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
 
         @Override
         public AccessibleTable getAccessibleTable() {
-                 return new AccessibleListImpl() {};
+                 return new AccessibleListImpl();
          }
 
         /**
