@@ -53,7 +53,6 @@ public final class CGraphicsDevice extends GraphicsDevice
     private volatile double yResolution;
     private volatile Rectangle bounds;
     private volatile int scale;
-    private volatile Insets screenInsets;
 
     // Array of all GraphicsConfig instances for this device
     private final GraphicsConfiguration[] configs;
@@ -125,7 +124,13 @@ public final class CGraphicsDevice extends GraphicsDevice
     }
 
     public Insets getScreenInsets() {
-        return screenInsets;
+        // the insets are queried synchronously and are not cached
+        // since there are no Quartz or Cocoa means to receive notifications
+        // on insets changes (e.g. when the Dock is resized):
+        // the existing CGDisplayReconfigurationCallBack is not notified
+        // as well as the NSApplicationDidChangeScreenParametersNotification
+        // is fired on the Dock location changes only
+        return nativeGetScreenInsets(displayID);
     }
 
     public int getScaleFactor() {
@@ -147,7 +152,6 @@ public final class CGraphicsDevice extends GraphicsDevice
         xResolution = nativeGetXResolution(displayID);
         yResolution = nativeGetYResolution(displayID);
         bounds = nativeGetBounds(displayID).getBounds(); //does integer rounding
-        screenInsets = nativeGetScreenInsets(displayID);
         initScaleFactor();
         resizeFSWindow(getFullScreenWindow(), bounds);
         //TODO configs?
