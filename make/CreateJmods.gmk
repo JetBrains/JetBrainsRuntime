@@ -228,6 +228,19 @@ else
   JMOD_SOURCE_DATE :=
 endif
 
+ifeq ($(ENABLE_REPRODUCIBLE_BUILD), true)
+  ifeq ($(MODULE), java.base)
+    JAR_FILE_TO_FIX := $(SUPPORT_OUTPUTDIR)/modules_libs/java.base/jrt-fs.jar
+    $(eval $(call SetupExecute, fixup_jrtfs_jar, \
+      WARN := Fixing timestamps in modules_libs/java.base/jrt-fs.jar, \
+      DEPS := $(JAR_FILE_TO_FIX) $(JDK_OUTPUTDIR)/bin/jar, \
+      OUTPUT_DIR := $(JMODS_SUPPORT_DIR), \
+      COMMAND := $(FIXPATH) $(JDK_OUTPUTDIR)/bin/jar --date $(SOURCE_DATE_ISO_8601) --update --file $(JAR_FILE_TO_FIX) @$(SUPPORT_OUTPUTDIR)/modules_libs/java.base/_the.jrt-fs.jar_contents, \
+    ))
+    DEPS += $(fixup_jrtfs_jar_TARGET)
+  endif
+endif
+
 # Create jmods in the support dir and then move them into place to keep the
 # module path in $(IMAGES_OUTPUTDIR)/jmods valid at all times.
 $(eval $(call SetupExecute, create_$(JMOD_FILE), \
