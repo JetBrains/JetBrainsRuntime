@@ -50,6 +50,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.io.Serializable;
+import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -4249,6 +4250,20 @@ public class JTree extends JComponent implements Scrollable, Accessible
         return accessibleContext;
     }
 
+    private final static int EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS_DEFAULT = 0;
+    private static int EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS;
+
+    static {
+        @SuppressWarnings("removal") int eaccn = java.security.AccessController.doPrivileged(new PrivilegedAction<Integer>() {
+            @Override
+            public Integer run() {
+                return Integer.getInteger("javax.swing.JTree.EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS",
+                        EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS_DEFAULT);
+            }
+        });
+        EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS = eaccn >= 0 ? eaccn : EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS_DEFAULT;
+    }
+
     /**
      * This class implements accessibility support for the
      * <code>JTree</code> class.  It provides an implementation of the
@@ -5003,7 +5018,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
              * @return the number of accessible children in the object.
              */
             public int getAccessibleChildrenCount() {
-                if (tree.isCollapsed(path)) return 0; // skip children of collapsed node
+                if (tree.isCollapsed(path) && (EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS != 0)) return 0; // skip children of collapsed node
                 // Tree nodes can't be so complex that they have
                 // two sets of children -> we're ignoring that case
                 return treeModel.getChildCount(obj);
