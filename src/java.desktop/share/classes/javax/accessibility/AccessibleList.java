@@ -26,7 +26,7 @@ import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionListener;
 
 /**
- *  This interface provides expanded list info for a11y implementation.
+ *  This interface provides list specific data.
  *
  * @author Artem Semenov
  */
