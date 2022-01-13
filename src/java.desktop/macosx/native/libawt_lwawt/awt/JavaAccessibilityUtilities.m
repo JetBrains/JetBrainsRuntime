@@ -24,6 +24,7 @@
  */
 
 #import "JavaAccessibilityUtilities.h"
+#import "javax_swing_AccessibleAnnouncer.h"
 #import "JNIUtilities.h"
 
 #import <AppKit/AppKit.h>
@@ -40,7 +41,9 @@ static SEL JavaAccessibilityAttributeSetter(NSString *attribute);
 NSString *const JavaAccessibilityIgnore = @"JavaAxIgnore";
 
 NSMutableDictionary *sRoles = nil;
+NSMutableDictionary *sAnnouncePriorities = nil;
 void initializeRoles();
+void initializeAnnouncePriorities();
 
 // Unique
 static jclass sjc_AccessibleState = NULL;
@@ -517,4 +520,12 @@ void initializeRoles()
     [sRoles setObject:NSAccessibilityUnknownRole forKey:@"unknown"];
     [sRoles setObject:JavaAccessibilityIgnore forKey:@"viewport"];
     [sRoles setObject:JavaAccessibilityIgnore forKey:@"window"];
+}
+
+void initializeAnnouncePriorities() {
+    sAnnouncePriorities = [[NSMutableDictionary alloc] initWithCapacity:3];
+
+    [sAnnouncePriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityLow] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
+    [sAnnouncePriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityMedium] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_MEDIUM]];
+    [sAnnouncePriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityHigh] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_HIGH]];
 }
