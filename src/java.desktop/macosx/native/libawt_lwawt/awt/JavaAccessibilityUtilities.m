@@ -24,6 +24,7 @@
  */
 
 #import "JavaAccessibilityUtilities.h"
+#import "javax_swing_AccessibleAnnouncer.h"
 #import "JNIUtilities.h"
 
 #import <AppKit/AppKit.h>
@@ -517,4 +518,42 @@ void initializeRoles()
     [sRoles setObject:NSAccessibilityUnknownRole forKey:@"unknown"];
     [sRoles setObject:JavaAccessibilityIgnore forKey:@"viewport"];
     [sRoles setObject:JavaAccessibilityIgnore forKey:@"window"];
+}
+
+/*
+ * Class:     javax_swing_AccessibleAnnouncer
+ * Method:    announce
+ * Signature: (Ljava/lang/String;I)V
+ */
+JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
+        (JNIEnv *env, jclass cls, jstring str, jint priority)
+{
+    JNI_COCOA_ENTER(env);
+    NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> *dictionary = [NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> dictionaryWithCapacity:2];
+    [dictionary setObject:JavaStringToNSString(env, str) forKey: NSAccessibilityAnnouncementKey];
+        switch (priority) {
+            case javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW: {
+                [dictionary setObject:[NSNumber numberWithInt:NSAccessibilityPriorityLow] forKey:NSAccessibilityPriorityKey];
+                break;
+            }
+
+            case javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_MEDIUM: {
+                [dictionary setObject:[NSNumber numberWithInt:NSAccessibilityPriorityMedium] forKey:NSAccessibilityPriorityKey];
+                break;
+            }
+
+            case javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_HIGH: {
+                [dictionary setObject:[NSNumber numberWithInt:NSAccessibilityPriorityHigh] forKey:NSAccessibilityPriorityKey];
+                break;
+            }
+
+            default: {
+                [dictionary setObject:[NSNumber numberWithInt:NSAccessibilityPriorityLow] forKey:NSAccessibilityPriorityKey];
+                break;
+            }
+        }
+        [ThreadUtilities performOnMainThreadWaiting:NO block:^{
+            NSAccessibilityPostNotificationWithUserInfo(NSApp, NSAccessibilityAnnouncementRequestedNotification, dictionary);
+        }];
+    JNI_COCOA_EXIT(env);
 }
