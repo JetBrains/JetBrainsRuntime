@@ -30,7 +30,6 @@
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @run main/native/othervm vm.jit.LongTransitions.LTTest nativeFnc14
  */
 
