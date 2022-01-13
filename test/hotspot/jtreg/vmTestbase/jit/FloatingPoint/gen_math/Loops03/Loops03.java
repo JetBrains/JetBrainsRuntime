@@ -29,7 +29,6 @@
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @build jit.FloatingPoint.gen_math.Loops03.Loops03
  * @run driver ExecDriver --java jit.FloatingPoint.gen_math.Loops03.Loops03
  */
