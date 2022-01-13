@@ -4250,17 +4250,16 @@ public class JTree extends JComponent implements Scrollable, Accessible
         return accessibleContext;
     }
 
-    private final static boolean EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS_DEFAULT = false;
-    private static boolean EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS;
+    private static boolean EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODES;
 
     static {
         @SuppressWarnings("removal") boolean eaccn = java.security.AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
             @Override
             public Boolean run() {
-                return Boolean.getBoolean("javax.swing.JTree.EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS");
+                return Boolean.getBoolean("javax.swing.JTree.excludeAccessibleChildrenFromClosedNodes");
             }
         });
-        EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS = eaccn ? eaccn : EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS_DEFAULT;
+        EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODES = eaccn;
     }
 
     /**
@@ -5017,7 +5016,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
              * @return the number of accessible children in the object.
              */
             public int getAccessibleChildrenCount() {
-                if (tree.isCollapsed(path) && EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS) return 0; // skip children of collapsed node
+                if (tree.isCollapsed(path) && EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODES) return 0; // skip children of collapsed node
                 // Tree nodes can't be so complex that they have
                 // two sets of children -> we're ignoring that case
                 return treeModel.getChildCount(obj);
