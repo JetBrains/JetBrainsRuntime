@@ -4250,18 +4250,17 @@ public class JTree extends JComponent implements Scrollable, Accessible
         return accessibleContext;
     }
 
-    private final static int EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS_DEFAULT = 0;
-    private static int EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS;
+    private final static boolean EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS_DEFAULT = false;
+    private static boolean EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS;
 
     static {
-        @SuppressWarnings("removal") int eaccn = java.security.AccessController.doPrivileged(new PrivilegedAction<Integer>() {
+        @SuppressWarnings("removal") boolean eaccn = java.security.AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
             @Override
-            public Integer run() {
-                return Integer.getInteger("javax.swing.JTree.EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS",
-                        EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS_DEFAULT);
+            public Boolean run() {
+                return Boolean.getBoolean("javax.swing.JTree.EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS");
             }
         });
-        EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS = eaccn >= 0 ? eaccn : EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS_DEFAULT;
+        EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS = eaccn ? eaccn : EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS_DEFAULT;
     }
 
     /**
@@ -5018,7 +5017,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
              * @return the number of accessible children in the object.
              */
             public int getAccessibleChildrenCount() {
-                if (tree.isCollapsed(path) && (EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS != 0)) return 0; // skip children of collapsed node
+                if (tree.isCollapsed(path) && EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODS) return 0; // skip children of collapsed node
                 // Tree nodes can't be so complex that they have
                 // two sets of children -> we're ignoring that case
                 return treeModel.getChildCount(obj);
