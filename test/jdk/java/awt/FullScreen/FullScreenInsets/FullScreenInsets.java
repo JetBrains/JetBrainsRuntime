@@ -23,13 +23,16 @@
 
 import java.awt.AWTException;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.DisplayMode;
 import java.awt.Frame;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.Robot;
+import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.image.BufferedImage;
 
@@ -50,9 +53,14 @@ public final class FullScreenInsets {
                 .getLocalGraphicsEnvironment();
         final GraphicsDevice[] devices = ge.getScreenDevices();
 
+        final Cursor transparentCursor = Toolkit.getDefaultToolkit().createCustomCursor(
+                new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB),
+                new Point(0, 0), "transparent cursor");
+
         final Window wGreen = new Frame();
         wGreen.setBackground(Color.GREEN);
         wGreen.setSize(300, 300);
+        wGreen.setCursor(transparentCursor);
         wGreen.setVisible(true);
         sleep();
         final Insets iGreen = wGreen.getInsets();
@@ -61,6 +69,7 @@ public final class FullScreenInsets {
         final Window wRed = new Frame();
         wRed.setBackground(Color.RED);
         wRed.setSize(300, 300);
+        wRed.setCursor(transparentCursor);
         wRed.setVisible(true);
         sleep();
         final Insets iRed = wGreen.getInsets();
@@ -129,13 +138,18 @@ public final class FullScreenInsets {
             passed = false;
             return;
         }
+        int cRGB = color.getRGB();
         final BufferedImage bi = r.createScreenCapture(w.getBounds());
         for (int y = 0; y < bi.getHeight(); y++) {
             for (int x = 0; x < bi.getWidth(); x++) {
-                if (bi.getRGB(x, y) != color.getRGB()) {
+                int bRGB = bi.getRGB(x, y);
+                if (Math.abs((bRGB&0xFF) - (cRGB&0xFF)) > 1 ||
+                    Math.abs((bRGB&0xFF00)>>8 - (cRGB&0xFF00)>>8) > 1 ||
+                    Math.abs((bRGB&0xFF0000)>>16 - (cRGB&0xFF0000)>>16) > 1)
+                {
                     System.err.println(
                             "Incorrect pixel at " + x + "x" + y + " : " +
-                            Integer.toHexString(bi.getRGB(x, y)) +
+                            Integer.toHexString(bRGB) +
                             " ,expected : " + Integer.toHexString(
                                     color.getRGB()));
                     passed = false;
