@@ -4250,7 +4250,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
         return accessibleContext;
     }
 
-    private static boolean EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODES;
+    private static final boolean EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODES;
 
     static {
         @SuppressWarnings("removal") boolean eaccn = java.security.AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
