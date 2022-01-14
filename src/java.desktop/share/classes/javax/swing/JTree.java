@@ -33,6 +33,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.util.*;
+import java.security.PrivilegedAction;
 import javax.swing.event.*;
 import javax.swing.plaf.*;
 import javax.swing.tree.*;
@@ -4178,6 +4179,18 @@ public class JTree extends JComponent implements Scrollable, Accessible
             accessibleContext = new AccessibleJTree();
         }
         return accessibleContext;
+    }
+
+    private static final boolean EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODES;
+
+    static {
+        boolean eaccn = java.security.AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
+            @Override
+            public Boolean run() {
+                return Boolean.getBoolean("javax.swing.JTree.excludeAccessibleChildrenFromClosedNodes");
+            }
+        });
+        EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODES = eaccn;
     }
 
     /**
