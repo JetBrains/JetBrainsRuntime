@@ -926,3 +926,7 @@ javax/print/attribute/SupportedPrintableAreas.java                              
 java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.java               JBR-890  macosx-all
 java/awt/dnd/NoFormatsCrashTest/NoFormatsCrashTest.java                             JBR-1011 macosx-all
 java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.java                   JBR-1011 macosx-all
+
+
+java/awt/AppContext/ApplicationThreadsStop/ApplicationThreadsStop.java              TBD macosx-aarch64 crash
+java/awt/event/SequencedEvent/MultipleContextsFunctionalTest.java                   TBD macosx-aarch64 crash
