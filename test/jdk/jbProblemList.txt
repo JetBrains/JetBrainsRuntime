@@ -871,3 +871,9 @@ javax/print/attribute/SupportedPrintableAreas.java                              
 java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.java               JBR-890  macosx-all
 java/awt/dnd/NoFormatsCrashTest/NoFormatsCrashTest.java                             JBR-1011 macosx-all
 java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.java                   JBR-1011 macosx-all
+
+
+java/awt/AppContext/ApplicationThreadsStop/ApplicationThreadsStop.java              JBR-4177 macosx-aarch64
+java/awt/event/SequencedEvent/MultipleContextsFunctionalTest.java                   JBR-4177 macosx-aarch64
+java/awt/Focus/NullActiveWindowOnFocusLost/NullActiveWindowOnFocusLost.java         JBR-4177 macosx-aarch64
+javax/swing/plaf/metal/MetalUtils/bug6190373.java                                   JBR-4177 macosx-aarch64
