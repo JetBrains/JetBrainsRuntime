@@ -175,15 +175,17 @@ class WindowsDirectoryStream
                         nextOffset = 0;
                     }
 
-                    long fullDirInformationAddress = queryDirectoryInformationBuffer.address() + nextOffset;
-                    int nextEntryOffset = WindowsFileAttributes.getNextOffsetFromFileIdFullDirInformation(fullDirInformationAddress);
+                    long dirInformationAddress = queryDirectoryInformationBuffer.address() + nextOffset;
+                    int nextEntryOffset = WindowsFileAttributes.getNextOffsetFromFileDirInformation(
+                            queryDirectoryInformation, dirInformationAddress);
                     nextOffset = nextEntryOffset == 0 ? -1 : nextOffset + nextEntryOffset;
-                    name = WindowsFileAttributes.getFileNameFromFileIdFullDirInformation(fullDirInformationAddress);
+                    name = WindowsFileAttributes.getFileNameFromFileDirInformation(
+                            queryDirectoryInformation, dirInformationAddress);
                     if (isSelfOrParent(name)) {
                         // Skip "." and ".."
                         continue;
                     }
-                    attrs = WindowsFileAttributes.fromFileIdFullDirInformation(fullDirInformationAddress, queryDirectoryInformation.volSerialNumber());
+                    attrs = WindowsFileAttributes.fromFileDirInformation(queryDirectoryInformation, dirInformationAddress);
                 }
 
                 // return entry if accepted by filter
