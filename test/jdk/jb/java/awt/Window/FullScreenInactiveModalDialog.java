@@ -51,6 +51,7 @@ public class FullScreenInactiveModalDialog {
 
     public static void main(String[] args) throws Exception {
         robot = new Robot();
+        robot.setAutoDelay(50); // without delay between key presses, 'switchToPreviousSpace'/'switchToNextSpace' don't always work
         try {
             SwingUtilities.invokeAndWait(FullScreenInactiveModalDialog::initUI);
             shownAtFullScreen.get(5, TimeUnit.SECONDS);

@@ -55,6 +55,7 @@ public class FullScreenChildWindow {
 
     public static void main(String[] args) throws Exception {
         robot = new Robot();
+        robot.setAutoDelay(50); // without delay between key presses, 'switchToPreviousSpace' doesn't always work
         try {
             SwingUtilities.invokeAndWait(FullScreenChildWindow::initUI);
             shownAtFullScreen.get(5, TimeUnit.SECONDS);
