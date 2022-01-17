@@ -234,6 +234,7 @@ java/awt/Window/ShapedAndTranslucentWindows/Translucent.java 8222328 windows-all
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593 linux-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409 macosx-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all
+java/awt/font/GlyphVector/NLGlyphTest.java 8273321 linux-all
 java/awt/font/TextLayout/TextLayoutBounds.java 8169188 generic-all
 java/awt/FontMetrics/FontCrash.java 8198336 windows-all
 java/awt/image/BufferedImage/ICMColorDataTest/ICMColorDataTest.java 8233028 generic-all
@@ -520,7 +521,7 @@ java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 71
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java 6848810 macosx-all,linux-all
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java 8194751 linux-all
 java/awt/image/VolatileImage/BitmaskVolatileImage.java 8133102 linux-all
-java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java 8134231 windows-all,linux-all
+java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java 8134231 windows-all,linux-all,macosx-all
 java/awt/SplashScreen/MultiResolutionSplash/unix/UnixMultiResolutionSplashTest.java 8203004 linux-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java 7107528 linux-all,macosx-all
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java 8080676 linux-all
@@ -682,7 +683,7 @@ javax/net/ssl/DTLS/CipherSuite.java                             8202059 macosx-x
 
 sun/security/provider/KeyStore/DKSTest.sh                       8180266 windows-all
 
-sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                 8209398 generic-all
+sun/security/pkcs11/KeyStore/SecretKeysBasic.java               8209398 generic-all
 
 security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java  8224768 generic-all
 
@@ -737,6 +738,7 @@ javax/swing/border/TestTitledBorderLeak.java 8213531 linux-all,windows-all
 javax/swing/JButton/8151303/PressedIconTest.java 8266246 macosx-aarch64
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
 javax/swing/JLabel/6596966/bug6596966.java 8197552 windows-all
+javax/swing/JMenu/4515762/bug4515762.java 8276074 windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128 macosx-all
@@ -888,6 +890,7 @@ java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter.java 8254841 macos
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289 windows-x64
 java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java 8258103 linux-all
 
+com/sun/jndi/dns/ConfigTests/Timeout.java 8220213 generic-all
 
 ############################################################################
 
