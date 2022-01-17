@@ -285,10 +285,17 @@ class WindowsNativeDispatcher {
     static class QueryDirectoryInformation {
         private long handle;
         private int volSerialNumber;
+        /**
+         * Set by OpenNtQueryDirectoryInformation0() to
+         * true if dealing with struct FILE_ID_FULL_DIR_INFORMATION
+         * and to false if it's struct FILE_DIRECTORY_INFORMATION.
+         */
+        private boolean supportsFullIdInfo;
 
         private QueryDirectoryInformation() { }
         public long handle()         { return handle; }
         public int volSerialNumber() { return volSerialNumber; }
+        public boolean supportsFullIdInfo() { return supportsFullIdInfo; }
     }
     private static native void OpenNtQueryDirectoryInformation0(long lpFileName, long buffer, int bufferSize, QueryDirectoryInformation obj)
         throws WindowsException;
@@ -296,13 +303,13 @@ class WindowsNativeDispatcher {
     static boolean NextNtQueryDirectoryInformation(QueryDirectoryInformation data, NativeBuffer buffer) throws WindowsException {
         long comp = Blocker.begin();
         try {
-            return NextNtQueryDirectoryInformation0(data.handle(), buffer.address(), buffer.size());
+            return NextNtQueryDirectoryInformation0(data.handle(), data.supportsFullIdInfo(), buffer.address(), buffer.size());
         } finally {
             Blocker.end(comp);
         }
     }
 
-    private static native boolean NextNtQueryDirectoryInformation0(long handle, long buffer, int bufferSize)
+    private static native boolean NextNtQueryDirectoryInformation0(long handle, boolean supportsFullIdInfo, long buffer, int bufferSize)
         throws WindowsException;
 
     static void CloseNtQueryDirectoryInformation(QueryDirectoryInformation data) throws WindowsException {
