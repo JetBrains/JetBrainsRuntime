@@ -232,16 +232,15 @@ class IRScopeDebugInfo: public CompilationResourceObj {
   //Whether we should reexecute this bytecode for deopt
   bool should_reexecute();
 
-  void record_debug_info(DebugInformationRecorder* recorder, int pc_offset, bool topmost, bool is_method_handle_invoke = false) {
+  void record_debug_info(DebugInformationRecorder* recorder, int pc_offset, bool reexecute, bool is_method_handle_invoke = false) {
     if (caller() != NULL) {
       // Order is significant:  Must record caller first.
-      caller()->record_debug_info(recorder, pc_offset, false/*topmost*/);
+      caller()->record_debug_info(recorder, pc_offset, false/*reexecute*/);
     }
     DebugToken* locvals = recorder->create_scope_values(locals());
     DebugToken* expvals = recorder->create_scope_values(expressions());
     DebugToken* monvals = recorder->create_monitor_values(monitors());
     // reexecute allowed only for the topmost frame
-    bool reexecute = topmost ? should_reexecute() : false;
     bool return_oop = false; // This flag will be ignored since it used only for C2 with escape analysis.
     bool rethrow_exception = false;
     recorder->describe_scope(pc_offset, methodHandle(), scope()->method(), bci(), reexecute, rethrow_exception, is_method_handle_invoke, return_oop, locvals, expvals, monvals);
@@ -259,6 +258,7 @@ class CodeEmitInfo: public CompilationResourceObj {
   ValueStack*       _stack;                      // used by deoptimization (contains also monitors
   bool              _is_method_handle_invoke;    // true if the associated call site is a MethodHandle call site.
   bool              _deoptimize_on_exception;
+  bool              _force_reexecute;            // force the reexecute flag on, used for patching stub
 
   FrameMap*     frame_map() const                { return scope()->compilation()->frame_map(); }
   Compilation*  compilation() const              { return scope()->compilation(); }
@@ -285,7 +285,11 @@ class CodeEmitInfo: public CompilationResourceObj {
   bool     is_method_handle_invoke() const { return _is_method_handle_invoke;     }
   void set_is_method_handle_invoke(bool x) {        _is_method_handle_invoke = x; }
 
+  bool     force_reexecute() const         { return _force_reexecute;             }
+  void     set_force_reexecute()           { _force_reexecute = true;             }
+
   int interpreter_frame_size() const;
+
 };
 
 
