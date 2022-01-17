@@ -54,6 +54,7 @@ static jfieldID findStream_name;
 
 static jfieldID queryDirectoryInformation_handle;
 static jfieldID queryDirectoryInformation_volSerialNumber;
+static jfieldID queryDirectoryInformation_supportsFullIdInfo;
 
 static jfieldID volumeInfo_fsName;
 static jfieldID volumeInfo_volName;
@@ -121,8 +122,10 @@ Java_sun_nio_fs_WindowsNativeDispatcher_initIDs(JNIEnv* env, jclass this)
     CHECK_NULL(clazz);
     queryDirectoryInformation_handle = (*env)->GetFieldID(env, clazz, "handle", "J");
     CHECK_NULL(queryDirectoryInformation_handle);
-    queryDirectoryInformation_volSerialNumber = (*env)->GetFieldID(env, clazz, "volSerialNumber", "I");;
+    queryDirectoryInformation_volSerialNumber = (*env)->GetFieldID(env, clazz, "volSerialNumber", "I");
     CHECK_NULL(queryDirectoryInformation_volSerialNumber);
+    queryDirectoryInformation_supportsFullIdInfo = (*env)->GetFieldID(env, clazz, "supportsFullIdInfo", "Z");
+    CHECK_NULL(queryDirectoryInformation_supportsFullIdInfo);
 
     clazz = (*env)->FindClass(env, "sun/nio/fs/WindowsNativeDispatcher$VolumeInformation");
     CHECK_NULL(clazz);
@@ -483,6 +486,7 @@ Java_sun_nio_fs_WindowsNativeDispatcher_OpenNtQueryDirectoryInformation0(JNIEnv*
         return;
     }
 
+    jboolean supportsFullIdInfo = JNI_TRUE;
     status = NtQueryDirectoryFile_func(
         handle, // FileHandle
         NULL, // Event
@@ -505,15 +509,42 @@ Java_sun_nio_fs_WindowsNativeDispatcher_OpenNtQueryDirectoryInformation0(JNIEnv*
         */
         if (status == STATUS_INVALID_PARAMETER) {
             DWORD attributes = GetFileAttributesW(lpFileName);
-            if ((attributes & FILE_ATTRIBUTE_DIRECTORY) == 0) {
-                status = STATUS_NOT_A_DIRECTORY;
+            const jboolean areAttributesValid = (attributes != INVALID_FILE_ATTRIBUTES);
+            const jboolean isDirectory = areAttributesValid
+                    && (attributes & FILE_ATTRIBUTE_DIRECTORY);
+            if (!areAttributesValid || !isDirectory) {
+                if (areAttributesValid && !isDirectory) status = STATUS_NOT_A_DIRECTORY;
+                win32ErrorCode = RtlNtStatusToDosError_func(status);
+                throwWindowsException(env, win32ErrorCode);
+                CloseHandle(handle);
+                return;
             }
-        }
 
-        win32ErrorCode = RtlNtStatusToDosError_func(status);
-        throwWindowsException(env, win32ErrorCode);
-        CloseHandle(handle);
-        return;
+            /* If it's a directory, we can have another go by asking for
+             * less information with the FileDirectoryInformation
+             * information class. This works on a mounted Google Drive, for instance.
+             */
+            status = NtQueryDirectoryFile_func(
+                handle, // FileHandle
+                NULL, // Event
+                NULL, // ApcRoutine
+                NULL, // ApcContext
+                &ioStatusBlock, // IoStatusBlock
+                jlong_to_ptr(bufferAddress), // FileInformation
+                bufferSize, // Length
+                FileDirectoryInformation, // FileInformationClass
+                FALSE, // ReturnSingleEntry
+                NULL, // FileName
+                FALSE); // RestartScan
+
+            if (!NT_SUCCESS(status)) {
+                win32ErrorCode = RtlNtStatusToDosError_func(status);
+                throwWindowsException(env, win32ErrorCode);
+                CloseHandle(handle);
+                return;
+            }
+            supportsFullIdInfo = JNI_FALSE;
+        }
     }
 
     // This call allows retrieving the volume ID of this directory (and all its entries)
@@ -526,11 +557,12 @@ Java_sun_nio_fs_WindowsNativeDispatcher_OpenNtQueryDirectoryInformation0(JNIEnv*
 
     (*env)->SetLongField(env, obj, queryDirectoryInformation_handle, ptr_to_jlong(handle));
     (*env)->SetIntField(env, obj, queryDirectoryInformation_volSerialNumber, info.dwVolumeSerialNumber);
+    (*env)->SetBooleanField(env, obj, queryDirectoryInformation_supportsFullIdInfo, supportsFullIdInfo);
 }
 
 JNIEXPORT jboolean JNICALL
 Java_sun_nio_fs_WindowsNativeDispatcher_NextNtQueryDirectoryInformation0(JNIEnv* env, jclass this,
-    jlong handle, jlong address, jint size)
+    jlong handle, jboolean supportsFullIdInfo, jlong address, jint size)
 {
     HANDLE h = (HANDLE)jlong_to_ptr(handle);
     ULONG win32ErrorCode;
@@ -550,7 +582,8 @@ Java_sun_nio_fs_WindowsNativeDispatcher_NextNtQueryDirectoryInformation0(JNIEnv*
         &ioStatusBlock, // IoStatusBlock
         jlong_to_ptr(address), // FileInformation
         size, // Length
-        FileIdFullDirectoryInformation, // FileInformationClass
+        supportsFullIdInfo ? FileIdFullDirectoryInformation
+                           : FileDirectoryInformation, // FileInformationClass
         FALSE, // ReturnSingleEntry
         NULL, // FileName
         FALSE); // RestartScan
