@@ -140,6 +140,30 @@ class WindowsFileAttributes
     private static final int OFFSETOF_FULL_DIR_INFO_FILE_ID = 72;
     private static final int OFFSETOF_FULL_DIR_INFO_FILENAME = 80;
 
+    /**
+     * struct _FILE_DIRECTORY_INFORMATION {
+     *   ULONG         NextEntryOffset;  // offset = 0
+     *   ULONG         FileIndex;        // offset = 4
+     *   LARGE_INTEGER CreationTime;     // offset = 8
+     *   LARGE_INTEGER LastAccessTime;   // offset = 16
+     *   LARGE_INTEGER LastWriteTime;    // offset = 24
+     *   LARGE_INTEGER ChangeTime;       // offset = 32
+     *   LARGE_INTEGER EndOfFile;        // offset = 40
+     *   LARGE_INTEGER AllocationSize;   // offset = 48
+     *   ULONG         FileAttributes;   // offset = 56
+     *   ULONG         FileNameLength;   // offset = 60
+     *   WCHAR         FileName[1];      // offset = 64
+     * }
+     */
+    private static final int OFFSETOF_DIR_INFO_NEXT_ENTRY_OFFSET = 0;
+    private static final int OFFSETOF_DIR_INFO_CREATION_TIME = 8;
+    private static final int OFFSETOF_DIR_INFO_LAST_ACCESS_TIME = 16;
+    private static final int OFFSETOF_DIR_INFO_LAST_WRITE_TIME = 24;
+    private static final int OFFSETOF_DIR_INFO_END_OF_FILE = 40;
+    private static final int OFFSETOF_DIR_INFO_FILE_ATTRIBUTES = 56;
+    private static final int OFFSETOF_DIR_INFO_FILENAME_LENGTH = 60;
+    private static final int OFFSETOF_DIR_INFO_FILENAME = 64;
+
     // used to adjust values between Windows and java epoch
     private static final long WINDOWS_EPOCH_IN_MICROSECONDS = -11644473600000000L;
 
@@ -292,43 +316,79 @@ class WindowsFileAttributes
     }
 
     /**
-     * Create a WindowsFileAttributes from a FILE_ID_FULL_DIR_INFORMATION structure
+     * Create a WindowsFileAttributes from either a FILE_ID_FULL_DIR_INFORMATION
+     * or FILE_DIRECTORY_INFORMATION structure depending on the value of
+     * QueryDirectoryInformation.supportsFullIdInfo().
      */
-    static WindowsFileAttributes fromFileIdFullDirInformation(long address, int volSerialNumber) {
-        int fileAttrs = unsafe.getInt(address + OFFSETOF_FULL_DIR_INFO_FILE_ATTRIBUTES);
-        long creationTime = unsafe.getLong(address + OFFSETOF_FULL_DIR_INFO_CREATION_TIME);
-        long lastAccessTime = unsafe.getLong(address + OFFSETOF_FULL_DIR_INFO_LAST_ACCESS_TIME);
-        long lastWriteTime = unsafe.getLong(address + OFFSETOF_FULL_DIR_INFO_LAST_WRITE_TIME);
-        long size = unsafe.getLong(address + OFFSETOF_FULL_DIR_INFO_END_OF_FILE);
-        int reparseTag = isReparsePoint(fileAttrs) ?
-            unsafe.getInt(address + OFFSETOF_FULL_DIR_INFO_EA_SIZE) : 0;
-        int fileIndexLow = unsafe.getInt(address + OFFSETOF_FULL_DIR_INFO_FILE_ID);
-        int fileIndexHigh = unsafe.getInt(address + OFFSETOF_FULL_DIR_INFO_FILE_ID + 4);
+    static WindowsFileAttributes fromFileDirInformation(QueryDirectoryInformation info, long address) {
+        if (info.supportsFullIdInfo()) { // address points to struct FILE_ID_FULL_DIR_INFORMATION
+            int fileAttrs = unsafe.getInt(address + OFFSETOF_FULL_DIR_INFO_FILE_ATTRIBUTES);
+            long creationTime = unsafe.getLong(address + OFFSETOF_FULL_DIR_INFO_CREATION_TIME);
+            long lastAccessTime = unsafe.getLong(address + OFFSETOF_FULL_DIR_INFO_LAST_ACCESS_TIME);
+            long lastWriteTime = unsafe.getLong(address + OFFSETOF_FULL_DIR_INFO_LAST_WRITE_TIME);
+            long size = unsafe.getLong(address + OFFSETOF_FULL_DIR_INFO_END_OF_FILE);
+            int reparseTag = isReparsePoint(fileAttrs) ?
+                    unsafe.getInt(address + OFFSETOF_FULL_DIR_INFO_EA_SIZE) : 0;
+            int volSerialNumber = info.volSerialNumber();
+            int fileIndexLow = unsafe.getInt(address + OFFSETOF_FULL_DIR_INFO_FILE_ID);
+            int fileIndexHigh = unsafe.getInt(address + OFFSETOF_FULL_DIR_INFO_FILE_ID + 4);
 
-        return new WindowsFileAttributes(fileAttrs,
-                                         creationTime,
-                                         lastAccessTime,
-                                         lastWriteTime,
-                                         size,
-                                         reparseTag,
-                                         volSerialNumber,
-                                         fileIndexHigh,  // fileIndexHigh
-                                         fileIndexLow); // fileIndexLow
+            return new WindowsFileAttributes(fileAttrs,
+                    creationTime,
+                    lastAccessTime,
+                    lastWriteTime,
+                    size,
+                    reparseTag,
+                    volSerialNumber,
+                    fileIndexHigh,  // fileIndexHigh
+                    fileIndexLow); // fileIndexLow
+        } else { // address points to FILE_DIRECTORY_INFORMATION
+            int fileAttrs = unsafe.getInt(address + OFFSETOF_DIR_INFO_FILE_ATTRIBUTES);
+            long creationTime = unsafe.getLong(address + OFFSETOF_DIR_INFO_CREATION_TIME);
+            long lastAccessTime = unsafe.getLong(address + OFFSETOF_DIR_INFO_LAST_ACCESS_TIME);
+            long lastWriteTime = unsafe.getLong(address + OFFSETOF_DIR_INFO_LAST_WRITE_TIME);
+            long size = unsafe.getLong(address + OFFSETOF_DIR_INFO_END_OF_FILE);
+            int reparseTag = 0;
+            // Don't provide the real serial number  as the reset of the code assumes that presence of
+            // the volume serial means that the file id is also valid, which isn't the case here.
+            // This will make comparing Path's for equality slower as the file id serves as
+            // a unique file key (@see fileKey()).
+            int volSerialNumber = 0;
+            int fileIndexLow = 0;
+            int fileIndexHigh = 0;
+
+            return new WindowsFileAttributes(fileAttrs,
+                    creationTime,
+                    lastAccessTime,
+                    lastWriteTime,
+                    size,
+                    reparseTag,
+                    volSerialNumber,
+                    fileIndexHigh,
+                    fileIndexLow);
+        }
     }
 
-    static int getNextOffsetFromFileIdFullDirInformation(long address) {
-        return unsafe.getInt(address + OFFSETOF_FULL_DIR_INFO_NEXT_ENTRY_OFFSET);
+    static int getNextOffsetFromFileDirInformation(QueryDirectoryInformation info, long address) {
+        return unsafe.getInt(address
+                + (info.supportsFullIdInfo() ? OFFSETOF_FULL_DIR_INFO_NEXT_ENTRY_OFFSET
+                                             : OFFSETOF_DIR_INFO_NEXT_ENTRY_OFFSET));
     }
 
-    static String getFileNameFromFileIdFullDirInformation(long address) {
+    static String getFileNameFromFileDirInformation(QueryDirectoryInformation info, long address) {
         // copy the name
-        int nameLengthInBytes = unsafe.getInt(address + OFFSETOF_FULL_DIR_INFO_FILENAME_LENGTH);
+        int nameLengthInBytes = unsafe.getInt(address
+                + (info.supportsFullIdInfo() ? OFFSETOF_FULL_DIR_INFO_FILENAME_LENGTH
+                                             : OFFSETOF_DIR_INFO_FILENAME_LENGTH));
         if ((nameLengthInBytes % 2) != 0) {
             throw new AssertionError("FileNameLength is not a multiple of 2");
         }
         char[] nameAsArray = new char[nameLengthInBytes/2];
-        unsafe.copyMemory(null, address + OFFSETOF_FULL_DIR_INFO_FILENAME, nameAsArray,
-            Unsafe.ARRAY_CHAR_BASE_OFFSET, nameLengthInBytes);
+        unsafe.copyMemory(null,
+                address + (info.supportsFullIdInfo() ? OFFSETOF_FULL_DIR_INFO_FILENAME
+                                                     : OFFSETOF_DIR_INFO_FILENAME),
+                nameAsArray,
+                Unsafe.ARRAY_CHAR_BASE_OFFSET, nameLengthInBytes);
         return new String(nameAsArray);
     }
 
