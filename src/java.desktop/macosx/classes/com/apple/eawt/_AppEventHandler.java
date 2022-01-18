@@ -63,6 +63,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import sun.awt.AppContext;
 import sun.awt.SunToolkit;
 import sun.java2d.SunGraphicsEnvironment;
 
@@ -266,8 +267,11 @@ final class _AppEventHandler {
                 instance.systemSleepDispatcher.dispatch(new _NativeEvent(Boolean.FALSE));
                 break;
             case NOTIFY_SCREEN_CHANGE_PARAMETERS:
-                EventQueue.invokeLater(() -> ((SunGraphicsEnvironment)SunGraphicsEnvironment.
-                        getLocalGraphicsEnvironment()).displayChanged());
+                if (AppContext.getAppContext() != null) {
+                    EventQueue.invokeLater(
+                            () -> ((SunGraphicsEnvironment)SunGraphicsEnvironment.
+                                    getLocalGraphicsEnvironment()).displayChanged());
+                }
                 break;
             default:
                 System.err.println("EAWT unknown native notification: " + code);
