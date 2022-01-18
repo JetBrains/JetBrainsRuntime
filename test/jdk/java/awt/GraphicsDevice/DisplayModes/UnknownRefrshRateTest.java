@@ -33,6 +33,7 @@ import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 
 public class UnknownRefrshRateTest {
+    private static final int MAX_MODES = 10;
 
     public static void main(String[] args) throws Exception {
 
@@ -50,7 +51,9 @@ public class UnknownRefrshRateTest {
             DisplayMode[] modes = d.getDisplayModes();
             System.out.println("There are " + modes.length + " modes.");
             try {
-                for (int i=0; i<modes.length; i++) {
+                int modesCount = modes.length < MAX_MODES ? modes.length : MAX_MODES;
+
+                for (int i=0; i<modesCount; i++) {
                     DisplayMode mode = modes[i];
                     System.out.println("copying from mode " + i + " : " + mode);
                     int w = mode.getWidth();
