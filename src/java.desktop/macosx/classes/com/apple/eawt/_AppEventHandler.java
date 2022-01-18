@@ -267,8 +267,11 @@ class _AppEventHandler {
                 instance.systemSleepDispatcher.dispatch(new _NativeEvent(Boolean.FALSE));
                 break;
             case NOTIFY_SCREEN_CHANGE_PARAMETERS:
-                EventQueue.invokeLater(() -> ((SunGraphicsEnvironment)SunGraphicsEnvironment.
-                        getLocalGraphicsEnvironment()).displayChanged());
+                if (AppContext.getAppContext() != null) {
+                    EventQueue.invokeLater(
+                            () -> ((SunGraphicsEnvironment)SunGraphicsEnvironment.
+                                    getLocalGraphicsEnvironment()).displayChanged());
+                }
                 break;
             default:
                 System.err.println("EAWT unknown native notification: " + code);
