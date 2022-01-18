@@ -26,7 +26,7 @@ package javax.swing;
 import java.lang.annotation.Native;
 
 /**
- *    This class provides the ability to speak a given string using screen readers.
+  *    This class provides the ability to speak a given string using screen readers.
  *
  * @author Artem Semenov
  */
@@ -47,13 +47,10 @@ public class AccessibleAnnouncer {
      */
     @Native public static final int ACCESSIBLE_PRIORITY_HIGH = 2;
 
-    /**
-     *Defalt constructor
-     */
     private AccessibleAnnouncer() {}
 
     /**
-     * This method say received string with priority
+     * This method makes an announcement with the specified priority
      *
      * @param str      string for announcing
      * @param priority priority for announsing

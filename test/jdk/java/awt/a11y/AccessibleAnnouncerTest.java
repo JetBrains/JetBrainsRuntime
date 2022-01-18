@@ -24,7 +24,7 @@
 
 /*
  * @test
- * @summary Test implementation of NSAccessibilityList protocol peer
+ * @summary Test implementation accessibility announcing
  * @author Artem.Semenov@jetbrains.com
  * @run main/manual AccessibleAnnouncerTest
  * @requires (os.family == "windows" | os.family == "mac")
