@@ -341,17 +341,20 @@ public abstract class VolatileSurfaceManager
      */
     public void displayChanged() {
         lostSurface = true;
+        boolean needBackup = false;
         if (sdAccel != null) {
             // First, nullify the software surface.  This guards against
             // using a SurfaceData that was created in a different
             // display mode.
-            sdBackup = null;
+            if (sdBackup != null) {
+                sdBackup = null;
+                needBackup = true;
+            }
             // Now, invalidate the old hardware-based SurfaceData
             // Note that getBackupSurface may set sdAccel to null so we have to invalidate it before
             SurfaceData oldData = sdAccel;
             sdAccel = null;
             oldData.invalidate();
-            sdCurrent = getBackupSurface();
         }
         // Update graphicsConfig for the vImg in case it changed due to
         // this display change event
@@ -368,14 +371,19 @@ public abstract class VolatileSurfaceManager
                 // a provision would cause mismatch in graphics configuration of
                 // the display and the surface. Hence we re-create the software
                 // surface as well.
-                sdBackup = null;
-                sdCurrent = getBackupSurface();
+                if (sdBackup != null) {
+                    sdBackup = null;
+                    needBackup = true;
+                }
             } else {
                 // Software backed surface was not invalidated.
                 lostSurface = false;
             }
         }
 
+        if (needBackup) {
+            sdCurrent = getBackupSurface();
+        }
         // Update the AffineTransformation backing the volatile image
         atCurrent = atUpdated;
     }
