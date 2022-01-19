@@ -28,6 +28,7 @@
 extern NSString *const JavaAccessibilityIgnore;
 
 extern NSMutableDictionary *sRoles;
+extern NSMutableDictionary *sPrioritys;
 extern void initializeRoles();
 
 #define GET_CACCESSIBILITY_CLASS() \
@@ -64,3 +65,5 @@ void JavaAccessibilityRaiseIllegalParameterTypeException(const char *functionNam
 BOOL ObjectEquals(JNIEnv *env, jobject a, jobject b, jobject component);
 NSNumber* JavaNumberToNSNumber(JNIEnv *env, jobject jnumber);
 NSValue *javaIntArrayToNSRangeValue(JNIEnv* env, jintArray array);
+
+extern void initializePreoritys();
