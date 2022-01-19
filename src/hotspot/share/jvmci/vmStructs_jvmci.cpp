@@ -521,7 +521,7 @@
   declare_constant(Deoptimization::Reason_not_compiled_exception_handler) \
   declare_constant(Deoptimization::Reason_unresolved)                     \
   declare_constant(Deoptimization::Reason_jsr_mismatch)                   \
-  declare_constant(Deoptimization::Reason_LIMIT)                          \
+  declare_constant(Deoptimization::Reason_TRAP_HISTORY_LENGTH)            \
                                                                           \
   declare_constant(FieldInfo::access_flags_offset)                        \
   declare_constant(FieldInfo::name_index_offset)                          \
