@@ -30,15 +30,16 @@
  * @requires (os.family == "mac")
  */
 
+import javax.accessibility.Accessible;
 import javax.accessibility.AccessibleAction;
 import javax.accessibility.AccessibleContext;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
+import javax.swing.tree.TreeModel;
+import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Hashtable;
 import java.util.concurrent.CountDownLatch;
 
 public class AccessibleActionsTest extends AccessibleComponentTest {
@@ -60,6 +61,36 @@ public class AccessibleActionsTest extends AccessibleComponentTest {
     super.createUI(new AccessibleActionsTestFrame(), "AccessibleActionsTest");
   }
 
+  void createTree() {
+    INSTRUCTIONS = "INSTRUCTIONS:\n"
+            + "Check a11y acctions.\n\n"
+            + "Turn screen reader on, and Tab to the label.\n\n"
+            + "Perform the VO action \"Press\" (VO+space) on tree nodes\n\n"
+            + "If after press the tree node is expanded  tab further and press PASS, otherwise press FAIL.";
+
+    String root = "Root";
+    String[] nodes = new String[] {"One node", "Two node"};
+    String[][] leafs = new String[][]{{"leaf 1.1", "leaf 1.2", "leaf 1.3", "leaf 1.4"},
+            {"leaf 2.1", "leaf 2.2", "leaf 2.3", "leaf 2.4"}};
+
+    Hashtable<String, String[]> data = new Hashtable<String, String[]>();
+    for (int i = 0; i < nodes.length; i++) {
+      data.put(nodes[i], leafs[i]);
+    }
+
+    JTree tree = new JTree(data);
+    tree.setRootVisible(true);
+
+    JPanel panel = new JPanel();
+    panel.setLayout(new FlowLayout());
+    JScrollPane scrollPane = new JScrollPane(tree);
+    panel.add(scrollPane);
+    panel.setFocusable(false);
+
+    exceptionString = "AccessibleAction test failed!";
+    super.createUI(panel, "AccessibleActionsTest");
+  }
+
   public static void main(String[] args) throws Exception {
     AccessibleActionsTest test = new AccessibleActionsTest();
 
@@ -70,6 +101,16 @@ public class AccessibleActionsTest extends AccessibleComponentTest {
     if (!testResult) {
       throw new RuntimeException(a11yTest.exceptionString);
     }
+
+    countDownLatch = test.createCountDownLatch();
+    SwingUtilities.invokeLater(test::createTree);
+    countDownLatch.await();
+
+    if (!testResult) {
+      throw new RuntimeException(a11yTest.exceptionString);
+    }
+
+
   }
 
   private class AccessibleActionsTestFrame extends JPanel {
