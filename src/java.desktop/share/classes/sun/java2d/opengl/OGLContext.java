@@ -50,7 +50,7 @@ public class OGLContext extends BufferedContext {
     static {
         EventQueue.invokeLater(() -> {
             Integer blitTileSize = AccessController.doPrivileged((PrivilegedAction<Integer>)() ->
-                Integer.parseInt(System.getProperty("sun.java2d.opengl.blitTileSize", "-1")));
+                Integer.parseInt(System.getProperty("sun.java2d.opengl.blitTileSize", "128")));
 
             if (blitTileSize < 0) {
                 int maxDeviceSize = 0;
