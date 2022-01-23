@@ -871,3 +871,6 @@ javax/print/attribute/SupportedPrintableAreas.java                              
 java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.java               JBR-890  macosx-all
 java/awt/dnd/NoFormatsCrashTest/NoFormatsCrashTest.java                             JBR-1011 macosx-all
 java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.java                   JBR-1011 macosx-all
+
+com/sun/java/swing/plaf/windows/Test8173145.java                                    JBR-4197 windows-all
+com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                              JBR-4197 windows-all
