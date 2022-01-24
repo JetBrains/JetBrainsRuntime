@@ -1247,7 +1247,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
     // The following two views are only there on Big Sur and forward
     BOOL runningAtLeastBigSur = [[NSProcessInfo processInfo] operatingSystemVersion].majorVersion >= 11;
-    
+
     NSView* titlebarVisualEffect = runningAtLeastBigSur ? titlebar.subviews[0] : nil;
     NSView* titlebarBackground = runningAtLeastBigSur ? titlebar.subviews[1] : nil;
 
@@ -1370,7 +1370,7 @@ AWT_ASSERT_APPKIT_THREAD;
     return (masks & NSWindowStyleMaskFullScreen) != 0;
 }
 
-- (void) disableTitlebar: (CGFloat) customHeaderHeight
+- (void) setTransparentTitlebarHeight: (CGFloat) customHeaderHeight
 {
     _customHeaderHeight = customHeaderHeight;
     dispatch_sync(dispatch_get_main_queue(), ^{
@@ -2238,7 +2238,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetTransparen
 
     NSWindow *nsWindow = (NSWindow *)jlong_to_ptr(windowPtr);
     AWTWindow *window = (AWTWindow*)[nsWindow delegate];
-    [window disableTitlebar:((CGFloat) customHeaderHeight)];
+    [window setTransparentTitlebarHeight:((CGFloat) customHeaderHeight)];
 
     JNI_COCOA_EXIT(env);
 }
