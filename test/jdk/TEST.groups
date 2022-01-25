@@ -381,6 +381,9 @@ jdk_accessibility = \
 jfc_demo = \
      demo/jfc
 
+jdk_editpad = \
+     jdk/editpad
+     
 jbr_all = \
      jb
 
@@ -394,6 +397,7 @@ jdk_desktop = \
     :jdk_accessibility \
     :jfc_demo \
     :jdk_client_sanity \
+    :jdk_editpad \
     :jbr_all
 
 # SwingSet3 tests.
