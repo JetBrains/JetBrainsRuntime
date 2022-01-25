@@ -3084,8 +3084,19 @@ public class Check {
 
     /** Is the annotation applicable to the symbol? */
     boolean annotationApplicable(JCAnnotation a, Symbol s) {
+        Optional<Set<Name>> targets = getApplicableTargets(a, s);
+        /* the optional could be emtpy if the annotation is unknown in that case
+         * we return that it is applicable and if it is erroneous that should imply
+         * an error at the declaration site
+         */
+        return !targets.isPresent() || targets.isPresent() && !targets.get().isEmpty();
+    }
+
+    @SuppressWarnings("preview")
+    Optional<Set<Name>> getApplicableTargets(JCAnnotation a, Symbol s) {
         Attribute.Array arr = getAttributeTargetAttribute(a.annotationType.type.tsym);
         Name[] targets;
+        Set<Name> applicableTargets = new HashSet<>();
 
         if (arr == null) {
             targets = defaultTargetMetaInfo(a, s);
@@ -3095,7 +3106,8 @@ public class Check {
             for (int i=0; i<arr.values.length; ++i) {
                 Attribute app = arr.values[i];
                 if (!(app instanceof Attribute.Enum)) {
-                    return true; // recovery
+                    // recovery
+                    return Optional.empty();
                 }
                 Attribute.Enum e = (Attribute.Enum) app;
                 targets[i] = e.value.name;
@@ -3104,51 +3116,51 @@ public class Check {
         for (Name target : targets) {
             if (target == names.TYPE) {
                 if (s.kind == TYP)
-                    return true;
+                    applicableTargets.add(names.TYPE);
             } else if (target == names.FIELD) {
                 if (s.kind == VAR && s.owner.kind != MTH)
-                    return true;
+                    applicableTargets.add(names.FIELD);
             } else if (target == names.METHOD) {
                 if (s.kind == MTH && !s.isConstructor())
-                    return true;
+                    applicableTargets.add(names.METHOD);
             } else if (target == names.PARAMETER) {
                 if (s.kind == VAR && s.owner.kind == MTH &&
                       (s.flags() & PARAMETER) != 0) {
-                    return true;
+                    applicableTargets.add(names.PARAMETER);
                 }
             } else if (target == names.CONSTRUCTOR) {
                 if (s.kind == MTH && s.isConstructor())
-                    return true;
+                    applicableTargets.add(names.CONSTRUCTOR);
             } else if (target == names.LOCAL_VARIABLE) {
                 if (s.kind == VAR && s.owner.kind == MTH &&
                       (s.flags() & PARAMETER) == 0) {
-                    return true;
+                    applicableTargets.add(names.LOCAL_VARIABLE);
                 }
             } else if (target == names.ANNOTATION_TYPE) {
                 if (s.kind == TYP && (s.flags() & ANNOTATION) != 0) {
-                    return true;
+                    applicableTargets.add(names.ANNOTATION_TYPE);
                 }
             } else if (target == names.PACKAGE) {
                 if (s.kind == PCK)
-                    return true;
+                    applicableTargets.add(names.PACKAGE);
             } else if (target == names.TYPE_USE) {
                 if (s.kind == VAR && s.owner.kind == MTH && s.type.hasTag(NONE)) {
-                    //cannot type annotate implictly typed locals
-                    return false;
+                    //cannot type annotate implicitly typed locals
+                    continue;
                 } else if (s.kind == TYP || s.kind == VAR ||
                         (s.kind == MTH && !s.isConstructor() &&
                                 !s.type.getReturnType().hasTag(VOID)) ||
                         (s.kind == MTH && s.isConstructor())) {
-                    return true;
+                    applicableTargets.add(names.TYPE_USE);
                 }
             } else if (target == names.TYPE_PARAMETER) {
                 if (s.kind == TYP && s.type.hasTag(TYPEVAR))
-                    return true;
+                    applicableTargets.add(names.TYPE_PARAMETER);
             } else
-                return true; // Unknown ElementType. This should be an error at declaration site,
-                             // assume applicable.
+                return Optional.empty(); // Unknown ElementType. This should be an error at declaration site,
+                                         // assume applicable.
         }
-        return false;
+        return Optional.of(applicableTargets);
     }
 
 
