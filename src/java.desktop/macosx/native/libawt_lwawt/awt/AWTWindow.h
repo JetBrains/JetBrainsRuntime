@@ -49,6 +49,13 @@
     BOOL isJustCreated;
     NSWindowTabbingMode javaWindowTabbingMode;
     BOOL isEnterFullScreen;
+    CGFloat _transparentTitleBarHeight;
+    id<NSObject> _windowWillEnterFullScreenNotification;
+    id<NSObject> _windowWillExitFullScreenNotification;
+    id<NSObject> _windowDidExitFullScreenNotification;
+    NSMutableArray* _transparentTitleBarConstraints;
+    NSLayoutConstraint *_transparentTitleBarHeightConstraint;
+    NSMutableArray *_transparentTitleBarButtonCenterXConstraints;
 }
 
 // An instance of either AWTWindow_Normal or AWTWindow_Panel
@@ -102,6 +109,11 @@
               frameRect:(NSRect)rect
               styleMask:(NSUInteger)styleMask
             contentView:(NSView *)view;
+@end
+
+@interface AWTWindowDragView : NSView
+@property (nonatomic) jobject javaPlatformWindow;
+- (id) initWithPlatformWindow:(jobject)javaPlatformWindow;
 @end
 
 #endif _AWTWINDOW_H
