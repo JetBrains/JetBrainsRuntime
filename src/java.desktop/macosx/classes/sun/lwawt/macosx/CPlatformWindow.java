@@ -67,6 +67,7 @@ import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
 import sun.awt.AWTThreading;
 import sun.java2d.SurfaceData;
+import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.LWWindowPeer;
@@ -74,6 +75,8 @@ import sun.lwawt.LWWindowPeer.PeerType;
 import sun.lwawt.PlatformWindow;
 import sun.security.action.GetPropertyAction;
 import sun.util.logging.PlatformLogger;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class CPlatformWindow extends CFRetainedResource implements PlatformWindow {
     private native long nativeCreateNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h);
@@ -103,6 +106,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     static native CPlatformWindow nativeGetTopmostPlatformWindowUnderMouse();
     private static native void nativeRaiseLevel(long nsWindowPtr, boolean popup, boolean onlyIfParentIsActive);
     private static native boolean nativeDelayShowing(long nsWindowPtr);
+    private static native void nativeSetTransparentTitleBarHeight(long nsWindowPtr, float height);
 
     // Logger to report issues happened during execution but that do not affect functionality
     private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.CPlatformWindow");
@@ -135,6 +139,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     public static final String WINDOW_TRANSPARENT_TITLE_BAR = "apple.awt.transparentTitleBar";
     public static final String WINDOW_TITLE_VISIBLE = "apple.awt.windowTitleVisible";
     public static final String WINDOW_APPEARANCE = "apple.awt.windowAppearance";
+    public static final String WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT = "apple.awt.windowTransparentTitleBarHeight";
 
     // This system property is named as jdk.* because it is not specific to AWT
     // and it is also used in JavaFX
@@ -281,6 +286,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             public void applyProperty(final CPlatformWindow c, final Object value) {
                 if (value != null && (value instanceof String)) {
                     c.execute(ptr -> nativeSetNSWindowAppearance(ptr, (String) value));
+                }
+            }
+        },
+        new Property<CPlatformWindow>(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT) {
+            public void applyProperty(final CPlatformWindow c, final Object value) {
+                if (value != null && (value instanceof Float)) {
+                    c.execute(ptr -> AWTThreading.executeWaitToolkit(wait -> nativeSetTransparentTitleBarHeight(ptr, (float) value)));
                 }
             }
         }
@@ -1474,4 +1486,21 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         isInFullScreen = false;
         isFullScreenAnimationOn = false;
     }
+
+    // JBR API internals
+    private static void setCustomDecorationTitleBarHeight(Window target, ComponentPeer peer, float height) {
+        if (peer instanceof LWComponentPeer) {
+            PlatformWindow platformWindow = ((LWComponentPeer<?, ?>) peer).getPlatformWindow();
+            if (platformWindow instanceof CPlatformWindow) {
+                ((CPlatformWindow) platformWindow).execute(ptr -> {
+                    AWTThreading.executeWaitToolkit(wait -> nativeSetTransparentTitleBarHeight(ptr, height));
+                });
+                if (target instanceof javax.swing.RootPaneContainer) {
+                    final javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer)target).getRootPane();
+                    if (rootpane != null) rootpane.putClientProperty(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT, height);
+                }
+            }
+        }
+    }
+
 }
