@@ -32,7 +32,6 @@ import java.awt.event.WindowEvent;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @test
@@ -41,24 +40,28 @@ import java.util.concurrent.atomic.AtomicReference;
  * @key headful
  * @requires (os.family == "mac")
  * @modules java.desktop/com.apple.eawt
+ * @compile MacSpacesUtil.java
+ * @run main FullScreenChildWindowShownBefore
  */
 
 public class FullScreenChildWindowShownBefore {
     private static final CompletableFuture<Boolean> dialogShown = new CompletableFuture<>();
 
-    private static Robot robot;
     private static JFrame frame;
     private static JDialog dialog;
 
     public static void main(String[] args) throws Exception {
-        robot = new Robot();
         try {
             SwingUtilities.invokeAndWait(FullScreenChildWindowShownBefore::initUI);
             dialogShown.get(5, TimeUnit.SECONDS);
             SwingUtilities.invokeAndWait(() -> Application.getApplication().requestToggleFullScreen(frame));
-            robot.delay(1000); // wait for transition to full screen to finish
-            ensureVisible(frame);
-            ensureVisible(dialog);
+            Thread.sleep(1000); // wait for transition to full screen to finish
+            ensureVisible(frame, 250, 150);
+            ensureVisible(dialog, 250, 250);
+            SwingUtilities.invokeAndWait(() -> Application.getApplication().requestToggleFullScreen(frame));
+            Thread.sleep(1000); // wait for transition from full screen to finish
+            ensureVisible(frame, 250, 150);
+            ensureVisible(dialog, 250, 250);
         } finally {
             SwingUtilities.invokeAndWait(FullScreenChildWindowShownBefore::disposeUI);
         }
@@ -66,8 +69,7 @@ public class FullScreenChildWindowShownBefore {
 
     private static void initUI() {
         frame = new JFrame("FullScreenChildWindowShownBefore");
-        frame.setSize(100, 100);
-        frame.setLocation(100, 100);
+        frame.setBounds(100, 100, 300, 300);
         frame.setVisible(true);
 
         dialog = new JDialog(frame, false);
@@ -77,8 +79,7 @@ public class FullScreenChildWindowShownBefore {
                 dialogShown.complete(true);
             }
         });
-        dialog.setSize(100, 100);
-        dialog.setLocation(100, 300);
+        dialog.setBounds(200, 200, 100, 100);
         dialog.setVisible(true);
     }
 
@@ -86,38 +87,7 @@ public class FullScreenChildWindowShownBefore {
         if (frame != null) frame.dispose();
     }
 
-    private static void ensureVisible(Window window) throws Exception {
-        AtomicReference<Point> location = new AtomicReference<>();
-        AtomicBoolean movementDetected = new AtomicBoolean();
-        SwingUtilities.invokeAndWait(() -> {
-            if (window.isVisible()) {
-                Rectangle bounds = window.getBounds();
-                Insets insets = window.getInsets();
-                bounds.x += insets.left;
-                bounds.y += insets.top;
-                bounds.width -= insets.left + insets.right;
-                bounds.height -= insets.top + insets.bottom;
-                if (!bounds.isEmpty()) {
-                    location.set(new Point((int) bounds.getCenterX(), (int) bounds.getCenterY()));
-                    window.addMouseMotionListener(new MouseMotionAdapter() {
-                        @Override
-                        public void mouseMoved(MouseEvent e) {
-                            movementDetected.set(true);
-                        }
-                    });
-                }
-            }
-        });
-        Point target = location.get();
-        if (target != null) {
-            robot.mouseMove(target.x, target.y);
-            robot.delay(100);
-            robot.mouseMove(target.x + 1, target.y + 1);
-            robot.delay(1000);
-            if (movementDetected.get()) {
-                return;
-            }
-        }
-        throw new RuntimeException(window + " isn't visible");
+    private static void ensureVisible(Window window, int x, int y) throws Exception {
+        if (!MacSpacesUtil.isWindowVisibleAtPoint(window, x, y)) throw new RuntimeException(window + " isn't visible");
     }
 }

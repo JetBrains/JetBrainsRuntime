@@ -40,29 +40,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @requires (os.family == "mac")
  * @modules java.desktop/com.apple.eawt
  *          java.desktop/com.apple.eawt.event
+ * @compile MacSpacesUtil.java
+ * @run main FullScreenInactiveModalDialog
  */
 
 public class FullScreenInactiveModalDialog {
     private static final CompletableFuture<Boolean> shownAtFullScreen = new CompletableFuture<>();
 
-    private static Robot robot;
     private static JFrame frame;
     private static JDialog dialog;
 
     public static void main(String[] args) throws Exception {
-        robot = new Robot();
-        robot.setAutoDelay(50); // without delay between key presses, 'switchToPreviousSpace'/'switchToNextSpace' don't always work
         try {
             SwingUtilities.invokeAndWait(FullScreenInactiveModalDialog::initUI);
             shownAtFullScreen.get(5, TimeUnit.SECONDS);
-            switchToPreviousSpace();
+            MacSpacesUtil.switchToPreviousSpace();
             SwingUtilities.invokeLater(FullScreenInactiveModalDialog::openDialog);
-            robot.delay(1000);
-            if (isWindowReallyShowing(dialog)) {
+            Thread.sleep(1000);
+            if (MacSpacesUtil.isWindowVisible(dialog)) {
                 throw new RuntimeException("Dialog is showing earlier than expected");
             }
-            switchToNextSpace();
-            if (!isWindowReallyShowing(dialog)) {
+            MacSpacesUtil.switchToNextSpace();
+            if (!MacSpacesUtil.isWindowVisible(dialog)) {
                 throw new RuntimeException("Dialog isn't showing when expected");
             }
         } finally {
@@ -93,54 +92,5 @@ public class FullScreenInactiveModalDialog {
 
     private static void disposeUI() {
         if (frame != null) frame.dispose();
-    }
-
-    private static void switchToPreviousSpace() {
-        robot.keyPress(KeyEvent.VK_CONTROL);
-        robot.keyPress(KeyEvent.VK_LEFT);
-        robot.keyRelease(KeyEvent.VK_LEFT);
-        robot.keyRelease(KeyEvent.VK_CONTROL);
-        robot.delay(1000); // wait for animation to finish
-    }
-
-    private static void switchToNextSpace() {
-        robot.keyPress(KeyEvent.VK_CONTROL);
-        robot.keyPress(KeyEvent.VK_RIGHT);
-        robot.keyRelease(KeyEvent.VK_RIGHT);
-        robot.keyRelease(KeyEvent.VK_CONTROL);
-        robot.delay(1000); // wait for animation to finish
-    }
-
-    private static boolean isWindowReallyShowing(Window window) throws Exception {
-        Point[] location = new Point[1];
-        AtomicBoolean movementDetected = new AtomicBoolean();
-        SwingUtilities.invokeAndWait(() -> {
-            if (window.isVisible()) {
-                Rectangle bounds = window.getBounds();
-                Insets insets = window.getInsets();
-                bounds.x += insets.left;
-                bounds.y += insets.top;
-                bounds.width -= insets.left + insets.right;
-                bounds.height -= insets.top + insets.bottom;
-                if (!bounds.isEmpty()) {
-                    location[0] = new Point(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
-                    window.addMouseMotionListener(new MouseMotionAdapter() {
-                        @Override
-                        public void mouseMoved(MouseEvent e) {
-                            movementDetected.set(true);
-                        }
-                    });
-                }
-            }
-        });
-        Point target = location[0];
-        if (target == null) {
-            return false;
-        }
-        robot.mouseMove(target.x, target.y);
-        robot.delay(100);
-        robot.mouseMove(target.x + 1, target.y + 1);
-        robot.delay(1000);
-        return movementDetected.get();
     }
 }
