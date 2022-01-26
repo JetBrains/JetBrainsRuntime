@@ -58,5 +58,5 @@ while [ "$i" -le "$RUNS_NUMBER" ]; do
     fi
     i=$(( i + 1 ))
 done
-echo "PASSED: Test did never crash during 100 iterations"
+echo "PASSED: Test did never crash during $RUNS_NUMBER iterations"
 exit 0
