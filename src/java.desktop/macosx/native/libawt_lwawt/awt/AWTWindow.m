@@ -1272,7 +1272,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     ]];
 
     AWTWindowDragView* windowDragView = [[AWTWindowDragView alloc] initWithPlatformWindow:self.javaPlatformWindow];
-    [titlebar addSubview:windowDragView];
+    [titlebar addSubview:windowDragView positioned:NSWindowBelow relativeTo:closeButtonView];
 
     for (NSView* view in @[titlebar, windowDragView])
     {
