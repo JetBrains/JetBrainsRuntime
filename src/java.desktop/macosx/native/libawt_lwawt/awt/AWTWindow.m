@@ -1320,8 +1320,6 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
 - (void) resetTitleBar
 {
-    BOOL runningAtLeastMojave = IS_OSX_GT10_13;
-    BOOL runningAtLeastBigSur = IS_OSX_GT10_15;
     // See [setUpTransparentTitleBar] for the view hierarchy we're working with
     NSView* closeButtonView = [self.nsWindow standardWindowButton:NSWindowCloseButton];
     NSView* zoomButtonView = [self.nsWindow standardWindowButton:NSWindowZoomButton];
