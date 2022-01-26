@@ -69,6 +69,9 @@ static NSPoint lastTopLeftPoint;
 
 static BOOL ignoreResizeWindowDuringAnotherWindowEnd = NO;
 
+static BOOL fullScreenTransitionInProgress = NO;
+static BOOL orderingScheduled = NO;
+
 // --------------------------------------------------------------
 // NSWindow/NSPanel descendants implementation
 #define AWT_NS_WINDOW_IMPLEMENTATION                            \
@@ -399,10 +402,11 @@ AWT_NS_WINDOW_IMPLEMENTATION
 
     if (IS(mask, FULLSCREENABLE) && [self.nsWindow respondsToSelector:@selector(toggleFullScreen:)]) {
         if (IS(bits, FULLSCREENABLE)) {
-            [self.nsWindow setCollectionBehavior:
-                NSWindowCollectionBehaviorFullScreenPrimary | NSWindowCollectionBehaviorManaged];
+            self.nsWindow.collectionBehavior = self.nsWindow.collectionBehavior |
+                                               NSWindowCollectionBehaviorFullScreenPrimary;
         } else {
-            [self.nsWindow setCollectionBehavior: NSWindowCollectionBehaviorManaged];
+            self.nsWindow.collectionBehavior = self.nsWindow.collectionBehavior &
+                                               ~NSWindowCollectionBehaviorFullScreenPrimary;
         }
     }
 
@@ -478,6 +482,7 @@ AWT_ASSERT_APPKIT_THREAD;
     self.isJustCreated = YES;
 
     self.javaWindowTabbingMode = [self getJavaWindowTabbingMode];
+    self.nsWindow.collectionBehavior = NSWindowCollectionBehaviorManaged;
     self.isEnterFullScreen = NO;
 
     return self;
@@ -641,8 +646,9 @@ AWT_ASSERT_APPKIT_THREAD;
 - (BOOL) delayShowing {
     AWT_ASSERT_APPKIT_THREAD;
 
-    return ownerWindow != nil && ([ownerWindow delayShowing] || !ownerWindow.nsWindow.onActiveSpace)
-           && !nsWindow.visible;
+    return ownerWindow != nil &&
+           ([ownerWindow delayShowing] || !ownerWindow.nsWindow.onActiveSpace) &&
+           !nsWindow.visible;
 }
 
 - (BOOL) checkBlockingAndOrder {
@@ -663,14 +669,19 @@ AWT_ASSERT_APPKIT_THREAD;
 + (void)activeSpaceDidChange {
     AWT_ASSERT_APPKIT_THREAD;
 
-    for (NSWindow* window in [NSApp windows]) {
-        if (window.onActiveSpace && window.mainWindow && [AWTWindow isJavaPlatformWindowVisible:window]) {
+    if (fullScreenTransitionInProgress) {
+        orderingScheduled = YES;
+        return;
+    }
+
+    // show delayed windows
+    for (NSWindow *window in NSApp.windows) {
+        if ([AWTWindow isJavaPlatformWindowVisible:window] && !window.visible) {
             AWTWindow *awtWindow = (AWTWindow *)[window delegate];
-             // there can be only one current blocker per window hierarchy,
-             // so we're checking just hierarchy root
-            if (awtWindow.ownerWindow == nil) {
-                // this should ensure that delayed blocking windows
-                // show up on space activation
+            while (awtWindow.ownerWindow != nil) {
+                awtWindow = awtWindow.ownerWindow;
+            }
+            if (awtWindow.nsWindow.visible && awtWindow.nsWindow.onActiveSpace) {
                 [awtWindow checkBlockingAndOrder];
             }
         }
@@ -718,11 +729,6 @@ AWT_ASSERT_APPKIT_THREAD;
                 // Focus owner has changed, move the childWindow
                 // back to normal window level
                 [window setLevel:NSNormalWindowLevel];
-            }
-            if (window.onActiveSpace && owner.onActiveSpace) {
-                // The childWindow should be displayed in front of
-                // its nearest parentWindow
-                [window orderWindow:NSWindowAbove relativeTo:[owner windowNumber]];
             }
         }
     }];
@@ -1080,13 +1086,26 @@ AWT_ASSERT_APPKIT_THREAD;
     [self processVisibleChildren:^void(AWTWindow* child){
         NSWindow *window = child.nsWindow;
         NSWindowCollectionBehavior behavior = window.collectionBehavior;
-        behavior &= !(NSWindowCollectionBehaviorManaged | NSWindowCollectionBehaviorTransient);
+        behavior &= ~(NSWindowCollectionBehaviorManaged | NSWindowCollectionBehaviorTransient);
         behavior |= allow ? NSWindowCollectionBehaviorTransient : NSWindowCollectionBehaviorManaged;
         window.collectionBehavior = behavior;
     }];
 }
 
+- (void) fullScreenTransitionStarted {
+    fullScreenTransitionInProgress = YES;
+}
+
+- (void) fullScreenTransitionFinished {
+    fullScreenTransitionInProgress = NO;
+    if (orderingScheduled) {
+        orderingScheduled = NO;
+        [self checkBlockingAndOrder];
+    }
+}
+
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
+    [self fullScreenTransitionStarted];
     [self allowMovingChildrenBetweenSpaces:YES];
 
     self.isEnterFullScreen = YES;
@@ -1107,6 +1126,7 @@ AWT_ASSERT_APPKIT_THREAD;
     self.isEnterFullScreen = YES;
 
     [self allowMovingChildrenBetweenSpaces:NO];
+    [self fullScreenTransitionFinished];
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
@@ -1123,6 +1143,8 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)windowWillExitFullScreen:(NSNotification *)notification {
     self.isEnterFullScreen = NO;
+
+    [self fullScreenTransitionStarted];
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
@@ -1143,6 +1165,8 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)windowDidExitFullScreen:(NSNotification *)notification {
     self.isEnterFullScreen = NO;
+
+    [self fullScreenTransitionFinished];
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);

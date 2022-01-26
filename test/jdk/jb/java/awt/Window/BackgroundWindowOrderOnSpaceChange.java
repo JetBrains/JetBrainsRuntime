@@ -32,22 +32,23 @@ import java.nio.file.Files;
  * @summary Regression test for JBR-3671 Window order changes for a background app on macOS desktop space switch
  * @key headful
  * @requires (os.family == "mac")
+ * @compile MacSpacesUtil.java
+ * @run main BackgroundWindowOrderOnSpaceChange
  */
 
 public class BackgroundWindowOrderOnSpaceChange {
-    private static Robot robot;
     private static JFrame frame1;
     private static JFrame frame2;
     private static Process otherProcess;
 
     public static void main(String[] args) throws Exception {
-        robot = new Robot();
+        MacSpacesUtil.ensureMoreThanOneSpaceExists();
         try {
             SwingUtilities.invokeAndWait(BackgroundWindowOrderOnSpaceChange::initUI);
             launchProcessWithWindow();
-            switchToNextSpace();
-            switchToPreviousSpace();
-            Color color = robot.getPixelColor(400, 400);
+            MacSpacesUtil.switchToNextSpace();
+            MacSpacesUtil.switchToPreviousSpace();
+            Color color = new Robot().getPixelColor(400, 400);
             if (!Color.green.equals(color)) {
                 throw new RuntimeException("Frame 1 isn't shown on top. Found color: " + color);
             }
@@ -101,21 +102,5 @@ public class BackgroundWindowOrderOnSpaceChange {
         if (otherProcess.getInputStream().read() == -1) {
             throw new RuntimeException("Error starting process");
         }
-    }
-
-    private static void switchToPreviousSpace() {
-        robot.keyPress(KeyEvent.VK_CONTROL);
-        robot.keyPress(KeyEvent.VK_LEFT);
-        robot.keyRelease(KeyEvent.VK_LEFT);
-        robot.keyRelease(KeyEvent.VK_CONTROL);
-        robot.delay(1000); // wait for animation to finish
-    }
-
-    private static void switchToNextSpace() {
-        robot.keyPress(KeyEvent.VK_CONTROL);
-        robot.keyPress(KeyEvent.VK_RIGHT);
-        robot.keyRelease(KeyEvent.VK_RIGHT);
-        robot.keyRelease(KeyEvent.VK_CONTROL);
-        robot.delay(1000); // wait for animation to finish
     }
 }

@@ -1339,7 +1339,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         // which is going to become 'main window', are placed above their siblings.
         CPlatformWindow rootOwner = getRootOwner();
         if (rootOwner.isVisible() && !rootOwner.isIconified() && !rootOwner.isActive()) {
-            rootOwner.execute(CWrapper.NSWindow::orderFront);
+            rootOwner.execute(CWrapper.NSWindow::orderFrontIfOnActiveSpace);
         }
 
         // Do not order child windows of iconified owner.
@@ -1375,7 +1375,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                         }
                         pwUnder.execute(underPtr -> {
                             pw.execute(ptr -> {
-                                CWrapper.NSWindow.orderWindow(ptr, CWrapper.NSWindow.NSWindowAbove, underPtr);
+                                CWrapper.NSWindow.orderWindowIfOnActiveSpace(ptr, CWrapper.NSWindow.NSWindowAbove, underPtr);
                             });
                         });
                         pwUnder = pw;
