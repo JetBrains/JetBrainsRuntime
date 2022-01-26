@@ -49,7 +49,9 @@
     BOOL isJustCreated;
     NSWindowTabbingMode javaWindowTabbingMode;
     BOOL isEnterFullScreen;
-    CGFloat _customHeaderHeight;
+    CGFloat _transparentTitleBarHeight;
+    NSLayoutConstraint *_transparentTitleBarHeightConstraint;
+    NSMutableArray *_transparentTitleBarButtonCenterXConstraints;
 }
 
 // An instance of either AWTWindow_Normal or AWTWindow_Panel

@@ -1456,6 +1456,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         isFullScreenAnimationOn = false;
     }
 
+    // called from client via reflection
+    private void setTransparentTitleBarHeight(float height) {
+        execute(ptr -> {
+            nativeSetTransparentTitleBarHeight(ptr, height);
+        });
+    }
+
     private volatile List<Rectangle> customDecorHitTestSpots;
 
     // called from client via reflection

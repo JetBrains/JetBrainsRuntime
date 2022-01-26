@@ -27,7 +27,7 @@
  * @key headful
  * @summary [macosx] transparent titlebar with custom height test
  * @author Grigorii Kargin
- * @run main MacNativeTransparentTitlebarWithCustomHeight
+ * @run main MacNativeTransparentTitleBarWithCustomHeight
  * @requires (os.family == "mac")
  */
 
@@ -36,19 +36,19 @@ import java.awt.image.BufferedImage;
 import java.lang.reflect.InvocationTargetException;
 import javax.swing.*;
 
-public class MacNativeTransparentTitlebarWithCustomHeight
+public class MacNativeTransparentTitleBarWithCustomHeight
 {
     private static final int TD = 10;
     private static final Color darkSystemGray4 = new Color(58, 58, 60);
     private static final Color lightSystemGray6 = new Color(242, 242, 247);
-    static MacNativeTransparentTitlebarWithCustomHeight theTest;
+    static MacNativeTransparentTitleBarWithCustomHeight theTest;
     private Robot robot;
     private JFrame frame;
     private JRootPane rootPane;
 
     private int DELAY = 1000;
 
-    public MacNativeTransparentTitlebarWithCustomHeight() {
+    public MacNativeTransparentTitleBarWithCustomHeight() {
         try {
             robot = new Robot();
         } catch (AWTException ex) {
@@ -141,7 +141,7 @@ public class MacNativeTransparentTitlebarWithCustomHeight
         }
 
         try {
-            runSwing(() -> theTest = new MacNativeTransparentTitlebarWithCustomHeight());
+            runSwing(() -> theTest = new MacNativeTransparentTitleBarWithCustomHeight());
             theTest.performTest();
         } finally {
             if (theTest != null) {
