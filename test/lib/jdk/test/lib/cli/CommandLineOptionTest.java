@@ -110,6 +110,7 @@ public abstract class CommandLineOptionTest {
             Collections.addAll(finalOptions, Utils.getTestJavaOpts());
         }
         Collections.addAll(finalOptions, options);
+        finalOptions.add("-XX:-IgnoreUnrecognizedVMOptions");
         finalOptions.add("-version");
 
         ProcessBuilder processBuilder
