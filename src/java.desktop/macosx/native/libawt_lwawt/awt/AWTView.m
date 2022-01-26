@@ -39,6 +39,7 @@
 #import "GeomUtilities.h"
 #import "CGLLayer.h"
 #import "java_awt_event_KeyEvent.h"
+#import "PropertiesUtilities.h"
 
 // keyboard layout
 static NSString *kbdLayout;
@@ -791,6 +792,10 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
 - (id)getAxData:(JNIEnv*)env
 {
+    NSString *a11yEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.awt.mac.a11y.enabled" withEnv:env];
+    if ([@"false" isCaseInsensitiveLike:a11yEnabledProp]) {
+        return nil;
+    }
     jobject jcomponent = [self awtComponent:env];
     id ax = [[[JavaComponentAccessibility alloc] initWithParent:self withEnv:env withAccessible:jcomponent withIndex:-1 withView:self withJavaRole:nil] autorelease];
     (*env)->DeleteLocalRef(env, jcomponent);
