@@ -3927,6 +3927,8 @@ public class Window extends Container implements Accessible {
             window.hasCustomDecoration = enabled;
             if (Win.INSTANCE != null) {
                 Win.INSTANCE.updateCustomDecoration(window.peer);
+            } else if (MacOS.INSTANCE != null && window.customDecorTitleBarHeight > 0f) {
+                MacOS.INSTANCE.setTitleBarHeight(window, window.peer, enabled ? window.customDecorTitleBarHeight : 0);
             }
         }
         boolean isCustomDecorationEnabled(Window window) {
@@ -3941,7 +3943,12 @@ public class Window extends Container implements Accessible {
         }
 
         void setCustomDecorationTitleBarHeight(Window window, int height) {
-            if (height >= 0) window.customDecorTitleBarHeight = height;
+            if (height >= 0) {
+                window.customDecorTitleBarHeight = height;
+                if (MacOS.INSTANCE != null && window.hasCustomDecoration) {
+                    MacOS.INSTANCE.setTitleBarHeight(window, window.peer, height);
+                }
+            }
         }
         int getCustomDecorationTitleBarHeight(Window window) {
             return window.customDecorTitleBarHeight;
@@ -3951,6 +3958,12 @@ public class Window extends Container implements Accessible {
             Win INSTANCE = (Win) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
                     .withStatic("updateCustomDecoration", "sun.awt.windows.WFramePeer").build();
             void updateCustomDecoration(ComponentPeer peer);
+        }
+
+        private interface MacOS {
+            MacOS INSTANCE = (MacOS) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
+                    .withStatic("setTitleBarHeight", "sun.lwawt.macosx.CPlatformWindow", "setCustomDecorationTitleBarHeight").build();
+            void setTitleBarHeight(Window target, ComponentPeer peer, float height);
         }
     }
 
