@@ -1229,7 +1229,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
 - (CGFloat) getTransparentTitleBarButtonShrinkingFactor
 {
-    CGFloat minimumHeightWithoutShrinking = 28.0;
+    CGFloat minimumHeightWithoutShrinking = 28.0; // This is the smallest macOS title bar availabe with public APIs as of Monterey
     CGFloat shrinkingFactor = fmin(_transparentTitleBarHeight / minimumHeightWithoutShrinking, 1.0);
     return shrinkingFactor;
 }
@@ -1295,7 +1295,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
         [_transparentTitleBarButtonCenterXConstraints addObject:buttonCenterXConstraint];
         [newConstraints addObjectsFromArray:@[
             [button.widthAnchor constraintLessThanOrEqualToAnchor:titlebarContainer.heightAnchor multiplier:0.5],
-            // Those corrections are required because macOS adds a constant 2 px in resulting height to the buttons
+            // Those corrections are required to keep the icons perfectly round because macOS adds a constant 2 px in resulting height to their frame
             [button.heightAnchor constraintEqualToAnchor: button.widthAnchor multiplier:14.0/12.0 constant:-2.0],
             [button.centerYAnchor constraintEqualToAnchor:titlebarContainer.centerYAnchor],
             buttonCenterXConstraint,
@@ -1307,13 +1307,15 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
 - (void) updateTransparentTitleBarConstraints
 {
-    _transparentTitleBarHeightConstraint.constant = _transparentTitleBarHeight;
-    CGFloat shrinkingFactor = [self getTransparentTitleBarButtonShrinkingFactor];
-    CGFloat horizontalButtonOffset = shrinkingFactor * DefaultHorizontalTitleBarButtonOffset;
-    [_transparentTitleBarButtonCenterXConstraints enumerateObjectsUsingBlock:^(NSLayoutConstraint* buttonConstraint, NSUInteger index, BOOL *stop)
-    {
-        buttonConstraint.constant = (_transparentTitleBarHeight/2.0 + (index * horizontalButtonOffset));
-    }];
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        _transparentTitleBarHeightConstraint.constant = _transparentTitleBarHeight;
+        CGFloat shrinkingFactor = [self getTransparentTitleBarButtonShrinkingFactor];
+        CGFloat horizontalButtonOffset = shrinkingFactor * DefaultHorizontalTitleBarButtonOffset;
+        [_transparentTitleBarButtonCenterXConstraints enumerateObjectsUsingBlock:^(NSLayoutConstraint* buttonConstraint, NSUInteger index, BOOL *stop)
+        {
+            buttonConstraint.constant = (_transparentTitleBarHeight/2.0 + (index * horizontalButtonOffset));
+        }];
+    });
 }
 
 - (void) resetTitleBar
