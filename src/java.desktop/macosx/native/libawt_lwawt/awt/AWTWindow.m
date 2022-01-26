@@ -1399,7 +1399,10 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
 @end // AWTWindow
 
-@implementation AWTWindowDragView
+@implementation AWTWindowDragView {
+    CGFloat _accumulatedDragDelta;
+    BOOL _draggingWindow;
+}
 
 - (id) initWithPlatformWindow:(jobject)javaPlatformWindow {
     self = [super init];
@@ -1414,35 +1417,52 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     return NO;
 }
 
+- (BOOL)isInDraggableArea:(NSPoint)point
+{
+    BOOL returnValue = YES;
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
+    if (platformWindow != NULL) {
+        GET_CPLATFORM_WINDOW_CLASS_RETURN(YES);
+        DECLARE_METHOD_RETURN(jm_hitTestCustomDecoration, jc_CPlatformWindow, "hitTestCustomDecoration", "(FF)Z", YES);
+        NSRect frame = [self.window frame];
+        float windowHeight = frame.size.height;
+        returnValue = (*env)->CallBooleanMethod(env, platformWindow, jm_hitTestCustomDecoration, point.x,  windowHeight - point.y) == JNI_TRUE ? NO : YES;
+        CHECK_EXCEPTION_IN_ENV(env);
+        (*env)->DeleteLocalRef(env, platformWindow);
+    }
+    return returnValue;
+}
+
 - (void)mouseDown:(NSEvent *)event
 {
-    [self.window performWindowDragWithEvent:event];
+    _accumulatedDragDelta = 0.0;
     // We don't follow the regular responder chain here since the native window swallows events in some cases
     [[self.window contentView] deliverJavaMouseEvent:event];
 }
 
+- (void)mouseDragged:(NSEvent *)event
+{
+    _accumulatedDragDelta += fabs(event.deltaX) + fabs(event.deltaY);
+    BOOL shouldStartWindowDrag = !_draggingWindow && ( _accumulatedDragDelta > 4.0 || [self isInDraggableArea:event.locationInWindow]);
+    if (shouldStartWindowDrag) {
+        [self.window performWindowDragWithEvent:event];
+        _draggingWindow = YES;
+    }
+}
+
 - (void)mouseUp:(NSEvent *)event
 {
-    BOOL result = NO;
-    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    if (_draggingWindow) {
+        _draggingWindow = NO;
+    } else {
+        if (event.clickCount == 2 && [self isInDraggableArea:event.locationInWindow]) {
+            [self.window performZoom:nil];
+        }
 
-    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
-    if (platformWindow != NULL) {
-        GET_CPLATFORM_WINDOW_CLASS();
-        DECLARE_METHOD(jm_hitTestCustomDecoration, jc_CPlatformWindow, "hitTestCustomDecoration", "(FF)Z");
-        NSPoint p = event.locationInWindow;
-        NSRect frame = [self.window frame];
-        float windowHeight = frame.size.height;
-        result = (*env)->CallBooleanMethod(env, platformWindow, jm_hitTestCustomDecoration, p.x,  windowHeight - p.y) == JNI_TRUE ? YES : NO;
-        CHECK_EXCEPTION();
-        (*env)->DeleteLocalRef(env, platformWindow);
+        // We don't follow the regular responder chain here since the native window swallows events in some cases
+        [[self.window contentView] deliverJavaMouseEvent:event];
     }
-    if (event.clickCount == 2 && !result)
-    {
-        [self.window performZoom:nil];
-    }
-    // We don't follow the regular responder chain here since the native window swallows events in some cases
-    [[self.window contentView] deliverJavaMouseEvent:event];
 }
 
 @end
