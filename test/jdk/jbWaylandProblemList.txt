@@ -2,3 +2,4 @@
 sun/java2d/ClassCastExceptionForInvalidSurface.java                                 JBR-3167 linux-all
 java/awt/Frame/HugeFrame/HugeFrame.java                                             JBR-3167 linux-all
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java         8279256 linux-all
+sun/security/pkcs11/Signature/TestDSAKeyLength.java                                 8279941 linux-all
