@@ -25,6 +25,7 @@
  * @test
  * @key headful
  * @bug 8162959
+ * @requires !display.XWayland
  * @summary Validate output of createMultiResolutionScreenCapture
  *          new API which returns MultiResolutionImage.
  * @run main/othervm -Dsun.java2d.uiScale=1 ScreenCaptureTest
@@ -44,6 +45,7 @@ import java.awt.Color;
 import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Panel;
+import java.awt.Point;
 import java.awt.Robot;
 import java.util.List;
 
@@ -87,97 +89,112 @@ public class ScreenCaptureTest {
         int w = frame.getWidth();
         int h = frame.getHeight();
 
-        // getPixelColor Test
-        // Check pixel color in first quardant GREEN; x=100, y=100
-        if (!robot.getPixelColor(w / 4, h / 4).equals(COLORS[0])) {
-            throw new RuntimeException("Wrong Pixel Color! Expected GREEN");
-        }
-        // Check pixel color in second quardant; BLUE, x=300, y=100
-        if (!robot.getPixelColor(3 * w / 4, h / 4).equals(COLORS[1])) {
-            throw new RuntimeException("Wrong Pixel Color! Expected BLUE");
-        }
-        // Check pixel color in third quardant; ORANGE, x=100, y=300
-        if (!robot.getPixelColor(w / 4, 3 * h / 4).equals(COLORS[2])) {
-            throw new RuntimeException("Wrong Pixel Color! Expected ORANGE");
-        }
-        // Check pixel color in fourth quardant; RED, x=300, y=300
-        if (!robot.getPixelColor(3 * w / 4, 3 * h / 4).equals(COLORS[3])) {
-            throw new RuntimeException("Wrong Pixel Color! Expected RED");
-        }
+        final Point screenLocation = frame.getLocationOnScreen();
+        final int x = screenLocation.x;
+        final int y = screenLocation.y;
+        try {
+            // getPixelColor Test
+            checkRectColor(new Rectangle(x, y, w / 2, h / 2), COLORS[0]);
+            checkRectColor(new Rectangle(x + w / 2, y, w / 2, h / 2), COLORS[1]);
+            checkRectColor(new Rectangle(x, y + h / 2, w / 2, h / 2), COLORS[2]);
+            checkRectColor(new Rectangle(x + w / 2, y + h / 2, w / 2, h / 2), COLORS[3]);
 
-        // createScreenCaptureTest
-        AffineTransform tx = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .getDefaultScreenDevice().getDefaultConfiguration()
-                .getDefaultTransform();
+            // createScreenCaptureTest
+            AffineTransform tx = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                    .getDefaultScreenDevice().getDefaultConfiguration()
+                    .getDefaultTransform();
 
-        if (tx.getScaleX() == 1 && tx.getScaleY() == 1) {
-            isHiDPI = false;
-        }
-
-        MultiResolutionImage image
-                = robot.createMultiResolutionScreenCapture(frame.getBounds());
-        List<Image> imageList = image.getResolutionVariants();
-        int size = imageList.size();
-        BufferedImage lowResImage;
-        BufferedImage highResImage;
-
-        if (!isHiDPI) {
-            // Check if output is MultiResolutionImage with one variant
-            if (size != 1) {
-                throw new RuntimeException(" Invalid variant size");
+            if (tx.getScaleX() == 1 && tx.getScaleY() == 1) {
+                isHiDPI = false;
             }
 
-            lowResImage = (BufferedImage) imageList.get(0);
-            System.out.println(frame.getBounds());
-            System.out.println(lowResImage.getWidth()+" "+lowResImage.getHeight());
-            if (frame.getWidth() != lowResImage.getWidth()
+            MultiResolutionImage image
+                    = robot.createMultiResolutionScreenCapture(frame.getBounds());
+            List<Image> imageList = image.getResolutionVariants();
+            int size = imageList.size();
+            BufferedImage lowResImage;
+            BufferedImage highResImage;
+
+            if (!isHiDPI) {
+                // Check if output is MultiResolutionImage with one variant
+                if (size != 1) {
+                    throw new RuntimeException(" Invalid variant size");
+                }
+
+                lowResImage = (BufferedImage) imageList.get(0);
+                System.out.println(frame.getBounds());
+                System.out.println(lowResImage.getWidth() + " " + lowResImage.getHeight());
+                if (frame.getWidth() != lowResImage.getWidth()
                         || frame.getHeight() != lowResImage.getHeight()) {
-                throw new RuntimeException(" Invalid Image size");
+                    throw new RuntimeException(" Invalid Image size");
+                }
+
+            } else {
+                // Check if output contains two variants.
+                if (size != 2) {
+                    throw new RuntimeException(" Invalid variant size");
+                }
+
+                // Check if hight resolution image size is scale times low resolution image.
+                lowResImage = (BufferedImage) imageList.get(0);
+                highResImage = (BufferedImage) imageList.get(1);
+
+                int lW = (int) lowResImage.getWidth();
+                int lH = (int) lowResImage.getHeight();
+                int hW = (int) highResImage.getWidth();
+                int hH = (int) highResImage.getHeight();
+
+                if (hW != (tx.getScaleX() * lW) || hH != (tx.getScaleY() * lH)) {
+                    throw new RuntimeException(" Invalid Resolution Variants");
+                }
+
+                // Check if both image colors are same at some location.
+                if (lowResImage.getRGB(lW / 4, lH / 4)
+                        != highResImage.getRGB(hW / 4, hH / 4)) {
+                    throw new RuntimeException("Wrong image color!");
+                }
+
+                if (lowResImage.getRGB(3 * lW / 4, lH / 4)
+                        != highResImage.getRGB(3 * hW / 4, hH / 4)) {
+                    throw new RuntimeException("Wrong image color!");
+                }
+
+                if (lowResImage.getRGB(lW / 4, 3 * lH / 4)
+                        != highResImage.getRGB(hW / 4, 3 * hH / 4)) {
+                    throw new RuntimeException("Wrong image color!");
+                }
+
+                if (lowResImage.getRGB(3 * lW / 4, 3 * lH / 4)
+                        != highResImage.getRGB(3 * hW / 4, 3 * hH / 4)) {
+                    throw new RuntimeException("Wrong image color!");
+                }
             }
-
-        } else {
-            // Check if output contains two variants.
-            if (size != 2) {
-                throw new RuntimeException(" Invalid variant size");
-            }
-
-            // Check if hight resolution image size is scale times low resolution image.
-            lowResImage = (BufferedImage) imageList.get(0);
-            highResImage = (BufferedImage) imageList.get(1);
-
-            int lW = (int) lowResImage.getWidth();
-            int lH = (int) lowResImage.getHeight();
-            int hW = (int) highResImage.getWidth();
-            int hH = (int) highResImage.getHeight();
-
-            if ( hW != (tx.getScaleX() * lW) || hH != (tx.getScaleY() * lH)) {
-                throw new RuntimeException(" Invalid Resolution Variants");
-            }
-
-            // Check if both image colors are same at some location.
-            if (lowResImage.getRGB(lW / 4, lH / 4)
-                    != highResImage.getRGB(hW / 4, hH / 4)) {
-                throw new RuntimeException("Wrong image color!");
-            }
-
-            if (lowResImage.getRGB(3 * lW / 4, lH / 4)
-                    != highResImage.getRGB(3 * hW / 4, hH / 4)) {
-                throw new RuntimeException("Wrong image color!");
-            }
-
-            if (lowResImage.getRGB(lW / 4, 3 * lH / 4)
-                    != highResImage.getRGB(hW / 4, 3 * hH / 4)) {
-                throw new RuntimeException("Wrong image color!");
-            }
-
-            if (lowResImage.getRGB(3 * lW / 4, 3 * lH / 4)
-                    != highResImage.getRGB(3 * hW / 4, 3 * hH / 4)) {
-                throw new RuntimeException("Wrong image color!");
-            }
-
+        } finally {
+            frame.dispose();
         }
-
-        frame.dispose();
     }
 
+
+    private static final int OFFSET = 3;
+    static void checkRectColor(Rectangle rect, Color expectedColor) {
+        System.out.println("Checking rectangle " + rect + " to have color " + expectedColor);
+        final Point[] pointsToCheck = new Point[] {
+                new Point(rect.x + OFFSET, rect.y + OFFSET),                           // top left corner
+                new Point(rect.x + rect.width - OFFSET, rect.y + OFFSET),              // top right corner
+                new Point(rect.x + rect.width / 2, rect.y + rect.height / 2),          // center
+                new Point(rect.x + OFFSET, rect.y + rect.height - OFFSET),             // bottom left corner
+                new Point(rect.x + rect.width - OFFSET, rect.y + rect.height - OFFSET) // bottom right corner
+        };
+
+        for (final var point : pointsToCheck) {
+            System.out.print("Checking color at " + point + " to be equal to " + expectedColor);
+            final Color actualColor = robot.getPixelColor(point.x, point.y);
+            if (!actualColor.equals(expectedColor)) {
+                System.out.println("... Mismatch: found " + actualColor + " instead");
+                throw new RuntimeException("Wrong image color!");
+            } else {
+                System.out.println("... OK");
+            }
+        }
+    }
 }

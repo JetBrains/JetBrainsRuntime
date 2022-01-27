@@ -24,6 +24,7 @@
 /*
  * @test
  * @requires (os.family == "linux")
+ * @requires !display.XWayland
  * @key headful
  * @bug 8218472
  * @summary Tests JProgressBar highlight color

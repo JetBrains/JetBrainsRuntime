@@ -24,6 +24,7 @@
 /*
  * @test
  * @requires (os.family == "linux")
+ * @requires !display.XWayland
  * @key headful
  * @bug 8214253
  * @summary Tests JToolTip background color
