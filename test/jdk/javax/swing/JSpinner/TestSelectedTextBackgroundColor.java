@@ -24,6 +24,7 @@
 /*
  * @test
  * @requires (os.family == "linux")
+ * @requires !display.XWayland
  * @key headful
  * @bug 8214112
  * @summary Tests JSpinner selected Text background color

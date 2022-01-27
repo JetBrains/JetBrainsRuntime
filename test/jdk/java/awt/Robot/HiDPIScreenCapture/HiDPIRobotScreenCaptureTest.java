@@ -27,10 +27,14 @@ import java.awt.Color;
 import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Panel;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.image.BufferedImage;
 import javax.swing.UIManager;
+import javax.imageio.ImageIO;
+import java.io.File;
+import java.io.IOException;
 
 /**
  * @test
@@ -39,6 +43,7 @@ import javax.swing.UIManager;
  * @summary  Windows HiDPI support
  * @author Alexander Scherbatiy
  * @requires (os.family == "linux" | os.family == "windows")
+ * @requires !display.XWayland
  * @run main/othervm -Dsun.java2d.win.uiScaleX=3 -Dsun.java2d.win.uiScaleY=2
  *                    HiDPIRobotScreenCaptureTest
  */
@@ -86,11 +91,12 @@ public class HiDPIRobotScreenCaptureTest {
         frame.setVisible(true);
         Robot robot = new Robot();
         robot.waitForIdle();
-        Thread.sleep(200);
+        robot.delay(500);
 
         Rectangle rect = canvas.getBounds();
         rect.setLocation(canvas.getLocationOnScreen());
 
+        System.out.println("Creating screen capture of " + rect);
         BufferedImage image = robot.createScreenCapture(rect);
         frame.dispose();
 
@@ -101,20 +107,38 @@ public class HiDPIRobotScreenCaptureTest {
             throw new RuntimeException("Wrong image size!");
         }
 
-        if (image.getRGB(w / 4, h / 4) != COLORS[0].getRGB()) {
-            throw new RuntimeException("Wrong image color!");
-        }
+        checkRectColor(image, new Rectangle(0, 0, w / 2, h / 2), COLORS[0]);
+        checkRectColor(image, new Rectangle(w / 2, 0, w / 2, h / 2), COLORS[1]);
+        checkRectColor(image, new Rectangle(0, h / 2, w / 2, h / 2), COLORS[2]);
+        checkRectColor(image, new Rectangle(w / 2, h / 2, w / 2, h / 2), COLORS[3]);
+    }
 
-        if (image.getRGB(3 * w / 4, h / 4) != COLORS[1].getRGB()) {
-            throw new RuntimeException("Wrong image color!");
-        }
+    private static final int OFFSET = 3;
+    static void checkRectColor(BufferedImage image, Rectangle rect, Color expectedColor) {
+        System.out.println("Checking rectangle " + rect + " to have color " + expectedColor);
+        final Point[] pointsToCheck = new Point[] {
+                new Point(rect.x + OFFSET, rect.y + OFFSET),                           // top left corner
+                new Point(rect.x + rect.width - OFFSET, rect.y + OFFSET),              // top right corner
+                new Point(rect.x + rect.width / 2, rect.y + rect.height / 2),          // center
+                new Point(rect.x + OFFSET, rect.y + rect.height - OFFSET),             // bottom left corner
+                new Point(rect.x + rect.width - OFFSET, rect.y + rect.height - OFFSET) // bottom right corner
+        };
 
-        if (image.getRGB(w / 4, 3 * h / 4) != COLORS[2].getRGB()) {
-            throw new RuntimeException("Wrong image color!");
-        }
-
-        if (image.getRGB(3 * w / 4, 3 * h / 4) != COLORS[3].getRGB()) {
-            throw new RuntimeException("Wrong image color!");
+        for (final var point : pointsToCheck) {
+            System.out.print("Checking color at " + point + " to be equal to " + expectedColor);
+            final int actualColor = image.getRGB(point.x, point.y);
+            if (actualColor != expectedColor.getRGB()) {
+                System.out.println("... Mismatch: found " + new Color(actualColor) + " instead. Check image.png.");
+                try {
+                    ImageIO.write(image, "png", new File("image.png"));
+                } catch(IOException e) {
+                    System.out.println("failed to save image.png.");
+                    e.printStackTrace();
+                }
+                throw new RuntimeException("Wrong image color!");
+            } else {
+                System.out.println("... OK");
+            }
         }
     }
 }
