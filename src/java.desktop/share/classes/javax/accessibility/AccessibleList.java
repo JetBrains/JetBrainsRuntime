@@ -21,164 +21,159 @@
 
 package javax.accessibility;
 
-import javax.swing.*;
-import javax.swing.event.ListDataListener;
-import javax.swing.event.ListSelectionListener;
-
 /**
  *  This interface provides list specific data.
  *
  * @author Artem Semenov
  */
-public interface AccessibleList<E> extends ListModel<E>, ListSelectionModel, AccessibleTable {
+public interface AccessibleList {
 
-    // AccessibleTable
+    /**
+     * A value for the selectionMode property: select one list index
+     * at a time.
+     */
+    int SINGLE_SELECTION = 0;
 
-    @Override
-    Accessible getAccessibleCaption();
+    /**
+     * A value for the selectionMode property: select one contiguous
+     * range of indices at a time.
+     */
+    int SINGLE_INTERVAL_SELECTION = 1;
 
-    @Override
-    void setAccessibleCaption(Accessible a);
+    /**
+     * A value for the selectionMode property: select one or more
+     * contiguous ranges of indices at a time.
+     */
+    int MULTIPLE_INTERVAL_SELECTION = 2;
 
-    @Override
-    Accessible getAccessibleSummary();
-
-    @Override
-    void setAccessibleSummary(Accessible a);
-
-    @Override
-    int getAccessibleRowCount();
-
-    @Override
-    int getAccessibleColumnCount();
-
-    @Override
-    Accessible getAccessibleAt(int r, int c);
-
-    @Override
-    int getAccessibleRowExtentAt(int r, int c);
-
-    @Override
-    int getAccessibleColumnExtentAt(int r, int c);
-
-    @Override
-    AccessibleTable getAccessibleRowHeader();
-
-    @Override
-    void setAccessibleRowHeader(AccessibleTable table);
-
-    @Override
-    AccessibleTable getAccessibleColumnHeader();
-
-    @Override
-    void setAccessibleColumnHeader(AccessibleTable table);
-
-    @Override
-    Accessible getAccessibleRowDescription(int r);
-
-    @Override
-    void setAccessibleRowDescription(int r, Accessible a);
-
-    @Override
-    Accessible getAccessibleColumnDescription(int c);
-
-    @Override
-    void setAccessibleColumnDescription(int c, Accessible a);
-
-    @Override
-    boolean isAccessibleSelected(int r, int c);
-
-    @Override
-    boolean isAccessibleRowSelected(int r);
-
-    @Override
-    boolean isAccessibleColumnSelected(int c);
-
-    @Override
-    int[] getSelectedAccessibleRows();
-
-    @Override
-    int[] getSelectedAccessibleColumns();
-
-    // ListModel
-
-    @Override
+    /**
+     * Returns the length of the list.
+     * @return the length of the list
+     */
     int getSize();
 
-    @Override
-    E getElementAt(int index);
-
-    @Override
-    void addListDataListener(ListDataListener l);
-
-    @Override
-    void removeListDataListener(ListDataListener l);
-
-    // ListSelectionModel
-
-    @Override
+    /**
+     * Changes the selection to be between {@code index0} and {@code index1}
+     *
+     * @param index0 one end of the interval.
+     * @param index1 other end of the interval
+     */
     void setSelectionInterval(int index0, int index1);
 
-    @Override
+    /**
+     * Changes the selection to be the set union of the current selection
+     * and the indices between {@code index0} and {@code index1} inclusive.
+     *
+     * @param index0 one end of the interval.
+     * @param index1 other end of the interval
+     */
     void addSelectionInterval(int index0, int index1);
 
-    @Override
+    /**
+     * Changes the selection to be the set difference of the current selection
+     * and the indices between {@code index0} and {@code index1} inclusive.
+     *
+     * @param index0 one end of the interval.
+     * @param index1 other end of the interval
+     */
     void removeSelectionInterval(int index0, int index1);
 
-    @Override
+    /**
+     * Returns the first selected index or -1 if the selection is empty.
+     *
+     * @return the first selected index or -1 if the selection is empty.
+     */
     int getMinSelectionIndex();
 
-    @Override
+    /**
+     * Returns the last selected index or -1 if the selection is empty.
+     *
+     * @return the last selected index or -1 if the selection is empty.
+     */
     int getMaxSelectionIndex();
 
-    @Override
+
+    /**
+     * Returns true if the specified index is selected.
+     *
+     * @param index an index
+     * @return {@code true} if the specified index is selected
+     */
     boolean isSelectedIndex(int index);
 
-    @Override
-    int getAnchorSelectionIndex();
-
-    @Override
-    void setAnchorSelectionIndex(int index);
-
-    @Override
-    int getLeadSelectionIndex();
-
-    @Override
-    void setLeadSelectionIndex(int index);
-
-    @Override
-    void clearSelection();
-
-    @Override
+    /**
+     * Returns true if no indices are selected.
+     *
+     * @return {@code true} if no indices are selected.
+     */
     boolean isSelectionEmpty();
 
-    @Override
+    /**
+     * Insert {@code length} indices beginning before/after {@code index}. This is typically
+     * called to sync the selection model with a corresponding change
+     * in the data model.
+     *
+     * @param index the beginning of the interval
+     * @param length the length of the interval
+     * @param before if {@code true}, interval inserts before the {@code index},
+     *               otherwise, interval inserts after the {@code index}
+     */
     void insertIndexInterval(int index, int length, boolean before);
 
-    @Override
+    /**
+     * Remove the indices in the interval {@code index0,index1} (inclusive) from
+     * the selection model.  This is typically called to sync the selection
+     * model width a corresponding change in the data model.
+     *
+     * @param index0 the beginning of the interval
+     * @param index1 the end of the interval
+     */
     void removeIndexInterval(int index0, int index1);
 
-    @Override
-    void setValueIsAdjusting(boolean valueIsAdjusting);
-
-    @Override
-    boolean getValueIsAdjusting();
-
-    @Override
+    /**
+     * Sets the selection mode. The following list describes the accepted
+     * selection modes:
+     * <ul>
+     * <li>{@code ListSelectionModel.SINGLE_SELECTION} -
+     *   Only one list index can be selected at a time. In this mode,
+     *   {@code setSelectionInterval} and {@code addSelectionInterval} are
+     *   equivalent, both replacing the current selection with the index
+     *   represented by the second argument (the "lead").
+     * <li>{@code ListSelectionModel.SINGLE_INTERVAL_SELECTION} -
+     *   Only one contiguous interval can be selected at a time.
+     *   In this mode, {@code addSelectionInterval} behaves like
+     *   {@code setSelectionInterval} (replacing the current selection),
+     *   unless the given interval is immediately adjacent to or overlaps
+     *   the existing selection, and can therefore be used to grow it.
+     * <li>{@code ListSelectionModel.MULTIPLE_INTERVAL_SELECTION} -
+     *   In this mode, there's no restriction on what can be selected.
+     * </ul>
+     *
+     * @param selectionMode the selection mode
+     */
     void setSelectionMode(int selectionMode);
 
-    @Override
+    /**
+     * Returns the current selection mode.
+     *
+     * @return the current selection mode
+     * @see #setSelectionMode
+     */
     int getSelectionMode();
 
-    @Override
-    void addListSelectionListener(ListSelectionListener x);
-
-    @Override
-    void removeListSelectionListener(ListSelectionListener x);
-
-    @Override
+    /**
+     * Returns an array of all of the selected indices in the selection model,
+     * in increasing order.
+     *
+     * @return all of the selected indices, in increasing order,
+     *         or an empty array if nothing is selected
+     */
     int[] getSelectedIndices();
 
-    @Override
+    /**
+     * Returns the number of selected items.
+     *
+     * @return the number of selected items, 0 if no items are selected
+     */
     int getSelectedItemsCount();
 }

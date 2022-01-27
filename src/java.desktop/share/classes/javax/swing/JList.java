@@ -3040,7 +3040,7 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
                                 Boolean.valueOf(false), Boolean.valueOf(true));
          }
 
-        private class AccessibleListImpl implements AccessibleList<E> {
+        private class AccessibleListImpl implements AccessibleList, AccessibleTable {
 
             @Override
             public Accessible getAccessibleCaption() {
@@ -3171,21 +3171,6 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
             }
 
             @Override
-            public E getElementAt(int index) {
-                return JList.this.getModel().getElementAt(index);
-            }
-
-            @Override
-            public void addListDataListener(ListDataListener l) {
-                JList.this.getModel().addListDataListener(l);
-            }
-
-            @Override
-            public void removeListDataListener(ListDataListener l) {
-                JList.this.getModel().removeListDataListener(l);
-            }
-
-            @Override
             public void setSelectionInterval(int index0, int index1) {
                 JList.this.getSelectionModel().setSelectionInterval(index0, index1);
             }
@@ -3216,31 +3201,6 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
             }
 
             @Override
-            public int getAnchorSelectionIndex() {
-                return JList.this.getSelectionModel().getAnchorSelectionIndex();
-            }
-
-            @Override
-            public void setAnchorSelectionIndex(int index) {
-                JList.this.getSelectionModel().setAnchorSelectionIndex(index);
-            }
-
-            @Override
-            public int getLeadSelectionIndex() {
-                return JList.this.getSelectionModel().getLeadSelectionIndex();
-            }
-
-            @Override
-            public void setLeadSelectionIndex(int index) {
-                JList.this.getSelectionModel().setLeadSelectionIndex(index);
-            }
-
-            @Override
-            public void clearSelection() {
-                JList.this.getSelectionModel().clearSelection();
-            }
-
-            @Override
             public boolean isSelectionEmpty() {
                 return JList.this.getSelectionModel().isSelectionEmpty();
             }
@@ -3256,16 +3216,6 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
             }
 
             @Override
-            public void setValueIsAdjusting(boolean valueIsAdjusting) {
-                JList.this.getSelectionModel().setValueIsAdjusting(valueIsAdjusting);
-            }
-
-            @Override
-            public boolean getValueIsAdjusting() {
-                return JList.this.getSelectionModel().getValueIsAdjusting();
-            }
-
-            @Override
             public void setSelectionMode(int selectionMode) {
                 JList.this.getSelectionModel().setSelectionMode(selectionMode);
             }
@@ -3273,16 +3223,6 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
             @Override
             public int getSelectionMode() {
                 return JList.this.getSelectionModel().getSelectionMode();
-            }
-
-            @Override
-            public void addListSelectionListener(ListSelectionListener x) {
-                JList.this.getSelectionModel().addListSelectionListener(x);
-            }
-
-            @Override
-            public void removeListSelectionListener(ListSelectionListener x) {
-                JList.this.getSelectionModel().removeListSelectionListener(x);
             }
 
             @Override
@@ -3297,7 +3237,7 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
 
             public Accessible getAccessibleAt(int r, int c) {
                 if ((r >= 0) && (r < getAccessibleRowCount())) {
-                    E o =  getElementAt(r);
+                    E o =  JList.this.getModel().getElementAt(r);
                     if (o != null) {
                         Component component = JList.this.getCellRenderer().getListCellRendererComponent(JList.this, o, r,
                                 JList.this.isSelectedIndex(r), false);
