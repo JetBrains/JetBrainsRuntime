@@ -24,6 +24,7 @@
 /*
  * @test
  * @requires (os.family == "linux")
+ * @requires !display.XWayland
  * @key headful
  * @bug 8218469
  * @summary Tests JSlider is rendered properly with gtk3
