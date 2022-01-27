@@ -698,8 +698,10 @@ int glXGetVideoInfoNV (Display *dpy, int screen, GLXVideoDeviceNV VideoDevice, u
 /* Define int32_t, int64_t, and uint64_t types for UST/MSC */
 /* (as used in the GLX_OML_sync_control extension). */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+/* JDK modification */
+#elif defined(__sun__)
 #include <inttypes.h>
-#elif defined(__sun__) || defined(__digital__)
+#elif defined(__digital__)
 #include <inttypes.h>
 #if defined(__STDC__)
 #if defined(__arch64__) || defined(_LP64)
