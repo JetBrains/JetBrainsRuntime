@@ -30,6 +30,11 @@ public class JBRApiModule {
                     .withStatic("getSubpixelResolution", "sun.font.FontUtilities")
                 .service("com.jetbrains.JBRFileDialogService", null)
                     .withStatic("getFileDialog", "com.jetbrains.desktop.JBRFileDialog", "get")
-                .proxy("com.jetbrains.JBRFileDialog", "com.jetbrains.desktop.JBRFileDialog");
+                .proxy("com.jetbrains.JBRFileDialog", "com.jetbrains.desktop.JBRFileDialog")
+                .service("com.jetbrains.JBRColorPicker", null)
+                    .withStatic("start", "com.jetbrains.desktop.JBRColorPicker")
+                    .withStatic("registerListener", "com.jetbrains.desktop.JBRColorPicker")
+                    .withStatic("unregisterListener", "com.jetbrains.desktop.JBRColorPicker")
+                .twoWayProxy("com.jetbrains.JBRColorPickerListener", "com.jetbrains.desktop.JBRColorPickerListener");
     }
 }

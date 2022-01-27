@@ -1457,6 +1457,16 @@ void AwtToolkit::UninstallMouseLowLevelHook()
     }
 }
 
+HHOOK AwtToolkit::InstallCustomMouseLowLevelHook(HOOKPROC hook)
+{
+    return ::SetWindowsHookEx(WH_MOUSE_LL, hook, GetModuleHandle(), NULL);
+}
+
+void AwtToolkit::UninstallCustomMouseLowLevelHook(HHOOK hook)
+{
+    ::UnhookWindowsHookEx(hook);
+}
+
 LRESULT CALLBACK AwtToolkit::MouseLowLevelHook(int code,
         WPARAM wParam, LPARAM lParam)
 {

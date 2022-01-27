@@ -196,7 +196,7 @@ class CriticalSection {
 
     #define MOUSEEVENTF_FROMTOUCH_MASK  0xFFFFFF00
     #define MOUSEEVENTF_FROMTOUCH       0xFF515700
-    
+
     /*
     * Conversion of touch input coordinates to pixels
     */
@@ -572,6 +572,9 @@ public:
 
     void InstallMouseLowLevelHook();
     void UninstallMouseLowLevelHook();
+
+    HHOOK InstallCustomMouseLowLevelHook(HOOKPROC hook);
+    void UninstallCustomMouseLowLevelHook(HHOOK hook);
 
 
 /* AWT preloading (early Toolkit thread start)
