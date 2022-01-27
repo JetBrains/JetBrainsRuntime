@@ -2863,6 +2863,10 @@ static void transform_detail_string (const gchar *detail,
     }
 }
 
+inline static int scale_down(int what, int scale) {
+    return (int)(what / (float)scale + 0.5f);
+}
+
 static gboolean gtk3_get_drawable_data(JNIEnv *env, jintArray pixelArray,
      int x, jint y, jint width, jint height, jint jwidth, int dx, int dy,
                                                                    jint scale) {
@@ -2872,8 +2876,14 @@ static gboolean gtk3_get_drawable_data(JNIEnv *env, jintArray pixelArray,
     GdkWindow *root = (*fp_gdk_get_default_root_window)();
     if (gtk3_version_3_10) {
         int win_scale = (*fp_gdk_window_get_scale_factor)(root);
+        // Scale the size up to, but never below, 1. This is for the case when a single-pixel
+        // image is required. Besides, Gtk API doesn't allow the size to be less than one.
+        const int width_scaled = (width <= win_scale) ? 1 : scale_down(width, win_scale);
+        const int height_scaled = (height <= win_scale) ? 1 : scale_down(height, win_scale);
+        const int x_scaled = scale_down(x, win_scale);
+        const int y_scaled = scale_down(y, win_scale);
         pixbuf = (*fp_gdk_pixbuf_get_from_drawable)(
-            root, x, y, (int) (width / (float) win_scale + 0.5), (int) (height / (float) win_scale + 0.5));
+            root, x_scaled, y_scaled, width_scaled, height_scaled);
     } else {
         pixbuf = (*fp_gdk_pixbuf_get_from_drawable)(root, x, y, width, height);
     }
