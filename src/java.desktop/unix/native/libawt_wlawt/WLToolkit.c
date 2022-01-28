@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@
 #include <dlfcn.h>
 #include <string.h>
 #include <poll.h>
+#include <Trace.h>
 
 #include "sun_awt_wl_WLToolkit.h"
 #include "WLToolkit.h"
@@ -85,13 +86,13 @@ Java_sun_awt_wl_WLToolkit_initIDs
 {
     wl_display = wl_display_connect(NULL);
     if (!wl_display) {
-        fprintf(stderr, "Failed to connect to Wayland display.\n");
+        J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to connect to Wayland display\n");
         return;
     }
     struct wl_registry *wl_registry = wl_display_get_registry(wl_display);
     wl_registry_add_listener(wl_registry, &wl_registry_listener, NULL);
     wl_display_roundtrip(wl_display);
-    fprintf(stderr, "Connection established!\n");
+    J2dTrace1(J2D_TRACE_INFO, "WLToolkit: Connection to display(%p) established\n", wl_display);
 }
 
 JNIEXPORT void JNICALL

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +32,17 @@ struct _WLSDOps {
     SurfaceDataOps      sdOps;
     jboolean            invalid;
     jobject             peer;
-    jlong               wl_surface;
+    jlong               wlSurface;
+    jlong               wlBuffer;
+    jlong               wlShmPool;
+    int                 fd;
+    uint32_t            *data;
+    jint                dataSize;
+    jint                width;
+    jint                height;
     jint                bgPixel;
+    jint                pixelStride;
+    pthread_mutex_t     lock;
     jboolean            isBgInitialized;
 };
 
