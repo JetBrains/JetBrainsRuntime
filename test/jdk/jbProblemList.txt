@@ -1235,4 +1235,4 @@ jb/java/awt/Focus/ChainOfPopupsFocusTest.java                                   
 
 java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
 
-jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest3838.java                    JBR-3838 windows-all
+jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                    JBR-4207 windows-all
