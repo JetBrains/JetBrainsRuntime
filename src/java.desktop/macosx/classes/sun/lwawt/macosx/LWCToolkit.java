@@ -88,6 +88,7 @@ import java.lang.reflect.UndeclaredThrowableException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -649,28 +650,10 @@ public final class LWCToolkit extends LWToolkit {
         return invokeAndWait(callable, component, -1);
     }
 
-    static <T> T invokeAndWait(final Callable<T> callable, Component component, int timeoutSeconds) throws Exception {
+    public static <T> T invokeAndWait(final Callable<T> callable, Component component, int timeoutSeconds) throws Exception {
         final CallableWrapper<T> wrapper = new CallableWrapper<>(callable);
         invokeAndWait(wrapper, component, timeoutSeconds);
         return wrapper.getResult();
-    }
-
-    static final class CancelableRunnable implements Runnable {
-        volatile Runnable runnable;
-
-        public CancelableRunnable(Runnable runnable) {
-            this.runnable = runnable;
-        }
-
-        @Override
-        public void run() {
-            Runnable r = runnable;
-            if (r != null) r.run();
-        }
-
-        public void cancel() {
-            runnable = null;
-        }
     }
 
     static final class CallableWrapper<T> implements Runnable {
@@ -740,7 +723,7 @@ public final class LWCToolkit extends LWToolkit {
         invokeAndWait(runnable, component, -1);
     }
 
-    static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
+    public static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
             throws InvocationTargetException
     {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -748,24 +731,17 @@ public final class LWCToolkit extends LWToolkit {
         }
 
         boolean nonBlockingRunLoop;
-        CancelableRunnable cancelableRunnable = new CancelableRunnable(runnable);
 
         synchronized (priorityInvocationPending) {
             nonBlockingRunLoop = priorityInvocationPending.get();
             if (!nonBlockingRunLoop) blockingRunLoopCounter.incrementAndGet();
         }
 
-        final long mediator = createAWTRunLoopMediator();
+        AWTThreading.TrackedInvocationEvent invocationEvent =
+            AWTThreading.createAndTrackInvocationEvent(component, runnable, true);
 
-        InvocationEvent invocationEvent =
-                AWTThreading.createAndTrackInvocationEvent(component,
-                        cancelableRunnable,
-                        () -> {
-                            if (mediator != 0) {
-                                stopAWTRunLoop(mediator);
-                            }
-                        },
-                        true);
+        long mediator = createAWTRunLoopMediator();
+        invocationEvent.onDone(() -> stopAWTRunLoop(mediator));
 
         if (component != null) {
             AppContext appContext = SunToolkit.targetToAppContext(component);
@@ -779,10 +755,21 @@ public final class LWCToolkit extends LWToolkit {
             ((LWCToolkit)Toolkit.getDefaultToolkit()).getSystemEventQueueForInvokeAndWait().postEvent(invocationEvent);
         }
 
+        CompletableFuture<Void> eventDispatchThreadFreeFuture =
+            AWTThreading.getInstance(component).onEventDispatchThreadFree(() -> {
+                if (!invocationEvent.isDone()) {
+                    // EventQueue is now empty but the posted InvocationEvent is still not dispatched,
+                    // consider it lost then.
+                    invocationEvent.dispose("InvocationEvent was lost");
+                }
+            });
+
+        invocationEvent.onDone(() -> eventDispatchThreadFreeFuture.cancel(false));
+
         if (!doAWTRunLoop(mediator, nonBlockingRunLoop, timeoutSeconds)) {
-            new Throwable("Invocation timed out (" + timeoutSeconds + "sec)").printStackTrace();
-            cancelableRunnable.cancel();
+            invocationEvent.dispose("InvocationEvent has timed out");
         }
+
         if (!nonBlockingRunLoop) blockingRunLoopCounter.decrementAndGet();
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
