@@ -169,8 +169,8 @@ public class TestIndirectExportsOpens extends JavadocTester {
         checkOutput("a/module-summary.html", true,
                 "Indirect Opens",
                 """
-                    <div class="col-first even-row-color"><a href="../m/module-summary.html">m</a></div>
-                    <div class="col-last even-row-color">opensto</div>
+                    <div class="col-first odd-row-color"><a href="../m/module-summary.html">m</a></div>
+                    <div class="col-last odd-row-color">opensto</div>
                     </div>
                     """);
     }
