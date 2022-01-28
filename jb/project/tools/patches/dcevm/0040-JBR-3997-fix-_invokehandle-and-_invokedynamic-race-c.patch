@@ -1,0 +1,111 @@
+From 96862f74063229132611259eb35f523badd0c9e1 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Sun, 28 Nov 2021 11:10:58 +0100
+Subject: [PATCH 40/44] JBR-3997 - fix _invokehandle and _invokedynamic race
+ conditions
+
+Old clear mechanism of CpCacheEntry has cleared partially _flags and the
+entire _f1, but both values could be later used in interpreter for
+invocation. It ended up with various types of crashes. To prevent dcevm
+crashes, we keep the old _f1 and _flags values until they are resolved
+again. We need a new flag 'is_f1_null_dcevm_shift' indicating that _f1
+is NULL (while f1 keeps old value).
+---
+ src/hotspot/share/oops/cpCache.cpp        | 14 ++++----------
+ src/hotspot/share/oops/cpCache.hpp        |  8 ++++----
+ src/hotspot/share/oops/cpCache.inline.hpp |  7 ++++++-
+ 3 files changed, 14 insertions(+), 15 deletions(-)
+
+diff --git a/src/hotspot/share/oops/cpCache.cpp b/src/hotspot/share/oops/cpCache.cpp
+index 4318df227d1..52cf5fe5bdf 100644
+--- a/src/hotspot/share/oops/cpCache.cpp
++++ b/src/hotspot/share/oops/cpCache.cpp
+@@ -450,6 +450,8 @@ void ConstantPoolCacheEntry::set_method_handle_common(const constantPoolHandle&
+ 
+   release_set_f1(adapter());  // This must be the last one to set (see NOTE above)!
+ 
++  OrderAccess::release_store(&_flags, _flags & ~(1u << is_f1_null_dcevm_shift));
++
+   // The interpreter assembly code does not check byte_2,
+   // but it is used by is_resolved, method_if_resolved, etc.
+   set_bytecode_1(invoke_code);
+@@ -654,16 +656,8 @@ void ConstantPoolCacheEntry::clear_entry() {
+   _indices = constant_pool_index();
+ 
+   if (clearData) {
+-    if (!is_resolved_reference()) {
+-      _f2 = 0;
+-    }
+-    // FIXME: (DCEVM) we want to clear flags, but parameter size is actually used
+-    // after we return from the method, before entry is re-initialized. So let's
+-    // keep parameter size the same.
+-    // For example, it's used in TemplateInterpreterGenerator::generate_return_entry_for
+-    // Also, we need to keep flag marking entry as one containing resolved_reference
+-    _flags &= parameter_size_mask | (1 << is_resolved_ref_shift);
+-    _f1 = NULL;
++     // DCEVM: do not clear f1 now, since it can be used before cache entry is re-resolved
++    _flags |= (1 << is_f1_null_dcevm_shift);
+   }
+ }
+ 
+diff --git a/src/hotspot/share/oops/cpCache.hpp b/src/hotspot/share/oops/cpCache.hpp
+index 2a9eb978b43..bb4e40373b2 100644
+--- a/src/hotspot/share/oops/cpCache.hpp
++++ b/src/hotspot/share/oops/cpCache.hpp
+@@ -178,8 +178,9 @@ class ConstantPoolCacheEntry {
+     tos_state_bits             = 4,
+     tos_state_mask             = right_n_bits(tos_state_bits),
+     tos_state_shift            = BitsPerInt - tos_state_bits,  // see verify_tos_state_shift below
+-    // (DCEVM) We need to remember entries which has resolved reference indices as we don't want to clean them
+-    is_resolved_ref_shift      = 27,
++    // (DCEVM) dcevm additional indicator, that f1 is NULL. DCEVM need to keep the old value of the f1 until the
++    //         cache entry is reresolved to avoid race condition
++    is_f1_null_dcevm_shift     = 27,
+     // misc. option bits; can be any bit position in [16..27]
+     is_field_entry_shift       = 26,  // (F) is it a field or a method?
+     has_method_type_shift      = 25,  // (M) does the call site have a MethodType?
+@@ -213,7 +214,6 @@ class ConstantPoolCacheEntry {
+   void initialize_resolved_reference_index(int ref_index) {
+     assert(_f2 == 0, "set once");  // note: ref_index might be zero also
+     _f2 = ref_index;
+-    _flags = 1 << is_resolved_ref_shift;
+   }
+ 
+   void set_field(                                // sets entry to resolved field state
+@@ -363,7 +363,6 @@ class ConstantPoolCacheEntry {
+   bool is_method_entry() const                   { return (_flags & (1 << is_field_entry_shift))    == 0; }
+   bool is_field_entry() const                    { return (_flags & (1 << is_field_entry_shift))    != 0; }
+   bool is_long() const                           { return flag_state() == ltos; }
+-  bool is_resolved_reference() const             { return (_flags & (1 << is_resolved_ref_shift))   != 0; }
+   bool is_double() const                         { return flag_state() == dtos; }
+   TosState flag_state() const                    { assert((uint)number_of_states <= (uint)tos_state_mask+1, "");
+                                                    return (TosState)((_flags >> tos_state_shift) & tos_state_mask); }
+@@ -407,6 +406,7 @@ class ConstantPoolCacheEntry {
+ 
+   void verify_just_initialized(bool f2_used);
+   void reinitialize(bool f2_used);
++
+ };
+ 
+ 
+diff --git a/src/hotspot/share/oops/cpCache.inline.hpp b/src/hotspot/share/oops/cpCache.inline.hpp
+index c876e669de3..2cf48c67a9f 100644
+--- a/src/hotspot/share/oops/cpCache.inline.hpp
++++ b/src/hotspot/share/oops/cpCache.inline.hpp
+@@ -65,7 +65,12 @@ inline Klass* ConstantPoolCacheEntry::f1_as_klass() const {
+   return (Klass*)f1;
+ }
+ 
+-inline bool ConstantPoolCacheEntry::is_f1_null() const { Metadata* f1 = f1_ord(); return f1 == NULL; }
++inline bool ConstantPoolCacheEntry::is_f1_null() const {
++  Metadata* f1 = f1_ord();
++  intx flags = flags_ord();
++  return f1 == NULL || (flags & (1 << is_f1_null_dcevm_shift)) != 0;
++}
++
+ 
+ inline bool ConstantPoolCacheEntry::has_appendix() const {
+   return (!is_f1_null()) && (_flags & (1 << has_appendix_shift)) != 0;
+-- 
+2.23.0
+

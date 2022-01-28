@@ -1,11 +1,11 @@
-From f243b468b99115fcc4552644fea57cb695ab3ef8 Mon Sep 17 00:00:00 2001
+From 7c0fb4d6401dd7f87e6985c514484ee9846bf447 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 12 Jun 2020 17:43:52 +0200
-Subject: [PATCH 09/33] Support for G1 gc
+Subject: [PATCH 09/44] Support for G1 gc
 
 ---
  src/hotspot/share/gc/g1/g1CollectedHeap.cpp   |  20 +++
- src/hotspot/share/gc/g1/g1CollectedHeap.hpp   |   3 +
+ src/hotspot/share/gc/g1/g1CollectedHeap.hpp   |   2 +
  src/hotspot/share/gc/g1/g1FullCollector.cpp   |  16 +-
  .../share/gc/g1/g1FullGCCompactTask.cpp       |  92 +++++++++-
  .../share/gc/g1/g1FullGCCompactTask.hpp       |  19 +++
@@ -26,12 +26,12 @@ Subject: [PATCH 09/33] Support for G1 gc
  .../prims/jvmtiEnhancedRedefineClasses.hpp    |   6 +-
  src/hotspot/share/runtime/arguments.cpp       |   4 +-
  src/hotspot/share/utilities/growableArray.hpp |   4 +
- 22 files changed, 628 insertions(+), 141 deletions(-)
+ 22 files changed, 627 insertions(+), 141 deletions(-)
  create mode 100644 src/hotspot/share/gc/shared/dcevmSharedGC.cpp
  create mode 100644 src/hotspot/share/gc/shared/dcevmSharedGC.hpp
 
 diff --git a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
-index 83b7d6b5077..c4ae1eee351 100644
+index 3b0e6eb6587..d33a5ff3a54 100644
 --- a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
 +++ b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
 @@ -2115,6 +2115,21 @@ public:
@@ -56,7 +56,7 @@ index 83b7d6b5077..c4ae1eee351 100644
  void G1CollectedHeap::object_iterate(ObjectClosure* cl) {
    IterateObjectClosureRegionClosure blk(cl);
    heap_region_iterate(&blk);
-@@ -2128,6 +2143,11 @@ void G1CollectedHeap::heap_region_iterate(HeapRegionClosure* cl) const {
+@@ -2152,6 +2167,11 @@ void G1CollectedHeap::heap_region_iterate(HeapRegionClosure* cl) const {
    _hrm.iterate(cl);
  }
  
@@ -69,7 +69,7 @@ index 83b7d6b5077..c4ae1eee351 100644
                                                                   HeapRegionClaimer *hrclaimer,
                                                                   uint worker_id) const {
 diff --git a/src/hotspot/share/gc/g1/g1CollectedHeap.hpp b/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
-index be160d04bfe..9e92ee4a1fa 100644
+index 1f2029ab1f0..39b05017b92 100644
 --- a/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
 +++ b/src/hotspot/share/gc/g1/g1CollectedHeap.hpp
 @@ -144,6 +144,7 @@ class G1CollectedHeap : public CollectedHeap {
@@ -80,15 +80,14 @@ index be160d04bfe..9e92ee4a1fa 100644
  
    // Other related classes.
    friend class HeapRegionClaimer;
-@@ -1116,6 +1117,8 @@ public:
- 
+@@ -1117,6 +1118,7 @@ public:
    // Iteration functions.
  
+   void object_iterate_parallel(ObjectClosure* cl, uint worker_id, HeapRegionClaimer* claimer);
 +  void object_par_iterate(ObjectClosure* cl);
-+
+ 
    // Iterate over all objects, calling "cl.do_object" on each.
    virtual void object_iterate(ObjectClosure* cl);
- 
 diff --git a/src/hotspot/share/gc/g1/g1FullCollector.cpp b/src/hotspot/share/gc/g1/g1FullCollector.cpp
 index 4362ee87e30..7b9496976b8 100644
 --- a/src/hotspot/share/gc/g1/g1FullCollector.cpp
@@ -1040,7 +1039,7 @@ index 9a633280118..2e4f597cf1f 100644
    SystemDictionary::oops_do(oopClosure);
  }
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index aba99bb60fa..8b6fad2128e 100644
+index 1fbba406087..e67fc2dd58f 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -36,7 +36,6 @@
@@ -1244,7 +1243,7 @@ index aba99bb60fa..8b6fad2128e 100644
    ResourceMark mark(THREAD);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 3551b06ecde..62a0fbf54d4 100644
+index d8a11b51fe9..9755944d70b 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -86,9 +86,10 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

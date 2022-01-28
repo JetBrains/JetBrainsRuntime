@@ -1,7 +1,7 @@
-From 7fd4796b1786511d28785bde7fe438ed27ee7d0d Mon Sep 17 00:00:00 2001
+From 6ba107bfbd2c71b211a2e4eb54741576ca9e4370 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:09:39 +0100
-Subject: [PATCH 01/33] Apply basic dcevm11 patch
+Subject: [PATCH 01/44] Apply basic dcevm11 patch
 
 ---
  src/hotspot/share/ci/ciObjectFactory.cpp      |   25 +
@@ -72,10 +72,10 @@ Subject: [PATCH 01/33] Apply basic dcevm11 patch
  create mode 100644 src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 
 diff --git a/src/hotspot/share/ci/ciObjectFactory.cpp b/src/hotspot/share/ci/ciObjectFactory.cpp
-index e6391b5f2ba..c8a03aa9ee9 100644
+index 3ed142d348e..b2ab15c4b65 100644
 --- a/src/hotspot/share/ci/ciObjectFactory.cpp
 +++ b/src/hotspot/share/ci/ciObjectFactory.cpp
-@@ -708,3 +708,28 @@ void ciObjectFactory::print() {
+@@ -726,3 +726,28 @@ void ciObjectFactory::print() {
               _unloaded_instances->length(),
               _unloaded_klasses->length());
  }
@@ -105,7 +105,7 @@ index e6391b5f2ba..c8a03aa9ee9 100644
 +}
 +
 diff --git a/src/hotspot/share/ci/ciObjectFactory.hpp b/src/hotspot/share/ci/ciObjectFactory.hpp
-index 1063c9853e1..3e9d48c4cdc 100644
+index 1e8033f03a7..5d573350aa2 100644
 --- a/src/hotspot/share/ci/ciObjectFactory.hpp
 +++ b/src/hotspot/share/ci/ciObjectFactory.hpp
 @@ -88,6 +88,7 @@ private:
@@ -116,7 +116,7 @@ index 1063c9853e1..3e9d48c4cdc 100644
  public:
    static bool is_initialized() { return _initialized; }
  
-@@ -143,6 +144,8 @@ public:
+@@ -144,6 +145,8 @@ public:
  
    void print_contents();
    void print();
@@ -126,7 +126,7 @@ index 1063c9853e1..3e9d48c4cdc 100644
  
  #endif // SHARE_VM_CI_CIOBJECTFACTORY_HPP
 diff --git a/src/hotspot/share/classfile/classFileParser.cpp b/src/hotspot/share/classfile/classFileParser.cpp
-index 2ea6b7e2331..5eaa97698d2 100644
+index c4607a5a54b..143a4165608 100644
 --- a/src/hotspot/share/classfile/classFileParser.cpp
 +++ b/src/hotspot/share/classfile/classFileParser.cpp
 @@ -954,6 +954,8 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
@@ -138,7 +138,7 @@ index 2ea6b7e2331..5eaa97698d2 100644
        if (!interf->is_interface()) {
          THROW_MSG(vmSymbols::java_lang_IncompatibleClassChangeError(),
                    err_msg("class %s can not implement %s, because it is not an interface (%s)",
-@@ -3833,7 +3835,7 @@ const InstanceKlass* ClassFileParser::parse_super_class(ConstantPool* const cp,
+@@ -3834,7 +3836,7 @@ const InstanceKlass* ClassFileParser::parse_super_class(ConstantPool* const cp,
      // However, make sure it is not an array type.
      bool is_array = false;
      if (cp->tag_at(super_class_index).is_klass()) {
@@ -147,7 +147,7 @@ index 2ea6b7e2331..5eaa97698d2 100644
        if (need_verify)
          is_array = super_klass->is_array_klass();
      } else if (need_verify) {
-@@ -4501,7 +4503,10 @@ void ClassFileParser::set_precomputed_flags(InstanceKlass* ik) {
+@@ -4502,7 +4504,10 @@ void ClassFileParser::set_precomputed_flags(InstanceKlass* ik) {
    if (!_has_empty_finalizer) {
      if (_has_finalizer ||
          (super != NULL && super->has_finalizer())) {
@@ -159,7 +159,7 @@ index 2ea6b7e2331..5eaa97698d2 100644
      }
    }
  
-@@ -5879,6 +5884,7 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
+@@ -5880,6 +5885,7 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
                                   const InstanceKlass* host_klass,
                                   GrowableArray<Handle>* cp_patches,
                                   Publicity pub_level,
@@ -167,7 +167,7 @@ index 2ea6b7e2331..5eaa97698d2 100644
                                   TRAPS) :
    _stream(stream),
    _requested_name(name),
-@@ -5937,7 +5943,8 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
+@@ -5938,7 +5944,8 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
    _has_finalizer(false),
    _has_empty_finalizer(false),
    _has_vanilla_constructor(false),
@@ -177,7 +177,7 @@ index 2ea6b7e2331..5eaa97698d2 100644
  
    _class_name = name != NULL ? name : vmSymbols::unknown_class_name();
  
-@@ -6338,14 +6345,15 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
+@@ -6339,14 +6346,15 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
          CHECK);
      }
      Handle loader(THREAD, _loader_data->class_loader());
@@ -236,10 +236,10 @@ index 3bdfd34e39f..d792ab4bb3f 100644
    ReferenceType reference_type() const { return _rt; }
    AccessFlags access_flags() const { return _access_flags; }
 diff --git a/src/hotspot/share/classfile/classLoader.cpp b/src/hotspot/share/classfile/classLoader.cpp
-index e10d32ea7b7..079558bb244 100644
+index ee43e47ec89..64b8e03cdbd 100644
 --- a/src/hotspot/share/classfile/classLoader.cpp
 +++ b/src/hotspot/share/classfile/classLoader.cpp
-@@ -1502,6 +1502,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
+@@ -1508,6 +1508,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
                                                             protection_domain,
                                                             NULL, // host_klass
                                                             NULL, // cp_patches
@@ -732,10 +732,10 @@ index 8a7a1248e62..611e18aaf85 100644
    bool add_entry(Symbol* name, InstanceKlass* klass1, Handle loader1,
                                      InstanceKlass* klass2, Handle loader2);
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index f21fbaf2b3b..dc871ec569f 100644
+index 0360de28dea..f9e2f5ebdc3 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
-@@ -201,6 +201,7 @@ Klass* SystemDictionary::resolve_or_fail(Symbol* class_name, Handle class_loader
+@@ -200,6 +200,7 @@ Klass* SystemDictionary::resolve_or_fail(Symbol* class_name, Handle class_loader
      // can return a null klass
      klass = handle_resolution_exception(class_name, throw_error, klass, THREAD);
    }
@@ -743,7 +743,7 @@ index f21fbaf2b3b..dc871ec569f 100644
    return klass;
  }
  
-@@ -875,6 +876,7 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
+@@ -874,6 +875,7 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
      ClassLoaderData* loader_data = k->class_loader_data();
      MutexLocker mu(SystemDictionary_lock, THREAD);
      Klass* kk = find_class(name, loader_data);
@@ -751,7 +751,7 @@ index f21fbaf2b3b..dc871ec569f 100644
      assert(kk == k, "should be present in dictionary");
    }
  #endif
-@@ -997,6 +999,7 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
+@@ -996,6 +998,7 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
                                                        protection_domain,
                                                        host_klass,
                                                        cp_patches,
@@ -759,7 +759,7 @@ index f21fbaf2b3b..dc871ec569f 100644
                                                        CHECK_NULL);
  
    if (host_klass != NULL && k != NULL) {
-@@ -1050,10 +1053,13 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
+@@ -1045,10 +1048,13 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
                                                       Handle class_loader,
                                                       Handle protection_domain,
                                                       ClassFileStream* st,
@@ -773,7 +773,7 @@ index f21fbaf2b3b..dc871ec569f 100644
    // Classloaders that support parallelism, e.g. bootstrap classloader,
    // do not acquire lock here
    bool DoObjectLock = true;
-@@ -1077,6 +1083,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
+@@ -1072,6 +1078,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
   InstanceKlass* k = NULL;
  
  #if INCLUDE_CDS
@@ -781,7 +781,7 @@ index f21fbaf2b3b..dc871ec569f 100644
    if (!DumpSharedSpaces) {
      k = SystemDictionaryShared::lookup_from_stream(class_name,
                                                     class_loader,
-@@ -1096,9 +1103,15 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
+@@ -1091,9 +1098,15 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
                                           protection_domain,
                                           NULL, // host_klass
                                           NULL, // cp_patches
@@ -797,7 +797,7 @@ index f21fbaf2b3b..dc871ec569f 100644
    assert(k != NULL, "no klass created");
    Symbol* h_name = k->name();
    assert(class_name == NULL || class_name == h_name, "name mismatch");
-@@ -1106,7 +1119,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
+@@ -1101,7 +1114,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
    // Add class just loaded
    // If a class loader supports parallel classloading handle parallel define requests
    // find_or_define_instance_class may return a different InstanceKlass
@@ -806,7 +806,7 @@ index f21fbaf2b3b..dc871ec569f 100644
      InstanceKlass* defined_k = find_or_define_instance_class(h_name, class_loader, k, THREAD);
      if (!HAS_PENDING_EXCEPTION && defined_k != k) {
        // If a parallel capable class loader already defined this class, register 'k' for cleanup.
-@@ -1115,7 +1128,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
+@@ -1110,7 +1123,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
        k = defined_k;
      }
    } else {
@@ -815,7 +815,7 @@ index f21fbaf2b3b..dc871ec569f 100644
    }
  
    // If defining the class throws an exception register 'k' for cleanup.
-@@ -1130,7 +1143,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
+@@ -1125,7 +1138,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
      MutexLocker mu(SystemDictionary_lock, THREAD);
  
      Klass* check = find_class(h_name, k->class_loader_data());
@@ -824,7 +824,7 @@ index f21fbaf2b3b..dc871ec569f 100644
    } );
  
    return k;
-@@ -1555,11 +1568,12 @@ static void post_class_define_event(InstanceKlass* k, const ClassLoaderData* def
+@@ -1550,11 +1563,12 @@ static void post_class_define_event(InstanceKlass* k, const ClassLoaderData* def
    }
  }
  
@@ -838,7 +838,7 @@ index f21fbaf2b3b..dc871ec569f 100644
  
   // for bootstrap and other parallel classloaders don't acquire lock,
   // use placeholder token
-@@ -1584,7 +1598,11 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
+@@ -1579,7 +1593,11 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
    Symbol*  name_h = k->name();
    Dictionary* dictionary = loader_data->dictionary();
    unsigned int d_hash = dictionary->compute_hash(name_h);
@@ -851,7 +851,7 @@ index f21fbaf2b3b..dc871ec569f 100644
  
    // Register class just loaded with class loader (placed in Vector)
    // Note we do this before updating the dictionary, as this can
-@@ -1618,7 +1636,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
+@@ -1613,7 +1631,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
    k->eager_initialize(THREAD);
  
    // notify jvmti
@@ -860,7 +860,7 @@ index f21fbaf2b3b..dc871ec569f 100644
        assert(THREAD->is_Java_thread(), "thread->is_Java_thread()");
        JvmtiExport::post_class_load((JavaThread *) THREAD, k);
  
-@@ -1696,7 +1714,7 @@ InstanceKlass* SystemDictionary::find_or_define_instance_class(Symbol* class_nam
+@@ -1691,7 +1709,7 @@ InstanceKlass* SystemDictionary::find_or_define_instance_class(Symbol* class_nam
      }
    }
  
@@ -869,7 +869,7 @@ index f21fbaf2b3b..dc871ec569f 100644
  
    Handle linkage_exception = Handle(); // null handle
  
-@@ -1819,6 +1837,18 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
+@@ -1814,6 +1832,18 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
    CodeCache::flush_dependents_on(k);
  }
  
@@ -888,7 +888,7 @@ index f21fbaf2b3b..dc871ec569f 100644
  // ----------------------------------------------------------------------------
  // GC support
  
-@@ -2115,7 +2145,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
+@@ -2109,7 +2139,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
        // also hold array classes.
  
        assert(check->is_instance_klass(), "noninstance in systemdictionary");
@@ -898,7 +898,7 @@ index f21fbaf2b3b..dc871ec569f 100644
          ss.print("loader %s", loader_data->loader_name_and_id());
          ss.print(" attempted duplicate %s definition for %s. (%s)",
 diff --git a/src/hotspot/share/classfile/systemDictionary.hpp b/src/hotspot/share/classfile/systemDictionary.hpp
-index a14728df757..b956c6a7519 100644
+index 77adcd4719d..8b5ba8546dd 100644
 --- a/src/hotspot/share/classfile/systemDictionary.hpp
 +++ b/src/hotspot/share/classfile/systemDictionary.hpp
 @@ -161,6 +161,8 @@ class OopStorage;
@@ -918,7 +918,7 @@ index a14728df757..b956c6a7519 100644
                                              TRAPS);
  
    // Lookup an already loaded class. If not found NULL is returned.
-@@ -465,6 +468,10 @@ public:
+@@ -458,6 +461,10 @@ public:
    static bool is_well_known_klass(Symbol* class_name);
  #endif
  
@@ -929,7 +929,7 @@ index a14728df757..b956c6a7519 100644
  protected:
    // Returns the class loader data to be used when looking up/updating the
    // system dictionary.
-@@ -658,7 +665,7 @@ protected:
+@@ -646,7 +653,7 @@ protected:
    // after waiting, but before reentering SystemDictionary_lock
    // to preserve lock order semantics.
    static void double_lock_wait(Handle lockObject, TRAPS);
@@ -1919,7 +1919,7 @@ index 2a93500b794..2a9eb978b43 100644
  
    // RedefineClasses support
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index 34aed3fbb3a..30b02a2ba0a 100644
+index dfa4b2314b4..0bd3cf3deb7 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -832,7 +832,8 @@ bool InstanceKlass::link_class_impl(bool throw_verifyerror, TRAPS) {
@@ -2013,7 +2013,7 @@ index 34aed3fbb3a..30b02a2ba0a 100644
  }
  
  #ifndef PRODUCT
-@@ -3564,7 +3614,7 @@ void InstanceKlass::verify_on(outputStream* st) {
+@@ -3567,7 +3617,7 @@ void InstanceKlass::verify_on(outputStream* st) {
      }
  
      guarantee(sib->is_klass(), "should be klass");
@@ -2109,7 +2109,7 @@ index 01c5ed5bd46..f38874340be 100644
    return class_loader_data()->holder_phantom();
  }
 diff --git a/src/hotspot/share/oops/klass.hpp b/src/hotspot/share/oops/klass.hpp
-index b77a19deb38..5573b10f021 100644
+index 1d1c524fe88..478fd26beff 100644
 --- a/src/hotspot/share/oops/klass.hpp
 +++ b/src/hotspot/share/oops/klass.hpp
 @@ -165,6 +165,18 @@ class Klass : public Metadata {
@@ -2186,7 +2186,7 @@ index b77a19deb38..5573b10f021 100644
    // Compiler support
    static ByteSize super_offset()                 { return in_ByteSize(offset_of(Klass, _super)); }
 diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
-index 576da96ed32..e47dd223f92 100644
+index 9d2cc5cc444..0a12f01536a 100644
 --- a/src/hotspot/share/oops/method.cpp
 +++ b/src/hotspot/share/oops/method.cpp
 @@ -1447,6 +1447,8 @@ methodHandle Method::clone_with_new_data(const methodHandle& m, u_char* new_code
@@ -2198,7 +2198,7 @@ index 576da96ed32..e47dd223f92 100644
    newm->constMethod()->set_code_size(new_code_length);
    newm->constMethod()->set_constMethod_size(new_const_method_size);
    assert(newm->code_size() == new_code_length, "check");
-@@ -2141,6 +2143,10 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
+@@ -2140,6 +2142,10 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
  
  // Add a method id to the jmethod_ids
  jmethodID Method::make_jmethod_id(ClassLoaderData* loader_data, Method* m) {
@@ -2248,7 +2248,7 @@ index da8468dead4..4ac3e6e80de 100644
    Symbol* signature() const                      { return constants()->symbol_at(signature_index()); }
    int signature_index() const                    { return constMethod()->signature_index();         }
 diff --git a/src/hotspot/share/prims/jni.cpp b/src/hotspot/share/prims/jni.cpp
-index 9410a085ec4..a8a0492e4d1 100644
+index 4ece84a0359..36b412ec078 100644
 --- a/src/hotspot/share/prims/jni.cpp
 +++ b/src/hotspot/share/prims/jni.cpp
 @@ -354,6 +354,7 @@ JNI_ENTRY(jclass, jni_DefineClass(JNIEnv *env, const char *name, jobject loaderR
@@ -2260,7 +2260,7 @@ index 9410a085ec4..a8a0492e4d1 100644
  
    if (log_is_enabled(Debug, class, resolve) && k != NULL) {
 diff --git a/src/hotspot/share/prims/jvm.cpp b/src/hotspot/share/prims/jvm.cpp
-index e88c621912d..49b6776f60b 100644
+index 352f1c3011e..cc0ab12f40f 100644
 --- a/src/hotspot/share/prims/jvm.cpp
 +++ b/src/hotspot/share/prims/jvm.cpp
 @@ -936,6 +936,7 @@ static jclass jvm_define_class_common(JNIEnv *env, const char *name,
@@ -2273,7 +2273,7 @@ index e88c621912d..49b6776f60b 100644
    if (log_is_enabled(Debug, class, resolve) && k != NULL) {
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 new file mode 100644
-index 00000000000..80c31135487
+index 00000000000..83c0952de37
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -0,0 +1,2255 @@
@@ -4534,7 +4534,7 @@ index 00000000000..80c31135487
 +}
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 new file mode 100644
-index 00000000000..3f95cf42645
+index 00000000000..b712d69a193
 --- /dev/null
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -0,0 +1,202 @@
@@ -4985,7 +4985,7 @@ index cc9366dcc53..4e2a3ff1083 100644
  #if INCLUDE_NMT
      if (MemTracker::tracking_level() == NMT_off) {
 diff --git a/src/hotspot/share/runtime/arguments.hpp b/src/hotspot/share/runtime/arguments.hpp
-index bd439aab073..cc7f71a4404 100644
+index 73444c43fe5..5cb7f5c4bd8 100644
 --- a/src/hotspot/share/runtime/arguments.hpp
 +++ b/src/hotspot/share/runtime/arguments.hpp
 @@ -506,6 +506,7 @@ class Arguments : AllStatic {
@@ -4997,10 +4997,10 @@ index bd439aab073..cc7f71a4404 100644
    static size_t max_heap_for_compressed_oops();
  
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index 5c389505417..194242e4c4b 100644
+index 3d2e4e6900b..35b8205f7c7 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
-@@ -2680,7 +2680,11 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
+@@ -2683,7 +2683,11 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
            "Start flight recording with options"))                           \
                                                                              \
    experimental(bool, UseFastUnorderedTimeStamps, false,                     \

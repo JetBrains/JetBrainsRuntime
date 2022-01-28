@@ -1,7 +1,7 @@
-From 4386e1b6a0429a39e390cca3bc66f920bf6dafe5 Mon Sep 17 00:00:00 2001
+From 2b6afed7b4bd890326b2cc7a3eaf3020e3f0fe44 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 4 Oct 2020 21:12:12 +0200
-Subject: [PATCH 06/33] Support for Lambda class redefinition
+Subject: [PATCH 06/44] Support for Lambda class redefinition
 
 ---
  .../share/classfile/classLoaderData.cpp       |  9 +++
@@ -47,10 +47,10 @@ index b5a7cf21c85..c4f617ab800 100644
  
    void unload();
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index f69167ae53c..42e0fee800f 100644
+index 0059af83584..89375cd59fa 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
-@@ -971,12 +971,16 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
+@@ -970,12 +970,16 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
                                                Handle protection_domain,
                                                ClassFileStream* st,
                                                const InstanceKlass* host_klass,
@@ -67,7 +67,7 @@ index f69167ae53c..42e0fee800f 100644
    if (host_klass != NULL) {
      // Create a new CLD for anonymous class, that uses the same class loader
      // as the host_klass
-@@ -1000,8 +1004,12 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
+@@ -999,8 +1003,12 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
                                                        protection_domain,
                                                        host_klass,
                                                        cp_patches,
@@ -81,7 +81,7 @@ index f69167ae53c..42e0fee800f 100644
  
    if (host_klass != NULL && k != NULL) {
      // Anonymous classes must update ClassLoaderData holder (was host_klass loader)
-@@ -1846,7 +1854,7 @@ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
+@@ -1841,7 +1849,7 @@ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
    k->remove_from_sibling_list();
  }
  
@@ -91,7 +91,7 @@ index f69167ae53c..42e0fee800f 100644
    constraints()->update_after_redefinition();
  }
 diff --git a/src/hotspot/share/classfile/systemDictionary.hpp b/src/hotspot/share/classfile/systemDictionary.hpp
-index b956c6a7519..a8359143908 100644
+index 8b5ba8546dd..0002abe6122 100644
 --- a/src/hotspot/share/classfile/systemDictionary.hpp
 +++ b/src/hotspot/share/classfile/systemDictionary.hpp
 @@ -307,6 +307,7 @@ public:
@@ -111,7 +111,7 @@ index b956c6a7519..a8359143908 100644
                                       TRAPS);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 14af1aad21b..0b239b2ff6d 100644
+index 41e82ae7a69..b94caa39562 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -488,6 +488,8 @@ void VM_EnhancedRedefineClasses::doit() {
@@ -208,7 +208,7 @@ index 14af1aad21b..0b239b2ff6d 100644
  
    // Sort the affected klasses such that a supertype is always on a smaller array index than its subtype.
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index a48e07e3a6a..3551b06ecde 100644
+index 60b62c3170a..d8a11b51fe9 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -116,6 +116,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

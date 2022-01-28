@@ -1,0 +1,29 @@
+From 71dea432524297595b3193943981e18bcf35e822 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Fri, 28 Jan 2022 18:52:58 +0100
+Subject: [PATCH 44/44] Fix compilation problem - remove notice_modification
+ SystemDictionary::notice_modification was removed in jdk11.0.4, it contained
+ number of redefinition counter for informational purposes
+
+---
+ src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+index 66600206aab..ece6e71b209 100644
+--- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
++++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
+@@ -658,8 +658,8 @@ void VM_EnhancedRedefineClasses::doit() {
+   // TODO: explain...
+   ciObjectFactory::resort_shared_ci_metadata();
+ 
+-  // Disable any dependent concurrent compilations
+-  SystemDictionary::notice_modification();
++  // notice_modification() was removed in 11.0.14
++  // SystemDictionary::notice_modification();
+ 
+   // Set flag indicating that some invariants are no longer true.
+   // See jvmtiExport.hpp for detailed explanation.
+-- 
+2.23.0
+

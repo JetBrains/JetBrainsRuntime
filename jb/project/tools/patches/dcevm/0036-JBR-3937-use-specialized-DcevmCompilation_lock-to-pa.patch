@@ -1,0 +1,114 @@
+From eb5af1af95c0f1dcd7298be6114d9af74f72b5f8 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Fri, 5 Nov 2021 18:53:11 +0100
+Subject: [PATCH 36/44] JBR-3937 - use specialized DcevmCompilation_lock to
+ pause C1/C2
+
+Sources are synchronized now with dcevm17 code base. Compilation_lock is
+used exclusively for WhiteBox, so we use a new lock for dcevm
+---
+ src/hotspot/share/compiler/compileBroker.cpp | 10 +++++-----
+ src/hotspot/share/prims/jvmtiEnv.cpp         |  4 ++--
+ src/hotspot/share/runtime/mutexLocker.cpp    |  3 +++
+ src/hotspot/share/runtime/mutexLocker.hpp    |  1 +
+ 4 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/src/hotspot/share/compiler/compileBroker.cpp b/src/hotspot/share/compiler/compileBroker.cpp
+index bd0f9f0efab..448e9b1002b 100644
+--- a/src/hotspot/share/compiler/compileBroker.cpp
++++ b/src/hotspot/share/compiler/compileBroker.cpp
+@@ -2196,7 +2196,7 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
+ 
+       if (AllowEnhancedClassRedefinition) {
+         {
+-          MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
++          MonitorLockerEx locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
+           while (_compilation_stopped) {
+             locker.wait(Mutex::_no_safepoint_check_flag);
+           }
+@@ -2873,19 +2873,19 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
+ 
+ void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
+   if (AllowEnhancedClassRedefinition) {
+-    MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
++    MonitorLockerEx locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
+     _compilation_stopped = true;
+     while (_active_compilations > 0) {
+-      VM_ThreadsSuspendJVMTI tsj;
++      VM_ThreadsSuspendJVMTI tsj; // force safepoint to run C1/C2 VM op
+       VMThread::execute(&tsj);
+-      locker.wait(Mutex::_no_safepoint_check_flag);
++      locker.wait(Mutex::_no_safepoint_check_flag, 10);
+     }
+   }
+ }
+ 
+ void CompileBroker::releaseCompilationAfterEnhancedRedefinition() {
+   if (AllowEnhancedClassRedefinition) {
+-    MonitorLockerEx locker(Compilation_lock, Mutex::_no_safepoint_check_flag);
++    MonitorLockerEx locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
+     _compilation_stopped = false;
+     locker.notify_all();
+   }
+diff --git a/src/hotspot/share/prims/jvmtiEnv.cpp b/src/hotspot/share/prims/jvmtiEnv.cpp
+index 0ca9ec020a9..221e8a20c76 100644
+--- a/src/hotspot/share/prims/jvmtiEnv.cpp
++++ b/src/hotspot/share/prims/jvmtiEnv.cpp
+@@ -454,9 +454,9 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
+     class_definitions[index].klass              = jcls;
+   }
+   if (AllowEnhancedClassRedefinition) {
++    MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
+     // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
+     CompileBroker::stopCompilationBeforeEnhancedRedefinition();
+-    MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
+     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
+     VMThread::execute(&op);
+     CompileBroker::releaseCompilationAfterEnhancedRedefinition();
+@@ -473,9 +473,9 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
+ jvmtiError
+ JvmtiEnv::RedefineClasses(jint class_count, const jvmtiClassDefinition* class_definitions) {
+   if (AllowEnhancedClassRedefinition) {
++    MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
+     // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
+     CompileBroker::stopCompilationBeforeEnhancedRedefinition();
+-    MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
+     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
+     VMThread::execute(&op);
+     CompileBroker::releaseCompilationAfterEnhancedRedefinition();
+diff --git a/src/hotspot/share/runtime/mutexLocker.cpp b/src/hotspot/share/runtime/mutexLocker.cpp
+index 16e91c85fd1..ae68611e992 100644
+--- a/src/hotspot/share/runtime/mutexLocker.cpp
++++ b/src/hotspot/share/runtime/mutexLocker.cpp
+@@ -95,6 +95,7 @@ Mutex*   Compile_lock                 = NULL;
+ Monitor* MethodCompileQueue_lock      = NULL;
+ Monitor* CompileThread_lock           = NULL;
+ Monitor* Compilation_lock             = NULL;
++Monitor* DcevmCompilation_lock        = NULL;
+ Mutex*   CompileTaskAlloc_lock        = NULL;
+ Mutex*   CompileStatistics_lock       = NULL;
+ Mutex*   DirectivesStack_lock         = NULL;
+@@ -327,6 +328,8 @@ void mutex_init() {
+     def(Compilation_lock           , PaddedMonitor, leaf,        false, Monitor::_safepoint_check_never);
+   }
+ 
++  def(DcevmCompilation_lock        , PaddedMonitor, nonleaf+1,   false, Monitor::_safepoint_check_never);
++
+ #if INCLUDE_JFR
+   def(JfrMsg_lock                  , PaddedMonitor, leaf,        true,  Monitor::_safepoint_check_always);
+   def(JfrBuffer_lock               , PaddedMutex  , leaf,        true,  Monitor::_safepoint_check_never);
+diff --git a/src/hotspot/share/runtime/mutexLocker.hpp b/src/hotspot/share/runtime/mutexLocker.hpp
+index b41abcb82ae..a9530a3a0e9 100644
+--- a/src/hotspot/share/runtime/mutexLocker.hpp
++++ b/src/hotspot/share/runtime/mutexLocker.hpp
+@@ -99,6 +99,7 @@ extern Mutex*   Compile_lock;                    // a lock held when Compilation
+ extern Monitor* MethodCompileQueue_lock;         // a lock held when method compilations are enqueued, dequeued
+ extern Monitor* CompileThread_lock;              // a lock held by compile threads during compilation system initialization
+ extern Monitor* Compilation_lock;                // a lock used to pause compilation
++extern Monitor* DcevmCompilation_lock;           // a lock used to pause compilation from dcevm
+ extern Mutex*   CompileTaskAlloc_lock;           // a lock held when CompileTasks are allocated
+ extern Mutex*   CompileStatistics_lock;          // a lock held when updating compilation statistics
+ extern Mutex*   DirectivesStack_lock;            // a lock held when mutating the dirstack and ref counting directives
+-- 
+2.23.0
+

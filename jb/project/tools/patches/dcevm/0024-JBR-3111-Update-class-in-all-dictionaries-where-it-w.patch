@@ -1,7 +1,7 @@
-From 3af6608b1808653ad706b447e6e96a039819d03f Mon Sep 17 00:00:00 2001
+From 88d359a84fb3a7dd7556c91ed0e17dca5b8d7d25 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 13 Feb 2021 20:47:52 +0100
-Subject: [PATCH 24/33] JBR-3111 Update class in all dictionaries where it was
+Subject: [PATCH 24/44] JBR-3111 Update class in all dictionaries where it was
  already defined
 
 This patch keeps compatibility with std redefinition, that does not
@@ -76,10 +76,10 @@ index f6e08e7bfd5..2932cc9c320 100644
    void rollback_redefinition();
  
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index be4d2010c0c..d0365162b81 100644
+index a61c342f5bd..cf0a05176c8 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
-@@ -1608,7 +1608,9 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
+@@ -1603,7 +1603,9 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
    Dictionary* dictionary = loader_data->dictionary();
    unsigned int d_hash = dictionary->compute_hash(name_h);
    if (is_redefining) {

@@ -1,0 +1,27 @@
+From 15d06f325a892e2fa665698b4b76988cff236075 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Fri, 5 Nov 2021 18:16:01 +0100
+Subject: [PATCH 35/44] JBR-3963 - fix memory leaks in G1 in redefinition
+
+ChangePointersObjectClosure allocates handles and resources, that must
+be properly released in worker thread
+---
+ src/hotspot/share/gc/g1/g1CollectedHeap.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
+index d33a5ff3a54..7c68dbf4bf1 100644
+--- a/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
++++ b/src/hotspot/share/gc/g1/g1CollectedHeap.cpp
+@@ -2125,6 +2125,8 @@ class G1IterateObjectClosureTask : public AbstractGangTask {
+     _cl(cl), _g1h(g1h),  _hrclaimer(g1h->workers()->active_workers()) { }
+ 
+   virtual void work(uint worker_id) {
++    ResourceMark rm;
++    HandleMark hm;
+     IterateObjectClosureRegionClosure blk(_cl);
+     _g1h->heap_region_par_iterate_from_worker_offset(&blk, &_hrclaimer, worker_id);
+   }
+-- 
+2.23.0
+

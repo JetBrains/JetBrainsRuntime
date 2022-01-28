@@ -1,7 +1,7 @@
-From 9d8b4cee545f9895b77f5f05059cbd519c6c8094 Mon Sep 17 00:00:00 2001
+From 238ef84478962cdba49b479803163b6e71f46914 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
-Date: Thu, 15 Nov 2018 03:20:08 +0700
-Subject: [PATCH 05/33] HotswapAgent integration
+Date: Wed, 14 Nov 2018 21:20:08 +0100
+Subject: [PATCH 05/44] HotswapAgent integration
 
 It include:
 
@@ -37,7 +37,7 @@ old DCEVM
  make/launcher/Launcher-jdk.jartool.gmk        |  2 +
  make/launcher/Launcher-jdk.javadoc.gmk        |  3 +-
  make/launcher/Launcher-jdk.jcmd.gmk           | 13 +++-
- make/launcher/Launcher-jdk.jconsole.gmk       |  1 +
+ make/launcher/Launcher-jdk.jconsole.gmk       |  5 +-
  make/launcher/Launcher-jdk.jdeps.gmk          |  3 +
  make/launcher/Launcher-jdk.jdi.gmk            |  1 +
  make/launcher/Launcher-jdk.jlink.gmk          |  5 +-
@@ -55,7 +55,7 @@ old DCEVM
  .../classes/com/sun/beans/package-info.java   | 26 +++++++
  .../com/sun/beans/util/package-info.java      | 26 +++++++
  .../share/classes/module-info.java            |  3 +
- 28 files changed, 208 insertions(+), 10 deletions(-)
+ 28 files changed, 210 insertions(+), 12 deletions(-)
  create mode 100644 src/java.desktop/share/classes/com/sun/beans/introspect/package-info.java
  create mode 100644 src/java.desktop/share/classes/com/sun/beans/package-info.java
  create mode 100644 src/java.desktop/share/classes/com/sun/beans/util/package-info.java
@@ -259,14 +259,18 @@ index 7117fa78059..761a52d8466 100644
  
  # Hook to include the corresponding custom file, if present.
 diff --git a/make/launcher/Launcher-jdk.jconsole.gmk b/make/launcher/Launcher-jdk.jconsole.gmk
-index 575b9e0595b..2f442f69113 100644
+index 575b9e0595b..2ec087d710f 100644
 --- a/make/launcher/Launcher-jdk.jconsole.gmk
 +++ b/make/launcher/Launcher-jdk.jconsole.gmk
-@@ -30,6 +30,7 @@ $(eval $(call SetupBuildLauncher, jconsole, \
+@@ -28,8 +28,9 @@ include LauncherCommon.gmk
+ $(eval $(call SetupBuildLauncher, jconsole, \
+     MAIN_CLASS := sun.tools.jconsole.JConsole, \
      JAVA_ARGS := --add-opens java.base/java.io=jdk.jconsole \
- 		 -Djconsole.showOutputViewer \
- 		 -Djdk.attach.allowAttachSelf=true, \
-+         -XX:+DisableHotswapAgent, \
+-		 -Djconsole.showOutputViewer \
+-		 -Djdk.attach.allowAttachSelf=true, \
++      -Djconsole.showOutputViewer \
++      -Djdk.attach.allowAttachSelf=true \
++      -XX:+DisableHotswapAgent, \
      CFLAGS_windows := -DJAVAW, \
      LIBS_windows := user32.lib, \
  ))
@@ -497,7 +501,7 @@ index e3cb44d8690..36276741b5c 100644
 +
 +}
 diff --git a/src/hotspot/share/runtime/arguments.hpp b/src/hotspot/share/runtime/arguments.hpp
-index cc7f71a4404..b2bab2e1f44 100644
+index 5cb7f5c4bd8..d7fd03d079e 100644
 --- a/src/hotspot/share/runtime/arguments.hpp
 +++ b/src/hotspot/share/runtime/arguments.hpp
 @@ -507,6 +507,9 @@ class Arguments : AllStatic {
@@ -511,7 +515,7 @@ index cc7f71a4404..b2bab2e1f44 100644
    static size_t max_heap_for_compressed_oops();
  
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index 194242e4c4b..9c007fc2d82 100644
+index 35b8205f7c7..4d6fe0034a3 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
 @@ -32,6 +32,12 @@
@@ -527,7 +531,7 @@ index 194242e4c4b..9c007fc2d82 100644
  // The larger HeapWordSize for 64bit requires larger heaps
  // for the same application running in 64bit.  See bug 4967770.
  // The minimum alignment to a heap word size is done.  Other
-@@ -2684,8 +2690,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
+@@ -2687,8 +2693,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
                                                                              \
    product(bool, AllowEnhancedClassRedefinition, true,                       \
               "Allow enhanced class redefinition beyond swapping method "    \

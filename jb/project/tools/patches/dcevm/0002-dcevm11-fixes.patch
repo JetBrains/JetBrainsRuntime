@@ -1,7 +1,7 @@
-From c9a1d6faa3c4e7a623be010a3cc443d40465c23c Mon Sep 17 00:00:00 2001
+From 8fde348c4072670576f9e480058c8ed77ead7d47 Mon Sep 17 00:00:00 2001
 From: skybber <lada.dvorak7@gmail.com>
 Date: Wed, 14 Nov 2018 21:18:22 +0100
-Subject: [PATCH 02/33] dcevm11 fixes
+Subject: [PATCH 02/44] dcevm11 fixes
 
 1. We need to set classRedefinitionCount on new class, not old class.
 
@@ -82,7 +82,7 @@ dmh
  19 files changed, 324 insertions(+), 415 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/classFileParser.cpp b/src/hotspot/share/classfile/classFileParser.cpp
-index 5eaa97698d2..34185d7ba32 100644
+index 143a4165608..444471d1d8c 100644
 --- a/src/hotspot/share/classfile/classFileParser.cpp
 +++ b/src/hotspot/share/classfile/classFileParser.cpp
 @@ -954,6 +954,7 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
@@ -93,7 +93,7 @@ index 5eaa97698d2..34185d7ba32 100644
        interf = (Klass *) maybe_newest(interf);
  
        if (!interf->is_interface()) {
-@@ -3835,6 +3836,7 @@ const InstanceKlass* ClassFileParser::parse_super_class(ConstantPool* const cp,
+@@ -3836,6 +3837,7 @@ const InstanceKlass* ClassFileParser::parse_super_class(ConstantPool* const cp,
      // However, make sure it is not an array type.
      bool is_array = false;
      if (cp->tag_at(super_class_index).is_klass()) {
@@ -101,7 +101,7 @@ index 5eaa97698d2..34185d7ba32 100644
        super_klass = InstanceKlass::cast(maybe_newest(cp->resolved_klass_at(super_class_index)));
        if (need_verify)
          is_array = super_klass->is_array_klass();
-@@ -4503,7 +4505,7 @@ void ClassFileParser::set_precomputed_flags(InstanceKlass* ik) {
+@@ -4504,7 +4506,7 @@ void ClassFileParser::set_precomputed_flags(InstanceKlass* ik) {
    if (!_has_empty_finalizer) {
      if (_has_finalizer ||
          (super != NULL && super->has_finalizer())) {
@@ -244,10 +244,10 @@ index a26b9d1cb55..3d5a59a04ff 100644
    for (int index = 0; index < table_size(); index++) {
      LoaderConstraintEntry** p = bucket_addr(index);
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index dc871ec569f..f69167ae53c 100644
+index f9e2f5ebdc3..0059af83584 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
-@@ -876,7 +876,8 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
+@@ -875,7 +875,8 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
      ClassLoaderData* loader_data = k->class_loader_data();
      MutexLocker mu(SystemDictionary_lock, THREAD);
      Klass* kk = find_class(name, loader_data);
@@ -257,7 +257,7 @@ index dc871ec569f..f69167ae53c 100644
      assert(kk == k, "should be present in dictionary");
    }
  #endif
-@@ -1083,7 +1084,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
+@@ -1078,7 +1079,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
   InstanceKlass* k = NULL;
  
  #if INCLUDE_CDS
@@ -266,7 +266,7 @@ index dc871ec569f..f69167ae53c 100644
    if (!DumpSharedSpaces) {
      k = SystemDictionaryShared::lookup_from_stream(class_name,
                                                     class_loader,
-@@ -1837,7 +1838,7 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
+@@ -1832,7 +1833,7 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
    CodeCache::flush_dependents_on(k);
  }
  
@@ -275,7 +275,7 @@ index dc871ec569f..f69167ae53c 100644
  void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
      assert(k != NULL, "just checking");
  
-@@ -1845,6 +1846,7 @@ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
+@@ -1840,6 +1841,7 @@ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
    k->remove_from_sibling_list();
  }
  
@@ -376,7 +376,7 @@ index 47040d51f0c..4318df227d1 100644
    }
  
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index 30b02a2ba0a..77708e25aae 100644
+index 0bd3cf3deb7..e3724984aa5 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -178,6 +178,7 @@ bool InstanceKlass::has_nest_member(InstanceKlass* k, TRAPS) const {
@@ -442,7 +442,7 @@ index 30b02a2ba0a..77708e25aae 100644
  //  if (this->old_version() != NULL) {
  //    InstanceKlass::cast(this->old_version())->remove_dependent_nmethod(nm, true);
  //    return;
-@@ -3614,6 +3625,7 @@ void InstanceKlass::verify_on(outputStream* st) {
+@@ -3617,6 +3628,7 @@ void InstanceKlass::verify_on(outputStream* st) {
      }
  
      guarantee(sib->is_klass(), "should be klass");
@@ -463,7 +463,7 @@ index 2cc98b636f1..e8107a39813 100644
    // link this class into the implementors list of every interface it implements
    void process_interfaces(Thread *thread);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 80c31135487..43d761cdbb2 100644
+index 83c0952de37..92ce6c27b8a 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1,4 +1,4 @@
@@ -1394,7 +1394,7 @@ index 80c31135487..43d761cdbb2 100644
    ResourceMark mark(THREAD);
  
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 3f95cf42645..a48e07e3a6a 100644
+index b712d69a193..60b62c3170a 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -16,6 +16,8 @@
