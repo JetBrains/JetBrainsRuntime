@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,10 +31,30 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <pthread.h>
 #include <jni.h>
 #include "jni_util.h"
+#include "Trace.h"
 #include "WLSurfaceData.h"
 extern struct wl_shm *wl_shm;
+//#undef HEADLESS
+void logWSDOp(char* str, void* p, jint lockFlags) {
+    J2dTrace2(J2D_TRACE_INFO, "%s: %p, ", str, p);
+    J2dTrace7(J2D_TRACE_INFO, "[%c%c%c%c%c%c%c]",
+              (lockFlags&SD_LOCK_READ) ? 'R' : '.',
+              (lockFlags&SD_LOCK_WRITE) ? 'W' : '.',
+              (lockFlags&SD_LOCK_LUT) ? 'L' : '.',
+              (lockFlags&SD_LOCK_INVCOLOR) ? 'C' : '.',
+              (lockFlags&SD_LOCK_INVGRAY) ? 'G' : '.',
+              (lockFlags&SD_LOCK_FASTEST) ? 'F' : '.',
+              (lockFlags&SD_LOCK_PARTIAL) ? 'P' : '.');
+    J2dTrace(J2D_TRACE_INFO, "\n");
+}
+
+typedef struct _WLSDPrivate {
+    jint                lockFlags;
+    struct wl_buffer*   wlBuffer;
+} WLSDPrivate;
 
 JNIEXPORT WLSDOps * JNICALL
 WLSurfaceData_GetOps(JNIEnv *env, jobject sData)
@@ -101,42 +122,6 @@ static int allocate_shm_file(size_t size) {
     return fd;
 }
 
-static struct wl_buffer *createBuffer(int rgb, int width, int height) {
-    if (width <= 0) {
-        width = 1;
-    }
-    if (height <= 0) {
-        height = 1;
-    }
-    int stride = width * 4;
-    int size = stride * height;
-
-    int fd = allocate_shm_file(size);
-    if (fd == -1) {
-        return NULL;
-    }
-    uint32_t *data = (uint32_t *)(mmap(NULL, size,
-                                       PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
-    if (data == MAP_FAILED) {
-        close(fd);
-        return NULL;
-    }
-
-    struct wl_shm_pool *pool = wl_shm_create_pool(wl_shm, fd, size);
-    struct wl_buffer *buffer = wl_shm_pool_create_buffer(pool, 0, width, height, stride, WL_SHM_FORMAT_XRGB8888);
-    wl_shm_pool_destroy(pool);
-    close(fd);
-    /* Draw checkerboxed background */
-
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            data[y * width + x] = rgb;
-        }
-    }
-    munmap(data, size);
-    wl_buffer_add_listener(buffer, &wl_buffer_listener, NULL);
-    return buffer;
-}
 #endif
 
 /*
@@ -151,21 +136,122 @@ Java_sun_java2d_wl_WLSurfaceData_initSurface(JNIEnv *env, jobject wsd,
                                              jint width, jint height)
 {
 #ifndef HEADLESS
+    J2dTrace6(J2D_TRACE_INFO, "WLSurfaceData_initSurface: %dx%d, rgba=(%d,%d,%d,%d)\n",
+              width, height, rgb&0xff, (rgb>>8)&0xff, (rgb>>16)&0xff, (rgb>>24)&0xff);
     WLSDOps *wsdo = (WLSDOps*)SurfaceData_GetOps(env, wsd);
     if (wsdo == NULL) {
         return;
     }
     jboolean hasException;
-    if (!wsdo->wl_surface) {
-        wsdo->wl_surface = JNU_CallMethodByName(env, &hasException, peer, "getWLSurface", "()J").j;
+    if (!wsdo->wlSurface) {
+        wsdo->wlSurface = JNU_CallMethodByName(env, &hasException, peer, "getWLSurface", "()J").j;
     }
-    wl_surface_attach((struct wl_surface*)wsdo->wl_surface, createBuffer(rgb, width, height), 0, 0);
-    wl_surface_commit((struct wl_surface*)wsdo->wl_surface);
+    if (width <= 0) {
+        width = 1;
+    }
+    if (height <= 0) {
+        height = 1;
+    }
+    int stride = width * 4;
+    int size = stride * height;
 
+    wsdo->fd = allocate_shm_file(size);
+    if (wsdo->fd == -1) {
+        return;
+    }
+    wsdo->data = (uint32_t *) (mmap(NULL, size,
+                                    PROT_READ | PROT_WRITE, MAP_SHARED, wsdo->fd, 0));
+    if (wsdo->data == MAP_FAILED) {
+        close(wsdo->fd);
+        return;
+    }
+
+    wsdo->dataSize = size;
+    wsdo->width = width;
+    wsdo->height = height;
+
+    for (int i = 0; i < height*width; ++i) {
+        wsdo->data[i] = rgb;
+    }
+
+    wsdo->wlShmPool = (jlong)wl_shm_create_pool(wl_shm, wsdo->fd, size);
+    wsdo->wlBuffer = (jlong) wl_shm_pool_create_buffer(
+            (struct wl_shm_pool*)wsdo->wlShmPool, 0, width, height, stride, WL_SHM_FORMAT_XRGB8888);
+
+    wl_surface_attach((struct wl_surface*)wsdo->wlSurface, (struct wl_buffer*)wsdo->wlBuffer, 0, 0);
+    wl_surface_commit((struct wl_surface*)wsdo->wlSurface);
 #endif /* !HEADLESS */
 }
 
+/**
+ * This is the implementation of the general surface LockFunc defined in
+ * SurfaceData.h.
+ */
+jint
+WLSD_Lock(JNIEnv *env,
+           SurfaceDataOps *ops,
+           SurfaceDataRasInfo *pRasInfo,
+           jint lockflags)
+{
+#ifndef HEADLESS
+    WLSDOps *wlso = (WLSDOps*)ops;
+    logWSDOp("WLSD_Lock", wlso, lockflags);
+    pthread_mutex_lock(&wlso->lock);
+    WLSDPrivate *priv = (WLSDPrivate *) &(pRasInfo->priv);
+    priv->lockFlags = lockflags;
 
+    if (priv->lockFlags & SD_LOCK_WRITE) {
+        pRasInfo->rasBase = wlso->data;
+        pRasInfo->pixelStride = 4;
+        pRasInfo->pixelBitOffset = 0;
+        pRasInfo->scanStride = 4 * wlso->width;
+    }
+#endif
+    return SD_SUCCESS;
+}
+
+
+static void WLSD_GetRasInfo(JNIEnv *env,
+                             SurfaceDataOps *ops,
+                             SurfaceDataRasInfo *pRasInfo)
+{
+#ifndef HEADLESS
+    WLSDPrivate *priv = (WLSDPrivate *) &(pRasInfo->priv);
+    WLSDOps *wlso = (WLSDOps*)ops;
+    logWSDOp("WLSD_GetRasInfo", wlso, priv->lockFlags);
+    if (priv->lockFlags & SD_LOCK_WRITE) {
+        wl_surface_damage ((struct wl_surface*)wlso->wlSurface, pRasInfo->bounds.x1, pRasInfo->bounds.y1,
+                           pRasInfo->bounds.x2 - pRasInfo->bounds.x1, pRasInfo->bounds.y2 - pRasInfo->bounds.y1);
+    }
+#endif
+}
+
+static void WLSD_Unlock(JNIEnv *env,
+                         SurfaceDataOps *ops,
+                         SurfaceDataRasInfo *pRasInfo)
+{
+#ifndef HEADLESS
+    WLSDOps *wsdo = (WLSDOps*)ops;
+    J2dTrace1(J2D_TRACE_INFO, "WLSD_Unlock: %p\n", wsdo);
+    wl_surface_commit((struct wl_surface*)wsdo->wlSurface);
+    pthread_mutex_unlock(&wsdo->lock);
+#endif
+}
+
+static void WLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
+{
+#ifndef HEADLESS
+    /* ops is assumed non-null as it is checked in SurfaceData_DisposeOps */
+    J2dTrace1(J2D_TRACE_INFO, "WLSD_Dispose %p\n", ops);
+    WLSDOps *wsdo = (WLSDOps*)ops;
+    close(wsdo->fd);
+    wsdo->fd = 0;
+    munmap(wsdo->data, wsdo->dataSize);
+    wl_shm_pool_destroy((struct wl_shm_pool *) wsdo->wlShmPool);
+    wl_buffer_add_listener((struct wl_buffer*)wsdo->wlBuffer, &wl_buffer_listener, NULL);
+    pthread_mutex_destroy(&wsdo->lock);
+#endif
+}
 /*
  * Class:     sun_java2d_wl_WLSurfaceData
  * Method:    initOps
@@ -179,14 +265,21 @@ Java_sun_java2d_wl_WLSurfaceData_initOps(JNIEnv *env, jobject wsd,
 #ifndef HEADLESS
 
     WLSDOps *wsdo = (WLSDOps*)SurfaceData_InitOps(env, wsd, sizeof(WLSDOps));
+    J2dTrace1(J2D_TRACE_INFO, "WLSurfaceData_initOps: %p\n", wsdo);
     jboolean hasException;
     if (wsdo == NULL) {
         JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
         return;
     }
-    wsdo->wl_surface = 0;
+    wsdo->sdOps.Lock = WLSD_Lock;
+    wsdo->sdOps.Unlock = WLSD_Unlock;
+    wsdo->sdOps.GetRasInfo = WLSD_GetRasInfo;
+    wsdo->sdOps.Dispose = WLSD_Dispose;
+
+    wsdo->wlSurface = 0;
     wsdo->bgPixel = 0;
     wsdo->isBgInitialized = JNI_FALSE;
+    pthread_mutex_init(&wsdo->lock, NULL);
 
 #endif /* !HEADLESS */
 }
