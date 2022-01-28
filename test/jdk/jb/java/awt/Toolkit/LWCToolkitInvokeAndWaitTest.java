@@ -1,14 +1,10 @@
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.InvocationEvent;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
-import java.util.logging.Handler;
-import java.util.logging.LogManager;
-import java.util.logging.LogRecord;
+import java.util.logging.*;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTThreading;
@@ -20,8 +16,8 @@ import sun.lwawt.macosx.LWCToolkit;
  * @summary Tests different scenarios for LWCToolkit.invokeAndWait().
  * @requires (os.family == "mac")
  * @modules java.desktop/sun.lwawt.macosx java.desktop/sun.awt
- * @run main/othervm -Djava.util.logging.config.file=./LWCToolkitInvokeAndWaitTest.logging.properties.1 LWCToolkitInvokeAndWaitTest
- * @run main/othervm -Djava.util.logging.config.file=./LWCToolkitInvokeAndWaitTest.logging.properties.2 LWCToolkitInvokeAndWaitTest
+ * @run main LWCToolkitInvokeAndWaitTest
+ * @run main/othervm -DAWTThreading.level.FINER=true LWCToolkitInvokeAndWaitTest
  * @author Anton Tarasov
  */
 @SuppressWarnings("ConstantConditions")
@@ -68,7 +64,14 @@ public class LWCToolkitInvokeAndWaitTest {
     public static void main(String[] args) {
         MAIN_THREAD = Thread.currentThread();
 
-        trycatch(() -> LogManager.getLogManager().getLogger(AWTThreading.class.getName()).addHandler(LOG_HANDLER));
+        trycatch(() -> {
+            Logger log = LogManager.getLogManager().getLogger(AWTThreading.class.getName());
+            log.setUseParentHandlers(false);
+            log.addHandler(LOG_HANDLER);
+            if (Boolean.getBoolean("AWTThreading.level.FINER")) {
+                log.setLevel(Level.FINER);
+            }
+        });
 
         Consumer<InvocationEvent> noop = e -> {};
 
@@ -201,20 +204,20 @@ public class LWCToolkitInvokeAndWaitTest {
         void run() throws Exception;
     }
 
-    static class TestLogHandler extends Handler {
+    static class TestLogHandler extends StreamHandler {
         public StringBuilder buffer = new StringBuilder();
+
+        public TestLogHandler() {
+            // Use System.out to merge with the test printing.
+            super(System.out, new SimpleFormatter());
+            setLevel(Level.ALL);
+        }
 
         @Override
         public void publish(LogRecord record) {
             buffer.append(record.getMessage());
-        }
-
-        @Override
-        public void flush() {
-        }
-
-        @Override
-        public void close() throws SecurityException {
+            super.publish(record);
+            flush();
         }
 
         public boolean testContains(String str) {
