@@ -8,8 +8,8 @@ import java.awt.event.InvocationEvent;
 import java.lang.ref.WeakReference;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
+import java.util.List;
 import java.util.concurrent.*;
 
 /**
@@ -18,11 +18,14 @@ import java.util.concurrent.*;
 public class AWTThreading {
     private static final PlatformLogger logger = PlatformLogger.getLogger("sun.awt.AWTThreading");
 
+    private Thread eventDispatchThread;
     private ExecutorService executor;
     // every invokeAndWait() pushes a queue of invocations
     private final Stack<TrackingQueue> invocations = new Stack<>();
 
     private int level; // re-entrance level
+
+    private final List<Runnable> eventDispatchThreadCallbacks = Collections.synchronizedList(new ArrayList<>());
 
     // invocations should be dispatched on proper EDT (per AppContext)
     private static final Map<Thread, AWTThreading> EDT_TO_INSTANCE_MAP = new ConcurrentHashMap<>();
@@ -30,6 +33,10 @@ public class AWTThreading {
     private static class TrackingQueue extends LinkedBlockingQueue<InvocationEvent> {}
 
     private AWTThreading() {}
+
+    private AWTThreading(Thread edt) {
+        eventDispatchThread = edt;
+    }
 
     /**
      * Executes a callable from EventDispatch thread (EDT). It's assumed the callable either performs a blocking execution on Toolkit
@@ -225,25 +232,53 @@ public class AWTThreading {
         return new InvocationEvent(source, runnable, listener, catchThrowables);
     }
 
-    private static AWTThreading getInstance(Object obj) {
-        if (obj == null) return null;
+    public static AWTThreading getInstance(Object obj) {
+        if (obj == null) {
+            return getInstance(Toolkit.getDefaultToolkit().getSystemEventQueue());
+        }
 
         AppContext appContext = SunToolkit.targetToAppContext(obj);
-        if (appContext == null) return null;
+        if (appContext == null) {
+            return getInstance(Toolkit.getDefaultToolkit().getSystemEventQueue());
+        }
 
         return getInstance((EventQueue)appContext.get(AppContext.EVENT_QUEUE_KEY));
     }
 
-    private static AWTThreading getInstance(EventQueue eq) {
+    public static AWTThreading getInstance(EventQueue eq) {
         if (eq == null) return null;
 
         return getInstance(AWTAccessor.getEventQueueAccessor().getDispatchThread(eq));
     }
 
-    private static AWTThreading getInstance(Thread edt) {
+    public static AWTThreading getInstance(Thread edt) {
         if (edt == null) return null;
 
-        return EDT_TO_INSTANCE_MAP.computeIfAbsent(edt, key -> new AWTThreading());
+        return EDT_TO_INSTANCE_MAP.computeIfAbsent(edt, key -> new AWTThreading(edt));
+    }
+
+    public Thread getEventDispatchThread() {
+        return eventDispatchThread;
+    }
+
+    public void notifyEventDispatchThreadFree() {
+        List<Runnable> copy;
+        // Collections.synchronizedList object is the internal mutext for the sync'ed collection.
+        synchronized (eventDispatchThreadCallbacks) {
+            copy = List.copyOf(eventDispatchThreadCallbacks);
+        }
+        copy.forEach(callback -> {
+            callback.run();
+            eventDispatchThreadCallbacks.remove(callback);
+        });
+    }
+
+    /**
+     * Sets a callback to receive notification on when the associated EventDispatch thread has gone sleeping
+     * and stopped dispatching events because of empty EventQueue. The notification is fired once.
+     */
+    public void receiveEventDispatchThreadFreeNotification(Runnable callback) {
+        if (callback != null) eventDispatchThreadCallbacks.add(callback);
     }
 
     public interface Task {

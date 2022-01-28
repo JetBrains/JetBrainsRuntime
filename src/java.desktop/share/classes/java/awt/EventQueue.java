@@ -569,6 +569,7 @@ public class EventQueue {
                     return event;
                 }
                 AWTAutoShutdown.getInstance().notifyThreadFree(dispatchThread);
+                AWTThreading.getInstance(dispatchThread).notifyEventDispatchThreadFree();
                 pushPopCond.await();
             } finally {
                 pushPopLock.unlock();

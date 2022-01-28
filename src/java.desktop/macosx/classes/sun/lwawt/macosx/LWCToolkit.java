@@ -98,6 +98,7 @@ import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.ResourceBundle;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.UIManager;
 
 import com.apple.laf.AquaMenuBarUI;
@@ -664,21 +665,29 @@ public final class LWCToolkit extends LWToolkit {
         return wrapper.getResult();
     }
 
-    static final class CancelableRunnable implements Runnable {
+    static final class InvocationRunnable implements Runnable {
+        private final Throwable throwable;
         volatile Runnable runnable;
 
-        public CancelableRunnable(Runnable runnable) {
+        public InvocationRunnable(Runnable runnable) {
             this.runnable = runnable;
+            throwable = new Throwable();
         }
 
         @Override
         public void run() {
             Runnable r = runnable;
+            runnable = null;
             if (r != null) r.run();
         }
 
-        public void cancel() {
+        public void cancel(String message) {
             runnable = null;
+            new Throwable(message, throwable).printStackTrace();
+        }
+
+        public boolean isPending() {
+            return runnable != null;
         }
     }
 
@@ -767,7 +776,6 @@ public final class LWCToolkit extends LWToolkit {
         }
 
         boolean nonBlockingRunLoop;
-        CancelableRunnable cancelableRunnable = new CancelableRunnable(runnable);
 
         if (!processEvents) {
             synchronized (priorityInvocationPending) {
@@ -779,17 +787,20 @@ public final class LWCToolkit extends LWToolkit {
             nonBlockingRunLoop = true;
         }
 
-        final long mediator = createAWTRunLoopMediator();
+        AtomicLong mediator = new AtomicLong(createAWTRunLoopMediator());
+        Runnable stopAWTRunLoopAction = () -> {
+            long value = mediator.getAndSet(0);
+            if (value != 0) {
+                stopAWTRunLoop(value);
+            }
+        };
 
-        InvocationEvent invocationEvent =
-                AWTThreading.createAndTrackInvocationEvent(component,
-                        cancelableRunnable,
-                        () -> {
-                            if (mediator != 0) {
-                                stopAWTRunLoop(mediator);
-                            }
-                        },
-                        true);
+        InvocationRunnable invocationRunnable = new InvocationRunnable(runnable);
+        final InvocationEvent invocationEvent =
+            AWTThreading.createAndTrackInvocationEvent(component,
+                invocationRunnable,
+                () -> stopAWTRunLoopAction.run(),
+                true);
 
         if (component != null) {
             AppContext appContext = SunToolkit.targetToAppContext(component);
@@ -803,10 +814,18 @@ public final class LWCToolkit extends LWToolkit {
             ((LWCToolkit)Toolkit.getDefaultToolkit()).getSystemEventQueueForInvokeAndWait().postEvent(invocationEvent);
         }
 
-        if (!doAWTRunLoop(mediator, nonBlockingRunLoop, timeoutSeconds)) {
-            new Throwable("Invocation timed out (" + timeoutSeconds + "sec)").printStackTrace();
-            cancelableRunnable.cancel();
+        AWTThreading.getInstance(component).receiveEventDispatchThreadFreeNotification(() -> {
+            if (invocationRunnable.isPending()) {
+                // EventQueue is now empty but the posted InvocationEvent is still not dispatched.
+                stopAWTRunLoopAction.run();
+                invocationRunnable.cancel("InvocationEvent has probably been lost");
+            }
+        });
+
+        if (!doAWTRunLoop(mediator.get(), nonBlockingRunLoop, timeoutSeconds)) {
+            invocationRunnable.cancel("InvocationEvent timed out (" + timeoutSeconds + "sec)");
         }
+
         if (!nonBlockingRunLoop) blockingRunLoopCounter.decrementAndGet();
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
