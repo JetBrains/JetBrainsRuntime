@@ -8,15 +8,27 @@ import java.awt.event.InvocationEvent;
 import java.lang.ref.WeakReference;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
+import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 /**
  * Used to perform a cross threads (EventDispatch, Toolkit) execution so that the execution does not cause a deadlock.
+ *
+ * Note: the log messages are tested by jdk/jb/java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java
  */
 public class AWTThreading {
-    private static final PlatformLogger logger = PlatformLogger.getLogger("sun.awt.AWTThreading");
+    private static final PlatformLogger logger = PlatformLogger.getLogger(AWTThreading.class.getName());
+
+    private static final Runnable EMPTY_RUNNABLE = () -> {};
+
+    private static final AtomicReference<Function<Thread, AWTThreading>> theAWTThreadingFactory =
+            new AtomicReference<>(AWTThreading::new);
+
+    private final Thread eventDispatchThread;
 
     private ExecutorService executor;
     // every invokeAndWait() pushes a queue of invocations
@@ -24,13 +36,21 @@ public class AWTThreading {
 
     private int level; // re-entrance level
 
+    private final List<CompletableFuture<Void>> eventDispatchThreadStateNotifiers = new ArrayList<>();
+    private volatile boolean isEventDispatchThreadFree;
+
     // invocations should be dispatched on proper EDT (per AppContext)
     private static final Map<Thread, AWTThreading> EDT_TO_INSTANCE_MAP = new ConcurrentHashMap<>();
 
     @SuppressWarnings("serial")
     private static class TrackingQueue extends LinkedBlockingQueue<InvocationEvent> {}
 
-    private AWTThreading() {}
+    /**
+     * WARNING: for testing purpose, use {@link AWTThreading#getInstance(Thread)} instead.
+     */
+    public AWTThreading(Thread edt) {
+        eventDispatchThread = edt;
+    }
 
     /**
      * Executes a callable from EventDispatch thread (EDT). It's assumed the callable either performs a blocking execution on Toolkit
@@ -178,8 +198,15 @@ public class AWTThreading {
      * <li>If the event is first dispatched from EventQueue - it gets removed from the tracking queue.
      * <li>If the event is first dispatched from the tracking queue - its dispatching on EventQueue will be noop.
      * <ul>
+     *
+     * @param source the source of the event
+     * @param onDispatched called back on event dispatching
+     * @param catchThrowables should catch Throwable's or propagate to the EventDispatch thread's loop
      */
-    public static InvocationEvent createAndTrackInvocationEvent(Object source, Runnable runnable, Runnable listener, boolean catchThrowables) {
+    public static TrackedInvocationEvent createAndTrackInvocationEvent(Object source,
+                                                                       Runnable onDispatched,
+                                                                       boolean catchThrowables)
+    {
         AWTThreading instance = getInstance(source);
         if (instance != null) {
             synchronized (instance.invocations) {
@@ -187,65 +214,208 @@ public class AWTThreading {
                     instance.invocations.push(new TrackingQueue());
                 }
                 final TrackingQueue queue = instance.invocations.peek();
-                final InvocationEvent[] eventRef = new InvocationEvent[1];
+                final AtomicReference<TrackedInvocationEvent> eventRef = new AtomicReference<>();
 
-                queue.add(eventRef[0] = new InvocationEvent(
-                        source,
-                        runnable,
-                        // Wrap the original completion listener so that it:
-                        // - guarantees a single run either from dispatch or dispose
-                        // - removes the invocation event from the tracking queue
-                        new Runnable() {
-                            WeakReference<TrackingQueue> queueRef = new WeakReference<>(queue);
+                eventRef.set(TrackedInvocationEvent.create(
+                    source,
+                    onDispatched,
+                    new Runnable() {
+                        final WeakReference<TrackingQueue> queueRef = new WeakReference<>(queue);
 
-                            @Override
-                            public void run() {
-                                if (queueRef != null) {
-                                    if (listener != null) {
-                                        listener.run();
-                                    }
-                                    TrackingQueue q = queueRef.get();
-                                    if (q != null) {
-                                        q.remove(eventRef[0]);
-                                    }
-                                    queueRef = null;
-                                }
+                        @Override
+                        public void run() {
+                            TrackingQueue queue = queueRef.get();
+                            queueRef.clear();
+                            if (queue != null) {
+                                queue.remove(eventRef.get());
                             }
-                        },
-                        catchThrowables)
-                {
-                    @Override
-                    public void dispatch() {
-                        if (!isDispatched()) {
-                            super.dispatch();
                         }
-                    }
-                });
-                return eventRef[0];
+                    },
+                    catchThrowables));
+
+                queue.add(eventRef.get());
+                return eventRef.get();
             }
         }
-        return new InvocationEvent(source, runnable, listener, catchThrowables);
+        return TrackedInvocationEvent.create(source, onDispatched, () -> {}, catchThrowables);
     }
 
-    private static AWTThreading getInstance(Object obj) {
-        if (obj == null) return null;
+    @SuppressWarnings("serial")
+    public static class TrackedInvocationEvent extends InvocationEvent {
+        private final long creationTime = System.currentTimeMillis();
+        private final Throwable throwable = new Throwable();
+        private final CompletableFuture<Void> futureResult = new CompletableFuture<>();
+
+        // dispatched or disposed
+        private final AtomicBoolean isFinished = new AtomicBoolean(false);
+
+        static TrackedInvocationEvent create(Object source,
+                                             Runnable onDispatch,
+                                             Runnable onDone,
+                                             boolean catchThrowables)
+        {
+            final AtomicReference<TrackedInvocationEvent> eventRef = new AtomicReference<>();
+            eventRef.set(new TrackedInvocationEvent(
+                source,
+                onDispatch,
+                () -> {
+                    if (onDone != null) {
+                        onDone.run();
+                    }
+                    TrackedInvocationEvent thisEvent = eventRef.get();
+                    if (!thisEvent.isDispatched()) {
+                        // If we're here - this {onDone} is being disposed.
+                        thisEvent.finishIfNotYet(() ->
+                            // If we're here - this {onDone} is called by the outer AWTAccessor.getInvocationEventAccessor().dispose()
+                            // which we do not control, so complete here.
+                            thisEvent.futureResult.completeExceptionally(new Throwable("InvocationEvent was disposed"))
+                        );
+                    }
+                },
+                catchThrowables));
+            return eventRef.get();
+        }
+
+        protected TrackedInvocationEvent(Object source, Runnable onDispatched, Runnable onDone, boolean catchThrowables) {
+            super(source,
+                  Optional.of(onDispatched).orElse(EMPTY_RUNNABLE),
+                  Optional.of(onDone).orElse(EMPTY_RUNNABLE),
+                  catchThrowables);
+
+            futureResult.whenComplete((r, ex) -> {
+                if (ex != null) {
+                    String message = ex.getMessage() + " (awaiting " + (System.currentTimeMillis() - creationTime) + " ms)";
+                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                        ex.initCause(throwable);
+                        logger.fine(message, ex);
+                    } else if (logger.isLoggable(PlatformLogger.Level.INFO)) {
+                        StackTraceElement[] stack = throwable.getStackTrace();
+                        logger.info(message + ". Originated at " + stack[stack.length - 1]);
+                    }
+                }
+            });
+        }
+
+        @Override
+        public void dispatch() {
+            finishIfNotYet(super::dispatch);
+            futureResult.complete(null);
+        }
+
+        public void dispose(String reason) {
+            finishIfNotYet(() -> AWTAccessor.getInvocationEventAccessor().dispose(this));
+            futureResult.completeExceptionally(new Throwable(reason));
+        }
+
+        private void finishIfNotYet(Runnable finish) {
+            if (!isFinished.getAndSet(true)) {
+                finish.run();
+            }
+        }
+
+        /**
+         * Returns whether the event is dispatched or disposed.
+         */
+        public boolean isDone() {
+            return futureResult.isDone();
+        }
+
+        /**
+         * Calls the runnable when it's done (immediately if it's done).
+         */
+        public void onDone(Runnable runnable) {
+            futureResult.whenComplete((r, ex) -> Optional.of(runnable).orElse(EMPTY_RUNNABLE).run());
+        }
+    }
+
+    public static AWTThreading getInstance(Object obj) {
+        if (obj == null) {
+            return getInstance(Toolkit.getDefaultToolkit().getSystemEventQueue());
+        }
 
         AppContext appContext = SunToolkit.targetToAppContext(obj);
-        if (appContext == null) return null;
+        if (appContext == null) {
+            return getInstance(Toolkit.getDefaultToolkit().getSystemEventQueue());
+        }
 
         return getInstance((EventQueue)appContext.get(AppContext.EVENT_QUEUE_KEY));
     }
 
-    private static AWTThreading getInstance(EventQueue eq) {
+    public static AWTThreading getInstance(EventQueue eq) {
         if (eq == null) return null;
 
         return getInstance(AWTAccessor.getEventQueueAccessor().getDispatchThread(eq));
     }
 
-    private static AWTThreading getInstance(Thread edt) {
-        if (edt == null) return null;
+    public static AWTThreading getInstance(Thread edt) {
+        assert edt != null;
 
-        return EDT_TO_INSTANCE_MAP.computeIfAbsent(edt, key -> new AWTThreading());
+        return EDT_TO_INSTANCE_MAP.computeIfAbsent(edt, key -> theAWTThreadingFactory.get().apply(edt));
+    }
+
+    public Thread getEventDispatchThread() {
+        return eventDispatchThread;
+    }
+
+    /**
+     * Sets {@code AWTThreading} instance factory.
+     * WARNING: for testing purpose.
+     */
+    public static void setAWTThreadingFactory(Function<Thread, AWTThreading> factory) {
+        theAWTThreadingFactory.set(factory);
+    }
+
+    public void notifyEventDispatchThreadFree() {
+        List<CompletableFuture<Void>> notifiers = Collections.emptyList();
+        synchronized (eventDispatchThreadStateNotifiers) {
+            isEventDispatchThreadFree = true;
+            if (eventDispatchThreadStateNotifiers.size() > 0) {
+                notifiers = List.copyOf(eventDispatchThreadStateNotifiers);
+            }
+        }
+        if (logger.isLoggable(PlatformLogger.Level.FINER)) {
+            logger.finer("notifyEventDispatchThreadFree");
+        }
+        // notify callbacks out of the synchronization block
+        notifiers.forEach(f -> f.complete(null));
+    }
+
+    public void notifyEventDispatchThreadBusy() {
+        synchronized (eventDispatchThreadStateNotifiers) {
+            isEventDispatchThreadFree = false;
+        }
+        if (logger.isLoggable(PlatformLogger.Level.FINER)) {
+            logger.finer("notifyEventDispatchThreadBusy");
+        }
+    }
+
+    /**
+     * Sets a callback and returns a {@code CompletableFuture} reporting the case when the associated EventDispatch thread
+     * has gone sleeping and stopped dispatching events because of empty EventQueue. If the EventDispatch thread is free
+     * at the moment then the callback is called immediately on the caller's thread and the future completes.
+     */
+    public CompletableFuture<Void> onEventDispatchThreadFree(Runnable runnable) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        future.thenRun(Optional.of(runnable).orElse(EMPTY_RUNNABLE));
+
+        if (!isEventDispatchThreadFree) {
+            synchronized (eventDispatchThreadStateNotifiers) {
+                if (!isEventDispatchThreadFree) {
+                    eventDispatchThreadStateNotifiers.add(future);
+                    future.whenComplete((r, ex) -> {
+                        synchronized (eventDispatchThreadStateNotifiers) {
+                            eventDispatchThreadStateNotifiers.remove(future);
+                        }
+                    });
+                    return future;
+                }
+            }
+        }
+        if (logger.isLoggable(PlatformLogger.Level.FINER)) {
+            logger.finer("onEventDispatchThreadFree: free at the moment");
+        }
+        future.complete(null);
+        return future;
     }
 
     public interface Task {
