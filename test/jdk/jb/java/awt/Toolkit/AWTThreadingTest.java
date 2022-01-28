@@ -1,7 +1,7 @@
 import java.awt.*;
+import javax.swing.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -9,11 +9,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import sun.awt.InvokeOnToolkitHelper;
 import sun.lwawt.macosx.CThreading;
 import sun.lwawt.macosx.LWCToolkit;
-
-import javax.swing.*;
+import sun.awt.AWTThreading;
 
 /*
  * @test
@@ -50,6 +48,7 @@ public class AWTThreadingTest {
 
     static void runGui() {
         frame = new JFrame("frame");
+        frame.getContentPane().setBackground(Color.green);
         frame.setLocationRelativeTo(null);
         frame.setSize(200, 200);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -88,7 +87,7 @@ public class AWTThreadingTest {
                 EventQueue.invokeLater(() -> {
                     passed.set(false);
 
-                    Boolean success = InvokeOnToolkitHelper.invokeAndBlock(() -> {
+                    Boolean success = AWTThreading.executeWaitToolkit(() -> {
                         try {
                             return CThreading.executeOnAppKit(() -> Boolean.TRUE);
                         } catch (Throwable e) {
