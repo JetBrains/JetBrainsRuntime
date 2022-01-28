@@ -37,13 +37,12 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.lang.annotation.Native;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import java.util.concurrent.Callable;
 import java.util.Arrays;
 import java.util.function.Function;
@@ -78,8 +77,7 @@ import sun.swing.SwingAccessor;
 
 final class CAccessibility implements PropertyChangeListener {
     private static Set<String> ignoredRoles;
-    private static final int INVOKE_TIMEOUT_SECONDS_DEFAULT = 1;
-    private static /*final*/ int INVOKE_TIMEOUT_SECONDS;
+    private static final int INVOKE_TIMEOUT_SECONDS = Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds", 1);
 
     static {
         loadAWTLibrary();
@@ -89,8 +87,6 @@ final class CAccessibility implements PropertyChangeListener {
     private static void loadAWTLibrary() {
         // Need to load the native library for this code.
         System.loadLibrary("awt");
-        INVOKE_TIMEOUT_SECONDS = Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds",
-                INVOKE_TIMEOUT_SECONDS_DEFAULT);
     }
 
     static CAccessibility sAccessibility;
