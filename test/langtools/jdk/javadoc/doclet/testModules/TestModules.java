@@ -212,7 +212,7 @@ public class TestModules extends JavadocTester {
                 "--module", "moduleA,moduleB,moduleC,moduletags",
                 "testpkgmdlA", "moduleA/concealedpkgmdlA", "testpkgmdlB", "testpkg2mdlB", "testpkgmdlC", "testpkgmdltags");
         checkExit(Exit.OK);
-        checkModuleModeCommon();
+        checkModuleModeCommon(true);
         checkModuleModeApi(true);
         checkModuleModeAll(false);
     }
@@ -234,7 +234,7 @@ public class TestModules extends JavadocTester {
                 "--module", "moduleA,moduleB,moduleC,moduletags",
                 "testpkgmdlA", "moduleA/concealedpkgmdlA", "testpkgmdlB", "testpkg2mdlB", "testpkgmdlC", "testpkgmdltags");
         checkExit(Exit.OK);
-        checkModuleModeCommon();
+        checkModuleModeCommon(false);
         checkModuleModeApi(false);
         checkModuleModeAll(true);
     }
@@ -875,7 +875,7 @@ public class TestModules extends JavadocTester {
                     <dd>with description</dd>""");
     }
 
-    void checkModuleModeCommon() {
+    void checkModuleModeCommon(boolean isApi) {
         checkOutput("index.html", true,
                 """
                     <div class="col-first even-row-color all-modules-table all-modules-table-tab1"><\
@@ -904,9 +904,15 @@ public class TestModules extends JavadocTester {
                     <li><a href="#modules-summary">Modules</a>&nbsp;|&nbsp;</li>
                     <li><a href="#packages-summary">Packages</a>&nbsp;|&nbsp;</li>
                     <li>Services</li>""",
+                isApi ?
                 """
                     <div class="col-first even-row-color"><a href="../moduleB/module-summary.html">moduleB</a></div>
                     <div class="col-last even-row-color"><a href="../moduleB/testpkgmdlB/package-summary.html">testpkgmdlB</a></div>
+                    """
+                :
+                """
+                    <div class="col-first odd-row-color"><a href="../moduleB/module-summary.html">moduleB</a></div>
+                    <div class="col-last odd-row-color"><a href="../moduleB/testpkgmdlB/package-summary.html">testpkgmdlB</a></div>
                     """);
         checkOutput("moduletags/module-summary.html", true,
                 """
@@ -947,9 +953,15 @@ public class TestModules extends JavadocTester {
                     <div class="details-table two-column-summary">
                     <div class="table-header col-first">From</div>
                     <div class="table-header col-last">Packages</div>""",
+                isApi ?
                 """
                     <div class="col-first even-row-color"><a href="../moduleB/module-summary.html">moduleB</a></div>
                     <div class="col-last even-row-color"><a href="../moduleB/testpkgmdlB/package-summary.html">testpkgmdlB</a></div>
+                    """
+                :
+                """
+                    <div class="col-first odd-row-color"><a href="../moduleB/module-summary.html">moduleB</a></div>
+                    <div class="col-last odd-row-color"><a href="../moduleB/testpkgmdlB/package-summary.html">testpkgmdlB</a></div>
                     """);
     }
 
