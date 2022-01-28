@@ -319,6 +319,7 @@ public class EventQueue {
             if (shouldNotify) {
                 if (theEvent.getSource() != AWTAutoShutdown.getInstance()) {
                     AWTAutoShutdown.getInstance().notifyThreadBusy(dispatchThread);
+                    AWTThreading.getInstance(dispatchThread).notifyEventDispatchThreadBusy();
                 }
                 pushPopCond.signalAll();
             } else if (notifyID) {
@@ -531,6 +532,7 @@ public class EventQueue {
                     return event;
                 }
                 AWTAutoShutdown.getInstance().notifyThreadFree(dispatchThread);
+                AWTThreading.getInstance(dispatchThread).notifyEventDispatchThreadFree();
                 pushPopCond.await();
             } finally {
                 pushPopLock.unlock();
@@ -1045,11 +1047,15 @@ public class EventQueue {
         pushPopLock.lock();
         try {
             if (dispatchThread == null && !threadGroup.isDestroyed()) {
-                EventDispatchThread t = new EventDispatchThread(threadGroup, name, EventQueue.this);
+                EventDispatchThread t =
+                    new EventDispatchThread(threadGroup,
+                            name,
+                            EventQueue.this);
                 t.setContextClassLoader(classLoader);
                 t.setPriority(Thread.NORM_PRIORITY + 1);
                 t.setDaemon(false);
                 AWTAutoShutdown.getInstance().notifyThreadBusy(t);
+                AWTThreading.getInstance(t).notifyEventDispatchThreadBusy();
                 dispatchThread = t;
                 dispatchThread.start();
             }
@@ -1077,6 +1083,7 @@ public class EventQueue {
                 dispatchThread = null;
             }
             AWTAutoShutdown.getInstance().notifyThreadFree(edt);
+            AWTThreading.getInstance(edt).notifyEventDispatchThreadFree();
             /*
              * Event was posted after EDT events pumping had stopped, so start
              * another EDT to handle this event
