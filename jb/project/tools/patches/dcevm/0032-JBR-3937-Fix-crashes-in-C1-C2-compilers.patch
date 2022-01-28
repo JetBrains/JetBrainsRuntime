@@ -1,7 +1,7 @@
-From 256af0b88776c1ba2afdae760d3220ef48a644aa Mon Sep 17 00:00:00 2001
+From 56b381db23651cc1cec0a4b649dd2796b85e8b09 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
 Date: Mon, 1 Nov 2021 19:00:41 +0100
-Subject: [PATCH 32/33] JBR-3937 Fix crashes in C1/C2 compilers
+Subject: [PATCH 32/44] JBR-3937 Fix crashes in C1/C2 compilers
 
 There is a race condition in enhanced redefinition with C1/C2. Therefore
 the patch stops C1/C2 compilation before redefinition and release after
@@ -14,7 +14,7 @@ flushes all code cache.
  3 files changed, 51 insertions(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/compiler/compileBroker.cpp b/src/hotspot/share/compiler/compileBroker.cpp
-index 5ec54baec96..a72560069e4 100644
+index bd662b5ebef..bd0f9f0efab 100644
 --- a/src/hotspot/share/compiler/compileBroker.cpp
 +++ b/src/hotspot/share/compiler/compileBroker.cpp
 @@ -133,6 +133,8 @@ CompileLog** CompileBroker::_compiler2_logs = NULL;
@@ -26,7 +26,7 @@ index 5ec54baec96..a72560069e4 100644
  
  // Debugging information
  int  CompileBroker::_last_compile_type     = no_compile;
-@@ -2203,7 +2205,22 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
+@@ -2191,7 +2193,22 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
            locker.wait(Mutex::_no_safepoint_check_flag);
          }
        }
@@ -50,7 +50,7 @@ index 5ec54baec96..a72560069e4 100644
      }
  
      if (!ci_env.failing() && task->code() == NULL) {
-@@ -2865,3 +2882,23 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
+@@ -2853,3 +2870,23 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
    }
    out->print_cr("\n__ CodeHeapStateAnalytics total duration %10.3f seconds _________\n", ts_total.seconds());
  }

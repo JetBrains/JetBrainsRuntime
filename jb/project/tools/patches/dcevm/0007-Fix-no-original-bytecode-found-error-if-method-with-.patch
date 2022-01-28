@@ -1,7 +1,7 @@
-From 9e65f8342345df054cc1cb694fb4859e2557401d Mon Sep 17 00:00:00 2001
+From d78e34a89b273508d3502d7456bf40b568edb3fd Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sat, 23 May 2020 10:02:15 +0200
-Subject: [PATCH 07/33] Fix "no original bytecode found" error if method with
+Subject: [PATCH 07/44] Fix "no original bytecode found" error if method with
  bkp is missing
 
 Sometimes IDE can deploy class with erroneous method, such method has
@@ -41,7 +41,7 @@ index aeafba285f0..026fe9234fb 100644
  
  IRT_ENTRY(void, InterpreterRuntime::set_original_bytecode_at(JavaThread* thread, Method* method, address bcp, Bytecodes::Code new_code))
 diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
-index e47dd223f92..165a2e4de36 100644
+index 0a12f01536a..037ceef2c44 100644
 --- a/src/hotspot/share/oops/method.cpp
 +++ b/src/hotspot/share/oops/method.cpp
 @@ -1789,14 +1789,14 @@ bool CompressedLineNumberReadStream::read_pair() {
@@ -102,7 +102,7 @@ index 4ac3e6e80de..9ff4f0e8036 100644
    void set_breakpoint(int bci);
    void clear_breakpoint(int bci);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 0b239b2ff6d..aba99bb60fa 100644
+index b94caa39562..1fbba406087 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -1356,14 +1356,16 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {

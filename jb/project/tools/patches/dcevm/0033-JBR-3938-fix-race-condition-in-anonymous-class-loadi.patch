@@ -1,7 +1,7 @@
-From 81d93376d08058144aa5b2ecf6744d607c516e88 Mon Sep 17 00:00:00 2001
+From 962796e56be75ef70c1d6dcaa9eaf19e755c61d8 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
-Date: Tue, 2 Nov 2021 01:20:13 +0700
-Subject: [PATCH 33/33] JBR-3938 - fix race condition in anonymous class
+Date: Mon, 1 Nov 2021 19:20:13 +0100
+Subject: [PATCH 33/44] JBR-3938 - fix race condition in anonymous class
  loading
 
 Anonymous class must be checked if it is fully initialized if it is used
@@ -12,7 +12,7 @@ in ClassLoaderDataGraph closure.
  2 files changed, 14 insertions(+), 31 deletions(-)
 
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 745109902af..1e63561064a 100644
+index 5de5f78aea0..a8546a5fbe2 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -517,8 +517,6 @@ void VM_EnhancedRedefineClasses::doit() {
@@ -105,7 +105,7 @@ index 745109902af..1e63561064a 100644
  
    log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index 8c47baa8a74..c69325ca4ab 100644
+index 79ea17b0d47..fc0d8e82643 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -119,7 +119,6 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

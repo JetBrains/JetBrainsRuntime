@@ -1,7 +1,7 @@
-From 7cbf2af248f33daa6fb5b55a7fb9316b1d2680e0 Mon Sep 17 00:00:00 2001
+From cfdbad725c55a4ce45d407393a4591d8b8f333c9 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Thu, 18 Jun 2020 18:40:11 +0200
-Subject: [PATCH 25/33] JBR-3140 - support for modularized HotswapAgent
+Subject: [PATCH 25/44] JBR-3140 - support for modularized HotswapAgent
 
 Add -XX:HotswapAgent=[disabled,fatjar.core]
 ---
@@ -500,10 +500,10 @@ index 8763b83fd37..c9ed15a89e1 100644
  
  #endif /* SHARE_VM_RUNTIME_JVMFLAGCONSTRAINTSRUNTIME_HPP */
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index 705381825ff..eda4eca2451 100644
+index 1984b8c28f9..c015b89b176 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
-@@ -2692,8 +2692,16 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
+@@ -2695,8 +2695,16 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
               "Allow enhanced class redefinition beyond swapping method "    \
               "bodies")                                                      \
                                                                              \

@@ -1,0 +1,29 @@
+From eda304d04f9d7ca3d8c488d0375c77eae989a268 Mon Sep 17 00:00:00 2001
+From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
+Date: Fri, 5 Nov 2021 19:36:08 +0100
+Subject: [PATCH 37/44] JBR-3964 - now G1 is the default GC in
+ AllowEnhancedClassRedefinition
+
+---
+ src/hotspot/share/gc/shared/gcConfig.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/hotspot/share/gc/shared/gcConfig.cpp b/src/hotspot/share/gc/shared/gcConfig.cpp
+index 20e0ef9ee8a..aea0ae3759f 100644
+--- a/src/hotspot/share/gc/shared/gcConfig.cpp
++++ b/src/hotspot/share/gc/shared/gcConfig.cpp
+@@ -106,9 +106,9 @@ void GCConfig::fail_if_unsupported_gc_is_selected() {
+ }
+ 
+ void GCConfig::select_gc_ergonomically() {
+-  if (AllowEnhancedClassRedefinition && !UseConcMarkSweepGC && !UseG1GC) {
++  if (AllowEnhancedClassRedefinition && !UseConcMarkSweepGC && !UseSerialGC) {
+     // Enhanced class redefinition only supports serial GC at the moment
+-    FLAG_SET_ERGO(bool, UseSerialGC, true);
++    FLAG_SET_ERGO(bool, UseG1GC, true);
+   } else if (os::is_server_class_machine()) {
+ #if INCLUDE_G1GC
+     FLAG_SET_ERGO_IF_DEFAULT(bool, UseG1GC, true);
+-- 
+2.23.0
+

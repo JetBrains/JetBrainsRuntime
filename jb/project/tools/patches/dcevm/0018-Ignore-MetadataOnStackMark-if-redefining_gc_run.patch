@@ -1,7 +1,7 @@
-From 163cf26017433389041f824c7d8342eb54f4cef8 Mon Sep 17 00:00:00 2001
+From 371093160151f400b149a5e5e4cd1acc89b1ab52 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Sun, 1 Nov 2020 21:19:00 +0100
-Subject: [PATCH 18/33] Ignore MetadataOnStackMark if redefining_gc_run
+Subject: [PATCH 18/44] Ignore MetadataOnStackMark if redefining_gc_run
 
 ---
  src/hotspot/share/classfile/classLoaderData.cpp | 2 +-

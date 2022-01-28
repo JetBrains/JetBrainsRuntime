@@ -1,7 +1,7 @@
-From 82bbf38d7385e26f28f47df65b58b1ab7f8c52c3 Mon Sep 17 00:00:00 2001
+From 400fa82043b7b9589e1f77c43f6696b133fc1188 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 23 Oct 2020 10:20:26 +0200
-Subject: [PATCH 16/33] Clear dcevm code separation
+Subject: [PATCH 16/44] Clear dcevm code separation
 
 ---
  src/hotspot/share/classfile/systemDictionary.cpp   |  4 ++--
@@ -15,10 +15,10 @@ Subject: [PATCH 16/33] Clear dcevm code separation
  8 files changed, 27 insertions(+), 17 deletions(-)
 
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index 42e0fee800f..be4d2010c0c 100644
+index 89375cd59fa..a61c342f5bd 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
-@@ -1152,7 +1152,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
+@@ -1147,7 +1147,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
      MutexLocker mu(SystemDictionary_lock, THREAD);
  
      Klass* check = find_class(h_name, k->class_loader_data());
@@ -27,7 +27,7 @@ index 42e0fee800f..be4d2010c0c 100644
    } );
  
    return k;
-@@ -2155,7 +2155,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
+@@ -2149,7 +2149,7 @@ void SystemDictionary::check_constraints(unsigned int d_hash,
        // also hold array classes.
  
        assert(check->is_instance_klass(), "noninstance in systemdictionary");
@@ -106,7 +106,7 @@ index 61a406377ee..da9df7a21a2 100644
    if (HAS_PENDING_EXCEPTION) {
      log_pending_exception(PENDING_EXCEPTION);
 diff --git a/src/hotspot/share/oops/instanceKlass.cpp b/src/hotspot/share/oops/instanceKlass.cpp
-index 76791cdd905..cb448b1b762 100644
+index b10e566b7c3..7557a84fbf3 100644
 --- a/src/hotspot/share/oops/instanceKlass.cpp
 +++ b/src/hotspot/share/oops/instanceKlass.cpp
 @@ -178,7 +178,9 @@ bool InstanceKlass::has_nest_member(InstanceKlass* k, TRAPS) const {
@@ -138,7 +138,7 @@ index 76791cdd905..cb448b1b762 100644
          wait = true;
        ol.waitUninterruptibly(CHECK);
      }
-@@ -3629,7 +3631,7 @@ void InstanceKlass::verify_on(outputStream* st) {
+@@ -3632,7 +3634,7 @@ void InstanceKlass::verify_on(outputStream* st) {
  
      guarantee(sib->is_klass(), "should be klass");
      // TODO: (DCEVM) explain
@@ -148,10 +148,10 @@ index 76791cdd905..cb448b1b762 100644
  
    // Verify implementor fields requires the Compile_lock, but this is sometimes
 diff --git a/src/hotspot/share/oops/method.cpp b/src/hotspot/share/oops/method.cpp
-index 17c08a9dc18..2596ed7add2 100644
+index 6b8e2198e55..2af3e71635e 100644
 --- a/src/hotspot/share/oops/method.cpp
 +++ b/src/hotspot/share/oops/method.cpp
-@@ -2145,7 +2145,7 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
+@@ -2144,7 +2144,7 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
  // Add a method id to the jmethod_ids
  jmethodID Method::make_jmethod_id(ClassLoaderData* loader_data, Method* m) {
    // FIXME: (DCEVM) ???

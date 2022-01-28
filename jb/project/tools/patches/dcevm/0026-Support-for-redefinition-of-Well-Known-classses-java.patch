@@ -1,7 +1,7 @@
-From 8dd54d6e012458db96f199550d0f6016537c6d82 Mon Sep 17 00:00:00 2001
+From a9468fd22397d85bc238b6ec763f4643245999ab Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <vladimir.dvorak@jetbrains.com>
-Date: Mon, 8 Mar 2021 02:22:54 +0700
-Subject: [PATCH 26/33] Support for redefinition of Well Known classses
+Date: Sun, 7 Mar 2021 20:22:54 +0100
+Subject: [PATCH 26/44] Support for redefinition of Well Known classses
  (java.*,jdk.*, sun.*)
 
 ---
@@ -31,7 +31,7 @@ index 896f489453a..c610c365aba 100644
  
  #endif // SHARE_VM_CI_CIKLASS_HPP
 diff --git a/src/hotspot/share/ci/ciObjectFactory.cpp b/src/hotspot/share/ci/ciObjectFactory.cpp
-index c8a03aa9ee9..6b187909943 100644
+index b2ab15c4b65..d997a90a055 100644
 --- a/src/hotspot/share/ci/ciObjectFactory.cpp
 +++ b/src/hotspot/share/ci/ciObjectFactory.cpp
 @@ -70,7 +70,10 @@ GrowableArray<ciMetadata*>* ciObjectFactory::_shared_ci_metadata = NULL;
@@ -91,7 +91,7 @@ index c8a03aa9ee9..6b187909943 100644
  
    _next_ident = 1;  // start numbering CI objects at 1
 diff --git a/src/hotspot/share/ci/ciObjectFactory.hpp b/src/hotspot/share/ci/ciObjectFactory.hpp
-index 3e9d48c4cdc..79059f6e2e8 100644
+index 5d573350aa2..2978261328c 100644
 --- a/src/hotspot/share/ci/ciObjectFactory.hpp
 +++ b/src/hotspot/share/ci/ciObjectFactory.hpp
 @@ -41,9 +41,11 @@ class ciObjectFactory : public ResourceObj {
@@ -122,10 +122,10 @@ index 3e9d48c4cdc..79059f6e2e8 100644
    void remove_symbols();
  
 diff --git a/src/hotspot/share/classfile/systemDictionary.cpp b/src/hotspot/share/classfile/systemDictionary.cpp
-index d0365162b81..74f30524279 100644
+index cf0a05176c8..be7fcbf2b47 100644
 --- a/src/hotspot/share/classfile/systemDictionary.cpp
 +++ b/src/hotspot/share/classfile/systemDictionary.cpp
-@@ -1985,6 +1985,16 @@ bool SystemDictionary::is_well_known_klass(Symbol* class_name) {
+@@ -1979,6 +1979,16 @@ bool SystemDictionary::is_well_known_klass(Symbol* class_name) {
  }
  #endif
  
@@ -143,10 +143,10 @@ index d0365162b81..74f30524279 100644
    assert(id >= (int)FIRST_WKID && id < (int)WKID_LIMIT, "oob");
    int  info = wk_init_info[id - FIRST_WKID];
 diff --git a/src/hotspot/share/classfile/systemDictionary.hpp b/src/hotspot/share/classfile/systemDictionary.hpp
-index a8359143908..aba2780a321 100644
+index 0002abe6122..707ff871e19 100644
 --- a/src/hotspot/share/classfile/systemDictionary.hpp
 +++ b/src/hotspot/share/classfile/systemDictionary.hpp
-@@ -470,6 +470,8 @@ public:
+@@ -463,6 +463,8 @@ public:
    static bool is_well_known_klass(Symbol* class_name);
  #endif
  
@@ -169,10 +169,10 @@ index 0d0badeabd0..3477a408cb6 100644
    template(threads_name,                              "threads")                                  \
    template(groups_name,                               "groups")                                   \
 diff --git a/src/hotspot/share/compiler/compileBroker.cpp b/src/hotspot/share/compiler/compileBroker.cpp
-index 80a940980a5..5ec54baec96 100644
+index 1ff09ebf3ec..bd662b5ebef 100644
 --- a/src/hotspot/share/compiler/compileBroker.cpp
 +++ b/src/hotspot/share/compiler/compileBroker.cpp
-@@ -1877,6 +1877,17 @@ void CompileBroker::compiler_thread_loop() {
+@@ -1871,6 +1871,17 @@ void CompileBroker::compiler_thread_loop() {
        if (method()->number_of_breakpoints() == 0) {
          // Compile the method.
          if ((UseCompiler || AlwaysCompileLoopMethods) && CompileBroker::should_compile_new_jobs()) {
@@ -224,7 +224,7 @@ index 742dada0e8f..d1af82b5fa7 100644
    static oop          arithmetic_exception_instance() { return _arithmetic_exception_instance; }
    static oop          virtual_machine_error_instance() { return _virtual_machine_error_instance; }
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
-index 4ee12b7021f..7997b178d22 100644
+index f4bde7504c8..80d4e68ccae 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.cpp
 @@ -497,6 +497,16 @@ void VM_EnhancedRedefineClasses::doit() {
@@ -316,7 +316,7 @@ index 4ee12b7021f..7997b178d22 100644
  //      if (num != ConstMethod::UNSET_IDNUM) {
  //        old_method->set_method_idnum(num);
 diff --git a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
-index d00109a0b92..8c47baa8a74 100644
+index 4c0412d343d..79ea17b0d47 100644
 --- a/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 +++ b/src/hotspot/share/prims/jvmtiEnhancedRedefineClasses.hpp
 @@ -141,6 +141,8 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {

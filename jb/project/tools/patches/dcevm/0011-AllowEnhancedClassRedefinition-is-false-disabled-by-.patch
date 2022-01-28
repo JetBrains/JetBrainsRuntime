@@ -1,7 +1,7 @@
-From 3645c65d712993ba5af60e10585dd01c18a7f81f Mon Sep 17 00:00:00 2001
+From 68c65981000d71555a529443831a18c9738c9566 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Tue, 6 Oct 2020 22:15:31 +0200
-Subject: [PATCH 11/33] AllowEnhancedClassRedefinition is false (disabled) by
+Subject: [PATCH 11/44] AllowEnhancedClassRedefinition is false (disabled) by
  default
 
 ---
@@ -9,10 +9,10 @@ Subject: [PATCH 11/33] AllowEnhancedClassRedefinition is false (disabled) by
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/hotspot/share/runtime/globals.hpp b/src/hotspot/share/runtime/globals.hpp
-index 9c007fc2d82..705381825ff 100644
+index 4d6fe0034a3..1984b8c28f9 100644
 --- a/src/hotspot/share/runtime/globals.hpp
 +++ b/src/hotspot/share/runtime/globals.hpp
-@@ -2688,7 +2688,7 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
+@@ -2691,7 +2691,7 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
    experimental(bool, UseFastUnorderedTimeStamps, false,                     \
            "Use platform unstable time where supported for timestamps only") \
                                                                              \

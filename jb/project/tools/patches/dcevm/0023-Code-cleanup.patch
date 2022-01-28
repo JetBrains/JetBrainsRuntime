@@ -1,7 +1,7 @@
-From ae2b3fba2882b52ec7c5a9ac49d179616fc49e77 Mon Sep 17 00:00:00 2001
+From 214a02487be521857a088595f8568df7846acd62 Mon Sep 17 00:00:00 2001
 From: Vladimir Dvorak <lada.dvorak7@gmail.com>
 Date: Fri, 12 Feb 2021 11:27:39 +0100
-Subject: [PATCH 23/33] Code cleanup
+Subject: [PATCH 23/44] Code cleanup
 
 - Rename confusing method name old_if_redefined to old_if_redefining
 - Remove unused is_redefining_gc_run
