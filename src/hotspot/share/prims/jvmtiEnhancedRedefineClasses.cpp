@@ -658,8 +658,8 @@ void VM_EnhancedRedefineClasses::doit() {
   // TODO: explain...
   ciObjectFactory::resort_shared_ci_metadata();
 
-  // Disable any dependent concurrent compilations
-  SystemDictionary::notice_modification();
+  // notice_modification() was removed in 11.0.14
+  // SystemDictionary::notice_modification();
 
   // Set flag indicating that some invariants are no longer true.
   // See jvmtiExport.hpp for detailed explanation.
