@@ -262,15 +262,8 @@ public class AWTThreading {
     }
 
     public void notifyEventDispatchThreadFree() {
-        List<Runnable> copy;
-        // Collections.synchronizedList object is the internal mutext for the sync'ed collection.
-        synchronized (eventDispatchThreadCallbacks) {
-            copy = List.copyOf(eventDispatchThreadCallbacks);
-        }
-        copy.forEach(callback -> {
-            callback.run();
-            eventDispatchThreadCallbacks.remove(callback);
-        });
+        eventDispatchThreadCallbacks.forEach(Runnable::run);
+        eventDispatchThreadCallbacks.clear();
     }
 
     /**
