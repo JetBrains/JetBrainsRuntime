@@ -85,6 +85,7 @@ RELEASE_NAME=linux-x86_64-server-release
 case "$bundle_type" in
   "jcef")
     do_reset_changes=1
+    do_maketest=1
     ;;
   "nomod" | "")
     bundle_type=""
@@ -129,7 +130,7 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type
 fi
 create_image_bundle "$JBRSDK_BUNDLE${jbr_name_postfix}" $JBRSDK_BUNDLE $JSDK_MODS_DIR "$modules" || do_exit $?
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ $do_maketest -eq 1 ]; then
     JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-linux-test-x64-b${build_number}
     echo Creating "$JBRSDK_TEST" ...
     [ $do_reset_changes -eq 1 ] && git checkout HEAD modules.list src/java.desktop/share/classes/module-info.java

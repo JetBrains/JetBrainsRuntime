@@ -71,6 +71,7 @@ RELEASE_NAME=windows-x86_64-server-release
 case "$bundle_type" in
   "jcef")
     do_reset_changes=0
+    do_maketest=1
     ;;
   "nomod" | "")
     bundle_type=""
@@ -84,13 +85,13 @@ esac
 
 if [ -z "$INC_BUILD" ]; then
   do_configure || do_exit $?
-  if [ "$bundle_type" == "jcef" ]; then
+  if [ $do_maketest -eq 1 ]; then
     make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
   else
     make LOG=info CONF=$RELEASE_NAME clean images || do_exit $?
   fi
 else
-  if [ "$bundle_type" == "jcef" ]; then
+  if [ $do_maketest -eq 1 ]; then
     make LOG=info CONF=$RELEASE_NAME images test-image || do_exit $?
   else
     make LOG=info CONF=$RELEASE_NAME images || do_exit $?
