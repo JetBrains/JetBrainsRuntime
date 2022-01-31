@@ -21,6 +21,7 @@ JDK_BUILD_NUMBER=$2
 build_number=$3
 
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
+TOOLCHAIN_VERSION=${TOOLCHAIN_VERSION:=2017}
 
 source jb/project/tools/common.sh
 
@@ -38,7 +39,7 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --with-version-pre= \
   --with-version-build=${JDK_BUILD_NUMBER} \
   --with-version-opt=b${build_number} \
-  --with-toolchain-version=2015 \
+  --with-toolchain-version=${TOOLCHAIN_VERSION} \
   --with-boot-jdk=${BOOT_JDK} \
   --disable-ccache \
   --enable-cds=yes || exit 1
