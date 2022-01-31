@@ -30,6 +30,7 @@ import org.xml.sax.SAXException;
 
 import com.sun.org.apache.xml.internal.serializer.utils.MsgKey;
 import com.sun.org.apache.xml.internal.serializer.utils.Utils;
+import jdk.xml.internal.JdkXmlUtils;
 
 /**
  * This serializer takes a series of SAX or
@@ -40,7 +41,7 @@ import com.sun.org.apache.xml.internal.serializer.utils.Utils;
  * because it is used from another package.
  *
  * @xsl.usage internal
- * @LastModified: Sept 2018
+ * @LastModified: July 2021
  */
 public final class ToHTMLStream extends ToStream
 {
@@ -675,28 +676,10 @@ public final class ToHTMLStream extends ToStream
                 final java.io.Writer writer = m_writer;
                 try
                 {
-                writer.write("<!DOCTYPE html");
-
-                if (null != doctypePublic)
-                {
-                    writer.write(" PUBLIC \"");
-                    writer.write(doctypePublic);
-                    writer.write('"');
-                }
-
-                if (null != doctypeSystem)
-                {
-                    if (null == doctypePublic)
-                        writer.write(" SYSTEM \"");
-                    else
-                        writer.write(" \"");
-
-                    writer.write(doctypeSystem);
-                    writer.write('"');
-                }
-
-                writer.write('>');
-                outputLineSep();
+                    writer.write("<!DOCTYPE html");
+                    writer.write(JdkXmlUtils.getDTDExternalDecl(doctypePublic, doctypeSystem));
+                    writer.write('>');
+                    outputLineSep();
                 }
                 catch(IOException e)
                 {
