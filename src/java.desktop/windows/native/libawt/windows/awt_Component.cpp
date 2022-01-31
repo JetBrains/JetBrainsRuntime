@@ -2758,9 +2758,12 @@ AwtComponent::GetJavaModifiers()
     if (HIBYTE(::GetKeyState(VK_MENU)) != 0) {
         modifiers |= java_awt_event_InputEvent_ALT_DOWN_MASK;
     }
-    if (HIBYTE(::GetKeyState(VK_RMENU)) != 0) {
-        modifiers |= java_awt_event_InputEvent_ALT_GRAPH_DOWN_MASK;
-    }
+// Reverted fix of JDK-8041928: MouseEvent.getModifiersEx gives wrong result
+// Because it breaks AltGr shortcuts.
+// See IDEA-287559, JBR-4207 for more info.
+//    if (HIBYTE(::GetKeyState(VK_RMENU)) != 0) {
+//        modifiers |= java_awt_event_InputEvent_ALT_GRAPH_DOWN_MASK;
+//    }
     if (HIBYTE(::GetKeyState(VK_MBUTTON)) != 0) {
        modifiers |= java_awt_event_InputEvent_BUTTON2_DOWN_MASK;
     }
