@@ -1,5 +1,15 @@
 #!/bin/bash -x
 
+function do_maketest() {
+  if [ "${bundle_type: -1}" == "t" ]; then
+    echo ${bundle_type%?}
+    return 1
+  else
+    echo ${bundle_type}
+    return 0
+  fi
+}
+
 tag_prefix="jdk-"
 
 while getopts ":i?" o; do
@@ -23,6 +33,9 @@ else
   bundle_type=$4
   architecture=$5 # aarch64 or x64
 fi
+
+bundle_type=$(do_maketest)
+do_maketest=$?
 
 OPENJDK_TAG=$(git log --simplify-by-decoration --decorate=short --pretty=short | grep "$tag_prefix" | cut -d "(" -f2 | cut -d ")" -f1 | awk '{print $2}' | sort -t "-" -k 2 -g | tail -n 1)
 JBSDK_VERSION=${JBSDK_VERSION:=$(echo $OPENJDK_TAG | awk -F "-|[+]" '{print $2}')}

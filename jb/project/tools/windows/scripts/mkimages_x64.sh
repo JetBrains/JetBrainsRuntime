@@ -69,6 +69,7 @@ RELEASE_NAME=windows-x86_64-server-release
 case "$bundle_type" in
   "jcef")
     do_reset_changes=0
+    do_maketest=1
     ;;
   "dcevm")
     HEAD_REVISION=$(git rev-parse HEAD)
@@ -88,13 +89,13 @@ esac
 
 if [ -z "$INC_BUILD" ]; then
   do_configure || do_exit $?
-  if [ -z "$bundle_type" ]; then
+  if [ $do_maketest -eq 1 ]; then
     make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
   else
     make LOG=info CONF=$RELEASE_NAME clean images || do_exit $?
   fi
 else
-  if [ -z "$bundle_type" ]; then
+  if [ $do_maketest -eq 1 ]; then
     make LOG=info CONF=$RELEASE_NAME images test-image || do_exit $?
   else
     make LOG=info CONF=$RELEASE_NAME images || do_exit $?
