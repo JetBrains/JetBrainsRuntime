@@ -874,3 +874,6 @@ java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.java               
 
 com/sun/java/swing/plaf/windows/Test8173145.java                                    JBR-4197 windows-all
 com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                              JBR-4197 windows-all
+
+java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java            JBR-4207 windows-all
+jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                    JBR-4207 windows-all
