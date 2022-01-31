@@ -666,12 +666,12 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     static final class InvocationRunnable implements Runnable {
-        private final Throwable throwable;
-        volatile Runnable runnable;
+        private final long creationTime = System.currentTimeMillis();
+        private final Throwable throwable = new Throwable();
+        private volatile Runnable runnable;
 
         public InvocationRunnable(Runnable runnable) {
             this.runnable = runnable;
-            throwable = new Throwable();
         }
 
         @Override
@@ -683,7 +683,14 @@ public final class LWCToolkit extends LWToolkit {
 
         public void cancel(String message) {
             runnable = null;
-            new Throwable(message, throwable).printStackTrace();
+            String timeStr = "Awaiting: " + (System.currentTimeMillis() - creationTime) + " ms";
+            if ("true".equalsIgnoreCase(System.getProperty("sun.lwawt.macosx.LWCToolkit.verbose", "false"))) {
+                new Throwable(message + ". " + timeStr, throwable).printStackTrace();
+            } else {
+                StackTraceElement[] stack = throwable.getStackTrace();
+                boolean a11y = stack[stack.length - 1].getClass().equals(CAccessible.class);
+                System.err.println(message + ". " + timeStr + ". Invocation originated at: " + stack[stack.length - 1]);
+            }
         }
 
         public boolean isPending() {
@@ -818,12 +825,12 @@ public final class LWCToolkit extends LWToolkit {
             if (invocationRunnable.isPending()) {
                 // EventQueue is now empty but the posted InvocationEvent is still not dispatched.
                 stopAWTRunLoopAction.run();
-                invocationRunnable.cancel("InvocationEvent has probably been lost");
+                invocationRunnable.cancel("Blocking invocation has been canceled");
             }
         });
 
         if (!doAWTRunLoop(mediator.get(), nonBlockingRunLoop, timeoutSeconds)) {
-            invocationRunnable.cancel("InvocationEvent timed out (" + timeoutSeconds + "sec)");
+            invocationRunnable.cancel("Blocking invocation has timed out");
         }
 
         if (!nonBlockingRunLoop) blockingRunLoopCounter.decrementAndGet();
