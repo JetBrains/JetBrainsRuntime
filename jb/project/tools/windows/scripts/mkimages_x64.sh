@@ -82,13 +82,13 @@ esac
 
 if [ -z "$INC_BUILD" ]; then
   do_configure || do_exit $?
-  if [ -z "$bundle_type" ]; then
+  if [ "$bundle_type" == "jcef" ]; then
     make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
   else
     make LOG=info CONF=$RELEASE_NAME clean images || do_exit $?
   fi
 else
-  if [ -z "$bundle_type" ]; then
+  if [ "$bundle_type" == "jcef" ]; then
     make LOG=info CONF=$RELEASE_NAME images test-image || do_exit $?
   else
     make LOG=info CONF=$RELEASE_NAME images || do_exit $?
