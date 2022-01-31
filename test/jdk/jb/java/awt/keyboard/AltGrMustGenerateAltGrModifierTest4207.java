@@ -31,17 +31,17 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * @test
- * @summary Regression test for JBR-3838 ensures that pressing each layout-free key + AltGr produces AltGr modifier
+ * @summary Regression test for JBR-4207 ensures that pressing each layout-free key + AltGr produces AltGr modifier
  * @requires (os.family == "windows")
  * @key headful
- * @run main AltGrMustGenerateAltGrModifierTest3838
+ * @run main AltGrMustGenerateAltGrModifierTest4207
  * @author Nikita Provotorov
  */
-public class AltGrMustGenerateAltGrModifierTest3838 extends Frame {
+public class AltGrMustGenerateAltGrModifierTest4207 extends Frame {
 
     public static void main(String[] args) throws Exception
     {
-        final AltGrMustGenerateAltGrModifierTest3838 mainWindow = new AltGrMustGenerateAltGrModifierTest3838();
+        final AltGrMustGenerateAltGrModifierTest4207 mainWindow = new AltGrMustGenerateAltGrModifierTest4207();
 
         try {
             mainWindow.setVisible(true);
@@ -70,7 +70,7 @@ public class AltGrMustGenerateAltGrModifierTest3838 extends Frame {
     }
 
 
-    private AltGrMustGenerateAltGrModifierTest3838()
+    private AltGrMustGenerateAltGrModifierTest4207()
     {
         super("AltGr must generate AltGr modifier");
 
@@ -185,7 +185,7 @@ public class AltGrMustGenerateAltGrModifierTest3838 extends Frame {
 
     // Sometimes top-level Frame does not get focus when requestFocus is called.
     // For example, when this test is launched after test/.../bug6361367.java:
-    //  jtreg test/jdk/javax/swing/text/JTextComponent/6361367/bug6361367.java test/jdk/jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest3838.java
+    //  jtreg test/jdk/javax/swing/text/JTextComponent/6361367/bug6361367.java test/jdk/jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java
     //
     // So this method forces the focus acquiring via mouse clicking to the component.
     private static void forceFocusTo(final Component component, final Robot robot) {
