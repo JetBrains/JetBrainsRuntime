@@ -52,7 +52,7 @@ pack_jbr jbr${jbr_name_postfix} jbr
 pack_jbr jbrsdk${jbr_name_postfix} jbrsdk
 
 if [ "$bundle_type" == "jcef" ]; then
-  JBRSDK_TEST=$JBRSDK_BUNDLE-windows-test-x64-b$build_number
+  JBRSDK_TEST=$JBRSDK_BUNDLE-$JBSDK_VERSION-windows-test-x64-b$build_number
   echo Creating $JBRSDK_TEST.tar.gz ...
   /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
 fi

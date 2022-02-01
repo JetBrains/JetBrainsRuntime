@@ -171,7 +171,7 @@ fi
 create_image_bundle "$JBRSDK_BUNDLE${jbr_name_postfix}" "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
 
 if [ "$bundle_type" == "jcef" ]; then
-    JBRSDK_TEST=${JBRSDK_BUNDLE}-osx-test-${architecture}-b${build_number}
+    JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-osx-test-${architecture}-b${build_number}
     echo Creating "$JBRSDK_TEST" ...
     [ $do_reset_changes -eq 1 ] && git checkout HEAD modules.list src/java.desktop/share/classes/module-info.java
     make test-image CONF=$RELEASE_NAME || do_exit $?
