@@ -77,14 +77,16 @@ case "$OS_NAME" in
         BUILD_TIME="$(date --utc --date=@$SOURCE_DATE_EPOCH +%F)"
         REPRODUCIBLE_TAR_OPTS="--mtime=@$SOURCE_DATE_EPOCH --owner=0 --group=0 --numeric-owner --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime"
         ;;
+    CYGWIN*)
+        COPYRIGHT_YEAR="$(date --utc --date=@$SOURCE_DATE_EPOCH +%Y)"
+        BUILD_TIME="$(date --utc --date=@$SOURCE_DATE_EPOCH +%F)"
+        REPRODUCIBLE_TAR_OPTS="--mtime=@$SOURCE_DATE_EPOCH --owner=0 --group=0 --numeric-owner --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime"
+        ;;
     Darwin)
         COPYRIGHT_YEAR="$(date -u -r $SOURCE_DATE_EPOCH +%Y)"
         BUILD_TIME="$(date -u -r $SOURCE_DATE_EPOCH +%F)"
         TOUCH_TIME="$(date -u -r $SOURCE_DATE_EPOCH +%Y%m%d%H%M.%S)"
         REPRODUCIBLE_TAR_OPTS="--uid 0 --gid 0 --numeric-owner"
-        ;;
-    *)
-        # TODO: Windows
         ;;
 esac
 
