@@ -37,8 +37,10 @@ function do_configure {
     --with-toolchain-version=$TOOLCHAIN_VERSION \
     --with-boot-jdk=$BOOT_JDK \
     --disable-ccache \
+    --enable-cds=yes \
     $STATIC_CONF_ARGS \
-    --enable-cds=yes || do_exit $?
+    $REPRODUCIBLE_BUILD_OPTS \
+    || do_exit $?
 }
 
 function create_image_bundle {
