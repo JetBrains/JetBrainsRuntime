@@ -314,9 +314,15 @@ final class CPlatformResponder {
             if (needsKeyReleased && (jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
                 return;
             }
-            eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
-                    KeyEvent.VK_UNDEFINED, javaChar,
-                    KeyEvent.KEY_LOCATION_UNKNOWN);
+
+            boolean nonInputMethodsModifiersArePressed =
+                    (jmodifiers & (InputEvent.META_DOWN_MASK | InputEvent.CTRL_DOWN_MASK)) != 0;
+
+            if (!nonInputMethodsModifiersArePressed) {
+                eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
+                        KeyEvent.VK_UNDEFINED, javaChar,
+                        KeyEvent.KEY_LOCATION_UNKNOWN);
+            }
             //If events come from Firefox, released events should also be generated.
             if (needsKeyReleased) {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
