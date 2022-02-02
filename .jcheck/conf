@@ -1,5 +1,5 @@
 [general]
-project=jdk
+project=jdk-updates
 jbs=JDK
 version=18.0.1
 
