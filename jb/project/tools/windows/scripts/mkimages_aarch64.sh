@@ -40,6 +40,7 @@ function do_configure {
     --with-build-jdk=$BOOT_JDK \
     --disable-ccache \
     $STATIC_CONF_ARGS \
+    $REPRODUCIBLE_BUILD_OPTS \
     --enable-cds=yes || do_exit $?
 }
 
