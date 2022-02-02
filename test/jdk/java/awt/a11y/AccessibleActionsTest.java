@@ -51,7 +51,7 @@ public class AccessibleActionsTest extends AccessibleComponentTest {
 
   void createTest() {
     INSTRUCTIONS = "INSTRUCTIONS:\n"
-            + "Check a11y acctions.\n\n"
+            + "Check a11y actions.\n\n"
             + "Turn screen reader on, and Tab to the label.\n\n"
             + "Perform the VO action \"Press\" (VO+space)\n"
             + "Perform the VO action \"Show menu\" (VO+m)\n\n"
@@ -63,7 +63,7 @@ public class AccessibleActionsTest extends AccessibleComponentTest {
 
   void createTree() {
     INSTRUCTIONS = "INSTRUCTIONS:\n"
-            + "Check a11y acctions.\n\n"
+            + "Check a11y actions.\n\n"
             + "Turn screen reader on, and Tab to the label.\n\n"
             + "Perform the VO action \"Press\" (VO+space) on tree nodes\n\n"
             + "If after press the tree node is expanded  tab further and press PASS, otherwise press FAIL.";
@@ -109,8 +109,6 @@ public class AccessibleActionsTest extends AccessibleComponentTest {
     if (!testResult) {
       throw new RuntimeException(a11yTest.exceptionString);
     }
-
-
   }
 
   private class AccessibleActionsTestFrame extends JPanel {
