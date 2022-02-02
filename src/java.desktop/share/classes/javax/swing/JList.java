@@ -49,11 +49,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Vector;
+import java.util.*;
 
 import javax.accessibility.*;
 import javax.swing.event.EventListenerList;
@@ -3041,6 +3037,23 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
          }
 
         private class AccessibleListImpl implements AccessibleList, AccessibleTable {
+             private HashMap<Integer, Integer> listSelectionModeMap = new HashMap<Integer, Integer>();
+            private HashMap<Integer, Integer> accessibleListModeMap = new HashMap<Integer, Integer>();
+
+             private void initSelectionModeMap() {
+                 int[] listSelectionMode = new int[] {ListSelectionModel.SINGLE_SELECTION, ListSelectionModel.SINGLE_INTERVAL_SELECTION, ListSelectionModel.MULTIPLE_INTERVAL_SELECTION};
+                 int[] accessibleListMode = new int[] {AccessibleList.SINGLE_SELECTION, AccessibleList.SINGLE_INTERVAL_SELECTION, AccessibleList.MULTIPLE_INTERVAL_SELECTION};
+
+                 for (int i = 0; i < 3; i++) {
+                     listSelectionModeMap.put(accessibleListMode[i], listSelectionMode[i]);
+                     accessibleListModeMap.put(listSelectionMode[i], accessibleListMode[i]);
+            }
+             }
+
+             private AccessibleListImpl() {
+                 super();
+                 initSelectionModeMap();
+             }
 
             @Override
             public Accessible getAccessibleCaption() {
@@ -3215,14 +3228,30 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
                 JList.this.getSelectionModel().removeIndexInterval(index0, index1);
             }
 
+            /**
+             * This method sets the ListSelectionMode to match the AccessibleListMode.
+             * If no match is found, the value will not be set.
+             *
+             * @param selectionMode the AccessibleListMode
+             */
             @Override
             public void setSelectionMode(int selectionMode) {
-                JList.this.getSelectionModel().setSelectionMode(selectionMode);
+                Integer sm = listSelectionModeMap.get(selectionMode);
+                if (sm != null) {
+                    JList.this.getSelectionModel().setSelectionMode(sm);
+                }
             }
 
+            /**
+             * This method returns an AccessibleListMode corresponding to the ListSelectionMode
+             *
+             * @return AccessibleListMode, or -1 if the match could not be established.
+             */
             @Override
             public int getSelectionMode() {
-                return JList.this.getSelectionModel().getSelectionMode();
+                Integer selectionMode = accessibleListModeMap.get(JList.this.getSelectionModel().getSelectionMode());
+                if (selectionMode != null) return selectionMode;
+                return -1;
             }
 
             @Override
