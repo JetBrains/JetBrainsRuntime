@@ -89,6 +89,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Callable;
@@ -99,6 +100,7 @@ import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiFunction;
 import javax.swing.UIManager;
 
 import com.apple.laf.AquaMenuBarUI;
@@ -665,36 +667,32 @@ public final class LWCToolkit extends LWToolkit {
         return wrapper.getResult();
     }
 
-    static final class InvocationRunnable implements Runnable {
+    static final class InvocationFuture extends CompletableFuture<Void> {
         private final long creationTime = System.currentTimeMillis();
         private final Throwable throwable = new Throwable();
-        private volatile Runnable runnable;
 
-        public InvocationRunnable(Runnable runnable) {
-            this.runnable = runnable;
+        InvocationFuture(Runnable runnable) {
+            thenRun(runnable);
+            exceptionally(ex -> {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    ex.printStackTrace();
+                } else {
+                    System.err.println(ex.getMessage());
+                }
+                return null;
+            });
         }
 
         @Override
-        public void run() {
-            Runnable r = runnable;
-            runnable = null;
-            if (r != null) r.run();
-        }
-
-        public void cancel(String message) {
-            runnable = null;
-            String timeStr = "Awaiting: " + (System.currentTimeMillis() - creationTime) + " ms";
-            if ("true".equalsIgnoreCase(System.getProperty("sun.lwawt.macosx.LWCToolkit.verbose", "false"))) {
-                new Throwable(message + ". " + timeStr, throwable).printStackTrace();
-            } else {
+        public boolean completeExceptionally(Throwable ex) {
+            ex.initCause(throwable);
+            String message = "Bloking invocation is canceled. Awaiting: " + (System.currentTimeMillis() - creationTime) + " ms";
+            if (log.isLoggable(PlatformLogger.Level.INFO)) {
                 StackTraceElement[] stack = throwable.getStackTrace();
                 boolean a11y = stack[stack.length - 1].getClass().equals(CAccessible.class);
-                System.err.println(message + ". " + timeStr + ". Invocation originated at: " + stack[stack.length - 1]);
+                message = message + ". Originated at: " + stack[stack.length - 1];
             }
-        }
-
-        public boolean isPending() {
-            return runnable != null;
+            return super.completeExceptionally(new Throwable(message, ex));
         }
     }
 
@@ -802,12 +800,12 @@ public final class LWCToolkit extends LWToolkit {
             }
         };
 
-        InvocationRunnable invocationRunnable = new InvocationRunnable(runnable);
-        final InvocationEvent invocationEvent =
-            AWTThreading.createAndTrackInvocationEvent(component,
-                invocationRunnable,
-                () -> stopAWTRunLoopAction.run(),
-                true);
+        CompletableFuture<Void> invocationFuture = new InvocationFuture(runnable);
+        InvocationEvent invocationEvent = AWTThreading.createAndTrackInvocationEvent(
+            component,
+            () -> invocationFuture.complete(null),
+            () -> stopAWTRunLoopAction.run(),
+            true);
 
         if (component != null) {
             AppContext appContext = SunToolkit.targetToAppContext(component);
@@ -821,16 +819,19 @@ public final class LWCToolkit extends LWToolkit {
             ((LWCToolkit)Toolkit.getDefaultToolkit()).getSystemEventQueueForInvokeAndWait().postEvent(invocationEvent);
         }
 
-        AWTThreading.getInstance(component).receiveEventDispatchThreadFreeNotification(() -> {
-            if (invocationRunnable.isPending()) {
-                // EventQueue is now empty but the posted InvocationEvent is still not dispatched.
-                stopAWTRunLoopAction.run();
-                invocationRunnable.cancel("Blocking invocation has been canceled");
-            }
-        });
+        CompletableFuture<Void> eventDispatchThreadFreeFuture =
+            AWTThreading.getInstance(component).notifyOnEventDispatchThreadFree(() -> {
+                if (!invocationFuture.isDone()) {
+                    // EventQueue is now empty but the posted InvocationEvent is still not dispatched, consider it lost then.
+                    stopAWTRunLoopAction.run();
+                    invocationFuture.completeExceptionally(new Throwable("Invocation was lost."));
+                }
+            });
+
+        invocationFuture.whenComplete((r, e) -> eventDispatchThreadFreeFuture.cancel(false));
 
         if (!doAWTRunLoop(mediator.get(), nonBlockingRunLoop, timeoutSeconds)) {
-            invocationRunnable.cancel("Blocking invocation has timed out");
+            invocationFuture.completeExceptionally(new Throwable("Invocation has timed out."));
         }
 
         if (!nonBlockingRunLoop) blockingRunLoopCounter.decrementAndGet();

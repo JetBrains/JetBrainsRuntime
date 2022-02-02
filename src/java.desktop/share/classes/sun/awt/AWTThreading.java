@@ -18,21 +18,24 @@ import java.util.concurrent.*;
 public class AWTThreading {
     private static final PlatformLogger logger = PlatformLogger.getLogger("sun.awt.AWTThreading");
 
-    private Thread eventDispatchThread;
+    private final Thread eventDispatchThread;
     private ExecutorService executor;
     // every invokeAndWait() pushes a queue of invocations
     private final Stack<TrackingQueue> invocations = new Stack<>();
 
     private int level; // re-entrance level
 
-    private final List<Runnable> eventDispatchThreadCallbacks = Collections.synchronizedList(new ArrayList<>());
+    private final List<CompletableFuture<Void>> eventDispatchThreadNotifiers = Collections.synchronizedList(new ArrayList<>());
 
     // invocations should be dispatched on proper EDT (per AppContext)
     private static final Map<Thread, AWTThreading> EDT_TO_INSTANCE_MAP = new ConcurrentHashMap<>();
 
     private static class TrackingQueue extends LinkedBlockingQueue<InvocationEvent> {}
 
-    private AWTThreading() {}
+    private AWTThreading() {
+        assert false : "not reachable";
+        eventDispatchThread = null;
+    }
 
     private AWTThreading(Thread edt) {
         eventDispatchThread = edt;
@@ -252,7 +255,7 @@ public class AWTThreading {
     }
 
     public static AWTThreading getInstance(Thread edt) {
-        if (edt == null) return null;
+        assert edt != null;
 
         return EDT_TO_INSTANCE_MAP.computeIfAbsent(edt, key -> new AWTThreading(edt));
     }
@@ -262,16 +265,28 @@ public class AWTThreading {
     }
 
     public void notifyEventDispatchThreadFree() {
-        eventDispatchThreadCallbacks.forEach(Runnable::run);
-        eventDispatchThreadCallbacks.clear();
+        List<CompletableFuture<Void>> copy;
+        // {eventDispatchThreadNotifiers} is the internal mutex for the collection
+        synchronized (eventDispatchThreadNotifiers) {
+            copy = List.copyOf(eventDispatchThreadNotifiers);
+        }
+        // notify callbacks out of the {eventDispatchThreadNotifiers} synchronization
+        copy.forEach(f -> f.complete(null));
     }
 
     /**
-     * Sets a callback to receive notification on when the associated EventDispatch thread has gone sleeping
-     * and stopped dispatching events because of empty EventQueue. The notification is fired once.
+     * Sets a callback and returns a {@code CompletableFuture} handling the case when the associated EventDispatch thread
+     * has gone sleeping and stopped dispatching events because of empty EventQueue.
      */
-    public void receiveEventDispatchThreadFreeNotification(Runnable callback) {
-        if (callback != null) eventDispatchThreadCallbacks.add(callback);
+    public CompletableFuture<Void> notifyOnEventDispatchThreadFree(Runnable runnable) {
+        if (runnable == null) runnable = () -> {};
+
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        future.thenRun(runnable);
+        future.whenComplete((r, e) -> eventDispatchThreadNotifiers.remove(this));
+
+        eventDispatchThreadNotifiers.add(future);
+        return future;
     }
 
     public interface Task {

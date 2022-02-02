@@ -22,9 +22,9 @@ import sun.awt.AWTThreading;
  */
 public class LWCToolkitInvokeAndWaitTest {
     static final CountDownLatch LATCH = new CountDownLatch(1);
-    static final JFrame FRAME = new JFrame(LWCToolkitInvokeAndWaitTest.class.getSimpleName());
-
     static final AtomicBoolean PASSED = new AtomicBoolean(true);
+
+    static volatile JFrame FRAME;
 
     public static void main(String[] args) throws InterruptedException {
         EventQueue.invokeLater(LWCToolkitInvokeAndWaitTest::runOnEdt);
@@ -40,6 +40,7 @@ public class LWCToolkitInvokeAndWaitTest {
     }
 
     static void runOnEdt() {
+        FRAME = new JFrame(LWCToolkitInvokeAndWaitTest.class.getSimpleName());
         FRAME.getContentPane().setBackground(Color.green);
         FRAME.setLocationRelativeTo(null);
         FRAME.setSize(200, 200);
