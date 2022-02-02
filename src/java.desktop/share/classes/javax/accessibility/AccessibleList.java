@@ -122,7 +122,7 @@ public interface AccessibleList {
 
     /**
      * Remove the indices in the interval {@code index0,index1} (inclusive) from
-     * the selection model.  This is typically called to sync the selection
+     * the selection model. This is typically called to sync the selection
      * model width a corresponding change in the data model.
      *
      * @param index0 the beginning of the interval
@@ -134,18 +134,18 @@ public interface AccessibleList {
      * Sets the selection mode. The following list describes the accepted
      * selection modes:
      * <ul>
-     * <li>{@code ListSelectionModel.SINGLE_SELECTION} -
+     * <li>{@code AccessibleList.SINGLE_SELECTION} -
      *   Only one list index can be selected at a time. In this mode,
      *   {@code setSelectionInterval} and {@code addSelectionInterval} are
      *   equivalent, both replacing the current selection with the index
      *   represented by the second argument (the "lead").
-     * <li>{@code ListSelectionModel.SINGLE_INTERVAL_SELECTION} -
+     * <li>{@code AccessibleList.SINGLE_INTERVAL_SELECTION} -
      *   Only one contiguous interval can be selected at a time.
      *   In this mode, {@code addSelectionInterval} behaves like
      *   {@code setSelectionInterval} (replacing the current selection),
      *   unless the given interval is immediately adjacent to or overlaps
      *   the existing selection, and can therefore be used to grow it.
-     * <li>{@code ListSelectionModel.MULTIPLE_INTERVAL_SELECTION} -
+     * <li>{@code AccessibleList.MULTIPLE_INTERVAL_SELECTION} -
      *   In this mode, there's no restriction on what can be selected.
      * </ul>
      *
