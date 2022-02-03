@@ -25,13 +25,17 @@ import java.awt.Dimension;
 import java.awt.DisplayMode;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryMXBean;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Path;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
+import jdk.jfr.Recording;
+import java.io.IOException;
+import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedFrame;
+import jdk.jfr.consumer.RecordingFile;
 
 /*
  * @test
@@ -39,20 +43,21 @@ import javax.swing.WindowConstants;
  *
  * @summary Test verifies that there is no extra allocation after display mode switch
  *
- * @run     main/othervm -Xmx750M ExtraAllocationTest
+ * @run main/othervm -Xmx750M ExtraAllocationTest
  */
-
 
 public class ExtraAllocationTest {
     private static final int MAX_MODES = 10;
     private static final int W = 500;
     private static final int H = 500;
     static JFrame f = null;
-
-    public static void main(String[] args) throws InterruptedException, InvocationTargetException {
-        MemoryMXBean memBean = ManagementFactory.getMemoryMXBean();
-        memBean.gc();
-        Thread.sleep(2000);
+    static long th = ((long) W * H * 32) / (8 * 2);
+    public static void main(String[] args) throws InterruptedException, InvocationTargetException,
+            IOException
+    {
+        Recording recording = new Recording();
+        recording.enable("jdk.ObjectAllocationOutsideTLAB");
+        recording.start();
         SwingUtilities.invokeAndWait(() -> {
             f = new JFrame();
             f.add(new JPanel());
@@ -66,35 +71,38 @@ public class ExtraAllocationTest {
         GraphicsDevice d = ge.getDefaultScreenDevice();
 
         if (d.isDisplayChangeSupported()) {
-            DisplayMode odm = d.getDisplayMode();
             DisplayMode[] modes = d.getDisplayModes();
-            try {
-                int modesCount = Math.min(modes.length, MAX_MODES);
+            int modesCount = Math.min(modes.length, MAX_MODES);
 
-                for (int i = 0; i < modesCount; i++) {
-                    DisplayMode mode = modes[i];
-                    int w = mode.getWidth();
-                    int h = mode.getHeight();
-                    int bpp = mode.getBitDepth();
-                    long th = ((long) W * H * bpp) / (8 * 2);
-                    DisplayMode newMode =
-                            new DisplayMode(w, h, bpp, DisplayMode.REFRESH_RATE_UNKNOWN);
-                    long usedHeap = memBean.getHeapMemoryUsage().getUsed();
-                    d.setDisplayMode(newMode);
-                    Thread.sleep(2000);
-                    long memDiff =  memBean.getHeapMemoryUsage().getUsed() - usedHeap;
-                    if (memDiff > th) {
-                        throw new RuntimeException("Extra allocation detected: " + memDiff);
-                    }
-                    ManagementFactory.getMemoryMXBean().gc();
-                    Thread.sleep(2000);
+            for (int i = 0; i < modesCount; i++) {
+                DisplayMode mode = modes[i];
+                try {
+                    d.setDisplayMode(mode);
+                } catch (IllegalArgumentException e) {
+                    e.printStackTrace();
                 }
-            } finally {
-                d.setDisplayMode(odm);
+                Thread.sleep(2000);
             }
         }
         f.setVisible(false);
         f.dispose();
         Thread.sleep(1000);
+        Path path = Path.of("recording.jfr");
+        recording.dump(path);
+        recording.close();
+        for (RecordedEvent event : RecordingFile.readAllEvents(path)) {
+            if ("jdk.ObjectAllocationOutsideTLAB".equalsIgnoreCase(event.getEventType().getName())) {
+                for (RecordedFrame recordedFrame :event.getStackTrace().getFrames()) {
+                    if (recordedFrame.isJavaFrame() &&
+                            "java.awt.image.DataBufferInt".equals(
+                                    recordedFrame.getMethod().getType().getName()) &&
+                            event.getLong("allocationSize") > th)
+                    {
+                        throw new RuntimeException("Extra allocation detected: " +
+                                event.getLong("allocationSize"));
+                    }
+                }
+            }
+        }
     }
 }
