@@ -32,11 +32,6 @@ public class AWTThreading {
 
     private static class TrackingQueue extends LinkedBlockingQueue<InvocationEvent> {}
 
-    private AWTThreading() {
-        assert false : "not reachable";
-        eventDispatchThread = null;
-    }
-
     private AWTThreading(Thread edt) {
         eventDispatchThread = edt;
     }
