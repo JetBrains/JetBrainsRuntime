@@ -11,6 +11,7 @@ import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Used to perform a cross threads (EventDispatch, Toolkit) execution so that the execution does not cause a deadlock.
@@ -182,7 +183,11 @@ public class AWTThreading {
      * <li>If the event is first dispatched from the tracking queue - its dispatching on EventQueue will be noop.
      * <ul>
      */
-    public static InvocationEvent createAndTrackInvocationEvent(Object source, Runnable runnable, Runnable listener, boolean catchThrowables) {
+    public static InvocationEvent createAndTrackInvocationEvent(Object source,
+                                                                Runnable onDispatch,
+                                                                Runnable onDispose,
+                                                                boolean catchThrowables)
+    {
         AWTThreading instance = getInstance(source);
         if (instance != null) {
             synchronized (instance.invocations) {
@@ -190,32 +195,29 @@ public class AWTThreading {
                     instance.invocations.push(new TrackingQueue());
                 }
                 final TrackingQueue queue = instance.invocations.peek();
-                final InvocationEvent[] eventRef = new InvocationEvent[1];
+                final AtomicReference<InvocationEvent> eventRef = new AtomicReference<>();
 
-                queue.add(eventRef[0] = new InvocationEvent(
-                        source,
-                        runnable,
-                        // Wrap the original completion listener so that it:
-                        // - guarantees a single run either from dispatch or dispose
-                        // - removes the invocation event from the tracking queue
-                        new Runnable() {
-                            WeakReference<TrackingQueue> queueRef = new WeakReference<>(queue);
+                eventRef.set(new InvocationEvent(
+                    source,
+                    onDispatch,
+                    // This completion listener will be called on EDT in either case (dispatch/dispose)
+                    // and will remove the invocation event from the tracking queue.
+                    new Runnable() {
+                        final WeakReference<TrackingQueue> queueRef = new WeakReference<>(queue);
 
-                            @Override
-                            public void run() {
-                                if (queueRef != null) {
-                                    if (listener != null) {
-                                        listener.run();
-                                    }
-                                    TrackingQueue q = queueRef.get();
-                                    if (q != null) {
-                                        q.remove(eventRef[0]);
-                                    }
-                                    queueRef = null;
+                        @Override
+                        public void run() {
+                            TrackingQueue queue = queueRef.get();
+                            queueRef.clear();
+                            if (queue != null) {
+                                if (!eventRef.get().isDispatched() && onDispose != null) {
+                                    onDispose.run();
                                 }
+                                queue.remove(eventRef.get());
                             }
-                        },
-                        catchThrowables)
+                        }
+                    },
+                    catchThrowables)
                 {
                     @Override
                     public void dispatch() {
@@ -224,10 +226,12 @@ public class AWTThreading {
                         }
                     }
                 });
-                return eventRef[0];
+
+                queue.add(eventRef.get());
+                return eventRef.get();
             }
         }
-        return new InvocationEvent(source, runnable, listener, catchThrowables);
+        return new InvocationEvent(source, onDispatch, onDispose, catchThrowables);
     }
 
     public static AWTThreading getInstance(Object obj) {
@@ -278,7 +282,7 @@ public class AWTThreading {
 
         CompletableFuture<Void> future = new CompletableFuture<>();
         future.thenRun(runnable);
-        future.whenComplete((r, e) -> eventDispatchThreadNotifiers.remove(this));
+        future.whenComplete((r, e) -> eventDispatchThreadNotifiers.remove(future));
 
         eventDispatchThreadNotifiers.add(future);
         return future;

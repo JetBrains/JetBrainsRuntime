@@ -99,8 +99,6 @@ import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.ResourceBundle;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiFunction;
 import javax.swing.UIManager;
 
 import com.apple.laf.AquaMenuBarUI;
@@ -667,19 +665,18 @@ public final class LWCToolkit extends LWToolkit {
         return wrapper.getResult();
     }
 
-    static final class InvocationFuture extends CompletableFuture<Void> {
+    static final class InvocationFuture extends CompletableFuture<Boolean> {
         private final long creationTime = System.currentTimeMillis();
         private final Throwable throwable = new Throwable();
 
-        InvocationFuture(Runnable runnable) {
-            thenRun(runnable);
+        {
             exceptionally(ex -> {
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     ex.printStackTrace();
                 } else {
                     System.err.println(ex.getMessage());
                 }
-                return null;
+                return false;
             });
         }
 
@@ -689,7 +686,6 @@ public final class LWCToolkit extends LWToolkit {
             String message = "Bloking invocation is canceled. Awaiting: " + (System.currentTimeMillis() - creationTime) + " ms";
             if (log.isLoggable(PlatformLogger.Level.INFO)) {
                 StackTraceElement[] stack = throwable.getStackTrace();
-                boolean a11y = stack[stack.length - 1].getClass().equals(CAccessible.class);
                 message = message + ". Originated at: " + stack[stack.length - 1];
             }
             return super.completeExceptionally(new Throwable(message, ex));
@@ -792,19 +788,24 @@ public final class LWCToolkit extends LWToolkit {
             nonBlockingRunLoop = true;
         }
 
-        AtomicLong mediator = new AtomicLong(createAWTRunLoopMediator());
-        Runnable stopAWTRunLoopAction = () -> {
-            long value = mediator.getAndSet(0);
-            if (value != 0) {
-                stopAWTRunLoop(value);
-            }
-        };
+        long mediator = createAWTRunLoopMediator();
 
-        CompletableFuture<Void> invocationFuture = new InvocationFuture(runnable);
+        CompletableFuture<Boolean> invocationFuture = new InvocationFuture();
+        invocationFuture.whenComplete((dispatched, ex) -> {
+            try {
+                if (Boolean.TRUE.equals(dispatched)) {
+                    assert EventQueue.isDispatchThread();
+                    runnable.run();
+                }
+            } finally {
+                stopAWTRunLoop(mediator);
+            }
+        });
+
         InvocationEvent invocationEvent = AWTThreading.createAndTrackInvocationEvent(
             component,
-            () -> invocationFuture.complete(null),
-            () -> stopAWTRunLoopAction.run(),
+            () -> invocationFuture.complete(true),
+            () -> invocationFuture.completeExceptionally(new Throwable("Invocation was disposed.")),
             true);
 
         if (component != null) {
@@ -823,14 +824,13 @@ public final class LWCToolkit extends LWToolkit {
             AWTThreading.getInstance(component).notifyOnEventDispatchThreadFree(() -> {
                 if (!invocationFuture.isDone()) {
                     // EventQueue is now empty but the posted InvocationEvent is still not dispatched, consider it lost then.
-                    stopAWTRunLoopAction.run();
                     invocationFuture.completeExceptionally(new Throwable("Invocation was lost."));
                 }
             });
 
         invocationFuture.whenComplete((r, e) -> eventDispatchThreadFreeFuture.cancel(false));
 
-        if (!doAWTRunLoop(mediator.get(), nonBlockingRunLoop, timeoutSeconds)) {
+        if (!doAWTRunLoop(mediator, nonBlockingRunLoop, timeoutSeconds)) {
             invocationFuture.completeExceptionally(new Throwable("Invocation has timed out."));
         }
 
