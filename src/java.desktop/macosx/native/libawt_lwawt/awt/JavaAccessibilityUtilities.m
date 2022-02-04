@@ -529,29 +529,3 @@ void initializePrioritys() {
     [sPrioritys setObject:[NSNumber numberWithInt:NSAccessibilityPriorityMedium] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_MEDIUM]];
     [sPrioritys setObject:[NSNumber numberWithInt:NSAccessibilityPriorityHigh] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_HIGH]];
 }
-
-/*
- * Class:     javax_swing_AccessibleAnnouncer
- * Method:    announce
- * Signature: (Ljava/lang/String;I)V
- */
-JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
-        (JNIEnv *env, jclass cls, jstring str, jint priority)
-{
-    JNI_COCOA_ENTER(env);
-    NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> *dictionary = [NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> dictionaryWithCapacity:2];
-    [dictionary setObject:JavaStringToNSString(env, str) forKey: NSAccessibilityAnnouncementKey];
-        if (sPrioritys == nil) {
-            initializePrioritys();
-        }
-        NSNumber *nsPriority = [sPrioritys objectForKey:[NSNumber numberWithInt:priority]];
-        if (nsPriority == nil) {
-            nsPriority = [sPrioritys objectForKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
-        }
-        [dictionary setObject:nsPriority forKey:NSAccessibilityPriorityKey];
-        [ThreadUtilities performOnMainThreadWaiting:NO block:^{
-            AWT_ASSERT_APPKIT_THREAD;
-            NSAccessibilityPostNotificationWithUserInfo(NSApp, NSAccessibilityAnnouncementRequestedNotification, dictionary);
-        }];
-    JNI_COCOA_EXIT(env);
-}

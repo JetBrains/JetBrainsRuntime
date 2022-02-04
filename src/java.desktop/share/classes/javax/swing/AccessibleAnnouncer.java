@@ -23,6 +23,7 @@
 
 package javax.swing;
 
+import javax.accessibility.Accessible;
 import java.lang.annotation.Native;
 
 /**
@@ -55,5 +56,16 @@ public class AccessibleAnnouncer {
      * @param str      string for announcing
      * @param priority priority for announsing
      */
-    public static native void announce(final String str, final int priority);
+    public static void announce(final String str, final int priority) {
+        announce(null, str, priority);
+    }
+
+    /**
+     * This method makes an announcement with the specified priority from accessible caller
+     *
+     * @param a      aaccessible caller
+     * @param str      string for announcing
+     * @param priority priority for announsing
+     */
+    public static native void announce(Accessible a, final String str, final int priority);
 }

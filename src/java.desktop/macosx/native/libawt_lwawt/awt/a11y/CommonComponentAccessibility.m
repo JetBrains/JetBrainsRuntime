@@ -34,7 +34,7 @@
 #import "AWTView.h"
 #import "sun_lwawt_macosx_CAccessible.h"
 #import "sun_lwawt_macosx_CAccessibility.h"
-
+#import "javax_swing_AccessibleAnnouncer.h"
 
 // GET* macros defined in JavaAccessibilityUtilities.h, so they can be shared.
 static jclass sjc_CAccessibility = NULL;
@@ -1320,5 +1320,43 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_menuItemSelected
                          on:(CommonComponentAccessibility *)jlong_to_ptr(element)
                          withObject:nil
                          waitUntilDone:NO];
+    JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     javax_swing_AccessibleAnnouncer
+ * Method:    announce
+ * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
+ */
+JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
+        (JNIEnv *env, jclass cls, jobject o, jstring str, jint priority)
+{
+    JNI_COCOA_ENTER(env);
+        id caller = nil;
+
+        DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
+
+        if ((o != NULL) && (*env)->IsInstanceOf(env, o, jc_Accessible)) {
+            caller = [CommonComponentAccessibility createWithAccessible:o withEnv:env withView:[AWTView awtView:env ofAccessible:o]];
+        }
+
+        if (caller == nil) {
+            caller = [NSApp accessibilityFocusedUIElement];
+        }
+
+        NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> *dictionary = [NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> dictionaryWithCapacity:2];
+        [dictionary setObject:JavaStringToNSString(env, str) forKey: NSAccessibilityAnnouncementKey];
+        if (sPrioritys == nil) {
+            initializePrioritys();
+        }
+        NSNumber *nsPriority = [sPrioritys objectForKey:[NSNumber numberWithInt:priority]];
+        if (nsPriority == nil) {
+            nsPriority = [sPrioritys objectForKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
+        }
+        [dictionary setObject:nsPriority forKey:NSAccessibilityPriorityKey];
+        [ThreadUtilities performOnMainThreadWaiting:NO block:^{
+            AWT_ASSERT_APPKIT_THREAD;
+            NSAccessibilityPostNotificationWithUserInfo(caller, NSAccessibilityAnnouncementRequestedNotification, dictionary);
+        }];
     JNI_COCOA_EXIT(env);
 }
