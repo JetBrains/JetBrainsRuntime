@@ -66,4 +66,4 @@ BOOL ObjectEquals(JNIEnv *env, jobject a, jobject b, jobject component);
 NSNumber* JavaNumberToNSNumber(JNIEnv *env, jobject jnumber);
 NSValue *javaIntArrayToNSRangeValue(JNIEnv* env, jintArray array);
 
-extern void initializePreoritys();
+extern void initializePrioritys();

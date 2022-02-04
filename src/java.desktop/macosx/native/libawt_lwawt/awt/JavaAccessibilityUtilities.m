@@ -43,7 +43,7 @@ NSString *const JavaAccessibilityIgnore = @"JavaAxIgnore";
 NSMutableDictionary *sRoles = nil;
 NSMutableDictionary *sPrioritys = nil;
 void initializeRoles();
-void initializePreoritys();
+void initializePrioritys();
 
 // Unique
 static jclass sjc_AccessibleState = NULL;
@@ -523,7 +523,7 @@ void initializeRoles()
 }
 
 
-void initializePreoritys() {
+void initializePrioritys() {
     sPrioritys = [NSMutableDictionary<NSNumber *, NSNumber *> dictionaryWithCapacity:3];
     [sPrioritys setObject:[NSNumber numberWithInt:NSAccessibilityPriorityLow] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
     [sPrioritys setObject:[NSNumber numberWithInt:NSAccessibilityPriorityMedium] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_MEDIUM]];
@@ -542,7 +542,7 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
     NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> *dictionary = [NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> dictionaryWithCapacity:2];
     [dictionary setObject:JavaStringToNSString(env, str) forKey: NSAccessibilityAnnouncementKey];
         if (sPrioritys == nil) {
-            initializePreoritys();
+            initializePrioritys();
         }
         NSNumber *nsPriority = [sPrioritys objectForKey:[NSNumber numberWithInt:priority]];
         if (nsPriority == nil) {
@@ -550,6 +550,7 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
         }
         [dictionary setObject:nsPriority forKey:NSAccessibilityPriorityKey];
         [ThreadUtilities performOnMainThreadWaiting:NO block:^{
+            AWT_ASSERT_APPKIT_THREAD;
             NSAccessibilityPostNotificationWithUserInfo(NSApp, NSAccessibilityAnnouncementRequestedNotification, dictionary);
         }];
     JNI_COCOA_EXIT(env);
