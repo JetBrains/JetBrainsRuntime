@@ -1332,17 +1332,6 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
         (JNIEnv *env, jclass cls, jobject o, jstring str, jint priority)
 {
     JNI_COCOA_ENTER(env);
-        id caller = nil;
-
-        DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
-
-        if ((o != NULL) && (*env)->IsInstanceOf(env, o, jc_Accessible)) {
-            caller = [CommonComponentAccessibility createWithAccessible:o withEnv:env withView:[AWTView awtView:env ofAccessible:o]];
-        }
-
-        if (caller == nil) {
-            caller = [NSApp accessibilityFocusedUIElement];
-        }
 
         NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> *dictionary = [NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> dictionaryWithCapacity:2];
         [dictionary setObject:JavaStringToNSString(env, str) forKey: NSAccessibilityAnnouncementKey];
@@ -1354,8 +1343,21 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
             nsPriority = [sPrioritys objectForKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
         }
         [dictionary setObject:nsPriority forKey:NSAccessibilityPriorityKey];
+
         [ThreadUtilities performOnMainThreadWaiting:NO block:^{
-            AWT_ASSERT_APPKIT_THREAD;
+
+            id caller = nil;
+
+        DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
+
+        if ((o != NULL) && (*env)->IsInstanceOf(env, o, jc_Accessible)) {
+            caller = [CommonComponentAccessibility createWithAccessible:o withEnv:env withView:[AWTView awtView:env ofAccessible:o]];
+        }
+
+        if (caller == nil) {
+            caller = [NSApp accessibilityFocusedUIElement];
+        }
+
             NSAccessibilityPostNotificationWithUserInfo(caller, NSAccessibilityAnnouncementRequestedNotification, dictionary);
         }];
     JNI_COCOA_EXIT(env);
