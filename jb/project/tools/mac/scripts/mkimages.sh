@@ -20,7 +20,7 @@
 #
 # Environment variables:
 #   MODULAR_SDK_PATH - specifies the path to the directory where imported modules are located.
-#               By default imported modules should be located in ./modular-sdk
+#               By default imported modules should be located in ./jcef_mac/modular-sdk
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
 #               By default JCEF binaries should be located in ./jcef_mac
 
@@ -41,8 +41,8 @@ bundle_type=$4
 architecture=$5 # aarch64 or x64
 enable_aot=$6 # temporary param for building test jre with aot under aarch64
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
-WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=./modular-sdk}"
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
+WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=${JCEF_PATH}/modular-sdk}"
 architecture=${architecture:=x64}
 
 source jb/project/tools/common.sh
