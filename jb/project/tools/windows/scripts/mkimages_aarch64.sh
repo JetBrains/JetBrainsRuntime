@@ -20,9 +20,9 @@
 #
 # Environment variables:
 #   MODULAR_SDK_PATH - specifies the path to the directory where imported modules are located.
-#                      By default imported modules should be located in ./modular-sdk.
+#                      By default imported modules should be located in ./jcef_win_aarch64/modular-sdk
 #   JCEF_PATH        - specifies the path to the directory with JCEF binaries.
-#                      By default JCEF binaries should be located in ./jcef_win_aarch64.
+#                      By default JCEF binaries should be located in ./jcef_win_aarch64
 #   BOOT_JDK         - specifies the path to the directory with a ready build of OpenJDK 11 with
 #                      the same architecture as the build system. It will be used as the boot jdk.
 
@@ -42,8 +42,8 @@ build_number=$3
 bundle_type=$4
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 WORK_DIR=$(pwd)
-WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=${WORK_DIR}/modular-sdk}"
 JCEF_PATH=${JCEF_PATH:=${WORK_DIR}/jcef_win_aarch64}
+WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=${JCEF_PATH}/modular-sdk}"
 TOOLCHAIN_VERSION=${TOOLCHAIN_VERSION:=2019}
 
 source jb/project/tools/common.sh

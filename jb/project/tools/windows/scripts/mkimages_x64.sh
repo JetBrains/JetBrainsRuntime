@@ -20,7 +20,7 @@
 #
 # Environment variables:
 #   MODULAR_SDK_PATH - specifies the path to the directory where imported modules are located.
-#               By default imported modules should be located in ./modular-sdk
+#               By default imported modules should be located in ./jcef_win_x64/modular-sdk
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
 #               By default JCEF binaries should be located in ./jcef_win_x64
 
@@ -40,8 +40,8 @@ build_number=$3
 bundle_type=$4
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 WORK_DIR=$(pwd)
-WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=${WORK_DIR}/modular-sdk}"
 JCEF_PATH=${JCEF_PATH:=${WORK_DIR}/jcef_win_x64}
+WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=${JCEF_PATH}/modular-sdk}"
 TOOLCHAIN_VERSION=${TOOLCHAIN_VERSION:=2017}
 
 source jb/project/tools/common.sh

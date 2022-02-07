@@ -20,9 +20,9 @@
 #
 # Environment variables:
 #   MODULAR_SDK_PATH - specifies the path to the directory where imported modules are located.
-#                      By default imported modules should be located in ./modular-sdk.
+#                      By default imported modules should be located in ./jcef_win_aarch64/modular-sdk
 #   JCEF_PATH        - specifies the path to the directory with JCEF binaries.
-#                      By default JCEF binaries should be located in ./jcef_win_aarch64.
+#                      By default JCEF binaries should be located in ./jcef_win_aarch64
 
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
