@@ -5,3 +5,4 @@ sun/java2d/AcceleratedXORModeTest.java                                          
 java/awt/Frame/FrameSetSizeStressTest/FrameSetSizeStressTest.java                   JBR-4223 linux-all
 
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java         8279256 linux-all
+javax/swing/UIDefaults/6302464/bug6302464.java                                      8199079 linux-all
