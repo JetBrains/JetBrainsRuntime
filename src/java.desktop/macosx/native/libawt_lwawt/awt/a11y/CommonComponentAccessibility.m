@@ -430,14 +430,14 @@ static jobject sAccessibilityClass = NULL;
     NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> *dictionary = [NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> dictionaryWithCapacity:2];
     [dictionary setObject:text forKey: NSAccessibilityAnnouncementKey];
 
-    if (sPriorities == nil) {
-        initializePriorities();
+    if (sAnnouncePriorities == nil) {
+        initializeAnnouncePriorities();
     }
 
-    NSNumber *nsPriority = [sPriorities objectForKey:priority];
+    NSNumber *nsPriority = [sAnnouncePriorities objectForKey:priority];
 
     if (nsPriority == nil) {
-        nsPriority = [sPriorities objectForKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
+        nsPriority = [sAnnouncePriorities objectForKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
     }
 
     [dictionary setObject:nsPriority forKey:NSAccessibilityPriorityKey];
@@ -1351,7 +1351,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_menuItemSelected
  * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
  */
 JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
-        (JNIEnv *env, jclass cls, jobject o, jstring str, jint priority)
+        (JNIEnv *env, jclass cls, jobject jAccessible, jstring str, jint priority)
 {
     JNI_COCOA_ENTER(env);
 
@@ -1362,15 +1362,15 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
 
             id caller = nil;
 
-        DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
+            DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
 
-        if ((o != NULL) && (*env)->IsInstanceOf(env, o, jc_Accessible)) {
-            caller = [CommonComponentAccessibility createWithAccessible:o withEnv:env withView:[AWTView awtView:env ofAccessible:o]];
-        }
+            if ((jAccessible != NULL) && (*env)->IsInstanceOf(env, jAccessible, jc_Accessible)) {
+                caller = [CommonComponentAccessibility createWithAccessible:jAccessible withEnv:env withView:[AWTView awtView:env ofAccessible:o]];
+            }
 
-        if (caller == nil) {
-            caller = [NSApp accessibilityFocusedUIElement];
-        }
+            if (caller == nil) {
+                caller = [NSApp accessibilityFocusedUIElement];
+            }
 
             [CommonComponentAccessibility postAnnounceWithCaller:caller andText:text andPriority:javaPriority];
         }];

@@ -41,9 +41,9 @@ static SEL JavaAccessibilityAttributeSetter(NSString *attribute);
 NSString *const JavaAccessibilityIgnore = @"JavaAxIgnore";
 
 NSMutableDictionary *sRoles = nil;
-NSMutableDictionary *sPriorities = nil;
+NSMutableDictionary *sAnnouncePriorities = nil;
 void initializeRoles();
-void initializePriorities();
+void initializeAnnouncePriorities();
 
 // Unique
 static jclass sjc_AccessibleState = NULL;
@@ -522,10 +522,10 @@ void initializeRoles()
     [sRoles setObject:JavaAccessibilityIgnore forKey:@"window"];
 }
 
-void initializePriorities() {
-    sPriorities = [[NSMutableDictionary alloc] initWithCapacity:3];
+void initializeAnnouncePriorities() {
+    sAnnouncePriorities = [[NSMutableDictionary alloc] initWithCapacity:3];
 
-    [sPriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityLow] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
-    [sPriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityMedium] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_MEDIUM]];
-    [sPriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityHigh] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_HIGH]];
+    [sAnnouncePriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityLow] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
+    [sAnnouncePriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityMedium] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_MEDIUM]];
+    [sAnnouncePriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityHigh] forKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_HIGH]];
 }

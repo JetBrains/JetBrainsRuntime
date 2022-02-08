@@ -24,7 +24,7 @@
 
 /*
  * @test
- * @summary Test implementation accessibility announcing
+ * @summary Test implementation of accessibility announcing
  * @author Artem.Semenov@jetbrains.com
  * @run main/manual AccessibleAnnouncerTest
  * @requires (os.family == "windows" | os.family == "mac")

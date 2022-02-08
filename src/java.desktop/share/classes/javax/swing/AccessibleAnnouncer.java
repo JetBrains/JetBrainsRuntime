@@ -27,7 +27,7 @@ import javax.accessibility.Accessible;
 import java.lang.annotation.Native;
 
 /**
-  *    This class provides the ability to speak a given string using screen readers.
+  * This class provides the ability to speak a given string using screen readers.
  *
  * @author Artem Semenov
  */
@@ -61,9 +61,9 @@ public class AccessibleAnnouncer {
     }
 
     /**
-     * This method makes an announcement with the specified priority from accessible caller
+     * This method makes an announcement with the specified priority from an accessible to which the announcing relates
      *
-     * @param a      aaccessible caller
+     * @param a      an accessible to which the announcing relates
      * @param str      string for announcing
      * @param priority priority for announsing
      */

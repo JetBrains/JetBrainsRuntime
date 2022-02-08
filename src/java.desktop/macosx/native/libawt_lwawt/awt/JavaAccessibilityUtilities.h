@@ -28,9 +28,9 @@
 extern NSString *const JavaAccessibilityIgnore;
 
 extern NSMutableDictionary *sRoles;
-extern NSMutableDictionary *sPriorities;
+extern NSMutableDictionary *sAnnouncePriorities;
 extern void initializeRoles();
-extern void initializePriorities();
+extern void initializeAnnouncePriorities();
 
 #define GET_CACCESSIBILITY_CLASS() \
     GET_CLASS(sjc_CAccessibility, "sun/lwawt/macosx/CAccessibility");
