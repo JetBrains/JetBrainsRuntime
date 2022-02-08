@@ -28,8 +28,9 @@
 extern NSString *const JavaAccessibilityIgnore;
 
 extern NSMutableDictionary *sRoles;
-extern NSMutableDictionary *sPrioritys;
+extern NSMutableDictionary *sPriorities;
 extern void initializeRoles();
+extern void initializePriorities();
 
 #define GET_CACCESSIBILITY_CLASS() \
     GET_CLASS(sjc_CAccessibility, "sun/lwawt/macosx/CAccessibility");
@@ -65,5 +66,3 @@ void JavaAccessibilityRaiseIllegalParameterTypeException(const char *functionNam
 BOOL ObjectEquals(JNIEnv *env, jobject a, jobject b, jobject component);
 NSNumber* JavaNumberToNSNumber(JNIEnv *env, jobject jnumber);
 NSValue *javaIntArrayToNSRangeValue(JNIEnv* env, jintArray array);
-
-extern void initializePrioritys();

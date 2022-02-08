@@ -423,6 +423,28 @@ static jobject sAccessibilityClass = NULL;
     NSAccessibilityPostNotification([NSApp accessibilityFocusedUIElement], NSAccessibilityFocusedUIElementChangedNotification);
 }
 
++ (void)postAnnounceWithCaller:(id)caller andText:(NSString *)text andPriority:(NSNumber *)priority
+{
+    AWT_ASSERT_APPKIT_THREAD;
+
+    NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> *dictionary = [NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> dictionaryWithCapacity:2];
+    [dictionary setObject:text forKey: NSAccessibilityAnnouncementKey];
+
+    if (sPriorities == nil) {
+        initializePriorities();
+    }
+
+    NSNumber *nsPriority = [sPriorities objectForKey:priority];
+
+    if (nsPriority == nil) {
+        nsPriority = [sPriorities objectForKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
+    }
+
+    [dictionary setObject:nsPriority forKey:NSAccessibilityPriorityKey];
+
+    NSAccessibilityPostNotificationWithUserInfo(caller, NSAccessibilityAnnouncementRequestedNotification, dictionary);
+}
+
 + (jobject) getCAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env {
     DECLARE_CLASS_RETURN(sjc_Accessible, "javax/accessibility/Accessible", NULL);
     GET_CACCESSIBLE_CLASS_RETURN(NULL);
@@ -1333,16 +1355,8 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
 {
     JNI_COCOA_ENTER(env);
 
-        NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> *dictionary = [NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> dictionaryWithCapacity:2];
-        [dictionary setObject:JavaStringToNSString(env, str) forKey: NSAccessibilityAnnouncementKey];
-        if (sPrioritys == nil) {
-            initializePrioritys();
-        }
-        NSNumber *nsPriority = [sPrioritys objectForKey:[NSNumber numberWithInt:priority]];
-        if (nsPriority == nil) {
-            nsPriority = [sPrioritys objectForKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
-        }
-        [dictionary setObject:nsPriority forKey:NSAccessibilityPriorityKey];
+    NSString *text = JavaStringToNSString(env, str);
+    NSNumber *javaPriority = [NSNumber numberWithInt:priority];
 
         [ThreadUtilities performOnMainThreadWaiting:NO block:^{
 
@@ -1358,7 +1372,7 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
             caller = [NSApp accessibilityFocusedUIElement];
         }
 
-            NSAccessibilityPostNotificationWithUserInfo(caller, NSAccessibilityAnnouncementRequestedNotification, dictionary);
+            [CommonComponentAccessibility postAnnounceWithCaller:caller andText:text andPriority:javaPriority];
         }];
     JNI_COCOA_EXIT(env);
 }
