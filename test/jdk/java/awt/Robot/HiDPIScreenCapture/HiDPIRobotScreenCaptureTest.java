@@ -39,12 +39,16 @@ import java.io.IOException;
 /**
  * @test
  * @key headful
- * @bug 8073320
+ * @bug 8073320 8280861
  * @summary  Windows HiDPI support
  * @author Alexander Scherbatiy
  * @requires (os.family == "linux" | os.family == "windows")
  * @requires !display.XWayland
  * @run main/othervm -Dsun.java2d.win.uiScaleX=3 -Dsun.java2d.win.uiScaleY=2
+ *                    HiDPIRobotScreenCaptureTest
+ * @run main/othervm -Dsun.java2d.uiScale=1
+ *                    HiDPIRobotScreenCaptureTest
+ * @run main/othervm -Dsun.java2d.uiScale=2
  *                    HiDPIRobotScreenCaptureTest
  */
 
@@ -65,7 +69,14 @@ public class HiDPIRobotScreenCaptureTest {
         }
 
         Frame frame = new Frame();
-        frame.setBounds(40, 30, 400, 300);
+        // Position the frame on prime number coordinates to avoid
+        // them being multiple of the desktop scale; this tests Linux
+        // color picker better.
+        // Also, the position should be far enough from the top left
+        // corner of the screen to reduce the chance of being repositioned
+        // by the system because that area's occupied by the global
+        // menu bar and such.
+        frame.setBounds(83, 97, 400, 300);
         frame.setUndecorated(true);
 
         Panel panel = new Panel(new BorderLayout());
@@ -83,6 +94,13 @@ public class HiDPIRobotScreenCaptureTest {
                 g.fillRect(0, h / 2, w / 2, h / 2);
                 g.setColor(COLORS[3]);
                 g.fillRect(w / 2, h / 2, w / 2, h / 2);
+
+                // Several distinct pixels next to one another
+                // in order to test color picker's precision.
+                for (int i = 1; i < 4; i++) {
+                    g.setColor(COLORS[i]);
+                    g.fillRect(i, 0, 1, 1);
+                }
             }
         };
 
@@ -92,6 +110,9 @@ public class HiDPIRobotScreenCaptureTest {
         Robot robot = new Robot();
         robot.waitForIdle();
         robot.delay(500);
+
+        final Point screenLocation = frame.getLocationOnScreen();
+        checkPixelColors(robot, screenLocation.x, screenLocation.y);
 
         Rectangle rect = canvas.getBounds();
         rect.setLocation(canvas.getLocationOnScreen());
@@ -107,13 +128,28 @@ public class HiDPIRobotScreenCaptureTest {
             throw new RuntimeException("Wrong image size!");
         }
 
+
         checkRectColor(image, new Rectangle(0, 0, w / 2, h / 2), COLORS[0]);
         checkRectColor(image, new Rectangle(w / 2, 0, w / 2, h / 2), COLORS[1]);
         checkRectColor(image, new Rectangle(0, h / 2, w / 2, h / 2), COLORS[2]);
         checkRectColor(image, new Rectangle(w / 2, h / 2, w / 2, h / 2), COLORS[3]);
     }
 
-    private static final int OFFSET = 3;
+    static void checkPixelColors(Robot robot, int x, int y) {
+        for (int i = 0; i < 4; i++) {
+            final Color actualColor = robot.getPixelColor(x + i, y);
+            System.out.print("Checking color at " + (x + i) + ", " + y + " to be equal to " + COLORS[i]);
+            if (!actualColor.equals(COLORS[i])) {
+                System.out.println("... Mismatch: found " + actualColor + " instead");
+                throw new RuntimeException("Wrong screen pixel color");
+
+            } else {
+                System.out.println("... OK");
+            }
+        }
+    }
+
+    private static final int OFFSET = 5;
     static void checkRectColor(BufferedImage image, Rectangle rect, Color expectedColor) {
         System.out.println("Checking rectangle " + rect + " to have color " + expectedColor);
         final Point[] pointsToCheck = new Point[] {
