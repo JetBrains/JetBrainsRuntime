@@ -24,7 +24,7 @@
  /*
  * @test
  * @key headful
- * @bug 8162959
+ * @bug 8162959 8280861
  * @requires !display.XWayland
  * @summary Validate output of createMultiResolutionScreenCapture
  *          new API which returns MultiResolutionImage.
@@ -60,7 +60,14 @@ public class ScreenCaptureTest {
     public static void main(String[] args) throws Exception {
 
         frame = new Frame();
-        frame.setBounds(0, 0, 400, 400);
+        // Position the frame on prime number coordinates to avoid
+        // them being multiple of the desktop scale; this tests Linux
+        // color picker better.
+        // Also, the position should be far enough from the top left
+        // corner of the screen to reduce the chance of being repositioned
+        // by the system because that area's occupied by the global
+        // menu bar and such.
+        frame.setBounds(83, 97, 400, 400);
         frame.setUndecorated(true);
         robot = new Robot();
         Panel panel = new Panel(new BorderLayout());
@@ -93,7 +100,7 @@ public class ScreenCaptureTest {
         final int x = screenLocation.x;
         final int y = screenLocation.y;
         try {
-            // getPixelColor Test
+            // getPixelColor() tests
             checkRectColor(new Rectangle(x, y, w / 2, h / 2), COLORS[0]);
             checkRectColor(new Rectangle(x + w / 2, y, w / 2, h / 2), COLORS[1]);
             checkRectColor(new Rectangle(x, y + h / 2, w / 2, h / 2), COLORS[2]);
@@ -175,7 +182,7 @@ public class ScreenCaptureTest {
     }
 
 
-    private static final int OFFSET = 3;
+    private static final int OFFSET = 5;
     static void checkRectColor(Rectangle rect, Color expectedColor) {
         System.out.println("Checking rectangle " + rect + " to have color " + expectedColor);
         final Point[] pointsToCheck = new Point[] {
