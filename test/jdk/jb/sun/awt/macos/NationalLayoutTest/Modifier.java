@@ -94,6 +94,10 @@ public enum Modifier {
         return ((modifiers.length == 2) && list.contains(KeyEvent.VK_ALT) && list.contains(KeyEvent.VK_SHIFT));
     }
 
+    boolean isControl() {
+        return ((modifiers.length == 1) && (modifiers[0] == KeyEvent.VK_CONTROL));
+    }
+
     @Override
     public String toString() {
         if (modifiers.length == 0) {
