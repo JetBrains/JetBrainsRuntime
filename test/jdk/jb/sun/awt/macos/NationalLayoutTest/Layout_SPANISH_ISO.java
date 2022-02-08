@@ -30,20 +30,20 @@ public enum Layout_SPANISH_ISO implements LayoutKey {
     // Enum name must be the same as KeyEvent.VK_ constant name corresponding to the key on US keyboard layout
     // Note that '\u0000' may be used if no char is mapped to a key + modifier or if one wants to skip its testing
 
-    VK_MINUS         ('\'', '´', '?', '¸'),
-    VK_EQUALS        ('¡',  '‚', '¿', '˛'),
+    VK_MINUS         ('\'', '´', '?', '¸', '\u001F'),
+    VK_EQUALS        ('¡',  '‚', '¿', '˛', '='),
 
-    VK_OPEN_BRACKET  (KeyChar.dead('`'), KeyChar.ch('['), KeyChar.dead('^'), KeyChar.ch('ˆ')),
-    VK_CLOSE_BRACKET ('+', ']', '*', '±'),
+    VK_OPEN_BRACKET  (KeyChar.dead('`'), KeyChar.ch('['), KeyChar.dead('^'), KeyChar.ch('ˆ'), KeyChar.ch('\u001B')),
+    VK_CLOSE_BRACKET ('+', ']', '*', '±', '\u001D'),
 
-    VK_SEMICOLON     (KeyChar.ch('ñ'),   KeyChar.dead('~'), KeyChar.ch('Ñ'),   KeyChar.ch('˜')),
-    VK_QUOTE         (KeyChar.dead('´'), KeyChar.ch('{'),   KeyChar.dead('¨'), KeyChar.ch('«')),
-    VK_BACK_SLASH    ('ç', '}', 'Ç', '»'),
+    VK_SEMICOLON     (KeyChar.ch('ñ'),   KeyChar.dead('~'), KeyChar.ch('Ñ'),   KeyChar.ch('˜'), KeyChar.ch(':')),
+    VK_QUOTE         (KeyChar.dead('´'), KeyChar.ch('{'),   KeyChar.dead('¨'), KeyChar.ch('«'), KeyChar.ch('"')),
+    VK_BACK_SLASH    ('ç', '}', 'Ç', '»', '\u001C'),
 
-    VK_BACK_QUOTE    ('<', '≤', '>', '≥'),
-    VK_COMMA         (',', '„', ';', '\u0000'),
-    VK_PERIOD        ('.', '…', ':', '…'),
-    VK_SLASH         ('-', '–', '_', '—'),
+    VK_BACK_QUOTE    ('<', '≤', '>', '≥', '`'),
+    VK_COMMA         (',', '„', ';', '\u0000', ','),
+    VK_PERIOD        ('.', '…', ':', '…', '.'),
+    VK_SLASH         ('-', '–', '_', '—', '/'),
 
     ;
 
@@ -51,12 +51,12 @@ public enum Layout_SPANISH_ISO implements LayoutKey {
 
     private final Key key;
 
-    Layout_SPANISH_ISO(char no, char alt, char shift, char alt_shift) {
-        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift));
+    Layout_SPANISH_ISO(char no, char alt, char shift, char alt_shift, char control) {
+        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift, control));
     }
 
-    Layout_SPANISH_ISO(KeyChar no, KeyChar alt, KeyChar shift, KeyChar alt_shift) {
-        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift));
+    Layout_SPANISH_ISO(KeyChar no, KeyChar alt, KeyChar shift, KeyChar alt_shift, KeyChar control) {
+        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift, control));
     }
 
     public Key getKey() {
