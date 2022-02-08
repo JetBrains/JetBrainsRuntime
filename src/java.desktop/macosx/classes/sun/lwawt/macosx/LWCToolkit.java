@@ -665,30 +665,21 @@ public final class LWCToolkit extends LWToolkit {
         return wrapper.getResult();
     }
 
-    static final class InvocationFuture extends CompletableFuture<Boolean> {
+    static final class InvocationFuture extends CompletableFuture<Void> {
         private final long creationTime = System.currentTimeMillis();
         private final Throwable throwable = new Throwable();
 
-        {
-            exceptionally(ex -> {
-                if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                    ex.printStackTrace();
-                } else {
-                    System.err.println(ex.getMessage());
-                }
-                return false;
-            });
-        }
-
         @Override
         public boolean completeExceptionally(Throwable ex) {
+            String message = ex.getMessage() + ". Awaiting " + (System.currentTimeMillis() - creationTime) + " ms";
             ex.initCause(throwable);
-            String message = "Bloking invocation is canceled. Awaiting: " + (System.currentTimeMillis() - creationTime) + " ms";
-            if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                new Throwable(message, ex).printStackTrace();
+            } else {
                 StackTraceElement[] stack = throwable.getStackTrace();
-                message = message + ". Originated at: " + stack[stack.length - 1];
+                System.err.println(message + ". Originated at " + stack[stack.length - 1]);
             }
-            return super.completeExceptionally(new Throwable(message, ex));
+            return super.completeExceptionally(ex);
         }
     }
 
@@ -790,22 +781,21 @@ public final class LWCToolkit extends LWToolkit {
 
         long mediator = createAWTRunLoopMediator();
 
-        CompletableFuture<Boolean> invocationFuture = new InvocationFuture();
-        invocationFuture.whenComplete((dispatched, ex) -> {
-            try {
-                if (Boolean.TRUE.equals(dispatched)) {
-                    assert EventQueue.isDispatchThread();
-                    runnable.run();
-                }
-            } finally {
-                stopAWTRunLoop(mediator);
-            }
-        });
+        CompletableFuture<Void> invocationFuture = new InvocationFuture();
+        invocationFuture.whenComplete((r, e) -> stopAWTRunLoop(mediator));
 
         InvocationEvent invocationEvent = AWTThreading.createAndTrackInvocationEvent(
             component,
-            () -> invocationFuture.complete(true),
-            () -> invocationFuture.completeExceptionally(new Throwable("Invocation was disposed.")),
+            // on dispatch
+            () -> {
+                try {
+                    runnable.run();
+                } finally {
+                    invocationFuture.complete(null);
+                }
+            },
+            // on dispose
+            () -> invocationFuture.completeExceptionally(new Throwable("Invocation was disposed")),
             true);
 
         if (component != null) {
@@ -822,9 +812,10 @@ public final class LWCToolkit extends LWToolkit {
 
         CompletableFuture<Void> eventDispatchThreadFreeFuture =
             AWTThreading.getInstance(component).notifyOnEventDispatchThreadFree(() -> {
-                if (!invocationFuture.isDone()) {
-                    // EventQueue is now empty but the posted InvocationEvent is still not dispatched, consider it lost then.
-                    invocationFuture.completeExceptionally(new Throwable("Invocation was lost."));
+                if (!invocationEvent.isDispatched()) {
+                    // EventQueue is now empty but the posted InvocationEvent is still not dispatched,
+                    // consider it lost then.
+                    AWTAccessor.getInvocationEventAccessor().dispose(invocationEvent);
                 }
             });
 

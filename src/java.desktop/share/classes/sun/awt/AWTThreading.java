@@ -182,6 +182,10 @@ public class AWTThreading {
      * <li>If the event is first dispatched from EventQueue - it gets removed from the tracking queue.
      * <li>If the event is first dispatched from the tracking queue - its dispatching on EventQueue will be noop.
      * <ul>
+     *
+     * @param source the source of the event
+     * @param onDispatch called back on event dispatching
+     * @param onDispose called back on event disposing
      */
     public static InvocationEvent createAndTrackInvocationEvent(Object source,
                                                                 Runnable onDispatch,
@@ -264,6 +268,8 @@ public class AWTThreading {
     }
 
     public void notifyEventDispatchThreadFree() {
+        assert EventQueue.isDispatchThread();
+
         List<CompletableFuture<Void>> copy;
         // {eventDispatchThreadNotifiers} is the internal mutex for the collection
         synchronized (eventDispatchThreadNotifiers) {
@@ -275,7 +281,8 @@ public class AWTThreading {
 
     /**
      * Sets a callback and returns a {@code CompletableFuture} handling the case when the associated EventDispatch thread
-     * has gone sleeping and stopped dispatching events because of empty EventQueue.
+     * has gone sleeping and stopped dispatching events because of empty EventQueue. The callback is called on the
+     * EventDispatch thread.
      */
     public CompletableFuture<Void> notifyOnEventDispatchThreadFree(Runnable runnable) {
         if (runnable == null) runnable = () -> {};

@@ -68,7 +68,11 @@ public class LWCToolkitInvokeAndWaitTest {
         CThreading.executeOnAppKit(() -> {
             long startTime = System.currentTimeMillis();
             try {
-                LWCToolkit.invokeAndWait(() -> System.out.println("Am I dispatched?"), FRAME);
+                LWCToolkit.invokeAndWait(() -> {
+                    // the event should not be dispatched (from AWTThreading tracking queue).
+                    PASSED.set(false);
+                    System.out.println("Am I dispatched?");
+                }, FRAME);
             } catch (InvocationTargetException e) {
                 PASSED.set(false);
                 e.printStackTrace();
