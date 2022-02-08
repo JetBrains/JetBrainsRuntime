@@ -31,20 +31,20 @@ public enum Layout_GERMAN implements LayoutKey {
     // Note that '\u0000' may be used if no char is mapped to a key + modifier or if one wants to skip its testing
 
     //  Eszett
-    VK_MINUS         ('ß', '¿', '?', '˙'),
-    VK_EQUALS        (KeyChar.dead('´'), KeyChar.ch('\''), KeyChar.dead('`'), KeyChar.ch('˚')),
+    VK_MINUS         ('ß', '¿', '?', '˙', 'ß'),
+    VK_EQUALS        (KeyChar.dead('´'), KeyChar.ch('\''), KeyChar.dead('`'), KeyChar.ch('˚'), KeyChar.ch('´')),
 
-    VK_OPEN_BRACKET  ('ü', '•', 'Ü', '°'),
-    VK_CLOSE_BRACKET ('+', '±', '*', ''),
+    VK_OPEN_BRACKET  ('ü', '•', 'Ü', '°', '\u001D'),
+    VK_CLOSE_BRACKET ('+', '±', '*', '', '+'),
 
-    VK_SEMICOLON     ('ö', 'œ', 'Ö',  'Œ'),
-    VK_QUOTE         ('ä', 'æ', 'Ä',  'Æ'),
-    VK_BACK_SLASH    ('#', '‘', '\'', '’'),
+    VK_SEMICOLON     ('ö', 'œ', 'Ö',  'Œ', '\u001C'),
+    VK_QUOTE         ('ä', 'æ', 'Ä',  'Æ', '\u001B'),
+    VK_BACK_SLASH    ('#', '‘', '\'', '’', '#'),
 
-    VK_BACK_QUOTE    ('<', '≤', '>', '≥'),
-    VK_COMMA         (',', '∞', ';', '˛'),
-    VK_PERIOD        ('.', '…', ':', '÷'),
-    VK_SLASH         ('-', '–', '_', '—'),
+    VK_BACK_QUOTE    ('<', '≤', '>', '≥', '<'),
+    VK_COMMA         (',', '∞', ';', '˛', ','),
+    VK_PERIOD        ('.', '…', ':', '÷', '.'),
+    VK_SLASH         ('-', '–', '_', '—', '-'),
 
     ;
 
@@ -52,12 +52,12 @@ public enum Layout_GERMAN implements LayoutKey {
 
     private final Key key;
 
-    Layout_GERMAN(char no, char alt, char shift, char alt_shift) {
-        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift));
+    Layout_GERMAN(char no, char alt, char shift, char alt_shift, char control) {
+        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift, control));
     }
 
-    Layout_GERMAN(KeyChar no, KeyChar alt, KeyChar shift, KeyChar alt_shift) {
-        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift));
+    Layout_GERMAN(KeyChar no, KeyChar alt, KeyChar shift, KeyChar alt_shift, KeyChar control) {
+        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift, control));
     }
 
     public Key getKey() {
