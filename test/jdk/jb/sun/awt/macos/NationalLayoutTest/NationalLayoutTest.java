@@ -57,7 +57,9 @@ import java.util.stream.Collectors;
  * - No keyTyped event is expected as the result of pressing dead key + key.
  * - Pressing "dead key + space" generates corresponding diacritic character,
  *   which may be obtained using inputMethodTextChanged event.
- * - Cmd, Ctrl and its combinations with other modifiers are considered as a "shortcut",
+ * - Ctrl can be used to type the "control characters" (0th to 31th character inclusively in the ASCII table),
+ *   so Ctrl + key can generate keyTyped event.
+ * - Cmd and its combinations with other modifiers are considered as a "shortcut",
  *   no keyTyped event is expected as the result of pressing a shortcut,
  *   no attempts are made to check inputMethodTextChanged event result for a "shortcut".
  *
@@ -182,7 +184,7 @@ public class NationalLayoutTest {
                 for (Modifier modifier : Modifier.values()) {
                     if(!testLayout(layout, modifier)) {
                         failed = true;
-                    };
+                    }
                 }
             }
             // Provide the test result
@@ -253,7 +255,7 @@ public class NationalLayoutTest {
         // Corresponding latch is released in the typeAreaFocusListener.
         if(!typeAreaGainedFocus.await(PAUSE, TimeUnit.MILLISECONDS)) {
             throw new RuntimeException("TEST ERROR: Failed to request focus in the text area for typing");
-        };
+        }
     }
 
     /*
@@ -305,9 +307,21 @@ public class NationalLayoutTest {
             // Obtain typed char
             char keyChar = e.getKeyChar();
             int keyCode = KeyEvent.getExtendedKeyCodeForChar(keyChar);
-            if ((keyCode != NEXT_MODIFIER) && (keyCode != NEXT_KEY) && (keyCode != TERMINATE_KEY)) {
-                // Store typed char to the corresponding list
-                charsTyped.add(keyChar);
+
+            switch (keyCode) {
+                case NEXT_MODIFIER:
+                case NEXT_KEY:
+                case TERMINATE_KEY:
+                    if ((e.getModifiers() & KeyEvent.CTRL_MASK) == 0) {
+                        // Do not store the typed char only if it is NEXT_MODIFIER, NEXT_KEY, TERMINATE_KEY generated
+                        //  without Control modifier: the Control allows to "type" the "control characters"
+                        //  (0th to 31th character inclusively in the ASCII table).
+                        break;
+                    }
+                default:
+                    // Store typed char to the corresponding list
+                    charsTyped.add(keyChar);
+                    break;
             }
         }
     };
@@ -356,7 +370,7 @@ public class NationalLayoutTest {
         }
         if(!nextModifierSet.await(PAUSE*10, TimeUnit.MILLISECONDS)) {
             throw new RuntimeException("TEST ERROR: User has not proceeded with manual testing");
-        };
+        }
 
         // Clean up the test text areas
         inputArea.setText("");
@@ -411,7 +425,7 @@ public class NationalLayoutTest {
             if(!nextKey.await(PAUSE, TimeUnit.MILLISECONDS)) {
                 throw new RuntimeException("TEST ERROR: "
                         + KeyEvent.getKeyText(NEXT_KEY) + " key pressed event was not received");
-            };
+            }
 
             // Define array of key codes expected to be pressed as the result of modifiers + key
             int[] keysPattern = Arrays.copyOf(modifiers, modifiers.length + 1);
@@ -426,7 +440,7 @@ public class NationalLayoutTest {
                 // Check if the pressed key codes are equal to the expected ones
                 if(!checkResult(keysPattern, keysResult, null,null)) {
                     result = false;
-                };
+                }
             } else {
                 // Define array of chars expected to be typed as the result of modifiers + key
                 // Do not expect any char typed as the result of shortcut (char is undefined in this case)
@@ -440,7 +454,7 @@ public class NationalLayoutTest {
                 // Check if pressed key codes and typed chars are equal to the expected ones
                 if(!checkResult(keysPattern, keysResult, charsPattern, charsResult)) {
                     result = false;
-                };
+                }
             }
         }
         // Provide layout + modifier testing result
@@ -473,7 +487,7 @@ public class NationalLayoutTest {
         boolean checkKeys = Arrays.equals(patternKeys, resultKeys);
         boolean checkChars = Arrays.equals(patternChars, resultChars);
 
-        boolean result = (checkKeys & checkChars);
+        boolean result = (checkKeys && checkChars);
 
         if(!result) {
             String[] patternStr = (patternKeys != null) ? intsToStrings(patternKeys) : null;
