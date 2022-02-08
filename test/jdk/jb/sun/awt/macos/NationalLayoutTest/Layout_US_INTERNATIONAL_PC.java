@@ -37,21 +37,21 @@ public enum Layout_US_INTERNATIONAL_PC implements LayoutKey {
     // Enum name must be the same as KeyEvent.VK_ constant name corresponding to the key on US keyboard layout
     // Note that '\u0000' may be used if no char is mapped to a key + modifier or if one wants to skip its testing
 
-    VK_MINUS         ('-', '–', '_', '—'),
-    VK_EQUALS        ('=', '≠', '+', '±'),
+    VK_MINUS         ('-', '–', '_', '—', '\u001F'),
+    VK_EQUALS        ('=', '≠', '+', '±', '='),
 
-    VK_OPEN_BRACKET  ('[', '“', '{', '”'),
-    VK_CLOSE_BRACKET (']', '‘', '}', '’'),
+    VK_OPEN_BRACKET  ('[', '“', '{', '”', '\u001B'),
+    VK_CLOSE_BRACKET (']', '‘', '}', '’', '\u001D'),
 
-    VK_SEMICOLON     (';',  '…', ':', 'Ú'),
+    VK_SEMICOLON     (';',  '…', ':', 'Ú', ';'),
     // ' is a special dead symbol, which may add either acute or cedilla to the next key
-    VK_QUOTE         (KeyChar.dead('\''), KeyChar.ch('æ'), KeyChar.dead('\"'), KeyChar.ch('Æ')),
-    VK_BACK_SLASH    ('\\', '«', '|', '»'),
+    VK_QUOTE         (KeyChar.dead('\''), KeyChar.ch('æ'), KeyChar.dead('\"'), KeyChar.ch('Æ'), KeyChar.ch('\'')),
+    VK_BACK_SLASH    ('\\', '«', '|', '»', '\u001C'),
 
-    VK_BACK_QUOTE    (KeyChar.dead('`'), KeyChar.dead('`'), KeyChar.dead('~'), KeyChar.ch('`')),
-    VK_COMMA         (',', '≤', '<', '¯'),
-    VK_PERIOD        ('.', '≥', '>', '˘'),
-    VK_SLASH         ('/', '÷', '?', '¿'),
+    VK_BACK_QUOTE    (KeyChar.dead('`'), KeyChar.dead('`'), KeyChar.dead('~'), KeyChar.ch('`'), KeyChar.ch('`')),
+    VK_COMMA         (',', '≤', '<', '¯', ','),
+    VK_PERIOD        ('.', '≥', '>', '˘', '.'),
+    VK_SLASH         ('/', '÷', '?', '¿', '/'),
 
     ;
 
@@ -59,12 +59,12 @@ public enum Layout_US_INTERNATIONAL_PC implements LayoutKey {
 
     private final Key key;
 
-    Layout_US_INTERNATIONAL_PC(char no, char alt, char shift, char alt_shift) {
-        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift));
+    Layout_US_INTERNATIONAL_PC(char no, char alt, char shift, char alt_shift, char control) {
+        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift, control));
     }
 
-    Layout_US_INTERNATIONAL_PC(KeyChar no, KeyChar alt, KeyChar shift, KeyChar alt_shift) {
-        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift));
+    Layout_US_INTERNATIONAL_PC(KeyChar no, KeyChar alt, KeyChar shift, KeyChar alt_shift, KeyChar control) {
+        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift, control));
     }
 
     public Key getKey() {
