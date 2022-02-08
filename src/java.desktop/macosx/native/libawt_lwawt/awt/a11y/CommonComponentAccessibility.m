@@ -1365,7 +1365,7 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
             DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
 
             if ((jAccessible != NULL) && (*env)->IsInstanceOf(env, jAccessible, jc_Accessible)) {
-                caller = [CommonComponentAccessibility createWithAccessible:jAccessible withEnv:env withView:[AWTView awtView:env ofAccessible:o]];
+                caller = [CommonComponentAccessibility createWithAccessible:jAccessible withEnv:env withView:[AWTView awtView:env ofAccessible:jAccessible]];
             }
 
             if (caller == nil) {
