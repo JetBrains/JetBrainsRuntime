@@ -30,20 +30,22 @@ public class MappedKeyChars {
     private final KeyChar alt;
     private final KeyChar shift;
     private final KeyChar alt_shift;
+    private final KeyChar control;
 
-    MappedKeyChars(char no_modifier, char alt, char shift, char alt_shift) {
+    MappedKeyChars(char no_modifier, char alt, char shift, char alt_shift, char control) {
         this.no_modifier = KeyChar.ch(no_modifier);
         this.alt = KeyChar.ch(alt);
         this.shift = KeyChar.ch(shift);
         this.alt_shift = KeyChar.ch(alt_shift);
+        this.control = KeyChar.ch(control);
     }
 
-    MappedKeyChars(KeyChar  no_modifier, KeyChar alt, KeyChar shift, KeyChar alt_shift) {
+    MappedKeyChars(KeyChar  no_modifier, KeyChar alt, KeyChar shift, KeyChar alt_shift, KeyChar control) {
         this.no_modifier = no_modifier;
         this.alt = alt;
         this.shift = shift;
         this.alt_shift = alt_shift;
-
+        this.control = control;
     }
 
     /*
@@ -63,6 +65,9 @@ public class MappedKeyChars {
         }
         if(modifier.isAltShift()) {
             return alt_shift;
+        }
+        if(modifier.isControl()) {
+            return control;
         }
         return KeyChar.ch(Character.MAX_VALUE);
     }
