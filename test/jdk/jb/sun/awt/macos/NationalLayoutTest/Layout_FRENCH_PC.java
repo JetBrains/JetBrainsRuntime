@@ -30,20 +30,20 @@ public enum Layout_FRENCH_PC implements LayoutKey {
     // Enum name must be the same as KeyEvent.VK_ constant name corresponding to the key on US keyboard layout
     // Note that '\u0000' may be used if no char is mapped to a key + modifier or if one wants to skip its testing
 
-    VK_MINUS         (')', ']', '°', ']'),
-    VK_EQUALS        ('=', '}', '+', '≠'),
+    VK_MINUS         (')', ']', '°', ']', '\u001B'),
+    VK_EQUALS        ('=', '}', '+', '≠', '\u001F'),
 
-    VK_OPEN_BRACKET  (KeyChar.dead('^'), KeyChar.ch('ô'), KeyChar.dead('¨'), KeyChar.ch('Ô')),
-    VK_CLOSE_BRACKET ('$', '¤', '£', '¥'),
+    VK_OPEN_BRACKET  (KeyChar.dead('^'), KeyChar.ch('ô'), KeyChar.dead('¨'), KeyChar.ch('Ô'), KeyChar.ch('\u001E')),
+    VK_CLOSE_BRACKET ('$', '¤', '£', '¥', '\u001D'),
 
-    VK_SEMICOLON     ('m', 'µ', 'M', 'Ó'),
-    VK_QUOTE         ('ù', 'Ù', '%', '‰'),
-    VK_BACK_SLASH    ('*', '@', 'μ', '#'),
+    VK_SEMICOLON     ('m', 'µ', 'M', 'Ó', '\r'),
+    VK_QUOTE         ('ù', 'Ù', '%', '‰', 'ù'),
+    VK_BACK_SLASH    ('*', '@', 'μ', '#', '\u001C'),
 
-    VK_BACK_QUOTE    ('<', '«', '>', '≥'),
-    VK_COMMA         (';', '…', '.', '•'),
-    VK_PERIOD        (':', '÷', '/', '\\'),
-    VK_SLASH         ('!', '¡', '§', '±'),
+    VK_BACK_QUOTE    ('<', '«', '>', '≥', '<'),
+    VK_COMMA         (';', '…', '.', '•', ';'),
+    VK_PERIOD        (':', '÷', '/', '\\', ':'),
+    VK_SLASH         ('!', '¡', '§', '±', '='),
 
     ;
 
@@ -51,12 +51,12 @@ public enum Layout_FRENCH_PC implements LayoutKey {
 
     private final Key key;
 
-    Layout_FRENCH_PC(char no, char alt, char shift, char alt_shift) {
-        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift));
+    Layout_FRENCH_PC(char no, char alt, char shift, char alt_shift, char control) {
+        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift, control));
     }
 
-    Layout_FRENCH_PC(KeyChar no, KeyChar alt, KeyChar shift, KeyChar alt_shift) {
-        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift));
+    Layout_FRENCH_PC(KeyChar no, KeyChar alt, KeyChar shift, KeyChar alt_shift, KeyChar control) {
+        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift, control));
     }
 
     public Key getKey() {
