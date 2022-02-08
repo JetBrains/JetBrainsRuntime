@@ -42,20 +42,20 @@ public enum Layout_ABC implements LayoutKey {
     // located on the left side of the key 1 on the Apple International English keyboard
     // SECTION       ('§', '§', '±', '±'),
 
-    VK_MINUS         ('-', '–', '_', '—'),
-    VK_EQUALS        ('=', '≠', '+', '±'),
+    VK_MINUS         ('-', '–', '_', '—', '\u001F'),
+    VK_EQUALS        ('=', '≠', '+', '±', '='),
 
-    VK_OPEN_BRACKET  ('[', '“', '{', '”'),
-    VK_CLOSE_BRACKET (']', '‘', '}', '’'),
+    VK_OPEN_BRACKET  ('[', '“', '{', '”', '\u001B'),
+    VK_CLOSE_BRACKET (']', '‘', '}', '’', '\u001D'),
 
-    VK_SEMICOLON     (';',  '…', ':', 'Ú'),
-    VK_QUOTE         ('\'', 'æ', '"', 'Æ'),
-    VK_BACK_SLASH    ('\\', '«', '|', '»'),
+    VK_SEMICOLON     (';',  '…', ':', 'Ú', ';'),
+    VK_QUOTE         ('\'', 'æ', '"', 'Æ', '\''),
+    VK_BACK_SLASH    ('\\', '«', '|', '»', '\u001C'),
 
-    VK_BACK_QUOTE    (KeyChar.ch('`'), KeyChar.dead('`'), KeyChar.ch('~'), KeyChar.ch('`')),
-    VK_COMMA         (',', '≤', '<', '¯'),
-    VK_PERIOD        ('.', '≥', '>', '˘'),
-    VK_SLASH         ('/', '÷', '?', '¿'),
+    VK_BACK_QUOTE    (KeyChar.ch('`'), KeyChar.dead('`'), KeyChar.ch('~'), KeyChar.ch('`'), KeyChar.ch('`')),
+    VK_COMMA         (',', '≤', '<', '¯', ','),
+    VK_PERIOD        ('.', '≥', '>', '˘', '.'),
+    VK_SLASH         ('/', '÷', '?', '¿', '/'),
 
     //VK_1 ('1', '¡', '!', '⁄'),
     //VK_2 ('2', '™', '@', '€'),
@@ -106,12 +106,12 @@ public enum Layout_ABC implements LayoutKey {
 
     private final Key key;
 
-    Layout_ABC(char no, char alt, char shift, char alt_shift) {
-        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift));
+    Layout_ABC(char no, char alt, char shift, char alt_shift, char control) {
+        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift, control));
     }
 
-    Layout_ABC(KeyChar no, KeyChar alt, KeyChar shift, KeyChar alt_shift) {
-        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift));
+    Layout_ABC(KeyChar no, KeyChar alt, KeyChar shift, KeyChar alt_shift, KeyChar control) {
+        key = new Key(name(), new MappedKeyChars(no, alt, shift, alt_shift, control));
     }
 
     public Key getKey() {
