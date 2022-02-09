@@ -3037,23 +3037,16 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
          }
 
         private class AccessibleListImpl implements AccessibleList, AccessibleTable {
-             private HashMap<Integer, Integer> listSelectionModeMap = new HashMap<Integer, Integer>();
-            private HashMap<Integer, Integer> accessibleListModeMap = new HashMap<Integer, Integer>();
-
-             private void initSelectionModeMap() {
-                 int[] listSelectionMode = new int[] {ListSelectionModel.SINGLE_SELECTION, ListSelectionModel.SINGLE_INTERVAL_SELECTION, ListSelectionModel.MULTIPLE_INTERVAL_SELECTION};
-                 int[] accessibleListMode = new int[] {AccessibleList.SINGLE_SELECTION, AccessibleList.SINGLE_INTERVAL_SELECTION, AccessibleList.MULTIPLE_INTERVAL_SELECTION};
-
-                 for (int i = 0; i < 3; i++) {
-                     listSelectionModeMap.put(accessibleListMode[i], listSelectionMode[i]);
-                     accessibleListModeMap.put(listSelectionMode[i], accessibleListMode[i]);
-            }
-             }
-
-             private AccessibleListImpl() {
-                 super();
-                 initSelectionModeMap();
-             }
+             private final Map<Integer, Integer> listSelectionModeMap = Map.of(
+                     AccessibleList.SINGLE_SELECTION, ListSelectionModel.SINGLE_SELECTION,
+                     AccessibleList.SINGLE_INTERVAL_SELECTION, ListSelectionModel.SINGLE_INTERVAL_SELECTION,
+                     AccessibleList.MULTIPLE_INTERVAL_SELECTION, ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
+             );
+            private final Map<Integer, Integer> accessibleListModeMap = Map.of(
+                    ListSelectionModel.SINGLE_SELECTION, AccessibleList.SINGLE_SELECTION,
+                    ListSelectionModel.SINGLE_INTERVAL_SELECTION, AccessibleList.SINGLE_INTERVAL_SELECTION,
+                    ListSelectionModel.MULTIPLE_INTERVAL_SELECTION, AccessibleList.MULTIPLE_INTERVAL_SELECTION
+            );
 
             @Override
             public Accessible getAccessibleCaption() {
@@ -3245,13 +3238,11 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
             /**
              * This method returns an AccessibleListMode corresponding to the ListSelectionMode
              *
-             * @return AccessibleListMode, or -1 if the match could not be established.
+             * @return AccessibleListMode
              */
             @Override
             public int getSelectionMode() {
-                Integer selectionMode = accessibleListModeMap.get(JList.this.getSelectionModel().getSelectionMode());
-                if (selectionMode != null) return selectionMode;
-                return -1;
+                return accessibleListModeMap.get(JList.this.getSelectionModel().getSelectionMode());
             }
 
             @Override
