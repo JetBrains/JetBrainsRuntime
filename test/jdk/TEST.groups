@@ -77,7 +77,10 @@ tier3 = \
     :jdk_beans \
     :jdk_imageio \
     :jdk_sound \
-    :jdk_client_sanity
+    :jdk_client_sanity \
+    :jdk_svc \
+   -:jdk_svc_sanity \
+   -:svc_tools
 
 # Everything not in other tiers
 tier4 = \
