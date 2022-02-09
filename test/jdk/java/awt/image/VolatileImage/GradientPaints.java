@@ -39,7 +39,9 @@ import java.awt.geom.*;
 import java.awt.image.*;
 import java.io.File;
 import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
 import javax.imageio.ImageIO;
+import javax.swing.SwingUtilities;
 
 public class GradientPaints extends Canvas {
 
@@ -68,8 +70,8 @@ public class GradientPaints extends Canvas {
         (int)(TESTW * TESTH * 0.18);
     private static final int ALLOWED_MISMATCHES_RADIAL =
         (int)(TESTW * TESTH * 0.45);
+    private static final int ALLOWED_RENDER_ATTEMPTS = 5;
 
-    private static boolean done;
     private static boolean verbose;
 
     private static final Color[] COLORS = {
@@ -83,8 +85,8 @@ public class GradientPaints extends Canvas {
         new Color(128, 128, 128),
     };
 
-    private static enum PaintType {BASIC, LINEAR, RADIAL};
-    private static enum XformType {IDENTITY, TRANSLATE, SCALE, SHEAR, ROTATE};
+    private enum PaintType {BASIC, LINEAR, RADIAL}
+    private enum XformType {IDENTITY, TRANSLATE, SCALE, SHEAR, ROTATE}
     private static final int[] numStopsArray = {2, 4, 7};
     private static final Object[] hints = {
         RenderingHints.VALUE_ANTIALIAS_OFF,
@@ -92,35 +94,14 @@ public class GradientPaints extends Canvas {
     };
 
     public void paint(Graphics g) {
-        synchronized (this) {
-            if (!done) {
-                done = true;
-                notifyAll();
-            }
-        }
-    }
-
-    private void testOne(BufferedImage refImg, VolatileImage testImg) {
-        Graphics2D gref  = refImg.createGraphics();
-        Graphics2D gtest = testImg.createGraphics();
-        Paint paint =
-            makePaint(PaintType.RADIAL, CycleMethod.REPEAT,
-                      ColorSpaceType.SRGB, XformType.IDENTITY, 7);
-        Object aahint = hints[0];
-        renderTest(gref,  paint, aahint);
-        renderTest(gtest, paint, aahint);
-        Toolkit.getDefaultToolkit().sync();
-        compareImages(refImg, testImg.getSnapshot(),
-                      TOLERANCE, 0, "");
-        gref.dispose();
-        gtest.dispose();
+        painted.countDown();
     }
 
     private void testAll(Graphics gscreen,
-                         BufferedImage refImg, VolatileImage testImg)
+                         BufferedImage refImg, VolatileImage testImg, GraphicsConfiguration gc)
     {
         Graphics2D gref  = refImg.createGraphics();
-        Graphics2D gtest = testImg.createGraphics();
+        testImg.validate(gc);
         for (PaintType paintType : PaintType.values()) {
             for (CycleMethod cycleMethod : CycleMethod.values()) {
                 for (ColorSpaceType colorSpace : ColorSpaceType.values()) {
@@ -138,16 +119,32 @@ public class GradientPaints extends Canvas {
                                     " numStops=" + numStops +
                                     " aa=" + aahint;
                                 renderTest(gref,  paint, aahint);
-                                renderTest(gtest, paint, aahint);
-                                gscreen.drawImage(testImg, 0, 0, null);
-                                Toolkit.getDefaultToolkit().sync();
-                                int allowedMismatches =
-                                    paintType == PaintType.RADIAL ?
-                                    ALLOWED_MISMATCHES_RADIAL :
-                                    ALLOWED_MISMATCHES_LINEAR;
-                                compareImages(refImg, testImg.getSnapshot(),
-                                              TOLERANCE, allowedMismatches,
-                                              msg);
+                                int allowedMismatches = paintType == PaintType.RADIAL ?
+                                        ALLOWED_MISMATCHES_RADIAL : ALLOWED_MISMATCHES_LINEAR;
+                                int attempt = 0;
+                                while (true) {
+                                    Graphics2D gtest = testImg.createGraphics();
+                                    renderTest(gtest, paint, aahint);
+                                    gscreen.drawImage(testImg, 0, 0, null);
+                                    Toolkit.getDefaultToolkit().sync();
+                                    gtest.dispose();
+                                    BufferedImage snapshot = testImg.getSnapshot();
+                                    if (testImg.contentsLost() &&
+                                        testImg.validate(gc) != VolatileImage.IMAGE_OK)
+                                    {
+                                        if (attempt++ >= ALLOWED_RENDER_ATTEMPTS) {
+                                            throw new RuntimeException("Cannot render to VI");
+                                        }
+                                        try {
+                                            Thread.sleep(100);
+                                        } catch (InterruptedException e) {
+                                            e.printStackTrace();
+                                        }
+                                        continue;
+                                    }
+                                    compareImages(refImg, snapshot, allowedMismatches, msg);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -155,7 +152,6 @@ public class GradientPaints extends Canvas {
             }
         }
         gref.dispose();
-        gtest.dispose();
     }
 
     private Paint makePaint(PaintType paintType,
@@ -172,7 +168,6 @@ public class GradientPaints extends Canvas {
         int focusX   = ctrX + 20;
         int focusY   = ctrY + 20;
         float radius = 100.0f;
-        Paint paint;
         AffineTransform transform;
 
         Color[] colors = Arrays.copyOf(COLORS, numStops);
@@ -181,57 +176,30 @@ public class GradientPaints extends Canvas {
             fractions[i] = ((float)i) / (fractions.length-1);
         }
 
-        switch (xformType) {
-        default:
-        case IDENTITY:
-            transform = new AffineTransform();
-            break;
-        case TRANSLATE:
-            transform = AffineTransform.getTranslateInstance(2, 2);
-            break;
-        case SCALE:
-            transform = AffineTransform.getScaleInstance(1.2, 1.4);
-            break;
-        case SHEAR:
-            transform = AffineTransform.getShearInstance(0.1, 0.1);
-            break;
-        case ROTATE:
-            transform = AffineTransform.getRotateInstance(Math.PI / 4,
-                                                          getWidth()/2,
-                                                          getHeight()/2);
-            break;
-        }
+        transform = switch (xformType) {
+            case IDENTITY -> new AffineTransform();
+            case TRANSLATE -> AffineTransform.getTranslateInstance(2, 2);
+            case SCALE -> AffineTransform.getScaleInstance(1.2, 1.4);
+            case SHEAR -> AffineTransform.getShearInstance(0.1, 0.1);
+            case ROTATE -> AffineTransform.getRotateInstance(Math.PI / 4,
+                    getWidth() >> 1, getHeight() >> 1);
+        };
 
-        switch (paintType) {
-        case BASIC:
-            boolean cyclic = (cycleMethod != CycleMethod.NO_CYCLE);
-            paint =
-                new GradientPaint(startX, startY, Color.RED,
-                                  endX, endY, Color.BLUE, cyclic);
-            break;
-
-        default:
-        case LINEAR:
-            paint =
-                new LinearGradientPaint(new Point2D.Float(startX, startY),
-                                        new Point2D.Float(endX, endY),
-                                        fractions, colors,
-                                        cycleMethod, colorSpace,
-                                        transform);
-            break;
-
-        case RADIAL:
-            paint =
-                new RadialGradientPaint(new Point2D.Float(ctrX, ctrY),
-                                        radius,
-                                        new Point2D.Float(focusX, focusY),
-                                        fractions, colors,
-                                        cycleMethod, colorSpace,
-                                        transform);
-            break;
-        }
-
-        return paint;
+        return switch (paintType) {
+            case BASIC -> new GradientPaint(startX, startY, Color.RED,
+                    endX, endY, Color.BLUE, (cycleMethod != CycleMethod.NO_CYCLE));
+            case LINEAR -> new LinearGradientPaint(new Point2D.Float(startX, startY),
+                            new Point2D.Float(endX, endY),
+                            fractions, colors,
+                            cycleMethod, colorSpace,
+                            transform);
+            case RADIAL -> new RadialGradientPaint(new Point2D.Float(ctrX, ctrY),
+                            radius,
+                            new Point2D.Float(focusX, focusY),
+                            fractions, colors,
+                            cycleMethod, colorSpace,
+                            transform);
+        };
     }
 
     private void renderTest(Graphics2D g2d, Paint p, Object aahint) {
@@ -248,7 +216,7 @@ public class GradientPaints extends Canvas {
 
     private static void compareImages(BufferedImage refImg,
                                       BufferedImage testImg,
-                                      int tolerance, int allowedMismatches,
+                                      int allowedMismatches,
                                       String msg)
     {
         int numMismatches = 0;
@@ -261,7 +229,7 @@ public class GradientPaints extends Canvas {
             for (int x = x1; x < x2; x++) {
                 Color expected = new Color(refImg.getRGB(x, y));
                 Color actual   = new Color(testImg.getRGB(x, y));
-                if (!isSameColor(expected, actual, tolerance)) {
+                if (!isSameColor(expected, actual)) {
                     numMismatches++;
                 }
             }
@@ -277,6 +245,7 @@ public class GradientPaints extends Canvas {
                 ImageIO.write(testImg, "png",
                               new File("GradientPaints.cap.png"));
             } catch (Exception e) {
+                e.printStackTrace();
             }
             if (!verbose) {
                 System.err.println(msg);
@@ -285,32 +254,30 @@ public class GradientPaints extends Canvas {
                                        numMismatches +
                                        ") exceeds limit (" +
                                        allowedMismatches +
-                                       ") with tolerance=" +
-                                       tolerance);
+                                       ") with tolerance=" + TOLERANCE);
         }
     }
 
-    private static boolean isSameColor(Color c1, Color c2, int e) {
+    private static boolean isSameColor(Color c1, Color c2) {
         int r1 = c1.getRed();
         int g1 = c1.getGreen();
         int b1 = c1.getBlue();
         int r2 = c2.getRed();
         int g2 = c2.getGreen();
         int b2 = c2.getBlue();
-        int rmin = Math.max(r2-e, 0);
-        int gmin = Math.max(g2-e, 0);
-        int bmin = Math.max(b2-e, 0);
-        int rmax = Math.min(r2+e, 255);
-        int gmax = Math.min(g2+e, 255);
-        int bmax = Math.min(b2+e, 255);
-        if (r1 >= rmin && r1 <= rmax &&
-            g1 >= gmin && g1 <= gmax &&
-            b1 >= bmin && b1 <= bmax)
-        {
-            return true;
-        }
-        return false;
+        int rmin = Math.max(r2- TOLERANCE, 0);
+        int gmin = Math.max(g2- TOLERANCE, 0);
+        int bmin = Math.max(b2- TOLERANCE, 0);
+        int rmax = Math.min(r2+ TOLERANCE, 255);
+        int gmax = Math.min(g2+ TOLERANCE, 255);
+        int bmax = Math.min(b2+ TOLERANCE, 255);
+        return r1 >= rmin && r1 <= rmax &&
+                g1 >= gmin && g1 <= gmax &&
+                b1 >= bmin && b1 <= bmax;
     }
+
+    static CountDownLatch painted = new CountDownLatch(1);
+    static Frame frame = null;
 
     public static void main(String[] args) {
         if (args.length == 1 && args[0].equals("-verbose")) {
@@ -318,20 +285,18 @@ public class GradientPaints extends Canvas {
         }
 
         GradientPaints test = new GradientPaints();
-        Frame frame = new Frame();
-        frame.add(test);
-        frame.pack();
-        frame.setVisible(true);
+        SwingUtilities.invokeLater(() -> {
+            frame = new Frame();
+            frame.add(test);
+            frame.pack();
+            frame.setVisible(true);
+        });
 
         // Wait until the component's been painted
-        synchronized (test) {
-            while (!done) {
-                try {
-                    test.wait();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException("Failed: Interrupted");
-                }
-            }
+        try {
+            painted.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Failed: Interrupted");
         }
 
         GraphicsConfiguration gc = frame.getGraphicsConfiguration();
@@ -345,10 +310,9 @@ public class GradientPaints extends Canvas {
         BufferedImage refImg =
             new BufferedImage(TESTW, TESTH, BufferedImage.TYPE_INT_RGB);
         VolatileImage testImg = frame.createVolatileImage(TESTW, TESTH);
-        testImg.validate(gc);
 
         try {
-            test.testAll(test.getGraphics(), refImg, testImg);
+            test.testAll(test.getGraphics(), refImg, testImg, gc);
         } finally {
             frame.dispose();
         }
