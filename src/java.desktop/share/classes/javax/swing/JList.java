@@ -3037,11 +3037,11 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
          }
 
         private class AccessibleListImpl implements AccessibleList, AccessibleTable {
-             private final Map<Integer, Integer> listSelectionModeMap = Map.of(
-                     AccessibleList.SINGLE_SELECTION, ListSelectionModel.SINGLE_SELECTION,
-                     AccessibleList.SINGLE_INTERVAL_SELECTION, ListSelectionModel.SINGLE_INTERVAL_SELECTION,
-                     AccessibleList.MULTIPLE_INTERVAL_SELECTION, ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
-             );
+            private final Map<Integer, Integer> listSelectionModeMap = Map.of(
+                    AccessibleList.SINGLE_SELECTION, ListSelectionModel.SINGLE_SELECTION,
+                    AccessibleList.SINGLE_INTERVAL_SELECTION, ListSelectionModel.SINGLE_INTERVAL_SELECTION,
+                    AccessibleList.MULTIPLE_INTERVAL_SELECTION, ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
+            );
             private final Map<Integer, Integer> accessibleListModeMap = Map.of(
                     ListSelectionModel.SINGLE_SELECTION, AccessibleList.SINGLE_SELECTION,
                     ListSelectionModel.SINGLE_INTERVAL_SELECTION, AccessibleList.SINGLE_INTERVAL_SELECTION,
