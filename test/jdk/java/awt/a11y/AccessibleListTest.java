@@ -128,6 +128,12 @@ public class AccessibleListTest {
             countersControl(NO_OK, "setSelectionInterval()");
         }
 
+        if (al.isSelectedIndex(1)) {
+            countersControl(OK, "isSelectedIndex()");
+        } else {
+            countersControl(NO_OK, "isSelectedIndex()");
+        }
+
         if (al.getSelectedItemsCount() == list.getSelectionModel().getSelectedItemsCount()) {
             countersControl(OK, "getSelectedItemsCount()");
         } else {
