@@ -154,7 +154,9 @@ bool os::Linux::get_frame_at_stack_banging_point(JavaThread* thread, ucontext_t*
     // method returns the Java sender of the current frame.
     *fr = os::fetch_frame_from_context(uc);
     if (!fr->is_first_java_frame()) {
-      assert(fr->safe_for_sender(thread), "Safety check");
+      // get_frame_at_stack_banging_point() is only called when we
+      // have well defined stacks so java_sender() calls do not need
+      // to assert safe_for_sender() first.
       *fr = fr->java_sender();
     }
   } else {
@@ -171,7 +173,7 @@ bool os::Linux::get_frame_at_stack_banging_point(JavaThread* thread, ucontext_t*
       address lr = ucontext_get_lr(uc);
       *fr = frame(sp, lr);
       if (!fr->is_java_frame()) {
-        assert(fr->safe_for_sender(thread), "Safety check");
+        // See java_sender() comment above.
         assert(!fr->is_first_frame(), "Safety check");
         *fr = fr->java_sender();
       }
