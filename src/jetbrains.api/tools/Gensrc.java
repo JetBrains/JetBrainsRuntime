@@ -92,7 +92,7 @@ public class Gensrc {
     }
 
     private static String generate(String content) throws IOException {
-        Pattern pattern = compile("/\\*CONST ((?:[a-zA-Z0-9]+\\.)+)([a-zA-Z0-9_*]+)\s*\\*/");
+        Pattern pattern = compile("/\\*CONST ((?:[a-zA-Z0-9]+\\.)+)([a-zA-Z0-9_*]+)\\s*\\*/");
         for (;;) {
             Matcher matcher = pattern.matcher(content);
             if (!matcher.find()) return content;
@@ -102,15 +102,23 @@ public class Gensrc {
             for (Path module : modules.paths) {
                 Path f = module.resolve("share/classes").resolve(file);
                 if (Files.exists(f)) {
-                    Pattern namePattern = compile(name.replaceAll("\\*", "[a-zA-Z0-9_]+") + "\s*=");
-                    Pattern statementPattern = compile("((?:(?:public|protected|private|static|final)\s+){2,3})([a-zA-Z0-9]+)\s+([^;]+);");
+                    Pattern namePattern = compile(name.replaceAll("\\*", "\\\\w+"));
+                    Pattern statementPattern = compile(
+                            "((?:(?:MODS)  ){2,3})([a-zA-Z0-9]+)  (FIELD(?:, FIELD)*);"
+                                    .replaceAll("MODS", "public|protected|private|static|final")
+                                    .replaceAll("FIELD", "\\\\w+ = [\\\\w\"']+ ")
+                                    .replaceAll("  ", "\\\\s+")
+                                    .replaceAll(" ", "\\\\s*")
+                    );
                     Matcher statementMatcher = statementPattern.matcher(Files.readString(f));
                     while (statementMatcher.find()) {
                         String mods = statementMatcher.group(1);
                         if (!mods.contains("static") || !mods.contains("final")) continue;
                         for (String s : statementMatcher.group(3).split(",")) {
-                            if (!namePattern.matcher(s).find()) continue;
-                            statements.add("public static final " + statementMatcher.group(2) + " " + s.strip() + ";");
+                            s = s.strip();
+                            String nm = s.substring(0, s.indexOf('=')).strip();
+                            if (!namePattern.matcher(nm).matches()) continue;
+                            statements.add("public static final " + statementMatcher.group(2) + " " + s + ";");
                         }
                     }
                     break;
@@ -164,7 +172,7 @@ public class Gensrc {
         }
 
         private static Service[] findPublicServiceInterfaces() {
-            Pattern javadocPattern = Pattern.compile("/\\*\\*((?:.|\n)*?)(\s|\n)*\\*/");
+            Pattern javadocPattern = Pattern.compile("/\\*\\*((?:.|\n)*?)\\s*\\*/");
             return modules.services.stream()
                     .map(fullName -> {
                         if (fullName.indexOf('$') != -1) return null; // Only top level services can be public
@@ -240,7 +248,7 @@ public class Gensrc {
         }
 
         private void findInModule(String content) {
-            Pattern servicePattern = compile("(service|proxy|twoWayProxy)\s*\\(([^)]+)");
+            Pattern servicePattern = compile("(service|proxy|twoWayProxy)\\s*\\(([^)]+)");
             Matcher matcher = servicePattern.matcher(content);
             while (matcher.find()) {
                 String type = matcher.group(1);

@@ -74,12 +74,20 @@ class ProxyInfo {
     }
 
     private Lookup lookup(Lookup lookup, String clazz) {
-        try {
-            return MethodHandles.privateLookupIn(lookup.findClass(clazz), lookup);
-        } catch (ClassNotFoundException | IllegalAccessException e) {
-            if (lookup == JBRApi.outerLookup) return null;
-            else throw new RuntimeException(e);
+        boolean outer = lookup == JBRApi.outerLookup;
+        String[] nestedClasses = clazz.split("\\$");
+        clazz = "";
+        for (int i = 0; i < nestedClasses.length; i++) {
+            try {
+                if (i != 0) clazz += "$";
+                clazz += nestedClasses[i];
+                lookup = MethodHandles.privateLookupIn(lookup.findClass(clazz), lookup);
+            } catch (ClassNotFoundException | IllegalAccessException e) {
+                if (outer) return null;
+                else throw new RuntimeException(e);
+            }
         }
+        return lookup;
     }
 
     record StaticMethodMapping(Lookup lookup, String methodName) {}
