@@ -251,6 +251,13 @@ public final class CStrike extends PhysicalStrike {
         }
     }
 
+    int getSlot0GlyphImagePtrs(int[] glyphCodes, long[] images, int len) {
+        int ourGlyphs = 0;
+        while (ourGlyphs < len && (glyphCodes[ourGlyphs] & CompositeGlyphMapper.SLOTMASK) == 0) ourGlyphs++;
+        getGlyphImagePtrs(glyphCodes, images, ourGlyphs);
+        return ourGlyphs;
+    }
+
     // called from the Sun2D renderer
     void getGlyphImagePtrs(int[] glyphCodes, long[] images, int len) {
         synchronized (glyphInfoCache) {
