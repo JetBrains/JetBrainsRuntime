@@ -52,7 +52,7 @@ public class WLGraphicsConfig extends GraphicsConfiguration {
         return SurfaceType.IntArgb;
     }
 
-    public SurfaceData createSurfaceData(WLFramePeer peer) {
+    public SurfaceData createSurfaceData(WLComponentPeer peer) {
         return WLSurfaceData.createData(peer);
     }
 }

@@ -6,6 +6,7 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
+import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLFramePeer;
 import sun.awt.wl.WLGraphicsConfig;
 import sun.java2d.SurfaceData;
@@ -13,14 +14,14 @@ import sun.java2d.loops.SurfaceType;
 
 public class WLSurfaceData extends SurfaceData {
 
-  private final WLFramePeer peer;
+  private final WLComponentPeer peer;
   private final WLGraphicsConfig graphicsConfig;
   private final int depth;
 
-  public native void initSurface(WLFramePeer peer, int rgb, int width, int height);
-  protected native void initOps(WLFramePeer peer, WLGraphicsConfig gc, int depth);
+  public native void initSurface(WLComponentPeer peer, int rgb, int width, int height);
+  protected native void initOps(WLComponentPeer peer, WLGraphicsConfig gc, int depth);
 
-  protected WLSurfaceData(WLFramePeer peer,
+  protected WLSurfaceData(WLComponentPeer peer,
                           WLGraphicsConfig gc,
                           SurfaceType sType,
                           ColorModel cm)
@@ -35,13 +36,13 @@ public class WLSurfaceData extends SurfaceData {
   /**
    * Method for instantiating a Window SurfaceData
    */
-  public static WLSurfaceData createData(WLFramePeer peer) {
+  public static WLSurfaceData createData(WLComponentPeer peer) {
     WLGraphicsConfig gc = getGC(peer);
     return new WLSurfaceData(peer, gc, gc.getSurfaceType(), peer.getColorModel());
   }
 
 
-  public static WLGraphicsConfig getGC(WLFramePeer peer) {
+  public static WLGraphicsConfig getGC(WLComponentPeer peer) {
     if (peer != null) {
       return (WLGraphicsConfig) peer.getGraphicsConfiguration();
     } else {
