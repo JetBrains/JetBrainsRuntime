@@ -26,7 +26,7 @@
  * @test
  * @bug 8271846
  * @summary Test implementation of AccessibleList interface
-  * @author Artem.Semenov@jetbrains.com
+ * @author Artem.Semenov@jetbrains.com
  * @run main AccessibleListTest
  * @requires (os.family == "windows" | os.family == "mac")
  */
@@ -44,8 +44,8 @@ public class AccessibleListTest {
     private static String exceptionString = null;
     private static final String[] NAMES = {"One", "Two", "Three", "Four", "Five"};
     private static final boolean OK = true;
-    private static final boolean NO_OK = false;
-    private static int noOkCount = 0;
+    private static final boolean FAIL = false;
+    private static int failCount = 0;
     private static final Map<Integer, Integer> listSelectionModeMap = Map.of(
             AccessibleList.SINGLE_SELECTION, ListSelectionModel.SINGLE_SELECTION,
             AccessibleList.SINGLE_INTERVAL_SELECTION, ListSelectionModel.SINGLE_INTERVAL_SELECTION,
@@ -69,7 +69,7 @@ public class AccessibleListTest {
         if (isOk) {
             System.out.println(methodName + ": ok");
         } else {
-            noOkCount += 1;
+            failCount += 1;
             System.out.println(methodName + ": fail");
         }
     }
@@ -79,14 +79,14 @@ public class AccessibleListTest {
 
         AccessibleContext ac = list.getAccessibleContext();
         if (ac == null) {
-            countersControl(NO_OK, "accessibleConntext");
+            countersControl(FAIL, "accessibleConntext");
             return;
         }
         countersControl(OK, "acccessibleContext");
 
         AccessibleTable at = ac.getAccessibleTable();
         if ((at == null) && !(at instanceof AccessibleList)) {
-            countersControl(NO_OK, "AccessibleList");
+            countersControl(FAIL, "AccessibleList");
             return;
         }
         countersControl(OK, "AccessibleList");
@@ -97,7 +97,7 @@ public class AccessibleListTest {
         if (size == 5) {
             countersControl(OK, "getSize()");
         } else {
-            countersControl(NO_OK, "getSize()");
+            countersControl(FAIL, "getSize()");
         }
 
         int listSelectionMode = list.getSelectionMode();
@@ -105,7 +105,7 @@ public class AccessibleListTest {
         if (listSelectionMode == accessibleListMode) {
             countersControl(OK, "getSelectionMode()");
         } else {
-            countersControl(NO_OK, "getSelectionMode()");
+            countersControl(FAIL, "getSelectionMode()");
         }
 
         al.setSelectionMode(AccessibleList.MULTIPLE_INTERVAL_SELECTION);
@@ -115,7 +115,7 @@ public class AccessibleListTest {
         if (listSelectionMode == accessibleListMode) {
             countersControl(OK, "setSelectionMode()");
         } else {
-            countersControl(NO_OK, "setSelectionMode()");
+            countersControl(FAIL, "setSelectionMode()");
         }
 
         al.setSelectionInterval(0, 2);
@@ -125,44 +125,44 @@ public class AccessibleListTest {
                 list.getSelectionModel().isSelectedIndex(2)) {
             countersControl(OK, "setSelectionInterval()");
         } else {
-            countersControl(NO_OK, "setSelectionInterval()");
+            countersControl(FAIL, "setSelectionInterval()");
         }
 
         if (al.isSelectedIndex(1)) {
             countersControl(OK, "isSelectedIndex()");
         } else {
-            countersControl(NO_OK, "isSelectedIndex()");
+            countersControl(FAIL, "isSelectedIndex()");
         }
 
         if (al.getSelectedItemsCount() == list.getSelectionModel().getSelectedItemsCount()) {
             countersControl(OK, "getSelectedItemsCount()");
         } else {
-            countersControl(NO_OK, "getSelectedItemsCount()");
+            countersControl(FAIL, "getSelectedItemsCount()");
         }
 
         if (!al.isSelectionEmpty()) {
             countersControl(OK, "isSelectionEmpty()");
         } else {
-            countersControl(NO_OK, "isSelectionEmpty()");
+            countersControl(FAIL, "isSelectionEmpty()");
         }
 
         if (al.getMaxSelectionIndex() == 2) {
             countersControl(OK, "getMaxSelectionIndex()");
         } else {
-            countersControl(NO_OK, "getMaxSelectionIndex()");
+            countersControl(FAIL, "getMaxSelectionIndex()");
         }
 
         if (al.getMinSelectionIndex() == 0) {
             countersControl(OK, "getMinSelectionIndex()");
         } else {
-            countersControl(NO_OK, "getMinSelectionIndex()");
+            countersControl(FAIL, "getMinSelectionIndex()");
         }
 
         int[] listSelectedIndices = list.getSelectionModel().getSelectedIndices();
         int[] accessibleListSelectedIndices = al.getSelectedIndices();
 
         if (listSelectedIndices.length != accessibleListSelectedIndices.length) {
-            countersControl(NO_OK, "getSelectedIndices()");
+            countersControl(FAIL, "getSelectedIndices()");
         } else {
             int length = listSelectedIndices.length, i = 0;
             boolean ok = true;
@@ -176,7 +176,7 @@ public class AccessibleListTest {
             if (ok) {
                 countersControl(OK, "getSelectedIndices()");
             } else {
-                countersControl(NO_OK, "getSelectedIndices()");
+                countersControl(FAIL, "getSelectedIndices()");
             }
         }
 
@@ -184,14 +184,14 @@ public class AccessibleListTest {
         if (al.getSelectedItemsCount() == 5) {
             countersControl(OK, "addSelectionInterval()");
         } else {
-            countersControl(NO_OK, "addSelectionInterval()");
+            countersControl(FAIL, "addSelectionInterval()");
         }
 
         al.removeSelectionInterval(2, 3);
         if (al.getSelectedItemsCount() == 3) {
             countersControl(OK, "removeSelectionInterval()");
         } else {
-            countersControl(NO_OK, "removeSelectionInterval()");
+            countersControl(FAIL, "removeSelectionInterval()");
         }
 
         al.setSelectionInterval(0, 4);
@@ -199,7 +199,7 @@ public class AccessibleListTest {
         if (al.getSelectedItemsCount() == 3) {
             countersControl(OK, "removeIndexInterval()");
         } else {
-            countersControl(NO_OK, "removeIndexInterval()");
+            countersControl(FAIL, "removeIndexInterval()");
         }
 
         al.removeSelectionInterval(0, 4);
@@ -210,14 +210,14 @@ public class AccessibleListTest {
         if (al.getSelectedItemsCount() == 4) {
             countersControl(OK, "insertIndexInterval()");
         } else {
-            countersControl(NO_OK, "insertIndexInterval()");
+            countersControl(FAIL, "insertIndexInterval()");
         }
 
-        if (noOkCount == 0) {
+        if (failCount == 0) {
             AccessibleListTest.testResult = true;
             System.out.println("All methods: Ok");
         } else {
-            AccessibleListTest.exceptionString = "Test failed. " + String.valueOf(noOkCount) + " methods is no ok";
+            AccessibleListTest.exceptionString = "Test failed. " + String.valueOf(failCount) + " methods is no ok";
         }
     }
 }
