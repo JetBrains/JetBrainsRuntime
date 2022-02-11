@@ -38,13 +38,17 @@ import java.awt.Graphics;
 import java.awt.GraphicsConfiguration;
 import java.awt.Image;
 import java.awt.Point;
+import java.awt.SystemColor;
+import java.awt.Toolkit;
 import java.awt.event.FocusEvent;
 import java.awt.event.PaintEvent;
 import java.awt.image.ColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
-import sun.awt.image.SunVolatileImage;
+import java.util.Objects;
+import sun.java2d.SunGraphics2D;
+import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
@@ -53,30 +57,38 @@ public class WLComponentPeer implements ComponentPeer
 {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     protected final Component target;
+    protected WLGraphicsConfig graphicsConfig;
+    protected Color background;
+    SurfaceData surfaceData;
 
     /**
      * Standard peer constructor, with corresponding Component
      */
     WLComponentPeer(Component target) {
         this.target = target;
+        this.background = target.getBackground();
+        initGraphicsConfiguration();
+        this.surfaceData = graphicsConfig.createSurfaceData(this);
     }
 
-    public void reparent(ContainerPeer newNativeParent) {
-        log.info("Not implemented: WLComponentPeer.reparent(ContainerPeer)");
+    @Override
+    public void reparent(ContainerPeer newContainer) {
+        throw new UnsupportedOperationException();
     }
 
+    @Override
     public boolean isReparentSupported() {
-        log.info("Not implemented: WLComponentPeer.isReparentSupported()");
-        return false;
+        throw new UnsupportedOperationException();
     }
 
+    @Override
     public boolean isObscured() {
-        log.info("Not implemented: WLComponentPeer.isObscured()");
-        return true;
+        throw new UnsupportedOperationException();
     }
 
+    @Override
     public boolean canDetermineObscurity() {
-        return true;
+        throw new UnsupportedOperationException();
     }
 
     public void focusGained(FocusEvent e) {
@@ -87,12 +99,12 @@ public class WLComponentPeer implements ComponentPeer
         log.info("Not implemented: WLComponentPeer.focusLost(FocusEvent)");
     }
 
+    @Override
     public boolean isFocusable() {
-        /* should be implemented by other sub-classes */
-        return false;
+        throw new UnsupportedOperationException();
     }
 
-    public final boolean requestFocus(Component lightweightChild, boolean temporary,
+    public boolean requestFocus(Component lightweightChild, boolean temporary,
                                       boolean focusedWindowChangeAllowed, long time,
                                       FocusEvent.Cause cause)
     {
@@ -116,10 +128,35 @@ public class WLComponentPeer implements ComponentPeer
         log.info("Not implemented: WLComponentPeer.paint(Graphics)");
     }
 
-    public Graphics getGraphics() {
-        log.info("Not implemented: WLComponentPeer.paint(Graphics)");
-        return null;
+    Graphics getGraphics(SurfaceData surfData, Color afore, Color aback, Font afont) {
+        if (surfData == null) return null;
+
+        Color bgColor = aback;
+        if (bgColor == null) {
+            bgColor = SystemColor.window;
+        }
+        Color fgColor = afore;
+        if (fgColor == null) {
+            fgColor = SystemColor.windowText;
+        }
+        Font font = afont;
+        if (font == null) {
+            font = new Font(Font.DIALOG, Font.PLAIN, 12);
+        }
+        return new SunGraphics2D(surfData, fgColor, bgColor, font);
     }
+
+    public Graphics getGraphics() {
+        return getGraphics(surfaceData,
+                target.getForeground(),
+                target.getBackground(),
+                target.getFont());
+    }
+
+    public Component getTarget() {
+        return target;
+    }
+
     public void print(Graphics g) {
         log.info("Not implemented: WLComponentPeer.print(Graphics)");
     }
@@ -134,7 +171,7 @@ public class WLComponentPeer implements ComponentPeer
 
     @Override
     public Point getLocationOnScreen() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("fallthrough")
@@ -148,7 +185,12 @@ public class WLComponentPeer implements ComponentPeer
 
     @Override
     public ColorModel getColorModel() {
-        return null;
+        if (graphicsConfig != null) {
+            return graphicsConfig.getColorModel ();
+        }
+        else {
+            return Toolkit.getDefaultToolkit().getColorModel();
+        }
     }
 
     public Dimension getPreferredSize() {
@@ -159,7 +201,10 @@ public class WLComponentPeer implements ComponentPeer
 
     @Override
     public void setBackground(Color c) {
-        log.info("Not implemented: WLComponentPeer.setBackground(Color)");
+        if (Objects.equals(background, c)) {
+            return;
+        }
+        background = c;
     }
 
     @Override
@@ -170,18 +215,19 @@ public class WLComponentPeer implements ComponentPeer
         log.info("Not implemented: WLComponentPeer.setForeground(Color)");
     }
 
+    @Override
     public FontMetrics getFontMetrics(Font font) {
-        log.info("Not implemented: WLComponentPeer.getFontMetrics(Font)");
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void dispose() {
+        WLToolkit.targetDisposedPeer(target, this);
     }
 
     @Override
     public void setFont(Font f) {
-        log.info("Not implemented: WLComponentPeer.setFont(Font)");
+        throw new UnsupportedOperationException();
     }
 
     public Font getFont() {
@@ -192,54 +238,65 @@ public class WLComponentPeer implements ComponentPeer
         log.info("Not implemented: WLComponentPeer.updateCursorImmediately()");
     }
 
+    @Override
     public Image createImage(int width, int height) {
-        log.info("Not implemented: WLComponentPeer.createImage(int width, int height)");
-        return null;
+        throw new UnsupportedOperationException();
     }
 
+    @Override
     public VolatileImage createVolatileImage(int width, int height) {
-        return new SunVolatileImage(target, width, height);
+        throw new UnsupportedOperationException();
+    }
+
+    protected void initGraphicsConfiguration() {
+        graphicsConfig = (WLGraphicsConfig) target.getGraphicsConfiguration();
     }
 
     @Override
     public GraphicsConfiguration getGraphicsConfiguration() {
-        return null;
+        if (graphicsConfig == null) {
+            initGraphicsConfiguration();
+        }
+        return graphicsConfig;
     }
 
+    @Override
     public boolean handlesWheelScrolling() {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void createBuffers(int numBuffers, BufferCapabilities caps) throws AWTException {
-        log.info("Not implemented: WLComponentPeer.createBuffers(int,BufferCapabilities)");
+        throw new UnsupportedOperationException();
     }
 
-    public void flip(int x1, int y1, int x2, int y2,
-                     BufferCapabilities.FlipContents flipAction)
-    {
-        log.info("Not implemented: WLComponentPeer.flip(int,int,int,int,BufferCapabilities.FlipContents)");
+    @Override
+    public void flip(int x1, int y1, int x2, int y2, BufferCapabilities.FlipContents flipAction) {
+        throw new UnsupportedOperationException();
     }
 
+    @Override
     public Image getBackBuffer() {
-        log.info("Not implemented: WLComponentPeer.getBackBuffer()");
-        return null;
+        throw new UnsupportedOperationException();
     }
 
+    @Override
     public void destroyBuffers() {
-        log.info("Not implemented: WLComponentPeer.destroyBuffers()");
+        throw new UnsupportedOperationException();
     }
 
+    @Override
     public void setZOrder(ComponentPeer above) {
         log.info("Not implemented: WLComponentPeer.setZOrder(ComponentPeer)");
     }
 
+    @Override
     public void applyShape(Region shape) {
-        log.info("Not implemented: WLComponentPeer.applyShape(Region)");
+        throw new UnsupportedOperationException();
     }
 
+    @Override
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
-        log.info("Not implemented: WLComponentPeer.updateGraphicsData(GraphicsConfiguration)");
-        return false;
+        throw new UnsupportedOperationException();
     }
 }
