@@ -62,7 +62,7 @@ import java.util.Base64;
 import java.util.Objects;
 
 import static jdk.test.lib.security.DerUtils.*;
-import static jdk.test.lib.KnownOIDs.*;
+import static sun.security.util.KnownOIDs.*;
 import static sun.security.x509.AlgorithmId.*;
 import static sun.security.pkcs.ContentInfo.*;
 

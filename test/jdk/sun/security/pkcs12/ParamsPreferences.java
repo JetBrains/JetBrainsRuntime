@@ -21,8 +21,8 @@
  * questions.
  */
 
-import jdk.test.lib.KnownOIDs;
 import jdk.test.lib.SecurityTools;
+import sun.security.util.KnownOIDs;
 import sun.security.util.ObjectIdentifier;
 
 import java.nio.file.Files;
@@ -31,8 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static jdk.test.lib.KnownOIDs.*;
 import static jdk.test.lib.security.DerUtils.*;
+import static sun.security.util.KnownOIDs.*;
 import static sun.security.x509.AlgorithmId.*;
 
 /*

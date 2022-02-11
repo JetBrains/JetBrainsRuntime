@@ -23,9 +23,9 @@
 package jdk.test.lib.security;
 
 import jdk.test.lib.Asserts;
-import jdk.test.lib.KnownOIDs;
 import sun.security.util.DerInputStream;
 import sun.security.util.DerValue;
+import sun.security.util.KnownOIDs;
 import sun.security.util.ObjectIdentifier;
 
 import java.io.IOException;
