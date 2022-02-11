@@ -37,8 +37,8 @@ import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import sun.security.util.DerValue;
-import jdk.test.lib.KnownOIDs;
-import static jdk.test.lib.KnownOIDs.*;
+import sun.security.util.KnownOIDs;
+import static sun.security.util.KnownOIDs.*;
 
 public class CheckCertAKID {
 
