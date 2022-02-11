@@ -34,7 +34,6 @@ import java.awt.dnd.DragGestureRecognizer;
 import java.awt.dnd.DragSource;
 import java.awt.dnd.InvalidDnDOperationException;
 import java.awt.dnd.peer.DragSourceContextPeer;
-import java.awt.event.InvocationEvent;
 import java.awt.font.TextAttribute;
 import java.awt.im.InputMethodHighlight;
 import java.awt.im.spi.InputMethodDescriptor;
@@ -69,7 +68,6 @@ import java.awt.peer.WindowPeer;
 import java.beans.PropertyChangeListener;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.locks.LockSupport;
 
 import sun.awt.*;
 import sun.awt.datatransfer.DataTransferer;
@@ -98,8 +96,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public ButtonPeer createButton(Button target) {
-        log.info("Not implemented: WLToolkit.createButton(Button)");
-        return null;
+        ButtonPeer peer = new WLButtonPeer(target);
+        targetCreatedPeer(target, peer);
+        return peer;
     }
 
     @Override
@@ -320,7 +319,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public TrayIconPeer createTrayIcon(TrayIcon target)
-      throws HeadlessException, AWTException
+      throws HeadlessException
     {
         log.info("Not implemented: WLToolkit.createTrayIcon()");
         return null;
