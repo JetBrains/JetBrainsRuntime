@@ -11,7 +11,6 @@
 # If the character 't' is added at the end of bundle_type then it also makes test-image along with JDK images.
 #
 
-min_parameters_count=2
 source jb/project/tools/common/scripts/common.sh
 
 [ "$bundle_type" == "jcef" ] && do_maketest=1
