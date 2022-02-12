@@ -13,10 +13,7 @@
 
 source jb/project/tools/common/scripts/common.sh
 
-JBSDK_VERSION=$1
-JDK_BUILD_NUMBER=$2
-build_number=$3
-bundle_type=$4
+[ "$bundle_type" == "jcef" ] && do_maketest=1
 
 function pack_jbr {
   __bundle_name=$1
@@ -44,7 +41,7 @@ fi
 pack_jbr jbr${jbr_name_postfix} jbr
 pack_jbr jbrsdk${jbr_name_postfix} jbrsdk
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ $do_maketest -eq 1 ]; then
   JBRSDK_TEST=$JBRSDK_BUNDLE-$JBSDK_VERSION-windows-test-x64-b$build_number
   echo Creating $JBRSDK_TEST.tar.gz ...
   /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
