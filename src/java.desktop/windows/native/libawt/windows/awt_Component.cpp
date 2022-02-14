@@ -1623,6 +1623,9 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
       case WM_NCRBUTTONDOWN:
            mr = WmNcMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), RIGHT_BUTTON);
            break;
+        case WM_NCMOUSEMOVE:
+            mr = WmNcMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            break;
       case WM_LBUTTONUP:
           if (ignoreNextLBTNUP) {
               ignoreNextLBTNUP = FALSE;
@@ -2302,6 +2305,9 @@ MsgRouting AwtComponent::WmNcMouseDown(WPARAM hitTest, int x, int y, int button)
     return mrDoDefault;
 }
 MsgRouting AwtComponent::WmNcMouseUp(WPARAM hitTest, int x, int y, int button) {
+    return mrDoDefault;
+}
+MsgRouting AwtComponent::WmNcMouseMove(WPARAM hitTest, int x, int y) {
     return mrDoDefault;
 }
 
