@@ -518,6 +518,7 @@ public:
                                     int wheelRotation, BOOL isHorizontal);
     virtual MsgRouting WmNcMouseDown(WPARAM hitTest, int x, int y, int button);
     virtual MsgRouting WmNcMouseUp(WPARAM hitTest, int x, int y, int button);
+    virtual MsgRouting WmNcMouseMove(WPARAM hitTest, int x, int y);
     virtual MsgRouting WmWindowPosChanging(LPARAM windowPos);
     virtual MsgRouting WmWindowPosChanged(LPARAM windowPos);
     virtual void WmTouch(WPARAM wParam, LPARAM lParam);
