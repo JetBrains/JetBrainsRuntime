@@ -1491,6 +1491,16 @@ const bool Matcher::match_rule_supported(int opcode) {
       if (UseSSE < 4)
         ret_value = false;
       break;
+    case Op_SqrtF:
+      if (UseSSE < 1) {
+        return false;
+      }
+      break;
+    case Op_SqrtD:
+      if (UseSSE < 2) {
+        return false;
+      }
+      break;
   }
 
   return ret_value;  // Per default match rules are supported.
