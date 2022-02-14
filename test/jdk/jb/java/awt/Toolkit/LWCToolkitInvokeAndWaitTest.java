@@ -19,15 +19,15 @@ import sun.lwawt.macosx.LWCToolkit;
  * @test
  * @summary Tests different scenarios for LWCToolkit.invokeAndWait().
  * @requires (os.family == "mac")
- * @compile --add-exports=java.desktop/sun.lwawt.macosx=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED LWCToolkitInvokeAndWaitTest.java
- * @run main/othervm --add-exports=java.desktop/sun.lwawt.macosx=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED -Dsun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds=1 -Djava.util.logging.config.file=./LWCToolkitInvokeAndWaitTest.logging.properties.1 LWCToolkitInvokeAndWaitTest
- * @run main/othervm --add-exports=java.desktop/sun.lwawt.macosx=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED -Dsun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds=1 -Djava.util.logging.config.file=./LWCToolkitInvokeAndWaitTest.logging.properties.2 LWCToolkitInvokeAndWaitTest
+ * @modules java.desktop/sun.lwawt.macosx java.desktop/sun.awt
+ * @run main/othervm -Djava.util.logging.config.file=./LWCToolkitInvokeAndWaitTest.logging.properties.1 LWCToolkitInvokeAndWaitTest
+ * @run main/othervm -Djava.util.logging.config.file=./LWCToolkitInvokeAndWaitTest.logging.properties.2 LWCToolkitInvokeAndWaitTest
  * @author Anton Tarasov
  */
 @SuppressWarnings("ConstantConditions")
 public class LWCToolkitInvokeAndWaitTest {
-    private static final int INVOKE_TIMEOUT_SECONDS = AccessController.doPrivileged(
-        (PrivilegedAction<Integer>) () -> Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds", 1));
+    // This property is used in {CAccessibility}
+    private static final int INVOKE_TIMEOUT_SECONDS = Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds", 1);
 
     static TestLogHandler LOG_HANDLER = new TestLogHandler();
     static volatile CompletableFuture<Boolean> FUTURE;
