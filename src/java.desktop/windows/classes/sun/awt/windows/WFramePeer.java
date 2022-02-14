@@ -31,6 +31,7 @@ import java.awt.Frame;
 import java.awt.GraphicsConfiguration;
 import java.awt.MenuBar;
 import java.awt.Rectangle;
+import java.awt.peer.ComponentPeer;
 import java.awt.peer.FramePeer;
 
 import sun.awt.AWTAccessor;
@@ -258,4 +259,10 @@ class WFramePeer extends WWindowPeer implements FramePeer {
     }
 
     private native void synthesizeWmActivate(boolean activate);
+
+    // JBR API internals
+    private static void updateCustomDecoration(ComponentPeer peer) {
+        if (peer instanceof WFramePeer) ((WFramePeer) peer).updateCustomDecoration();
+    }
+    private native void updateCustomDecoration();
 }
