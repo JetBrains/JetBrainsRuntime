@@ -104,22 +104,30 @@ public class Gensrc {
             for (Path module : modules.paths) {
                 Path f = module.resolve("share/classes").resolve(file);
                 if (Files.exists(f)) {
-                    Pattern namePattern = compile(name.replaceAll("\\*", "[a-zA-Z0-9_]+") + "\\s*=");
-                    Pattern statementPattern = compile("((?:(?:public|protected|private|static|final)\\s+){2,3})([a-zA-Z0-9]+)\\s+([^;]+);");
+                    Pattern namePattern = compile(name.replaceAll("\\*", "\\\\w+"));
+                    Pattern statementPattern = compile(
+                            "((?:(?:MODS)  ){2,3})([a-zA-Z0-9]+)  (FIELD(?:, FIELD)*);"
+                                    .replaceAll("MODS", "public|protected|private|static|final")
+                                    .replaceAll("FIELD", "\\\\w+ = [\\\\w\"']+ ")
+                                    .replaceAll("  ", "\\\\s+")
+                                    .replaceAll(" ", "\\\\s*")
+                    );
                     Matcher statementMatcher = statementPattern.matcher(Files.readString(f));
                     while (statementMatcher.find()) {
                         String mods = statementMatcher.group(1);
                         if (!mods.contains("static") || !mods.contains("final")) continue;
                         for (String s : statementMatcher.group(3).split(",")) {
-                            if (!namePattern.matcher(s).find()) continue;
-                            statements.add("public static final " + statementMatcher.group(2) + " " + s.strip() + ";");
+                            s = s.strip();
+                            String nm = s.substring(0, s.indexOf('=')).strip();
+                            if (!namePattern.matcher(nm).matches()) continue;
+                            statements.add("public static final " + statementMatcher.group(2) + " " + s + ";");
                         }
                     }
                     break;
                 }
             }
             if (statements.isEmpty()) throw new RuntimeException("Constant not found: " + placeholder);
-            content = replaceTemplate(content, placeholder, statements, true);
+            content = replaceTemplate(content, placeholder, statements);
         }
     }
 
@@ -129,7 +137,7 @@ public class Gensrc {
         return matcher.group(1);
     }
 
-    private static String replaceTemplate(String src, String placeholder, Iterable<String> statements, boolean compact) {
+    private static String replaceTemplate(String src, String placeholder, Iterable<String> statements) {
         int placeholderIndex = src.indexOf(placeholder);
         int indent = 0;
         while (placeholderIndex - indent >= 1 && src.charAt(placeholderIndex - indent - 1) == ' ') indent++;
@@ -137,11 +145,8 @@ public class Gensrc {
         if (nextLineIndex == 0) nextLineIndex = placeholderIndex + placeholder.length();
         String before = src.substring(0, placeholderIndex - indent), after = src.substring(nextLineIndex);
         StringBuilder sb = new StringBuilder(before);
-        boolean firstStatement = true;
         for (String s : statements) {
-            if (!firstStatement && !compact) sb.append('\n');
-            sb.append(s);
-            firstStatement = false;
+            sb.append(s).append('\n');
         }
         sb.append(after);
         return sb.toString();
@@ -156,7 +161,7 @@ public class Gensrc {
             Service[] interfaces = findPublicServiceInterfaces();
             List<String> statements = new ArrayList<>();
             for (Service i : interfaces) statements.add(generateMethodsForService(i));
-            content = replaceTemplate(content, "/*GENERATED_METHODS*/", statements, false);
+            content = replaceTemplate(content, "/*GENERATED_METHODS*/", statements);
             content = content.replace("/*KNOWN_SERVICES*/",
                     modules.services.stream().map(s -> "\"" + s + "\"").collect(Collectors.joining(", ")));
             content = content.replace("/*KNOWN_PROXIES*/",
