@@ -120,7 +120,7 @@ const char* Abstract_VM_Version::vm_name() {
 # define VENDOR_PADDING 64
 #endif
 #ifndef VENDOR
-# define VENDOR  "Oracle Corporation"
+# define VENDOR  "JetBrains s.r.o."
 #endif
 
 static const char vm_vendor_string[sizeof(VENDOR) < VENDOR_PADDING ? VENDOR_PADDING : sizeof(VENDOR)] = VENDOR;
