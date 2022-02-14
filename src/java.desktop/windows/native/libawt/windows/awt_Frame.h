@@ -111,6 +111,7 @@ public:
     MsgRouting WmMouseMove(UINT flags, int x, int y);
     MsgRouting WmNcMouseDown(WPARAM hitTest, int x, int y, int button);
     MsgRouting WmNcMouseUp(WPARAM hitTest, int x, int y, int button);
+    MsgRouting WmNcMouseMove(WPARAM hitTest, int x, int y);
     MsgRouting WmGetIcon(WPARAM iconType, LRESULT& retVal);
     MsgRouting WmShowWindow(BOOL show, UINT status);
     MsgRouting WmWindowPosChanging(LPARAM windowPos);
