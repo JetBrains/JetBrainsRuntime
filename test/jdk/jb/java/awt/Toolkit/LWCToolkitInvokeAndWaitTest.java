@@ -1,84 +1,226 @@
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.InvocationEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Optional;
+import java.util.concurrent.*;
+import java.util.function.Consumer;
+import java.util.logging.Handler;
+import java.util.logging.LogManager;
+import java.util.logging.LogRecord;
 
+import sun.awt.AWTAccessor;
+import sun.awt.AWTThreading;
 import sun.lwawt.macosx.CThreading;
 import sun.lwawt.macosx.LWCToolkit;
-import sun.awt.AWTThreading;
 
 /*
  * @test
- * @summary Tests that LWCToolkit.invokeAndWait can survive losing the invocation event.
+ * @summary Tests different scenarios for LWCToolkit.invokeAndWait().
  * @requires (os.family == "mac")
  * @compile --add-exports=java.desktop/sun.lwawt.macosx=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED LWCToolkitInvokeAndWaitTest.java
- * @run main/othervm --add-exports=java.desktop/sun.lwawt.macosx=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED LWCToolkitInvokeAndWaitTest
+ * @run main/othervm --add-exports=java.desktop/sun.lwawt.macosx=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED -Dsun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds=1 -Djava.util.logging.config.file=./LWCToolkitInvokeAndWaitTest.logging.properties.1 LWCToolkitInvokeAndWaitTest
+ * @run main/othervm --add-exports=java.desktop/sun.lwawt.macosx=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED -Dsun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds=1 -Djava.util.logging.config.file=./LWCToolkitInvokeAndWaitTest.logging.properties.2 LWCToolkitInvokeAndWaitTest
  * @author Anton Tarasov
  */
+@SuppressWarnings("ConstantConditions")
 public class LWCToolkitInvokeAndWaitTest {
-    static final CountDownLatch LATCH = new CountDownLatch(1);
-    static final AtomicBoolean PASSED = new AtomicBoolean(true);
+    private static final int INVOKE_TIMEOUT_SECONDS = AccessController.doPrivileged(
+        (PrivilegedAction<Integer>) () -> Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds", 1));
 
+    static TestLogHandler LOG_HANDLER = new TestLogHandler();
+    static volatile CompletableFuture<Boolean> FUTURE;
+    static volatile CountDownLatch EDT_FAST_FREE_LATCH;
     static volatile JFrame FRAME;
+    static volatile Thread MAIN_THREAD;
+    static int TEST_COUNTER;
 
-    public static void main(String[] args) throws InterruptedException {
-        EventQueue.invokeLater(LWCToolkitInvokeAndWaitTest::runOnEdt);
-        if (!LATCH.await(5, TimeUnit.SECONDS)) {
-            System.out.println("Invocation timed out!");
-            PASSED.set(false);
-        }
-        FRAME.dispose();
-        if (!PASSED.get()) {
-            throw new RuntimeException("Test FAILED!");
+    static final Runnable CONSUME_DISPATCHING = () -> FUTURE.completeExceptionally(new Throwable("Unexpected dispatching!"));
+
+    static {
+        AWTThreading.setAWTThreadingFactory(edt -> new AWTThreading(edt) {
+            @Override
+            public CompletableFuture<Void> onEventDispatchThreadFree(Runnable runnable) {
+                if (EDT_FAST_FREE_LATCH != null) {
+                    // 1. wait for the invocation event to be dispatched
+                    // 2. wait for EDT to become free
+                    trycatch(() -> EDT_FAST_FREE_LATCH.await());
+
+                    EDT_FAST_FREE_LATCH = null;
+                }
+                // if EDT is free the runnable should be called immediately
+                return super.onEventDispatchThreadFree(runnable);
+            }
+            @Override
+            public void notifyEventDispatchThreadFree() {
+                if (EDT_FAST_FREE_LATCH != null &&
+                    // if the invocation event is dispatched by now
+                    EDT_FAST_FREE_LATCH.getCount() == 1)
+                {
+                    EDT_FAST_FREE_LATCH.countDown();
+                }
+                super.notifyEventDispatchThreadFree();
+            }
+        });
+    }
+
+    public static void main(String[] args) {
+        MAIN_THREAD = Thread.currentThread();
+
+        trycatch(() -> LogManager.getLogManager().getLogger(AWTThreading.class.getName()).addHandler(LOG_HANDLER));
+
+        Consumer<InvocationEvent> noop = e -> {};
+
+        try {
+            trycatch(() -> EventQueue.invokeAndWait(LWCToolkitInvokeAndWaitTest::runGui));
+
+            test("InvocationEvent is normally dispatched",
+                "",
+                noop,
+                () -> System.out.println("I'm dispatched"));
+
+            test("InvocationEvent is lost",
+                "lost",
+                noop,
+                CONSUME_DISPATCHING);
+
+            EDT_FAST_FREE_LATCH = new CountDownLatch(2);
+            test("InvocationEvent is lost (EDT becomes fast free)",
+                "lost",
+                // notify the invocationEvent has been dispatched
+                invocationEvent -> EDT_FAST_FREE_LATCH.countDown(),
+                CONSUME_DISPATCHING);
+
+            test("InvocationEvent is disposed",
+                "disposed",
+                invocationEvent -> AWTAccessor.getInvocationEventAccessor().dispose(invocationEvent),
+                CONSUME_DISPATCHING);
+
+            test("InvocationEvent is timed out (delayed before dispatching)",
+                "timed out",
+                invocationEvent -> sleep(INVOKE_TIMEOUT_SECONDS * 4),
+                CONSUME_DISPATCHING);
+
+            test("InvocationEvent is timed out (delayed during dispatching)",
+                "timed out",
+                noop,
+                () -> sleep(INVOKE_TIMEOUT_SECONDS * 4));
+
+        } finally {
+            FRAME.dispose();
         }
         System.out.println("Test PASSED");
     }
 
-    static void runOnEdt() {
+    static void runGui() {
         FRAME = new JFrame(LWCToolkitInvokeAndWaitTest.class.getSimpleName());
         FRAME.getContentPane().setBackground(Color.green);
         FRAME.setLocationRelativeTo(null);
         FRAME.setSize(200, 200);
         FRAME.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        FRAME.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowOpened(WindowEvent e) {
-                test();
-            }
-        });
         FRAME.setVisible(true);
     }
 
-    static void test() {
+    static void test(String testCaption,
+                     String expectedInLog,
+                     Consumer<InvocationEvent> onBeforeDispatching,
+                     Runnable onDispatching)
+    {
+        System.out.println("\n(" + (++TEST_COUNTER) + ") TEST: " + testCaption);
+
+        FUTURE = new CompletableFuture<>();
+        FUTURE.whenComplete((r, ex) -> Optional.of(ex).ifPresent(Throwable::printStackTrace));
+
+        EventQueue.invokeLater(() -> subTest(onBeforeDispatching, onDispatching));
+
+        trycatch(() -> {
+            if (!FUTURE.get(INVOKE_TIMEOUT_SECONDS * 2L, TimeUnit.SECONDS)) {
+                throw new RuntimeException("Test FAILED! (negative result)");
+            }
+        });
+
+        // let AppKit and EDT print all the logging
+        var latch = new CountDownLatch(1);
+        CThreading.executeOnAppKit(latch::countDown);
+        trycatch(latch::await);
+        trycatch(() -> EventQueue.invokeAndWait(() -> {}));
+
+        if (!LOG_HANDLER.testContains(expectedInLog)) {
+            throw new RuntimeException("Test FAILED! (not found in the log: \"" + expectedInLog + "\")");
+        }
+
+        System.out.println("(" + TEST_COUNTER + ") SUCCEEDED\n");
+    }
+
+    static void subTest(Consumer<InvocationEvent> onBeforeDispatching, Runnable onDispatching) {
         Toolkit.getDefaultToolkit().getSystemEventQueue().push(new EventQueue() {
             @Override
             protected void dispatchEvent(AWTEvent event) {
-                if (event instanceof InvocationEvent && event.toString().contains(",runnable=sun.lwawt.macosx.LWCToolkit")) {
-                    System.out.println("Not dispatching: " + event);
-                    return;
+                //
+                // Intercept the invocation posted from Appkit.
+                //
+                if (event instanceof AWTThreading.TrackedInvocationEvent) {
+                    System.out.println("Before dispatching: " + event);
+                    onBeforeDispatching.accept((InvocationEvent)event);
+
+                    if (onDispatching == CONSUME_DISPATCHING) {
+                        System.out.println("Consuming: " + event);
+                        return;
+                    }
                 }
                 super.dispatchEvent(event);
             }
         });
-        CThreading.executeOnAppKit(() -> {
-            long startTime = System.currentTimeMillis();
-            try {
-                LWCToolkit.invokeAndWait(() -> {
-                    // the event should not be dispatched (from AWTThreading tracking queue).
-                    PASSED.set(false);
-                    System.out.println("Am I dispatched?");
-                }, FRAME);
-            } catch (InvocationTargetException e) {
-                PASSED.set(false);
-                e.printStackTrace();
+        CThreading.executeOnAppKit(() -> trycatch(() -> {
+            //
+            // Post an invocation from AppKit.
+            //
+            LWCToolkit.invokeAndWait(onDispatching, FRAME, false, INVOKE_TIMEOUT_SECONDS);
+            FUTURE.complete(true);
+        }));
+    }
+
+    static void sleep(int seconds) {
+        trycatch(() -> Thread.sleep(seconds * 1000L));
+    }
+    
+    static void trycatch(ThrowableRunnable runnable) {
+        try {
+            runnable.run();
+        } catch (Exception e) {
+            if (Thread.currentThread() == MAIN_THREAD) {
+                throw new RuntimeException("Test FAILED!", e);
+            } else {
+                FUTURE.completeExceptionally(e);
             }
-            System.out.println("Invocation took " + (System.currentTimeMillis() - startTime) + " ms");
-            LATCH.countDown();
-        });
+        }
+    }
+    
+    interface ThrowableRunnable {
+        void run() throws Exception;
+    }
+
+    static class TestLogHandler extends Handler {
+        public StringBuilder buffer = new StringBuilder();
+
+        @Override
+        public void publish(LogRecord record) {
+            buffer.append(record.getMessage());
+        }
+
+        @Override
+        public void flush() {
+        }
+
+        @Override
+        public void close() throws SecurityException {
+        }
+
+        public boolean testContains(String str) {
+            boolean contains = buffer.toString().contains(str);
+            buffer.setLength(0);
+            return contains;
+        }
     }
 }
