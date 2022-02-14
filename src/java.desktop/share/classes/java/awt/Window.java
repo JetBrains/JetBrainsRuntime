@@ -46,13 +46,17 @@ import java.io.ObjectOutputStream;
 import java.io.OptionalDataException;
 import java.io.Serial;
 import java.io.Serializable;
+import java.lang.annotation.Native;
+import java.lang.invoke.MethodHandles;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EventListener;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.Vector;
@@ -64,6 +68,7 @@ import javax.accessibility.AccessibleRole;
 import javax.accessibility.AccessibleState;
 import javax.accessibility.AccessibleStateSet;
 
+import com.jetbrains.internal.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTPermissions;
 import sun.awt.AppContext;
@@ -4005,8 +4010,63 @@ public class Window extends Container implements Accessible {
         }
     }
 
-    private volatile boolean hasCustomDecoration;
+    private transient volatile boolean hasCustomDecoration;
+    private transient volatile List<Map.Entry<Shape, Integer>> customDecorHitTestSpots;
+    private transient volatile int customDecorTitleBarHeight = -1; // 0 can be a legal value when no title bar is expected
 
+    // called from native
+    private int hitTestCustomDecoration(int x, int y) {
+        var spots = customDecorHitTestSpots;
+        if (spots == null) return CustomWindowDecoration.NO_HIT_SPOT;
+        for (var spot : spots) {
+            if (spot.getKey().contains(x, y)) return spot.getValue();
+        }
+        return CustomWindowDecoration.NO_HIT_SPOT;
+    }
+
+    private static class CustomWindowDecoration {
+
+        @Native public static final int
+                NO_HIT_SPOT = 0,
+                OTHER_HIT_SPOT = 1,
+                MINIMIZE_BUTTON = 2,
+                MAXIMIZE_BUTTON = 3,
+                CLOSE_BUTTON = 4,
+                MENU_BAR = 5,
+                DRAGGABLE_AREA = 6;
+
+        void setCustomDecorationEnabled(Window window, boolean enabled) {
+            window.hasCustomDecoration = enabled;
+            if (Win.INSTANCE != null) {
+                Win.INSTANCE.updateCustomDecoration(window.peer);
+            }
+        }
+        boolean isCustomDecorationEnabled(Window window) {
+            return window.hasCustomDecoration;
+        }
+
+        void setCustomDecorationHitTestSpots(Window window, List<Map.Entry<Shape, Integer>> spots) {
+            window.customDecorHitTestSpots = List.copyOf(spots);
+        }
+        List<Map.Entry<Shape, Integer>> getCustomDecorationHitTestSpots(Window window) {
+            return window.customDecorHitTestSpots;
+        }
+
+        void setCustomDecorationTitleBarHeight(Window window, int height) {
+            if (height >= 0) window.customDecorTitleBarHeight = height;
+        }
+        int getCustomDecorationTitleBarHeight(Window window) {
+            return window.customDecorTitleBarHeight;
+        }
+
+        private interface Win {
+            Win INSTANCE = (Win) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
+                    .withStatic("updateCustomDecoration", "sun.awt.windows.WFramePeer").build();
+            void updateCustomDecoration(ComponentPeer peer);
+        }
+    }
+
+    @Deprecated
     boolean hasCustomDecoration() {
         return hasCustomDecoration;
     }
@@ -4014,6 +4074,7 @@ public class Window extends Container implements Accessible {
     /**
      * Set via reflection (JB JdkEx API).
      */
+    @Deprecated
     void setHasCustomDecoration() {
         hasCustomDecoration = true;
     }
