@@ -117,7 +117,7 @@ const char* Abstract_VM_Version::vm_vendor() {
 #ifdef VENDOR
   return VENDOR;
 #else
-  return "Oracle Corporation";
+  return "JetBrains s.r.o";
 #endif
 }
 
