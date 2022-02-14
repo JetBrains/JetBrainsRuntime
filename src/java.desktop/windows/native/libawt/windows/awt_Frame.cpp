@@ -37,6 +37,7 @@
 #include <dwmapi.h>
 
 #include <java_lang_Integer.h>
+#include <java_awt_Window_CustomWindowDecoration.h>
 #include <sun_awt_windows_WEmbeddedFrame.h>
 #include <sun_awt_windows_WEmbeddedFramePeer.h>
 
@@ -622,6 +623,23 @@ MsgRouting AwtFrame::WmNcMouseDown(WPARAM hitTest, int x, int y, int button) {
     if (m_grabbedWindow != NULL/* && !m_grabbedWindow->IsOneOfOwnersOf(this)*/) {
         m_grabbedWindow->Ungrab();
     }
+    // For windows with custom decorations, handle caption-related mouse events
+    // Do not handle events from caption itself to preserve native drag behavior
+    if (HasCustomDecoration()) {
+        switch (hitTest) {
+            case HTMINBUTTON:
+            case HTMAXBUTTON:
+            case HTCLOSE:
+            case HTMENU:
+                RECT rcWindow;
+                GetWindowRect(GetHWnd(), &rcWindow);
+                WmMouseDown(GetButtonMK(button),
+                            x - rcWindow.left,
+                            y - rcWindow.top,
+                            button);
+                return mrConsume;
+        }
+    }
     if (!IsFocusableWindow() && (button & LEFT_BUTTON)) {
         switch (hitTest) {
         case HTTOP:
@@ -651,6 +669,24 @@ MsgRouting AwtFrame::WmNcMouseDown(WPARAM hitTest, int x, int y, int button) {
         }
     }
     return AwtWindow::WmNcMouseDown(hitTest, x, y, button);
+}
+
+MsgRouting AwtFrame::WmNcMouseMove(WPARAM hitTest, int x, int y) {
+    // For windows with custom decorations, handle caption-related mouse events
+    if (HasCustomDecoration()) {
+        switch (hitTest) {
+            case HTMINBUTTON:
+            case HTMAXBUTTON:
+            case HTCLOSE:
+            case HTMENU:
+            case HTCAPTION:
+                RECT rcWindow;
+                GetWindowRect(GetHWnd(), &rcWindow);
+                WmMouseMove(0, x - rcWindow.left, y - rcWindow.top);
+                if (hitTest != HTCAPTION) return mrConsume; // Preserve default window drag for HTCAPTION
+        }
+    }
+    return AwtWindow::WmNcMouseMove(hitTest, x, y);
 }
 
 // Override AwtWindow::Reshape() to handle minimized/maximized
@@ -1670,9 +1706,24 @@ BOOL AwtFrame::HasCustomDecoration()
     if (!m_pHasCustomDecoration) {
         m_pHasCustomDecoration = new BOOL;
         JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
-        *m_pHasCustomDecoration = JNU_CallMethodByName(env, NULL, GetTarget(env), "hasCustomDecoration", "()Z").z;
+        *m_pHasCustomDecoration = JNU_GetFieldByName(env, NULL, GetTarget(env), "hasCustomDecoration", "Z").z;
     }
     return *m_pHasCustomDecoration;
+}
+
+void _UpdateCustomDecoration(void* p) {
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+
+    jobject self = reinterpret_cast<jobject>(p);
+    PDATA pData;
+    JNI_CHECK_PEER_GOTO(self, ret);
+
+    AwtFrame* frame = (AwtFrame*)pData;
+    if (!frame->m_pHasCustomDecoration) frame->m_pHasCustomDecoration = new BOOL;
+    *frame->m_pHasCustomDecoration = JNU_GetFieldByName(env, NULL, frame->GetTarget(env), "hasCustomDecoration", "Z").z;
+    frame->RedrawNonClient();
+ret:
+    env->DeleteGlobalRef(self);
 }
 
 void GetSysInsets(RECT* insets, AwtFrame* pFrame) {
@@ -1712,10 +1763,8 @@ LRESULT HitTestNCA(AwtFrame* frame, int x, int y) {
     AdjustWindowRectEx(&rcFrame, WS_OVERLAPPEDWINDOW & ~WS_CAPTION, FALSE, NULL);
 
     JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
-    int titleHeight = (int)JNU_CallMethodByName(env, NULL, frame->GetPeer(env),
-                                                "getCustomDecorationTitleBarHeight", "()I",
-                                                frame->ScaleDownX(x - rcWindow.left),
-                                                frame->ScaleDownY(y - rcWindow.top)).i;
+    int titleHeight = (int)JNU_GetFieldByName(env, NULL, frame->GetTarget(env),
+                                              "customDecorTitleBarHeight", "I").i;
     if (titleHeight >= 0) {
         titleHeight = frame->ScaleUpY(titleHeight);
         insets.top = titleHeight; // otherwise leave default
@@ -1728,12 +1777,23 @@ LRESULT HitTestNCA(AwtFrame* frame, int x, int y) {
     if (y >= rcWindow.top &&
         y < rcWindow.top + insets.top)
     {
-        if (JNU_CallMethodByName(env, NULL, frame->GetPeer(env),
-                                 "hitTestCustomDecoration", "(II)Z",
-                                 frame->ScaleDownX(x - rcWindow.left),
-                                 frame->ScaleDownY(y - rcWindow.top)).z)
-        {
-            return HTNOWHERE;
+        jint customSpot = JNU_CallMethodByName(env, NULL, frame->GetTarget(env),
+                                               "hitTestCustomDecoration", "(II)I",
+                                               frame->ScaleDownX(x - rcWindow.left),
+                                               frame->ScaleDownY(y - rcWindow.top)).i;
+        switch (customSpot) {
+            case java_awt_Window_CustomWindowDecoration_NO_HIT_SPOT:
+                break; // Nothing
+            case java_awt_Window_CustomWindowDecoration_MINIMIZE_BUTTON:
+                return HTMINBUTTON;
+            case java_awt_Window_CustomWindowDecoration_MAXIMIZE_BUTTON:
+                return HTMAXBUTTON;
+            case java_awt_Window_CustomWindowDecoration_CLOSE_BUTTON:
+                return HTCLOSE;
+            case java_awt_Window_CustomWindowDecoration_MENU_BAR:
+                return HTMENU;
+            default:
+                return HTNOWHERE;
         }
         fOnResizeBorder = (y < (rcWindow.top - rcFrame.top));
         uRow = 0;
@@ -2156,6 +2216,17 @@ Java_sun_awt_windows_WFramePeer_updateIcon(JNIEnv *env, jobject self)
 
     AwtToolkit::GetInstance().InvokeFunction(_UpdateIcon, env->NewGlobalRef(self));
     // global ref is deleted in _UpdateIcon()
+
+    CATCH_BAD_ALLOC;
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_windows_WFramePeer_updateCustomDecoration(JNIEnv *env, jobject self)
+{
+    TRY;
+
+    AwtToolkit::GetInstance().InvokeFunction(_UpdateCustomDecoration, env->NewGlobalRef(self));
+    // global ref is deleted in _UpdateCustomDecoration()
 
     CATCH_BAD_ALLOC;
 }
