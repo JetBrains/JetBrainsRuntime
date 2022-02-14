@@ -30,6 +30,7 @@ public class JBRApiModule {
                     .withStatic("getSubpixelResolution", "sun.font.FontUtilities")
                 .service("com.jetbrains.JBRFileDialogService", null)
                     .withStatic("getFileDialog", "com.jetbrains.desktop.JBRFileDialog", "get")
-                .proxy("com.jetbrains.JBRFileDialog", "com.jetbrains.desktop.JBRFileDialog");
+                .proxy("com.jetbrains.JBRFileDialog", "com.jetbrains.desktop.JBRFileDialog")
+                .service("com.jetbrains.CustomWindowDecoration", "java.awt.Window$CustomWindowDecoration");
     }
 }
