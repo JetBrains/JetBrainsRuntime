@@ -31,11 +31,5 @@
   // Used to register dynamic code cache area with the OS.
   static bool register_code_area(char *low, char *high) { return true; }
 
-private:
-
-  static void current_thread_enable_wx_impl(WXMode mode) { }
-
-public:
-
 #endif // OS_CPU_LINUX_S390_VM_OS_LINUX_S390_HPP
 
