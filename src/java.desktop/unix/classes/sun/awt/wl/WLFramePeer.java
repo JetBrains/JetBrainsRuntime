@@ -26,55 +26,23 @@
 package sun.awt.wl;
 
 import java.awt.Window;
-import sun.awt.PaintEventDispatcher;
-import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.Frame;
 import java.awt.Insets;
 import java.awt.MenuBar;
 import java.awt.Rectangle;
-import java.awt.event.PaintEvent;
 import java.awt.event.WindowEvent;
 import java.awt.peer.FramePeer;
-import sun.java2d.wl.WLSurfaceData;
 import sun.util.logging.PlatformLogger;
 
 public class WLFramePeer extends WLComponentPeer implements FramePeer {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLFramePeer");
-    private long nativePtr;
-
-    static {
-        initIDs();
-    }
 
     public WLFramePeer(Frame target) {
         super(target);
-        this.nativePtr = nativeCreateFrame();
     }
 
     private static native void initIDs();
-
-    @Override
-    public void setVisible(boolean v) {
-        if (v) {
-            nativeShowFrame(nativePtr, target.getWidth(), target.getHeight());
-            ((WLSurfaceData)surfaceData).initSurface(this, background != null ? background.getRGB() : 0, target.getWidth(), target.getHeight());
-            PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
-                    createPaintEvent(target, 0, 0, target.getWidth(), target.getHeight());
-            if (event != null) {
-                WLToolkit.postEvent(WLToolkit.targetToAppContext(event.getSource()), event);
-            }
-        } else {
-            nativeHideFrame(nativePtr);
-        }
-    }
-
-
-    @Override
-    public void dispose() {
-        super.dispose();
-        nativeDisposeFrame(nativePtr);
-    }
 
     @Override
     public Insets getInsets() {
@@ -89,13 +57,15 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     public void endValidate() {
     }
 
-    @Override
-    public void beginLayout() {
-    }
-
-    @Override
-    public void endLayout() {
-    }
+//    @Override
+//    public void beginLayout() {
+//        log.info("Not implemented: WLFramePeer.beginLayout()");
+//    }
+//
+//    @Override
+//    public void endLayout() {
+//        log.info("Not implemented: WLFramePeer.endLayout()");
+//    }
 
     @Override
     public void setTitle(String title) {
@@ -194,11 +164,6 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     public void repositionSecurityWarning() {
         throw new UnsupportedOperationException();
     }
-
-    private native long nativeCreateFrame();
-    private native void nativeShowFrame(long ptr, int width, int height);
-    private native void nativeHideFrame(long ptr);
-    private native void nativeDisposeFrame(long ptr);
 
     private native long getWLSurface();
 
