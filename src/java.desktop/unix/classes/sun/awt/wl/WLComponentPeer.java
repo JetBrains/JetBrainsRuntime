@@ -26,6 +26,8 @@
 
 package sun.awt.wl;
 
+import static sun.awt.wl.WLToolkit.postEvent;
+
 import java.awt.AWTEvent;
 import java.awt.AWTException;
 import java.awt.BufferCapabilities;
@@ -38,15 +40,26 @@ import java.awt.Graphics;
 import java.awt.GraphicsConfiguration;
 import java.awt.Image;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.SystemColor;
 import java.awt.Toolkit;
 import java.awt.event.FocusEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.InputMethodEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import java.awt.event.PaintEvent;
+import java.awt.event.WindowEvent;
 import java.awt.image.ColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
 import java.util.Objects;
+import sun.awt.AWTAccessor;
+import sun.awt.PaintEventDispatcher;
+import sun.awt.SunToolkit;
+import sun.awt.event.IgnorePaintEvent;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
@@ -60,6 +73,18 @@ public class WLComponentPeer implements ComponentPeer
     protected WLGraphicsConfig graphicsConfig;
     protected Color background;
     SurfaceData surfaceData;
+    WLRepaintArea paintArea;
+    boolean paintPending = false;
+    boolean isLayouting = false;
+    boolean visible;
+
+    int x;
+    int y;
+    int width;
+    int height;
+    // used to check if we need to re-create surfaceData.
+    int oldWidth = -1;
+    int oldHeight = -1;
 
     /**
      * Standard peer constructor, with corresponding Component
@@ -69,6 +94,59 @@ public class WLComponentPeer implements ComponentPeer
         this.background = target.getBackground();
         initGraphicsConfiguration();
         this.surfaceData = graphicsConfig.createSurfaceData(this);
+        paintArea = new WLRepaintArea();
+    }
+
+    int getWidth() {
+        return width;
+    }
+
+    int getHeight() {
+        return height;
+    }
+
+    public final void repaint(int x, int y, int width, int height) {
+        if (!isVisible() || getWidth() == 0 || getHeight() == 0) {
+            return;
+        }
+        Graphics g = getGraphics();
+        if (g != null) {
+            try {
+                g.setClip(x, y, width, height);
+                if (SunToolkit.isDispatchThreadForAppContext(getTarget())) {
+                    paint(g); // The native and target will be painted in place.
+                } else {
+                    paintPeer(g);
+                    postPaintEvent(target, x, y, width, height);
+                }
+            } finally {
+                g.dispose();
+            }
+        }
+    }
+
+    public void postPaintEvent(Component target, int x, int y, int w, int h) {
+        PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
+                createPaintEvent(target, x, y, w, h);
+        if (event != null) {
+            postEvent(event);
+        }
+    }
+
+    void postPaintEvent() {
+        if (isVisible()) {
+            PaintEvent pe = new PaintEvent(target, PaintEvent.PAINT,
+                    new Rectangle(0, 0, width, height));
+            postEvent(pe);
+        }
+    }
+
+    boolean isVisible() {
+        return visible;
+    }
+
+    void repaint() {
+        repaint(0, 0, getWidth(), getHeight());
     }
 
     @Override
@@ -125,7 +203,12 @@ public class WLComponentPeer implements ComponentPeer
 
     @Override
     public void paint(final Graphics g) {
-        log.info("Not implemented: WLComponentPeer.paint(Graphics)");
+        paintPeer(g);
+        target.paint(g);
+    }
+
+    void paintPeer(final Graphics g) {
+        log.info("Not implemented: WLComponentPeer.paintPeer(Graphics)");
     }
 
     Graphics getGraphics(SurfaceData surfData, Color afore, Color aback, Font afont) {
@@ -162,11 +245,52 @@ public class WLComponentPeer implements ComponentPeer
     }
 
     public void setBounds(int x, int y, int width, int height, int op) {
-        log.info("Not implemented: WLComponentPeer.setBounds(int,int,int,int)");
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        validateSurface();
+        layout();
+    }
+
+    void validateSurface() {
+        if ((width != oldWidth) || (height != oldHeight)) {
+            doValidateSurface();
+
+            oldWidth = width;
+            oldHeight = height;
+        }
+    }
+
+    final void doValidateSurface() {
+        SurfaceData oldData = surfaceData;
+        if (oldData != null) {
+            surfaceData = graphicsConfig.createSurfaceData(this);
+            oldData.invalidate();
+        }
     }
 
     public void coalescePaintEvent(PaintEvent e) {
-        log.info("Not implemented: WLComponentPeer.coalescePaintEvent(PaintEvent)");
+        Rectangle r = e.getUpdateRect();
+        if (!(e instanceof IgnorePaintEvent)) {
+            paintArea.add(r, e.getID());
+        }
+        if (true) {
+            switch(e.getID()) {
+                case PaintEvent.UPDATE:
+                    if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                        log.finer("WLCP coalescePaintEvent : UPDATE : add : x = " +
+                                r.x + ", y = " + r.y + ", width = " + r.width + ",height = " + r.height);
+                    }
+                    return;
+                case PaintEvent.PAINT:
+                    if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                        log.finer("WLCP coalescePaintEvent : PAINT : add : x = " +
+                                r.x + ", y = " + r.y + ", width = " + r.width + ",height = " + r.height);
+                    }
+                    return;
+            }
+        }
     }
 
     @Override
@@ -176,7 +300,65 @@ public class WLComponentPeer implements ComponentPeer
 
     @SuppressWarnings("fallthrough")
     public void handleEvent(AWTEvent e) {
-        log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent)");
+        if ((e instanceof InputEvent) && !((InputEvent) e).isConsumed() && target.isEnabled()) {
+            if (e instanceof MouseEvent) {
+                if (e instanceof MouseWheelEvent) {
+                    log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): MouseWheelEvent");
+                } else
+                    log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): MouseEvent");
+            } else if (e instanceof KeyEvent) {
+                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleF10JavaKeyEvent");
+                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleJavaKeyEvent");
+            }
+        } else if (e instanceof KeyEvent && !((InputEvent) e).isConsumed()) {
+            // even if target is disabled.
+            log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleF10JavaKeyEvent");
+        } else if (e instanceof InputMethodEvent) {
+            log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleJavaInputMethodEvent");
+        }
+
+        int id = e.getID();
+
+        switch (id) {
+            case PaintEvent.PAINT:
+                // Got native painting
+                paintPending = false;
+                // Fallthrough to next statement
+            case PaintEvent.UPDATE:
+                // Skip all painting while layouting and all UPDATEs
+                // while waiting for native paint
+                if (!isLayouting && !paintPending) {
+                    paintArea.paint(target, false);
+                }
+                return;
+            case FocusEvent.FOCUS_LOST:
+            case FocusEvent.FOCUS_GAINED:
+                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleJavaFocusEvent");
+                break;
+            case WindowEvent.WINDOW_LOST_FOCUS:
+            case WindowEvent.WINDOW_GAINED_FOCUS:
+                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleJavaWindowFocusEvent");
+                break;
+            default:
+                break;
+        }
+    }
+
+    public void beginLayout() {
+        // Skip all painting till endLayout
+        isLayouting = true;
+
+    }
+
+    public void endLayout() {
+        if (!paintPending && !paintArea.isEmpty()
+                && !AWTAccessor.getComponentAccessor().getIgnoreRepaint(target))
+        {
+            // if not waiting for native painting repaint damaged area
+            postEvent(new PaintEvent(target, PaintEvent.PAINT,
+                    new Rectangle()));
+        }
+        isLayouting = false;
     }
 
     public Dimension getMinimumSize() {

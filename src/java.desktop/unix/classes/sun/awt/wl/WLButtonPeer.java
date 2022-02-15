@@ -28,6 +28,7 @@ package sun.awt.wl;
 import java.awt.Button;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.event.FocusEvent;
 import java.awt.peer.ButtonPeer;
 import sun.util.logging.PlatformLogger;
@@ -63,6 +64,12 @@ public class WLButtonPeer extends WLComponentPeer implements ButtonPeer {
     public void focusLost(FocusEvent e) {
         super.focusLost(e);
         log.info("Not implemented: WLButtonPeer.focusLost(FocusEvent)");
+    }
+
+    @Override
+    void paintPeer(Graphics g) {
+        super.paintPeer(g);
+        log.info("Not implemented: WLButtonPeer.paintPeer(Graphics)");
     }
 
     public Dimension getMinimumSize() {
