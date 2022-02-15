@@ -81,14 +81,14 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
 
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLFramePeer_initIDs
+Java_sun_awt_wl_WLComponentPeer_initIDs
         (JNIEnv *env, jclass clazz)
 {
     CHECK_NULL(nativePtrID = (*env)->GetFieldID(env, clazz, "nativePtr", "J"));
 }
 
 JNIEXPORT jlong JNICALL
-Java_sun_awt_wl_WLFramePeer_nativeCreateFrame
+Java_sun_awt_wl_WLComponentPeer_nativeCreateFrame
   (JNIEnv *env, jobject obj)
 {
     struct WLFrame *frame = (struct WLFrame *) malloc(sizeof(struct WLFrame));
@@ -100,7 +100,7 @@ Java_sun_awt_wl_WLFramePeer_nativeCreateFrame
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLFramePeer_nativeShowFrame
+Java_sun_awt_wl_WLComponentPeer_nativeShowFrame
   (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
 {
     struct WLFrame *frame = (struct WLFrame *) ptr;
@@ -126,7 +126,7 @@ static void doHide(struct WLFrame *frame) {
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLFramePeer_nativeHideFrame
+Java_sun_awt_wl_WLComponentPeer_nativeHideFrame
   (JNIEnv *env, jobject obj, jlong ptr)
 {
     struct WLFrame *frame = (struct WLFrame *) ptr;
@@ -134,7 +134,7 @@ Java_sun_awt_wl_WLFramePeer_nativeHideFrame
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLFramePeer_nativeDisposeFrame
+Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
   (JNIEnv *env, jobject obj, jlong ptr)
 {
     struct WLFrame *frame = (struct WLFrame *) ptr;

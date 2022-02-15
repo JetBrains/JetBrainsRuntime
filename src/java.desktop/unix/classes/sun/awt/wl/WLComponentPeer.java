@@ -63,11 +63,14 @@ import sun.awt.event.IgnorePaintEvent;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
+import sun.java2d.wl.WLSurfaceData;
 import sun.util.logging.PlatformLogger;
+import sun.util.logging.PlatformLogger.Level;
 
 
 public class WLComponentPeer implements ComponentPeer
 {
+    private long nativePtr;
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     protected final Component target;
     protected WLGraphicsConfig graphicsConfig;
@@ -86,6 +89,10 @@ public class WLComponentPeer implements ComponentPeer
     int oldWidth = -1;
     int oldHeight = -1;
 
+    static {
+        initIDs();
+    }
+
     /**
      * Standard peer constructor, with corresponding Component
      */
@@ -94,6 +101,7 @@ public class WLComponentPeer implements ComponentPeer
         this.background = target.getBackground();
         initGraphicsConfiguration();
         this.surfaceData = graphicsConfig.createSurfaceData(this);
+        this.nativePtr = nativeCreateFrame();
         paintArea = new WLRepaintArea();
     }
 
@@ -190,8 +198,19 @@ public class WLComponentPeer implements ComponentPeer
         return true;
     }
 
-    public void setVisible(boolean b) {
-        log.info("Not implemented: WLComponentPeer.setVisible(boolean)");
+    @Override
+    public void setVisible(boolean v) {
+        if (v) {
+            nativeShowFrame(nativePtr, target.getWidth(), target.getHeight());
+            ((WLSurfaceData)surfaceData).initSurface(this, background != null ? background.getRGB() : 0, target.getWidth(), target.getHeight());
+            PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
+                    createPaintEvent(target, 0, 0, target.getWidth(), target.getHeight());
+            if (event != null) {
+                WLToolkit.postEvent(WLToolkit.targetToAppContext(event.getSource()), event);
+            }
+        } else {
+            nativeHideFrame(nativePtr);
+        }
     }
 
     /**
@@ -273,19 +292,20 @@ public class WLComponentPeer implements ComponentPeer
     public void coalescePaintEvent(PaintEvent e) {
         Rectangle r = e.getUpdateRect();
         if (!(e instanceof IgnorePaintEvent)) {
+
             paintArea.add(r, e.getID());
         }
         if (true) {
             switch(e.getID()) {
                 case PaintEvent.UPDATE:
-                    if (log.isLoggable(PlatformLogger.Level.FINER)) {
-                        log.finer("WLCP coalescePaintEvent : UPDATE : add : x = " +
+                    if (log.isLoggable(Level.INFO)) {
+                        log.info("WLCP coalescePaintEvent : UPDATE : add : x = " +
                                 r.x + ", y = " + r.y + ", width = " + r.width + ",height = " + r.height);
                     }
                     return;
                 case PaintEvent.PAINT:
-                    if (log.isLoggable(PlatformLogger.Level.FINER)) {
-                        log.finer("WLCP coalescePaintEvent : PAINT : add : x = " +
+                    if (log.isLoggable(Level.INFO)) {
+                        log.info("WLCP coalescePaintEvent : PAINT : add : x = " +
                                 r.x + ", y = " + r.y + ", width = " + r.width + ",height = " + r.height);
                     }
                     return;
@@ -351,6 +371,7 @@ public class WLComponentPeer implements ComponentPeer
     }
 
     public void endLayout() {
+        log.info("WLComponentPeer.endLayout(): paintArea.isEmpty() " + paintArea.isEmpty());
         if (!paintPending && !paintArea.isEmpty()
                 && !AWTAccessor.getComponentAccessor().getIgnoreRepaint(target))
         {
@@ -404,7 +425,7 @@ public class WLComponentPeer implements ComponentPeer
 
     @Override
     public void dispose() {
-        WLToolkit.targetDisposedPeer(target, this);
+        nativeDisposeFrame(nativePtr);
     }
 
     @Override
@@ -481,4 +502,14 @@ public class WLComponentPeer implements ComponentPeer
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
         throw new UnsupportedOperationException();
     }
+
+    private static native void initIDs();
+
+    protected native long nativeCreateFrame();
+
+    protected native void nativeShowFrame(long ptr, int width, int height);
+
+    protected native void nativeHideFrame(long ptr);
+
+    protected native void nativeDisposeFrame(long ptr);
 }

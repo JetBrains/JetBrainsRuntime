@@ -18,7 +18,7 @@ public class WLSurfaceData extends SurfaceData {
   private final WLGraphicsConfig graphicsConfig;
   private final int depth;
 
-  public native void initSurface(WLFramePeer peer, int rgb, int width, int height);
+  public native void initSurface(WLComponentPeer peer, int rgb, int width, int height);
   protected native void initOps(WLComponentPeer peer, WLGraphicsConfig gc, int depth);
 
   protected WLSurfaceData(WLComponentPeer peer,
