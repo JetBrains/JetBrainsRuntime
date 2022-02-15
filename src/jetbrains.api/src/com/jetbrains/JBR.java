@@ -66,6 +66,15 @@ public class JBR {
 
     private JBR() {}
 
+    private static <T> T getService(Class<T> interFace, FallbackSupplier<T> fallback) {
+        T service = getService(interFace);
+        try {
+            return service != null ? service : fallback != null ? fallback.get() : null;
+        } catch (Throwable ignore) {
+            return null;
+        }
+    }
+
     static <T> T getService(Class<T> interFace) {
         return api == null ? null : api.getService(interFace);
     }
@@ -92,6 +101,11 @@ public class JBR {
     private interface ServiceApi {
 
         <T> T getService(Class<T> interFace);
+    }
+
+    @FunctionalInterface
+    private interface FallbackSupplier<T> {
+        T get() throws Throwable;
     }
 
     // ========================== Generated metadata ==========================

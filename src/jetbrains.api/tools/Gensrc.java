@@ -194,7 +194,8 @@ public class Gensrc {
                                 javadocEnd = 0;
                             }
                             return new Service(name, javadoc,
-                                    content.substring(javadocEnd, indexOfDeclaration).contains("@Deprecated"));
+                                    content.substring(javadocEnd, indexOfDeclaration).contains("@Deprecated"),
+                                    content.contains("__Fallback"));
                         } catch (IOException e) {
                             throw new UncheckedIOException(e);
                         }
@@ -205,7 +206,7 @@ public class Gensrc {
         private static String generateMethodsForService(Service service) {
             return """
                     private static class $__Holder {<DEPRECATED>
-                        private static final $ INSTANCE = api != null ? api.getService($.class) : null;
+                        private static final $ INSTANCE = getService($.class, <FALLBACK>);
                     }
                     /**
                      * @return true if current runtime has implementation for all methods in {@link $}
@@ -222,12 +223,13 @@ public class Gensrc {
                         return $__Holder.INSTANCE;
                     }
                     """
+                    .replace("<FALLBACK>", service.hasFallback ? "$.__Fallback::new" : "null")
                     .replaceAll("\\$", service.name)
                     .replace("<JAVADOC>", service.javadoc)
                     .replaceAll("<DEPRECATED>", service.deprecated ? "\n@Deprecated" : "");
         }
 
-        private record Service(String name, String javadoc, boolean deprecated) {}
+        private record Service(String name, String javadoc, boolean deprecated, boolean hasFallback) {}
     }
 
     /**
