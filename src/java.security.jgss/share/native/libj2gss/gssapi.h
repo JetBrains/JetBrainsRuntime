@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,8 @@
 extern "C" {
 #endif /* __cplusplus */
 
+// Condition was copied from
+// Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/gssapi/gssapi.h
 #if TARGET_OS_MAC && (defined(__ppc__) || defined(__ppc64__) || defined(__i386__) || defined(__x86_64__))
 #    pragma pack(push,2)
 #endif

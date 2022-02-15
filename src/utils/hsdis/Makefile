@@ -1,5 +1,6 @@
 #
-# Copyright (c) 2008, 2017, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2021, Azul Systems, Inc. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -112,15 +113,21 @@ else
 ifeq ($(OS),Darwin)
 CPU             = $(shell uname -m)
 ARCH1=$(CPU:x86_64=amd64)
-ARCH=$(ARCH1:i686=i386)
+ARCH2=$(ARCH1:arm64=aarch64)
+ARCH=$(ARCH2:i686=i386)
+CONFIGURE_ARGS/aarch64= --enable-targets=aarch64-darwin
+CONFIGURE_ARGS = $(CONFIGURE_ARGS/$(ARCH))
 ifdef LP64
 CFLAGS/sparcv9  += -m64
 CFLAGS/amd64    += -m64
 else
-ARCH=$(ARCH1:amd64=i386)
+ARCH=$(ARCH2:amd64=i386)
 CFLAGS/i386     += -m32
 CFLAGS/sparc    += -m32
 endif # LP64
+ifeq ($(CPU), arm64)
+CFLAGS/aarch64  += -m64
+endif # arm64
 CFLAGS          += $(CFLAGS/$(ARCH))
 CFLAGS          += -fPIC
 OS              = macosx

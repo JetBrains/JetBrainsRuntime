@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 1999, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Azul Systems, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,22 +20,23 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#ifndef OS_CPU_BSD_X86_VM_OS_BSD_X86_HPP
-#define OS_CPU_BSD_X86_VM_OS_BSD_X86_HPP
+/*
+ * @test
+ * @requires os.arch == "aarch64" & os.family == "mac"
+ * @run main/othervm/native TestCodegenAttach
+ */
 
-  static void setup_fpu();
-  static bool supports_sse();
-  static juint cpu_microcode_revision();
+public class TestCodegenAttach {
 
-  static jlong rdtsc();
+    static native void testCodegenAttach();
 
-  static bool is_allocatable(size_t bytes);
+    static {
+        System.loadLibrary("codegenAttach");
+    }
 
-  // Used to register dynamic code cache area with the OS
-  // Note: Currently only used in 64 bit Windows implementations
-  static bool register_code_area(char *low, char *high) { return true; }
-
-#endif // OS_CPU_BSD_X86_VM_OS_BSD_X86_HPP
+    public static void main(String[] args) throws Throwable {
+        testCodegenAttach();
+    }
+}
