@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
  * @test
  * @bug 8024927
  * @summary Testing address of compressed class pointer space as best as possible.
- * @requires vm.bits == 64 & vm.opt.final.UseCompressedOops == true & os.family != "windows"
+ * @requires vm.bits == 64 & vm.opt.final.UseCompressedOops == true & os.family != "windows" & !(os.family == "mac" & os.arch=="aarch64")
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management

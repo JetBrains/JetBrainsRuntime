@@ -67,6 +67,9 @@ public:
     return false;
   }
 
+  // Arm can assign codes that are not published in the manual.
+  // Apple's code is defined in
+  // https://github.com/apple/darwin-xnu/blob/33eb983/osfmk/arm/cpuid.h#L62
   enum Family {
     CPU_ARM       = 'A',
     CPU_BROADCOM  = 'B',
@@ -79,6 +82,7 @@ public:
     CPU_QUALCOM   = 'Q',
     CPU_MARVELL   = 'V',
     CPU_INTEL     = 'i',
+    CPU_APPLE     = 'a',
   };
 
   enum Feature_Flag {
@@ -111,6 +115,11 @@ public:
 
   static int icache_line_size() { return _icache_line_size; }
   static int dcache_line_size() { return _dcache_line_size; }
+
+#ifdef __APPLE__
+  // Is the CPU running emulated (for example macOS Rosetta running x86_64 code on M1 ARM (aarch64)
+  static bool is_cpu_emulated();
+#endif
 };
 
 #endif // CPU_AARCH64_VM_VM_VERSION_AARCH64_HPP

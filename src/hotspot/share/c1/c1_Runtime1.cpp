@@ -834,6 +834,10 @@ static Klass* resolve_field_return_klass(const methodHandle& caller, int bci, TR
 JRT_ENTRY(void, Runtime1::patch_code(JavaThread* thread, Runtime1::StubID stub_id ))
   NOT_PRODUCT(_patch_code_slowcase_cnt++;)
 
+  // Enable WXWrite: the function is called by c1 stub as a runtime function
+  // (see another implementation above).
+  MACOS_AARCH64_ONLY(ThreadWXEnable wx(WXWrite, thread));
+
   ResourceMark rm(thread);
   RegisterMap reg_map(thread, false);
   frame runtime_frame = thread->last_frame();

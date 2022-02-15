@@ -61,6 +61,7 @@
 #include "runtime/synchronizer.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/threadSMR.hpp"
+#include "runtime/threadWXSetters.inline.hpp"
 #include "runtime/timerTrace.hpp"
 #include "services/runtimeService.hpp"
 #include "utilities/events.hpp"
@@ -953,6 +954,9 @@ void SafepointSynchronize::handle_polling_page_exception(JavaThread *thread) {
   if (!ThreadLocalHandshakes) {
     assert(SafepointSynchronize::is_synchronizing(), "polling encountered outside safepoint synchronization");
   }
+
+  // Enable WXWrite: the function is called implicitly from java code.
+  MACOS_AARCH64_ONLY(ThreadWXEnable wx(WXWrite, thread));
 
   if (PrintSafepointStatistics) {
     inc_page_trap_count();

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Azul Systems, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -752,6 +753,15 @@ protected:
   static void muxAcquire(volatile intptr_t * Lock, const char * Name);
   static void muxAcquireW(volatile intptr_t * Lock, ParkEvent * ev);
   static void muxRelease(volatile intptr_t * Lock);
+
+#if defined(__APPLE__) && defined(AARCH64)
+ private:
+  DEBUG_ONLY(bool _wx_init);
+  WXMode _wx_state;
+ public:
+  void init_wx();
+  WXMode enable_wx(WXMode new_state);
+#endif // __APPLE__ && AARCH64
 };
 
 // Inline implementation of Thread::current()

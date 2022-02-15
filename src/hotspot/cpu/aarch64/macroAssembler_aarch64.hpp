@@ -27,6 +27,7 @@
 #define CPU_AARCH64_VM_MACROASSEMBLER_AARCH64_HPP
 
 #include "asm/assembler.inline.hpp"
+#include "runtime/vm_version.hpp"
 
 // MacroAssembler extends Assembler by frequently used macros.
 //
@@ -88,7 +89,7 @@ class MacroAssembler: public Assembler {
       = (operand_valid_for_logical_immediate(false /*is32*/,
                                              (uint64_t)Universe::narrow_klass_base())
          && ((uint64_t)Universe::narrow_klass_base()
-             > (1UL << log2_intptr(Universe::narrow_klass_range()))));
+             > (1UL << log2_intptr((uintptr_t)Universe::narrow_klass_range()))));
   }
 
  // These routines should emit JVMTI PopFrame and ForceEarlyReturn handling code.

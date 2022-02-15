@@ -289,6 +289,8 @@ void StubRoutines::initialize2() {
 
 #ifdef ASSERT
 
+  MACOS_AARCH64_ONLY(os::current_thread_enable_wx(WXExec));
+
 #define TEST_ARRAYCOPY(type)                                                    \
   test_arraycopy_func(          type##_arraycopy(),          sizeof(type));     \
   test_arraycopy_func(          type##_disjoint_arraycopy(), sizeof(type));     \
@@ -368,6 +370,8 @@ void StubRoutines::initialize2() {
   test_safefetch32();
   test_safefetchN();
 #endif
+
+  MACOS_AARCH64_ONLY(os::current_thread_enable_wx(WXWrite));
 
 #endif
 }

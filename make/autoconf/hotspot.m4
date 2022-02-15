@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -271,6 +271,14 @@ AC_DEFUN_ONCE([HOTSPOT_ENABLE_DISABLE_CDS],
     ENABLE_CDS="false"
     if test "x$enable_cds" = "xyes"; then
       AC_MSG_ERROR([CDS is currently not supported on AIX. Remove --enable-cds.])
+    fi
+  fi
+
+  # Disable CDS on macos-aarch64
+  if test "x$OPENJDK_TARGET_OS" = "xmacosx" && test "x$OPENJDK_TARGET_CPU" = "xaarch64"; then
+    ENABLE_CDS="false"
+    if test "x$enable_cds" = "xyes"; then
+      AC_MSG_ERROR([CDS is currently not supported on macOS/aarch64. Remove --enable-cds.])
     fi
   fi
 
