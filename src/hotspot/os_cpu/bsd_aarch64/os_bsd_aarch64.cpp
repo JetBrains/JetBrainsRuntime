@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2014, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, Azul Systems, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,7 +66,6 @@
 # include <stdio.h>
 # include <unistd.h>
 # include <sys/resource.h>
-# include <pthread.h>
 # include <sys/stat.h>
 # include <sys/time.h>
 # include <sys/utsname.h>
@@ -74,7 +74,7 @@
 # include <pwd.h>
 # include <poll.h>
 #ifndef __OpenBSD__
-# include <ucontext.h>
+ # include <ucontext.h>
 #endif
 
 #if !defined(__APPLE__) && !defined(__NetBSD__)
@@ -115,8 +115,8 @@ address os::current_stack_pointer() {
   __asm__("mov %0, " SPELL_REG_SP : "=r"(sp));
   return (address) sp;
 #else
-  register void *sp __asm__ (SPELL_REG_SP);                                                                                                                  │
-  return (address) sp;                                                                                                                                       │
+  register void *sp __asm__ (SPELL_REG_SP);
+  return (address) sp;
 #endif
 }
 
@@ -135,7 +135,7 @@ address os::Bsd::ucontext_get_pc(const ucontext_t * uc) {
 }
 
 void os::Bsd::ucontext_set_pc(ucontext_t * uc, address pc) {
-  uc->context_pc = (intptr_t)pc ;
+  uc->context_pc = (intptr_t)pc;
 }
 
 intptr_t* os::Bsd::ucontext_get_sp(const ucontext_t * uc) {
@@ -157,6 +157,7 @@ ExtendedPC os::fetch_frame_from_context(const void* ucVoid,
     if (ret_sp) *ret_sp = os::Bsd::ucontext_get_sp(uc);
     if (ret_fp) *ret_fp = os::Bsd::ucontext_get_fp(uc);
   } else {
+    // construct empty ExtendedPC for return value checking
     epc = ExtendedPC(NULL);
     if (ret_sp) *ret_sp = (intptr_t *)NULL;
     if (ret_fp) *ret_fp = (intptr_t *)NULL;
@@ -212,8 +213,7 @@ bool os::Bsd::get_frame_at_stack_banging_point(JavaThread* thread, ucontext_t* u
   return true;
 }
 
-// By default, gcc always saves frame pointer rfp on this stack. This
-// may get turned off by -fomit-frame-pointer.
+// JVM compiled with -fno-omit-frame-pointer, so RFP is saved on the stack.
 frame os::get_sender_for_C_frame(frame* fr) {
   return frame(fr->link(), fr->link(), fr->sender_pc());
 }
@@ -284,15 +284,16 @@ JVM_handle_bsd_signal(int sig,
       }
     }
   }
-/*
-  NOTE: does not seem to work on bsd.
-  if (info == NULL || info->si_code <= 0 || info->si_code == SI_NOINFO) {
-    // can't decode this kind of signal
-    info = NULL;
-  } else {
-    assert(sig == info->si_signo, "bad siginfo");
+
+  // Handle SafeFetch faults:
+  if (uc != NULL) {
+    address const pc = (address) os::Bsd::ucontext_get_pc(uc);
+    if (pc && StubRoutines::is_safefetch_fault(pc)) {
+      os::Bsd::ucontext_set_pc(uc, StubRoutines::continuation_for_safefetch_fault(pc));
+      return 1;
+    }
   }
-*/
+
   // decide if this trap can be handled by a stub
   address stub = NULL;
 
@@ -302,18 +303,13 @@ JVM_handle_bsd_signal(int sig,
   if (info != NULL && uc != NULL && thread != NULL) {
     pc = (address) os::Bsd::ucontext_get_pc(uc);
 
-    if (StubRoutines::is_safefetch_fault(pc)) {
-      os::Bsd::ucontext_set_pc(uc, StubRoutines::continuation_for_safefetch_fault(pc));
-      return 1;
-    }
-
     // Handle ALL stack overflow variations here
     if (sig == SIGSEGV || sig == SIGBUS) {
       address addr = (address) info->si_addr;
 
       // check if fault address is within thread stack
       if (thread->on_local_stack(addr)) {
-        Thread::WXWriteFromExecSetter wx_write;
+        ThreadWXEnable wx(WXWrite, thread);
         // stack overflow
         if (thread->in_stack_yellow_reserved_zone(addr)) {
           if (thread->thread_state() == _thread_in_Java) {
@@ -361,8 +357,7 @@ JVM_handle_bsd_signal(int sig,
     if (thread->thread_state() == _thread_in_Java && stub == NULL) {
       // Java thread running in Java code => find exception handler if any
       // a fault inside compiled code, the interpreter, or a stub
-      Thread::WXWriteFromExecSetter wx_write;
-
+      ThreadWXEnable wx(WXWrite, thread);
       // Handle signal from NativeJump::patch_verified_entry().
       if ((sig == SIGILL)
           && nativeInstruction_at(pc)->is_sigill_zombie_not_entrant()) {
@@ -497,66 +492,11 @@ size_t os::Posix::default_stack_size(os::ThreadType thr_type) {
   return s;
 }
 
-
-// Java thread:
-//
-//   Low memory addresses
-//    +------------------------+
-//    |                        |\  Java thread created by VM does not have glibc
-//    |    glibc guard page    | - guard, attached Java thread usually has
-//    |                        |/  1 glibc guard page.
-// P1 +------------------------+ Thread::stack_base() - Thread::stack_size()
-//    |                        |\
-//    |  HotSpot Guard Pages   | - red, yellow and reserved pages
-//    |                        |/
-//    +------------------------+ JavaThread::stack_reserved_zone_base()
-//    |                        |\
-//    |      Normal Stack      | -
-//    |                        |/
-// P2 +------------------------+ Thread::stack_base()
-//
-// Non-Java thread:
-//
-//   Low memory addresses
-//    +------------------------+
-//    |                        |\
-//    |  glibc guard page      | - usually 1 page
-//    |                        |/
-// P1 +------------------------+ Thread::stack_base() - Thread::stack_size()
-//    |                        |\
-//    |      Normal Stack      | -
-//    |                        |/
-// P2 +------------------------+ Thread::stack_base()
-//
-// ** P1 (aka bottom) and size ( P2 = P1 - size) are the address and stack size returned from
-//    pthread_attr_getstack()
-
 static void current_stack_region(address * bottom, size_t * size) {
 #ifdef __APPLE__
   pthread_t self = pthread_self();
   void *stacktop = pthread_get_stackaddr_np(self);
   *size = pthread_get_stacksize_np(self);
-  // workaround for OS X 10.9.0 (Mavericks)
-  // pthread_get_stacksize_np returns 128 pages even though the actual size is 2048 pages
-  if (pthread_main_np() == 1) {
-    // At least on Mac OS 10.12 we have observed stack sizes not aligned
-    // to pages boundaries. This can be provoked by e.g. setrlimit() (ulimit -s xxxx in the
-    // shell). Apparently Mac OS actually rounds upwards to next multiple of page size,
-    // however, we round downwards here to be on the safe side.
-    *size = align_down(*size, getpagesize());
-
-    if ((*size) < (DEFAULT_MAIN_THREAD_STACK_PAGES * (size_t)getpagesize())) {
-      char kern_osrelease[256];
-      size_t kern_osrelease_size = sizeof(kern_osrelease);
-      int ret = sysctlbyname("kern.osrelease", kern_osrelease, &kern_osrelease_size, NULL, 0);
-      if (ret == 0) {
-        // get the major number, atoi will ignore the minor amd micro portions of the version string
-        if (atoi(kern_osrelease) >= OS_X_10_9_0_KERNEL_MAJOR_VERSION) {
-          *size = (DEFAULT_MAIN_THREAD_STACK_PAGES*getpagesize());
-        }
-      }
-    }
-  }
   *bottom = (address) stacktop - *size;
 #elif defined(__OpenBSD__)
   stack_t ss;
@@ -731,6 +671,10 @@ void os::verify_stack_alignment() {
 int os::extra_bang_size_in_bytes() {
   // AArch64 does not require the additional stack bang.
   return 0;
+}
+
+void os::current_thread_enable_wx(WXMode mode) {
+  pthread_jit_write_protect_np(mode == WXExec);
 }
 
 extern "C" {

@@ -37,8 +37,8 @@ class CompileTask;
 // Bring the JVMCI compiler thread into the VM state.
 #define JVMCI_VM_ENTRY_MARK                       \
   JavaThread* thread = JavaThread::current(); \
+  MACOS_AARCH64_ONLY(ThreadWXEnable __wx(WXWrite, thread)); \
   ThreadInVMfromNative __tiv(thread);       \
-  Thread::WXWriteFromExecSetter __wx_write; \
   ResetNoHandleMark rnhm;                   \
   HandleMarkCleaner __hm(thread);           \
   Thread* THREAD = thread;                  \

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2006, 2019, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2014, 2019, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, Azul Systems, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,8 +53,11 @@ static bool cpu_has(const char* optional) {
 void VM_Version::get_os_cpu_info() {
   size_t sysctllen;
 
-  // hw.optional.floatingpoint always returns 1.
+  // hw.optional.floatingpoint always returns 1, see
+  // https://github.com/apple/darwin-xnu/blob/master/bsd/kern/kern_mib.c#L416.
   // ID_AA64PFR0_EL1 describes AdvSIMD always equals to FP field.
+  assert(cpu_has("hw.optional.floatingpoint"), "should be");
+  assert(cpu_has("hw.optional.neon"), "should be");
   _features = CPU_FP | CPU_ASIMD;
 
   // Only few features are available via sysctl, see line 614
@@ -78,12 +82,19 @@ void VM_Version::get_os_cpu_info() {
   if (!(dczid_el0 & 0x10)) {
     _zva_length = 4 << (dczid_el0 & 0xf);
   }
-
   int family;
   sysctllen = sizeof(family);
   if (sysctlbyname("hw.cpufamily", &family, &sysctllen, NULL, 0)) {
     family = 0;
-  }
+   }
   _model = family;
   _cpu = CPU_APPLE;
 }
+
+#ifdef __APPLE__
+
+bool VM_Version::is_cpu_emulated() {
+  return false;
+}
+
+#endif

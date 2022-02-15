@@ -574,32 +574,42 @@ ifeq ($(USE_EXTERNAL_HARFBUZZ), true)
    LIBFONTMANAGER_EXTRA_SRC =
    BUILD_LIBFONTMANAGER_FONTLIB += $(LIBHARFBUZZ_LIBS)
 else
-   LIBFONTMANAGER_EXTRA_SRC = libharfbuzz
-   HARFBUZZ_CFLAGS := -DHAVE_OT -DHAVE_FALLBACK -DHAVE_UCDN -DHAVE_ROUND
-   ifneq ($(OPENJDK_TARGET_OS), windows)
-     HARFBUZZ_CFLAGS += -DGETPAGESIZE -DHAVE_MPROTECT -DHAVE_PTHREAD \
-                        -DHAVE_SYSCONF -DHAVE_SYS_MMAN_H -DHAVE_UNISTD_H \
-                        -DHB_NO_PRAGMA_GCC_DIAGNOSTIC
-   endif
-   ifneq (, $(findstring $(OPENJDK_TARGET_OS), linux macosx))
-     HARFBUZZ_CFLAGS += -DHAVE_INTEL_ATOMIC_PRIMITIVES
-   endif
+  LIBFONTMANAGER_EXTRA_SRC = libharfbuzz
+  HARFBUZZ_CFLAGS := -DHAVE_OT -DHAVE_FALLBACK -DHAVE_UCDN -DHAVE_ROUND
 
-   # hb-ft.cc is not presently needed, and requires freetype 2.4.2 or later.
-   LIBFONTMANAGER_EXCLUDE_FILES += libharfbuzz/hb-ft.cc
+  ifneq ($(OPENJDK_TARGET_OS), windows)
+    HARFBUZZ_CFLAGS += -DGETPAGESIZE -DHAVE_MPROTECT -DHAVE_PTHREAD \
+                       -DHAVE_SYSCONF -DHAVE_SYS_MMAN_H -DHAVE_UNISTD_H \
+                       -DHB_NO_PRAGMA_GCC_DIAGNOSTIC
+  endif
+  ifneq (, $(findstring $(OPENJDK_TARGET_OS), linux macosx))
+    HARFBUZZ_CFLAGS += -DHAVE_INTEL_ATOMIC_PRIMITIVES
+  endif
+  ifeq ($(OPENJDK_TARGET_OS), solaris)
+    HARFBUZZ_CFLAGS += -DHAVE_SOLARIS_ATOMIC_OPS
+  endif
+  # hb-ft.cc is not presently needed, and requires freetype 2.4.2 or later.
+  LIBFONTMANAGER_EXCLUDE_FILES += libharfbuzz/hb-ft.cc
 
   HARFBUZZ_EXTRA_HEADER_DIRS := \
     libharfbuzz/hb-ucdn
 
-   HARFBUZZ_DISABLED_WARNINGS_gcc := type-limits missing-field-initializers strict-aliasing
-   HARFBUZZ_DISABLED_WARNINGS_CXX_gcc := reorder delete-non-virtual-dtor strict-overflow \
-        maybe-uninitialized class-memaccess
-   HARFBUZZ_DISABLED_WARNINGS_clang := unused-value incompatible-pointer-types \
-        tautological-constant-out-of-range-compare int-to-pointer-cast \
-        undef missing-field-initializers range-loop-analysis
-   HARFBUZZ_DISABLED_WARNINGS_microsoft := 4267 4244 4090 4146 4334 4819 4101 4068 4805 4138
+  HARFBUZZ_DISABLED_WARNINGS_gcc := type-limits missing-field-initializers strict-aliasing
+  HARFBUZZ_DISABLED_WARNINGS_CXX_gcc := reorder delete-non-virtual-dtor strict-overflow \
+       maybe-uninitialized class-memaccess
+  HARFBUZZ_DISABLED_WARNINGS_clang := unused-value incompatible-pointer-types \
+       tautological-constant-out-of-range-compare int-to-pointer-cast \
+       undef missing-field-initializers deprecated-declarations c++11-narrowing
+  HARFBUZZ_DISABLED_WARNINGS_microsoft := 4267 4244 4090 4146 4334 4819 4101 4068 4805 4138
+  HARFBUZZ_DISABLED_WARNINGS_C_solstudio := \
+        E_INTEGER_OVERFLOW_DETECTED \
+        E_ARG_INCOMPATIBLE_WITH_ARG_L \
+        E_ENUM_VAL_OVERFLOWS_INT_MAX
+  HARFBUZZ_DISABLED_WARNINGS_CXX_solstudio := \
+        truncwarn wvarhidenmem wvarhidemem wbadlkginit identexpected \
+        hidevf w_novirtualdescr arrowrtn2 unknownpragma
 
-   LIBFONTMANAGER_CFLAGS += $(HARFBUZZ_CFLAGS)
+  LIBFONTMANAGER_CFLAGS += $(HARFBUZZ_CFLAGS)
 
 endif
 

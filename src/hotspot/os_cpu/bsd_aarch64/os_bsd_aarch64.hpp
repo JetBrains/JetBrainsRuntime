@@ -39,15 +39,4 @@
     *(jlong *) dst = *(const jlong *) src;
   }
 
-private:
-
-  static void current_thread_enable_wx_impl(WXMode mode) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunguarded-availability-new"
-    pthread_jit_write_protect_np(mode == WXExec ? true : false);
-#pragma clang diagnostic pop
-  }
-
-public:
-
 #endif // OS_CPU_BSD_AARCH64_VM_OS_BSD_AARCH64_HPP
