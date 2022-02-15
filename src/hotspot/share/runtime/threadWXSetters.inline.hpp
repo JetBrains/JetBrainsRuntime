@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 1999, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Azul Systems, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +23,27 @@
  *
  */
 
-#ifndef OS_CPU_BSD_X86_VM_OS_BSD_X86_HPP
-#define OS_CPU_BSD_X86_VM_OS_BSD_X86_HPP
+#ifndef SHARE_RUNTIME_THREADWXSETTERS_INLINE_HPP
+#define SHARE_RUNTIME_THREADWXSETTERS_INLINE_HPP
 
-  static void setup_fpu();
-  static bool supports_sse();
-  static juint cpu_microcode_revision();
+#include "runtime/thread.inline.hpp"
 
-  static jlong rdtsc();
+#if defined(__APPLE__) && defined(AARCH64)
+class ThreadWXEnable  {
+  Thread* _thread;
+  WXMode _old_mode;
+public:
+  ThreadWXEnable(WXMode new_mode, Thread* thread) :
+    _thread(thread),
+    _old_mode(_thread ? _thread->enable_wx(new_mode) : WXWrite)
+  { }
+  ~ThreadWXEnable() {
+    if (_thread) {
+      _thread->enable_wx(_old_mode);
+    }
+  }
+};
+#endif // __APPLE__ && AARCH64
 
-  static bool is_allocatable(size_t bytes);
+#endif // SHARE_RUNTIME_THREADWXSETTERS_INLINE_HPP
 
-  // Used to register dynamic code cache area with the OS
-  // Note: Currently only used in 64 bit Windows implementations
-  static bool register_code_area(char *low, char *high) { return true; }
-
-#endif // OS_CPU_BSD_X86_VM_OS_BSD_X86_HPP
