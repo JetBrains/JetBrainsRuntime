@@ -193,7 +193,8 @@ public class Gensrc {
                                 javadocEnd = 0;
                             }
                             return new Service(name, javadoc,
-                                    content.substring(javadocEnd, indexOfDeclaration).contains("@Deprecated"));
+                                    content.substring(javadocEnd, indexOfDeclaration).contains("@Deprecated"),
+                                    content.contains("__Fallback"));
                         } catch (IOException e) {
                             throw new UncheckedIOException(e);
                         }
@@ -203,7 +204,7 @@ public class Gensrc {
 
         private static String generateMethodsForService(Service service) {
             return ("private static class $__Holder {<DEPRECATED>\n" +
-                    "    private static final $ INSTANCE = api != null ? api.getService($.class) : null;\n" +
+                    "    private static final $ INSTANCE = getService($.class, <FALLBACK>);\n" +
                     "}\n" +
                     "/**\n" +
                     " * @return true if current runtime has implementation for all methods in {@link $}\n" +
@@ -219,6 +220,7 @@ public class Gensrc {
                     "public static $ get$() {\n" +
                     "    return $__Holder.INSTANCE;\n" +
                     "}")
+                    .replace("<FALLBACK>", service.hasFallback ? "$.__Fallback::new" : "null")
                     .replaceAll("\\$", service.name)
                     .replace("<JAVADOC>", service.javadoc)
                     .replaceAll("<DEPRECATED>", service.deprecated ? "\n@Deprecated" : "");
@@ -228,11 +230,13 @@ public class Gensrc {
             private final String name;
             private final String javadoc;
             private final boolean deprecated;
+            private final boolean hasFallback;
 
-            private Service(String name, String javadoc, boolean deprecated) {
+            private Service(String name, String javadoc, boolean deprecated, boolean hasFallback) {
                 this.name = name;
                 this.javadoc = javadoc;
                 this.deprecated = deprecated;
+                this.hasFallback = hasFallback;
             }
         }
     }
