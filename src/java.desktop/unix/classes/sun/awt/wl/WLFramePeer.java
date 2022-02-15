@@ -68,12 +68,7 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
             nativeHideFrame(nativePtr);
         }
     }
-    
-    @Override
-    public void coalescePaintEvent(PaintEvent e) {
-        Component c = (Component)e.getSource();
-        c.paint(c.getGraphics());
-    }
+
 
     @Override
     public void dispose() {
