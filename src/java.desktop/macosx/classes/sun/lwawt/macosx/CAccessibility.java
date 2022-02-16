@@ -59,6 +59,7 @@ import javax.swing.JTree;
 import javax.swing.KeyStroke;
 import javax.swing.tree.TreePath;
 
+import sun.awt.AccessibleList;
 import sun.awt.AWTAccessor;
 import sun.lwawt.LWWindowPeer;
 

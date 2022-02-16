@@ -60,6 +60,7 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.plaf.ListUI;
 import javax.swing.text.Position;
 
+import sun.awt.AccessibleList;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.MouseEventAccessor;
 import sun.swing.SwingUtilities2;

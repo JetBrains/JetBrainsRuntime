@@ -25,6 +25,7 @@
 /*
  * @test
  * @bug 8271846
+ * @modules java.desktop/sun.awt
  * @summary Test implementation of AccessibleList interface
  * @author Artem.Semenov@jetbrains.com
  * @run main AccessibleListTest
@@ -35,7 +36,7 @@ import javax.swing.JList;
 import  javax.swing.ListSelectionModel;
 
 import javax.accessibility.AccessibleContext;
-import javax.accessibility.AccessibleList;
+import sun.awt.AccessibleList;
 import javax.accessibility.AccessibleTable;
 import java.util.Map;
 

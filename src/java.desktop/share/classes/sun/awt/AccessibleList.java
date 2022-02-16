@@ -19,7 +19,7 @@
  *
  */
 
-package javax.accessibility;
+package sun.awt;
 
 /**
  *  This interface provides list specific data.
