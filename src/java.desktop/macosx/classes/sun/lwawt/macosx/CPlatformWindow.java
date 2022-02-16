@@ -66,6 +66,7 @@ import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
 import sun.awt.AWTThreading;
 import sun.java2d.SurfaceData;
+import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.LWWindowPeer;
@@ -1456,28 +1457,20 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         isFullScreenAnimationOn = false;
     }
 
-    // called from client via reflection
-    private void setTransparentTitleBarHeight(float height) {
-        execute(ptr -> {
-            nativeSetTransparentTitleBarHeight(ptr, height);
-        });
-    }
-
-    private volatile List<Rectangle> customDecorHitTestSpots;
-
-    // called from client via reflection
-    private void setCustomDecorationHitTestSpots(List<Rectangle> hitTestSpots) {
-        this.customDecorHitTestSpots = new CopyOnWriteArrayList<>(hitTestSpots);
-    }
-
-    // called from native
-    private boolean hitTestCustomDecoration(float x, float y) {
-        List<Rectangle> spots = customDecorHitTestSpots;
-        if (spots == null) return false;
-        for (Rectangle spot : spots) {
-            if (spot.contains(x, y)) return true;
+    // JBR API internals
+    private static void setCustomDecorationTitleBarHeight(Window target, ComponentPeer peer, float height) {
+        if (peer instanceof LWComponentPeer) {
+            PlatformWindow platformWindow = ((LWComponentPeer<?, ?>) peer).getPlatformWindow();
+            if (platformWindow instanceof CPlatformWindow) {
+                ((CPlatformWindow) platformWindow).execute(ptr -> {
+                    nativeSetTransparentTitleBarHeight(ptr, height);
+                });
+                if (target instanceof javax.swing.RootPaneContainer) {
+                    final javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer)target).getRootPane();
+                    if (rootpane != null) rootpane.putClientProperty(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT, height);
+                }
+            }
         }
-        return false;
     }
 
 }

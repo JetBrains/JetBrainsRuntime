@@ -26,6 +26,7 @@
 #include <objc/objc-runtime.h>
 #import <Cocoa/Cocoa.h>
 
+#include <java_awt_Window_CustomWindowDecoration.h>
 #import "sun_lwawt_macosx_CPlatformWindow.h"
 #import "com_apple_eawt_event_GestureHandler.h"
 #import "com_apple_eawt_FullScreenHandler.h"
@@ -1455,11 +1456,18 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
         GET_CPLATFORM_WINDOW_CLASS_RETURN(YES);
-        DECLARE_METHOD_RETURN(jm_hitTestCustomDecoration, jc_CPlatformWindow, "hitTestCustomDecoration", "(FF)Z", YES);
-        NSRect frame = [self.window frame];
-        float windowHeight = frame.size.height;
-        returnValue = (*env)->CallBooleanMethod(env, platformWindow, jm_hitTestCustomDecoration, point.x,  windowHeight - point.y) == JNI_TRUE ? NO : YES;
-        CHECK_EXCEPTION_IN_ENV(env);
+        DECLARE_FIELD_RETURN(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;", YES);
+        DECLARE_CLASS_RETURN(jc_Window, "java/awt/Window", YES);
+        DECLARE_METHOD_RETURN(jm_hitTestCustomDecoration, jc_Window, "hitTestCustomDecoration", "(II)I", YES);
+        jobject awtWindow = (*env)->GetObjectField(env, platformWindow, jf_target);
+        if (awtWindow != NULL) {
+            NSRect frame = [self.window frame];
+            float windowHeight = frame.size.height;
+            returnValue = (*env)->CallIntMethod(env, awtWindow, jm_hitTestCustomDecoration, (jint) point.x,  (jint) (windowHeight - point.y)) ==
+                                  (jint) java_awt_Window_CustomWindowDecoration_NO_HIT_SPOT ? YES : NO;
+            CHECK_EXCEPTION();
+            (*env)->DeleteLocalRef(env, awtWindow);
+        }
         (*env)->DeleteLocalRef(env, platformWindow);
     }
     return returnValue;

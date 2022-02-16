@@ -47,6 +47,7 @@ import java.io.OptionalDataException;
 import java.io.Serial;
 import java.io.Serializable;
 import java.lang.annotation.Native;
+import java.lang.invoke.MethodHandles;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
@@ -67,6 +68,7 @@ import javax.accessibility.AccessibleRole;
 import javax.accessibility.AccessibleState;
 import javax.accessibility.AccessibleStateSet;
 
+import com.jetbrains.internal.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTPermissions;
 import sun.awt.AppContext;
@@ -4035,6 +4037,9 @@ public class Window extends Container implements Accessible {
 
         void setCustomDecorationEnabled(Window window, boolean enabled) {
             window.hasCustomDecoration = enabled;
+            if (MacOS.INSTANCE != null && window.customDecorTitleBarHeight != 0f) {
+                MacOS.INSTANCE.setTitleBarHeight(window, window.peer, enabled ? window.customDecorTitleBarHeight : 0);
+            }
         }
         boolean isCustomDecorationEnabled(Window window) {
             return window.hasCustomDecoration;
@@ -4048,10 +4053,21 @@ public class Window extends Container implements Accessible {
         }
 
         void setCustomDecorationTitleBarHeight(Window window, int height) {
-            if (height >= 0) window.customDecorTitleBarHeight = height;
+            if (height >= 0) {
+                window.customDecorTitleBarHeight = height;
+                if (MacOS.INSTANCE != null && window.hasCustomDecoration) {
+                    MacOS.INSTANCE.setTitleBarHeight(window, window.peer, height);
+                }
+            }
         }
         int getCustomDecorationTitleBarHeight(Window window) {
             return window.customDecorTitleBarHeight;
+        }
+
+        private interface MacOS {
+            MacOS INSTANCE = (MacOS) JBRApi.internalService(MethodHandles.lookup(), null)
+                    .withStatic("setTitleBarHeight", "sun.lwawt.macosx.CPlatformWindow", "setCustomDecorationTitleBarHeight").create();
+            void setTitleBarHeight(Window target, ComponentPeer peer, float height);
         }
     }
 
