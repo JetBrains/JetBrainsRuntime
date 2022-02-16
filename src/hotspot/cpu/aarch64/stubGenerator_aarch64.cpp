@@ -1337,8 +1337,8 @@ class StubGenerator: public StubCodeGenerator {
   //   disjoint_int_copy_entry is set to the no-overlap entry point
   //   used by generate_conjoint_int_oop_copy().
   //
-  address generate_disjoint_copy(int size, bool aligned, bool is_oop, address *entry,
-                                  const char *name, bool dest_uninitialized = false) {
+  address generate_disjoint_copy(size_t size, bool aligned, bool is_oop, address *entry,
+                                 const char *name, bool dest_uninitialized = false) {
     Register s = c_rarg0, d = c_rarg1, count = c_rarg2;
     RegSet saved_reg = RegSet::of(s, d, count);
     __ align(CodeEntryAlignment);
@@ -1367,12 +1367,12 @@ class StubGenerator: public StubCodeGenerator {
       // save regs before copy_memory
       __ push(RegSet::of(d, count), sp);
     }
-    copy_memory(aligned, s, d, count, rscratch1, size);
+    copy_memory(aligned, s, d, count, rscratch1, checked_cast<int>(size));
 
     if (is_oop) {
       __ pop(RegSet::of(d, count), sp);
       if (VerifyOops)
-        verify_oop_array(size, d, count, r16);
+        verify_oop_array(checked_cast<int>(size), d, count, r16);
     }
 
     bs->arraycopy_epilogue(_masm, decorators, is_oop, d, count, rscratch1, RegSet());
