@@ -78,7 +78,7 @@ class ProxyGenerator {
      */
     ProxyGenerator(ProxyInfo info) {
         this.info = info;
-        generateBridge = info.type != ProxyInfo.Type.CLIENT_PROXY;
+        generateBridge = info.type.isPublicApi();
         int nameId = nameCounter.getAndIncrement();
         proxyName = Type.getInternalName(info.interFace) + "$$JBRApiProxy$" + nameId;
         bridgeName = generateBridge ? info.apiModule.lookupClass().getPackageName().replace('.', '/') + "/" +
@@ -153,7 +153,7 @@ class ProxyGenerator {
             } else {
                 MethodHandle c = generatedProxy.findConstructor(generatedProxy.lookupClass(),
                         MethodType.methodType(void.class, Object.class));
-                if (info.type == ProxyInfo.Type.SERVICE) {
+                if (info.type.isService()) {
                     try {
                         return MethodHandles.foldArguments(c, info.target.findConstructor(info.target.lookupClass(),
                                 MethodType.methodType(void.class)).asType(MethodType.methodType(Object.class)));

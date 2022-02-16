@@ -66,7 +66,7 @@ class ProxyInfo {
     }
 
     Lookup getInterfaceLookup() {
-        return type == Type.CLIENT_PROXY ? apiModule : JBRApi.outerLookup;
+        return type == Type.CLIENT_PROXY || type == Type.INTERNAL_SERVICE ? apiModule : JBRApi.outerLookup;
     }
 
     Lookup getTargetLookup() {
@@ -98,6 +98,15 @@ class ProxyInfo {
     enum Type {
         PROXY,
         SERVICE,
-        CLIENT_PROXY
+        CLIENT_PROXY,
+        INTERNAL_SERVICE;
+
+        public boolean isPublicApi() {
+            return this == PROXY || this == SERVICE;
+        }
+
+        public boolean isService() {
+            return this == SERVICE || this == INTERNAL_SERVICE;
+        }
     }
 }
