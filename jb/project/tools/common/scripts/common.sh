@@ -38,6 +38,7 @@ VERSION_UPDATE=$(getVersionProp "DEFAULT_VERSION_UPDATE")
 [[ $VERSION_UPDATE = 0 ]] && JBSDK_VERSION="$VERSION_FEATURE" || JBSDK_VERSION="${VERSION_FEATURE}.${VERSION_INTERIM}.${VERSION_UPDATE}"
 echo "##teamcity[setParameter name='env.JBSDK_VERSION' value='${JBSDK_VERSION}']"
 JDK_BUILD_NUMBER=${JDK_BUILD_NUMBER:=$(echo $OPENJDK_TAG | awk -F "-|[+]" '{print $3}')}
+[ -z $JDK_BUILD_NUMBER ] && JDK_BUILD_NUMBER=1
 echo "##teamcity[setParameter name='env.JDK_UPDATE_NUMBER' value='${JDK_BUILD_NUMBER}']"
 
 VENDOR_NAME="JetBrains s.r.o."
