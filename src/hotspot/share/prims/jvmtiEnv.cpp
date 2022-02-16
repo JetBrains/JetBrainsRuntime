@@ -3287,6 +3287,8 @@ JvmtiEnv::RawMonitorEnter(JvmtiRawMonitor * rmonitor) {
   } else {
     int r = 0;
     Thread* thread = Thread::current();
+    // 8266889: raw_enter changes Java thread state, needs WXWrite
+    MACOS_AARCH64_ONLY(ThreadWXEnable __wx(WXWrite, thread));
 
     if (thread->is_Java_thread()) {
       JavaThread* current_thread = (JavaThread*)thread;
@@ -3384,6 +3386,8 @@ jvmtiError
 JvmtiEnv::RawMonitorWait(JvmtiRawMonitor * rmonitor, jlong millis) {
   int r = 0;
   Thread* thread = Thread::current();
+  // 8266889: raw_wait changes Java thread state, needs WXWrite
+  MACOS_AARCH64_ONLY(ThreadWXEnable __wx(WXWrite, thread));
 
   if (thread->is_Java_thread()) {
     JavaThread* current_thread = (JavaThread*)thread;
