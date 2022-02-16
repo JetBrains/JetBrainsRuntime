@@ -55,6 +55,9 @@ endif
 # Disabling undef, switch, format-nonliteral and tautological-undefined-compare
 # warnings for clang because of test source.
 
+# Disable MSVC warning C4146 "unary minus operator applied to unsigned type,
+# result still unsigned". This operation is well-defined.
+
 # Solaris: Disable inlining (+d) to workaround Assertion:   (../lnk/vardescr.h, line 109)
 $(eval $(call SetupNativeCompilation, BUILD_GTEST_LIBJVM, \
     NAME := jvm, \
@@ -78,6 +81,7 @@ $(eval $(call SetupNativeCompilation, BUILD_GTEST_LIBJVM, \
     DISABLED_WARNINGS_clang := undef switch format-nonliteral \
         tautological-undefined-compare $(BUILD_LIBJVM_DISABLED_WARNINGS_clang), \
     DISABLED_WARNINGS_solstudio := identexpected, \
+    DISABLED_WARNINGS_microsoft := 4146, \
     LDFLAGS := $(JVM_LDFLAGS), \
     LDFLAGS_solaris := -library=stlport4 $(call SET_SHARED_LIBRARY_ORIGIN), \
     LIBS := $(JVM_LIBS), \

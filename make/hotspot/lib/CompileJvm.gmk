@@ -148,6 +148,8 @@ JVM_STRIPFLAGS ?= $(STRIPFLAGS)
 ################################################################################
 # Now set up the actual compilation of the main hotspot native library
 
+# Disable MSVC warning C4146 "unary minus operator applied to unsigned type,
+# result still unsigned". This operation is well-defined.
 $(eval $(call SetupNativeCompilation, BUILD_LIBJVM, \
     NAME := jvm, \
     TOOLCHAIN := TOOLCHAIN_LINK_CXX, \
@@ -164,6 +166,7 @@ $(eval $(call SetupNativeCompilation, BUILD_LIBJVM, \
     DISABLED_WARNINGS_solstudio := $(DISABLED_WARNINGS_solstudio), \
     DISABLED_WARNINGS_xlc := 1540-0216 1540-0198 1540-1090 1540-1639 \
         1540-1088 1500-010, \
+    DISABLED_WARNINGS_microsoft := 4146, \
     ASFLAGS := $(JVM_ASFLAGS), \
     LDFLAGS := $(JVM_LDFLAGS), \
     LIBS := $(JVM_LIBS), \

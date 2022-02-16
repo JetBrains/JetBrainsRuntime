@@ -2055,11 +2055,6 @@ int HandlerImpl::emit_deopt_handler(CodeBuffer& cbuf)
 
 const bool Matcher::match_rule_supported(int opcode) {
 
-  switch (opcode) {
-  default:
-    break;
-  }
-
   if (!has_match_rule(opcode)) {
     return false;
   }
