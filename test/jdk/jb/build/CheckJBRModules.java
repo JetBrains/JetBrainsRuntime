@@ -62,7 +62,6 @@ public class CheckJBRModules {
                     "jdk.compiler",
                     "jdk.crypto.cryptoki",
                     "jdk.crypto.ec",
-                    "jdk.crypto.mscapi",
                     "jdk.dynalink",
                     "jdk.httpserver",
                     "jdk.internal.ed",
