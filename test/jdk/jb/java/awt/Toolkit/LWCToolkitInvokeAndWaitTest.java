@@ -1,7 +1,7 @@
+// Copyright 2000-2022 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+
 import java.awt.*;
-import javax.swing.*;
 import java.awt.event.InvocationEvent;
-import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.logging.*;
@@ -10,6 +10,8 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTThreading;
 import sun.lwawt.macosx.CThreading;
 import sun.lwawt.macosx.LWCToolkit;
+
+import static helper.ToolkitTestHelper.*;
 
 /*
  * @test
@@ -23,16 +25,12 @@ import sun.lwawt.macosx.LWCToolkit;
 @SuppressWarnings("ConstantConditions")
 public class LWCToolkitInvokeAndWaitTest {
     // This property is used in {CAccessibility}
-    private static final int INVOKE_TIMEOUT_SECONDS = Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds", 1);
-
-    static TestLogHandler LOG_HANDLER = new TestLogHandler();
-    static volatile CompletableFuture<Boolean> FUTURE;
-    static volatile CountDownLatch EDT_FAST_FREE_LATCH;
-    static volatile JFrame FRAME;
-    static volatile Thread MAIN_THREAD;
-    static int TEST_COUNTER;
+    static final int INVOKE_TIMEOUT_SECONDS = Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds", 1);
 
     static final Runnable CONSUME_DISPATCHING = () -> FUTURE.completeExceptionally(new Throwable("Unexpected dispatching!"));
+    static final TestLogHandler LOG_HANDLER = new TestLogHandler();
+
+    static volatile CountDownLatch EDT_FAST_FREE_LATCH;
 
     static {
         AWTThreading.setAWTThreadingFactory(edt -> new AWTThreading(edt) {
@@ -41,7 +39,7 @@ public class LWCToolkitInvokeAndWaitTest {
                 if (EDT_FAST_FREE_LATCH != null) {
                     // 1. wait for the invocation event to be dispatched
                     // 2. wait for EDT to become free
-                    trycatch(() -> EDT_FAST_FREE_LATCH.await());
+                    tryRun(EDT_FAST_FREE_LATCH::await);
 
                     EDT_FAST_FREE_LATCH = null;
                 }
@@ -62,9 +60,7 @@ public class LWCToolkitInvokeAndWaitTest {
     }
 
     public static void main(String[] args) {
-        MAIN_THREAD = Thread.currentThread();
-
-        trycatch(() -> {
+        tryRun(() -> {
             Logger log = LogManager.getLogManager().getLogger(AWTThreading.class.getName());
             log.setUseParentHandlers(false);
             log.addHandler(LOG_HANDLER);
@@ -75,69 +71,50 @@ public class LWCToolkitInvokeAndWaitTest {
 
         Consumer<InvocationEvent> noop = e -> {};
 
-        try {
-            trycatch(() -> EventQueue.invokeAndWait(LWCToolkitInvokeAndWaitTest::runGui));
+        initTest(LWCToolkitInvokeAndWaitTest.class);
 
-            test("InvocationEvent is normally dispatched",
-                "",
-                noop,
-                () -> System.out.println("I'm dispatched"));
+        testCase("InvocationEvent is normally dispatched", () -> test(
+            "",
+            noop,
+            () -> System.out.println("I'm dispatched")));
 
-            test("InvocationEvent is lost",
-                "lost",
-                noop,
-                CONSUME_DISPATCHING);
+        testCase("InvocationEvent is lost", () -> test(
+            "lost",
+            noop,
+            CONSUME_DISPATCHING));
 
-            EDT_FAST_FREE_LATCH = new CountDownLatch(2);
-            test("InvocationEvent is lost (EDT becomes fast free)",
-                "lost",
-                // notify the invocationEvent has been dispatched
-                invocationEvent -> EDT_FAST_FREE_LATCH.countDown(),
-                CONSUME_DISPATCHING);
+        EDT_FAST_FREE_LATCH = new CountDownLatch(2);
+        testCase("InvocationEvent is lost (EDT becomes fast free)", () -> test(
+            "lost",
+            // notify the invocationEvent has been dispatched
+            invocationEvent -> EDT_FAST_FREE_LATCH.countDown(),
+            CONSUME_DISPATCHING));
 
-            test("InvocationEvent is disposed",
-                "disposed",
-                invocationEvent -> AWTAccessor.getInvocationEventAccessor().dispose(invocationEvent),
-                CONSUME_DISPATCHING);
+        testCase("InvocationEvent is disposed", () -> test(
+            "disposed",
+            invocationEvent -> AWTAccessor.getInvocationEventAccessor().dispose(invocationEvent),
+            CONSUME_DISPATCHING));
 
-            test("InvocationEvent is timed out (delayed before dispatching)",
-                "timed out",
-                invocationEvent -> sleep(INVOKE_TIMEOUT_SECONDS * 4),
-                CONSUME_DISPATCHING);
+        testCase("InvocationEvent is timed out (delayed before dispatching)", () -> test(
+            "timed out",
+            invocationEvent -> sleep(INVOKE_TIMEOUT_SECONDS * 4),
+            CONSUME_DISPATCHING));
 
-            test("InvocationEvent is timed out (delayed during dispatching)",
-                "timed out",
-                noop,
-                () -> sleep(INVOKE_TIMEOUT_SECONDS * 4));
+        testCase("InvocationEvent is timed out (delayed during dispatching)", () -> test(
+            "timed out",
+            noop,
+            () -> sleep(INVOKE_TIMEOUT_SECONDS * 4)));
 
-        } finally {
-            FRAME.dispose();
-        }
         System.out.println("Test PASSED");
     }
 
-    static void runGui() {
-        FRAME = new JFrame(LWCToolkitInvokeAndWaitTest.class.getSimpleName());
-        FRAME.getContentPane().setBackground(Color.green);
-        FRAME.setLocationRelativeTo(null);
-        FRAME.setSize(200, 200);
-        FRAME.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        FRAME.setVisible(true);
-    }
-
-    static void test(String testCaption,
-                     String expectedInLog,
+    static void test(String expectedInLog,
                      Consumer<InvocationEvent> onBeforeDispatching,
                      Runnable onDispatching)
     {
-        System.out.println("\n(" + (++TEST_COUNTER) + ") TEST: " + testCaption);
-
-        FUTURE = new CompletableFuture<>();
-        FUTURE.whenComplete((r, ex) -> Optional.of(ex).ifPresent(Throwable::printStackTrace));
-
         EventQueue.invokeLater(() -> subTest(onBeforeDispatching, onDispatching));
 
-        trycatch(() -> {
+        tryRun(() -> {
             if (!FUTURE.get(INVOKE_TIMEOUT_SECONDS * 2L, TimeUnit.SECONDS)) {
                 throw new RuntimeException("Test FAILED! (negative result)");
             }
@@ -146,14 +123,12 @@ public class LWCToolkitInvokeAndWaitTest {
         // let AppKit and EDT print all the logging
         var latch = new CountDownLatch(1);
         CThreading.executeOnAppKit(latch::countDown);
-        trycatch(latch::await);
-        trycatch(() -> EventQueue.invokeAndWait(() -> {}));
+        tryRun(latch::await);
+        tryRun(() -> EventQueue.invokeAndWait(EMPTY_RUNNABLE));
 
         if (!LOG_HANDLER.testContains(expectedInLog)) {
             throw new RuntimeException("Test FAILED! (not found in the log: \"" + expectedInLog + "\")");
         }
-
-        System.out.println("(" + TEST_COUNTER + ") SUCCEEDED\n");
     }
 
     static void subTest(Consumer<InvocationEvent> onBeforeDispatching, Runnable onDispatching) {
@@ -175,7 +150,7 @@ public class LWCToolkitInvokeAndWaitTest {
                 super.dispatchEvent(event);
             }
         });
-        CThreading.executeOnAppKit(() -> trycatch(() -> {
+        CThreading.executeOnAppKit(() -> tryRun(() -> {
             //
             // Post an invocation from AppKit.
             //
@@ -185,23 +160,7 @@ public class LWCToolkitInvokeAndWaitTest {
     }
 
     static void sleep(int seconds) {
-        trycatch(() -> Thread.sleep(seconds * 1000L));
-    }
-    
-    static void trycatch(ThrowableRunnable runnable) {
-        try {
-            runnable.run();
-        } catch (Exception e) {
-            if (Thread.currentThread() == MAIN_THREAD) {
-                throw new RuntimeException("Test FAILED!", e);
-            } else {
-                FUTURE.completeExceptionally(e);
-            }
-        }
-    }
-    
-    interface ThrowableRunnable {
-        void run() throws Exception;
+        tryRun(() -> Thread.sleep(seconds * 1000L));
     }
 
     static class TestLogHandler extends StreamHandler {
