@@ -155,7 +155,7 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_t
 fi
 
 # create runtime image bundle
-modules=$(xargs < modules.list | sed s/" "//g) || do_exit $?
+modules=$(xargs < jb/project/tools/common/modules.list | sed s/" "//g) || do_exit $?
 create_image_bundle "jbr${jbr_name_postfix}" "jbr" $JSDK_MODS_DIR "$modules" || do_exit $?
 
 # create sdk image bundle
@@ -168,7 +168,7 @@ create_image_bundle "$JBRSDK_BUNDLE${jbr_name_postfix}" "$JBRSDK_BUNDLE" "$JSDK_
 if [ $do_maketest -eq 1 ]; then
     JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-osx-test-${architecture}-b${build_number}
     echo Creating "$JBRSDK_TEST" ...
-    [ $do_reset_changes -eq 1 ] && git checkout HEAD modules.list src/java.desktop/share/classes/module-info.java
+    [ $do_reset_changes -eq 1 ] && git checkout HEAD jb/project/tools/common/modules.list src/java.desktop/share/classes/module-info.java
     make test-image CONF=$RELEASE_NAME || do_exit $?
     [ -f "$JBRSDK_TEST.tar.gz" ] && rm "$JBRSDK_TEST.tar.gz"
     COPYFILE_DISABLE=1 tar -pczf "$JBRSDK_TEST".tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
