@@ -1,8 +1,8 @@
-diff --git modules.list modules.list
-index 054f21d1ee0..d9a121f0273 100644
---- modules.list
-+++ modules.list
-@@ -49,4 +49,7 @@ jdk.unsupported,
+diff --git jb/project/tools/common/modules.list jb/project/tools/common/modules.list
+index 522acb7cb43..c40e689d5de 100644
+--- jb/project/tools/common/modules.list
++++ jb/project/tools/common/modules.list
+@@ -51,4 +51,7 @@ jdk.unsupported.desktop,
  jdk.xml.dom,
  jdk.zipfs,
  jdk.hotspot.agent,
