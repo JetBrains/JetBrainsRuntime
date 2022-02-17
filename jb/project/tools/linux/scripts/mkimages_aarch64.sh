@@ -50,7 +50,7 @@ JBR_BASE_NAME=jbr-$JBSDK_VERSION
 rm -rf $BASE_DIR/$JBR_BUNDLE
 
 JBR=$JBR_BASE_NAME-linux-aarch64-b$build_number
-grep -v javafx modules.list | grep -v "jdk.internal.vm\|jdk.aot\|jcef" > modules.list.aarch64
+grep -v javafx jb/project/tools/common/modules.list | grep -v "jdk.internal.vm\|jdk.aot\|jcef" > modules.list.aarch64
 echo Running jlink....
 ${JSDK}/bin/jlink \
   --module-path ${JSDK}/jmods --no-man-pages --compress=2 \
