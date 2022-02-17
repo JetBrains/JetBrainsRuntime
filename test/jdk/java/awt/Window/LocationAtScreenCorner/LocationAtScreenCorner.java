@@ -32,7 +32,7 @@ import java.awt.Robot;
 /**
  * @test
  * @key headful
- * @bug 8201364 8232433
+ * @bug 8201364 8232433 8211999
  * @summary Component.getLocation() should returns correct location if
  *          Component.setBounds() was ignored by the OS
  */
@@ -64,8 +64,11 @@ public final class LocationAtScreenCorner {
             Rectangle bounds = device.getDefaultConfiguration().getBounds();
             test(robot, frame, bounds.x, bounds.y);
             test(robot, frame, bounds.width, bounds.y);
+            test(robot, frame, bounds.x + bounds.width, bounds.y);
             test(robot, frame, bounds.x, bounds.height);
+            test(robot, frame, bounds.x, bounds.y + bounds.height);
             test(robot, frame, bounds.width, bounds.height);
+            test(robot, frame, bounds.x + bounds.width, bounds.y + bounds.height);
         }
         frame.dispose();
     }

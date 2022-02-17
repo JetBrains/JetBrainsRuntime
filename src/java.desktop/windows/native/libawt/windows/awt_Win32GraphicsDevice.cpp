@@ -41,7 +41,6 @@
 #include <sun_awt_Win32GraphicsDevice.h>
 #include "awt_Canvas.h"
 #include "awt_Win32GraphicsDevice.h"
-#include "awt_Win32GraphicsConfig.h"
 #include "awt_Window.h"
 #include "java_awt_Transparency.h"
 #include "java_awt_color_ColorSpace.h"
@@ -78,6 +77,7 @@ AwtWin32GraphicsDevice::AwtWin32GraphicsDevice(int screen,
     this->devicesArray = arr;
     this->scaleX = 1;
     this->scaleY = 1;
+    disableScaleAutoRefresh = FALSE;
     javaDevice = NULL;
     colorData = new ImgColorData;
     colorData->grayscale = GS_NOTGRAY;
@@ -629,46 +629,50 @@ void AwtWin32GraphicsDevice::SetScale(float sx, float sy)
     scaleY = sy;
 }
 
-int AwtWin32GraphicsDevice::ScaleUpX(int x, const UCoordRelativity& relativity)
+int AwtWin32GraphicsDevice::ScaleUpX(int x)
 {
-    return relativity == RELATIVE_COORD ? ClipRound(x * scaleX) : ScaleUpDX(x);
+    return ClipRound(x * scaleX);
 }
 
-// scale up the delta [x - device.x]
-int AwtWin32GraphicsDevice::ScaleUpDX(int x)
+int AwtWin32GraphicsDevice::ScaleUpAbsX(int x)
 {
-    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen, DEVICE_SPACE);
-    return devBounds.left + ClipRound((x - devBounds.left) * scaleX);
+    LONG screen = pMonitorInfo->rcMonitor.left;
+    return screen + ClipRound((x - screen) * scaleX);
 }
 
-int AwtWin32GraphicsDevice::ScaleUpY(int y, const UCoordRelativity& relativity)
+int AwtWin32GraphicsDevice::ScaleUpY(int y)
 {
-    return relativity == RELATIVE_COORD ? ClipRound(y * scaleY) : ScaleUpDY(y);
+    return ClipRound(y * scaleY);
 }
 
-// scale up the delta [y - device.y]
-int AwtWin32GraphicsDevice::ScaleUpDY(int y)
+int AwtWin32GraphicsDevice::ScaleUpAbsY(int y)
 {
-    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen, DEVICE_SPACE);
-    return devBounds.top + ClipRound((y - devBounds.top) * scaleY);
+    LONG screen = pMonitorInfo->rcMonitor.top;
+    return screen + ClipRound((y - screen) * scaleY);
 }
 
-int AwtWin32GraphicsDevice::ScaleDownX(int x, const UCoordRelativity& relativity)
+int AwtWin32GraphicsDevice::ScaleDownX(int x)
 {
-    return relativity == RELATIVE_COORD ? ClipRound(x / scaleX) : ScaleDownDX(x);
+    return ClipRound(x / scaleX);
 }
 
-// scale down the delta [x - device.x]
-int AwtWin32GraphicsDevice::ScaleDownDX(int x)
+int AwtWin32GraphicsDevice::ScaleDownAbsX(int x)
 {
-    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen, USER_SPACE);
-    return devBounds.left + ClipRound((x - devBounds.left) / scaleX);
+    LONG screen = pMonitorInfo->rcMonitor.left;
+    return screen + ClipRound((x - screen) / scaleX);
 }
 
-int AwtWin32GraphicsDevice::ScaleDownY(int y, const UCoordRelativity& relativity)
+int AwtWin32GraphicsDevice::ScaleDownY(int y)
 {
-    return relativity == RELATIVE_COORD ? ClipRound(y / scaleY) : ScaleDownDY(y);
+    return ClipRound(y / scaleY);
 }
+
+int AwtWin32GraphicsDevice::ScaleDownAbsY(int y)
+{
+    LONG screen = pMonitorInfo->rcMonitor.top;
+    return screen + ClipRound((y - screen) / scaleY);
+}
+
 
 int AwtWin32GraphicsDevice::ClipRound(double value)
 {
@@ -684,13 +688,6 @@ int AwtWin32GraphicsDevice::ClipRound(double value)
     }
 
     return (int)ceil(value);
-}
-
-// scale down the delta [y - device.y]
-int AwtWin32GraphicsDevice::ScaleDownDY(int y)
-{
-    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen, USER_SPACE);
-    return devBounds.top + ClipRound((y - devBounds.top) / scaleY);
 }
 
 // scale down the delta [pt.xy - device.xy]
@@ -709,11 +706,13 @@ void AwtWin32GraphicsDevice::ScaleDownDPoint(POINT *pt)
 
 void AwtWin32GraphicsDevice::InitDesktopScales()
 {
-    float dpiX = -1.0f;
-    float dpiY = -1.0f;
-    GetScreenDpi(GetMonitor(), &dpiX, &dpiY);
-    if (dpiX > 0 && dpiY > 0) {
-        SetScale(dpiX / 96, dpiY / 96);
+    if (!disableScaleAutoRefresh) {
+        float dpiX = -1.0f;
+        float dpiY = -1.0f;
+        GetScreenDpi(GetMonitor(), &dpiX, &dpiY);
+        if (dpiX > 0 && dpiY > 0) {
+            SetScale(dpiX / 96, dpiY / 96);
+        }
     }
 }
 
@@ -736,6 +735,12 @@ void AwtWin32GraphicsDevice::DisableOffscreenAcceleration()
 {
     // REMIND: noop for now
 }
+
+void AwtWin32GraphicsDevice::DisableScaleAutoRefresh()
+{
+    disableScaleAutoRefresh = TRUE;
+}
+
 
 /**
  * Invalidates the GraphicsDevice object associated with this
@@ -796,6 +801,22 @@ void AwtWin32GraphicsDevice::ResetAllMonitorInfo()
                          devices->GetDevice(deviceIndex)->pMonitorInfo);
     }
 }
+
+/**
+ * This function updates the scale factor for all monitors on the system.
+ */
+void AwtWin32GraphicsDevice::ResetAllDesktopScales()
+{
+    if (!Devices::GetInstance()){
+        return;
+    }
+    Devices::InstanceAccess devices;
+    int devicesNum = devices->GetNumDevices();
+    for (int deviceIndex = 0; deviceIndex < devicesNum; deviceIndex++) {
+        devices->GetDevice(deviceIndex)->InitDesktopScales();
+    }
+}
+
 
 void AwtWin32GraphicsDevice::DisableOffscreenAccelerationForDevice(
     HMONITOR hMonitor)
@@ -1444,6 +1465,7 @@ JNIEXPORT void JNICALL
     AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
 
     if (device != NULL ) {
+        device->DisableScaleAutoRefresh();
         device->SetScale(scaleX, scaleY);
     }
 }

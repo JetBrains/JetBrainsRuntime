@@ -33,7 +33,6 @@ extern "C" {
 #include "colordata.h"
 #include "awt_Palette.h"
 #include "Devices.h"
-#include "awt_Util.h"
 
 class AwtPalette;
 class Devices;
@@ -66,19 +65,20 @@ public:
     int                     GetDeviceIndex() { return screen; }
     void                    Release();
     void                    DisableOffscreenAcceleration();
+    void                    DisableScaleAutoRefresh();
     void                    Invalidate(JNIEnv *env);
     void                    InitDesktopScales();
     void                    SetScale(float scaleX, float scaleY);
     float                   GetScaleX();
     float                   GetScaleY();
-    int                     ScaleUpX(int x, const UCoordRelativity& relativity = RELATIVE_COORD);
-    int                     ScaleUpY(int y, const UCoordRelativity& relativity = RELATIVE_COORD);
-    int                     ScaleDownX(int x, const UCoordRelativity& relativity = RELATIVE_COORD);
-    int                     ScaleDownY(int y, const UCoordRelativity& relativity = RELATIVE_COORD);
-    int                     ScaleUpDX(int x);
-    int                     ScaleUpDY(int y);
-    int                     ScaleDownDX(int x);
-    int                     ScaleDownDY(int y);
+    int                     ScaleUpX(int x);
+    int                     ScaleUpAbsX(int x);
+    int                     ScaleUpY(int y);
+    int                     ScaleUpAbsY(int y);
+    int                     ScaleDownX(int x);
+    int                     ScaleDownAbsX(int x);
+    int                     ScaleDownY(int y);
+    int                     ScaleDownAbsY(int y);
 
     static void             ScaleDownDPoint(POINT *pt);
     static int              DeviceIndexForWindow(HWND hWnd);
@@ -94,6 +94,7 @@ public:
     static HMONITOR         GetMonitor(int deviceIndex);
     static LPMONITORINFO    GetMonitorInfo(int deviceIndex);
     static void             ResetAllMonitorInfo();
+    static void             ResetAllDesktopScales();
     static BOOL             IsPrimaryPalettized() { return primaryPalettized; }
     static int              GetDefaultDeviceIndex() { return primaryIndex; }
     static void             DisableOffscreenAccelerationForDevice(HMONITOR hMonitor);
@@ -124,6 +125,7 @@ private:
     Devices                 *devicesArray;
     float                   scaleX;
     float                   scaleY;
+    BOOL                    disableScaleAutoRefresh;
 
     static HDC              MakeDCFromMonitor(HMONITOR);
     static int              ClipRound(double value);
