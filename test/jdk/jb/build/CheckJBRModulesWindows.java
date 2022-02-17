@@ -30,7 +30,7 @@ import jdk.test.lib.process.OutputAnalyzer;
  * @requires (os.family == "windows")
  * @summary Verifies the list of available modules specific to Windows
  * @library /test/lib
- * @run main CheckJBRModules
+ * @run main CheckJBRModulesWindows
  */
 public class CheckJBRModulesWindows {
     static final String moduleNames[] = { "jdk.crypto.mscapi" };
