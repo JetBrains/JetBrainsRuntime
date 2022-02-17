@@ -37,6 +37,7 @@ import javax.swing.JComboBox;
 import javax.swing.JWindow;
 import javax.swing.JPanel;
 import javax.swing.JLabel;
+import javax.swing.ListSelectionModel;
 import javax.swing.ListCellRenderer;
 import javax.swing.SwingUtilities;
 import javax.swing.Popup;
@@ -80,6 +81,15 @@ public class AccessibleJListTest extends AccessibleComponentTest {
         if (!testResult) {
             throw new RuntimeException(a11yTest.exceptionString);
         }
+
+        countDownLatch = a11yTest.createCountDownLatch();
+        SwingUtilities.invokeLater(((AccessibleJListTest) a11yTest)::createSimpleListWithSinglSelectionModel);
+        countDownLatch.await();
+
+        if (!testResult) {
+            throw new RuntimeException(a11yTest.exceptionString);
+        }
+
 
         countDownLatch = a11yTest.createCountDownLatch();
         SwingUtilities.invokeLater(((AccessibleJListTest) a11yTest)::createSimpleListNamed);
@@ -133,6 +143,24 @@ public class AccessibleJListTest extends AccessibleComponentTest {
         frame.setLayout(new FlowLayout());
         frame.add(list);
         exceptionString = "Accessible JList simple list test failed!";
+        super.createUI(frame, "Accessible JList test");
+    }
+
+    public void createSimpleListWithSinglSelectionModel() {
+        INSTRUCTIONS = "INSTRUCTIONS:\n"
+                + "Check a11y of JList with singl selection model.\n\n"
+                + "Turn screen reader on, and Tab to the list.\n"
+                + "Select and deselect list items.\n\n"
+                + "If you can select and deselect list items tab further and press PASS, otherwise press FAIL.\n";
+
+        JPanel frame = new JPanel();
+
+        JList<String> list = new JList<>(NAMES);
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        frame.setLayout(new FlowLayout());
+        frame.add(list);
+        exceptionString = "Accessible JList simple list with singl selection model test failed!";
         super.createUI(frame, "Accessible JList test");
     }
 

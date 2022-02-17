@@ -561,7 +561,29 @@ class CAccessibility implements PropertyChangeListener {
                 if (as == null) return;
                 AccessibleTable pat = pac.getAccessibleTable();
                 if (pat instanceof AccessibleList) {
-                    ((AccessibleList) pat).setSelectionInterval(i, i);
+                    AccessibleList al = ((AccessibleList) pat);
+                    switch (al.getSelectionMode()) {
+                        case AccessibleList.SINGLE_SELECTION: {
+                            al.setSelectionInterval(i, i);
+                            break;
+                        }
+
+                        case AccessibleList.SINGLE_INTERVAL_SELECTION: {
+                            al.insertIndexInterval(i, 1, true);
+                            break;
+                        }
+
+                        case AccessibleList.MULTIPLE_INTERVAL_SELECTION: {
+                            al.addSelectionInterval(i, i);
+                            break;
+                        }
+
+                        default: {
+                            al.setSelectionInterval(i, i);
+                            break;
+                        }
+                    }
+
                         return;
                 }
                 as.addAccessibleSelection(i);

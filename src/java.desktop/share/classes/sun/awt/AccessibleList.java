@@ -19,6 +19,7 @@
  *
  */
 
+// Before being sent to openJDK, this interface will be moved to javax.accessibility
 package sun.awt;
 
 /**
