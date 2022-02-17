@@ -475,7 +475,8 @@ public final class LWCToolkit extends LWToolkit {
         if (!(gd instanceof CGraphicsDevice)) {
             return AWTThreading.executeWaitToolkit(() -> super.getScreenInsets(gc));
         }
-        return AWTThreading.executeWaitToolkit(() -> ((CGraphicsDevice)gd).getScreenInsets());
+        CGraphicsDevice cgd = (CGraphicsDevice) gd;
+        return cgd.getScreenInsets();
     }
 
     @Override
@@ -822,6 +823,11 @@ public final class LWCToolkit extends LWToolkit {
      * @param delay a delay in milliseconds
      */
     static native void performOnMainThreadAfterDelay(Runnable r, long delay);
+
+    /**
+     * Schedules a {@code Runnable} execution on the Appkit thread and waits for completion.
+     */
+    public static native void performOnMainThreadAndWait(Runnable r);
 
 // DnD support
 
