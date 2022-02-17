@@ -58,12 +58,6 @@ public:
     static jfieldID securityWarningHeightID;
 
     /* sun.awt.windows.WWindowPeer field and method IDs */
-    // The coordinates at the peer.
-    static jfieldID sysXID;
-    static jfieldID sysYID;
-    static jfieldID sysWID;
-    static jfieldID sysHID;
-
     static jfieldID sysInsetsID;
 
     static jfieldID windowTypeID;
@@ -131,6 +125,7 @@ public:
         return FALSE;
     }
 
+    virtual void Reshape(int x, int y, int w, int h);
     virtual void Invalidate(RECT* r);
     virtual void Show();
     virtual void SetResizable(BOOL isResizable);
@@ -138,7 +133,7 @@ public:
     virtual void RecalcNonClient();
     virtual void RedrawNonClient();
     virtual int  GetScreenImOn();
-    virtual BOOL CheckIfOnNewScreen();
+    virtual void CheckIfOnNewScreen(BOOL force);
     virtual void Grab();
     virtual void Ungrab();
     virtual void Ungrab(BOOL doPost);
@@ -180,8 +175,8 @@ public:
     virtual MsgRouting WmMove(int x, int y);
     virtual MsgRouting WmSize(UINT type, int w, int h);
     virtual MsgRouting WmSizing();
-    /*virtual MsgRouting WmEnterSizeMove();
-    virtual MsgRouting WmExitSizeMove();*/
+    virtual MsgRouting WmEnterSizeMove();
+    virtual MsgRouting WmExitSizeMove();
     virtual MsgRouting WmPaint(HDC hDC);
     virtual MsgRouting WmSettingChange(UINT wFlag, LPCTSTR pszSection);
     virtual MsgRouting WmNcCalcSize(BOOL fCalcValidRects,
@@ -196,8 +191,6 @@ public:
 
     virtual MsgRouting HandleEvent(MSG *msg, BOOL synthetic);
     virtual void WindowResized();
-
-    MsgRouting WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds);
 
     static jboolean _RequestWindowFocus(void *param);
 
@@ -255,8 +248,6 @@ public:
     static void _RepositionSecurityWarning(void* param);
     static void _SetFullScreenExclusiveModeState(void* param);
     static void _GetNativeWindowSize(void* param);
-//    static void _WindowDPIChange(void* param);
-    static void _AdjustBoundsOnDPIChange(void* param);
     static void _OverrideHandle(void *param);
 
     inline static BOOL IsResizing() {
@@ -296,7 +287,6 @@ private:
                                        // from its hierarchy when shown. Currently applied to instances of
                                        // javax/swing/Popup$HeavyWeightWindow class.
     BOOL m_isIgnoringMouseEvents; // Make window transparent for mouse events (used for JCEF)
-    RECT m_boundsOnDPIChange; /* bounds to asynchronously adjust on DPI change */
 
     // SetTranslucency() is the setter for the following two fields
     BYTE m_opacity;         // The opacity level. == 0xff by default (when opacity mode is disabled)
@@ -412,19 +402,18 @@ protected:
 private:
     int m_screenNum;
 
-    /*typedef struct {
+    typedef struct {
         jint screen;
         jfloat scaleX;
         jfloat scaleY;
     } ScaleRec;
 
     BOOL m_winSizeMove;
-    ScaleRec prevScaleRec;*/
+    ScaleRec prevScaleRec;
 
     void InitOwner(AwtWindow *owner);
-    /*void CheckWindowDPIChange();
-    void WindowDPIChange(int prevScreen, float prevScaleX, float prevScaleY,
-                         int newScreen, float scaleX, float scaleY); */
+    void CheckWindowDPIChange();
+    void WmDPIChanged(const LPARAM &lParam);
 
     Type m_windowType;
     void InitType(JNIEnv *env, jobject peer);

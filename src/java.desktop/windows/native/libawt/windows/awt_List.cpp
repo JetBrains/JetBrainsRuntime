@@ -288,13 +288,16 @@ void AwtList::SetMultiSelect(BOOL ms) {
 
     UnsubclassHWND();
     AwtToolkit::DestroyComponentHWND(m_hwnd);
-    CreateHWnd(env, L"", style, exStyle,
-               rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+    CreateHWnd(env, L"", style, exStyle, 0, 0, 0, 0,
                parentHWnd,
                NULL,
                ::GetSysColor(COLOR_WINDOWTEXT),
                ::GetSysColor(COLOR_WINDOW),
                peer);
+
+    SetWindowPos(GetHWnd(), 0,
+            rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+            SWP_NOZORDER | SWP_NOCOPYBITS | SWP_NOACTIVATE);
 
     SendListMessage(WM_SETFONT, (WPARAM)font, (LPARAM)FALSE);
     SendListMessage(LB_SETITEMHEIGHT, 0, MAKELPARAM(itemHeight, 0));

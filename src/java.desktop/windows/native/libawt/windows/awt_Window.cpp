@@ -40,7 +40,6 @@
 #include "awt_IconCursor.h"
 #include "ComCtl32Util.h"
 #include "math.h"
-#include "awt_Util.h"
 
 #include "java_awt_Insets.h"
 #include <java_awt_Container.h>
@@ -155,17 +154,6 @@ struct SetFullScreenExclusiveModeStateStruct {
     jboolean isFSEMState;
 };
 
-/* // struct for _WindowDPIChange() method
-struct ScaleStruct {
-    jobject window;
-    jint prevScreen;
-    jfloat prevScaleX;
-    jfloat prevScaleY;
-    jint screen;
-    jfloat scaleX;
-    jfloat scaleY;
-}; */
-
 struct OverrideHandle {
     jobject frame;
     HWND handle;
@@ -181,10 +169,6 @@ jfieldID AwtWindow::autoRequestFocusID;
 jfieldID AwtWindow::securityWarningWidthID;
 jfieldID AwtWindow::securityWarningHeightID;
 
-jfieldID AwtWindow::sysXID;
-jfieldID AwtWindow::sysYID;
-jfieldID AwtWindow::sysWID;
-jfieldID AwtWindow::sysHID;
 jfieldID AwtWindow::windowTypeID;
 jfieldID AwtWindow::sysInsetsID;
 jmethodID AwtWindow::notifyWindowStateChangedMID;
@@ -248,13 +232,11 @@ AwtWindow::AwtWindow() {
     m_alwaysOnTop = false;
 
     fullScreenExclusiveModeState = FALSE;
-    /*m_winSizeMove = FALSE;
+    m_winSizeMove = FALSE;
     prevScaleRec.screen = -1;
     prevScaleRec.scaleX = -1.0f;
-    prevScaleRec.scaleY = -1.0f;*/
+    prevScaleRec.scaleY = -1.0f;
     m_overriddenHwnd = NULL;
-
-    ::SetRect(&m_boundsOnDPIChange, 0, 0, 0, 0);
 }
 
 AwtWindow::~AwtWindow()
@@ -983,51 +965,6 @@ MsgRouting AwtWindow::WmTimer(UINT_PTR timerID)
     return mrConsume;
 }
 
-MsgRouting AwtWindow::WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds) {
-    if (!::IsWindowVisible(GetHWnd())) {
-        // may diverge with Component::Reshape in this state
-        return mrDoDefault;
-    }
-    if (IsInMoveResizeLoop()) {
-        // Dragged with mouse to new screen. In this case the new bounds must be set immediately
-        // or otherwise OS will reset it back to the previous values.
-        ::SetWindowPos(GetHWnd(), NULL,
-                           bounds->left, bounds->top,
-                           bounds->right - bounds->left, bounds->bottom - bounds->top,
-                           SWP_NOZORDER | SWP_NOACTIVATE);
-    } else {
-        // Either DPI of this screen changed, or the window moved to a new screen by a shortcut (shift+meta+arrow).
-        // Store the new bounds for async update.
-        ::CopyRect(&m_boundsOnDPIChange, bounds);
-    }
-    return mrConsume;
-}
-
-void AwtWindow::_AdjustBoundsOnDPIChange(void* param)
-{
-    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
-
-    jobject jwnd = (jobject)param;
-    PDATA pData;
-    JNI_CHECK_PEER_GOTO(jwnd, done);
-    AwtWindow *window = (AwtWindow *)pData;
-
-    int x = window->m_boundsOnDPIChange.left;
-    int y = window->m_boundsOnDPIChange.top;
-    int width = window->m_boundsOnDPIChange.right - window->m_boundsOnDPIChange.left;
-    int height = window->m_boundsOnDPIChange.bottom - window->m_boundsOnDPIChange.top;
-
-    if (width > 0 && height > 0) {
-        ::SetRect(&window->m_boundsOnDPIChange, 0, 0, 0, 0); // drop it
-
-        ::SetWindowPos(window->GetHWnd(), NULL,
-                       x, y, width, height,
-                       SWP_NOZORDER | SWP_NOACTIVATE);
-    }
-done:
-    env->DeleteGlobalRef(jwnd);
-}
-
 // The security warning is visible if:
 //    1. The window has the keyboard window focus, OR
 //    2. The mouse pointer is located within the window bounds,
@@ -1197,19 +1134,19 @@ AwtWindow* AwtWindow::Create(jobject self, jobject parent)
                 // specify WS_EX_TOOLWINDOW to remove parentless windows from taskbar
                 exStyle |= WS_EX_TOOLWINDOW;
             }
+            jint x = env->GetIntField(target, AwtComponent::xID);
+            jint y = env->GetIntField(target, AwtComponent::yID);
+            jint width = env->GetIntField(target, AwtComponent::widthID);
+            jint height = env->GetIntField(target, AwtComponent::heightID);
+
             window->CreateHWnd(env, L"",
                                style, exStyle,
-                               0, 0, 0, 0,
+                               x, y, width, height,
                                (awtParent != NULL) ? awtParent->GetHWnd() : NULL,
                                NULL,
                                ::GetSysColor(COLOR_WINDOWTEXT),
                                ::GetSysColor(COLOR_WINDOW),
                                self);
-
-            jint x = env->GetIntField(target, AwtComponent::xID);
-            jint y = env->GetIntField(target, AwtComponent::yID);
-            jint width = env->GetIntField(target, AwtComponent::widthID);
-            jint height = env->GetIntField(target, AwtComponent::heightID);
 
             /*
              * Initialize icon as inherited from parent if it exists
@@ -1220,13 +1157,7 @@ AwtWindow* AwtWindow::Create(jobject self, jobject parent)
                 window->m_iconInherited = TRUE;
             }
             window->DoUpdateIcon();
-
-
-            /*
-             * Reshape here instead of during create, so that a WM_NCCALCSIZE
-             * is sent.
-             */
-            window->Reshape(x, y, width, height);
+            window->RecalcNonClient();
         }
     } catch (...) {
         env->DeleteLocalRef(target);
@@ -1282,6 +1213,48 @@ void AwtWindow::moveToDefaultLocation() {
     }
     VERIFY(::DestroyWindow(boggy));
     VERIFY(::SetWindowPos(GetHWnd(), NULL, defLoc.left, defLoc.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER));
+}
+
+/**
+ * Override AwtComponent::Reshape() to handle absolute screen coordinates used
+ * by the top-level windows.
+ */
+void AwtWindow::Reshape(int x, int y, int w, int h) {
+    if (IsEmbeddedFrame()) {
+        // Not the "real" top level window
+        return AwtComponent::Reshape(x, y, w, h);
+    }
+    // Yes, use x,y in user's space to find the nearest monitor in device space.
+    POINT pt = {x + w / 2, y + h / 2};
+    Devices::InstanceAccess devices;
+    HMONITOR monitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+    int screen = AwtWin32GraphicsDevice::GetScreenFromHMONITOR(monitor);
+    AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
+    // Try to set the correct size and jump to the correct location, even if it is
+    // on the different monitor. Note that for the "size" we use the current
+    // monitor, so the WM_DPICHANGED will adjust it for the "target" monitor.
+    int scaleUpAbsX = device == NULL ? x : device->ScaleUpAbsX(x);
+    int scaleUpAbsY = device == NULL ? y : device->ScaleUpAbsY(y);
+    ReshapeNoScale(scaleUpAbsX, scaleUpAbsY, ScaleUpX(w), ScaleUpY(h));
+    // The window manager may tweak the size for different reasons, so try
+    // to make sure our window has the correct size in the user's space.
+    // NOOP if the size was changed already or changing is in progress.
+    RECT rc;
+    ::GetWindowRect(GetHWnd(), &rc);
+    ReshapeNoScale(rc.left, rc.top, ScaleUpX(w), ScaleUpY(h));
+    // the window manager may ignore our "SetWindowPos" request, in this,
+    // case the WmMove/WmSize will not come and we need to manually resync
+    // the "java.awt.Window" locations, because "java.awt.Window" already
+    // uses location ignored by the window manager.
+    ::GetWindowRect(GetHWnd(), &rc);
+    if (x != ScaleDownAbsX(rc.left) || y != ScaleDownAbsY(rc.top)) {
+        WmMove(rc.left, rc.top);
+    }
+    int userW = ScaleDownX(rc.right - rc.left);
+    int userH = ScaleDownY(rc.bottom - rc.top);
+    if (w != userW || h != userH) {
+        WmSize(SIZENORMAL, rc.right - rc.left, rc.bottom - rc.top);
+    }
 }
 
 void AwtWindow::Show()
@@ -1870,6 +1843,16 @@ MsgRouting AwtWindow::WmShowWindow(BOOL show, UINT status)
     return AwtCanvas::WmShowWindow(show, status);
 }
 
+void AwtWindow::WmDPIChanged(const LPARAM &lParam) {
+    // need to update the scales now, otherwise the ReshapeNoScale() will
+    // calculate the bounds wrongly
+    AwtWin32GraphicsDevice::ResetAllDesktopScales();
+    RECT *r = (RECT *) lParam;
+    ReshapeNoScale(r->left, r->top, r->right - r->left, r->bottom - r->top);
+    CheckIfOnNewScreen(true);
+}
+
+
 MsgRouting AwtWindow::WmEraseBkgnd(HDC hDC, BOOL& didErase)
 {
     if (!IsUndecorated()) {
@@ -1900,61 +1883,21 @@ MsgRouting AwtWindow::WmMove(int x, int y)
         return mrDoDefault;
     }
 
-    if (m_screenNum == -1) {
-    // Set initial value
-        m_screenNum = GetScreenImOn();
-    }
-    else if (CheckIfOnNewScreen()) {
-        DoUpdateIcon();
-    }
+    // Check for the new screen and update the java peer
+    CheckIfOnNewScreen(false); // postpone if different DPI
 
     /* Update the java AWT target component's fields directly */
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     if (env->EnsureLocalCapacity(1) < 0) {
         return mrConsume;
     }
-    jobject peer = GetPeer(env);
-    jobject target = env->GetObjectField(peer, AwtObject::targetID);
+    jobject target = GetTarget(env);
 
-    URectBounds rect = UGetWindowRectBounds(GetHWnd());
-    AwtWin32GraphicsDevice* device = UGetDeviceByBounds(rect, this);
+    RECT rect;
+    ::GetWindowRect(GetHWnd(), &rect);
 
-    int usrX = device->ScaleDownX(rect.x);
-    int usrY = device->ScaleDownY(rect.y);
-
-    // [tav] Convert x/y to user space, asymmetrically to AwtComponent::Reshape.
-    AwtComponent* parent = GetParent();
-    if (parent != NULL && (device->GetScaleX() > 1 || device->GetScaleY() > 1)) {
-
-        RECT parentInsets;
-        parent->GetInsets(&parentInsets);
-        // Convert the owner's client area origin to user space
-        int parentInsetsUsrX = device->ScaleDownX(parentInsets.left);
-        int parentInsetsUsrY = device->ScaleDownY(parentInsets.top);
-
-        RECT parentRect;
-        VERIFY(::GetWindowRect(parent->GetHWnd(), &parentRect));
-        // Convert the owner's origin to user space
-        int parentUsrX = device->ScaleDownX(parentRect.left);
-        int parentUsrY = device->ScaleDownY(parentRect.top);
-
-        // Calc the offset from the owner's client area in device space
-        int offsetDevX = rect.x - parentRect.left - parentInsets.left;
-        int offsetDevY = rect.y - parentRect.top - parentInsets.top;
-
-        // Convert the offset to user space
-        int offsetUsrX = device->ScaleDownX(offsetDevX);
-        int offsetUsrY = device->ScaleDownY(offsetDevY);
-
-        // Finally calc the window's location based on the frame's and its insets user space values.
-        usrX = parentUsrX + parentInsetsUsrX + offsetUsrX;
-        usrY = parentUsrY + parentInsetsUsrY + offsetUsrY;
-    }
-
-    (env)->SetIntField(target, AwtComponent::xID, usrX);
-    (env)->SetIntField(target, AwtComponent::yID, usrY);
-    (env)->SetIntField(peer, AwtWindow::sysXID, rect.x);
-    (env)->SetIntField(peer, AwtWindow::sysYID, rect.y);
+    (env)->SetIntField(target, AwtComponent::xID, ScaleDownAbsX(rect.left));
+    (env)->SetIntField(target, AwtComponent::yID, ScaleDownAbsY(rect.top));
     SendComponentEvent(java_awt_event_ComponentEvent_COMPONENT_MOVED);
 
     env->DeleteLocalRef(target);
@@ -1996,18 +1939,27 @@ MsgRouting AwtWindow::WmSizing()
     return mrDoDefault;
 }
 
-/*MsgRouting AwtWindow::WmEnterSizeMove()
+MsgRouting AwtWindow::WmEnterSizeMove()
 {
     m_winSizeMove = TRUE;
+    // Below is a workaround, see CheckWindowDPIChange
+    Devices::InstanceAccess devices;
+    AwtWin32GraphicsDevice* device = devices->GetDevice(m_screenNum);
+    if (device) {
+        prevScaleRec.screen = m_screenNum;
+        prevScaleRec.scaleX = device->GetScaleX();
+        prevScaleRec.scaleY = device->GetScaleY();
+    }
+    // Above is a workaround
     return mrDoDefault;
 }
 
 MsgRouting AwtWindow::WmExitSizeMove()
 {
     m_winSizeMove = FALSE;
-    CheckWindowDPIChange();
+    CheckWindowDPIChange(); // workaround
     return mrDoDefault;
-}*/
+}
 
 /*
  * Override AwtComponent's size handling to first update the
@@ -2022,6 +1974,8 @@ MsgRouting AwtWindow::WmSize(UINT type, int w, int h)
         UpdateSecurityWarningVisibility();
         return mrDoDefault;
     }
+    // Check for the new screen and update the java peer
+    CheckIfOnNewScreen(false); // postpone if different DPI
 
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     if (env->EnsureLocalCapacity(1) < 0)
@@ -2029,16 +1983,8 @@ MsgRouting AwtWindow::WmSize(UINT type, int w, int h)
     jobject target = GetTarget(env);
     // fix 4167248 : ensure the insets are up-to-date before using
     BOOL insetsChanged = UpdateInsets(NULL);
-    int newWidth = w + m_insets.left + m_insets.right;
-    int newHeight = h + m_insets.top + m_insets.bottom;
-    URectBounds rect = UGetWindowRectBounds(GetHWnd());
-    AwtWin32GraphicsDevice* device = UGetDeviceByBounds(rect, this);
-    (env)->SetIntField(target, AwtComponent::widthID, device->ScaleDownX(newWidth));
-    (env)->SetIntField(target, AwtComponent::heightID, device->ScaleDownY(newHeight));
-
-    jobject peer = GetPeer(env);
-    (env)->SetIntField(peer, AwtWindow::sysWID, newWidth);
-    (env)->SetIntField(peer, AwtWindow::sysHID, newHeight);
+    (env)->SetIntField(target, AwtComponent::widthID, ScaleDownX(w));
+    (env)->SetIntField(target, AwtComponent::heightID, ScaleDownY(h));
 
     if (!AwtWindow::IsResizing()) {
         WindowResized();
@@ -2120,6 +2066,11 @@ LRESULT AwtWindow::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
     LRESULT retValue = 0L;
 
     switch(message) {
+        case WM_DPICHANGED: {
+            WmDPIChanged(lParam);
+            mr = mrConsume;
+            break;
+        }
         case WM_GETICON:
             mr = WmGetIcon(wParam, retValue);
             break;
@@ -2272,97 +2223,80 @@ int AwtWindow::GetScreenImOn() {
     return scrnNum;
 }
 
-/* Check to see if we've been moved onto another screen.
+/*
+ * Check to see if we've been moved onto another screen.
  * If so, update internal data, surfaces, etc.
  */
-
-BOOL AwtWindow::CheckIfOnNewScreen() {
+void AwtWindow::CheckIfOnNewScreen(BOOL force) {
     int curScrn = GetScreenImOn();
 
     if (curScrn != m_screenNum) {  // we've been moved
+        // if moved from one monitor to another with different DPI, we should
+        // update the m_screenNum only if the size was updated as well in the
+        // WM_DPICHANGED.
+        Devices::InstanceAccess devices;
+        AwtWin32GraphicsDevice* oldDevice = devices->GetDevice(m_screenNum);
+        AwtWin32GraphicsDevice* newDevice = devices->GetDevice(curScrn);
+        if (!force && m_winSizeMove && oldDevice && newDevice) {
+            if (oldDevice->GetScaleX() != newDevice->GetScaleX()
+                    || oldDevice->GetScaleY() != newDevice->GetScaleY()) {
+                // scales are different, wait for WM_DPICHANGED
+                return;
+            }
+        }
+
         JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
 
         jclass peerCls = env->GetObjectClass(m_peerObject);
         DASSERT(peerCls);
-        CHECK_NULL_RETURN(peerCls, TRUE);
+        CHECK_NULL(peerCls);
 
         jmethodID draggedID = env->GetMethodID(peerCls, "draggedToNewScreen",
                                                "()V");
         DASSERT(draggedID);
         if (draggedID == NULL) {
             env->DeleteLocalRef(peerCls);
-            return TRUE;
+            return;
         }
 
         env->CallVoidMethod(m_peerObject, draggedID);
         m_screenNum = curScrn;
 
         env->DeleteLocalRef(peerCls);
-        return TRUE;
+
+        DoUpdateIcon();
     }
-    return FALSE;
+    return;
 }
 
-/* void AwtWindow::CheckWindowDPIChange() {
-
-    if (prevScaleRec.screen != -1 ) {
-        float prevScaleX = prevScaleRec.scaleX;
-        float prevScaleY = prevScaleRec.scaleY;
-
-        if (prevScaleX >= 1 && prevScaleY >= 1) {
-            Devices::InstanceAccess devices;
-            AwtWin32GraphicsDevice* device = devices->GetDevice(m_screenNum);
-            if (device) {
-                float scaleX = device->GetScaleX();
-                float scaleY = device->GetScaleY();
-                if (prevScaleX != scaleX || prevScaleY != scaleY) {
-                    WindowDPIChange(prevScaleRec.screen, prevScaleX, prevScaleY,
-                                    m_screenNum, scaleX, scaleY);
+void AwtWindow::CheckWindowDPIChange() {
+    if (prevScaleRec.screen != -1 && prevScaleRec.screen != m_screenNum) {
+        Devices::InstanceAccess devices;
+        AwtWin32GraphicsDevice *device = devices->GetDevice(m_screenNum);
+        if (device) {
+            if (prevScaleRec.scaleX != device->GetScaleX()
+                    || prevScaleRec.scaleY != device->GetScaleY()) {
+                RECT rect;
+                ::GetWindowRect(GetHWnd(), &rect);
+                int x = rect.left;
+                int y = rect.top;
+                int w = rect.right - rect.left;
+                int h = rect.bottom - rect.top;
+                RECT bounds;
+                if (MonitorBounds(device->GetMonitor(), &bounds)) {
+                    x = x < bounds.left ? bounds.left : x;
+                    y = y < bounds.top ? bounds.top : y;
+                    x = (x + w > bounds.right) ? bounds.right - w : x;
+                    y = (y + h > bounds.bottom) ? bounds.bottom - h : y;
                 }
+                ReshapeNoScale(x, y, w, h);
             }
         }
         prevScaleRec.screen = -1;
+        prevScaleRec.scaleX = -1.0f;
+        prevScaleRec.scaleY = -1.0f;
     }
 }
-
-void AwtWindow::WindowDPIChange(int prevScreen,
-                                float prevScaleX, float prevScaleY,
-                                int screen, float scaleX,
-                                float scaleY)
-{
-    int x;
-    int y;
-    int w;
-    int h;
-    RECT rect;
-
-    if (prevScaleX == scaleX && prevScaleY == scaleY) {
-        return;
-    }
-
-    ::GetWindowRect(GetHWnd(), &rect);
-    x = rect.left;
-    y = rect.top;
-    w = (rect.right - rect.left) * scaleX / prevScaleX;
-    h = (rect.bottom - rect.top) * scaleY / prevScaleY;
-
-    if (prevScreen != screen) {
-        Devices::InstanceAccess devices;
-        AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
-        if (device) {
-            RECT bounds;
-            if (MonitorBounds(device->GetMonitor(), &bounds)) {
-                x = x < bounds.left ? bounds.left : x;
-                y = y < bounds.top ? bounds.top : y;
-
-                x = (x + w > bounds.right) ? bounds.right - w : x;
-                y = (y + h > bounds.bottom) ? bounds.bottom - h : y;
-            }
-        }
-    }
-
-    ReshapeNoScale(x, y, w, h);
-} */
 
 BOOL AwtWindow::IsFocusableWindow() {
     /*
@@ -2750,15 +2684,11 @@ void AwtWindow::_ReshapeFrame(void *param)
                 {
                     env->SetIntField(target, AwtComponent::widthID,
                         w = minWidth);
-                    env->SetIntField(peer, AwtWindow::sysWID,
-                        w);
                 }
                 if (h < minHeight)
                 {
                     env->SetIntField(target, AwtComponent::heightID,
                         h = minHeight);
-                    env->SetIntField(peer, AwtWindow::sysHID,
-                        h);
                 }
             }
             env->DeleteLocalRef(target);
@@ -3425,40 +3355,6 @@ void AwtWindow::_GetNativeWindowSize(void* param) {
     env->DeleteGlobalRef(self);
 }
 
-/*void AwtWindow::_WindowDPIChange(void* param)
-{
-    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
-
-    ScaleStruct *ss = (ScaleStruct *)param;
-    jobject self = ss->window;
-    jint prevScreen = ss->prevScreen;
-    jfloat prevScaleX = ss->prevScaleX;
-    jfloat prevScaleY = ss->prevScaleY;
-    jint screen = ss->screen;
-    jfloat scaleX = ss->scaleX;
-    jfloat scaleY = ss->scaleY;
-
-    PDATA pData;
-    JNI_CHECK_PEER_GOTO(self, ret);
-    AwtWindow *window = (AwtWindow *)pData;
-
-    if (window->m_winSizeMove) {
-        if (window->prevScaleRec.screen == -1) {
-            window->prevScaleRec.screen = prevScreen;
-            window->prevScaleRec.scaleX = prevScaleX;
-            window->prevScaleRec.scaleY = prevScaleY;
-        }
-    }
-    else {
-        window->WindowDPIChange(prevScreen, prevScaleX, prevScaleY,
-                                screen, scaleX, scaleY);
-    }
-
-ret:
-    env->DeleteGlobalRef(self);
-    delete ss;
-}*/
-
 extern "C" int getSystemMetricValue(int msgType);
 extern "C" {
 
@@ -3514,11 +3410,6 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_initIDs(JNIEnv *env, jclass cls)
 {
     TRY;
-
-    CHECK_NULL(AwtWindow::sysXID = env->GetFieldID(cls, "sysX", "I"));
-    CHECK_NULL(AwtWindow::sysYID = env->GetFieldID(cls, "sysY", "I"));
-    CHECK_NULL(AwtWindow::sysWID = env->GetFieldID(cls, "sysW", "I"));
-    CHECK_NULL(AwtWindow::sysHID = env->GetFieldID(cls, "sysH", "I"));
 
     CHECK_NULL(AwtWindow::sysInsetsID = env->GetFieldID(cls, "sysInsets", "Ljava/awt/Insets;"));
 
@@ -4160,49 +4051,6 @@ Java_sun_awt_windows_WWindowPeer_repositionSecurityWarning(JNIEnv *env,
 
     CATCH_BAD_ALLOC;
 }
-
-/*
- * Class:     sun_awt_windows_WWindowPeer
- * Method:    _AdjustBoundsOnDPIChange
- * Signature: ()V
- */
-JNIEXPORT void JNICALL
-Java_sun_awt_windows_WWindowPeer_adjustBoundsOnDPIChange(JNIEnv *env, jobject self)
-{
-    TRY;
-
-    AwtToolkit::GetInstance().InvokeFunction(AwtWindow::_AdjustBoundsOnDPIChange, (void*)env->NewGlobalRef(self));
-    // global refs deleted in _AdjustBoundsOnDisplayChange
-
-    CATCH_BAD_ALLOC;
-}
-
-/*
-* Class:     sun_awt_windows_WWindowPeer
-* Method:    windowDPIChange
-* Signature: (IFFIFF)V
-*/
-/*JNIEXPORT void JNICALL
-Java_sun_awt_windows_WWindowPeer_windowDPIChange(JNIEnv *env, jobject self,
-    jint prevScreen, jfloat prevScaleX, jfloat prevScaleY,
-    jint screen, jfloat scaleX, jfloat scaleY)
-{
-    TRY;
-
-    ScaleStruct *ss = new ScaleStruct;
-    ss->window = env->NewGlobalRef(self);
-    ss->prevScreen = prevScreen;
-    ss->prevScaleX = prevScaleX;
-    ss->prevScaleY = prevScaleY;
-    ss->screen = screen;
-    ss->scaleX = scaleX;
-    ss->scaleY = scaleY;
-
-    AwtToolkit::GetInstance().InvokeFunction(AwtWindow::_WindowDPIChange, ss);
-    // global refs and ss are deleted in _WindowDPIChange
-
-    CATCH_BAD_ALLOC;
-}*/
 
 /*
  * Class:     sun_awt_windows_WLightweightFramePeer

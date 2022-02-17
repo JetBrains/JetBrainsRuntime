@@ -117,4 +117,14 @@ public interface RobotPeer
      * @see Robot#createScreenCapture(Rectangle)
      */
     int[] getRGBPixels(Rectangle bounds);
+
+    /**
+     * Determines if absolute coordinates should be used by this peer.
+     *
+     * @return {@code true} if absolute coordinates should be used,
+     *         {@code false} otherwise
+     */
+    default boolean useAbsoluteCoordinates() {
+        return false;
+    }
 }

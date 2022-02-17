@@ -41,6 +41,10 @@ extern const UINT SYSCOMMAND_IMM;
  * See winuser.h for details.
  */
 
+#ifndef WM_DPICHANGED
+#define WM_DPICHANGED                   0x02E0
+#endif //WM_DPICHANGED
+
 #ifndef WM_MOUSEWHEEL
 #define WM_MOUSEWHEEL                   0x020A
 #endif //WM_MOUSEWHEEL
