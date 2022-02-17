@@ -6,7 +6,6 @@ JTreport
 .idea/modules.xml
 .idea/shelf/
 JetBrainsRuntime.iml
-build/
 # Project exclude paths
 /jb/project/java-gradle/.gradle/
 /build/
