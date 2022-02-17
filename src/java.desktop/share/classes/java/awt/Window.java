@@ -4065,8 +4065,8 @@ public class Window extends Container implements Accessible {
         }
 
         private interface MacOS {
-            MacOS INSTANCE = (MacOS) JBRApi.internalService(MethodHandles.lookup(), null)
-                    .withStatic("setTitleBarHeight", "sun.lwawt.macosx.CPlatformWindow", "setCustomDecorationTitleBarHeight").create();
+            MacOS INSTANCE = (MacOS) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
+                    .withStatic("setTitleBarHeight", "sun.lwawt.macosx.CPlatformWindow", "setCustomDecorationTitleBarHeight").build();
             void setTitleBarHeight(Window target, ComponentPeer peer, float height);
         }
     }

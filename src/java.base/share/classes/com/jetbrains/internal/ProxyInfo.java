@@ -74,7 +74,6 @@ class ProxyInfo {
     }
 
     private Lookup lookup(Lookup lookup, String clazz) {
-        boolean outer = lookup == JBRApi.outerLookup;
         String[] nestedClasses = clazz.split("\\$");
         clazz = "";
         for (int i = 0; i < nestedClasses.length; i++) {
@@ -82,9 +81,8 @@ class ProxyInfo {
                 if (i != 0) clazz += "$";
                 clazz += nestedClasses[i];
                 lookup = MethodHandles.privateLookupIn(lookup.findClass(clazz), lookup);
-            } catch (ClassNotFoundException | IllegalAccessException e) {
-                if (outer) return null;
-                else throw new RuntimeException(e);
+            } catch (ClassNotFoundException | IllegalAccessException ignore) {
+                return null;
             }
         }
         return lookup;

@@ -17,6 +17,7 @@
 package com.jetbrains.internal;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -104,9 +105,10 @@ public class JBRApi {
         JBRApi.outerLookup = outerLookup;
         try {
             Class<?> metadataClass = outerLookup.findClass("com.jetbrains.JBR$Metadata");
-            knownServices = Set.of((String[]) outerLookup.findStaticVarHandle(metadataClass,
+            Lookup lookup = MethodHandles.privateLookupIn(metadataClass, outerLookup);
+            knownServices = Set.of((String[]) lookup.findStaticVarHandle(metadataClass,
                     "KNOWN_SERVICES", String[].class).get());
-            knownProxies = Set.of((String[]) outerLookup.findStaticVarHandle(metadataClass,
+            knownProxies = Set.of((String[]) lookup.findStaticVarHandle(metadataClass,
                     "KNOWN_PROXIES", String[].class).get());
         } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException e) {
             e.printStackTrace();
@@ -164,7 +166,7 @@ public class JBRApi {
         }
     }
 
-    public static InternalServiceBuilder internalService(Lookup interFace, String target) {
+    public static InternalServiceBuilder internalServiceBuilder(Lookup interFace, String target) {
         return new InternalServiceBuilder(new RegisteredProxyInfo(
                 interFace, interFace.lookupClass().getName(), target, ProxyInfo.Type.INTERNAL_SERVICE, new ArrayList<>()));
     }
@@ -187,7 +189,7 @@ public class JBRApi {
             return this;
         }
 
-        public Object create() {
+        public Object build() {
             ProxyInfo info = ProxyInfo.resolve(this.info);
             if (info == null) return null;
             ProxyGenerator generator = new ProxyGenerator(info);
