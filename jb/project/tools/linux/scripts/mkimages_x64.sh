@@ -36,14 +36,27 @@ function do_configure {
     || do_exit $?
 }
 
+function is_musl {
+  libc=$(ldd /bin/ls | grep 'musl' | head -1 | cut -d ' ' -f1)
+  if [ -z $libc ]; then
+    # This is not Musl, return 1 == false
+    return 1
+  fi
+  return 0
+}
+
 function create_image_bundle {
   __bundle_name=$1
   __arch_name=$2
   __modules_path=$3
   __modules=$4
 
+  libc_type_suffix=''
+
+  if is_musl; then libc_type_suffix='musl-' ; fi
+
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
-  JBR=${__bundle_name}-${JBSDK_VERSION}-linux-x64-${fastdebug_infix}b${build_number}
+  JBR=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}x64-${fastdebug_infix}b${build_number}
 
   echo Running jlink....
   [ -d "$IMAGES_DIR"/"$__arch_name" ] && rm -rf "${IMAGES_DIR:?}"/"$__arch_name"
@@ -133,7 +146,7 @@ fi
 create_image_bundle "$JBRSDK_BUNDLE${jbr_name_postfix}" $JBRSDK_BUNDLE $JSDK_MODS_DIR "$modules" || do_exit $?
 
 if [ $do_maketest -eq 1 ]; then
-    JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-linux-test-x64-b${build_number}
+    JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-linux-${libc_type_suffix}test-x64-b${build_number}
     echo Creating "$JBRSDK_TEST" ...
     [ $do_reset_changes -eq 1 ] && git checkout HEAD jb/project/tools/common/modules.list src/java.desktop/share/classes/module-info.java
     make test-image CONF=$RELEASE_NAME || do_exit $?
