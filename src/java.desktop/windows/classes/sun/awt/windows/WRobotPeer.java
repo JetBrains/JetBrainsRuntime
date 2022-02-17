@@ -30,7 +30,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.peer.RobotPeer;
 
-import sun.java2d.SunGraphicsEnvironment;
+import static sun.java2d.SunGraphicsEnvironment.toDeviceSpaceAbs;
 
 final class WRobotPeer implements RobotPeer {
 
@@ -40,7 +40,7 @@ final class WRobotPeer implements RobotPeer {
     public native void mouseMoveImpl(int x, int y);
     @Override
     public void mouseMove(int x, int y) {
-        Point point = SunGraphicsEnvironment.convertToDeviceSpace(x, y);
+        Point point = toDeviceSpaceAbs(x, y);
         mouseMoveImpl(point.x, point.y);
     }
     @Override
@@ -59,6 +59,11 @@ final class WRobotPeer implements RobotPeer {
     public int getRGBPixel(int x, int y) {
          // See 7002846: that's ineffective, but works correctly with non-opaque windows
         return getRGBPixels(new Rectangle(x, y, 1, 1))[0];
+    }
+
+    @Override
+    public boolean useAbsoluteCoordinates() {
+        return true;
     }
 
     @Override
