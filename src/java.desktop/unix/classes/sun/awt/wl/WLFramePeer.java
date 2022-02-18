@@ -25,6 +25,7 @@
  */
 package sun.awt.wl;
 
+import java.awt.Component;
 import java.awt.Window;
 import java.awt.Dialog;
 import java.awt.Frame;
@@ -32,7 +33,10 @@ import java.awt.Insets;
 import java.awt.MenuBar;
 import java.awt.Rectangle;
 import java.awt.event.WindowEvent;
+import java.awt.peer.ComponentPeer;
 import java.awt.peer.FramePeer;
+import sun.awt.AWTAccessor;
+import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.util.logging.PlatformLogger;
 
 public class WLFramePeer extends WLComponentPeer implements FramePeer {
@@ -40,6 +44,15 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     public WLFramePeer(Frame target) {
         super(target);
+    }
+
+    @Override
+    protected void wlSetVisible(boolean v) {
+        super.wlSetVisible(v);
+        final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
+        for (Component c : ((Frame)target).getComponents()) {
+            ((WLComponentPeer)acc.getPeer(c)).wlSetVisible(v);
+        }
     }
 
     private static native void initIDs();
@@ -164,8 +177,6 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     public void repositionSecurityWarning() {
         throw new UnsupportedOperationException();
     }
-
-    private native long getWLSurface();
 
     // called from native code
     private void postWindowClosing() {

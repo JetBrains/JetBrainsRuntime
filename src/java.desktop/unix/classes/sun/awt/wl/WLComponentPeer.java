@@ -43,6 +43,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.SystemColor;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.InputMethodEvent;
@@ -57,6 +58,7 @@ import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
 import java.util.Objects;
 import sun.awt.AWTAccessor;
+import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.PaintEventDispatcher;
 import sun.awt.SunToolkit;
 import sun.awt.event.IgnorePaintEvent;
@@ -79,7 +81,7 @@ public class WLComponentPeer implements ComponentPeer
     WLRepaintArea paintArea;
     boolean paintPending = false;
     boolean isLayouting = false;
-    boolean visible;
+    boolean visible = false;
 
     int x;
     int y;
@@ -103,6 +105,15 @@ public class WLComponentPeer implements ComponentPeer
         this.surfaceData = graphicsConfig.createSurfaceData(this);
         this.nativePtr = nativeCreateFrame();
         paintArea = new WLRepaintArea();
+        Rectangle bounds = target.getBounds();
+        x = bounds.x;
+        y = bounds.y;
+        width = bounds.width;
+        height = bounds.height;
+        log.info("WLComponentPeer: target=" + target + " x=" + x + " y=" + y +
+                 " width=" + width + " height=" + height);
+        // TODO
+        // setup parent window for target
     }
 
     int getWidth() {
@@ -198,10 +209,10 @@ public class WLComponentPeer implements ComponentPeer
         return true;
     }
 
-    @Override
-    public void setVisible(boolean v) {
-        if (v) {
-            nativeShowFrame(nativePtr, target.getWidth(), target.getHeight());
+    protected void wlSetVisible(boolean v) {
+        this.visible = v;
+        if (this.visible) {
+            nativeShowComponent(nativePtr, getParentNativePtr(target), target.getWidth(), target.getHeight());
             ((WLSurfaceData)surfaceData).initSurface(this, background != null ? background.getRGB() : 0, target.getWidth(), target.getHeight());
             PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
                     createPaintEvent(target, 0, 0, target.getWidth(), target.getHeight());
@@ -211,6 +222,11 @@ public class WLComponentPeer implements ComponentPeer
         } else {
             nativeHideFrame(nativePtr);
         }
+    }
+
+    @Override
+    public void setVisible(boolean v) {
+        wlSetVisible(v);
     }
 
     /**
@@ -345,6 +361,7 @@ public class WLComponentPeer implements ComponentPeer
                 paintPending = false;
                 // Fallthrough to next statement
             case PaintEvent.UPDATE:
+                log.info("WLComponentPeer.handleEvent(AWTEvent): UPDATE " + this);
                 // Skip all painting while layouting and all UPDATEs
                 // while waiting for native paint
                 if (!isLayouting && !paintPending) {
@@ -507,9 +524,21 @@ public class WLComponentPeer implements ComponentPeer
 
     protected native long nativeCreateFrame();
 
-    protected native void nativeShowFrame(long ptr, int width, int height);
+    protected native void nativeShowComponent(long ptr, long parentPtr, int width, int height);
 
     protected native void nativeHideFrame(long ptr);
 
     protected native void nativeDisposeFrame(long ptr);
+
+    private native long getWLSurface();
+
+    static long getParentNativePtr(Component target) {
+        Component parent = target.getParent();
+        if (parent == null) return 0;
+
+        final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
+        ComponentPeer peer = acc.getPeer(parent);
+
+        return ((WLComponentPeer)peer).nativePtr;
+    }
 }
