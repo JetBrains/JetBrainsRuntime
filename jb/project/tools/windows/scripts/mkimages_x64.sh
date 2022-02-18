@@ -107,7 +107,8 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
 fi
 
 # create runtime image bundlef
-modules=$(xargs < modules.list | sed s/" "//g) || do_exit $?
+modules=$(xargs < jb/project/tools/common/modules.list | sed s/" "//g) || do_exit $?
+modules+=",jdk.crypto.mscapi"
 create_image_bundle "jbr${jbr_name_postfix}" "jbr" $JSDK_MODS_DIR "$modules" || do_exit $?
 
 # create sdk image bundle
