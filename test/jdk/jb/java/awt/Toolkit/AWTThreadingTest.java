@@ -121,16 +121,10 @@ public class AWTThreadingTest {
         THREAD.start();
     }
 
-    static void await(CountDownLatch latch, int seconds) {
-        if (!tryCall(() -> latch.await(seconds, TimeUnit.SECONDS), false)) {
-            FUTURE.completeExceptionally(new Throwable("Awaiting has timed out"));
-        }
-    }
-
     static void dumpAllThreads() {
         Thread.getAllStackTraces().keySet().forEach(t -> {
             System.out.printf("%s\t%s\t%d\t%s\n", t.getName(), t.getState(), t.getPriority(), t.isDaemon() ? "Daemon" : "Normal");
-            Arrays.asList(t.getStackTrace()).forEach(frame -> System.out.println("\t" + frame));
+            Arrays.asList(t.getStackTrace()).forEach(frame -> System.out.println("\tat " + frame));
         });
         System.out.println("\n\n");
     }
