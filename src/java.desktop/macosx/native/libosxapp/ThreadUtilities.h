@@ -127,6 +127,8 @@ do {                                  \
 __attribute__((visibility("default")))
 @interface ThreadUtilities : NSObject { } /* Extend NSObject so can call performSelectorOnMainThread */
 
+@property (class, atomic, readonly) BOOL blockingEventDispatchThread;
+
 + (JNIEnv*)getJNIEnv;
 + (JNIEnv*)getJNIEnvUncached;
 + (void)detachCurrentThread;

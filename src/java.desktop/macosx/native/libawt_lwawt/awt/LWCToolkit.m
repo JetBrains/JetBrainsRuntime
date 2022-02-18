@@ -593,6 +593,8 @@ AWT_ASSERT_APPKIT_THREAD;
     jboolean result = JNI_TRUE;
 JNI_COCOA_ENTER(env);
 
+    if (ThreadUtilities.blockingEventDispatchThread) return JNI_FALSE;
+
     AWTRunLoopObject* mediatorObject = (AWTRunLoopObject*)jlong_to_ptr(mediator);
 
     if (mediatorObject == nil) return JNI_TRUE;
@@ -625,6 +627,17 @@ JNI_COCOA_ENTER(env);
     [mediatorObject release];
 JNI_COCOA_EXIT(env);
     return result;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    isBlockingEventDispatchThread
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isBlockingEventDispatchThread
+        (JNIEnv *env, jclass clz)
+{
+    return ThreadUtilities.blockingEventDispatchThread;
 }
 
 /*

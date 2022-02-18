@@ -750,6 +750,17 @@ public final class LWCToolkit extends LWToolkit {
             log.fine("invokeAndWait started: " + runnable);
         }
 
+        if (isBlockingEventDispatchThread()) {
+            String msg = "invokeAndWait is discarded as the EventDispatch thread is currently blocked";
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine(msg, new Throwable()); // [tav] todo: also dump EDT stack
+            } else if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                StackTraceElement[] stack = new Throwable().getStackTrace();
+                log.info(msg + ". Originated at " + stack[stack.length - 1]);
+            }
+            return;
+        }
+
         boolean nonBlockingRunLoop;
 
         if (!processEvents) {
@@ -803,6 +814,8 @@ public final class LWCToolkit extends LWToolkit {
 
         checkException(invocationEvent);
     }
+
+    private static native boolean isBlockingEventDispatchThread();
 
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {

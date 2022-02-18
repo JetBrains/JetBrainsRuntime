@@ -50,6 +50,13 @@ static inline void attachCurrentThread(void** env) {
 
 @implementation ThreadUtilities
 
+static BOOL _blockingEventDispatchThread = NO;
+static long eventDispatchThreadPtr = (long)nil; // todo: volatile
+
++ (BOOL) blockingEventDispatchThread {
+    return _blockingEventDispatchThread;
+}
+
 + (void)initialize {
     /* All the standard modes plus ours */
     javaModes = [[NSArray alloc] initWithObjects:NSDefaultRunLoopMode,
@@ -116,7 +123,9 @@ AWT_ASSERT_APPKIT_THREAD;
     if ([NSThread isMainThread] && wait == YES) {
         [target performSelector:aSelector withObject:arg];
     } else {
+        _blockingEventDispatchThread = (long)[NSThread currentThread] == eventDispatchThreadPtr;
         [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
+        _blockingEventDispatchThread = NO;
     }
 }
 
@@ -141,5 +150,16 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CThreading_isMainThread
   (JNIEnv *env, jclass c)
 {
     return [NSThread isMainThread];
+}
+
+/*
+ * Class:     sun_awt_AWTThreading
+ * Method:    notifyEventDispatchThreadStartedNative
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_sun_awt_AWTThreading_notifyEventDispatchThreadStartedNative
+  (JNIEnv *env, jclass c)
+{
+    eventDispatchThreadPtr = (long)[NSThread currentThread];
 }
 

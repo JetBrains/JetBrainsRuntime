@@ -369,6 +369,15 @@ public class AWTThreading {
         theAWTThreadingFactory.set(factory);
     }
 
+    /**
+     * Must be called on the EventDispatch thread.
+     */
+    public void notifyEventDispatchThreadStarted() {
+        if (FontUtilities.isMacOSX) notifyEventDispatchThreadStartedNative();
+    }
+
+    private static native void notifyEventDispatchThreadStartedNative();
+
     public void notifyEventDispatchThreadFree() {
         List<CompletableFuture<Void>> notifiers = Collections.emptyList();
         synchronized (eventDispatchThreadStateNotifiers) {
