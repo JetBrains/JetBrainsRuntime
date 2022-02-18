@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("ConstantConditions")
@@ -121,6 +122,12 @@ public class ToolkitTestHelper {
             }
         }
         return defValue;
+    }
+
+    public static void await(CountDownLatch latch, int seconds) {
+        if (!tryCall(() -> latch.await(seconds, TimeUnit.SECONDS), false)) {
+            FUTURE.completeExceptionally(new Throwable("Awaiting has timed out"));
+        }
     }
 
     public interface ThrowableRunnable {
