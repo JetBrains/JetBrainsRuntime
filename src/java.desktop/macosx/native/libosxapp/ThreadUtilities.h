@@ -127,6 +127,13 @@ do {                                  \
 __attribute__((visibility("default")))
 @interface ThreadUtilities : NSObject { } /* Extend NSObject so can call performSelectorOnMainThread */
 
+/*
+ * When a blocking performSelectorOnMainThread is executed from the EventDispatch thread,
+ * and the executed code triggers an opposite blocking a11y call (via LWCToolkit.invokeAndWait)
+ * this is a deadlock case, and then this property is used to discard LWCToolkit.invokeAndWait.
+ */
+@property (class, nonatomic, readonly) BOOL blockingEventDispatchThread;
+
 + (JNIEnv*)getJNIEnv;
 + (JNIEnv*)getJNIEnvUncached;
 + (void)detachCurrentThread;
