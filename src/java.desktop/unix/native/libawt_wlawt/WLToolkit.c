@@ -290,6 +290,12 @@ Java_java_awt_event_KeyEvent_initIDs(JNIEnv *env, jclass cls)
 }
 
 JNIEXPORT void JNICALL
+Java_java_awt_Event_initIDs(JNIEnv *env, jclass cls)
+{
+}
+
+
+JNIEXPORT void JNICALL
 Java_sun_awt_SunToolkit_closeSplashScreen(JNIEnv *env, jclass cls)
 {
     typedef void (*SplashClose_t)();
