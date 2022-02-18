@@ -103,11 +103,11 @@ function create_jbr {
   if [[ "${architecture}" == *aarch64* ]] && [[ "${enable_aot}" != *enable_aot* ]]; then
     # aot isn't supported yet, so remove dependent modules
     echo "Exclude jdk.internal.vm.compiler and jdk.aot (because aot not supported yet)"
-    cat modules.list | \
+    cat jb/project/tools/common/modules.list | \
       grep -v "jdk.internal.vm.compiler\|jdk.aot" \
       > modules_tmp.list
   else
-    cat modules.list > modules_tmp.list
+    cat jb/project/tools/common/modules.list > modules_tmp.list
   fi
   rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 

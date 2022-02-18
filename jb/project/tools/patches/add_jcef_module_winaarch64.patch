@@ -1,7 +1,7 @@
-diff --git modules.list modules.list
+diff --git jb/project/tools/common/modules.list jb/project/tools/common/modules.list
 index 33375b527c4..76539cbc0e0 100644
---- modules.list
-+++ modules.list
+--- jb/project/tools/common/modules.list
++++ jb/project/tools/common/modules.list
 @@ -55,4 +55,5 @@ jdk.unsupported,
  jdk.xml.dom,
  jdk.zipfs,
