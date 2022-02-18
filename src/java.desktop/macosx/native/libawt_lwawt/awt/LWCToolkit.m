@@ -625,6 +625,17 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    isBlockingEventDispatchThread
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isBlockingEventDispatchThread
+        (JNIEnv *env, jclass clz)
+{
+    return ThreadUtilities.blockingEventDispatchThread;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
  * Method:    stopAWTRunLoop
  * Signature: (J)V
  */
