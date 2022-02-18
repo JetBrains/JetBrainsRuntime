@@ -92,7 +92,6 @@ import java.security.PrivilegedAction;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Callable;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -1156,7 +1155,7 @@ public final class LWCToolkit extends LWToolkit {
 
 final class KeyboardCombiningCharacters {
     @SuppressWarnings("ConstantConditions")
-    public static boolean isCharacterCombiningInKeyboardLocale(char ch, Locale locale) {
+    public static boolean isCharacterCombiningInKeyboardLocale(final char ch, final Locale locale) {
         if (locale == null) {
             return false;
         }
@@ -1171,7 +1170,13 @@ final class KeyboardCombiningCharacters {
             return false;
         }
 
-        return (Arrays.binarySearch(localeCombiningChars, ch) >= 0);
+        for (final char combiningChar : localeCombiningChars) {
+            if (ch == combiningChar) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 
@@ -1180,7 +1185,10 @@ final class KeyboardCombiningCharacters {
     static {
         /*
          * All arrays the map contains MUST be sorted into ASCENDING order (for binary search).
-         * Also the syntax '<backslash>u<hex-digits>' is not used to avoid traps about early parsing of the unicode sequences.
+         * (UPD: the binary search proved to be slower than linear on the such small arrays so the linear is used now)
+         *
+         * Also, the syntax '<backslash>u<hex-digits>' is not used to avoid the traps about
+         *  early parsing of the unicode sequences.
          */
 
         // [U+0027 ('''), U+0060 ('`'), U+02c6, U+0022 ('"'), U+02dc, U+00b4, U+00a8]
