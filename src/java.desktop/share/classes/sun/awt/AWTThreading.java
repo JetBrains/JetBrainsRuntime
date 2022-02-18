@@ -5,9 +5,14 @@ import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
 import java.awt.event.InvocationEvent;
-import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Stack;
 import java.util.List;
 import java.util.concurrent.*;
@@ -361,6 +366,19 @@ public class AWTThreading {
         return eventDispatchThread;
     }
 
+    public StringWriter printEventDispatchThreadStackTrace() {
+        return printEventDispatchThreadStackTrace(new StringWriter());
+    }
+
+    public StringWriter printEventDispatchThreadStackTrace(StringWriter writer) {
+        assert writer != null;
+        var printer = new PrintWriter(writer);
+        Thread dispatchThread = getEventDispatchThread();
+        printer.println(dispatchThread.getName());
+        Arrays.asList(dispatchThread.getStackTrace()).forEach(frame -> printer.append("\tat ").println(frame));
+        return writer;
+    }
+
     /**
      * Sets {@code AWTThreading} instance factory.
      * WARNING: for testing purpose.
@@ -368,6 +386,15 @@ public class AWTThreading {
     public static void setAWTThreadingFactory(Function<Thread, AWTThreading> factory) {
         theAWTThreadingFactory.set(factory);
     }
+
+    /**
+     * Must be called on the EventDispatch thread.
+     */
+    public void notifyEventDispatchThreadStarted() {
+        if (FontUtilities.isMacOSX) notifyEventDispatchThreadStartedNative();
+    }
+
+    private static native void notifyEventDispatchThreadStartedNative();
 
     public void notifyEventDispatchThreadFree() {
         List<CompletableFuture<Void>> notifiers = Collections.emptyList();
