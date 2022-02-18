@@ -189,7 +189,7 @@ public final class LWCToolkit extends LWToolkit {
         }
     });
 
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.lwawt.macosx.LWCToolkit");
+    private static final PlatformLogger log = PlatformLogger.getLogger(LWCToolkit.class.getName());
 
     @SuppressWarnings("removal")
     public LWCToolkit() {
@@ -764,6 +764,20 @@ public final class LWCToolkit extends LWToolkit {
             log.fine("invokeAndWait started: " + runnable);
         }
 
+        if (isBlockingEventDispatchThread()) {
+            String msg = "invokeAndWait is discarded as the EventDispatch thread is currently blocked";
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine(msg, new Throwable());
+                log.fine(AWTThreading.getInstance(component).printEventDispatchThreadStackTrace().toString());
+            } else if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                StackTraceElement[] stack = new Throwable().getStackTrace();
+                log.info(msg + ". Originated at " + stack[stack.length - 1]);
+                Thread dispatchThread = AWTThreading.getInstance(component).getEventDispatchThread();
+                log.info(dispatchThread.getName() + " at: " + dispatchThread.getStackTrace()[0].toString());
+            }
+            return;
+        }
+
         boolean nonBlockingRunLoop;
 
         synchronized (priorityInvocationPending) {
@@ -812,6 +826,8 @@ public final class LWCToolkit extends LWToolkit {
 
         checkException(invocationEvent);
     }
+
+    private static native boolean isBlockingEventDispatchThread();
 
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {
