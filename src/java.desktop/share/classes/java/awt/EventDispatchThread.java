@@ -31,6 +31,7 @@ import java.awt.event.WindowEvent;
 
 import java.util.ArrayList;
 
+import sun.awt.AWTThreading;
 import sun.util.logging.PlatformLogger;
 
 import sun.awt.dnd.SunDragSourceContextPeer;
@@ -86,6 +87,7 @@ class EventDispatchThread extends Thread {
     }
 
     public void run() {
+        AWTThreading.getInstance(Thread.currentThread()).notifyEventDispatchThreadStarted();
         try {
             pumpEvents(new Conditional() {
                 public boolean evaluate() {
@@ -96,6 +98,8 @@ class EventDispatchThread extends Thread {
             getEventQueue().detachDispatchThread(this);
         }
     }
+
+    private static native void registerEventDispatchThread();
 
     void pumpEvents(Conditional cond) {
         pumpEvents(ANY_EVENT, cond);
