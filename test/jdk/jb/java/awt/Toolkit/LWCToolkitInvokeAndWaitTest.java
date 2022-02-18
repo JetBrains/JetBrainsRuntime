@@ -39,8 +39,8 @@ import static helper.ToolkitTestHelper.*;
  * @summary Tests different scenarios for LWCToolkit.invokeAndWait().
  * @requires (os.family == "mac")
  * @modules java.desktop/sun.lwawt.macosx java.desktop/sun.awt
- * @run main LWCToolkitInvokeAndWaitTest
- * @run main/othervm -DAWTThreading.level.FINER=true LWCToolkitInvokeAndWaitTest
+ * @run main/othervm -Dsun.lwawt.macosx.LWCToolkit.invokeAndWait.disposeOnEDTFree=true LWCToolkitInvokeAndWaitTest
+ * @run main/othervm -Dlog.level.FINER=true -Dsun.lwawt.macosx.LWCToolkit.invokeAndWait.disposeOnEDTFree=true LWCToolkitInvokeAndWaitTest
  * @author Anton Tarasov
  */
 @SuppressWarnings("ConstantConditions")
@@ -81,78 +81,75 @@ public class LWCToolkitInvokeAndWaitTest {
     }
 
     public static void main(String[] args) {
+        loop(); // init the event threads
+
         tryRun(() -> {
-            Logger log = LogManager.getLogManager().getLogger(AWTThreading.class.getName());
-            log.setUseParentHandlers(false);
-            log.addHandler(LOG_HANDLER);
-            if (Boolean.getBoolean("AWTThreading.level.FINER")) {
-                log.setLevel(Level.FINER);
-            }
+            Consumer<Class<?>> setLog = cls -> {
+                Logger log = LogManager.getLogManager().getLogger(cls.getName());
+                log.setUseParentHandlers(false);
+                log.addHandler(LOG_HANDLER);
+                if (Boolean.getBoolean("log.level.FINER")) {
+                    log.setLevel(Level.FINER);
+                }
+            };
+            setLog.accept(AWTThreading.class);
+            setLog.accept(LWCToolkit.class);
         });
 
         Consumer<InvocationEvent> noop = e -> {};
 
         initTest(LWCToolkitInvokeAndWaitTest.class);
 
-        testCase("InvocationEvent is normally dispatched", () -> test(
+        testCase("InvocationEvent is normally dispatched", () -> test1(
             "",
             noop,
             () -> System.out.println("I'm dispatched")));
 
-        testCase("InvocationEvent is lost", () -> test(
+        testCase("InvocationEvent is lost", () -> test1(
             "lost",
             noop,
             CONSUME_DISPATCHING));
 
         EDT_FAST_FREE_LATCH = new CountDownLatch(2);
-        testCase("InvocationEvent is lost (EDT becomes fast free)", () -> test(
+        testCase("InvocationEvent is lost (EDT becomes fast free)", () -> test1(
             "lost",
             // notify the invocationEvent has been dispatched
             invocationEvent -> EDT_FAST_FREE_LATCH.countDown(),
             CONSUME_DISPATCHING));
 
-        testCase("InvocationEvent is disposed", () -> test(
+        testCase("InvocationEvent is disposed", () -> test1(
             "disposed",
             invocationEvent -> AWTAccessor.getInvocationEventAccessor().dispose(invocationEvent),
             CONSUME_DISPATCHING));
 
-        testCase("InvocationEvent is timed out (delayed before dispatching)", () -> test(
+        testCase("InvocationEvent is timed out (delayed before dispatching)", () -> test1(
             "timed out",
             invocationEvent -> sleep(INVOKE_TIMEOUT_SECONDS * 4),
             CONSUME_DISPATCHING));
 
-        testCase("InvocationEvent is timed out (delayed during dispatching)", () -> test(
+        testCase("InvocationEvent is timed out (delayed during dispatching)", () -> test1(
             "timed out",
             noop,
             () -> sleep(INVOKE_TIMEOUT_SECONDS * 4)));
 
+        testCase("invokeAndWait is discarded", () -> test2(
+            "discarded"));
+
+        testCase("invokeAndWait is passed", LWCToolkitInvokeAndWaitTest::test3);
+
         System.out.println("Test PASSED");
     }
 
-    static void test(String expectedInLog,
-                     Consumer<InvocationEvent> onBeforeDispatching,
-                     Runnable onDispatching)
+    static void test1(String expectedInLog,
+                      Consumer<InvocationEvent> onBeforeDispatching,
+                      Runnable onDispatching)
     {
-        EventQueue.invokeLater(() -> subTest(onBeforeDispatching, onDispatching));
+        EventQueue.invokeLater(() -> subTest1(onBeforeDispatching, onDispatching));
 
-        tryRun(() -> {
-            if (!FUTURE.get(INVOKE_TIMEOUT_SECONDS * 2L, TimeUnit.SECONDS)) {
-                throw new RuntimeException("Test FAILED! (negative result)");
-            }
-        });
-
-        // let AppKit and EDT print all the logging
-        var latch = new CountDownLatch(1);
-        CThreading.executeOnAppKit(latch::countDown);
-        tryRun(latch::await);
-        tryRun(() -> EventQueue.invokeAndWait(EMPTY_RUNNABLE));
-
-        if (!LOG_HANDLER.testContains(expectedInLog)) {
-            throw new RuntimeException("Test FAILED! (not found in the log: \"" + expectedInLog + "\")");
-        }
+        check(expectedInLog);
     }
 
-    static void subTest(Consumer<InvocationEvent> onBeforeDispatching, Runnable onDispatching) {
+    static void subTest1(Consumer<InvocationEvent> onBeforeDispatching, Runnable onDispatching) {
         Toolkit.getDefaultToolkit().getSystemEventQueue().push(new EventQueue() {
             @Override
             protected void dispatchEvent(AWTEvent event) {
@@ -178,6 +175,63 @@ public class LWCToolkitInvokeAndWaitTest {
             LWCToolkit.invokeAndWait(onDispatching, FRAME, INVOKE_TIMEOUT_SECONDS);
             FUTURE.complete(true);
         }));
+    }
+
+    static void test2(String expectedInLog) {
+        EventQueue.invokeLater(() ->
+            //
+            // Blocking EDT.
+            //
+            LWCToolkit.performOnMainThreadAndWait(() -> {
+                //
+                // The invocation from AppKit should be discarded.
+                //
+                tryRun(() -> LWCToolkit.invokeAndWait(EMPTY_RUNNABLE, FRAME, INVOKE_TIMEOUT_SECONDS * 4));
+                FUTURE.complete(true);
+            }));
+
+        check(expectedInLog);
+    }
+
+    static void test3() {
+        var point = new CountDownLatch(1);
+
+        EventQueue.invokeLater(() -> {
+            // We're on EDT, wait for the second invocation to perform on AppKit.
+            await(point, INVOKE_TIMEOUT_SECONDS * 2);
+
+            // This should be dispatched in the RunLoop started by LWCToolkit.invokeAndWait from the second invocation.
+            LWCToolkit.performOnMainThreadAndWait(() -> FUTURE.complete(true));
+        });
+
+        LWCToolkit.performOnMainThreadAndWait(() -> {
+            // Notify we're on AppKit.
+            point.countDown();
+
+            // The LWCToolkit.invokeAndWait call starts a native RunLoop.
+            tryRun(() -> LWCToolkit.invokeAndWait(EMPTY_RUNNABLE, FRAME));
+        });
+    }
+
+    static void check(String expectedInLog) {
+        tryRun(() -> {
+            if (!FUTURE.get(INVOKE_TIMEOUT_SECONDS * 2L, TimeUnit.SECONDS)) {
+                throw new RuntimeException("Test FAILED! (negative result)");
+            }
+        });
+
+        loop(); // wait for the logging to be printed
+
+        if (!LOG_HANDLER.testContains(expectedInLog)) {
+            throw new RuntimeException("Test FAILED! (not found in the log: \"" + expectedInLog + "\")");
+        }
+    }
+
+    static void loop() {
+        tryRun(() -> EventQueue.invokeAndWait(EMPTY_RUNNABLE));
+        var latch = new CountDownLatch(1);
+        CThreading.executeOnAppKit(latch::countDown);
+        tryRun(latch::await);
     }
 
     static void sleep(int seconds) {
