@@ -270,9 +270,8 @@ final class CPlatformResponder {
             LWCToolkit lwcToolkit = (LWCToolkit)Toolkit.getDefaultToolkit();
             if ((lwcToolkit.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
                     Locale.SIMPLIFIED_CHINESE.equals(lwcToolkit.getDefaultKeyboardLocale())) ||
-                (LWCToolkit.isLocaleUSInternationalPC(lwcToolkit.getDefaultKeyboardLocale()) &&
-                    LWCToolkit.isCharModifierKeyInUSInternationalPC(testChar) &&
-                    (testChar != testCharIgnoringModifiers))) {
+                ((testChar != testCharIgnoringModifiers) &&
+                    LWCToolkit.isCharModifierKeyInLocale(lwcToolkit.getDefaultKeyboardLocale(), testChar))) {
                 testChar = testCharIgnoringModifiers;
             }
 
