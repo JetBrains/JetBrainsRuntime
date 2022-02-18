@@ -70,7 +70,7 @@ function create_jbr {
     echo "***ERR*** bundle was not specified" && do_exit 1
     ;;
   esac
-  cat modules.list > modules_tmp.list
+  cat jb/project/tools/common/modules.list > modules_tmp.list
   rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 
   JBR=${JBR_BASE_NAME}-linux-x64-b${build_number}

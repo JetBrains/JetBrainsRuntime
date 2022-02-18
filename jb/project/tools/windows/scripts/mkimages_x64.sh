@@ -75,7 +75,8 @@ function create_jbr {
     echo "***ERR*** bundle was not specified" && do_exit 1
     ;;
   esac
-  cat modules.list > modules_tmp.list
+  cat jb/project/tools/common/modules.list > modules_tmp.list
+  echo ",jdk.crypto.mscapi" >> modules_tmp.list
   rm -rf ${JBR_BUNDLE}
 
   echo Running jlink....

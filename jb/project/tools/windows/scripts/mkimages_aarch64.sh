@@ -81,9 +81,10 @@ function create_jbr {
   esac
 
   echo "Exclude jdk.internal.vm.compiler and jdk.aot (because aot is not supported yet)"
-  cat modules.list | \
+  cat jb/project/tools/common/modules.list | \
     grep -v "jdk.internal.vm.compiler\|jdk.aot" \
     > modules_tmp.list
+  echo ",jdk.crypto.mscapi" >> modules_tmp.list
 
   rm -rf ${JBR_BUNDLE}
 
