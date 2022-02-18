@@ -682,7 +682,7 @@ javax/sound/midi/Sequencer/MetaCallback.java 8178698 linux-all,solaris-all
 
 # jdk_swing
 
-javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all
+javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,windows-all
 
 javax/swing/JComponent/7154030/bug7154030.java 7190978 generic-all
 javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java 8067986 generic-all
@@ -721,7 +721,6 @@ javax/swing/JTabbedPane/8007563/Test8007563.java 8051591 generic-all
 javax/swing/JTabbedPane/4624207/bug4624207.java 8064922 macosx-all
 javax/swing/JTabbedPane/7024235/Test7024235.java 8028281 macosx-all
 javax/swing/SwingUtilities/TestBadBreak/TestBadBreak.java 8160720 generic-all
-javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8196098 windows-all
 javax/swing/plaf/basic/Test6984643.java 8198340 windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java 8196099 windows-all
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java 8194048 windows-all
