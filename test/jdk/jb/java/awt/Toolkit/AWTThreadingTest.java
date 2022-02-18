@@ -23,7 +23,7 @@ import static helper.ToolkitTestHelper.*;
  */
 @SuppressWarnings("ConstantConditions")
 public class AWTThreadingTest {
-    static final int TIMEOUT_SEC = 1;
+    static final int TIMEOUT_SECONDS = 1;
 
     static final AtomicInteger ITER_COUNTER = new AtomicInteger();
     static final AtomicBoolean DUMP_STACK = new AtomicBoolean(false);
@@ -33,33 +33,32 @@ public class AWTThreadingTest {
     public static void main(String[] args) {
         DUMP_STACK.set(args.length > 0 && "dumpStack".equals(args[0]));
 
-        initTest(AWTThreadingTest.class, Thread.currentThread());
+        initTest(AWTThreadingTest.class);
 
-        test("certain threads superposition");
+        testCase("certain threads superposition", AWTThreadingTest::test);
 
-        test("random threads superposition");
+        testCase("random threads superposition", AWTThreadingTest::test);
 
         System.out.println("Test PASSED");
     }
 
-    static void test(String testCaseCaption) {
-        initTestCase(testCaseCaption);
+    static void test() {
         ITER_COUNTER.set(0);
 
-        EventQueue.invokeLater(() -> startThread(FUTURE::isDone));
+        var timer = new TestTimer(TIMEOUT_SECONDS * 3, TimeUnit.SECONDS);
+        EventQueue.invokeLater(() -> startThread(() ->
+            FUTURE.isDone() ||
+            timer.hasFinished()));
 
-        try {
-            FUTURE.get(TIMEOUT_SEC * 3, TimeUnit.SECONDS);
-        } catch (TimeoutException ignored) {
-            // expected result
-            FUTURE.complete(true);
-        } catch (Exception e) {
-            throw new RuntimeException("Test FAILED!");
-        }
+        tryRun(() -> {
+            if (!FUTURE.get(TIMEOUT_SECONDS * 4, TimeUnit.SECONDS)) {
+                throw new RuntimeException("Test FAILED! (negative result)");
+            }
+        });
 
-        trycatch(THREAD::join);
+        tryRun(THREAD::join);
 
-        finishTestCase("(" + ITER_COUNTER + " iterations)");
+        System.out.println(ITER_COUNTER + " iterations passed");
     }
 
     static void startThread(Supplier<Boolean> shouldExitLoop) {
@@ -78,14 +77,14 @@ public class AWTThreadingTest {
                 //
                 CThreading.executeOnAppKit(() -> {
                     // We're on AppKit, wait for the 2nd invocation to be on the AWTThreading-pool thread.
-                    if (TEST_CASE == 1) await(point_1, TIMEOUT_SEC);
+                    if (TEST_CASE == 1) await(point_1, TIMEOUT_SECONDS);
 
-                    trycatch(() -> LWCToolkit.invokeAndWait(() -> {
+                    tryRun(() -> LWCToolkit.invokeAndWait(() -> {
                         // We're being dispatched on EDT.
                         if (TEST_CASE == 1) point_2.countDown();
 
                         // Wait for the 2nd invocation to be executed on AppKit.
-                        if (TEST_CASE == 1) await(point_3, TIMEOUT_SEC);
+                        if (TEST_CASE == 1) await(point_3, TIMEOUT_SECONDS);
                     }, FRAME));
 
                     invocations.countDown();
@@ -99,7 +98,7 @@ public class AWTThreadingTest {
                     if (TEST_CASE == 1) point_1.countDown();
 
                     // Wait for the 1st invocation to start NSRunLoop and be dispatched
-                    if (TEST_CASE == 1) await(point_2, TIMEOUT_SEC);
+                    if (TEST_CASE == 1) await(point_2, TIMEOUT_SECONDS);
 
                     // Perform in JavaRunLoopMode to be accepted by NSRunLoop started by LWCToolkit.invokeAndWait.
                     LWCToolkit.performOnMainThreadAndWait(() -> {
@@ -113,15 +112,17 @@ public class AWTThreadingTest {
                     invocations.countDown();
                 }));
 
-                await(invocations, TIMEOUT_SEC * 2);
-            }
+                await(invocations, TIMEOUT_SECONDS * 2);
+            } // while
+
+            FUTURE.complete(true);
         });
         THREAD.setDaemon(true);
         THREAD.start();
     }
 
     static void await(CountDownLatch latch, int seconds) {
-        if (!trycatchAndReturn(() -> latch.await(seconds, TimeUnit.SECONDS), false)) {
+        if (!tryCall(() -> latch.await(seconds, TimeUnit.SECONDS), false)) {
             FUTURE.completeExceptionally(new Throwable("Awaiting has timed out"));
         }
     }
