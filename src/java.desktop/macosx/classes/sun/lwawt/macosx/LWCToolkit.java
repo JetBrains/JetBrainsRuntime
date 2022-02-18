@@ -188,7 +188,7 @@ public final class LWCToolkit extends LWToolkit {
      */
     private static final boolean inAWT;
 
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.lwawt.macosx.LWCToolkit");
+    private static final PlatformLogger log = PlatformLogger.getLogger(LWCToolkit.class.getName());
 
     public LWCToolkit() {
         areExtraMouseButtonsEnabled = Boolean.parseBoolean(System.getProperty("sun.awt.enableExtraMouseButtons", "true"));
@@ -767,6 +767,16 @@ public final class LWCToolkit extends LWToolkit {
             log.fine("invokeAndWait started: " + runnable);
         }
 
+        if (isBlockingEventDispatchThread()) {
+            String msg = "invokeAndWait is discarded as the EventDispatch thread is currently blocked";
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine(msg, new Throwable());
+            } else if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                log.info(msg);
+            }
+            return;
+        }
+
         boolean nonBlockingRunLoop;
         CancelableRunnable cancelableRunnable = new CancelableRunnable(runnable);
 
@@ -816,6 +826,8 @@ public final class LWCToolkit extends LWToolkit {
 
         checkException(invocationEvent);
     }
+
+    private static native boolean isBlockingEventDispatchThread();
 
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {

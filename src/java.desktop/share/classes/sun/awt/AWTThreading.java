@@ -5,6 +5,8 @@ import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
 import java.awt.event.InvocationEvent;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.ref.WeakReference;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -246,9 +248,18 @@ public class AWTThreading {
         return getInstance(AWTAccessor.getEventQueueAccessor().getDispatchThread(eq));
     }
 
-    private static AWTThreading getInstance(Thread edt) {
+    public static AWTThreading getInstance(Thread edt) {
         if (edt == null) return null;
 
         return EDT_TO_INSTANCE_MAP.computeIfAbsent(edt, key -> new AWTThreading());
     }
+
+    /**
+     * Must be called on the EventDispatch thread.
+     */
+    public void notifyEventDispatchThreadStarted() {
+        if (FontUtilities.isMacOSX) notifyEventDispatchThreadStartedNative();
+    }
+
+    private static native void notifyEventDispatchThreadStartedNative();
 }
