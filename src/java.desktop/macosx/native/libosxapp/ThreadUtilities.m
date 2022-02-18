@@ -50,6 +50,24 @@ static inline void attachCurrentThread(void** env) {
 
 @implementation ThreadUtilities
 
+static BOOL _blockingEventDispatchThread = NO;
+static long eventDispatchThreadPtr = (long)nil;
+
+static BOOL isEventDispatchThread() {
+    return (long)[NSThread currentThread] == eventDispatchThreadPtr;
+}
+
+// The [blockingEventDispatchThread] property is readonly, so we implement a private setter
+static void setBlockingEventDispatchThread(BOOL value) {
+    assert([NSThread isMainThread]);
+    _blockingEventDispatchThread = value;
+}
+
++ (BOOL) blockingEventDispatchThread {
+    assert([NSThread isMainThread]);
+    return _blockingEventDispatchThread;
+}
+
 + (void)initialize {
     /* All the standard modes plus ours */
     javaModes = [[NSArray alloc] initWithObjects:NSDefaultRunLoopMode,
@@ -82,10 +100,10 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 /* This is needed because we can't directly pass a block to
- * performSelectorOnMainThreadWaiting .. since it expects a selector
+ * performSelectorOnMainThreadWaiting:..waitUntilDone:YES.. since it expects a selector
  */
 + (void)invokeBlock:(void (^)())block {
-  block();
+    block();
 }
 
 /*
@@ -116,7 +134,19 @@ AWT_ASSERT_APPKIT_THREAD;
     if ([NSThread isMainThread] && wait == YES) {
         [target performSelector:aSelector withObject:arg];
     } else {
-        [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
+        if (wait && isEventDispatchThread()) {
+            void (^block)(void) = ^{
+                setBlockingEventDispatchThread(YES);
+                @try {
+                    [target performSelector:aSelector withObject:arg];
+                } @finally {
+                    setBlockingEventDispatchThread(NO);
+                }
+            };
+            [self performSelectorOnMainThread:@selector(invokeBlock:) withObject:block waitUntilDone:YES modes:javaModes];
+        } else {
+            [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
+        }
     }
 }
 
@@ -141,5 +171,18 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CThreading_isMainThread
   (JNIEnv *env, jclass c)
 {
     return [NSThread isMainThread];
+}
+
+/*
+ * Class:     sun_awt_AWTThreading
+ * Method:    notifyEventDispatchThreadStartedNative
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_sun_awt_AWTThreading_notifyEventDispatchThreadStartedNative
+  (JNIEnv *env, jclass c)
+{
+    @synchronized([ThreadUtilities class]) {
+        eventDispatchThreadPtr = (long)[NSThread currentThread];
+    }
 }
 
