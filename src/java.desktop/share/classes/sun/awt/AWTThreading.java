@@ -5,6 +5,8 @@ import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
 import java.awt.event.InvocationEvent;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.ref.WeakReference;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -359,6 +361,19 @@ public class AWTThreading {
 
     public Thread getEventDispatchThread() {
         return eventDispatchThread;
+    }
+
+    public StringWriter printEventDispatchThreadStackTrace() {
+        return printEventDispatchThreadStackTrace(new StringWriter());
+    }
+
+    public StringWriter printEventDispatchThreadStackTrace(StringWriter writer) {
+        assert writer != null;
+        var printer = new PrintWriter(writer);
+        Thread dispatchThread = getEventDispatchThread();
+        printer.println(dispatchThread.getName());
+        Arrays.asList(dispatchThread.getStackTrace()).forEach(frame -> printer.append("\tat ").println(frame));
+        return writer;
     }
 
     /**

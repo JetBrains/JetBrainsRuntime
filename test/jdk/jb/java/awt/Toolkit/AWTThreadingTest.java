@@ -130,7 +130,7 @@ public class AWTThreadingTest {
     static void dumpAllThreads() {
         Thread.getAllStackTraces().keySet().forEach(t -> {
             System.out.printf("%s\t%s\t%d\t%s\n", t.getName(), t.getState(), t.getPriority(), t.isDaemon() ? "Daemon" : "Normal");
-            Arrays.asList(t.getStackTrace()).forEach(frame -> System.out.println("\t" + frame));
+            Arrays.asList(t.getStackTrace()).forEach(frame -> System.out.println("\tat " + frame));
         });
         System.out.println("\n\n");
     }

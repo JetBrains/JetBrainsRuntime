@@ -50,11 +50,21 @@ static inline void attachCurrentThread(void** env) {
 
 @implementation ThreadUtilities
 
+// A backing store for the [blockingEventDispatchThread] class level property
 static BOOL _blockingEventDispatchThread = NO;
-static long eventDispatchThreadPtr = (long)nil; // todo: volatile
+static long eventDispatchThreadPtr = (long)nil;
+
+// The [blockingEventDispatchThread] property is readonly, so we implement a private setter
+static void setBlockingEventDispatchThread(BOOL value) {
+    @synchronized([ThreadUtilities class]) {
+        _blockingEventDispatchThread = value;
+    }
+}
 
 + (BOOL) blockingEventDispatchThread {
-    return _blockingEventDispatchThread;
+    @synchronized([ThreadUtilities class]) {
+        return _blockingEventDispatchThread;
+    }
 }
 
 + (void)initialize {
@@ -123,9 +133,12 @@ AWT_ASSERT_APPKIT_THREAD;
     if ([NSThread isMainThread] && wait == YES) {
         [target performSelector:aSelector withObject:arg];
     } else {
-        _blockingEventDispatchThread = (long)[NSThread currentThread] == eventDispatchThreadPtr;
-        [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
-        _blockingEventDispatchThread = NO;
+        setBlockingEventDispatchThread((long)[NSThread currentThread] == eventDispatchThreadPtr);
+        @try {
+            [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
+        } @finally {
+            setBlockingEventDispatchThread(NO);
+        }
     }
 }
 
@@ -160,6 +173,8 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CThreading_isMainThread
 JNIEXPORT void JNICALL Java_sun_awt_AWTThreading_notifyEventDispatchThreadStartedNative
   (JNIEnv *env, jclass c)
 {
-    eventDispatchThreadPtr = (long)[NSThread currentThread];
+    @synchronized([ThreadUtilities class]) {
+        eventDispatchThreadPtr = (long)[NSThread currentThread];
+    }
 }
 
