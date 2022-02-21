@@ -1295,10 +1295,10 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     NSView* titlebarContainer = titlebar.superview;
     NSView* themeFrame = titlebarContainer.superview;
 
-    NSMutableArray* newConstraints = [[NSMutableArray alloc] init];
+    _transparentTitleBarConstraints = [[NSMutableArray alloc] init];
     titlebarContainer.translatesAutoresizingMaskIntoConstraints = NO;
     _transparentTitleBarHeightConstraint = [titlebarContainer.heightAnchor constraintEqualToConstant:_transparentTitleBarHeight];
-    [newConstraints addObjectsFromArray:@[
+    [_transparentTitleBarConstraints addObjectsFromArray:@[
         [titlebarContainer.leftAnchor constraintEqualToAnchor:themeFrame.leftAnchor],
         [titlebarContainer.widthAnchor constraintEqualToAnchor:themeFrame.widthAnchor],
         [titlebarContainer.topAnchor constraintEqualToAnchor:themeFrame.topAnchor],
@@ -1311,7 +1311,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     for (NSView* view in @[titlebar, windowDragView])
     {
         view.translatesAutoresizingMaskIntoConstraints = NO;
-        [newConstraints addObjectsFromArray:@[
+        [_transparentTitleBarConstraints addObjectsFromArray:@[
             [view.leftAnchor constraintEqualToAnchor:titlebarContainer.leftAnchor],
             [view.rightAnchor constraintEqualToAnchor:titlebarContainer.rightAnchor],
             [view.topAnchor constraintEqualToAnchor:titlebarContainer.topAnchor],
@@ -1327,7 +1327,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
         button.translatesAutoresizingMaskIntoConstraints = NO;
         NSLayoutConstraint* buttonCenterXConstraint = [button.centerXAnchor constraintEqualToAnchor:titlebarContainer.leftAnchor constant:(_transparentTitleBarHeight/2.0 + (index * horizontalButtonOffset))];
         [_transparentTitleBarButtonCenterXConstraints addObject:buttonCenterXConstraint];
-        [newConstraints addObjectsFromArray:@[
+        [_transparentTitleBarConstraints addObjectsFromArray:@[
             [button.widthAnchor constraintLessThanOrEqualToAnchor:titlebarContainer.heightAnchor multiplier:0.5],
             // Those corrections are required to keep the icons perfectly round because macOS adds a constant 2 px in resulting height to their frame
             [button.heightAnchor constraintEqualToAnchor: button.widthAnchor multiplier:14.0/12.0 constant:-2.0],
@@ -1336,7 +1336,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
         ]];
     }];
 
-    [NSLayoutConstraint activateConstraints:newConstraints];
+    [NSLayoutConstraint activateConstraints:_transparentTitleBarConstraints];
 }
 
 - (void) updateTransparentTitleBarConstraints
@@ -1362,20 +1362,22 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     NSView* titlebarContainer = titlebar.superview;
     NSView* themeFrame = titlebarContainer.superview;
 
+    [NSLayoutConstraint deactivateConstraints:_transparentTitleBarConstraints];
+
     AWTWindowDragView* windowDragView;
     for (NSView* view in titlebar.subviews) {
         if ([view isMemberOfClass:[AWTWindowDragView class]]) {
             windowDragView = view;
         }
         if (view.translatesAutoresizingMaskIntoConstraints == NO) {
-            [view removeConstraints:view.constraints];
             view.translatesAutoresizingMaskIntoConstraints = YES;
         }
     }
     [windowDragView removeFromSuperview];
-    [titlebarContainer removeConstraints:titlebarContainer.constraints];
     titlebarContainer.translatesAutoresizingMaskIntoConstraints = YES;
+    titlebar.translatesAutoresizingMaskIntoConstraints = YES;
 
+    _transparentTitleBarConstraints = nil;
     _transparentTitleBarHeightConstraint = nil;
     _transparentTitleBarButtonCenterXConstraints = nil;
 }
@@ -1404,23 +1406,44 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     });
     NSNotificationCenter* defaultCenter = [NSNotificationCenter defaultCenter];
     NSOperationQueue* mainQueue = [NSOperationQueue mainQueue];
-    [defaultCenter addObserverForName:NSWindowWillEnterFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
+    _windowWillEnterFullScreenNotification = [defaultCenter addObserverForName:NSWindowWillEnterFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
         [self resetTitleBar];
     }];
-    [defaultCenter addObserverForName:NSWindowWillExitFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
+    _windowWillExitFullScreenNotification = [defaultCenter addObserverForName:NSWindowWillExitFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
         [self setWindowControlsHidden:YES];
     }];
-    [defaultCenter addObserverForName:NSWindowDidExitFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
+    _windowDidExitFullScreenNotification = [defaultCenter addObserverForName:NSWindowDidExitFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
         [self setUpTransparentTitleBar];
         [self setWindowControlsHidden:NO];
     }];
 }
 
+- (void) configureWindowAndListenersForDefaultTitleBar
+{
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        [self.nsWindow setTitlebarAppearsTransparent:NO];
+        [self.nsWindow setTitleVisibility:NSWindowTitleVisible];
+        [self.nsWindow setStyleMask:[self.nsWindow styleMask]&(~NSWindowStyleMaskFullSizeContentView)];
+
+        if (!self.isFullScreen) {
+            [self resetTitleBar];
+        }
+    });
+    NSNotificationCenter* defaultCenter = [NSNotificationCenter defaultCenter];
+    [defaultCenter removeObserver:_windowWillEnterFullScreenNotification];
+    [defaultCenter removeObserver:_windowWillExitFullScreenNotification];
+    [defaultCenter removeObserver:_windowDidExitFullScreenNotification];
+    _windowWillEnterFullScreenNotification = _windowWillExitFullScreenNotification = _windowDidExitFullScreenNotification = nil;
+}
+
 - (void) setTransparentTitleBarHeight: (CGFloat) transparentTitleBarHeight
 {
+    if (_transparentTitleBarHeight == transparentTitleBarHeight) return;
     if (_transparentTitleBarHeight != 0.0f) {
         _transparentTitleBarHeight = transparentTitleBarHeight;
-        if (_transparentTitleBarHeightConstraint != nil || _transparentTitleBarButtonCenterXConstraints != nil) {
+        if (transparentTitleBarHeight == 0.0f) {
+            [self configureWindowAndListenersForDefaultTitleBar];
+        } else if (_transparentTitleBarHeightConstraint != nil || _transparentTitleBarButtonCenterXConstraints != nil) {
             [self updateTransparentTitleBarConstraints];
         }
     } else {

@@ -50,6 +50,10 @@
     NSWindowTabbingMode javaWindowTabbingMode;
     BOOL isEnterFullScreen;
     CGFloat _transparentTitleBarHeight;
+    id<NSObject> _windowWillEnterFullScreenNotification;
+    id<NSObject> _windowWillExitFullScreenNotification;
+    id<NSObject> _windowDidExitFullScreenNotification;
+    NSMutableArray* _transparentTitleBarConstraints;
     NSLayoutConstraint *_transparentTitleBarHeightConstraint;
     NSMutableArray *_transparentTitleBarButtonCenterXConstraints;
 }

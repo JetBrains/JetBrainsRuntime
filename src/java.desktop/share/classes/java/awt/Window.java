@@ -4037,7 +4037,7 @@ public class Window extends Container implements Accessible {
 
         void setCustomDecorationEnabled(Window window, boolean enabled) {
             window.hasCustomDecoration = enabled;
-            if (MacOS.INSTANCE != null && window.customDecorTitleBarHeight != 0f) {
+            if (MacOS.INSTANCE != null && window.customDecorTitleBarHeight > 0f) {
                 MacOS.INSTANCE.setTitleBarHeight(window, window.peer, enabled ? window.customDecorTitleBarHeight : 0);
             }
         }
