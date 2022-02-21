@@ -16,6 +16,7 @@
 
 package com.jetbrains.internal;
 
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -158,10 +159,49 @@ public class JBRApi {
         RegisteredProxyInfo info = registeredProxyInfoByTargetName.get(targetName);
         if (info == null) return null;
         try {
-            return (info.type == ProxyInfo.Type.CLIENT_PROXY ? info.apiModule : outerLookup)
+            return (info.type.isPublicApi() ? outerLookup : info.apiModule)
                     .findClass(info.interfaceName);
         } catch (ClassNotFoundException | IllegalAccessException e) {
             return null;
+        }
+    }
+
+    public static InternalServiceBuilder internalServiceBuilder(Lookup interFace, String target) {
+        return new InternalServiceBuilder(new RegisteredProxyInfo(
+                interFace, interFace.lookupClass().getName(), target, ProxyInfo.Type.INTERNAL_SERVICE, new ArrayList<>()));
+    }
+
+    public static class InternalServiceBuilder {
+
+        private final RegisteredProxyInfo info;
+
+        private InternalServiceBuilder(RegisteredProxyInfo info) {
+            this.info = info;
+        }
+
+        public InternalServiceBuilder withStatic(String methodName, String clazz) {
+            return withStatic(methodName, clazz, methodName);
+        }
+
+        public InternalServiceBuilder withStatic(String interfaceMethodName, String clazz, String methodName) {
+            info.staticMethods.add(
+                    new RegisteredProxyInfo.StaticMethodMapping(interfaceMethodName, clazz, methodName));
+            return this;
+        }
+
+        public Object build() {
+            ProxyInfo info = ProxyInfo.resolve(this.info);
+            if (info == null) return null;
+            ProxyGenerator generator = new ProxyGenerator(info);
+            if (!generator.areAllMethodsImplemented()) return null;
+            generator.defineClasses();
+            MethodHandle constructor = generator.findConstructor();
+            generator.init();
+            try {
+                return constructor.invoke();
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

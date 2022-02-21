@@ -66,7 +66,7 @@ class ProxyInfo {
     }
 
     Lookup getInterfaceLookup() {
-        return type == Type.CLIENT_PROXY ? apiModule : JBRApi.outerLookup;
+        return type == Type.CLIENT_PROXY || type == Type.INTERNAL_SERVICE ? apiModule : JBRApi.outerLookup;
     }
 
     Lookup getTargetLookup() {
@@ -74,7 +74,6 @@ class ProxyInfo {
     }
 
     private Lookup lookup(Lookup lookup, String clazz) {
-        boolean outer = lookup == JBRApi.outerLookup;
         String[] nestedClasses = clazz.split("\\$");
         clazz = "";
         for (int i = 0; i < nestedClasses.length; i++) {
@@ -82,9 +81,8 @@ class ProxyInfo {
                 if (i != 0) clazz += "$";
                 clazz += nestedClasses[i];
                 lookup = MethodHandles.privateLookupIn(lookup.findClass(clazz), lookup);
-            } catch (ClassNotFoundException | IllegalAccessException e) {
-                if (outer) return null;
-                else throw new RuntimeException(e);
+            } catch (ClassNotFoundException | IllegalAccessException ignore) {
+                return null;
             }
         }
         return lookup;
@@ -106,6 +104,15 @@ class ProxyInfo {
     enum Type {
         PROXY,
         SERVICE,
-        CLIENT_PROXY
+        CLIENT_PROXY,
+        INTERNAL_SERVICE;
+
+        public boolean isPublicApi() {
+            return this == PROXY || this == SERVICE;
+        }
+
+        public boolean isService() {
+            return this == SERVICE || this == INTERNAL_SERVICE;
+        }
     }
 }
