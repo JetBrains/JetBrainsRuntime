@@ -103,7 +103,7 @@ public class CheckJBRModules {
 
         final boolean isArch_x64 = "x86_64".equals(System.getProperty("os.arch"));
         if (isArch_x64) {
-            for(String moduleName : moduleNames) {
+            for(String moduleName : moduleNames_x64) {
                 oa.shouldContain(moduleName);
             }
         }
