@@ -35,13 +35,13 @@ public class ProxyInfoResolvingTest {
         JBRApi.ModuleRegistry r = init();
         // No mapping defined -> null
         requireNull(getProxy(ProxyInfoResolvingTest.class));
-        // Invalid JBR-side target class -> error
+        // Invalid JBR-side target class -> null
         r.proxy(InterfaceWithoutImplementation.class.getName(), "absentImpl");
-        mustFail(() -> getProxy(InterfaceWithoutImplementation.class), RuntimeException.class, ClassNotFoundException.class);
-        // Invalid JBR-side target static method mapping -> error
+        requireNull(getProxy(InterfaceWithoutImplementation.class));
+        // Invalid JBR-side target static method mapping -> null
         r.service(ServiceWithoutImplementation.class.getName(), null)
                 .withStatic("someMethod", "NoClass");
-        mustFail(() -> getProxy(ServiceWithoutImplementation.class), RuntimeException.class, ClassNotFoundException.class);
+        requireNull(getProxy(ServiceWithoutImplementation.class));
         // Service without target class or static method mapping -> null
         r.service(EmptyService.class.getName(), null);
         requireNull(getProxy(EmptyService.class));
