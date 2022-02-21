@@ -56,7 +56,6 @@ public class CheckJBRModules {
                     "java.xml",
                     "java.xml.crypto",
                     "jdk.accessibility",
-                    "jdk.aot",
                     "jdk.attach",
                     "jdk.charsets",
                     "jdk.compiler",
@@ -67,8 +66,6 @@ public class CheckJBRModules {
                     "jdk.internal.ed",
                     "jdk.internal.le",
                     "jdk.internal.vm.ci",
-                    "jdk.internal.vm.compiler",
-                    "jdk.internal.vm.compiler.management",
                     "jdk.jdi",
                     "jdk.jdwp.agent",
                     "jdk.jfr",
@@ -93,10 +90,22 @@ public class CheckJBRModules {
                     "jdk.hotspot.agent",
                     "jdk.jcmd" };
 
+    static final String moduleNames_x64[] = {
+                    "jdk.aot",
+                    "jdk.internal.vm.compiler",
+                    "jdk.internal.vm.compiler.management" };
+
     public static void main(String args[]) throws Exception {
         final OutputAnalyzer oa = exec("--list-modules").shouldHaveExitValue(0);
         for(String moduleName : moduleNames) {
             oa.shouldContain(moduleName);
+        }
+
+        final boolean isArch_x64 = "x86_64".equals(System.getProperty("os.arch"));
+        if (isArch_x64) {
+            for(String moduleName : moduleNames) {
+                oa.shouldContain(moduleName);
+            }
         }
     }
 
