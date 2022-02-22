@@ -1,0 +1,22 @@
+# NOTE: This Dockerfile is meant to be used from the mkdocker_musl_aarch64.sh script.
+
+# Pull a concrete version of Linux that does NOT recieve updates after it's
+# been created.  This is so that the image is as stable as possible to make
+# image creation reproducible.
+# NB: this also means there may be no security-related fixes there, need to
+# move the version to the next manually.
+FROM arm64v8/alpine:3.12
+
+# Install the necessary build tools
+RUN     apk --no-cache add --update bash grep tar zip bzip2 fontconfig build-base \
+	    git libx11-dev libxext-dev libxrandr-dev libxrender-dev libxt-dev \
+	    libxtst-dev autoconf freetype-dev cups-dev alsa-lib-dev file \
+	    fontconfig fontconfig-dev linux-headers
+
+# Set up boot JDK for building
+COPY boot_jdk_musl_aarch64.tar.gz /jdk17/
+RUN cd /jdk17 && tar --strip-components=1 -xzf boot_jdk_musl_aarch64.tar.gz && rm /jdk17/boot_jdk_musl_aarch64.tar.gz
+ENV BOOT_JDK=/jdk17
+
+RUN git config --global user.email "teamcity@jetbrains.com" && \
+    git config --global user.name "builduser"
