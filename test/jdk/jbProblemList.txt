@@ -120,6 +120,7 @@ java/awt/Choice/ItemStateChangeTest/ItemStateChangeTest.java                    
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java                      7100044 macosx-all,windows-all,linux-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java                        8202931 macosx-all,linux-all,windows-all
 java/awt/Choice/GrabLockTest/GrabLockTest.java                                      JRE-839 windows-all,macosx-all,linux-all
+java/awt/Choice/PopdownGeneratesMouseEvents/PopdownGeneratesMouseEvents.java        8194045б generic-all
 java/awt/Choice/PopupPosTest/PopupPosTest.java                                      8192930 windows-all
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java                        8047703 generic-all
 java/awt/Choice/SelectCurrentItemTest/SelectCurrentItemTest.html                    8014503,8192929 windows-all,macosx-all,linux-all
@@ -231,6 +232,7 @@ java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java    
 java/awt/List/FirstItemRemoveTest/FirstItemRemoveTest.java                          8169461 windows-all
 java/awt/List/KeyEventsTest/KeyEventsTest.java                                      8047703 windows-all
 java/awt/List/SingleModeDeselect/SingleModeDeselect.java                            8196367 windows-all
+java/awt/MenuBar/8007006/bug8007006.java                                            8202886 macosx-all
 java/awt/Mixing/AWT_Mixing/HierarchyBoundsListenerMixingTest.java                   8049405 macosx-all,windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JButtonInGlassPaneOverlapping.java                       8158801 windows-all,macosx-all,linux-all
 java/awt/Mixing/AWT_Mixing/JButtonOverlapping.java                                  8158801 windows-all,macosx-all,linux-all
