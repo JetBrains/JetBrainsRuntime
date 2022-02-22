@@ -921,21 +921,8 @@ public final class LWCToolkit extends LWToolkit {
         return locale;
     }
 
-    public static boolean isLocaleUSInternationalPC(Locale locale) {
-        return (locale != null ?
-            locale.toString().equals("_US_UserDefined_15000") : false);
-    }
-
-    public static boolean isCharModifierKeyInUSInternationalPC(char ch) {
-        // 5 characters: APOSTROPHE, QUOTATION MARK, ACCENT GRAVE, SMALL TILDE,
-        // CIRCUMFLEX ACCENT
-        final char[] modifierKeys = {'\'', '"', '`', '\u02DC', '\u02C6'};
-        for (char modKey : modifierKeys) {
-            if (modKey == ch) {
-                return true;
-            }
-        }
-        return false;
+    public static boolean isCharModifierKeyInLocale(Locale locale, char ch) {
+        return KeyboardCombiningCharacters.isCharacterCombiningInKeyboardLocale(ch, locale);
     }
 
     @Override
@@ -1169,5 +1156,235 @@ public final class LWCToolkit extends LWToolkit {
         } else {
             UIManager.put("MenuBarUI", null);
         }
+    }
+}
+
+
+final class KeyboardCombiningCharacters {
+    @SuppressWarnings("ConstantConditions")
+    public static boolean isCharacterCombiningInKeyboardLocale(final char ch, final Locale locale) {
+        if (locale == null) {
+            return false;
+        }
+
+        final String localeStr = locale.toString();
+        if (localeStr == null) {
+            return false;
+        }
+
+        final char[] localeCombiningChars = keyboardCombiningCharacters.get(localeStr);
+        if (localeCombiningChars == null) {
+            return false;
+        }
+
+        for (final char combiningChar : localeCombiningChars) {
+            if (ch == combiningChar) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    private static final Map<String, char[]> keyboardCombiningCharacters;
+
+    static {
+        /*
+         * All arrays the map contains MUST be sorted into ASCENDING order (for binary search).
+         * (UPD: the binary search proved to be slower than linear on the such small arrays so the linear is used now)
+         *
+         * Also, the syntax '<backslash>u<hex-digits>' is not used to avoid the traps about
+         *  early parsing of the unicode sequences.
+         */
+
+        // [U+0027 ('''), U+0060 ('`'), U+02c6, U+0022 ('"'), U+02dc, U+00b4, U+00a8]
+        final char[] ENGLISH_US_INTERNATIONAL_PC =
+            {(char)0x0022, (char)0x0027, (char)0x0060, (char)0x00A8,
+             (char)0x00B4, (char)0x02C6, (char)0x02DC};
+
+
+        // [U+0027 ('''), U+00a8, U+00b0, U+005e ('^'), U+02c7,
+        //  U+002c (','), U+002d ('-'), U+0022 ('"'), U+007e ('~')]
+        final char[] CZECH_CZECH =
+            {(char)0x0022, (char)0x0027, (char)0x002C, (char)0x002D,
+             (char)0x005E, (char)0x007E, (char)0x00A8, (char)0x00B0, (char)0x02C7};
+
+        // [U+0027 ('''), U+00a8, U+02c7, U+00b0, U+005e ('^'),
+        //  U+002c (','), U+002d ('-'), U+0022 ('"'), U+007e ('~')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] CZECH_CZECH_QWERTY = CZECH_CZECH;
+
+
+        // [U+00b4, U+00a8, U+0060 ('`'), U+005e ('^'), U+007e ('~')]
+        final char[] DANISH_DANISH =
+            {(char)0x005E, (char)0x0060, (char)0x007E, (char)0x00A8, (char)0x00B4};
+
+
+        // [U+0060 ('`'), U+00b4, U+00a8, U+005e ('^'), U+007e ('~')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] DUTCH_DUTCH = DANISH_DANISH;
+
+        // [U+005e ('^'), U+0060 ('`'), U+00a8, U+007e ('~'), U+00b4]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] DUTCH_BELGIAN = DUTCH_DUTCH;
+
+
+        // [U+00b4, U+00a8, U+0060 ('`'), U+005e ('^'), U+007e ('~')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] FINNISH_FINNISH = DANISH_DANISH;
+
+        // [U+00b4, U+00a8, U+0060 ('`'), U+02c6, U+2038, U+02dd, U+002c (','),
+        //  U+02c7, U+02d8, U+02c0, U+02bc, U+02d9, U+02da, U+00af, U+002e ('.'),
+        //  U+02db, U+00a0, U+0330, U+02dc, U+002d ('-'), U+02cd, U+00b8, U+2116, U+0294]
+        final char[] FINNISH_FINNISH_EXTENDED =
+            {(char)0x002C, (char)0x002D, (char)0x002E, (char)0x0060,
+             (char)0x00A0, (char)0x00A8, (char)0x00AF, (char)0x00B4, (char)0x00B8,
+             (char)0x0294, (char)0x02BC, (char)0x02C0, (char)0x02C6,
+             (char)0x02C7, (char)0x02CD, (char)0x02D8, (char)0x02D9,
+             (char)0x02DA, (char)0x02DB, (char)0x02DC, (char)0x02DD,
+             (char)0x0330, (char)0x2038, (char)0x2116};
+
+        // [U+00b4, U+00a8, U+0060 ('`'), U+02c6, U+2038, U+02dd, U+002c (','),
+        //  U+02c7, U+02d8, U+02c0, U+02d9, U+02da, U+02db, U+00a0, U+0330, U+002d ('-'), U+02cd]
+        final char[] FINNISH_SAMI_PC =
+            {(char)0x002C, (char)0x002D, (char)0x0060, (char)0x00A0, (char)0x00A8, (char)0x00B4,
+             (char)0x02C0, (char)0x02C6, (char)0x02C7, (char)0x02CD,
+             (char)0x02D8, (char)0x02D9, (char)0x02DA, (char)0x02DB, (char)0x02DD,
+             (char)0x0330, (char)0x2038};
+
+
+        // [U+005e ('^'), U+0060 ('`'), U+00a8, U+007e ('~'), U+00b4]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] FRENCH_ABC_AZERTY = DANISH_DANISH;
+
+        // [U+005e ('^'), U+00a8, U+0060 ('`'), U+007e ('~'), U+00b4]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] FRENCH_CANADIAN_FRENCH_CSA = FRENCH_ABC_AZERTY;
+
+        // [U+005e ('^'), U+0060 ('`'), U+00a8, U+007e ('~'), U+00b4]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] FRENCH_FRENCH = FRENCH_ABC_AZERTY;
+
+        // [U+005e ('^'), U+0060 ('`'), U+00a8, U+007e ('~'), U+00b4]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] FRENCH_FRENCH_NUMERICAL = FRENCH_ABC_AZERTY;
+
+        // [U+005e ('^'), U+00a8, U+007e ('~'), U+0060 ('`'), U+00b4]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] FRENCH_FRENCH_PC = FRENCH_ABC_AZERTY;
+
+        // [U+005e ('^'), U+00a8, U+0060 ('`'), U+00b4, U+007e ('~')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] FRENCH_SWISS_FRENCH = FRENCH_ABC_AZERTY;
+
+
+        // [U+00b4, U+0060 ('`'), U+00a8, U+007e ('~'), U+005e ('^')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] GERMAN_ABC_QWERTZ = DANISH_DANISH;
+
+        // [U+00b4, U+0060 ('`'), U+00a8, U+007e ('~'), U+005e ('^')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] GERMAN_AUSTRIAN = GERMAN_ABC_QWERTZ;
+
+        // [U+00b4, U+0060 ('`'), U+00a8, U+007e ('~'), U+005e ('^')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] GERMAN_GERMAN = GERMAN_ABC_QWERTZ;
+
+        // [U+00b4, U+0060 ('`'), U+02d9, U+02c7, U+02dd, U+007e ('~'),
+        //  U+00a8, U+02d8, U+00af, U+02da, U+02c0, U+02bc,
+        //  U+02cd, U+00b8, U+002c (','), U+02db, U+002e ('.'), U+002d ('-')]
+        final char[] GERMAN_GERMAN_STANDARD =
+            {(char)0x002C, (char)0x002D, (char)0x002E, (char)0x0060, (char)0x007E,
+             (char)0x00A8, (char)0x00AF, (char)0x00B4, (char)0x00B8,
+             (char)0x02BC, (char)0x02C0, (char)0x02C7, (char)0x02CD,
+             (char)0x02D8, (char)0x02D9, (char)0x02DA, (char)0x02DB, (char)0x02DD};
+
+        // [U+005e ('^'), U+00a8, U+0060 ('`'), U+00b4, U+007e ('~')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] GERMAN_SWISS_GERMAN = GERMAN_ABC_QWERTZ;
+
+
+        // [U+00b4, U+007e ('~'), U+00a8, U+0060 ('`'), U+005e ('^')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] PORTUGUESE_BRAZILIAN_ABNT2 = DANISH_DANISH;
+
+        // [U+0060 ('`'), U+0027 ('''), U+02dc, U+02c6, U+0022 ('"'), U+00b4, U+00a8]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] PORTUGUESE_BRAZILIAN_PRO = ENGLISH_US_INTERNATIONAL_PC;
+
+
+        // [U+00b4, U+00a8, U+007e ('~'), U+0060 ('`'), U+005e ('^')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] SPANISH_LATIN_AMERICA = DANISH_DANISH;
+
+        // [U+00b4, U+0060 ('`'), U+00a8, U+005e ('^'), U+007e ('~')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] SPANISH_SPANISH = SPANISH_LATIN_AMERICA;
+
+        // [U+0060 ('`'), U+00b4, U+005e ('^'), U+00a8, U+007e ('~')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] SPANISH_SPANISH_ISO = SPANISH_LATIN_AMERICA;
+
+
+        // [U+00b4, U+00a8, U+0060 ('`'), U+005e ('^'), U+007e ('~')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] SWEDISH_SWEDISH = DANISH_DANISH;
+
+        // [U+00b4, U+00a8, U+0060 ('`'), U+005e ('^'), U+007e ('~')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] SWEDISH_SWEDISH_PRO = SWEDISH_SWEDISH;
+
+        // [U+00b4, U+00a8, U+0060 ('`'), U+02c6, U+2038, U+02dd, U+002c (','), U+02c7,
+        //  U+02d8, U+02c0, U+02d9, U+02da, U+02db, <U+00a0, U+0330>, U+002d ('-'), U+02cd]
+        final char[] SWEDISH_SWEDISH_SAMI_PC =
+            {(char)0x002C, (char)0x002D, (char)0x0060, (char)0x00A0, (char)0x00A8, (char)0x00B4,
+             (char)0x02C0, (char)0x02C6, (char)0x02C7, (char)0x02CD,
+             (char)0x02D8, (char)0x02D9, (char)0x02DA, (char)0x02DB, (char)0x02DD,
+             (char)0x0330, (char)0x2038};
+
+
+        final Map<String, char[]> keyboardCombiningCharactersInitializer = new HashMap<>();
+
+        keyboardCombiningCharactersInitializer.put( "_US_UserDefined_15000", ENGLISH_US_INTERNATIONAL_PC);
+
+        keyboardCombiningCharactersInitializer.put(                    "cs", CZECH_CZECH);
+        keyboardCombiningCharactersInitializer.put(            "cs__QWERTY", CZECH_CZECH_QWERTY);
+
+        keyboardCombiningCharactersInitializer.put(                    "da", DANISH_DANISH);
+
+        keyboardCombiningCharactersInitializer.put(                 "nl_BE", DUTCH_BELGIAN);
+        keyboardCombiningCharactersInitializer.put(                    "nl", DUTCH_DUTCH);
+
+        keyboardCombiningCharactersInitializer.put(                    "fi", FINNISH_FINNISH);
+        keyboardCombiningCharactersInitializer.put(          "fi__Extended", FINNISH_FINNISH_EXTENDED);
+        keyboardCombiningCharactersInitializer.put(   "_US_UserDefined_-18", FINNISH_SAMI_PC);
+
+        keyboardCombiningCharactersInitializer.put(   "_US_UserDefined_251", FRENCH_ABC_AZERTY);
+        keyboardCombiningCharactersInitializer.put(                 "fr_CA", FRENCH_CANADIAN_FRENCH_CSA);
+        keyboardCombiningCharactersInitializer.put(                    "fr", FRENCH_FRENCH);
+        keyboardCombiningCharactersInitializer.put(         "fr__numerical", FRENCH_FRENCH_NUMERICAL);
+        keyboardCombiningCharactersInitializer.put(    "_US_UserDefined_60", FRENCH_FRENCH_PC);
+        keyboardCombiningCharactersInitializer.put(                 "fr_CH", FRENCH_SWISS_FRENCH);
+
+        keyboardCombiningCharactersInitializer.put(   "_US_UserDefined_253", GERMAN_ABC_QWERTZ);
+        keyboardCombiningCharactersInitializer.put(                 "de_AT", GERMAN_AUSTRIAN);
+        keyboardCombiningCharactersInitializer.put(                    "de", GERMAN_GERMAN);
+        keyboardCombiningCharactersInitializer.put("_US_UserDefined_-18133", GERMAN_GERMAN_STANDARD);
+        keyboardCombiningCharactersInitializer.put(                 "de_CH", GERMAN_SWISS_GERMAN);
+
+        keyboardCombiningCharactersInitializer.put(   "_US_UserDefined_128", PORTUGUESE_BRAZILIAN_ABNT2);
+        keyboardCombiningCharactersInitializer.put(    "_US_UserDefined_72", PORTUGUESE_BRAZILIAN_PRO);
+
+        keyboardCombiningCharactersInitializer.put(    "_US_UserDefined_89", SPANISH_LATIN_AMERICA);
+        keyboardCombiningCharactersInitializer.put(                    "es", SPANISH_SPANISH);
+        keyboardCombiningCharactersInitializer.put(               "es__ISO", SPANISH_SPANISH_ISO);
+
+        keyboardCombiningCharactersInitializer.put(                    "sv", SWEDISH_SWEDISH);
+        keyboardCombiningCharactersInitializer.put(               "sv__Pro", SWEDISH_SWEDISH_PRO);
+        keyboardCombiningCharactersInitializer.put(   "_US_UserDefined_-15", SWEDISH_SWEDISH_SAMI_PC);
+
+
+        keyboardCombiningCharacters = keyboardCombiningCharactersInitializer;
     }
 }
