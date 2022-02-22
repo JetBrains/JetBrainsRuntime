@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,13 +21,13 @@
 package com.sun.org.apache.xml.internal.utils;
 
 import com.sun.org.apache.xalan.internal.XalanConstants;
-import com.sun.org.apache.xalan.internal.utils.XMLSecurityManager;
 import java.util.HashMap;
 import javax.xml.XMLConstants;
 import javax.xml.catalog.CatalogFeatures;
 import jdk.xml.internal.JdkXmlFeatures;
 import jdk.xml.internal.JdkXmlUtils;
 import jdk.xml.internal.SecuritySupport;
+import jdk.xml.internal.XMLSecurityManager;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
@@ -37,7 +37,7 @@ import org.xml.sax.XMLReader;
  * Creates XMLReader objects and caches them for re-use.
  * This class follows the singleton pattern.
  *
- * @LastModified: Sep 2017
+ * @LastModified: Jan 2022
  */
 public class XMLReaderManager {
 
@@ -143,9 +143,11 @@ public class XMLReaderManager {
         try {
             if (_xmlSecurityManager != null) {
                 for (XMLSecurityManager.Limit limit : XMLSecurityManager.Limit.values()) {
-                    lastProperty = limit.apiProperty();
-                    reader.setProperty(lastProperty,
-                            _xmlSecurityManager.getLimitValueAsString(limit));
+                    if (limit.isSupported(XMLSecurityManager.Processor.PARSER)) {
+                        lastProperty = limit.apiProperty();
+                        reader.setProperty(lastProperty,
+                                _xmlSecurityManager.getLimitValueAsString(limit));
+                    }
                 }
                 if (_xmlSecurityManager.printEntityCountInfo()) {
                     lastProperty = XalanConstants.JDK_ENTITY_COUNT_INFO;
