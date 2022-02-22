@@ -50,7 +50,7 @@ echo "Atrifacts of last pinned build of $CONFIGID :\n"
 echo $CURL_RESPONSE
 
 # Find size (in response) with reg exp
-re='name=\"(jbrsdk_jcef[^\"]+\.tar\.gz)\" size=\"([0-9]+)\"'
+re='name=\"(jbrsdk[^\"]+\.tar\.gz)\" size=\"([0-9]+)\"'
 
 if [[ $CURL_RESPONSE =~ $re ]]; then
   OLDFILENAME=${BASH_REMATCH[1]}
