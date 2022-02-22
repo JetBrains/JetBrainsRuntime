@@ -107,6 +107,21 @@ public final class XalanConstants {
             ORACLE_JAXP_PROPERTY_PREFIX + "maxElementDepth";
 
     /**
+     * JDK XPath Expression group limit
+     */
+    public static final String XPATH_GROUP_LIMIT = "jdk.xml.xpathExprGrpLimit";
+
+    /**
+     * JDK XPath Expression operators limit
+     */
+    public static final String XPATH_OP_LIMIT = "jdk.xml.xpathExprOpLimit";
+
+    /**
+     * JDK XSL XPath limit or Total Number of Operators Permitted in an XSL Stylesheet
+     */
+    public static final String XPATH_TOTALOP_LIMIT = "jdk.xml.xpathTotalOpLimit";
+
+    /**
      * JDK property indicating whether the parser shall print out entity
      * count information
      * Value: a string "yes" means print, "no" or any other string means not.

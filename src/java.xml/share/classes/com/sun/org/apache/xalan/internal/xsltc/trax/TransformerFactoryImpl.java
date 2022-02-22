@@ -23,7 +23,7 @@ package com.sun.org.apache.xalan.internal.xsltc.trax;
 import com.sun.org.apache.xalan.internal.XalanConstants;
 import com.sun.org.apache.xalan.internal.utils.FeaturePropertyBase;
 import com.sun.org.apache.xalan.internal.utils.ObjectFactory;
-import com.sun.org.apache.xalan.internal.utils.XMLSecurityManager;
+import jdk.xml.internal.XMLSecurityManager;
 import com.sun.org.apache.xalan.internal.utils.XMLSecurityPropertyManager.Property;
 import com.sun.org.apache.xalan.internal.utils.XMLSecurityPropertyManager;
 import com.sun.org.apache.xalan.internal.xsltc.compiler.Constants;

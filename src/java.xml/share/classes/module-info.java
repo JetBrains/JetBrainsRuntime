@@ -199,7 +199,7 @@
  * <th scope="col" rowspan="2">Description</th>
  * <th scope="col" rowspan="2">System Property [2]</th>
  * <th scope="col" rowspan="2">jaxp.properties [2]</th>
- * <th scope="col" colspan="3" style="text-align:center">Value [3]</th>
+ * <th scope="col" colspan="4" style="text-align:center">Value [3]</th>
  * <th scope="col" rowspan="2">Security [4]</th>
  * <th scope="col" rowspan="2">Supported Processor [5]</th>
  * <th scope="col" rowspan="2">Since [6]</th>
@@ -208,6 +208,7 @@
  * <th scope="col">Type</th>
  * <th scope="col">Value</th>
  * <th scope="col">Default</th>
+ * <th scope="col">Enforced</th>
  * </tr>
  * </thead>
  *
@@ -226,9 +227,45 @@
  * <td>boolean</td>
  * <th id="Value" scope="row" style="font-weight:normal">true/false</th>
  * <th id="Default" scope="row" style="font-weight:normal">false</th>
+ * <td style="text-align:center">N/A</td>
  * <td>No</td>
  * <td><a href="#DOMLS">DOMLS</a></td>
  * <td>17</td>
+ * </tr>
+ * <tr>
+ * <td id="extensionClassLoader">jdk.xml.xpathExprGrpLimit</td>
+ * <td>Limits the number of groups an XPath expression can contain.
+ * </td>
+ * <td style="text-align:center" rowspan="3">yes</td>
+ * <td style="text-align:center" rowspan="3">yes</td>
+ * <td style="text-align:center" rowspan="3">Integer</td>
+ * <td rowspan="3">A positive integer. A value less than or equal to 0 indicates no limit.
+ * If the value is not an integer, a NumberFormatException is thrown. </td>
+ * <td style="text-align:center">10</td>
+ * <td style="text-align:center">10</td>
+ * <td style="text-align:center" rowspan="3">Yes</td>
+ * <td style="text-align:center" rowspan="2">
+ *     <a href="#Transform">Transform</a><br>
+ *     <a href="#XPath">XPath</a>
+ * </td>
+ * <td style="text-align:center" rowspan="3">19</td>
+ * </tr>
+ * <tr>
+ * <td id="extensionClassLoader">jdk.xml.xpathExprOpLimit</td>
+ * <td>Limits the number of operators an XPath expression can contain.
+ * </td>
+ * <td style="text-align:center">100</td>
+ * <td style="text-align:center">100</td>
+ * </tr>
+ * <tr>
+ * <td id="extensionClassLoader">jdk.xml.xpathTotalOpLimit</td>
+ * <td>Limits the total number of XPath operators in an XSL Stylesheet.
+ * </td>
+ * <td style="text-align:center">10000</td>
+ * <td style="text-align:center">10000</td>
+ * <td style="text-align:center">
+ *     <a href="#Transform">Transform</a><br>
+ * </td>
  * </tr>
  * </tbody>
  * </table>
