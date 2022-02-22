@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,7 +21,6 @@
 package com.sun.org.apache.xalan.internal.xsltc.trax;
 
 import com.sun.org.apache.xalan.internal.XalanConstants;
-import com.sun.org.apache.xalan.internal.utils.XMLSecurityManager;
 import com.sun.org.apache.xalan.internal.xsltc.compiler.XSLTC;
 import com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMsg;
 import java.io.InputStream;
@@ -39,6 +38,7 @@ import javax.xml.transform.stax.StAXSource;
 import javax.xml.transform.stream.StreamSource;
 import jdk.xml.internal.JdkXmlFeatures;
 import jdk.xml.internal.JdkXmlUtils;
+import jdk.xml.internal.XMLSecurityManager;
 import jdk.xml.internal.SecuritySupport;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
@@ -112,9 +112,11 @@ public final class Util {
                                 (XMLSecurityManager)xsltc.getProperty(XalanConstants.SECURITY_MANAGER);
                         if (securityManager != null) {
                             for (XMLSecurityManager.Limit limit : XMLSecurityManager.Limit.values()) {
-                                lastProperty = limit.apiProperty();
-                                reader.setProperty(lastProperty,
-                                        securityManager.getLimitValueAsString(limit));
+                                if (limit.isSupported(XMLSecurityManager.Processor.PARSER)) {
+                                    lastProperty = limit.apiProperty();
+                                    reader.setProperty(lastProperty,
+                                            securityManager.getLimitValueAsString(limit));
+                                }
                             }
                             if (securityManager.printEntityCountInfo()) {
                                 lastProperty = XalanConstants.JDK_ENTITY_COUNT_INFO;
