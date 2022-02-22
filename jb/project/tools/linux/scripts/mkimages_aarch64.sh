@@ -6,7 +6,20 @@
 
 source jb/project/tools/common/scripts/common.sh
 
+function is_musl {
+  libc=$(ldd /bin/ls | grep 'musl' | head -1 | cut -d ' ' -f1)
+  if [ -z $libc ]; then
+    # This is not Musl, return 1 == false
+    return 1
+  fi
+  return 0
+}
+
 JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
+
+LIBC_TYPE_SUFFIX=''
+
+if is_musl; then LIBC_TYPE_SUFFIX='musl-' ; fi
 
 sh configure \
   --with-debug-level=release \
@@ -23,7 +36,7 @@ sh configure \
 make clean CONF=linux-aarch64-server-release || exit $?
 make images CONF=linux-aarch64-server-release test-image || exit $?
 
-JBSDK=${JBRSDK_BASE_NAME}-linux-aarch64-b${build_number}
+JBSDK=${JBRSDK_BASE_NAME}-linux-${LIBC_TYPE_SUFFIX}aarch64-b${build_number}
 BASE_DIR=build/linux-aarch64-server-release/images
 JSDK=${BASE_DIR}/jdk
 JBRSDK_BUNDLE=jbrsdk
@@ -49,7 +62,7 @@ JBR_BUNDLE=jbr
 JBR_BASE_NAME=jbr-$JBSDK_VERSION
 rm -rf $BASE_DIR/$JBR_BUNDLE
 
-JBR=$JBR_BASE_NAME-linux-aarch64-b$build_number
+JBR=$JBR_BASE_NAME-linux-${LIBC_TYPE_SUFFIX}aarch64-b$build_number
 grep -v javafx jb/project/tools/common/modules.list | grep -v "jdk.internal.vm\|jdk.aot\|jcef" > modules.list.aarch64
 echo Running jlink....
 ${JSDK}/bin/jlink \
@@ -65,7 +78,7 @@ tar $REPRODUCIBLE_TAR_OPTS --sort=name -pcf $JBR.tar -C $BASE_DIR ${JBR_BUNDLE} 
 touch -c -d @$SOURCE_DATE_EPOCH $JBR.tar
 gzip $JBR.tar || exit $?
 
-JBRSDK_TEST=$JBRSDK_BASE_NAME-linux-test-aarch64-b$build_number
+JBRSDK_TEST=$JBRSDK_BASE_NAME-linux-${LIBC_TYPE_SUFFIX}test-aarch64-b$build_number
 echo Creating $JBRSDK_TEST.tar.gz ...
 tar -pcf $JBRSDK_TEST.tar -C $BASE_DIR --exclude='test/jdk/demos' test || exit $?
 gzip $JBRSDK_TEST.tar || exit $?
