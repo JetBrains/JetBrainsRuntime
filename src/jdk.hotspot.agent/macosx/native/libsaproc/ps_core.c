@@ -614,6 +614,7 @@ static bool read_core_segments(struct ps_prochandle* ph) {
       goto err;
     }
     offset += lcmd.cmdsize;    // next command position
+    //print_debug("LC: 0x%x\n", lcmd.cmd);
     if (lcmd.cmd == LC_SEGMENT_64) {
       lseek(fd, -sizeof(load_command), SEEK_CUR);
       if (read(fd, (void *)&segcmd, sizeof(segment_command_64)) != sizeof(segment_command_64)) {
@@ -624,8 +625,9 @@ static bool read_core_segments(struct ps_prochandle* ph) {
         print_debug("Failed to add map_info at i = %d\n", i);
         goto err;
       }
-      print_debug("segment added: %" PRIu64 " 0x%" PRIx64 " %d\n",
-                   segcmd.fileoff, segcmd.vmaddr, segcmd.vmsize);
+      print_debug("LC_SEGMENT_64 added: nsects=%d fileoff=0x%llx vmaddr=0x%llx vmsize=0x%llx filesize=0x%llx %s\n",
+                  segcmd.nsects, segcmd.fileoff, segcmd.vmaddr, segcmd.vmsize,
+                  segcmd.filesize, &segcmd.segname[0]);
     } else if (lcmd.cmd == LC_THREAD || lcmd.cmd == LC_UNIXTHREAD) {
       typedef struct thread_fc {
         uint32_t  flavor;
@@ -878,7 +880,7 @@ static bool read_shared_lib_info(struct ps_prochandle* ph) {
       // only search core file!
       continue;
     }
-    print_debug("map_info %d: vmaddr = 0x%016" PRIx64 "  fileoff = %" PRIu64 "  vmsize = %" PRIu64 "\n",
+    print_debug("map_info %d: vmaddr = 0x%016llx fileoff = 0x%llx vmsize = 0x%lx\n",
                            j, iter->vaddr, iter->offset, iter->memsz);
     lseek(fd, fpos, SEEK_SET);
     // we assume .dylib loaded at segment address --- which is true for JVM libraries
@@ -902,7 +904,7 @@ static bool read_shared_lib_info(struct ps_prochandle* ph) {
         continue;
       }
       lseek(fd, -sizeof(uint32_t), SEEK_CUR);
-      // this is the file begining to core file.
+      // This is the begining of the mach-o file in the segment.
       if (read(fd, (void *)&header, sizeof(mach_header_64)) != sizeof(mach_header_64)) {
         goto err;
       }
@@ -935,18 +937,26 @@ static bool read_shared_lib_info(struct ps_prochandle* ph) {
             if (name[j] == '\0') break;
             j++;
           }
-          print_debug("%s\n", name);
+          print_debug("%d %s\n", lcmd.cmd, name);
           // changed name from @rpath/xxxx.dylib to real path
           if (strrchr(name, '@')) {
             get_real_path(ph, name);
             print_debug("get_real_path returned: %s\n", name);
+          } else {
+            break; // Ignore non-relative paths, which are system libs. See JDK-8249779.
           }
-          add_lib_info(ph, name, iter->vaddr);
+          add_lib_info(ph, name, iter->vaddr, iter->memsz);
           break;
         }
       }
       // done with the file, advanced to next page to search more files
+#if 0
+      // This line is disabled due to JDK-8249779. Instead we break out of the loop
+      // and don't attempt to find any more mach-o files in this segment.
       fpos = (ltell(fd) + pagesize - 1) / pagesize * pagesize;
+#else
+      break;
+#endif
     }
   }
   return true;
