@@ -50,21 +50,22 @@ static inline void attachCurrentThread(void** env) {
 
 @implementation ThreadUtilities
 
-// A backing store for the [blockingEventDispatchThread] class level property
 static BOOL _blockingEventDispatchThread = NO;
 static long eventDispatchThreadPtr = (long)nil;
 
+static BOOL isEventDispatchThread() {
+    return (long)[NSThread currentThread] == eventDispatchThreadPtr;
+}
+
 // The [blockingEventDispatchThread] property is readonly, so we implement a private setter
 static void setBlockingEventDispatchThread(BOOL value) {
-    @synchronized([ThreadUtilities class]) {
-        _blockingEventDispatchThread = value;
-    }
+    assert([NSThread isMainThread]);
+    _blockingEventDispatchThread = value;
 }
 
 + (BOOL) blockingEventDispatchThread {
-    @synchronized([ThreadUtilities class]) {
-        return _blockingEventDispatchThread;
-    }
+    assert([NSThread isMainThread]);
+    return _blockingEventDispatchThread;
 }
 
 + (void)initialize {
@@ -99,10 +100,10 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 /* This is needed because we can't directly pass a block to
- * performSelectorOnMainThreadWaiting .. since it expects a selector
+ * performSelectorOnMainThreadWaiting:..waitUntilDone:YES.. since it expects a selector
  */
 + (void)invokeBlock:(void (^)())block {
-  block();
+    block();
 }
 
 /*
@@ -133,11 +134,18 @@ AWT_ASSERT_APPKIT_THREAD;
     if ([NSThread isMainThread] && wait == YES) {
         [target performSelector:aSelector withObject:arg];
     } else {
-        setBlockingEventDispatchThread((long)[NSThread currentThread] == eventDispatchThreadPtr);
-        @try {
+        if (wait && isEventDispatchThread()) {
+            void (^block)(void) = ^{
+                setBlockingEventDispatchThread(YES);
+                @try {
+                    [target performSelector:aSelector withObject:arg];
+                } @finally {
+                    setBlockingEventDispatchThread(NO);
+                }
+            };
+            [self performSelectorOnMainThread:@selector(invokeBlock:) withObject:block waitUntilDone:YES modes:javaModes];
+        } else {
             [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
-        } @finally {
-            setBlockingEventDispatchThread(NO);
         }
     }
 }
