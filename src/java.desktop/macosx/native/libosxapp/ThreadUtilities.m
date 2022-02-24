@@ -99,10 +99,14 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 /* This is needed because we can't directly pass a block to
- * performSelectorOnMainThreadWaiting .. since it expects a selector
+ * performSelectorOnMainThreadWaiting:..waitUntilDone:YES.. since it expects a selector
  */
 + (void)invokeBlock:(void (^)())block {
-  block();
+    @try {
+        block();
+    } @finally {
+        setBlockingEventDispatchThread(NO);
+    }
 }
 
 /*
@@ -133,12 +137,8 @@ AWT_ASSERT_APPKIT_THREAD;
     if ([NSThread isMainThread] && wait == YES) {
         [target performSelector:aSelector withObject:arg];
     } else {
-        setBlockingEventDispatchThread((long)[NSThread currentThread] == eventDispatchThreadPtr);
-        @try {
-            [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
-        } @finally {
-            setBlockingEventDispatchThread(NO);
-        }
+        if (wait == YES) setBlockingEventDispatchThread((long)[NSThread currentThread] == eventDispatchThreadPtr);
+        [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
     }
 }
 
