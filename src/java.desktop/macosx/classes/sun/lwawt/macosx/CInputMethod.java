@@ -279,9 +279,12 @@ public final class CInputMethod extends InputMethodAdapter {
     @Override
     public void removeNotify() {
         if (fAwtFocussedComponentPeer != null) {
-            nativeEndComposition(getNativeViewPtr(fAwtFocussedComponentPeer));
+            long modelPtr = getNativeViewPtr(fAwtFocussedComponentPeer);
+            nativeEndComposition(modelPtr);
+            nativeNotifyPeer(modelPtr, null);
         }
 
+        fAwtFocussedComponent = null;
         fAwtFocussedComponentPeer = null;
     }
 
@@ -293,34 +296,32 @@ public final class CInputMethod extends InputMethodAdapter {
      */
     @Override
     protected void setAWTFocussedComponent(Component component) {
-        LWComponentPeer<?, ?> peer = null;
-        long modelPtr = 0;
-        CInputMethod imInstance = this;
+        if (component == null || component == fAwtFocussedComponent) {
+            // Sometimes input happens for the natively unfocused window
+            // (e.g. in case of system emoji picker),
+            // so we don't reset last focused component on focus lost.
+            return;
+        }
 
-        // component will be null when we are told there's no focused component.
-        // When that happens we need to notify the native architecture to stop generating IMEs
-        if (component == null) {
-            peer = fAwtFocussedComponentPeer;
-            imInstance = null;
-        } else {
-            peer = getNearestNativePeer(component);
+        if (fAwtFocussedComponentPeer != null) {
+            long modelPtr = getNativeViewPtr(fAwtFocussedComponentPeer);
+            nativeNotifyPeer(modelPtr, null);
+        }
 
+        fAwtFocussedComponent = component;
+        fAwtFocussedComponentPeer = getNearestNativePeer(component);
+
+        if (fAwtFocussedComponentPeer != null) {
+            long modelPtr = getNativeViewPtr(fAwtFocussedComponentPeer);
+
+            CInputMethod imInstance = this;
             // If we have a passive client, don't pass input method events to it.
             if (component.getInputMethodRequests() == null) {
                 imInstance = null;
             }
-        }
 
-        if (peer != null) {
-            modelPtr = getNativeViewPtr(peer);
-
-            // modelPtr refers to the ControlModel that either got or lost focus.
             nativeNotifyPeer(modelPtr, imInstance);
         }
-
-        // Track the focused component and its nearest peer.
-        fAwtFocussedComponent = component;
-        fAwtFocussedComponentPeer = getNearestNativePeer(component);
     }
 
     /**
