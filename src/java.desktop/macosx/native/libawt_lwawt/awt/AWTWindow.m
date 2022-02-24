@@ -1011,7 +1011,9 @@ AWT_ASSERT_APPKIT_THREAD;
     // the new key window
     NSWindow *keyWindow = [NSApp keyWindow];
     AWTWindow *opposite = nil;
-    opposite = (AWTWindow *)[keyWindow delegate];
+    if (keyWindow != self.nsWindow) {
+        opposite = (AWTWindow *)[keyWindow delegate];
+    }
     [AWTWindow setLastKeyWindow: self];
 
     [self _deliverWindowFocusEvent:NO oppositeWindow: opposite];
