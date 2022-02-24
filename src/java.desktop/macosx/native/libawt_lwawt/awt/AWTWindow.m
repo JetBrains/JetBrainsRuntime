@@ -1010,7 +1010,7 @@ AWT_ASSERT_APPKIT_THREAD;
 #ifdef DEBUG
     NSLog(@"resigned key: %d %@ %@", [self.nsWindow isMainWindow], [self.nsWindow title], [self menuBarForWindow]);
 #endif
-    if (![self.nsWindow isMainWindow]) {
+    if (![self.nsWindow isMainWindow] || [NSApp keyWindow] == self.nsWindow) {
         [self deactivateWindow];
     }
 }
@@ -1039,7 +1039,9 @@ AWT_ASSERT_APPKIT_THREAD;
     NSWindow *keyWindow = [NSApp keyWindow];
     AWTWindow *opposite = nil;
     if ([AWTWindow isAWTWindow: keyWindow]) {
-        opposite = (AWTWindow *)[keyWindow delegate];
+        if (keyWindow != self.nsWindow) {
+            opposite = (AWTWindow *)[keyWindow delegate];
+        }
         [AWTWindow setLastKeyWindow: self];
     } else {
         [AWTWindow setLastKeyWindow: nil];
