@@ -964,7 +964,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
                     return false;
                 }
 
-                boolean res = parentPeer.requestWindowFocus(cause);
+                boolean res = !focusedWindowChangeAllowed || parentPeer.requestWindowFocus(cause);
                 // If parent window can be made focused and has been made focused (synchronously)
                 // then we can proceed with children, otherwise we retreat
                 if (!res || !parentWindow.isFocused()) {
