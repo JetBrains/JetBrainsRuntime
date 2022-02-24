@@ -965,7 +965,7 @@ static bool read_shared_lib_info(struct ps_prochandle* ph) {
           } else {
             break; // Ignore non-relative paths, which are system libs. See JDK-8249779.
           }
-          add_lib_info(ph, name, iter->vaddr, iter->memsz);
+          add_lib_info(ph, name, iter->vaddr);
           break;
         }
       }
