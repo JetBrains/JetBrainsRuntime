@@ -25,14 +25,18 @@ case "${unameOut}" in
       echo "Unknown machine: ${unameOut}"
       exit 1
 esac
-
+re='jbrsdk.+[0-9_]+-(.+)-b.+\.tar\.gz'
+if [[ $NEWFILEPATH =~ $re ]]; then
+  OS_ARCH_PATTERN=${BASH_REMATCH[1]}
+fi
+echo $OS_ARCH_PATTERN
 echo "New size of $NEWFILEPATH = $NEWFILESIZE bytes."
 
 # example: IntellijCustomJdk_Jdk17_Master_LinuxX64jcef
 
 CURL_RESPONSE=$(curl --header "Authorization: Bearer $TOKEN" "https://buildserver.labs.intellij.net/app/rest/builds/?locator=buildType:(id:$CONFIGID),status:success,count:1,finishDate:(build:$BUILDID,condition:before)")
 
-re='id=\"([0-9]+)\".+number=\"([0-9]+)\"'
+re='id=\"([0-9]+)\".+number=\"([0-9\.]+)\"'
 ID=0
 
 if [[ $CURL_RESPONSE =~ $re ]]; then
@@ -46,11 +50,11 @@ fi
 
 CURL_RESPONSE=$(curl --header "Authorization: Bearer $TOKEN" "https://buildserver.labs.intellij.net/app/rest/builds/$ID?fields=id,number,artifacts(file(name,size))")
 
-echo "Atrifacts of last pinned build of $CONFIGID :\n"
+echo "Atrifacts of previous build of $CONFIGID :"
 echo $CURL_RESPONSE
 
 # Find size (in response) with reg exp
-re='name=\"(jbrsdk[^\"]+\.tar\.gz)\" size=\"([0-9]+)\"'
+re='name=\"(jbrsdk[^\"]+'${OS_ARCH_PATTERN}'[^\"]+\.tar\.gz)\" size=\"([0-9]+)\"'
 
 if [[ $CURL_RESPONSE =~ $re ]]; then
   OLDFILENAME=${BASH_REMATCH[1]}
