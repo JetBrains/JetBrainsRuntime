@@ -472,6 +472,134 @@ jdk_desktop_part3 = \
     java/awt/datatransfer \
     java/awt/Window
 
+jbr_all = \
+     jb
+
+jbr_desktop_part11 = \
+    :jdk_desktop_part1 \
+    -:jdk_swing \
+    -javax/sound
+
+jbr_desktop_part12 = \
+    :jdk_swing \
+    -javax/swing/JButton \
+    -javax/swing/JCheckBox \
+    -javax/swing/JColorChooser \
+    -javax/swing/JComboBox \
+    -javax/swing/JComponent \
+    -javax/swing/JDesktopPane \
+    -javax/swing/JDialog \
+    -javax/swing/JEditorPane \
+    -javax/swing/JFileChooser \
+    -javax/swing/JFormattedTextField \
+    -javax/swing/JFrame \
+    -javax/swing/JInternalFrame \
+    -javax/swing/JLabel \
+    -javax/swing/JLayer \
+    -javax/swing/JLightweightFrame \
+    -javax/swing/JList \
+    -javax/swing/JMenu \
+    -javax/swing/JMenuBar \
+    -javax/swing/JMenuItem \
+    -javax/swing/JOptionPane \
+    -javax/swing/JPasswordField \
+    -javax/swing/JPopupMenu \
+    -javax/swing/JProgressBar \
+    -javax/swing/JRadioButton \
+    -javax/swing/JRootPane \
+    -javax/swing/JScrollBar \
+    -javax/swing/JScrollPane \
+    -javax/swing/JSlider \
+    -javax/swing/JSpinner \
+    -javax/swing/JSplitPane \
+    -javax/swing/JTabbedPane \
+    -javax/swing/JTable \
+    -javax/swing/JTableHeader \
+    -javax/swing/JTextArea \
+    -javax/swing/JTextField \
+    -javax/swing/JTextPane \
+    -javax/swing/JToolBar \
+    -javax/swing/JToolTip \
+    -javax/swing/JTree \
+    -javax/swing/JViewport \
+    -javax/swing/JWindow
+
+jbr_desktop_part13 = \
+    javax/swing/JButton \
+    javax/swing/JCheckBox \
+    javax/swing/JColorChooser \
+    javax/swing/JComboBox \
+    javax/swing/JComponent \
+    javax/swing/JDesktopPane \
+    javax/swing/JDialog \
+    javax/swing/JEditorPane \
+    javax/swing/JFileChooser \
+    javax/swing/JFormattedTextField \
+    javax/swing/JFrame \
+    javax/swing/JInternalFrame \
+    javax/swing/JLabel \
+    javax/swing/JLayer \
+    javax/swing/JLightweightFrame \
+    javax/swing/JList \
+    javax/swing/JMenu \
+    javax/swing/JMenuBar \
+    javax/swing/JMenuItem \
+    javax/swing/JOptionPane \
+    javax/swing/JPasswordField \
+    javax/swing/JPopupMenu \
+    javax/swing/JProgressBar \
+    javax/swing/JRadioButton \
+    javax/swing/JRootPane \
+    javax/swing/JScrollBar \
+    javax/swing/JScrollPane \
+    javax/swing/JSlider \
+    javax/swing/JSpinner \
+    javax/swing/JSplitPane \
+    javax/swing/JTabbedPane \
+    javax/swing/JTable \
+    javax/swing/JTableHeader \
+    javax/swing/JTextArea \
+    javax/swing/JTextField \
+    javax/swing/JTextPane \
+    javax/swing/JToolBar \
+    javax/swing/JToolTip \
+    javax/swing/JTree \
+    javax/swing/JViewport \
+    javax/swing/JWindow
+
+jbr_desktop_part14 = \
+    javax/sound
+
+jbr_desktop_part21 = \
+    :jdk_desktop_part2 \
+    -java/awt/dnd \
+    -java/awt/Focus \
+    -java/awt/font \
+    -java/awt/FullScreen \
+    -java/awt/image \
+    -java/awt/KeyboardFocusmanager \
+    -java/awt/Mixing \
+    -java/awt/print \
+    -java/awt/PrintJob
+
+jbr_desktop_part22 = \
+    java/awt/dnd \
+    java/awt/Focus \
+    java/awt/font \
+    java/awt/FullScreen \
+    java/awt/image \
+    java/awt/KeyboardFocusmanager \
+    java/awt/Mixing \
+    java/awt/print \
+    java/awt/PrintJob
+
+jbr_desktop_part31 = \
+    :jdk_desktop_part3 \
+    -java/awt/Modal
+
+jbr_desktop_part32 = \
+    java/awt/Modal
+
 # SwingSet3 tests.
 jdk_client_sanity = \
     sanity/client/SwingSet
