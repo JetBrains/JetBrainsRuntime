@@ -49,14 +49,12 @@ class CAccessibility implements PropertyChangeListener {
 
     static {
         // (-1) for the infinite timeout
-        @SuppressWarnings("removal")
-        int value = java.security.AccessController.doPrivileged(
+        INVOKE_TIMEOUT_SECONDS = java.security.AccessController.doPrivileged(
             (PrivilegedAction<Integer>) () -> {
                 // Need to load the native library for this code.
                 System.loadLibrary("awt");
                 return Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds", 1);
             });
-        INVOKE_TIMEOUT_SECONDS = value;
     }
 
     static CAccessibility sAccessibility;
@@ -627,7 +625,7 @@ class CAccessibility implements PropertyChangeListener {
                     int rowChildIndex = rowChildContext.getAccessibleIndexInParent();
                     int accessibleColumnCount = ((AccessibleTable) ac).getAccessibleColumnCount();
                     if (accessibleColumnCount <= 0) return -1;
-
+                    
                     return rowChildIndex / accessibleColumnCount;
                 };
                 int firstVisibleRow = calcRowIndex.apply(location1);

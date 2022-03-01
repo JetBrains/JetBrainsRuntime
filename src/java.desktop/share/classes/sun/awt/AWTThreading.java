@@ -244,7 +244,6 @@ public class AWTThreading {
         return TrackedInvocationEvent.create(source, onDispatched, () -> {}, catchThrowables);
     }
 
-    @SuppressWarnings("serial")
     public static class TrackedInvocationEvent extends InvocationEvent {
         private final long creationTime = System.currentTimeMillis();
         private final Throwable throwable = new Throwable();
