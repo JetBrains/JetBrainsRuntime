@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2021, 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,14 +66,17 @@ public class Move {
         }
     }
 
-    static void assertHasEvent(final Iterator<WatchEvent<?>> eventIterator, final Path path, final WatchEvent.Kind<Path> kind) {
-        final WatchEvent<?> event = eventIterator.next();
-        if (!event.context().equals(path) || !event.kind().equals(kind)) {
-            throw new RuntimeException("Didn't find event " + kind + " for path '" + path + "'");
+    static void assertHasEvent(final List<WatchEvent<?>> events, final Path path, final WatchEvent.Kind<Path> kind) {
+        for (final WatchEvent<?> event : events) {
+            if (event.context().equals(path) && event.kind().equals(kind)) {
+                if (event.count() != 1) {
+                    throw new RuntimeException("Expected count 1 for event " + event);
+                }
+                return;
+            }
         }
-        if (event.count() != 1) {
-            throw new RuntimeException("Expected count 1 for event " + event);
-        }
+
+        throw new RuntimeException("Didn't find event " + kind + " for path '" + path + "'");
     }
 
     /**
@@ -125,14 +128,13 @@ public class Move {
                 final List<WatchEvent<?>> events = subtreeKey.pollEvents();
                 dumpEvents(events);
 
-                final Iterator<WatchEvent<?>> eventsIterator = events.iterator();
-                assertHasEvent(eventsIterator, Path.of("subdir").resolve("1").resolve("2").resolve("3").resolve("file3"), ENTRY_DELETE);
-                assertHasEvent(eventsIterator, Path.of("subdir").resolve("1").resolve("2").resolve("3"), ENTRY_DELETE);
-                assertHasEvent(eventsIterator, Path.of("subdir").resolve("1").resolve("2"), ENTRY_DELETE);
-                assertHasEvent(eventsIterator, Path.of("subdir").resolve("2.moved"), ENTRY_CREATE);
-                assertHasEvent(eventsIterator, Path.of("subdir").resolve("2.moved").resolve("3"), ENTRY_CREATE);
-                assertHasEvent(eventsIterator, Path.of("subdir").resolve("2.moved").resolve("3").resolve("file3"), ENTRY_CREATE);
-                if (eventsIterator.hasNext()) {
+                assertHasEvent(events, Path.of("subdir").resolve("1").resolve("2").resolve("3").resolve("file3"), ENTRY_DELETE);
+                assertHasEvent(events, Path.of("subdir").resolve("1").resolve("2").resolve("3"), ENTRY_DELETE);
+                assertHasEvent(events, Path.of("subdir").resolve("1").resolve("2"), ENTRY_DELETE);
+                assertHasEvent(events, Path.of("subdir").resolve("2.moved"), ENTRY_CREATE);
+                assertHasEvent(events, Path.of("subdir").resolve("2.moved").resolve("3"), ENTRY_CREATE);
+                assertHasEvent(events, Path.of("subdir").resolve("2.moved").resolve("3").resolve("file3"), ENTRY_CREATE);
+                if (events.size() > 6) {
                     throw new RuntimeException("Too many events");
                 }
             }
@@ -148,9 +150,8 @@ public class Move {
                 takeExpectedKey(rootWatcher, rootKey);
                 final List<WatchEvent<?>> events = rootKey.pollEvents();
                 dumpEvents(events);
-                final Iterator<WatchEvent<?>> eventsIterator = events.iterator();
-                assertHasEvent(eventsIterator, Path.of("2"), ENTRY_CREATE);
-                if (eventsIterator.hasNext()) {
+                assertHasEvent(events, Path.of("2"), ENTRY_CREATE);
+                if (events.size() > 1) {
                     throw new RuntimeException("Too many events");
                 }
             }
@@ -161,14 +162,13 @@ public class Move {
                 final List<WatchEvent<?>> events = subtreeKey.pollEvents();
                 dumpEvents(events);
 
-                final Iterator<WatchEvent<?>> eventsIterator = events.iterator();
-                assertHasEvent(eventsIterator, Path.of("subdir").resolve("2.moved").resolve("3").resolve("file3"), ENTRY_DELETE);
-                assertHasEvent(eventsIterator, Path.of("subdir").resolve("2.moved").resolve("3"), ENTRY_DELETE);
-                assertHasEvent(eventsIterator, Path.of("subdir").resolve("2.moved"), ENTRY_DELETE);
-                assertHasEvent(eventsIterator, Path.of("2"), ENTRY_CREATE);
-                assertHasEvent(eventsIterator, Path.of("2").resolve("3"), ENTRY_CREATE);
-                assertHasEvent(eventsIterator, Path.of("2").resolve("3").resolve("file3"), ENTRY_CREATE);
-                if (eventsIterator.hasNext()) {
+                assertHasEvent(events, Path.of("subdir").resolve("2.moved").resolve("3").resolve("file3"), ENTRY_DELETE);
+                assertHasEvent(events, Path.of("subdir").resolve("2.moved").resolve("3"), ENTRY_DELETE);
+                assertHasEvent(events, Path.of("subdir").resolve("2.moved"), ENTRY_DELETE);
+                assertHasEvent(events, Path.of("2"), ENTRY_CREATE);
+                assertHasEvent(events, Path.of("2").resolve("3"), ENTRY_CREATE);
+                assertHasEvent(events, Path.of("2").resolve("3").resolve("file3"), ENTRY_CREATE);
+                if (events.size() > 6) {
                     throw new RuntimeException("Too many events");
                 }
             }
