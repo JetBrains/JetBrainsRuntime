@@ -14,7 +14,7 @@ import sun.lwawt.macosx.LWCToolkit;
 import static helper.ToolkitTestHelper.*;
 
 /*
- * @test
+ * test // temporarily disabled
  * @summary Tests different scenarios for LWCToolkit.invokeAndWait().
  * @requires (os.family == "mac")
  * @modules java.desktop/sun.lwawt.macosx java.desktop/sun.awt

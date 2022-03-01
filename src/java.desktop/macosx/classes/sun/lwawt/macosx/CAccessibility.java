@@ -32,9 +32,10 @@ import java.beans.*;
 import java.lang.annotation.Native;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.security.PrivilegedAction;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import javax.accessibility.*;
@@ -45,16 +46,24 @@ import sun.awt.AWTAccessor;
 
 class CAccessibility implements PropertyChangeListener {
     private static Set<String> ignoredRoles;
+    private static final int INVOKE_TIMEOUT_SECONDS_DEFAULT = 1;
     private static final int INVOKE_TIMEOUT_SECONDS;
 
     static {
-        // (-1) for the infinite timeout
-        INVOKE_TIMEOUT_SECONDS = java.security.AccessController.doPrivileged(
-            (PrivilegedAction<Integer>) () -> {
-                // Need to load the native library for this code.
-                System.loadLibrary("awt");
-                return Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds", 1);
+        AtomicInteger invokeTimeoutSecondsRef = new AtomicInteger();
+        // Need to load the native library for this code.
+        java.security.AccessController.doPrivileged(
+            new java.security.PrivilegedAction<Void>() {
+                public Void run() {
+                    System.loadLibrary("awt");
+                    invokeTimeoutSecondsRef.set(
+                            // (-1) for the infinite timeout
+                            Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds",
+                                    INVOKE_TIMEOUT_SECONDS_DEFAULT));
+                    return null;
+                }
             });
+        INVOKE_TIMEOUT_SECONDS = invokeTimeoutSecondsRef.get();
     }
 
     static CAccessibility sAccessibility;
