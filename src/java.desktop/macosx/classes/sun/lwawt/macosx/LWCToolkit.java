@@ -1305,6 +1305,30 @@ final class KeyboardCombiningCharacters {
         final char[] GERMAN_SWISS_GERMAN = GERMAN_ABC_QWERTZ;
 
 
+        // [U+00b4, U+00a8, U+0060 ('`'), U+005e ('^'), U+007e ('~')]
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        final char[] NORWEGIAN_BOKMAL_NORWEGIAN = DANISH_DANISH;
+
+        // [U+00b4, U+00a8, U+0060 ('`'), U+02c6, U+2038, U+02dd, U+002c (','), U+02c7,
+        //  U+02d8, U+02c0, U+02bc, U+02d9, U+02da, U+00af, U+002e ('.'), U+02db, U+00a0,
+        //  U+0330, U+02dc, U+002d ('-'), U+02cd, U+00b8, U+2116, U+0294]
+        final char[] NORWEGIAN_BOKMAL_NORWEGIAN_EXTENDED =
+            {(char)0x002C, (char)0x002D, (char)0x002E,
+             (char)0x0060, (char)0x00A0, (char)0x00A8, (char)0x00AF, (char)0x00B4, (char)0x00B8,
+             (char)0x0294, (char)0x02BC, (char)0x02C0, (char)0x02C6, (char)0x02C7, (char)0x02CD,
+             (char)0x02D8, (char)0x02D9, (char)0x02DA, (char)0x02DB, (char)0x02DC, (char)0x02DD,
+             (char)0x0330, (char)0x2038, (char)0x2116};
+
+        // [U+00b4, U+00a8, U+0060 ('`'), U+02c6, U+2038, U+02dd, U+002c (','), U+02c7,
+        //  U+02d8, U+02c0, U+02d9, U+02da, U+02db, U+00a0, U+0330, U+002d ('-'), U+02cd]
+        final char[] NORWEGIAN_BOKMAL_NORWEGIAN_PC =
+            {(char)0x002C, (char)0x002D,
+             (char)0x0060, (char)0x00A0, (char)0x00A8, (char)0x00B4,
+             (char)0x02C0, (char)0x02C6, (char)0x02C7, (char)0x02CD,
+             (char)0x02D8, (char)0x02D9, (char)0x02DA, (char)0x02DB, (char)0x02DD,
+             (char)0x0330, (char)0x2038};
+
+
         // [U+00b4, U+007e ('~'), U+00a8, U+0060 ('`'), U+005e ('^')]
         @SuppressWarnings("UnnecessaryLocalVariable")
         final char[] PORTUGUESE_BRAZILIAN_ABNT2 = DANISH_DANISH;
@@ -1372,6 +1396,10 @@ final class KeyboardCombiningCharacters {
         keyboardCombiningCharactersInitializer.put(                    "de", GERMAN_GERMAN);
         keyboardCombiningCharactersInitializer.put("_US_UserDefined_-18133", GERMAN_GERMAN_STANDARD);
         keyboardCombiningCharactersInitializer.put(                 "de_CH", GERMAN_SWISS_GERMAN);
+
+        keyboardCombiningCharactersInitializer.put(                    "no", NORWEGIAN_BOKMAL_NORWEGIAN);
+        keyboardCombiningCharactersInitializer.put(          "no__Extended", NORWEGIAN_BOKMAL_NORWEGIAN_EXTENDED);
+        keyboardCombiningCharactersInitializer.put(   "_US_UserDefined_-13", NORWEGIAN_BOKMAL_NORWEGIAN_PC);
 
         keyboardCombiningCharactersInitializer.put(   "_US_UserDefined_128", PORTUGUESE_BRAZILIAN_ABNT2);
         keyboardCombiningCharactersInitializer.put(    "_US_UserDefined_72", PORTUGUESE_BRAZILIAN_PRO);
