@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2021, 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import jdk.internal.misc.Unsafe;
 
 import java.io.IOException;
 import java.nio.file.ClosedWatchServiceException;
+import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -618,6 +619,8 @@ class MacOSXWatchService extends AbstractWatchService {
                             snapshot.files.put(file.getFileName(), entry);
                         } catch (IOException ignore) {}
                     }
+                } catch (DirectoryIteratorException e) {
+                    throw e.getCause();
                 }
 
                 return snapshot;
@@ -684,7 +687,7 @@ class MacOSXWatchService extends AbstractWatchService {
                             // simply skip the file we couldn't read; it'll get marked as deleted later.
                         }
                     }
-                } catch (IOException ignore) {
+                } catch (IOException | DirectoryIteratorException ignore) {
                     // Most probably this directory has just been deleted; our parent will notice that
                 }
 
