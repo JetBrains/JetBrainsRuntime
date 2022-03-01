@@ -31,7 +31,7 @@ FILENAME=$(basename ${NEWFILEPATH})
 # Base filename pattern: <BUNDLE_TYPE>-<JDK_VERSION>-<OS>-<ARCH>-b<BUILD>.tar.gz: jbr_dcevm-17.0.2-osx-x64-b1234.tar.gz
 # BUNDLE_TYPE: jbr, jbrsdk, jbr_dcevm, jbrsdk_jcef etc.
 # OS_ARCH_PATTERN - <os_architecture>: osx-x64, linux-aarch64, windows-x64 etc.
-#
+
 BUNDLE_TYPE=jbrsdk
 OS_ARCH_PATTERN=""
 re='(jbr[a-z_]*).+[0-9_]+-(.+)-b.+\.tar\.gz'
@@ -50,6 +50,9 @@ echo "New size of $FILENAME = $NEWFILESIZE bytes."
 # CONFIGID=IntellijCustomJdk_Jdk17_Master_LinuxX64jcef
 # BUILDID=12345678
 #
+# expected return value
+# id="123".number="567"
+#
 CURL_RESPONSE=$(curl --header "Authorization: Bearer $TOKEN" "https://buildserver.labs.intellij.net/app/rest/builds/?locator=buildType:(id:$CONFIGID),status:success,count:1,finishDate:(build:$BUILDID,condition:before)")
 re='id=\"([0-9]+)\".+number=\"([0-9\.]+)\"'
 
@@ -66,6 +69,9 @@ fi
 
 #
 # Get artifacts from previous successful build
+#
+# expected return value
+# name="jbrsdk_jcef*.tar.gz size="123'
 #
 CURL_RESPONSE=$(curl --header "Authorization: Bearer $TOKEN" "https://buildserver.labs.intellij.net/app/rest/builds/$ID?fields=id,number,artifacts(file(name,size))")
 echo "Atrifacts of previous build of $CONFIGID :"
