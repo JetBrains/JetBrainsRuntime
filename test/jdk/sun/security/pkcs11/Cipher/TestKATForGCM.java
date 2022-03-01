@@ -39,18 +39,6 @@ import java.util.*;
 
 public class TestKATForGCM extends PKCS11Test {
 
-    // Utility methods
-    private static byte[] HexToBytes(String hexVal) {
-        if (hexVal == null) return new byte[0];
-        byte[] result = new byte[hexVal.length()/2];
-        for (int i = 0; i < result.length; i++) {
-            // 2 characters at a time
-            String byteVal = hexVal.substring(2*i, 2*i +2);
-            result[i] = Integer.valueOf(byteVal, 16).byteValue();
-        }
-        return result;
-    }
-
     private static class TestVector {
         SecretKey key;
         byte[] plainText;
