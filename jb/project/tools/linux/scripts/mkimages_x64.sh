@@ -33,6 +33,7 @@ function do_configure {
     --with-boot-jdk="$BOOT_JDK" \
     --enable-cds=yes \
     $REPRODUCIBLE_BUILD_OPTS \
+    $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
     || do_exit $?
 }
 
@@ -69,6 +70,7 @@ function create_image_bundle {
     sed 's/JBR/JBRSDK/g' "$IMAGES_DIR"/"$__arch_name"/release > release
     mv release "$IMAGES_DIR"/"$__arch_name"/release
     copy_jmods "$__modules" "$__modules_path" "$IMAGES_DIR"/"$__arch_name"/jmods
+    zip_native_debug_symbols $IMAGES_DIR/jdk "${JBR}_diz"
   fi
 
   # jmod does not preserve file permissions (JDK-8173610)

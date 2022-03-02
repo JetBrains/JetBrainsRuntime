@@ -32,6 +32,7 @@ sh configure \
   --with-boot-jdk=${BOOT_JDK} \
   --enable-cds=yes \
   $REPRODUCIBLE_BUILD_OPTS \
+  $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
   || exit $?
 make clean CONF=linux-aarch64-server-release || exit $?
 make images CONF=linux-aarch64-server-release test-image || exit $?
@@ -50,6 +51,8 @@ cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || exit $?
 echo Creating $JBSDK.tar.gz ...
 sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
 mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
+
+zip_native_debug_symbols $JSDK "${JBSDK}_diz"
 
 # NB: --sort=name requires tar1.28
 tar $REPRODUCIBLE_TAR_OPTS --sort=name -pcf $JBSDK.tar \
