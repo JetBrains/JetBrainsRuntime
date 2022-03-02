@@ -78,12 +78,24 @@ case "$OS_NAME" in
         ;;
 esac
 
+WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS="--with-native-debug-symbols=zipped"
+
 REPRODUCIBLE_BUILD_OPTS="--enable-reproducible-build
   --with-source-date=$SOURCE_DATE_EPOCH
   --with-hotspot-build-time=$BUILD_TIME
   --with-copyright-year=$COPYRIGHT_YEAR
   --disable-absolute-paths-in-output
   --with-build-user=builduser"
+
+function zip_native_debug_symbols() {
+  image_bundle_path=$(echo $1 | cut -d"/" -f-4)
+  jbr_diz_name=$2
+
+  (cd $image_bundle_path && find . -name '*.diz' -exec rsync -R {} ../../../../dizfiles \; )
+
+  (cd dizfiles && find . -print0 | COPYFILE_DISABLE=1 \
+    tar --no-recursion --null -T - -czf ../"$jbr_diz_name".tar.gz) || do_exit $?
+}
 
 function do_exit() {
   exit_code=$1
