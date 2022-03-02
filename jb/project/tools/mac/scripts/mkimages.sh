@@ -43,6 +43,7 @@ function do_configure {
       --with-extra-ldflags="-F$(pwd)/Frameworks" \
       $STATIC_CONF_ARGS \
       $REPRODUCIBLE_BUILD_OPTS \
+      $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
       || do_exit $?
   else
     sh configure \
@@ -59,6 +60,7 @@ function do_configure {
       --enable-cds=yes \
       $STATIC_CONF_ARGS \
       $REPRODUCIBLE_BUILD_OPTS \
+      $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
       || do_exit $?
   fi
 }
@@ -89,6 +91,7 @@ function create_image_bundle {
     mv release $JRE_CONTENTS/Home/release
     cp $IMAGES_DIR/jdk-bundle/jdk-$JBSDK_VERSION.jdk/Contents/Home/lib/src.zip $JRE_CONTENTS/Home/lib
     copy_jmods "$__modules" "$__modules_path" "$JRE_CONTENTS"/Home/jmods
+    zip_native_debug_symbols $IMAGES_DIR/jdk-bundle/jdk-$JBSDK_VERSION.jdk "${JBR}_diz"
   fi
 
   cp -R "$JSDK"/../MacOS "$JRE_CONTENTS"
