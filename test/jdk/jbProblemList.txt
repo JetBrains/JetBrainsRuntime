@@ -524,6 +524,7 @@ java/awt/image/VolatileImage/BitmaskVolatileImage.java 8133102 linux-all
 java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java 8134231 windows-all,linux-all,macosx-all
 java/awt/SplashScreen/MultiResolutionSplash/unix/UnixMultiResolutionSplashTest.java 8203004 linux-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java 7107528 linux-all,macosx-all
+java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  8282232 windows-all
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java 8080676 linux-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java 8157147 linux-all,windows-all,macosx-all
 java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.java 8148041 linux-all
@@ -592,6 +593,7 @@ javax/management/monitor/DerivedGaugeMonitorTest.java         8042211 generic-al
 # jdk_io
 
 java/io/pathNames/GeneralWin32.java                             8180264 windows-all
+java/io/File/createTempFile/SpecialTempFile.java                8274122 windows11
 
 ############################################################################
 
