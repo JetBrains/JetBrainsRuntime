@@ -8,7 +8,7 @@
 FROM alpine:3.5
 
 # Install the necessary build tools
-RUN     apk --no-cache add --update bash grep tar zip bzip2 fontconfig build-base \
+RUN     apk --no-cache add --update bash grep tar zip bzip2 rsync fontconfig build-base \
 	    git libx11-dev libxext-dev libxrandr-dev libxrender-dev libxt-dev \
 	    libxtst-dev autoconf freetype-dev cups-dev alsa-lib-dev file \
 	    fontconfig fontconfig-dev linux-headers
