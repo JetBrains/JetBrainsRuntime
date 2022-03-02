@@ -45,6 +45,7 @@ function do_configure {
       --with-extra-cxxflags="-F$(pwd)/Frameworks" \
       --with-extra-ldflags="-F$(pwd)/Frameworks" \
       $REPRODUCIBLE_BUILD_OPTS \
+      $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
       || do_exit $?
   else
     sh configure \
@@ -61,6 +62,7 @@ function do_configure {
       --with-macosx-version-max="${MACOSX_VERSION_MAX:="10.12.00"}" \
       --enable-cds=yes \
       $REPRODUCIBLE_BUILD_OPTS \
+      $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
       || do_exit $?
   fi
 }
@@ -90,6 +92,7 @@ function create_image_bundle {
     sed 's/JBR/JBRSDK/g' $JRE_CONTENTS/Home/release > release
     mv release $JRE_CONTENTS/Home/release
     copy_jmods "$__modules" "$__modules_path" "$JRE_CONTENTS"/Home/jmods
+    zip_native_debug_symbols $IMAGES_DIR/jdk-bundle/jdk-$JBSDK_VERSION.jdk "${JBR}_diz"
   fi
 
   cp -R "$JSDK"/../MacOS "$JRE_CONTENTS"
