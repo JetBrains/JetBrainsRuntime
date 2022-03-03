@@ -83,4 +83,16 @@ interface SystemModules {
      * by this SystemModules object.
      */
     Map<String, Set<String>> moduleReads();
+
+    /**
+     * Returns the map of module concealed packages to open. The map key is the
+     * module name, the value is the set of concealed packages to open.
+     */
+    Map<String, Set<String>> concealedPackagesToOpen();
+
+    /**
+     * Returns the map of module exported packages to open. The map key is the
+     * module name, the value is the set of exported packages to open.
+     */
+    Map<String, Set<String>> exportedPackagesToOpen();
 }
