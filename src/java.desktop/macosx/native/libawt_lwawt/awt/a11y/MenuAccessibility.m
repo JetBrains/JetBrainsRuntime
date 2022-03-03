@@ -47,7 +47,7 @@ static jclass sjc_CAccessibility = NULL;
 
 - (BOOL)isAccessibilityElement
 {
-    return YES;
+    return [[[self accessibilityParent] accessibilityRole] isEqualToString:NSAccessibilityComboBoxRole];
 }
 
 - (id _Nullable)accessibilityValue
