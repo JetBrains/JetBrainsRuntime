@@ -201,6 +201,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
                         } else if (oldValue != null &&
                                 ((AccessibleState) oldValue) == AccessibleState.VISIBLE) {
                             execute(ptr -> menuClosed(ptr));
+                            execute(ptr -> unregisterFromCocoaAXSystem(ptr));
                         }
                     } else if (thisRole == AccessibleRole.MENU_ITEM ||
                             (thisRole == AccessibleRole.MENU)) {
