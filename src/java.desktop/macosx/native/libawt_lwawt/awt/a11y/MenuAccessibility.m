@@ -39,7 +39,7 @@
 
 - (BOOL)isAccessibilityElement
 {
-    return YES;
+    return [[[self accessibilityParent] accessibilityRole] isEqualToString:NSAccessibilityComboBoxRole];
 }
 
 @end
