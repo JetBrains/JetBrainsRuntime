@@ -63,6 +63,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     private static final boolean X11_DISABLE_OVERRIDE_FLAG;
     private static final boolean X11_DISABLE_OVERRIDE_XWINDOWPEER;
 
+    static final boolean ENABLE_REPARENTING_CHECK
+            = "true".equals(GetPropertyAction.privilegedGetProperty("reparenting.check"));
+
     // should be synchronized on awtLock
     private static Set<XWindowPeer> windows = new HashSet<XWindowPeer>();
 
@@ -757,7 +760,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
         int runningWM = XWM.getWMID();
         Point newLocation = targetBounds.getLocation();
-        if (xe.get_send_event() || runningWM == XWM.NO_WM || XWM.isNonReparentingWM()) {
+        if (xe.get_send_event() ||
+                (ENABLE_REPARENTING_CHECK ? (runningWM == XWM.NO_WM || XWM.isNonReparentingWM()) : !isReparented())) {
             // Location, Client size + insets
             newLocation = new Point(scaleDown(xe.get_x()) - leftInset,
                                     scaleDown(xe.get_y()) - topInset);
@@ -1455,6 +1459,14 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         isUnhiding |= isWMStateNetHidden();
 
         super.handleMapNotifyEvent(xev);
+
+        if (!ENABLE_REPARENTING_CHECK && delayedModalBlocking) {
+            // case of non-re-parenting WM
+            // (for a re-parenting WM this should have been already done on ReparentNotify processing)
+            addToTransientFors(AWTAccessor.getComponentAccessor().getPeer(modalBlocker));
+            delayedModalBlocking = false;
+        }
+
         if (isBeforeFirstMapNotify && !winAttr.initialFocus && shouldSuppressWmTakeFocus()) {
             suppressWmTakeFocus(false); // restore the protocol.
             if (!XWM.isKDE2()) {
@@ -1674,7 +1686,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                     }
                     modalBlocker = d;
 
-                    if (isReparented() || XWM.isNonReparentingWM()) {
+                    if (isReparented() || ENABLE_REPARENTING_CHECK && XWM.isNonReparentingWM()) {
                         addToTransientFors(blockerPeer, javaToplevels);
                     } else {
                         delayedModalBlocking = true;
@@ -1685,7 +1697,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                     }
                     modalBlocker = null;
 
-                    if (isReparented() || XWM.isNonReparentingWM()) {
+                    if (isReparented() || ENABLE_REPARENTING_CHECK && XWM.isNonReparentingWM()) {
                         removeFromTransientFors();
                     } else {
                         delayedModalBlocking = false;
