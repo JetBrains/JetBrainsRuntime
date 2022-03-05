@@ -63,8 +63,8 @@ abstract class XWrapperBase {
     }
     public abstract long getPData();
     public XEvent clone() {
-        long copy = XlibWrapper.unsafe.allocateMemory(getDataSize());
-        XlibWrapper.unsafe.copyMemory(getPData(), copy, getDataSize());
-        return new XEvent(copy);
+        XEvent copy = new XEvent();
+        XlibWrapper.unsafe.copyMemory(getPData(), copy.getPData(), getDataSize());
+        return copy;
     }
 }
