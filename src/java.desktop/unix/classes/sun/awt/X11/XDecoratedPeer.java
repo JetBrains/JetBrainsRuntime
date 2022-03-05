@@ -402,6 +402,9 @@ abstract class XDecoratedPeer extends XWindowPeer {
         if (insLog.isLoggable(PlatformLogger.Level.FINE)) {
             insLog.fine(xe.toString());
         }
+
+        setPendingConfigureEvent(null);
+
         reparent_serial = xe.get_serial();
         long root = XlibWrapper.RootWindow(XToolkit.getDisplay(), getScreenNumber());
 
@@ -743,6 +746,29 @@ abstract class XDecoratedPeer extends XWindowPeer {
         content.setContentBounds(dims);
     }
 
+    private XEvent pendingConfigureEvent;
+
+    private void setPendingConfigureEvent(XConfigureEvent xev) {
+        if (pendingConfigureEvent != null) {
+            pendingConfigureEvent.dispose();
+        }
+        pendingConfigureEvent = xev == null ? null : xev.clone();
+    }
+
+    private void processPendingConfigureEvent() {
+        if (pendingConfigureEvent != null) {
+            processConfigureEvent(pendingConfigureEvent.get_xconfigure());
+            pendingConfigureEvent.dispose();
+            pendingConfigureEvent = null;
+        }
+    }
+
+    @Override
+    public void handleMapNotifyEvent(XEvent xev) {
+        processPendingConfigureEvent();
+        super.handleMapNotifyEvent(xev);
+    }
+
     boolean no_reparent_artifacts = false;
     public void handleConfigureNotifyEvent(XEvent xev) {
         if (XWM.getWMID() == XWM.UNITY_COMPIZ_WM && !insets_corrected) {
@@ -781,24 +807,30 @@ abstract class XDecoratedPeer extends XWindowPeer {
             return;
         }
 
-        /*
-         * Some window managers configure before we are reparented and
-         * the send event flag is set! ugh... (Enlightenment for one,
-         * possibly MWM as well).  If we haven't been reparented yet
-         * this is just the WM shuffling us into position.  Ignore
-         * it!!!! or we wind up in a bogus location.
-         */
         int runningWM = XWM.getWMID();
         if (insLog.isLoggable(PlatformLogger.Level.FINE)) {
             insLog.fine("reparented={0}, visible={1}, WM={2}, decorations={3}",
                         isReparented(), isVisible(), runningWM, getDecorations());
         }
-        if (!isReparented() && isVisible() && runningWM != XWM.NO_WM
-                &&  !XWM.isNonReparentingWM()
-                && getDecorations() != XWindowAttributesData.AWT_DECOR_NONE) {
-            insLog.fine("- visible but not reparented, skipping");
-            return;
+        if (!isReparented() && isVisible() && getDecorations() != XWindowAttributesData.AWT_DECOR_NONE) {
+            if (ENABLE_REPARENTING_CHECK) {
+                if (runningWM != XWM.NO_WM && !XWM.isNonReparentingWM()) {
+                    insLog.fine("- visible but not reparented, skipping");
+                    return;
+                }
+            } else if (!isMapped()) {
+                // For reparenting window managers we're not processing ConfigureNotify events received before
+                // ReparentNotify. But we cannot know for sure whether WM is reparenting or not, so we remember
+                // the last received ConfigureNotify event, and process it at the time MapNotify is received.
+                setPendingConfigureEvent(xe);
+                return;
+            }
         }
+
+        processConfigureEvent(xe);
+    }
+
+    private void processConfigureEvent(XConfigureEvent xe) {
         //Last chance to correct insets
         if (!insets_corrected && getDecorations() != XWindowAttributesData.AWT_DECOR_NONE) {
             long parent = XlibUtil.getParentWindow(window);
@@ -824,13 +856,13 @@ abstract class XDecoratedPeer extends XWindowPeer {
         Point newLocation = getNewLocation(xe, currentInsets.left, currentInsets.top);
         WindowDimensions newDimensions =
                 new WindowDimensions(newLocation,
-                                     new Dimension(scaleDown(xe.get_width()),
-                                                   scaleDown(xe.get_height())),
-                                     copy(currentInsets), true);
+                        new Dimension(scaleDown(xe.get_width()),
+                                scaleDown(xe.get_height())),
+                        copy(currentInsets), true);
 
         if (insLog.isLoggable(PlatformLogger.Level.FINER)) {
             insLog.finer("Insets are {0}, new dimensions {1}",
-                     currentInsets, newDimensions);
+                    currentInsets, newDimensions);
         }
 
         checkIfOnNewScreen(newDimensions.getBounds());
