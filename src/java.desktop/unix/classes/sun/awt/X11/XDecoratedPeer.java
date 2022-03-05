@@ -781,19 +781,12 @@ abstract class XDecoratedPeer extends XWindowPeer {
             return;
         }
 
-        /*
-         * Some window managers configure before we are reparented and
-         * the send event flag is set! ugh... (Enlighetenment for one,
-         * possibly MWM as well).  If we haven't been reparented yet
-         * this is just the WM shuffling us into position.  Ignore
-         * it!!!! or we wind up in a bogus location.
-         */
         int runningWM = XWM.getWMID();
         if (insLog.isLoggable(PlatformLogger.Level.FINE)) {
             insLog.fine("reparented={0}, visible={1}, WM={2}, decorations={3}",
                         isReparented(), isVisible(), runningWM, getDecorations());
         }
-        if (!isReparented() && isVisible() && runningWM != XWM.NO_WM
+        if (ENABLE_REPARENTING_CHECK && !isReparented() && isVisible() && runningWM != XWM.NO_WM
                 &&  !XWM.isNonReparentingWM()
                 && getDecorations() != XWindowAttributesData.AWT_DECOR_NONE) {
             insLog.fine("- visible but not reparented, skipping");
