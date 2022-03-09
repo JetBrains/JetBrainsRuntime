@@ -2406,6 +2406,8 @@ public abstract class ClassLoader {
      * @since    1.2
      */
     static class NativeLibrary {
+        private static final boolean loadLibraryOnlyIfPresent = ClassLoaderHelper.loadLibraryOnlyIfPresent();
+
         // the class from which the library is loaded, also indicates
         // the loader this native library belongs.
         final Class<?> fromClass;
@@ -2420,7 +2422,8 @@ public abstract class ClassLoader {
         // the version of JNI environment the native library requires.
         int jniVersion;
 
-        native boolean load0(String name, boolean isBuiltin);
+        native boolean load0(String name, boolean isBuiltin,
+                             boolean throwExceptionIfFail);
 
         native long findEntry(String name);
 
@@ -2439,7 +2442,7 @@ public abstract class ClassLoader {
                 throw new InternalError("Native library " + name + " has been loaded");
             }
 
-            if (!load0(name, isBuiltin)) return false;
+            if (!load0(name, isBuiltin, loadLibraryOnlyIfPresent)) return false;
 
             // register the class loader for cleanup when unloaded
             // built class loaders are never unloaded
@@ -2681,7 +2684,10 @@ public abstract class ClassLoader {
                 new PrivilegedAction<>() {
                     public String run() {
                         try {
-                            return file.exists() ? file.getCanonicalPath() : null;
+                            if (NativeLibrary.loadLibraryOnlyIfPresent && !file.exists()) {
+                                return null;
+                            }
+                            return file.getCanonicalPath();
                         } catch (IOException e) {
                             return null;
                         }
