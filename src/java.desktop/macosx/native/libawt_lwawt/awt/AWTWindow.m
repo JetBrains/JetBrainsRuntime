@@ -776,7 +776,7 @@ AWT_ASSERT_APPKIT_THREAD;
 // NSWindowDelegate methods
 
 - (void) _deliverMoveResizeEvent {
-AWT_ASSERT_APPKIT_THREAD;
+    AWT_ASSERT_APPKIT_THREAD;
 
     // deliver the event if this is a user-initiated live resize or as a side-effect
     // of a Java initiated resize, because AppKit can override the bounds and force
@@ -785,10 +785,18 @@ AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow == NULL) {
-        // TODO: create generic AWT assert
+        NSLog(@"[AWTWindow _deliverMoveResizeEvent]: platformWindow == NULL");
+        return;
     }
-
-    NSRect frame = ConvertNSScreenRect(env, [self.nsWindow frame]);
+    NSRect frame;
+    @try {
+        frame = ConvertNSScreenRect(env, [self.nsWindow frame]);
+    } @catch (NSException *e) {
+        NSLog(@"WARNING: suppressed exception from ConvertNSScreenRect() in [AWTWindow _deliverMoveResizeEvent]");
+        NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+        [NSApplicationAWT logException:e forProcess:processInfo];
+        return;
+    }
 
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_deliverMoveResizeEvent, jc_CPlatformWindow, "deliverMoveResizeEvent", "(IIIIZ)V");
