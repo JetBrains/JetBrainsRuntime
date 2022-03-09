@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -336,7 +336,8 @@ static void *findJniFunction(JNIEnv *env, void *handle,
  */
 JNIEXPORT jboolean JNICALL
 Java_java_lang_ClassLoader_00024NativeLibrary_load0
-  (JNIEnv *env, jobject this, jstring name, jboolean isBuiltin)
+  (JNIEnv *env, jobject this, jstring name,
+   jboolean isBuiltin, jboolean throwExceptionIfFail)
 {
     jint jniVersion;
     jthrowable cause;
@@ -349,7 +350,7 @@ Java_java_lang_ClassLoader_00024NativeLibrary_load0
     const char * utf8_name = GetStringUTF8Chars(env, name);
     if (utf8_name == NULL)
             return JNI_FALSE;
-    handle = isBuiltin ? procHandle : JVM_LoadLibrary(utf8_name);
+    handle = isBuiltin ? procHandle : JVM_LoadLibrary(utf8_name, throwExceptionIfFail);
     if (handle) {
         JNI_OnLoad_t JNI_OnLoad;
         // TODO:
