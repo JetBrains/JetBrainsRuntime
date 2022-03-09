@@ -3442,7 +3442,7 @@ JVM_END
 
 // Library support ///////////////////////////////////////////////////////////////////////////
 
-JVM_ENTRY_NO_ENV(void*, JVM_LoadLibrary(const char* name))
+JVM_ENTRY_NO_ENV(void*, JVM_LoadLibrary(const char* name, jboolean throwException))
   //%note jvm_ct
   JVMWrapper("JVM_LoadLibrary");
   char ebuf[1024];
@@ -3452,18 +3452,22 @@ JVM_ENTRY_NO_ENV(void*, JVM_LoadLibrary(const char* name))
     load_result = os::dll_load(name, ebuf, sizeof ebuf);
   }
   if (load_result == NULL) {
-    char msg[1024];
-    jio_snprintf(msg, sizeof msg, "%s: %s", name, ebuf);
-    // Since 'ebuf' may contain a string encoded using
-    // platform encoding scheme, we need to pass
-    // Exceptions::unsafe_to_utf8 to the new_exception method
-    // as the last argument. See bug 6367357.
-    Handle h_exception =
-      Exceptions::new_exception(thread,
-                                vmSymbols::java_lang_UnsatisfiedLinkError(),
-                                msg, Exceptions::unsafe_to_utf8);
+    if (throwException) {
+      char msg[1024];
+      jio_snprintf(msg, sizeof msg, "%s: %s", name, ebuf);
+      // Since 'ebuf' may contain a string encoded using
+      // platform encoding scheme, we need to pass
+      // Exceptions::unsafe_to_utf8 to the new_exception method
+      // as the last argument. See bug 6367357.
+      Handle h_exception =
+        Exceptions::new_exception(thread,
+                                  vmSymbols::java_lang_UnsatisfiedLinkError(),
+                                  msg, Exceptions::unsafe_to_utf8);
 
-    THROW_HANDLE_0(h_exception);
+      THROW_HANDLE_0(h_exception);
+    } else {
+      return load_result;
+    }
   }
   return load_result;
 JVM_END

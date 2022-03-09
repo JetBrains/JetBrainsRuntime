@@ -83,6 +83,7 @@ ifeq ($(OPENJDK_TARGET_OS), macosx)
 else
   BUILD_JDK_JTREG_EXCLUDE += libTestMainKeyWindow.m
   BUILD_JDK_JTREG_EXCLUDE += libTestDynamicStore.m
+  BUILD_JDK_JTREG_EXCLUDE += exeLibraryCache.c
 endif
 
 $(eval $(call SetupTestFilesCompilation, BUILD_JDK_JTREG_LIBRARIES, \
