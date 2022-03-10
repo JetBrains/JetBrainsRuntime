@@ -106,6 +106,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private static native void nativeRaiseLevel(long nsWindowPtr, boolean popup, boolean onlyIfParentIsActive);
     private static native boolean nativeDelayShowing(long nsWindowPtr);
     private static native void nativeSetTransparentTitleBarHeight(long nsWindowPtr, float height);
+    private static native void nativeCallDeliverMoveResizeEvent(long nsWindowPtr);
 
     // Logger to report issues happened during execution but that do not affect functionality
     private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.CPlatformWindow");
@@ -1240,6 +1241,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
         LWWindowPeer oppositePeer = (opposite == null)? null : opposite.getPeer();
         responder.handleWindowFocusEvent(gained, oppositePeer);
+    }
+
+    public void doDeliverMoveResizeEvent() {
+        execute(ptr -> nativeCallDeliverMoveResizeEvent(ptr));
     }
 
     protected void deliverMoveResizeEvent(int x, int y, int width, int height,
