@@ -481,9 +481,9 @@ public:
   IdealLoopTree *_child;        // First child in loop tree
 
   // The head-tail backedge defines the loop.
-  // If tail is NULL then this loop has multiple backedges as part of the
-  // same loop.  During cleanup I'll peel off the multiple backedges; merge
-  // them at the loop bottom and flow 1 real backedge into the loop.
+  // If a loop has multiple backedges, this is addressed during cleanup where
+  // we peel off the multiple backedges,  merging all edges at the bottom and
+  // ensuring that one proper backedge flow into the loop.
   Node *_head;                  // Head of loop
   Node *_tail;                  // Tail of loop
   inline Node *tail();          // Handle lazy update of _tail field
@@ -513,7 +513,10 @@ public:
       _allow_optimizations(true),
       _nest(0), _irreducible(0), _has_call(0), _has_sfpt(0), _rce_candidate(0),
       _local_loop_unroll_limit(0), _local_loop_unroll_factor(0)
-  { }
+  {
+    precond(_head != NULL);
+    precond(_tail != NULL);
+  }
 
   // Is 'l' a member of 'this'?
   bool is_member(const IdealLoopTree *l) const; // Test for nested membership
@@ -664,6 +667,7 @@ class PhaseIdealLoop : public PhaseTransform {
   friend class IdealLoopTree;
   friend class SuperWord;
   friend class CountedLoopReserveKit;
+  friend class AutoNodeBudget;
 
   // Pre-computed def-use info
   PhaseIterGVN &_igvn;
@@ -961,6 +965,7 @@ public:
     PhaseTransform(Ideal_Loop),
     _igvn(igvn),
     _dom_lca_tags(arena()), // Thread::resource_area
+    _nodes_required(UINT_MAX),
     _verify_me(NULL),
     _verify_only(true) {
     build_and_optimize(LoopOptsVerify);
@@ -981,6 +986,7 @@ public:
     PhaseTransform(Ideal_Loop),
     _igvn(igvn),
     _dom_lca_tags(arena()), // Thread::resource_area
+    _nodes_required(UINT_MAX),
     _verify_me(NULL),
     _verify_only(false) {
     build_and_optimize(mode);
@@ -991,6 +997,7 @@ public:
     PhaseTransform(Ideal_Loop),
     _igvn(igvn),
     _dom_lca_tags(arena()), // Thread::resource_area
+    _nodes_required(UINT_MAX),
     _verify_me(verify_me),
     _verify_only(false) {
     build_and_optimize(LoopOptsVerify);
@@ -1340,6 +1347,49 @@ SHENANDOAHGC_ONLY(private:)
     return C->live_nodes() > threshold;
   }
 
+  // A simplistic node request tracking mechanism, where
+  //   = UINT_MAX   Request not valid or made final.
+  //   < UINT_MAX   Nodes currently requested (estimate).
+  uint _nodes_required;
+
+  bool exceeding_node_budget(uint required = 0) {
+    assert(C->live_nodes() < C->max_node_limit(), "sanity");
+    uint available = C->max_node_limit() - C->live_nodes();
+    return available < required + _nodes_required;
+  }
+
+  uint require_nodes(uint require) {
+    precond(require > 0);
+    _nodes_required += MAX2(100u, require); // Keep requests at minimum 100.
+    return _nodes_required;
+  }
+
+  bool may_require_nodes(uint require) {
+    return !exceeding_node_budget(require) && require_nodes(require) > 0;
+  }
+
+  void require_nodes_begin() {
+    assert(_nodes_required == UINT_MAX, "Bad state (begin).");
+    _nodes_required = 0;
+  }
+
+  // Final check  that the requested nodes  did not exceed the  limit and that
+  // the request  was reasonably  correct with  respect to  the number  of new
+  // nodes introduced by any transform since the last 'begin'.
+  void require_nodes_final_check(uint live_at_begin) {
+    uint required = _nodes_required;
+    require_nodes_final();
+    uint delta = C->live_nodes() - live_at_begin;
+    assert(delta <= 2 * required, "Bad node estimate (actual: %d, request: %d)",
+           delta, required);
+  }
+
+  void require_nodes_final() {
+    assert(_nodes_required < UINT_MAX, "Bad state (final).");
+    assert(!exceeding_node_budget(), "Too many NODES required!");
+    _nodes_required = UINT_MAX;
+  }
+
   bool _created_loop_node;
 #ifdef ASSERT
   void dump_real_LCA(Node* early, Node* wrong_lca);
@@ -1347,6 +1397,8 @@ SHENANDOAHGC_ONLY(private:)
 #endif
 
 public:
+  uint nodes_required() const { return _nodes_required; }
+
   void set_created_loop_node() { _created_loop_node = true; }
   bool created_loop_node()     { return _created_loop_node; }
   void register_new_node( Node *n, Node *blk );
@@ -1377,6 +1429,62 @@ public:
   PhaseIterGVN& igvn() { return _igvn; }
 #endif
 };
+
+
+class AutoNodeBudget : public StackObj
+{
+public:
+  enum budget_check_t { BUDGET_CHECK, NO_BUDGET_CHECK };
+
+  AutoNodeBudget(PhaseIdealLoop* phase, budget_check_t chk = BUDGET_CHECK)
+    : _phase(phase),
+      _check_at_final(chk == BUDGET_CHECK),
+      _nodes_at_begin(0)
+  {
+    precond(_phase != NULL);
+
+    _nodes_at_begin = _phase->C->live_nodes();
+    _phase->require_nodes_begin();
+  }
+
+  ~AutoNodeBudget() {
+    if (_check_at_final) {
+#ifndef PRODUCT
+      if (TraceLoopOpts) {
+        uint request = _phase->nodes_required();
+
+        if (request > 0) {
+          uint delta = _phase->C->live_nodes() - _nodes_at_begin;
+
+          if (request < delta) {
+            tty->print_cr("Exceeding node budget: %d < %d", request, delta);
+          }
+        }
+      }
+#endif
+      _phase->require_nodes_final_check(_nodes_at_begin);
+    } else {
+      _phase->require_nodes_final();
+    }
+  }
+
+private:
+  PhaseIdealLoop* _phase;
+  bool _check_at_final;
+  uint _nodes_at_begin;
+};
+
+// The Estimated Loop Clone Size: CloneFactor * (BodySize + BC) + CC, where BC
+// and CC are totally ad-hoc/magic "body" and "clone" constants, respectively,
+// used to ensure that node usage estimates made are on the safe side, for the
+// most part.
+static inline uint est_loop_clone_sz(uint fact, uint size) {
+  uint const bc = 31;
+  uint const cc = 41;
+  uint estimate = fact * (size + bc) + cc;
+  return (estimate - cc) / fact == size + bc ? estimate : UINT_MAX;
+}
+
 
 // This kit may be used for making of a reserved copy of a loop before this loop
 //  goes under non-reversible changes.
