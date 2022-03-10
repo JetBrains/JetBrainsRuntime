@@ -106,8 +106,8 @@ Java_sun_awt_windows_WMouseInfoPeer_fillPointWithCoords(JNIEnv *env, jclass cls,
     yID = env->GetFieldID(pointClass, "y", "I");
     CHECK_NULL_RETURN(yID, (jint)0);
 
-    int x = (device == NULL) ? pt.x : device->ScaleDownAbsX(pt.x);
-    int y = (device == NULL) ? pt.y : device->ScaleDownAbsY(pt.y);
+    pt.x = (device == NULL) ? pt.x : device->ScaleDownAbsX(pt.x);
+    pt.y = (device == NULL) ? pt.y : device->ScaleDownAbsY(pt.y);
 
     env->SetIntField(point, xID, pt.x);
     env->SetIntField(point, yID, pt.y);
