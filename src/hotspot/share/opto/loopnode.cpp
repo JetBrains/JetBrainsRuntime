@@ -3002,6 +3002,7 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
 #endif
 
   if (ReassociateInvariants) {
+    AutoNodeBudget node_budget(this, AutoNodeBudget::NO_BUDGET_CHECK);
     // Reassociate invariants and prep for split_thru_phi
     for (LoopTreeIterator iter(_ltree_root); !iter.done(); iter.next()) {
       IdealLoopTree* lpt = iter.current();
