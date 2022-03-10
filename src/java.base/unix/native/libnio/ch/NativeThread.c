@@ -36,7 +36,7 @@
 #ifdef __linux__
   #include <pthread.h>
   /* Also defined in net/linux_close.c */
-  #define INTERRUPT_SIGNAL (__SIGRTMAX - 2)
+  #define INTERRUPT_SIGNAL (SIGRTMAX - 2)
 #elif _AIX
   #include <pthread.h>
   /* Also defined in net/aix_close.c */
