@@ -1197,7 +1197,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         responder.handleWindowFocusEvent(gained, oppositePeer);
     }
 
-    public void callDeliverMoveResizeEvent() {
+    public void doDeliverMoveResizeEvent() {
         execute(ptr -> nativeCallDeliverMoveResizeEvent(ptr));
     }
 
