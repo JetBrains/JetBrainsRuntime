@@ -2370,3 +2370,17 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetTransparen
 
     JNI_COCOA_EXIT(env);
 }
+
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeCallDeliverMoveResizeEvent
+(JNIEnv *env, jclass clazz, jlong windowPtr)
+{
+    JNI_COCOA_ENTER(env);
+
+    NSWindow *nsWindow = (NSWindow *)jlong_to_ptr(windowPtr);
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        AWTWindow *window = (AWTWindow*)[nsWindow delegate];
+        [window _deliverMoveResizeEvent];
+    }];
+
+    JNI_COCOA_EXIT(env);
+}
