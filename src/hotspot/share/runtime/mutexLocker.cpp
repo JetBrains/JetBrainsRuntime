@@ -141,6 +141,9 @@ Mutex*   JfrBuffer_lock               = NULL;
 Mutex*   JfrStream_lock               = NULL;
 Monitor* JfrThreadSampler_lock        = NULL;
 #endif
+#if INCLUDE_CDS && INCLUDE_JVMTI
+Mutex*   CDSClassFileStream_lock      = NULL;
+#endif
 
 #ifndef SUPPORTS_NATIVE_CX8
 Mutex*   UnsafeJlong_lock             = NULL;
@@ -343,6 +346,9 @@ void mutex_init() {
   def(ThreadsSMRDelete_lock        , PaddedMonitor, special,     false, Monitor::_safepoint_check_never);
   def(SharedDecoder_lock           , PaddedMutex  , native,      false, Monitor::_safepoint_check_never);
   def(DCmdFactory_lock             , PaddedMutex  , leaf,        true,  Monitor::_safepoint_check_never);
+#if INCLUDE_CDS && INCLUDE_JVMTI
+  def(CDSClassFileStream_lock      , PaddedMutex  , max_nonleaf, false, Monitor::_safepoint_check_always);
+#endif
 }
 
 GCMutexLocker::GCMutexLocker(Monitor * mutex) {

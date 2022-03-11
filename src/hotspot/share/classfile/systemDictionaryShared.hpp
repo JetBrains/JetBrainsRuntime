@@ -281,6 +281,7 @@ private:
                                  InstanceKlass *ik,
                                  Handle class_loader,
                                  Handle protection_domain,
+                                 const ClassFileStream* cfs,
                                  TRAPS);
   static void finalize_verification_constraints_for(InstanceKlass* k);
 public:

@@ -71,13 +71,10 @@ class MetaspaceShared : AllStatic {
     md = 3,  // miscellaneous data for initializing tables, etc.
     num_core_spaces = 4, // number of non-string regions
 
-    // optional mapped spaces
-    // Currently it only contains class file data.
-    od = num_core_spaces,
-    num_non_heap_spaces = od + 1,
+    num_non_heap_spaces = 4,
 
     // mapped java heap regions
-    first_string = od + 1, // index of first string region
+    first_string = md + 1, // index of first string region
     max_strings = 2, // max number of string regions in string space
     last_string = first_string + max_strings - 1,
     first_open_archive_heap_region = first_string + max_strings,

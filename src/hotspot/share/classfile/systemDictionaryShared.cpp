@@ -541,7 +541,7 @@ InstanceKlass* SystemDictionaryShared::load_shared_class_for_builtin_loader(
          SystemDictionary::is_platform_class_loader(class_loader()))) {
       Handle protection_domain =
         SystemDictionaryShared::init_security_info(class_loader, ik, CHECK_NULL);
-      return load_shared_class(ik, class_loader, protection_domain, THREAD);
+      return load_shared_class(ik, class_loader, protection_domain, NULL, THREAD);
     }
   }
 
@@ -621,13 +621,15 @@ InstanceKlass* SystemDictionaryShared::lookup_from_stream(const Symbol* class_na
   }
 
   return acquire_class_for_current_thread(InstanceKlass::cast(k), class_loader,
-                                          protection_domain, THREAD);
+                                          protection_domain, cfs,
+                                          THREAD);
 }
 
 InstanceKlass* SystemDictionaryShared::acquire_class_for_current_thread(
                    InstanceKlass *ik,
                    Handle class_loader,
                    Handle protection_domain,
+                   const ClassFileStream *cfs,
                    TRAPS) {
   ClassLoaderData* loader_data = ClassLoaderData::class_loader_data(class_loader());
 
@@ -648,7 +650,8 @@ InstanceKlass* SystemDictionaryShared::acquire_class_for_current_thread(
   loader_data->add_class(ik);
 
   // Load and check super/interfaces, restore unsharable info
-  InstanceKlass* shared_klass = load_shared_class(ik, class_loader, protection_domain, THREAD);
+  InstanceKlass* shared_klass = load_shared_class(ik, class_loader, protection_domain,
+                                                  cfs, THREAD);
   if (shared_klass == NULL || HAS_PENDING_EXCEPTION) {
     // TODO: clean up <ik> so it can be used again
     return NULL;

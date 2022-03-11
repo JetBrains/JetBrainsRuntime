@@ -138,6 +138,9 @@ extern Mutex*   ThreadHeapSampler_lock;          // protects the static data for
 extern Monitor* ThreadsSMRDelete_lock;           // Used by ThreadsSMRSupport to take pressure off the Threads_lock
 extern Mutex*   SharedDecoder_lock;              // serializes access to the decoder during normal (not error reporting) use
 extern Mutex*   DCmdFactory_lock;                // serialize access to DCmdFactory information
+#if INCLUDE_CDS && INCLUDE_JVMTI
+extern Mutex*   CDSClassFileStream_lock;         // FileMapInfo::open_stream_for_jvmti
+#endif
 #if INCLUDE_JFR
 extern Mutex*   JfrStacktrace_lock;              // used to guard access to the JFR stacktrace table
 extern Monitor* JfrMsg_lock;                     // protects JFR messaging
