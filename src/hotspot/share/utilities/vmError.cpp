@@ -1798,6 +1798,12 @@ void VMError::controlled_crash(int how) {
   funcPtr = (const void(*)()) 0xF;
 #endif
 
+#ifdef __APPLE__
+  // 12 is unreliable on this platform, may just yield us a "Trap" message on stdout
+  // Use 14 instead, which seems to work always
+  if (how == 12) { how = 14; }
+#endif
+
   // Keep this in sync with test/hotspot/jtreg/runtime/ErrorHandling/ErrorHandler.java
   // which tests cases 1 thru 13.
   // Case 14 is tested by test/hotspot/jtreg/runtime/ErrorHandling/SafeFetchInErrorHandlingTest.java.

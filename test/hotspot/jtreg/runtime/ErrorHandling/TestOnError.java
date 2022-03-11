@@ -25,12 +25,9 @@
  * @test TestOnError
  * @bug 8078470
  * @summary Test using -XX:OnError=<cmd>
- * COMMENTS
- *     Macos_aarch64 (unlike macos_intel) doesn't let the java to create
- *     core file with ErrorHandlerTest=12. so need to ignore this test there.
  * @modules java.base/jdk.internal.misc
  * @library /test/lib
- * @requires vm.debug & !(os.arch == "aarch64" & os.family == "mac")
+ * @requires vm.debug
  * @run main TestOnError
  */
 
