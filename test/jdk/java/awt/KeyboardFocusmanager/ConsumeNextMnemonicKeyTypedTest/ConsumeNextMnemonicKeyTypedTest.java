@@ -24,12 +24,14 @@
 /*
   @test
   @key headful
-  @bug       6346690
-  @summary   Tests that key_typed is consumed after mnemonic key_pressed is handled for a menu item.
-  @library   ../../../../lib/testlibrary
-  @build jdk.testlibrary.OSInfo
-  @run       main ConsumeNextMnemonicKeyTypedTest
+  @bug        6346690
+  @summary    Tests that key_typed is consumed after mnemonic key_pressed is handled for a menu item.
+  @library    /test/lib
+  @build      jdk.test.lib.Platform
+  @run        main ConsumeNextMnemonicKeyTypedTest
 */
+
+import jdk.test.lib.Platform;
 
 import java.awt.*;
 import javax.swing.*;
@@ -110,7 +112,7 @@ public class ConsumeNextMnemonicKeyTypedTest {
 
         robot.waitForIdle();
 
-        if (jdk.testlibrary.OSInfo.getOSType() == jdk.testlibrary.OSInfo.OSType.MACOSX) {
+        if (Platform.isOSX()) {
             robot.keyPress(KeyEvent.VK_CONTROL);
         }
         robot.keyPress(KeyEvent.VK_ALT);
@@ -118,7 +120,7 @@ public class ConsumeNextMnemonicKeyTypedTest {
         robot.delay(100);
         robot.keyRelease(KeyEvent.VK_F);
         robot.keyRelease(KeyEvent.VK_ALT);
-        if (jdk.testlibrary.OSInfo.getOSType() == jdk.testlibrary.OSInfo.OSType.MACOSX) {
+        if (Platform.isOSX()) {
             robot.keyRelease(KeyEvent.VK_CONTROL);
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,8 @@
   @bug 6190768 6190778
   @summary Tests that triggering events on AWT list by pressing CTRL + HOME,
            CTRL + END, PG-UP, PG-DOWN similar Motif behavior
-  @library ../../../../lib/testlibrary
-  @build jdk.testlibrary.OSInfo
+  @library /test/lib
+  @build jdk.test.lib.Platform
   @run main KeyEventsTest
 */
 
@@ -42,7 +42,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.lang.reflect.*;
 
-import jdk.testlibrary.OSInfo;
+import jdk.test.lib.Platform;
 
 public class KeyEventsTest extends Frame implements ItemListener, FocusListener, KeyListener
 {
@@ -272,9 +272,9 @@ public class KeyEventsTest extends Frame implements ItemListener, FocusListener,
       throws InterruptedException, InvocationTargetException {
 
         boolean isWin = false;
-        if (OSInfo.getOSType() == OSInfo.OSType.WINDOWS) {
+        if (Platform.isWindows()) {
             isWin = true;
-        }else if(OSInfo.getOSType() == OSInfo.OSType.MACOSX) {
+        } else if (Platform.isOSX()) {
             System.out.println("Not for OS X");
             return;
         }

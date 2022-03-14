@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,10 @@ import java.awt.event.*;
 import java.io.File;
 import java.util.ArrayList;
 
+import jdk.test.lib.Platform;
 import test.java.awt.regtesthelpers.process.ProcessCommunicator;
 import test.java.awt.regtesthelpers.process.ProcessResults;
 import test.java.awt.regtesthelpers.Util;
-import jdk.testlibrary.OSInfo;
 
 import static java.lang.Thread.sleep;
 
@@ -41,17 +41,16 @@ import static java.lang.Thread.sleep;
     @summary Java 7 on mac os x only provides text clipboard formats
     @library ../../regtesthelpers
     @library ../../regtesthelpers/process
-    @library ../../../../lib/testlibrary
+    @library /test/lib
     @build Util
     @build ProcessResults ProcessCommunicator
-    @build jdk.testlibrary.OSInfo
+    @build jdk.test.lib.Platform
     @run main/othervm MissedHtmlAndRtfBug main
  */
 public class MissedHtmlAndRtfBug {
 
     public void start() {
-        if (OSInfo.getOSType() != OSInfo.OSType.MACOSX
-                && OSInfo.getOSType() != OSInfo.OSType.WINDOWS) {
+        if (!Platform.isOSX() && !Platform.isWindows()) {
             System.out.println("This test is for Windows and Mac only. Passed.");
             return;
         }

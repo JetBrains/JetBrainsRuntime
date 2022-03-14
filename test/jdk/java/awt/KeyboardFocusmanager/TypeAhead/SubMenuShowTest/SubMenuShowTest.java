@@ -28,8 +28,9 @@
   @summary Submenu should be shown by mnemonic key press.
   @author anton.tarasov@...: area=awt.focus
   @library ../../../regtesthelpers
-  @library ../../../../../lib/testlibrary
+  @library /test/lib
   @build Util
+  @build jdk.test.lib.Platform
   @run main SubMenuShowTest
 */
 
@@ -44,8 +45,8 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import java.util.concurrent.atomic.AtomicBoolean;
+import jdk.test.lib.Platform;
 import test.java.awt.regtesthelpers.Util;
-import jdk.testlibrary.OSInfo;
 
 public class SubMenuShowTest {
     private static Robot robot;
@@ -115,7 +116,7 @@ public class SubMenuShowTest {
     }
 
     public static void doTest() {
-        boolean isMacOSX = (OSInfo.getOSType() == OSInfo.OSType.MACOSX);
+        boolean isMacOSX = Platform.isOSX();
         if (isMacOSX) {
             robot.keyPress(KeyEvent.VK_CONTROL);
         }
