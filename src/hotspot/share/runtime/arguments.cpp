@@ -2501,6 +2501,10 @@ jint Arguments::parse_each_vm_init_arg(const JavaVMInitArgs* args, bool* patch_m
       if (res != JNI_OK) {
         return res;
       }
+    } else if (match_option(option, "--illegal-access=", &tail)) {
+      char version[256];
+      JDK_Version::jdk(17).to_string(version, sizeof(version));
+      warning("Ignoring option %s; support was removed in %s", option->optionString, version);
     } else if (match_option(option, "--jbr-illegal-access", &tail)) {
       warning("Option --jbr-illegal-access is deprecated and will be removed in a future release.");
       if (!create_module_property("jdk.module.illegalAccess", "permit", ExternalProperty)) {
