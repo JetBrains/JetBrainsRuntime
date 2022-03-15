@@ -50,7 +50,7 @@ static inline void attachCurrentThread(void** env) {
 
 @implementation ThreadUtilities
 
-static int blockingEventDispatchThreadCounter = 0;
+static BOOL _blockingEventDispatchThread = NO;
 static long eventDispatchThreadPtr = (long)nil;
 
 static BOOL isEventDispatchThread() {
@@ -59,15 +59,13 @@ static BOOL isEventDispatchThread() {
 
 // The [blockingEventDispatchThread] property is readonly, so we implement a private setter
 static void setBlockingEventDispatchThread(BOOL value) {
-    @synchronized([ThreadUtilities class]) {
-        blockingEventDispatchThreadCounter += (value ? 1 : -1);
-    }
+    assert([NSThread isMainThread]);
+    _blockingEventDispatchThread = value;
 }
 
 + (BOOL) blockingEventDispatchThread {
-    @synchronized([ThreadUtilities class]) {
-        return blockingEventDispatchThreadCounter > 0;
-    }
+    assert([NSThread isMainThread]);
+    return _blockingEventDispatchThread;
 }
 
 + (void)initialize {
@@ -138,13 +136,13 @@ AWT_ASSERT_APPKIT_THREAD;
     } else {
         if (wait && isEventDispatchThread()) {
             void (^block)(void) = ^{
+                setBlockingEventDispatchThread(YES);
                 @try {
                     [target performSelector:aSelector withObject:arg];
                 } @finally {
                     setBlockingEventDispatchThread(NO);
                 }
             };
-            setBlockingEventDispatchThread(YES);
             [self performSelectorOnMainThread:@selector(invokeBlock:) withObject:block waitUntilDone:YES modes:javaModes];
         } else {
             [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];

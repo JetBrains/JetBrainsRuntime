@@ -132,7 +132,7 @@ __attribute__((visibility("default")))
  * and the executed code triggers an opposite blocking a11y call (via LWCToolkit.invokeAndWait)
  * this is a deadlock case, and then this property is used to discard LWCToolkit.invokeAndWait.
  */
-@property (class, atomic, readonly) BOOL blockingEventDispatchThread;
+@property (class, nonatomic, readonly) BOOL blockingEventDispatchThread;
 
 + (JNIEnv*)getJNIEnv;
 + (JNIEnv*)getJNIEnvUncached;

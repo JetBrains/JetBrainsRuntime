@@ -114,6 +114,8 @@ public class LWCToolkitInvokeAndWaitTest {
         testCase("invokeAndWait is discarded", () -> test2(
             "discarded"));
 
+        testCase("invokeAndWait is passed", LWCToolkitInvokeAndWaitTest::test3);
+
         System.out.println("Test PASSED");
     }
 
@@ -168,6 +170,26 @@ public class LWCToolkitInvokeAndWaitTest {
             }));
 
         check(expectedInLog);
+    }
+
+    static void test3() {
+        var point = new CountDownLatch(1);
+
+        EventQueue.invokeLater(() -> {
+            // We're on EDT, wait for the second invocation to perform on AppKit.
+            await(point, INVOKE_TIMEOUT_SECONDS * 2);
+
+            // This should be dispatched in the RunLoop started by LWCToolkit.invokeAndWait from the second invocation.
+            LWCToolkit.performOnMainThreadAndWait(() -> FUTURE.complete(true));
+        });
+
+        LWCToolkit.performOnMainThreadAndWait(() -> {
+            // Notify we're on AppKit.
+            point.countDown();
+
+            // The LWCToolkit.invokeAndWait call starts a native RunLoop.
+            tryRun(() -> LWCToolkit.invokeAndWait(EMPTY_RUNNABLE, FRAME));
+        });
     }
 
     static void check(String expectedInLog) {
