@@ -91,6 +91,8 @@ if [[ $CURL_RESPONSE =~ $re ]]; then
   if [[ "$NEWFILESIZE" -gt "$allowedSize" ]]; then
     echo "ERROR: new size is significally greater than prev size (need to investigate)"
     exit 1
+  else
+    echo "PASSED"
   fi
 else
   echo "ERROR: can't find string with size in xml response:"
