@@ -1686,7 +1686,10 @@ JNI_COCOA_ENTER(env);
 
         // resets the NSWindow's style mask if the mask intersects any of those bits
         if (mask & MASK(_STYLE_PROP_BITMASK)) {
-            [nsWindow setStyleMask:[AWTWindow styleMaskForStyleBits:newBits]];
+            NSWindowStyleMask styleMask = [AWTWindow styleMaskForStyleBits:newBits];
+            NSWindowStyleMask curMask = nsWindow.styleMask;
+            // NSWindowStyleMaskFullScreen bit shouldn't be updated directly
+            [nsWindow setStyleMask:(styleMask & ~NSWindowStyleMaskFullScreen | curMask & NSWindowStyleMaskFullScreen)];
         }
 
         // calls methods on NSWindow to change other properties, based on the mask
