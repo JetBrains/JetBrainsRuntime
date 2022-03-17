@@ -35,6 +35,7 @@ import java.util.List;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
+import jdk.test.lib.Utils;
 import jdk.test.lib.jfr.Events;
 
 /**
@@ -47,8 +48,7 @@ import jdk.test.lib.jfr.Events;
 public class TestRandomAccessFileEvents {
 
     public static void main(String[] args) throws Throwable {
-        File tmp = File.createTempFile("TestRandomAccessFileEvents", ".tmp", new File("."));
-        tmp.deleteOnExit();
+        File tmp = Utils.createTempFile("TestRandomAccessFileEvents", ".tmp").toFile();
         try (Recording recording = new Recording()) {
             List<IOEvent> expectedEvents = new ArrayList<>();
 

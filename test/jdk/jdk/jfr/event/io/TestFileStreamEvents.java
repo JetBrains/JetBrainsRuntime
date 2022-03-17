@@ -36,6 +36,7 @@ import java.util.List;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
+import jdk.test.lib.Utils;
 import jdk.test.lib.jfr.Events;
 
 /**
@@ -48,8 +49,7 @@ import jdk.test.lib.jfr.Events;
 
 public class TestFileStreamEvents {
     public static void main(String[] args) throws Throwable {
-        File tmp = File.createTempFile("TestFileStreamEvents", ".tmp", new File("."));
-        tmp.deleteOnExit();
+        File tmp = Utils.createTempFile("TestFileStreamEvents", ".tmp").toFile();
         try (Recording recording = new Recording()) {
             List<IOEvent> expectedEvents = new ArrayList<>();
             try(FileOutputStream fos = new FileOutputStream(tmp); FileInputStream fis = new FileInputStream(tmp);) {

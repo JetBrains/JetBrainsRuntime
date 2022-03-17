@@ -37,6 +37,7 @@ import java.nio.channels.FileChannel;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
+import jdk.test.lib.Utils;
 import jdk.test.lib.jfr.Events;
 
 /**
@@ -55,8 +56,7 @@ public class TestDisabledEvents {
     private static final byte[] writeBuf = { 'B', 'C', 'D' };
 
     public static void main(String[] args) throws Throwable {
-        File tmp = File.createTempFile("TestDisabledEvents", ".tmp", new File("."));
-        tmp.deleteOnExit();
+        File tmp = Utils.createTempFile("TestDisabledEvents", ".tmp").toFile();
         try (Recording recording = new Recording()) {
             recording.disable(IOEvent.EVENT_FILE_READ);
             recording.disable(IOEvent.EVENT_FILE_WRITE);
