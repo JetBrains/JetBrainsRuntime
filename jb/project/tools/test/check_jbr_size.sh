@@ -34,10 +34,11 @@ FILENAME=$(basename ${NEWFILEPATH})
 
 BUNDLE_TYPE=jbrsdk
 OS_ARCH_PATTERN=""
-re='(jbr[a-z_]*).+[0-9_]+-(.+)-b.+\.tar\.gz'
+re='(jbr[a-z_]*)-[0-9_]+-(.+)-b.+\.tar\.gz'
 if [[ $FILENAME =~ $re ]]; then
   BUNDLE_TYPE=${BASH_REMATCH[1]}
   OS_ARCH_PATTERN=${BASH_REMATCH[2]}
+  echo ${BASH_REMATCH[*]}
 fi
 echo "BUNDLE_TYPE: "  $BUNDLE_TYPE
 echo "OS_ARCH_PATTERN: " $OS_ARCH_PATTERN
