@@ -3381,7 +3381,7 @@ JNI_COCOA_ENTER(env);
         anotherBaseFont = true;
     }
     CTFontRef font = (CTFontRef)nsFont;
-    CFArrayRef codes = CFLocaleCopyISOLanguageCodes();
+    CFArrayRef codes = CFLocaleCopyPreferredLanguages();
 
     CFArrayRef fds = CTFontCopyDefaultCascadeListForLanguages(font, codes);
     CFRelease(codes);
