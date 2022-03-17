@@ -74,7 +74,7 @@ JNI_COCOA_EXIT(env);
  * Signature: (J)V
  */
 JNIEXPORT jboolean JNICALL
-Java_sun_lwawt_macosx_CWrapper_00024NSWindow_canBecomeMainWindow
+Java_sun_lwawt_macosx_CWrapper_00024NSWindow_nativeCanBecomeMainWindow
 (JNIEnv *env, jclass cls, jlong windowPtr)
 {
     __block jboolean canBecomeMainWindow = JNI_FALSE;
@@ -93,11 +93,11 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_CWrapper$NSWindow
- * Method:    isKeyWindow
+ * Method:    nativeIsKeyWindow
  * Signature: (J)Z
  */
 JNIEXPORT jboolean JNICALL
-Java_sun_lwawt_macosx_CWrapper_00024NSWindow_isKeyWindow
+Java_sun_lwawt_macosx_CWrapper_00024NSWindow_nativeIsKeyWindow
 (JNIEnv *env, jclass cls, jlong windowPtr)
 {
     __block jboolean isKeyWindow = JNI_FALSE;

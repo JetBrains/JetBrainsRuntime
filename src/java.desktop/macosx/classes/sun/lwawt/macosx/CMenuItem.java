@@ -33,6 +33,7 @@ import java.awt.event.KeyEvent;
 import java.awt.peer.MenuItemPeer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import sun.awt.AWTThreading;
 import sun.awt.SunToolkit;
 import sun.lwawt.LWToolkit;
 
@@ -61,7 +62,7 @@ public class CMenuItem extends CMenuComponent implements MenuItemPeer {
     @Override
     long createModel() {
         CMenuComponent parent = (CMenuComponent)LWToolkit.targetToPeer(getTarget().getParent());
-        return parent.executeGet(ptr->nativeCreate(ptr, isSeparator()));
+        return AWTThreading.executeWaitToolkit(() -> parent.executeGet(ptr->nativeCreate(ptr, isSeparator())));
     }
     @SuppressWarnings("deprecation")
     public void setLabel(String label, char keyChar, int keyCode, int modifiers) {
@@ -95,8 +96,8 @@ public class CMenuItem extends CMenuComponent implements MenuItemPeer {
         final char finalKeyChar = keyChar;
         final int finalKeyCode = keyCode;
         final int finalKeyMask = keyMask;
-        execute(ptr -> nativeSetLabel(ptr, finalLabel, finalKeyChar,
-                                      finalKeyCode, finalKeyMask));
+        AWTThreading.executeWaitToolkit(() -> execute(ptr -> nativeSetLabel(ptr, finalLabel, finalKeyChar,
+            finalKeyCode, finalKeyMask)));
     }
 
     @Override

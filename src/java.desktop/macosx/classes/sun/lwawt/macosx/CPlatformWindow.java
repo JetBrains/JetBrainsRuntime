@@ -1011,7 +1011,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     // window till the target space becomes active.
     private boolean delayShowing() {
         AtomicBoolean ref = new AtomicBoolean(false);
-        execute(ptr -> ref.set(nativeDelayShowing(ptr)));
+        AWTThreading.executeWaitToolkit(() -> execute(ptr -> ref.set(nativeDelayShowing(ptr))));
         return ref.get();
     }
 

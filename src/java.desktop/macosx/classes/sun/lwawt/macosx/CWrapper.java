@@ -50,10 +50,15 @@ final class CWrapper {
         static void makeKeyAndOrderFront(long window) {
             AWTThreading.executeWaitToolkit(wait -> nativeMakeKeyAndOrderFront(window, wait));
         }
+        static boolean canBecomeMainWindow(long window) {
+            return AWTThreading.executeWaitToolkit(() -> nativeCanBecomeMainWindow(window));
+        }
+        static boolean isKeyWindow(long window) {
+            return AWTThreading.executeWaitToolkit(() -> nativeIsKeyWindow(window));
+        }
         static native void makeMainWindow(long window);
-        static native boolean canBecomeMainWindow(long window);
-        static native boolean isKeyWindow(long window);
-
+        static native boolean nativeCanBecomeMainWindow(long window);
+        static native boolean nativeIsKeyWindow(long window);
         static native void orderFront(long window);
         static native void orderFrontIfOnActiveSpace(long window);
         static native void orderFrontRegardless(long window);

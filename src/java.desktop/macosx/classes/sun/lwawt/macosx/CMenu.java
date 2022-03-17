@@ -25,6 +25,7 @@
 
 package sun.lwawt.macosx;
 
+import sun.awt.AWTThreading;
 import java.awt.Menu;
 import java.awt.MenuBar;
 import java.awt.MenuItem;
@@ -64,14 +65,14 @@ public class CMenu extends CMenuItem implements MenuPeer {
             LWCToolkit.targetToPeer(getTarget().getParent());
 
         if (parent instanceof CMenu) {
-            return parent.executeGet(this::nativeCreateSubMenu);
+            return AWTThreading.executeWaitToolkit(() -> parent.executeGet(this::nativeCreateSubMenu));
         }
         if (parent instanceof CMenuBar) {
             MenuBar parentContainer = (MenuBar)getTarget().getParent();
             boolean isHelpMenu = parentContainer.getHelpMenu() == getTarget();
             int insertionLocation = ((CMenuBar)parent).getNextInsertionIndex();
-            return parent.executeGet(ptr -> nativeCreateMenu(ptr, isHelpMenu,
-                                                             insertionLocation));
+            return AWTThreading.executeWaitToolkit(() -> parent.executeGet(ptr -> nativeCreateMenu(ptr, isHelpMenu,
+                insertionLocation)));
         }
         throw new InternalError("Parent must be CMenu or CMenuBar");
     }
@@ -84,12 +85,12 @@ public class CMenu extends CMenuItem implements MenuPeer {
 
     @Override
     public final void delItem(final int index) {
-        execute(ptr -> nativeDeleteItem(ptr, index));
+        AWTThreading.executeWaitToolkit(() -> execute(ptr -> nativeDeleteItem(ptr, index)));
     }
 
     @Override
     public final void setLabel(final String label) {
-        execute(ptr->nativeSetMenuTitle(ptr, label));
+        AWTThreading.executeWaitToolkit(() -> execute(ptr->nativeSetMenuTitle(ptr, label)));
         super.setLabel(label);
     }
 
@@ -97,7 +98,7 @@ public class CMenu extends CMenuItem implements MenuPeer {
     // though it is required in the MenuPeer interface.
     @Override
     public final void addSeparator() {
-        execute(this::nativeAddSeparator);
+        AWTThreading.executeWaitToolkit(() -> execute(this::nativeAddSeparator));
     }
 
     // Used by ScreenMenuBar to get to the native menu for event handling.
