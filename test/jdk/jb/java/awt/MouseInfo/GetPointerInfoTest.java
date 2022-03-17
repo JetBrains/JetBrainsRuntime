@@ -24,18 +24,23 @@
 /*
   @test
   @key headful
-  @summary unit test for getPointerInfo() from MouseInfo class
-  @author dav@sparc.spb.su: area=
-  @bug 4009555
+  @summary a regression test for JBR-4303.
   @run main GetPointerInfoTest
 */
 
 import java.awt.*;
 
 /**
- * Simply check the result on non-null and results are correct.
+ *  The test checks <code>MouseInfo.getPointerInfo()</code> for all locations with the steps <code>X_STEP</code> and
+ *  <code>Y_STEP</code> on all graphic devices.
+ *  It moves mouse to the current location via <code>Robot.mouseMove()</code> and checks that
+ *  <code>MouseInfo.getPointerInfo()</code> is not NULL.
+ *  It also checks <code>MouseInfo.getPointerInfo().getLocation()</code> returns expected values.
  */
 public class GetPointerInfoTest {
+
+    public static int X_STEP = 100;
+    public static int Y_STEP = 100;
 
     static boolean isPassed = true;
 
@@ -60,9 +65,9 @@ public class GetPointerInfoTest {
 
             Rectangle bounds = gc.getBounds();
 
-            for (double y = bounds.getY(); y < bounds.getY() + bounds.getHeight(); y += 100) {
+            for (double y = bounds.getY(); y < bounds.getY() + bounds.getHeight(); y += Y_STEP) {
 
-                for (double x = bounds.getX(); x < bounds.getX() + bounds.getWidth(); x += 100) {
+                for (double x = bounds.getX(); x < bounds.getX() + bounds.getWidth(); x += X_STEP) {
 
                     Point p = new Point((int)x, (int)y);
 
