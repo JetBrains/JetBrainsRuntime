@@ -12,6 +12,7 @@ import sun.lwawt.macosx.LWCToolkit;
 import sun.awt.AWTThreading;
 
 import static helper.ToolkitTestHelper.*;
+import static helper.ToolkitTestHelper.TestCase.*;
 
 /*
  * @test
@@ -35,9 +36,15 @@ public class AWTThreadingTest {
 
         initTest(AWTThreadingTest.class);
 
-        testCase("certain threads superposition", AWTThreadingTest::test);
+        testCase().
+            withCaption("certain threads superposition").
+            withRunnable(AWTThreadingTest::test, false).
+            run();
 
-        testCase("random threads superposition", AWTThreadingTest::test);
+        testCase().
+            withCaption("random threads superposition").
+            withRunnable(AWTThreadingTest::test, false).
+            run();
 
         System.out.println("Test PASSED");
     }
@@ -47,14 +54,10 @@ public class AWTThreadingTest {
 
         var timer = new TestTimer(TIMEOUT_SECONDS * 3, TimeUnit.SECONDS);
         EventQueue.invokeLater(() -> startThread(() ->
-            FUTURE.isDone() ||
+            TEST_CASE_RESULT.isDone() ||
             timer.hasFinished()));
 
-        tryRun(() -> {
-            if (!FUTURE.get(TIMEOUT_SECONDS * 4, TimeUnit.SECONDS)) {
-                throw new RuntimeException("Test FAILED! (negative result)");
-            }
-        });
+        waitTestCaseCompletion(TIMEOUT_SECONDS * 4);
 
         tryRun(THREAD::join);
 
@@ -77,14 +80,14 @@ public class AWTThreadingTest {
                 //
                 CThreading.executeOnAppKit(() -> {
                     // We're on AppKit, wait for the 2nd invocation to be on the AWTThreading-pool thread.
-                    if (TEST_CASE == 1) await(point_1, TIMEOUT_SECONDS);
+                    if (TEST_CASE_NUM == 1) await(point_1, TIMEOUT_SECONDS);
 
                     tryRun(() -> LWCToolkit.invokeAndWait(() -> {
                         // We're being dispatched on EDT.
-                        if (TEST_CASE == 1) point_2.countDown();
+                        if (TEST_CASE_NUM == 1) point_2.countDown();
 
                         // Wait for the 2nd invocation to be executed on AppKit.
-                        if (TEST_CASE == 1) await(point_3, TIMEOUT_SECONDS);
+                        if (TEST_CASE_NUM == 1) await(point_3, TIMEOUT_SECONDS);
                     }, FRAME));
 
                     invocations.countDown();
@@ -95,10 +98,10 @@ public class AWTThreadingTest {
                 //
                 EventQueue.invokeLater(() -> AWTThreading.executeWaitToolkit(() -> {
                     // We're on the AWTThreading-pool thread.
-                    if (TEST_CASE == 1) point_1.countDown();
+                    if (TEST_CASE_NUM == 1) point_1.countDown();
 
                     // Wait for the 1st invocation to start NSRunLoop and be dispatched
-                    if (TEST_CASE == 1) await(point_2, TIMEOUT_SECONDS);
+                    if (TEST_CASE_NUM == 1) await(point_2, TIMEOUT_SECONDS);
 
                     // Perform in JavaRunLoopMode to be accepted by NSRunLoop started by LWCToolkit.invokeAndWait.
                     LWCToolkit.performOnMainThreadAndWait(() -> {
@@ -106,7 +109,7 @@ public class AWTThreadingTest {
                             dumpAllThreads();
                         }
                         // We're being executed on AppKit.
-                        if (TEST_CASE == 1) point_3.countDown();
+                        if (TEST_CASE_NUM == 1) point_3.countDown();
                     });
 
                     invocations.countDown();
@@ -115,7 +118,7 @@ public class AWTThreadingTest {
                 await(invocations, TIMEOUT_SECONDS * 2);
             } // while
 
-            FUTURE.complete(true);
+            TEST_CASE_RESULT.complete(true);
         });
         THREAD.setDaemon(true);
         THREAD.start();
