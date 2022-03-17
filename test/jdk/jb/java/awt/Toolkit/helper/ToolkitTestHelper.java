@@ -1,7 +1,12 @@
 // Copyright 2000-2022 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package helper;
 
+import sun.awt.AWTThreading;
+import sun.lwawt.macosx.CThreading;
+import sun.lwawt.macosx.LWCToolkit;
+
 import javax.swing.*;
+import javax.swing.Timer;
 import java.awt.*;
 import java.util.Optional;
 import java.util.Random;
@@ -9,13 +14,17 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.logging.*;
 
 @SuppressWarnings("ConstantConditions")
 public class ToolkitTestHelper {
     public static final Runnable EMPTY_RUNNABLE = () -> {};
 
-    public static volatile CompletableFuture<Boolean> FUTURE;
-    public static volatile int TEST_CASE;
+    public static final TestLogHandler LOG_HANDLER = new TestLogHandler();
+
+    public static volatile CompletableFuture<Boolean> TEST_CASE_RESULT;
+    public static volatile int TEST_CASE_NUM;
     public static volatile JFrame FRAME;
 
     private static volatile JLabel LABEL;
@@ -26,7 +35,7 @@ public class ToolkitTestHelper {
         @Override
         public void run() {
             LABEL.setForeground(new Color(rand.nextFloat(), 0, rand.nextFloat()));
-            LABEL.setText("(" + TEST_CASE + ")");
+            LABEL.setText("(" + TEST_CASE_NUM + ")");
         }
     };
 
@@ -34,6 +43,21 @@ public class ToolkitTestHelper {
         MAIN_THREAD = Thread.currentThread();
 
         assert MAIN_THREAD.getName().toLowerCase().contains("main");
+
+        loop(); // init the event threads
+
+        tryRun(() -> {
+            Consumer<Class<?>> setLog = cls -> {
+                Logger log = LogManager.getLogManager().getLogger(cls.getName());
+                log.setUseParentHandlers(false);
+                log.addHandler(LOG_HANDLER);
+                if (Boolean.getBoolean("log.level.FINER")) {
+                    log.setLevel(Level.FINER);
+                }
+            };
+            setLog.accept(AWTThreading.class);
+            setLog.accept(LWCToolkit.class);
+        });
 
         Thread.UncaughtExceptionHandler handler = MAIN_THREAD.getUncaughtExceptionHandler();
         MAIN_THREAD.setUncaughtExceptionHandler((t, e) -> {
@@ -68,19 +92,73 @@ public class ToolkitTestHelper {
         }).start();
     }
 
-    public static void testCase(String caseCaption, Runnable test) {
-        FUTURE = new CompletableFuture<>();
-        FUTURE.whenComplete((r, e) -> Optional.of(e).ifPresent(Throwable::printStackTrace));
+    public static void waitTestCaseCompletion(int seconds) {
+        tryRun(() -> {
+            if (!TEST_CASE_RESULT.get(seconds, TimeUnit.SECONDS)) {
+                throw new RuntimeException("Test FAILED! (negative result)");
+            }
+        });
 
-        //noinspection NonAtomicOperationOnVolatileField
-        String prefix = "(" + (++TEST_CASE) + ")";
+        loop(); // wait for the logging to be printed
+    }
 
-        System.out.println("\n" + prefix + " TEST: " + caseCaption);
-        UPDATE_LABEL.run();
+    public static class TestCase {
+        volatile String caption = "";
+        volatile Runnable testRunnable = EMPTY_RUNNABLE;
+        volatile int completionTimeoutSeconds = -1;
+        volatile String expectedInLog = "";
+        volatile boolean expectedIncludedInLog = true;
 
-        test.run();
+        public static TestCase testCase() {
+            return new TestCase();
+        }
 
-        System.out.println(prefix + " SUCCEEDED\n");
+        public TestCase withCaption(String caption) {
+            this.caption = caption;
+            return this;
+        }
+
+        public TestCase withRunnable(Runnable testRunnable, boolean invokeOnEdt) {
+            this.testRunnable = invokeOnEdt ? () -> EventQueue.invokeLater(testRunnable) : testRunnable;
+            return this;
+        }
+
+        public TestCase withCompletionTimeout(int seconds) {
+            this.completionTimeoutSeconds = seconds;
+            return this;
+        }
+
+        public TestCase withExpectedInLog(String expectedInLog, boolean included) {
+            this.expectedInLog = expectedInLog;
+            this.expectedIncludedInLog = included;
+            return this;
+        }
+
+        public void run() {
+            TEST_CASE_RESULT = new CompletableFuture<>();
+            TEST_CASE_RESULT.whenComplete((r, e) -> Optional.of(e).ifPresent(Throwable::printStackTrace));
+
+            //noinspection NonAtomicOperationOnVolatileField
+            String prefix = "(" + (++TEST_CASE_NUM) + ")";
+
+            System.out.println("\n" + prefix + " TEST: " + caption);
+            UPDATE_LABEL.run();
+
+            testRunnable.run();
+
+            if (completionTimeoutSeconds >= 0) {
+                waitTestCaseCompletion(completionTimeoutSeconds);
+
+                if (expectedIncludedInLog && !LOG_HANDLER.testContains(expectedInLog)) {
+                    throw new RuntimeException("Test FAILED! (not found in the log: \"" + expectedInLog + "\")");
+
+                } else if (!expectedIncludedInLog && LOG_HANDLER.testContains(expectedInLog)) {
+                    throw new RuntimeException("Test FAILED! (found in the log: \"" + expectedInLog + "\")");
+                }
+            }
+
+            System.out.println(prefix + " SUCCEEDED\n");
+        }
     }
 
     public static void tryRun(ThrowableRunnable runnable) {
@@ -97,7 +175,7 @@ public class ToolkitTestHelper {
             if (Thread.currentThread() == MAIN_THREAD) {
                 throw new RuntimeException("Test FAILED!", e);
             } else {
-                FUTURE.completeExceptionally(e);
+                TEST_CASE_RESULT.completeExceptionally(e);
             }
         }
         return defValue;
@@ -105,8 +183,19 @@ public class ToolkitTestHelper {
 
     public static void await(CountDownLatch latch, int seconds) {
         if (!tryCall(() -> latch.await(seconds, TimeUnit.SECONDS), false)) {
-            FUTURE.completeExceptionally(new Throwable("Awaiting has timed out"));
+            TEST_CASE_RESULT.completeExceptionally(new Throwable("Awaiting has timed out"));
         }
+    }
+
+    public static void sleep(int seconds) {
+        tryRun(() -> Thread.sleep(seconds * 1000L));
+    }
+
+    private static void loop() {
+        tryRun(() -> EventQueue.invokeAndWait(EMPTY_RUNNABLE));
+        var latch = new CountDownLatch(1);
+        CThreading.executeOnAppKit(latch::countDown);
+        tryRun(latch::await);
     }
 
     public interface ThrowableRunnable {
@@ -122,6 +211,29 @@ public class ToolkitTestHelper {
 
         public boolean hasFinished() {
             return System.currentTimeMillis() >= finishTime;
+        }
+    }
+
+    public static class TestLogHandler extends StreamHandler {
+        public StringBuilder buffer = new StringBuilder();
+
+        public TestLogHandler() {
+            // Use System.out to merge with the test printing.
+            super(System.out, new SimpleFormatter());
+            setLevel(Level.ALL);
+        }
+
+        @Override
+        public void publish(LogRecord record) {
+            buffer.append(record.getMessage());
+            super.publish(record);
+            flush();
+        }
+
+        public boolean testContains(String str) {
+            boolean contains = buffer.toString().contains(str);
+            buffer.setLength(0);
+            return contains;
         }
     }
 }
