@@ -304,6 +304,7 @@ public class VMProps implements Callable<Map<String, String>> {
      */
     protected void vmOptFinalFlags(SafeMap map) {
         vmOptFinalFlag(map, "ClassUnloading");
+        vmOptFinalFlag(map, "ClassUnloadingWithConcurrentMark");
         vmOptFinalFlag(map, "UseCompressedOops");
         vmOptFinalFlag(map, "EnableJVMCI");
         vmOptFinalFlag(map, "EliminateAllocations");
