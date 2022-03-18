@@ -207,7 +207,8 @@ class CAccessible extends CFRetainedResource implements Accessible {
                             execute(ptr -> menuClosed(ptr));
                             execute(ptr -> unregisterFromCocoaAXSystem(ptr));
                         }
-                    } else if (thisRole == AccessibleRole.MENU_ITEM) {
+                    } else if (thisRole == AccessibleRole.MENU_ITEM ||
+                            ((parentRole == AccessibleRole.POPUP_MENU) && (thisRole == AccessibleRole.MENU))) {
                         if (newValue != null &&
                                 ((AccessibleState) newValue) == AccessibleState.FOCUSED) {
                             execute(ptr -> menuItemSelected(ptr));
