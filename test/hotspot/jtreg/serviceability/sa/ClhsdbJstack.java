@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 import jdk.test.lib.apps.LingeredApp;
+import jtreg.SkippedException;
 
 /**
  * @test
@@ -63,6 +64,8 @@ public class ClhsdbJstack {
                     "LingeredApp.main"));
 
             test.run(theApp.getPid(), cmds, expStrMap, null);
+        } catch (SkippedException se) {
+            throw se;
         } catch (Exception ex) {
             throw new RuntimeException("Test ERROR (with -Xcomp=" + withXcomp + ") " + ex, ex);
         } finally {
