@@ -90,7 +90,7 @@ public class CMenu extends CMenuItem implements MenuPeer {
 
     @Override
     public final void setLabel(final String label) {
-        AWTThreading.executeWaitToolkit(() -> execute(ptr->nativeSetMenuTitle(ptr, label)));
+        execute(ptr->nativeSetMenuTitle(ptr, label));
         super.setLabel(label);
     }
 
@@ -98,7 +98,7 @@ public class CMenu extends CMenuItem implements MenuPeer {
     // though it is required in the MenuPeer interface.
     @Override
     public final void addSeparator() {
-        AWTThreading.executeWaitToolkit(() -> execute(this::nativeAddSeparator));
+        execute(this::nativeAddSeparator);
     }
 
     // Used by ScreenMenuBar to get to the native menu for event handling.

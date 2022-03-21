@@ -714,10 +714,10 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isCapsLockOn
 
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
- * Method:    nativeIsApplicationActive
+ * Method:    isApplicationActive
  * Signature: ()Z
  */
-JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_nativeIsApplicationActive
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isApplicationActive
 (JNIEnv *env, jclass clazz)
 {
         __block jboolean active = JNI_FALSE;

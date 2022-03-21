@@ -992,10 +992,7 @@ public final class LWCToolkit extends LWToolkit {
     /*
      * Returns true if the application (one of its windows) owns keyboard focus.
      */
-    boolean isApplicationActive() {
-        return AWTThreading.executeWaitToolkit(this::nativeIsApplicationActive);
-    }
-    native boolean nativeIsApplicationActive();
+    native boolean isApplicationActive();
 
     /**
      * Returns true if AWT toolkit is embedded, false otherwise.

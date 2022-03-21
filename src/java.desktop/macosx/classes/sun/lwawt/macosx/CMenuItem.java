@@ -96,8 +96,8 @@ public class CMenuItem extends CMenuComponent implements MenuItemPeer {
         final char finalKeyChar = keyChar;
         final int finalKeyCode = keyCode;
         final int finalKeyMask = keyMask;
-        AWTThreading.executeWaitToolkit(() -> execute(ptr -> nativeSetLabel(ptr, finalLabel, finalKeyChar,
-            finalKeyCode, finalKeyMask)));
+        execute(ptr -> nativeSetLabel(ptr, finalLabel, finalKeyChar,
+                                      finalKeyCode, finalKeyMask));
     }
 
     @Override
