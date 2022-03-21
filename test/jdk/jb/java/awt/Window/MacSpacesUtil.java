@@ -33,7 +33,7 @@ public class MacSpacesUtil {
         return Runtime.getRuntime().exec(new String[]{
                 "plutil",
                 "-extract",
-                "SpacesDisplayConfiguration.Space Properties.1",
+                "SpacesDisplayConfiguration.Management Data.Monitors.0.Spaces.1",
                 "json",
                 "-o",
                 "-",
@@ -45,13 +45,15 @@ public class MacSpacesUtil {
         toggleMissionControl();
 
         // press button at top right corner to add a new space
-        int screenWidth = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice()
-                .getDefaultConfiguration().getBounds().width;
+        Rectangle screenBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice()
+                .getDefaultConfiguration().getBounds();
+        int rightX = screenBounds.x + screenBounds.width;
+        int topY = screenBounds.y;
         Robot robot = new Robot();
         robot.setAutoDelay(50);
-        robot.mouseMove(screenWidth, 0);
-        robot.mouseMove(screenWidth - 5, 5);
-        robot.mouseMove(screenWidth - 10, 10);
+        robot.mouseMove(rightX, topY);
+        robot.mouseMove(rightX - 5, topY + 5);
+        robot.mouseMove(rightX - 10, topY + 10);
         robot.delay(1000);
         robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
         robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
