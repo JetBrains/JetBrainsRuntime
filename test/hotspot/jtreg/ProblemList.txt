@@ -40,6 +40,8 @@
 
 # :hotspot_compiler
 
+compiler/aot/verification/vmflags/TrackedFlagTest.java 8215224 generic-all
+compiler/aot/verification/vmflags/NotTrackedFlagTest.java 8215224 generic-all
 compiler/ciReplay/TestSAServer.java 8029528 generic-all
 compiler/codecache/stress/OverloadCompileQueueTest.java 8166554 generic-all
 compiler/codegen/Test6896617.java 8193479 generic-all
