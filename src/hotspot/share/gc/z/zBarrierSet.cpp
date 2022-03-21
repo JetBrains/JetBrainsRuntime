@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 #include "gc/z/zHeap.inline.hpp"
 #include "gc/z/zThreadLocalData.hpp"
 #include "runtime/thread.hpp"
+#include "utilities/macros.hpp"
 #ifdef COMPILER1
 #include "gc/z/c1/zBarrierSetC1.hpp"
 #endif
@@ -40,8 +41,8 @@ class ZBarrierSetC2;
 
 ZBarrierSet::ZBarrierSet() :
     BarrierSet(make_barrier_set_assembler<ZBarrierSetAssembler>(),
-               COMPILER1_PRESENT( make_barrier_set_c1<ZBarrierSetC1>() ) NOT_COMPILER1(NULL),
-               COMPILER2_PRESENT( make_barrier_set_c2<ZBarrierSetC2>() ) NOT_COMPILER2(NULL),
+               make_barrier_set_c1<ZBarrierSetC1>(),
+               make_barrier_set_c2<ZBarrierSetC2>(),
                BarrierSet::FakeRtti(BarrierSet::ZBarrierSet)) {}
 
 ZBarrierSetAssembler* ZBarrierSet::assembler() {
