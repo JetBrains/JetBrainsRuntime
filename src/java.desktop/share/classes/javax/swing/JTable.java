@@ -5480,6 +5480,21 @@ public class JTable extends JComponent implements TableModelListener, Scrollable
 
             return this;
         }
+
+        @Override
+        public AccessibleContext getAccessibleContext() {
+            if (accessibleContext == null) {
+                accessibleContext = new AccessibleBooleanRenderer();
+            }
+            return accessibleContext;
+        }
+
+        class AccessibleBooleanRenderer extends JCheckBox.AccessibleJCheckBox {
+            @Override
+            public AccessibleAction getAccessibleAction() {
+                return null;
+            }
+        }
     }
 
     /**
@@ -8401,7 +8416,11 @@ public class JTable extends JComponent implements TableModelListener, Scrollable
              * @return the <code>AccessibleAction</code>, or <code>null</code>
              */
             public AccessibleAction getAccessibleAction() {
-                return getCurrentAccessibleContext().getAccessibleAction();
+                AccessibleContext ac = getCurrentAccessibleContext();
+                if (ac != null) {
+                    return ac.getAccessibleAction();
+                }
+                return null;
             }
 
             /**
