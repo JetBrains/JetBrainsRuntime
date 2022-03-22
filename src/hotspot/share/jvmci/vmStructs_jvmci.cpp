@@ -37,6 +37,7 @@
 #include "oops/oopHandle.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "runtime/flags/jvmFlag.hpp"
+#include "runtime/deoptimization.hpp"
 #include "runtime/globals.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/thread.hpp"
