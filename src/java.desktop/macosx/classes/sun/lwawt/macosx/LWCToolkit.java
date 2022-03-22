@@ -138,6 +138,12 @@ public final class LWCToolkit extends LWToolkit {
 
     private static CInputMethodDescriptor sInputMethodDescriptor;
 
+    // Listens to EDT state in invokeAndWait() and disposes the invocation event
+    // when EDT becomes free but the invocation event is not yet dispatched (considered lost).
+    // This prevents a deadlock and makes the invocation return some default result.
+    private static final boolean DISPOSE_INVOCATION_ON_EDT_FREE =
+        Boolean.getBoolean("sun.lwawt.macosx.LWCToolkit.invokeAndWait.disposeOnEDTFree");
+
     static {
         ResourceBundle platformResources = null;
         try {
@@ -770,16 +776,17 @@ public final class LWCToolkit extends LWToolkit {
             ((LWCToolkit)Toolkit.getDefaultToolkit()).getSystemEventQueueForInvokeAndWait().postEvent(invocationEvent);
         }
 
-        CompletableFuture<Void> eventDispatchThreadFreeFuture =
-            AWTThreading.getInstance(component).onEventDispatchThreadFree(() -> {
-                if (!invocationEvent.isDone()) {
-                    // EventQueue is now empty but the posted InvocationEvent is still not dispatched,
-                    // consider it lost then.
-                    invocationEvent.dispose("InvocationEvent was lost");
-                }
-            });
-
-        invocationEvent.onDone(() -> eventDispatchThreadFreeFuture.cancel(false));
+        if (DISPOSE_INVOCATION_ON_EDT_FREE) {
+            CompletableFuture<Void> eventDispatchThreadFreeFuture =
+              AWTThreading.getInstance(component).onEventDispatchThreadFree(() -> {
+                  if (!invocationEvent.isCompleted(true)) {
+                      // EventQueue is now empty but the posted InvocationEvent is still not dispatched,
+                      // consider it lost then.
+                      invocationEvent.dispose("InvocationEvent was lost");
+                  }
+              });
+            invocationEvent.onDone(() -> eventDispatchThreadFreeFuture.cancel(false));
+        }
 
         if (!doAWTRunLoop(mediator, nonBlockingRunLoop, timeoutSeconds)) {
             invocationEvent.dispose("InvocationEvent has timed out");
