@@ -76,6 +76,7 @@ import sun.lwawt.LWWindowPeer;
 class CAccessibility implements PropertyChangeListener {
     private static Set<String> ignoredRoles;
     private static final int INVOKE_TIMEOUT_SECONDS;
+    private static final boolean ENABLE_SHOW_CONTEXT_MENU_EVENT;
 
     static {
         // (-1) for the infinite timeout
@@ -87,6 +88,28 @@ class CAccessibility implements PropertyChangeListener {
                 return Integer.getInteger("sun.lwawt.macosx.CAccessibility.invokeTimeoutSeconds", 1);
             });
         INVOKE_TIMEOUT_SECONDS = value;
+        @SuppressWarnings("removal")
+        boolean enableShowContextMenuEvent = java.security.AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
+            return Boolean.getBoolean("sun.lwawt.macosx.CAccessibility.enableShowContextMenuEvent");
+        });
+        ENABLE_SHOW_CONTEXT_MENU_EVENT = enableShowContextMenuEvent;
+    }
+
+    private static boolean isEnableShowContextMenuEvent() {
+        return ENABLE_SHOW_CONTEXT_MENU_EVENT;
+    }
+
+    private static void accessibleShowContextMenuEvent(Accessible a, Component c) {
+        if (a == null) return;
+        invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                AccessibleContext ac = a.getAccessibleContext();
+                if (ac != null) {
+                    ac.firePropertyChange("accessibleContextMenuShow", null, null);
+                }
+            }
+        }, c);
     }
 
     static CAccessibility sAccessibility;
