@@ -703,30 +703,6 @@ public final class LWCToolkit extends LWToolkit {
         }
     }
 
-    private static final AtomicInteger blockingRunLoopCounter = new AtomicInteger(0);
-    private static final AtomicBoolean priorityInvocationPending = new AtomicBoolean(false);
-
-    @Override
-    public void unsafeNonblockingExecute(Runnable runnable) {
-        if (!EventQueue.isDispatchThread()) {
-            throw new Error("the method must be called on the Event Dispatching thread");
-        }
-        if (runnable == null) return;
-
-        synchronized (priorityInvocationPending) {
-            priorityInvocationPending.set(true);
-        }
-        AWTAccessor.getEventQueueAccessor().createSecondaryLoop(
-            getSystemEventQueue(),
-            () -> blockingRunLoopCounter.get() > 0).enter();
-
-        try {
-            runnable.run();
-        } finally {
-            priorityInvocationPending.set(false);
-        }
-    }
-
     /**
      * Kicks an event over to the appropriate event queue and waits for it to
      * finish To avoid deadlocking, we manually run the NSRunLoop while waiting
@@ -772,18 +748,6 @@ public final class LWCToolkit extends LWToolkit {
             return;
         }
 
-        boolean nonBlockingRunLoop;
-
-        if (!processEvents) {
-            synchronized (priorityInvocationPending) {
-                nonBlockingRunLoop = priorityInvocationPending.get();
-                if (!nonBlockingRunLoop) blockingRunLoopCounter.incrementAndGet();
-            }
-        }
-        else {
-            nonBlockingRunLoop = true;
-        }
-
         AWTThreading.TrackedInvocationEvent invocationEvent =
             AWTThreading.createAndTrackInvocationEvent(component, runnable, true);
 
@@ -814,11 +778,9 @@ public final class LWCToolkit extends LWToolkit {
             invocationEvent.onDone(() -> eventDispatchThreadFreeFuture.cancel(false));
         }
 
-        if (!doAWTRunLoop(mediator, nonBlockingRunLoop, timeoutSeconds)) {
+        if (!doAWTRunLoop(mediator, processEvents, timeoutSeconds)) {
             invocationEvent.dispose("InvocationEvent has timed out");
         }
-
-        if (!nonBlockingRunLoop) blockingRunLoopCounter.decrementAndGet();
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("invokeAndWait finished: " + runnable);
