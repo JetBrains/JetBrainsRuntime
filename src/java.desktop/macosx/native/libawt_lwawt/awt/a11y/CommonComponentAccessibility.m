@@ -78,8 +78,6 @@ static NSMutableDictionary * _Nullable rowRolesMapForParent;
 NSString *const IgnoreClassName = @"IgnoreAccessibility";
 static jobject sAccessibilityClass = NULL;
 
-static NSNumber *sEnableShowContextMenuEvent = nil;
-
 /*
  * Common ancestor for all the accessibility peers that implements the new method-based accessibility API
  */
@@ -1201,6 +1199,7 @@ static NSNumber *sEnableShowContextMenuEvent = nil;
 
 - (BOOL)isEnableShowMenuEvent
 {
+    static NSNumber *sEnableShowContextMenuEvent = nil;
     if (sEnableShowContextMenuEvent == nil) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
         GET_CACCESSIBILITY_CLASS_RETURN(NO);
