@@ -1,5 +1,5 @@
 /*
- * Copyright © 2012  Google, Inc.
+ * Copyright © 2019  Ebrahim Byagowi
  *
  *  This is part of HarfBuzz, a text shaping library.
  *
@@ -21,17 +21,21 @@
  * ON AN "AS IS" BASIS, AND THE COPYRIGHT HOLDER HAS NO OBLIGATION TO
  * PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
  *
- * Google Author(s): Behdad Esfahbod
  */
 
-#include "hb.hh"
+#ifndef HB_NUMBER_HH
+#define HB_NUMBER_HH
 
-#if defined(HB_ATOMIC_INT_NIL)
-#error "Could not find any system to define atomic_int macros, library WILL NOT be thread-safe"
-#error "Check hb-atomic.hh for possible resolutions."
-#endif
+HB_INTERNAL bool
+hb_parse_int (const char **pp, const char *end, int *pv,
+              bool whole_buffer = false);
 
-#if defined(HB_MUTEX_IMPL_NIL)
-#error "Could not find any system to define mutex macros, library WILL NOT be thread-safe"
-#error "Check hb-mutex.hh for possible resolutions."
-#endif
+HB_INTERNAL bool
+hb_parse_uint (const char **pp, const char *end, unsigned int *pv,
+               bool whole_buffer = false, int base = 10);
+
+HB_INTERNAL bool
+hb_parse_double (const char **pp, const char *end, double *pv,
+                 bool whole_buffer = false);
+
+#endif /* HB_NUMBER_HH */
