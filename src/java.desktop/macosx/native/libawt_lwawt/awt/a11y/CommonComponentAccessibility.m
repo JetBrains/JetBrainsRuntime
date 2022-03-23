@@ -78,6 +78,8 @@ static NSMutableDictionary * _Nullable rowRolesMapForParent;
 NSString *const IgnoreClassName = @"IgnoreAccessibility";
 static jobject sAccessibilityClass = NULL;
 
+static NSNumber *sEnableShowContextMenuEvent = nil;
+
 /*
  * Common ancestor for all the accessibility peers that implements the new method-based accessibility API
  */
@@ -1199,13 +1201,15 @@ static jobject sAccessibilityClass = NULL;
 
 - (BOOL)isEnableShowMenuEvent
 {
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    GET_CACCESSIBILITY_CLASS_RETURN(NO);
-    DECLARE_STATIC_METHOD_RETURN(sjm_enableShowMenuEvent, sjc_CAccessibility, "isEnableShowContextMenuEvent", "()Z", NO);
-    jboolean esme = (*env)->CallStaticBooleanMethod(env, sjc_CAccessibility, sjm_enableShowMenuEvent);
-    CHECK_EXCEPTION();
+    if (sEnableShowContextMenuEvent == nil) {
+        JNIEnv *env = [ThreadUtilities getJNIEnv];
+        GET_CACCESSIBILITY_CLASS_RETURN(NO);
+        DECLARE_STATIC_METHOD_RETURN(sjm_enableShowMenuEvent, sjc_CAccessibility, "isEnableShowContextMenuEvent", "()Z", NO);
+        sEnableShowContextMenuEvent = [[NSNumber alloc] initWithBool:(*env)->CallStaticBooleanMethod(env, sjc_CAccessibility, sjm_enableShowMenuEvent)];
+        CHECK_EXCEPTION();
+    }
 
-    return esme;
+    return sEnableShowContextMenuEvent.boolValue;
 }
 
 - (BOOL)isAccessibilitySelectorAllowed:(SEL)selector {

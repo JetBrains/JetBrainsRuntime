@@ -87,10 +87,10 @@ class CAccessibility implements PropertyChangeListener {
             });
         INVOKE_TIMEOUT_SECONDS = value;
         @SuppressWarnings("removal")
-        boolean esme = java.security.AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
+        boolean enableShowContextMenuEvent = java.security.AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
             return Boolean.getBoolean("sun.lwawt.macosx.CAccessibility.enableShowContextEvent");
         });
-        ENABLE_SHOW_CONTEXT_MENU_EVENT = esme;
+        ENABLE_SHOW_CONTEXT_MENU_EVENT = enableShowContextMenuEvent;
     }
 
     private static boolean isEnableShowContextMenuEvent() {
