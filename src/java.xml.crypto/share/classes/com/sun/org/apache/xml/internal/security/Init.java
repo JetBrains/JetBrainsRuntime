@@ -349,6 +349,9 @@ public class Init {
      * @param callingClass The Class object of the calling object
      */
     public static URL getResource(String resourceName, Class<?> callingClass) {
+        if (resourceName == null) {
+            throw new NullPointerException();
+        }
         URL url = Thread.currentThread().getContextClassLoader().getResource(resourceName);
         if (url == null && resourceName.charAt(0) == '/') {
             //certain classloaders need it without the leading /
@@ -402,6 +405,9 @@ public class Init {
      * @param callingClass The Class object of the calling object
      */
     private static List<URL> getResources(String resourceName, Class<?> callingClass) {
+        if (resourceName == null) {
+            throw new NullPointerException();
+        }
         List<URL> ret = new ArrayList<>();
         Enumeration<URL> urls = new Enumeration<URL>() {
             public boolean hasMoreElements() {
@@ -477,7 +483,7 @@ public class Init {
         }
 
 
-        if (ret.isEmpty() && resourceName != null && resourceName.charAt(0) != '/') {
+        if (ret.isEmpty() && resourceName.charAt(0) != '/') {
             return getResources('/' + resourceName, callingClass);
         }
         return ret;
