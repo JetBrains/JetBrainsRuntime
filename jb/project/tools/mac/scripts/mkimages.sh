@@ -194,7 +194,7 @@ cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || do_exit
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
   cp -a ${JCEF_PATH}/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 fi
-if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
+if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "fd" ]; then
   echo Creating $JBSDK.tar.gz ...
   sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
@@ -207,7 +207,7 @@ fi
 
 create_jbr || do_exit $?
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ "$bundle_type" == "dcevm" ]; then
   make test-image CONF=$CONF_NAME || do_exit $?
 
   JBRSDK_TEST=$JBRSDK_BASE_NAME-osx-test-${architecture}-b$build_number

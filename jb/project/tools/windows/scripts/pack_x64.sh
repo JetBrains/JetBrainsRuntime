@@ -67,7 +67,7 @@ IMAGES_DIR=build/$RELEASE_NAME/images
 JSDK=$IMAGES_DIR/jdk
 BASE_DIR=.
 
-if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
+if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "fd" ]; then
   JBRSDK_BUNDLE=jbrsdk
   echo Creating $JBSDK.tar.gz ...
   [ -f "$JBSDK.tar.gz" ] && rm "$JBSDK.tar.gz"
@@ -76,7 +76,7 @@ fi
 
 pack_jbr $bundle_type
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ "$bundle_type" == "dcevm" ]; then
   JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number
   echo Creating $JBRSDK_TEST.tar.gz ...
   /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
