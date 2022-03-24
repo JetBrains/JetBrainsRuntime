@@ -33,6 +33,7 @@ import jdk.test.lib.process.OutputAnalyzer;
 
 /**
  * @test
+ * @key randomness
  * @bug 8208091
  * @requires (os.family == "linux") & (vm.hasSAandCanAttach)
  * @library /test/lib
