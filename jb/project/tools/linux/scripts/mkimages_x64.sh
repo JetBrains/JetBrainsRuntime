@@ -145,7 +145,7 @@ cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || do_exit $?
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
   rsync -av ${JCEF_PATH}/ $BASE_DIR/$JBRSDK_BUNDLE/lib --exclude="modular-sdk" || do_exit $?
 fi
-if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
+if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "fd" ]; then
   echo Creating $JBSDK.tar.gz ...
   sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
@@ -157,7 +157,7 @@ fi
 
 create_jbr || do_exit $?
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ "$bundle_type" == "dcevm" ]; then
   make test-image CONF=$RELEASE_NAME || do_exit $?
 
   JBRSDK_TEST=$JBRSDK_BASE_NAME-linux-test-x64-b$build_number
