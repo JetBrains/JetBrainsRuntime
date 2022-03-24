@@ -23,10 +23,12 @@
 
 /*
  * @test id=z
+ * @key randomness
  * @bug 8059022
  * @modules java.base/jdk.internal.misc:+open
  * @summary Validate barriers after Unsafe getObject, CAS and swap (GetAndSet)
  * @requires vm.gc.Z & !vm.graal.enabled
+ * @library /test/lib
  * @run main/othervm -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions
  *                   -XX:+UseZGC
@@ -38,10 +40,12 @@
 
  /*
  * @test id=shenandoah
+ * @key randomness
  * @bug 8059022
  * @modules java.base/jdk.internal.misc:+open
  * @summary Validate barriers after Unsafe getObject, CAS and swap (GetAndSet)
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib
  * @run main/othervm -Xmx256m
  *                   -XX:+UseShenandoahGC
  *                   -XX:+UnlockDiagnosticVMOptions
@@ -56,6 +60,7 @@ package compiler.gcbarriers;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Random;
+import jdk.test.lib.Utils;
 import sun.misc.Unsafe;
 
 public class UnsafeIntrinsicsTest {
@@ -96,7 +101,7 @@ public class UnsafeIntrinsicsTest {
 
         // start mutator threads
         ArrayList<Thread> thread_list = new ArrayList<Thread>();
-        Random r = new Random(System.nanoTime());
+        Random r = Utils.getRandomInstance();
         for (int i = 0; i < thread_count; i++) {
 
             setup(); // each thread has its own circle of nodes
@@ -114,7 +119,7 @@ public class UnsafeIntrinsicsTest {
 
         setup(); // All nodes are shared between threads
         ArrayList<Thread> thread_list = new ArrayList<Thread>();
-        Random r = new Random(System.nanoTime());
+        Random r = Utils.getRandomInstance();
         for (int i = 0; i < thread_count; i++) {
             Thread t = new Thread(new Runner(first_node, time, r.nextLong(), optype));
             t.start();
