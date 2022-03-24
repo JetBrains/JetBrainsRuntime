@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,16 @@
 
 /*
  * @test
+ * @key randomness
  * @summary
  * @requires vm.cds.archived.java.heap
  * @library /test/lib /test/hotspot/jtreg/runtime/appcds
  * @modules java.base/jdk.internal.misc
  * @modules java.management
  *          jdk.jartool/sun.tools.jar
- * @build sun.hotspot.WhiteBox
+ * @build sun.hotspot.WhiteBox jdk.test.lib.Utils
  * @compile GCStressApp.java
- * @run driver ClassFileInstaller -jar gcstress.jar GCStressApp
+ * @run driver ClassFileInstaller -jar gcstress.jar GCStressApp jdk.test.lib.Utils
  * @run driver ClassFileInstaller -jar WhiteBox.jar sun.hotspot.WhiteBox
  * @run main GCStressTest
  */
