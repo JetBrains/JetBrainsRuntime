@@ -69,6 +69,9 @@ static int* gsButtonEventNumber;
 static NSTimeInterval gNextKeyEventTime;
 static NSTimeInterval safeDelay;
 
+#define KEY_CODE_COUNT 128
+static CGEventFlags keyOwnFlags[KEY_CODE_COUNT];
+
 static inline CGKeyCode GetCGKeyCode(jint javaKeyCode);
 
 static void PostMouseEvent(const CGPoint point, CGMouseButton button,
@@ -105,6 +108,20 @@ static inline void autoDelay(BOOL isMove) {
         }
     }
     gNextKeyEventTime = [[NSDate date] timeIntervalSinceReferenceDate] + safeDelay;
+}
+
+static void initKeyFlags() {
+    CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStatePrivate);
+    for (CGKeyCode keyCode = 0; keyCode < KEY_CODE_COUNT; keyCode++) {
+        CGEventRef event = CGEventCreateKeyboardEvent(source, keyCode, true);
+        if (event != NULL) {
+            keyOwnFlags[keyCode] = CGEventGetFlags(event);
+            CFRelease(event);
+        }
+    }
+    if (source != NULL) {
+        CFRelease(source);
+    }
 }
 
 /*
@@ -155,6 +172,8 @@ Java_sun_lwawt_macosx_CRobot_initRobot
             for (i = 0; i < gNumberOfButtons; ++i) {
                 gsButtonEventNumber[i] = ROBOT_EVENT_NUMBER_START;
             }
+
+            initKeyFlags();
         }];
     }
 }
@@ -283,6 +302,20 @@ Java_sun_lwawt_macosx_CRobot_mouseWheel
     }];
 }
 
+// CGEventCreateKeyboardEvent incorrectly handles flags pertinent to non-modifier keys
+// (e.g. F1-F12 keys always Fn flag set, while arrow keys always have Fn and NumPad flags set).
+// Those flags are not cleared for following key presses automatically, so we need to do it ourselves.
+// See JBR-4306 for details.
+static void clearStickyFlags(CGEventRef event, CGKeyCode keyCode, CGEventFlags flagToCheck) {
+    if (keyCode < KEY_CODE_COUNT && (keyOwnFlags[keyCode] & flagToCheck) == 0) {
+        CGEventFlags flags = CGEventGetFlags(event);
+        CGEventFlags updatedFlags = flags & ~flagToCheck;
+        if (updatedFlags != flags) {
+            CGEventSetFlags(event, updatedFlags);
+        }
+    }
+}
+
 /*
  * Class:     sun_lwawt_macosx_CRobot
  * Method:    keyEvent
@@ -298,11 +331,10 @@ Java_sun_lwawt_macosx_CRobot_keyEvent
         CGKeyCode keyCode = GetCGKeyCode(javaKeyCode);
         CGEventRef event = CGEventCreateKeyboardEvent(source, keyCode, keyPressed);
         if (event != NULL) {
-            CGEventFlags flags = CGEventSourceFlagsState(kCGEventSourceStateHIDSystemState);
-            if ((flags & kCGEventFlagMaskSecondaryFn) != 0) {
-                flags ^= kCGEventFlagMaskSecondaryFn;
-                CGEventSetFlags(event, flags);
-            }
+             // this assumes Robot isn't used to generate Fn key presses
+            clearStickyFlags(event, keyCode, kCGEventFlagMaskSecondaryFn);
+            // there is no NumPad key, so this won't hurt in any case
+            clearStickyFlags(event, keyCode, kCGEventFlagMaskNumericPad);
             CGEventPost(kCGHIDEventTap, event);
             CFRelease(event);
         }
