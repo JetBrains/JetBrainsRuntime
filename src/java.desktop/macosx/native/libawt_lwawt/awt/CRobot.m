@@ -294,8 +294,16 @@ Java_sun_lwawt_macosx_CRobot_keyEvent
 {
     autoDelay(NO);
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
         CGKeyCode keyCode = GetCGKeyCode(javaKeyCode);
-        CGPostKeyboardEvent(0, keyCode, keyPressed);
+        CGEventRef event = CGEventCreateKeyboardEvent(source, keyCode, keyPressed);
+        if (event != NULL) {
+            CGEventPost(kCGHIDEventTap, event);
+            CFRelease(event);
+        }
+        if (source != NULL) {
+            CFRelease(source);
+        }
     }];
 }
 
