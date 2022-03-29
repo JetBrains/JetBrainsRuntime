@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import jdk.testlibrary.JDKToolFinder;
+import jdk.test.lib.JDKToolFinder;
 import jdk.test.lib.compiler.CompilerUtils;
 
 import static jdk.test.lib.process.ProcessTools.executeCommand;
