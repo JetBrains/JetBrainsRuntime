@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,9 @@
  * @test
  * @bug 8168836
  * @summary Basic argument validation for --patch-module
- * @library /lib/testlibrary /test/lib
+ * @library /test/lib
  * @modules jdk.compiler
- * @build PatchTestWarningError jdk.testlibrary.*
+ * @build PatchTestWarningError
  *        jdk.test.lib.compiler.CompilerUtils
  *        jdk.test.lib.util.JarUtils
  * @run testng PatchTestWarningError
@@ -41,7 +41,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import jdk.test.lib.compiler.CompilerUtils;
-import static jdk.testlibrary.ProcessTools.*;
+import jdk.test.lib.util.JarUtils;
+import static jdk.test.lib.process.ProcessTools.*;
 
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;

@@ -34,7 +34,7 @@
  */
 /*
  * @test
- * @library /test/lib /lib/testlibrary ../warnings
+ * @library /test/lib ../warnings
  * @compile Compatibility.java
  * @run main/othervm/timeout=2500
  *  -Djava.security.properties=./java.security

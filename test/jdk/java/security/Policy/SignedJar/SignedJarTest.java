@@ -28,13 +28,13 @@ import java.security.AccessControlException;
 import java.security.AccessController;
 import java.security.Permission;
 import java.security.PrivilegedAction;
-import jdk.testlibrary.ProcessTools;
+import jdk.test.lib.process.ProcessTools;
 
 /**
  * @test
  * @bug 8048360 8242565
  * @summary test policy entry with signedBy alias
- * @library /lib/testlibrary
+ * @library /test/lib
  * @run main/othervm SignedJarTest
  */
 public class SignedJarTest {

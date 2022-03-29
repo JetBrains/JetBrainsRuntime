@@ -23,8 +23,8 @@
 
 import jdk.testlibrary.JDKToolLauncher;
 import jdk.test.lib.util.JarUtils;
-import jdk.testlibrary.OutputAnalyzer;
-import jdk.testlibrary.ProcessTools;
+import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.process.ProcessTools;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;

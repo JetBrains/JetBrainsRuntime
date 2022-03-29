@@ -25,6 +25,7 @@
  * @test
  * @bug 8159377
  * @library /lib/testlibrary
+ * @library /test/lib
  * @summary Tests ObjectFilter on default agent
  * @author Harsha Wardhana B
  * @modules java.management
@@ -54,7 +55,7 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
-import jdk.testlibrary.ProcessTools;
+import jdk.test.lib.process.ProcessTools;
 import jdk.testlibrary.Utils;
 
 public class DefaultAgentFilterTest {

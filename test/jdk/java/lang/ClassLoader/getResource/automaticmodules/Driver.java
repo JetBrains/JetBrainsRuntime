@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,9 @@
 
 /**
  * @test
- * @library /lib/testlibrary /test/lib
+ * @library /test/lib
  * @build Driver Main
- *        jdk.test.lib.util.JarUtils jdk.testlibrary.ProcessTools
+ *        jdk.test.lib.util.JarUtils
  * @run main Driver
  * @summary Test ClassLoader.getResourceXXX to locate resources in an automatic
  *          module
@@ -39,7 +39,7 @@ import java.nio.file.Paths;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
-import jdk.testlibrary.ProcessTools;
+import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.util.JarUtils;
 
 /**

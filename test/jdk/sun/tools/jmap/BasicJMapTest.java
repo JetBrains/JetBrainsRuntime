@@ -28,9 +28,9 @@ import java.io.File;
 import java.util.Arrays;
 
 import jdk.test.lib.hprof.HprofParser;
+import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.process.ProcessTools;
 import jdk.testlibrary.JDKToolLauncher;
-import jdk.testlibrary.OutputAnalyzer;
-import jdk.testlibrary.ProcessTools;
 
 /*
  * @test

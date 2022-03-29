@@ -21,14 +21,14 @@
  * questions.
  */
 
-import jdk.testlibrary.OutputAnalyzer;
+import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.util.JarUtils;
 
 /**
  * @test
  * @bug 8024302 8026037
  * @summary Test for badKeyUsage warning
- * @library /lib/testlibrary /test/lib ../
+ * @library /test/lib ../
  * @ignore until 8026393 is fixed
  * @build jdk.test.lib.util.JarUtils
  * @run main BadKeyUsageTest

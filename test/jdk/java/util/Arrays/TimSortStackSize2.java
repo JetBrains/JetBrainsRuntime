@@ -25,11 +25,10 @@
  * @test
  * @bug 8072909
  * @summary Test TimSort stack size on big arrays
- * @library /lib/testlibrary /test/lib
+ * @library /test/lib
  * @modules java.management
  *          java.base/jdk.internal
  * @requires (vm.debug == false)
- * @build jdk.testlibrary.*
  * @build TimSortStackSize2
  * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  *                                sun.hotspot.WhiteBox$WhiteBoxPermission
@@ -41,9 +40,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-import jdk.testlibrary.OutputAnalyzer;
-import jdk.testlibrary.ProcessTools;
-import jdk.testlibrary.Utils;
+import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.process.ProcessTools;
 import sun.hotspot.WhiteBox;
 
 public class TimSortStackSize2 {

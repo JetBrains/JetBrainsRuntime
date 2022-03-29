@@ -64,8 +64,8 @@ import java.util.jar.Attributes.Name;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import jdk.testlibrary.OutputAnalyzer;
-import jdk.testlibrary.ProcessTools;
+import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.util.JarUtils;
 
 import static java.nio.charset.StandardCharsets.UTF_8;

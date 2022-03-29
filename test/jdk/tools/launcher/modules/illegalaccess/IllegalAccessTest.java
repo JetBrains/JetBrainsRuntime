@@ -26,11 +26,10 @@
  * @requires vm.compMode != "Xcomp"
  * @modules java.base/jdk.internal.misc
  *          java.base/sun.security.x509
- * @library /test/lib /lib/testlibrary modules
+ * @library /test/lib modules
  * @build IllegalAccessTest TryAccess
  *        jdk.test.lib.compiler.CompilerUtils
  *        jdk.test.lib.util.JarUtils
- *        jdk.testlibrary.*
  * @build m/*
  * @run testng/othervm/timeout=180 IllegalAccessTest
  * @summary Basic test for java --illegal-access=$VALUE
@@ -46,8 +45,8 @@ import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
 import jdk.test.lib.compiler.CompilerUtils;
-import jdk.testlibrary.ProcessTools;
-import jdk.testlibrary.OutputAnalyzer;
+import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.util.JarUtils;
 
 import org.testng.annotations.DataProvider;
