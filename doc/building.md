@@ -272,6 +272,13 @@ For rpm-based distributions (Fedora, Red Hat, etc), try this:
 sudo yum groupinstall "Development Tools"
 ```
 
+For Alpine Linux, aside from basic tooling, install the GNU versions of some
+programs:
+
+```
+sudo apk add build-base bash grep zip
+```
+
 ### AIX
 
 The regular builds by SAP is using AIX version 7.1, but AIX 5.3 is also
@@ -465,6 +472,7 @@ rather than bundling the JDK's own copy.
     libfreetype6-dev`.
   * To install on an rpm-based Linux, try running `sudo yum install
     freetype-devel`.
+  * To install on Alpine Linux, try running `sudo apk add freetype-dev`.
   * To install on Solaris, try running `pkg install system/library/freetype-2`.
 
 Use `--with-freetype-include=<path>` and `--with-freetype-lib=<path>`
@@ -480,6 +488,7 @@ your operating system.
     libcups2-dev`.
   * To install on an rpm-based Linux, try running `sudo yum install
     cups-devel`.
+  * To install on Alpine Linux, try running `sudo apk add cups-dev`.
   * To install on Solaris, try running `pkg install print/cups`.
 
 Use `--with-cups=<path>` if `configure` does not properly locate your CUPS
@@ -494,6 +503,8 @@ Linux and Solaris.
     libx11-dev libxext-dev libxrender-dev libxtst-dev libxt-dev`.
   * To install on an rpm-based Linux, try running `sudo yum install
     libXtst-devel libXt-devel libXrender-devel libXi-devel`.
+  * To install on Alpine Linux, try running `sudo apk add libx11-dev
+    libxext-dev libxrender-dev libxrandr-dev libxtst-dev libxt-dev`.
   * To install on Solaris, try running `pkg install x11/header/x11-protocols
     x11/library/libice x11/library/libpthread-stubs x11/library/libsm
     x11/library/libx11 x11/library/libxau x11/library/libxcb
@@ -512,6 +523,7 @@ required on Linux. At least version 0.9.1 of ALSA is required.
     libasound2-dev`.
   * To install on an rpm-based Linux, try running `sudo yum install
     alsa-lib-devel`.
+  * To install on Alpine Linux, try running `sudo apk add alsa-lib-dev`.
 
 Use `--with-alsa=<path>` if `configure` does not properly locate your ALSA
 files.
@@ -526,6 +538,7 @@ Hotspot.
     libffi-dev`.
   * To install on an rpm-based Linux, try running `sudo yum install
     libffi-devel`.
+  * To install on Alpine Linux, try running `sudo apk add libffi-dev`.
 
 Use `--with-libffi=<path>` if `configure` does not properly locate your libffi
 files.
@@ -541,6 +554,7 @@ platforms. At least version 2.69 is required.
     autoconf`.
   * To install on an rpm-based Linux, try running `sudo yum install
     autoconf`.
+  * To install on Alpine Linux, try running `sudo apk add autoconf`.
   * To install on macOS, try running `brew install autoconf`.
   * To install on Windows, try running `<path to Cygwin setup>/setup-x86_64 -q
     -P autoconf`.
@@ -1177,6 +1191,25 @@ the Oracle contributed ARM port. When targeting aarch64, by the default the
 original aarch64 port is used. To select the Oracle ARM 64 port, use
 `--with-cpu-port=arm64`. Also set the corresponding value (`aarch64` or
 `arm64`) to --with-abi-profile, to ensure a consistent build.
+
+### Building for musl
+
+Just like it's possible to cross-compile for a different CPU, it's possible to
+cross-compile for musl libc on a glibc-based *build* system.
+A devkit suitable for most target CPU architectures can be obtained from
+[musl.cc](https://musl.cc). After installing the required packages in the
+sysroot, configure the build with `--openjdk-target`:
+
+```
+sh ./configure --with-jvm-variants=server \
+--with-boot-jdk=$BOOT_JDK \
+--with-build-jdk=$BUILD_JDK \
+--openjdk-target=x86_64-unknown-linux-musl \
+--with-devkit=$DEVKIT \
+--with-sysroot=$SYSROOT
+```
+
+and run `make` normally.
 
 ### Verifying the Build
 
