@@ -2066,6 +2066,13 @@ WB_ENTRY(jint, WB_AotLibrariesCount(JNIEnv* env, jobject o))
   return result;
 WB_END
 
+WB_ENTRY(jstring, WB_GetLibcName(JNIEnv* env, jobject o))
+  ThreadToNativeFromVM ttn(thread);
+  jstring info_string = env->NewStringUTF(XSTR(LIBC));
+  CHECK_JNI_EXCEPTION_(env, NULL);
+  return info_string;
+WB_END
+
 #define CC (char*)
 
 static JNINativeMethod methods[] = {
@@ -2297,6 +2304,7 @@ static JNINativeMethod methods[] = {
   {CC"printOsInfo",               CC"()V",            (void*)&WB_PrintOsInfo },
   {CC"disableElfSectionCache",    CC"()V",            (void*)&WB_DisableElfSectionCache },
   {CC"aotLibrariesCount", CC"()I",                    (void*)&WB_AotLibrariesCount },
+  {CC"getLibcName",     CC"()Ljava/lang/String;",     (void*)&WB_GetLibcName},
 };
 
 

@@ -119,6 +119,7 @@ public class VMProps implements Callable<Map<String, String>> {
         map.put("vm.compiler1.enabled", this::isCompiler1Enabled);
         map.put("vm.compiler2.enabled", this::isCompiler2Enabled);
         map.put("docker.support", this::dockerSupport);
+        map.put("vm.musl", this::isMusl);
         map.put("release.implementor", this::implementor);
         map.put("vm.flagless", this::isFlagless);
         vmGC(map); // vm.gc.X = true/false
@@ -502,6 +503,15 @@ public class VMProps implements Callable<Map<String, String>> {
         p.waitFor(10, TimeUnit.SECONDS);
 
         return (p.exitValue() == 0);
+    }
+
+    /**
+     * Checks musl libc.
+     *
+     * @return true if musl libc is used.
+     */
+    protected String isMusl() {
+        return Boolean.toString(WB.getLibcName().contains("musl"));
     }
 
     private String implementor() {
