@@ -23,6 +23,10 @@
 
 package jdk.test.lib;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -105,6 +109,18 @@ public class Platform {
 
     public static boolean isLinux() {
         return isOs("linux");
+    }
+
+    public static boolean isBusybox(String tool) {
+        try {
+            Path toolpath = Paths.get(tool);
+            return !isWindows()
+                    && Files.isSymbolicLink(toolpath)
+                    && Paths.get("/bin/busybox")
+                        .equals(Files.readSymbolicLink(toolpath));
+        } catch (IOException ignore) {
+            return false;
+        }
     }
 
     public static boolean isOSX() {
