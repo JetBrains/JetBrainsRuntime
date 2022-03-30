@@ -24,7 +24,6 @@
 /*
  * @test
  * @summary Smoke test for JDWP hardening
- * @library /lib/testlibrary
  * @library /test/lib
  * @run driver BasicJDWPConnectionTest
  */
