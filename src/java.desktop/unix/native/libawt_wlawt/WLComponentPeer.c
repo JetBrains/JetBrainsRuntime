@@ -129,7 +129,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateFrame
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeShowComponent
-  (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr, jint width, jint height)
+  (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr, jint x, jint y)
 {
     struct WLFrame *frame = (struct WLFrame *) ptr;
     struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
@@ -145,10 +145,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeShowComponent
     } else {
         struct xdg_positioner *xdg_positioner =
                 xdg_wm_base_create_positioner(xdg_wm_base);
-        xdg_positioner_set_size(xdg_positioner, width, height);
-        xdg_positioner_set_offset(xdg_positioner, 0, 0);
-        xdg_positioner_set_anchor_rect(xdg_positioner, 0, 0, 1, 1);
-        xdg_positioner_set_anchor(xdg_positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
+        xdg_positioner_set_offset(xdg_positioner, x, y);
         frame->xdg_popup = xdg_surface_get_popup(frame->xdg_surface, parentFrame->xdg_surface, xdg_positioner);
         xdg_popup_add_listener(frame->xdg_popup, &xdg_popup_listener, frame);
     }
