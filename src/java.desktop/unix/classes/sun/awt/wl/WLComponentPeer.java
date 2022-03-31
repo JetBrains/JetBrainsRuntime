@@ -212,7 +212,7 @@ public class WLComponentPeer implements ComponentPeer
     protected void wlSetVisible(boolean v) {
         this.visible = v;
         if (this.visible) {
-            nativeShowComponent(nativePtr, getParentNativePtr(target), target.getWidth(), target.getHeight());
+            nativeShowComponent(nativePtr, getParentNativePtr(target), target.getX(), target.getY());
             ((WLSurfaceData)surfaceData).initSurface(this, background != null ? background.getRGB() : 0, target.getWidth(), target.getHeight());
             PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
                     createPaintEvent(target, 0, 0, target.getWidth(), target.getHeight());
@@ -524,7 +524,7 @@ public class WLComponentPeer implements ComponentPeer
 
     protected native long nativeCreateFrame();
 
-    protected native void nativeShowComponent(long ptr, long parentPtr, int width, int height);
+    protected native void nativeShowComponent(long ptr, long parentPtr, int x, int y);
 
     protected native void nativeHideFrame(long ptr);
 
