@@ -4034,7 +4034,7 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
   // Set object alignment values.
   set_object_alignment();
 
-#ifndef ZERO
+#if INCLUDE_JFR
   if (FlightRecorder) {
     if (AllowEnhancedClassRedefinition) {
       warning("EnhancedClassRedefinition was disabled, it is not allowed in FlightRecorder.");
