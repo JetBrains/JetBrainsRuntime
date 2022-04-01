@@ -29,28 +29,30 @@
  *
  * @run main/othervm -Xms64m -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestAlwaysPretouch
+ *                   gc.epsilon.TestAlwaysPretouch
  *
  * @run main/othervm -Xms64m -Xmx256m -XX:-AlwaysPreTouch
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestAlwaysPretouch
+ *                   gc.epsilon.TestAlwaysPretouch
  *
  * @run main/othervm -Xms64m -Xmx256m -XX:+AlwaysPreTouch
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestAlwaysPretouch
+ *                   gc.epsilon.TestAlwaysPretouch
  *
  * @run main/othervm -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestAlwaysPretouch
+ *                   gc.epsilon.TestAlwaysPretouch
  *
  * @run main/othervm -Xmx256m -XX:-AlwaysPreTouch
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestAlwaysPretouch
+ *                   gc.epsilon.TestAlwaysPretouch
  *
  * @run main/othervm -Xmx256m -XX:+AlwaysPreTouch
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestAlwaysPretouch
+ *                   gc.epsilon.TestAlwaysPretouch
  */
+
+package gc.epsilon;
 
 public class TestAlwaysPretouch {
   public static void main(String[] args) throws Exception {

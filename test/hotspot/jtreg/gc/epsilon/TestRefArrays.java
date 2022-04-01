@@ -21,6 +21,8 @@
  * questions.
  */
 
+package gc.epsilon;
+
 /**
  * @test TestRefArrays
  * @key gc
@@ -30,41 +32,41 @@
  *
  * @run main/othervm -XX:+UseTLAB -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestRefArrays
+ *                   gc.epsilon.TestRefArrays
  *
  * @run main/othervm -XX:+UseTLAB -Xmx256m
  *                   -Xint
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestRefArrays
+ *                   gc.epsilon.TestRefArrays
  *
  * @run main/othervm -XX:+UseTLAB -Xmx256m
  *                   -Xbatch -Xcomp -XX:TieredStopAtLevel=1
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestRefArrays
+ *                   gc.epsilon.TestRefArrays
  *
  * @run main/othervm -XX:+UseTLAB -Xmx256m
  *                   -Xbatch -Xcomp -XX:-TieredCompilation
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestRefArrays
+ *                   gc.epsilon.TestRefArrays
  *
  * @run main/othervm -XX:-UseTLAB -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestRefArrays
+ *                   gc.epsilon.TestRefArrays
  *
  * @run main/othervm -XX:-UseTLAB -Xmx256m
  *                   -Xint
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestRefArrays
+ *                   gc.epsilon.TestRefArrays
  *
  * @run main/othervm -XX:-UseTLAB -Xmx256m
  *                   -Xbatch -Xcomp -XX:TieredStopAtLevel=1
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestRefArrays
+ *                   gc.epsilon.TestRefArrays
  *
  * @run main/othervm -XX:-UseTLAB -Xmx256m
  *                   -Xbatch -Xcomp -XX:-TieredCompilation
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestRefArrays
+ *                   gc.epsilon.TestRefArrays
  */
 
 import java.util.Random;
