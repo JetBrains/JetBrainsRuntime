@@ -21,6 +21,8 @@
  * questions.
  */
 
+package gc.epsilon;
+
 /**
  * @test TestArraycopyCheckcast
  * @key gc
@@ -31,22 +33,22 @@
  *
  * @run main/othervm -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestArraycopyCheckcast
+ *                   gc.epsilon.TestArraycopyCheckcast
  *
  * @run main/othervm -Xmx256m
  *                   -Xint
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestArraycopyCheckcast
+ *                   gc.epsilon.TestArraycopyCheckcast
  *
  * @run main/othervm -Xmx256m
  *                   -Xbatch -Xcomp -XX:TieredStopAtLevel=1
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestArraycopyCheckcast
+ *                   gc.epsilon.TestArraycopyCheckcast
  *
  * @run main/othervm -Xmx256m
  *                   -Xbatch -Xcomp -XX:-TieredCompilation
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestArraycopyCheckcast
+ *                   gc.epsilon.TestArraycopyCheckcast
  */
 
 import java.util.Random;

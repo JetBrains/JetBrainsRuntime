@@ -21,6 +21,8 @@
  * questions.
  */
 
+package gc.epsilon;
+
 /**
  * @test TestPrintSteps
  * @key gc
@@ -30,17 +32,17 @@
  * @run main/othervm -Xmx64m -Xlog:gc
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonPrintHeapSteps=0
- *                   TestPrintHeapSteps
+ *                   gc.epsilon.TestPrintHeapSteps
  *
  * @run main/othervm -Xmx64m -Xlog:gc
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonPrintHeapSteps=1
- *                   TestPrintHeapSteps
+ *                   gc.epsilon.TestPrintHeapSteps
  *
  * @run main/othervm -Xmx64m -Xlog:gc
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonPrintHeapSteps=1000
- *                   TestPrintHeapSteps
+ *                   gc.epsilon.TestPrintHeapSteps
  */
 
 public class TestPrintHeapSteps {

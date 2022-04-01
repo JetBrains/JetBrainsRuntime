@@ -21,6 +21,8 @@
  * questions.
  */
 
+package gc.epsilon;
+
 /**
  * @test TestElasticTLAB
  * @key gc
@@ -30,27 +32,27 @@
  * @run main/othervm -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:-EpsilonElasticTLAB
- *                   TestElasticTLAB
+ *                   gc.epsilon.TestElasticTLAB
  *
  * @run main/othervm -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:+EpsilonElasticTLAB -XX:EpsilonTLABElasticity=1
- *                   TestElasticTLAB
+ *                   gc.epsilon.TestElasticTLAB
  *
  * @run main/othervm -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:+EpsilonElasticTLAB -XX:EpsilonTLABElasticity=1.1
- *                   TestElasticTLAB
+ *                   gc.epsilon.TestElasticTLAB
  *
  * @run main/othervm -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:+EpsilonElasticTLAB -XX:EpsilonTLABElasticity=2.0
- *                   TestElasticTLAB
+ *                   gc.epsilon.TestElasticTLAB
  *
  * @run main/othervm -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:+EpsilonElasticTLAB -XX:EpsilonTLABElasticity=100
- *                   TestElasticTLAB
+ *                   gc.epsilon.TestElasticTLAB
  */
 
 import java.util.Random;

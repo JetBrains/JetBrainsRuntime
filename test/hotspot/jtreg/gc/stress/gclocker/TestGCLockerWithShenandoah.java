@@ -22,6 +22,8 @@
  *
  */
 
+package gc.stress.gclocker;
+
 /*
  * @test TestGCLockerWithShenandoah
  * @key gc
@@ -31,11 +33,11 @@
  * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
  *      -XX:+UseShenandoahGC
  *      -XX:+ShenandoahVerify
- *      TestGCLockerWithShenandoah
+ *      gc.stress.gclocker.TestGCLockerWithShenandoah
  *
  * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
  *      -XX:+UseShenandoahGC
- *      TestGCLockerWithShenandoah
+ *      gc.stress.gclocker.TestGCLockerWithShenandoah
  */
 
 /*
@@ -47,12 +49,12 @@
  * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
  *      -XX:+ShenandoahOOMDuringEvacALot
- *      TestGCLockerWithShenandoah
+ *      gc.stress.gclocker.TestGCLockerWithShenandoah
  *
  * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
  *      -XX:+ShenandoahAllocFailureALot
- *      TestGCLockerWithShenandoah
+ *      gc.stress.gclocker.TestGCLockerWithShenandoah
  */
 public class TestGCLockerWithShenandoah {
     public static void main(String[] args) {

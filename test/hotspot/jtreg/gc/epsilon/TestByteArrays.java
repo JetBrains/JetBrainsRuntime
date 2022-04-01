@@ -21,6 +21,8 @@
  * questions.
  */
 
+package gc.epsilon;
+
 /**
  * @test TestByteArrays
  * @key gc
@@ -29,41 +31,41 @@
  *
  * @run main/othervm -XX:+UseTLAB -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestByteArrays
+ *                   gc.epsilon.TestByteArrays
  *
  * @run main/othervm -XX:+UseTLAB -Xmx256m
  *                   -Xint
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestByteArrays
+ *                   gc.epsilon.TestByteArrays
  *
  * @run main/othervm -XX:+UseTLAB -Xmx256m
  *                   -Xbatch -Xcomp -XX:TieredStopAtLevel=1
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestByteArrays
+ *                   gc.epsilon.TestByteArrays
  *
  * @run main/othervm -XX:+UseTLAB -Xmx256m
  *                   -Xbatch -Xcomp -XX:-TieredCompilation
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestByteArrays
+ *                   gc.epsilon.TestByteArrays
  *
  * @run main/othervm -XX:-UseTLAB -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestByteArrays
+ *                   gc.epsilon.TestByteArrays
  *
  * @run main/othervm -XX:-UseTLAB -Xmx256m
  *                   -Xint
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestByteArrays
+ *                   gc.epsilon.TestByteArrays
  *
  * @run main/othervm -XX:-UseTLAB -Xmx256m
  *                   -Xbatch -Xcomp -XX:TieredStopAtLevel=1
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestByteArrays
+ *                   gc.epsilon.TestByteArrays
  *
  * @run main/othervm -XX:-UseTLAB -Xmx256m
  *                   -Xbatch -Xcomp -XX:-TieredCompilation
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestByteArrays
+ *                   gc.epsilon.TestByteArrays
  */
 
 import java.util.Random;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 
+package gc.g1;
+
 /**
  * @test TestShrinkAuxiliaryData00
  * @bug 8038423 8061715
@@ -29,12 +31,13 @@
  * @requires vm.gc.G1
  * @requires vm.opt.AggressiveOpts=="false" | vm.opt.AggressiveOpts=="null"
  * @library /test/lib
+ * @library /
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @build sun.hotspot.WhiteBox
  * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  *                              sun.hotspot.WhiteBox$WhiteBoxPermission
- * @run main/timeout=720 TestShrinkAuxiliaryData00
+ * @run main/timeout=720 gc.g1.TestShrinkAuxiliaryData00
  */
 public class TestShrinkAuxiliaryData00 {
 

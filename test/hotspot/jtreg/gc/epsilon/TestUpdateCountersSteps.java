@@ -21,6 +21,8 @@
  * questions.
  */
 
+package gc.epsilon;
+
 /**
  * @test TestUpdateCountersSteps
  * @key gc
@@ -30,22 +32,22 @@
  * @run main/othervm -Xmx64m -Xlog:gc
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonUpdateCountersStep=1
- *                   TestUpdateCountersSteps
+ *                   gc.epsilon.TestUpdateCountersSteps
  *
  * @run main/othervm -Xmx64m -Xlog:gc
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonUpdateCountersStep=10
- *                   TestUpdateCountersSteps
+ *                   gc.epsilon.TestUpdateCountersSteps
  *
  * @run main/othervm -Xmx64m -Xlog:gc
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonUpdateCountersStep=100
- *                   TestUpdateCountersSteps
+ *                   gc.epsilon.TestUpdateCountersSteps
  *
  * @run main/othervm -Xmx64m -Xlog:gc
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonUpdateCountersStep=1000
- *                   TestUpdateCountersSteps
+ *                   gc.epsilon.TestUpdateCountersSteps
  */
 
 public class TestUpdateCountersSteps {

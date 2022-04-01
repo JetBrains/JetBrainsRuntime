@@ -21,6 +21,8 @@
  * questions.
  */
 
+package gc.g1;
+
 /**
  * @test TestShrinkAuxiliaryData10
  * @bug 8038423 8061715 8078405
@@ -29,12 +31,13 @@
  * @requires vm.gc.G1
  * @requires vm.opt.AggressiveOpts=="false" | vm.opt.AggressiveOpts=="null"
  * @library /test/lib
+ * @library /
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @build sun.hotspot.WhiteBox
  * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  *                              sun.hotspot.WhiteBox$WhiteBoxPermission
- * @run main/timeout=720 TestShrinkAuxiliaryData10
+ * @run main/timeout=720 gc.g1.TestShrinkAuxiliaryData10
  */
 public class TestShrinkAuxiliaryData10 {
 

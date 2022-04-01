@@ -21,6 +21,8 @@
  * questions.
  */
 
+package gc.epsilon;
+
 /**
  * @test TestMaxTLAB
  * @key gc
@@ -31,46 +33,46 @@
  * @run main/othervm -Xmx64m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonMaxTLABSize=1
- *                   TestMaxTLAB
+ *                   gc.epsilon.TestMaxTLAB
  *
  * @run main/othervm -Xmx64m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonMaxTLABSize=1K
- *                   TestMaxTLAB
+ *                   gc.epsilon.TestMaxTLAB
  *
  * @run main/othervm -Xmx64m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonMaxTLABSize=1M
- *                   TestMaxTLAB
+ *                   gc.epsilon.TestMaxTLAB
  *
  * @run main/othervm -Xmx64m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonMaxTLABSize=12345
- *                   TestMaxTLAB
+ *                   gc.epsilon.TestMaxTLAB
  *
  * @run main/othervm -Xmx64m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonMaxTLABSize=1
  *                   -XX:+IgnoreUnrecognizedVMOptions -XX:ObjectAlignmentInBytes=16
- *                   TestMaxTLAB
+ *                   gc.epsilon.TestMaxTLAB
  *
  * @run main/othervm -Xmx64m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonMaxTLABSize=1K
  *                   -XX:+IgnoreUnrecognizedVMOptions -XX:ObjectAlignmentInBytes=16
- *                   TestMaxTLAB
+ *                   gc.epsilon.TestMaxTLAB
  *
  * @run main/othervm -Xmx64m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonMaxTLABSize=1M
  *                   -XX:+IgnoreUnrecognizedVMOptions -XX:ObjectAlignmentInBytes=16
- *                   TestMaxTLAB
+ *                   gc.epsilon.TestMaxTLAB
  *
  * @run main/othervm -Xmx64m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:EpsilonMaxTLABSize=12345
  *                   -XX:+IgnoreUnrecognizedVMOptions -XX:ObjectAlignmentInBytes=16
- *                   TestMaxTLAB
+ *                   gc.epsilon.TestMaxTLAB
  */
 
 public class TestMaxTLAB {

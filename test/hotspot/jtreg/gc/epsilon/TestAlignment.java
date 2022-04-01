@@ -21,6 +21,8 @@
  * questions.
  */
 
+package gc.epsilon;
+
 /**
  * @test TestAlignment
  * @key gc
@@ -30,21 +32,21 @@
  *
  * @run main/othervm -Xmx64m -XX:+UseTLAB
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestAlignment
+ *                   gc.epsilon.TestAlignment
  *
  * @run main/othervm -Xmx64m -XX:-UseTLAB
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestAlignment
+ *                   gc.epsilon.TestAlignment
  *
  * @run main/othervm -Xmx64m -XX:+UseTLAB
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:+IgnoreUnrecognizedVMOptions -XX:ObjectAlignmentInBytes=16
- *                   TestAlignment
+ *                   gc.epsilon.TestAlignment
  *
  * @run main/othervm -Xmx64m -XX:-UseTLAB
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
  *                   -XX:+IgnoreUnrecognizedVMOptions -XX:ObjectAlignmentInBytes=16
- *                   TestAlignment
+ *                   gc.epsilon.TestAlignment
  */
 
 public class TestAlignment {
