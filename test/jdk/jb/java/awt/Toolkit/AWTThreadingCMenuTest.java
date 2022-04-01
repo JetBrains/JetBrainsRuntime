@@ -1,6 +1,6 @@
 // Copyright 2000-2022 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
-package jdk.jb.java.awt.Toolkit;import javax.swing.*;
+import javax.swing.*;
 import java.util.function.Consumer;
 
 import static helper.ToolkitTestHelper.*;
