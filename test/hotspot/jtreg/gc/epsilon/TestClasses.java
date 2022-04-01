@@ -21,6 +21,8 @@
  * questions.
  */
 
+package gc.epsilon;
+
 /**
  * @test TestClasses
  * @key gc
@@ -33,7 +35,7 @@
  * @run main/othervm -Xmx256m
  *                   -XX:MetaspaceSize=1m -XX:MaxMetaspaceSize=64m -Xlog:gc -Xlog:gc+metaspace
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   TestClasses
+ *                   gc.epsilon.TestClasses
  */
 
 import jdk.internal.org.objectweb.asm.ClassWriter;

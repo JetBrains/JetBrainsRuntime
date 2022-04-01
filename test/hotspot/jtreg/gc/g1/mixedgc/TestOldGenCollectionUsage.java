@@ -12,7 +12,7 @@
  * version 2 for more details (a copy is included in the LICENSE file that
  * accompanied this code).
  *
- * You should have received a copy of the GNU General Public License version
+ * You should have received a copy of the GNU General Public License versionte
  * 2 along with this work; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  *
@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+package gc.g1.mixedgc;
 
 /*
  * @test TestOldGenCollectionUsage.java
@@ -32,7 +34,7 @@
  * @modules java.management
  * @build sun.hotspot.WhiteBox
  * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- * @run main/othervm -Xbootclasspath/a:. -XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -verbose:gc -XX:SurvivorRatio=1 -Xmx12m -Xms12m -XX:MaxTenuringThreshold=1 -XX:InitiatingHeapOccupancyPercent=100 -XX:-G1UseAdaptiveIHOP -XX:G1MixedGCCountTarget=4 -XX:MaxGCPauseMillis=30000 -XX:G1HeapRegionSize=1m -XX:G1HeapWastePercent=0 -XX:G1MixedGCLiveThresholdPercent=100 TestOldGenCollectionUsage
+ * @run main/othervm -Xbootclasspath/a:. -XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -verbose:gc -XX:SurvivorRatio=1 -Xmx12m -Xms12m -XX:MaxTenuringThreshold=1 -XX:InitiatingHeapOccupancyPercent=100 -XX:-G1UseAdaptiveIHOP -XX:G1MixedGCCountTarget=4 -XX:MaxGCPauseMillis=30000 -XX:G1HeapRegionSize=1m -XX:G1HeapWastePercent=0 -XX:G1MixedGCLiveThresholdPercent=100 gc.g1.mixedgc.TestOldGenCollectionUsage
  */
 
 import jdk.test.lib.Asserts;
