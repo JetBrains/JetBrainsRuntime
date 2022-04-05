@@ -28,9 +28,9 @@ import gc.testlibrary.PerfCounter;
 import gc.testlibrary.PerfCounters;
 
 
-/* @test TestGenerationPerfCounter
+/* @test TestGenerationPerfCounterSerial
  * @bug 8080345
- * @requires vm.gc=="null"
+ * @requires vm.gc.Serial
  * @library /test/lib /
  * @summary Tests that the sun.gc.policy.generations returns 2 for all GCs.
  * @modules java.base/jdk.internal.misc
@@ -38,14 +38,36 @@ import gc.testlibrary.PerfCounters;
  *          java.management/sun.management
  *          jdk.internal.jvmstat/sun.jvmstat.monitor
  * @run main/othervm -XX:+UsePerfData -XX:+UseSerialGC gc.TestGenerationPerfCounter
+ */
+
+/* @test TestGenerationPerfCounterParallel
+ * @bug 8080345
+ * @requires vm.gc.Parallel
+ * @library /test/lib /
+ * @summary Tests that the sun.gc.policy.generations returns 2 for all GCs.
+ * @modules java.base/jdk.internal.misc
+ *          java.compiler
+ *          java.management/sun.management
+ *          jdk.internal.jvmstat/sun.jvmstat.monitor
  * @run main/othervm -XX:+UsePerfData -XX:+UseParallelGC gc.TestGenerationPerfCounter
+ */
+
+/* @test TestGenerationPerfCounterG1
+ * @bug 8080345
+ * @requires vm.gc.G1
+ * @library /test/lib /
+ * @summary Tests that the sun.gc.policy.generations returns 2 for all GCs.
+ * @modules java.base/jdk.internal.misc
+ *          java.compiler
+ *          java.management/sun.management
+ *          jdk.internal.jvmstat/sun.jvmstat.monitor
  * @run main/othervm -XX:+UsePerfData -XX:+UseG1GC gc.TestGenerationPerfCounter
  */
 
 /* @test TestGenerationPerfCounterCMS
  * @bug 8080345
  * @comment Graal does not support CMS
- * @requires vm.gc=="null" & !vm.graal.enabled
+ * @requires vm.gc.ConcMarkSweep & !vm.graal.enabled
  * @library /test/lib /
  * @summary Tests that the sun.gc.policy.generations returns 2 for all GCs.
  * @modules java.base/jdk.internal.misc
