@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -103,8 +103,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public FramePeer createLightweightFrame(LightweightFrame target) {
-        log.info("Not implemented: WLToolkit.createLightweightFrame(LightweightFrame)");
-        return null;
+        FramePeer peer = new WLLightweightFramePeer(target);
+        targetCreatedPeer(target, peer);
+        return peer;
     }
 
     @Override
@@ -250,8 +251,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public CanvasPeer createCanvas(Canvas target) {
-        log.info("Not implemented: WLToolkit.createCanvas()");
-        return null;
+        WLCanvasPeer peer = new WLCanvasPeer(target);
+        targetCreatedPeer(target, peer);
+        return peer;
     }
 
     @Override

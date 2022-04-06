@@ -1,3 +1,29 @@
+/*
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, JetBrains s.r.o.. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 package sun.java2d.wl;
 
 import java.awt.GraphicsConfiguration;
@@ -6,17 +32,20 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
+import sun.awt.image.SunVolatileImage;
 import sun.awt.wl.WLComponentPeer;
-import sun.awt.wl.WLFramePeer;
 import sun.awt.wl.WLGraphicsConfig;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
+import sun.util.logging.PlatformLogger;
 
 public class WLSurfaceData extends SurfaceData {
 
+  private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.wl.WLSurfaceData");
   private final WLComponentPeer peer;
   private final WLGraphicsConfig graphicsConfig;
   private final int depth;
+
 
   public native void initSurface(WLComponentPeer peer, int rgb, int width, int height);
   protected native void initOps(WLComponentPeer peer, WLGraphicsConfig gc, int depth);
@@ -77,6 +106,18 @@ public class WLSurfaceData extends SurfaceData {
   @Override
   public Object getDestination() {
     return peer.getTarget();
+  }
+
+  public static boolean isAccelerationEnabled() {
+    return false;
+  }
+
+  public static SurfaceData createData(WLGraphicsConfig gc, int width, int height, ColorModel cm,
+                                       SunVolatileImage vImg, long drawable, int opaque,
+                                       boolean b) {
+    log.info("Not implemented: WLSurfaceData.createData(WLGraphicsConfig,int,int,ColorModel," +
+                                                       "SunVolatileImage,long,int,boolean)");
+    return null;
   }
 
 }

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,35 +26,46 @@
 
 package sun.awt.wl;
 
-import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsDevice;
+import java.awt.Graphics;
+import sun.awt.LightweightFrame;
+import sun.awt.OverrideNativeWindowHandle;
+import sun.swing.JLightweightFrame;
+import sun.swing.SwingAccessor;
 
-public class WLGraphicsDevice extends GraphicsDevice {
-    private double scale = 1.0;
+public class WLLightweightFramePeer extends WLFramePeer implements OverrideNativeWindowHandle {
 
-    private final WLGraphicsConfig config = new WLGraphicsConfig(this);
+    WLLightweightFramePeer(LightweightFrame target) {
+        super(target);
+    }
 
-    @Override
-    public int getType() {
-        return TYPE_RASTER_SCREEN;
+    private LightweightFrame getLwTarget() {
+        return (LightweightFrame)target;
     }
 
     @Override
-    public String getIDstring() {
-        return "WLGraphicsDevice";
+    public Graphics getGraphics() {
+        return getLwTarget().getGraphics();
+    }
+
+
+    @Override
+    public void updateCursorImmediately() {
+        SwingAccessor.getJLightweightFrameAccessor().updateCursor((JLightweightFrame)getLwTarget());
+    }
+
+    private volatile long overriddenWindowHandle;
+
+    @Override
+    public void overrideWindowHandle(final long handle) {
+        overriddenWindowHandle = handle;
+    }
+
+    public long getOverriddenWindowHandle() {
+        return overriddenWindowHandle;
     }
 
     @Override
-    public GraphicsConfiguration[] getConfigurations() {
-        return new GraphicsConfiguration[] {config};
-    }
-
-    @Override
-    public GraphicsConfiguration getDefaultConfiguration() {
-        return config;
-    }
-
-    public double getScaleFactor() {
-        return scale;
+    public void wlSetVisible(boolean visible) {
+        this.visible = visible;
     }
 }

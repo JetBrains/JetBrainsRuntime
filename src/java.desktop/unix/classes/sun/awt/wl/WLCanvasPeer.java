@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2002, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,38 +23,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package sun.awt.wl;
 
+import java.awt.Component;
 import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.peer.CanvasPeer;
 
-public class WLGraphicsDevice extends GraphicsDevice {
-    private double scale = 1.0;
+class WLCanvasPeer extends WLComponentPeer implements CanvasPeer {
 
-    private final WLGraphicsConfig config = new WLGraphicsConfig(this);
+    private boolean eraseBackgroundDisabled;
 
-    @Override
-    public int getType() {
-        return TYPE_RASTER_SCREEN;
+
+    WLCanvasPeer(Component target) {
+        super(target);
     }
 
-    @Override
-    public String getIDstring() {
-        return "WLGraphicsDevice";
+
+    public GraphicsConfiguration getAppropriateGraphicsConfiguration(
+                                    GraphicsConfiguration gc)
+    {
+        if (graphicsConfig == null || gc == null) {
+            return gc;
+        }
+
+        graphicsConfig = (WLGraphicsConfig) GraphicsEnvironment.
+                getLocalGraphicsEnvironment().
+                getScreenDevices()[0].
+                getDefaultConfiguration();
+
+
+        return graphicsConfig;
     }
 
-    @Override
-    public GraphicsConfiguration[] getConfigurations() {
-        return new GraphicsConfiguration[] {config};
+    protected boolean shouldFocusOnClick() {
+        // Canvas should always be able to be focused by mouse clicks.
+        return true;
     }
 
-    @Override
-    public GraphicsConfiguration getDefaultConfiguration() {
-        return config;
+    public void disableBackgroundErase() {
+        eraseBackgroundDisabled = true;
     }
-
-    public double getScaleFactor() {
-        return scale;
+    protected boolean doEraseBackground() {
+        return !eraseBackgroundDisabled;
     }
 }

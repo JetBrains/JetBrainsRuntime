@@ -51,7 +51,10 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
         super.wlSetVisible(v);
         final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
         for (Component c : ((Frame)target).getComponents()) {
-            ((WLComponentPeer)acc.getPeer(c)).wlSetVisible(v);
+            ComponentPeer cPeer = acc.getPeer(c);
+            if (cPeer instanceof WLComponentPeer) {
+                ((WLComponentPeer) cPeer).wlSetVisible(v);
+            }
         }
     }
 
