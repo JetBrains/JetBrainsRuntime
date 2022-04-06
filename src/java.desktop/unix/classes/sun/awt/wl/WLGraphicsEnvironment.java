@@ -7,9 +7,15 @@ import java.awt.GraphicsEnvironment;
 import java.awt.HeadlessException;
 import java.awt.image.BufferedImage;
 import java.util.Locale;
+import sun.java2d.SurfaceManagerFactory;
+import sun.java2d.UnixSurfaceManagerFactory;
 
 public class WLGraphicsEnvironment extends GraphicsEnvironment {
     private final WLGraphicsDevice device = new WLGraphicsDevice();
+
+    static {
+        SurfaceManagerFactory.setInstance(new UnixSurfaceManagerFactory());
+    }
 
     @Override
     public GraphicsDevice[] getScreenDevices() throws HeadlessException {
