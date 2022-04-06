@@ -103,8 +103,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public FramePeer createLightweightFrame(LightweightFrame target) {
-        log.info("Not implemented: WLToolkit.createLightweightFrame(LightweightFrame)");
-        return null;
+        FramePeer peer = new WLLightweightFramePeer(target);
+        targetCreatedPeer(target, peer);
+        return peer;
     }
 
     @Override
@@ -250,8 +251,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public CanvasPeer createCanvas(Canvas target) {
-        log.info("Not implemented: WLToolkit.createCanvas()");
-        return null;
+        WLCanvasPeer peer = new WLCanvasPeer(target);
+        targetCreatedPeer(target, peer);
+        return peer;
     }
 
     @Override

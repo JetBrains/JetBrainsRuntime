@@ -19,7 +19,7 @@ public class WLGraphicsConfig extends GraphicsConfiguration {
     }
 
     @Override
-    public GraphicsDevice getDevice() {
+    public WLGraphicsDevice getDevice() {
         return device;
     }
 
@@ -35,7 +35,8 @@ public class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public AffineTransform getDefaultTransform() {
-        throw new UnsupportedOperationException();
+        double scale = getScale();
+        return AffineTransform.getScaleInstance(scale, scale);
     }
 
     @Override
@@ -54,5 +55,9 @@ public class WLGraphicsConfig extends GraphicsConfiguration {
 
     public SurfaceData createSurfaceData(WLComponentPeer peer) {
         return WLSurfaceData.createData(peer);
+    }
+
+    public double getScale() {
+        return getDevice().getScaleFactor();
     }
 }

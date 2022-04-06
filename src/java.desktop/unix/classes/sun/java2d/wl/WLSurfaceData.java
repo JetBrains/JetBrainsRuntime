@@ -6,17 +6,20 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
+import sun.awt.image.SunVolatileImage;
 import sun.awt.wl.WLComponentPeer;
-import sun.awt.wl.WLFramePeer;
 import sun.awt.wl.WLGraphicsConfig;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
+import sun.util.logging.PlatformLogger;
 
 public class WLSurfaceData extends SurfaceData {
 
+  private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.wl.WLSurfaceData");
   private final WLComponentPeer peer;
   private final WLGraphicsConfig graphicsConfig;
   private final int depth;
+
 
   public native void initSurface(WLComponentPeer peer, int rgb, int width, int height);
   protected native void initOps(WLComponentPeer peer, WLGraphicsConfig gc, int depth);
@@ -77,6 +80,18 @@ public class WLSurfaceData extends SurfaceData {
   @Override
   public Object getDestination() {
     return peer.getTarget();
+  }
+
+  public static boolean isAccelerationEnabled() {
+    return false;
+  }
+
+  public static SurfaceData createData(WLGraphicsConfig gc, int width, int height, ColorModel cm,
+                                       SunVolatileImage vImg, long drawable, int opaque,
+                                       boolean b) {
+    log.info("Not implemented: WLSurfaceData.createData(WLGraphicsConfig,int,int,ColorModel," +
+                                                       "SunVolatileImage,long,int,boolean)");
+    return null;
   }
 
 }
