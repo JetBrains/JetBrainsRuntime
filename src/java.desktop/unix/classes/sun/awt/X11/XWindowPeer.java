@@ -65,6 +65,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     static final boolean ENABLE_REPARENTING_CHECK
             = "true".equals(GetPropertyAction.privilegedGetProperty("reparenting.check"));
+    private static final boolean ENABLE_DESKTOP_CHECK
+            = "true".equals(GetPropertyAction.privilegedGetProperty("transients.desktop.check", "true"));
 
     // should be synchronized on awtLock
     private static Set<XWindowPeer> windows = new HashSet<XWindowPeer>();
@@ -94,6 +96,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     private XEventDispatcher rootPropertyEventDispatcher = null;
 
     private static final AtomicBoolean isStartupNotificationRemoved = new AtomicBoolean();
+
+    private Long desktopId; // guarded by AWT lock
+    private boolean desktopIdInvalid; // guarded by AWT lock
 
     /*
      * Focus related flags
@@ -167,6 +172,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         params.put(EVENT_MASK, eventMask);
 
         XA_NET_WM_STATE = XAtom.get("_NET_WM_STATE");
+        XA_NET_WM_DESKTOP = XAtom.get("_NET_WM_DESKTOP");
 
 
         params.put(OVERRIDE_REDIRECT, X11_DISABLE_OVERRIDE_FLAG ? Boolean.FALSE : Boolean.valueOf(isOverrideRedirect()));
@@ -1740,7 +1746,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         if (!allStates && (window.getWMState() != transientForWindow.getWMState())) {
             return;
         }
-        if (window.getScreenNumber() != transientForWindow.getScreenNumber()) {
+        if (screenOrDesktopDiffers(window, transientForWindow)) {
             return;
         }
         long bpw = window.getWindow();
@@ -1777,7 +1783,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     void updateTransientFor() {
         int state = getWMState();
         XWindowPeer p = prevTransientFor;
-        while ((p != null) && ((p.getWMState() != state) || (p.getScreenNumber() != getScreenNumber()))) {
+        while ((p != null) && ((p.getWMState() != state) || screenOrDesktopDiffers(p, this))) {
             p = p.prevTransientFor;
         }
         if (p != null) {
@@ -1786,12 +1792,44 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             restoreTransientFor(this);
         }
         XWindowPeer n = nextTransientFor;
-        while ((n != null) && ((n.getWMState() != state) || (n.getScreenNumber() != getScreenNumber()))) {
+        while ((n != null) && ((n.getWMState() != state) || screenOrDesktopDiffers(n, this))) {
             n = n.nextTransientFor;
         }
         if (n != null) {
             setToplevelTransientFor(n, this, false, false);
         }
+    }
+
+    private Long getDesktopId() {
+        XToolkit.awtLock();
+        try {
+            if (desktopIdInvalid) {
+                desktopIdInvalid = false;
+                desktopId = null;
+                WindowPropertyGetter getter =
+                        new WindowPropertyGetter(window, XA_NET_WM_DESKTOP, 0, 1, false, XAtom.XA_CARDINAL);
+                try {
+                    if (getter.execute() == XConstants.Success &&
+                            getter.getActualType() == XAtom.XA_CARDINAL &&
+                            getter.getActualFormat() == 32) {
+                        long ptr = getter.getData();
+                        if (ptr != 0) {
+                            desktopId = Native.getCard32(ptr);
+                        }
+                    }
+                } finally {
+                    getter.dispose();
+                }
+            }
+            return desktopId;
+        } finally {
+            XToolkit.awtUnlock();
+        }
+    }
+
+    private static boolean screenOrDesktopDiffers(XWindowPeer p1, XWindowPeer p2) {
+        return p1.getScreenNumber() != p2.getScreenNumber() ||
+                ENABLE_DESKTOP_CHECK && !Objects.equals(p1.getDesktopId(), p2.getDesktopId());
     }
 
     /*
@@ -2173,6 +2211,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         cachedFocusableWindow = isFocusableWindow();
     }
 
+    XAtom XA_NET_WM_DESKTOP;
     XAtom XA_NET_WM_STATE;
     XAtomList net_wm_state;
     public XAtomList getNETWMState() {
@@ -2192,14 +2231,20 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     @Override
     public void handlePropertyNotify(XEvent xev) {
         super.handlePropertyNotify(xev);
+        XPropertyEvent ev = xev.get_xproperty();
         if (isMapped()) { // we assume window manager isn't changing the property for unmapped windows
-            XPropertyEvent ev = xev.get_xproperty();
             if (ev.get_atom() == XA_NET_WM_STATE.getAtom()) {
                 // State has changed, invalidate saved value
                 net_wm_state = null;
                 if (log.isLoggable(PlatformLogger.Level.FINEST)) {
                     log.finest(XA_NET_WM_STATE + " property changed by window manager, clearing cached value");
                 }
+            }
+        }
+        if (ev.get_atom() == XA_NET_WM_DESKTOP.getAtom()) {
+            desktopIdInvalid = true;
+            if (ENABLE_DESKTOP_CHECK) {
+                updateTransientFor();
             }
         }
     }
