@@ -1104,7 +1104,6 @@ static jobject sAccessibilityClass = NULL;
     DECLARE_STATIC_METHOD_RETURN(jm_accessibilityHitTest, sjc_CAccessibility, "accessibilityHitTest",
                                  "(Ljava/awt/Container;FF)Ljavax/accessibility/Accessible;", nil);
 
-    GET_CACCESSIBILITY_CLASS_RETURN(nil);
     // Make it into java screen coords
     point.y = [[[[self view] window] screen] frame].size.height - point.y;
 
