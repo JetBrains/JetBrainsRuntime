@@ -1282,7 +1282,6 @@ bool LibraryCallKit::inline_preconditions_checkIndex() {
   result = _gvn.transform(result);
   set_result(result);
   replace_in_map(index, result);
-  clear_upper_avx();
   return true;
 }
 
