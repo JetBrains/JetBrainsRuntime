@@ -141,7 +141,7 @@ function create_jbr {
   rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 }
 
-JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
+JBRSDK_BASE_NAME=jbrsdk_${bundle_type}-${JBSDK_VERSION}
 WITH_DEBUG_LEVEL="--with-debug-level=release"
 CONF_ARCHITECTURE=x86_64
 if [[ "${architecture}" == *aarch64* ]]; then
@@ -149,7 +149,7 @@ if [[ "${architecture}" == *aarch64* ]]; then
 fi
 CONF_NAME=macosx-${CONF_ARCHITECTURE}-normal-server-release
 
-JBSDK=${JBRSDK_BASE_NAME}-osx-${architecture}-b${build_number}
+JBSDK="${JBRSDK_BASE_NAME}-osx-${architecture}-b${build_number}"
 case "$bundle_type" in
   "jcef")
     git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
@@ -186,7 +186,11 @@ make images CONF=$CONF_NAME || do_exit $?
 JSDK=build/${CONF_NAME}/images/jdk-bundle
 
 BASE_DIR=jre
-JBRSDK_BUNDLE=jbrsdk
+if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ]; then
+  JBRSDK_BUNDLE=jbrsdk_${bundle_type}
+else
+  JBRSDK_BUNDLE=jbrsdk
+fi
 
 rm -rf $BASE_DIR
 mkdir $BASE_DIR || do_exit $?
@@ -194,7 +198,7 @@ cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || do_exit
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
   cp -a ${JCEF_PATH}/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 fi
-if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "fd" ]; then
+if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
   echo Creating $JBSDK.tar.gz ...
   sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release

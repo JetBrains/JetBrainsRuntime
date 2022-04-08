@@ -94,7 +94,7 @@ function create_jbr {
   rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 }
 
-JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
+JBRSDK_BASE_NAME=jbrsdk_${bundle_type}-${JBSDK_VERSION}
 WITH_DEBUG_LEVEL="--with-debug-level=release"
 RELEASE_NAME=linux-x86_64-normal-server-release
 JBSDK=${JBRSDK_BASE_NAME}-linux-x64-b${build_number}
@@ -137,7 +137,11 @@ echo Fixing permissions
 chmod -R a+r $JSDK
 
 BASE_DIR=build/${RELEASE_NAME}/images
-JBRSDK_BUNDLE=jbrsdk
+if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ]; then
+  JBRSDK_BUNDLE=jbrsdk_${bundle_type}
+else
+  JBRSDK_BUNDLE=jbrsdk
+fi
 
 rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE}
 cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || do_exit $?
@@ -145,7 +149,7 @@ cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || do_exit $?
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
   rsync -av ${JCEF_PATH}/ $BASE_DIR/$JBRSDK_BUNDLE/lib --exclude="modular-sdk" || do_exit $?
 fi
-if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "fd" ]; then
+if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
   echo Creating $JBSDK.tar.gz ...
   sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
   mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
