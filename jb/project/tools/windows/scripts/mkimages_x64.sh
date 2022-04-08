@@ -91,7 +91,7 @@ function create_jbr {
   cat ${JSDK}/release | tr -d '\r' | grep -v 'JAVA_VERSION' | grep -v 'MODULES' >> ${JBR_BUNDLE}/release
 }
 
-JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
+JBRSDK_BASE_NAME=jbrsdk_${bundle_type}-${JBSDK_VERSION}
 WITH_DEBUG_LEVEL="--with-debug-level=release"
 RELEASE_NAME=windows-x86_64-normal-server-release
 JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
@@ -140,7 +140,13 @@ fi
 
 JSDK=build/$RELEASE_NAME/images/jdk
 BASE_DIR=build/$RELEASE_NAME/images
-JBRSDK_BUNDLE=jbrsdk
+BASE_DIR=jre
+if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ]; then
+  JBRSDK_BUNDLE=jbrsdk_${bundle_type}
+else
+  JBRSDK_BUNDLE=jbrsdk
+fi
+
 
 rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE} && rsync -a --exclude demo --exclude sample ${JSDK}/ ${JBRSDK_BUNDLE} || do_exit $?
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]
