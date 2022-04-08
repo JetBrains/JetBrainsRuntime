@@ -31,32 +31,41 @@ build_number=$3
 
 
 read -r -d '' allArtifacts << EndOFArtifactsList
-jbr-${jbsdk_version}-linux-aarch64-b${build_number}.tar.gz
 jbr-${jbsdk_version}-linux-x86-b${build_number}.tar.gz
 jbr-${jbsdk_version}-windows-x86-b${build_number}.tar.gz
+
+jbr_dcevm-${jbsdk_version}-linux-aarch64-b${build_number}.tar.gz
 jbr_dcevm-${jbsdk_version}-linux-x64-b${build_number}.tar.gz
 jbr_dcevm-${jbsdk_version}-osx-aarch64-b${build_number}.tar.gz
 jbr_dcevm-${jbsdk_version}-osx-x64-b${build_number}.tar.gz
 jbr_dcevm-${jbsdk_version}-windows-x64-b${build_number}.tar.gz
+
 jbr_fd-${jbsdk_version}-linux-x64-b${build_number}.tar.gz
 jbr_fd-${jbsdk_version}-osx-aarch64-b${build_number}.tar.gz
 jbr_fd-${jbsdk_version}-osx-x64-b${build_number}.tar.gz
 jbr_fd-${jbsdk_version}-windows-x64-b${build_number}.tar.gz
+
+jbr_jcef-${jbsdk_version}-linux-aarch64-b${build_number}.tar.gz
 jbr_jcef-${jbsdk_version}-linux-x64-b${build_number}.tar.gz
 jbr_jcef-${jbsdk_version}-osx-aarch64-b${build_number}.tar.gz
 jbr_jcef-${jbsdk_version}-osx-x64-b${build_number}.tar.gz
 jbr_jcef-${jbsdk_version}-windows-x64-b${build_number}.tar.gz
+
+jbr_nomod-${jbsdk_version}-linux-aarch64-b${build_number}.tar.gz
 jbr_nomod-${jbsdk_version}-linux-x64-b${build_number}.tar.gz
 jbr_nomod-${jbsdk_version}-osx-aarch64-b${build_number}.tar.gz
 jbr_nomod-${jbsdk_version}-osx-x64-b${build_number}.tar.gz
 jbr_nomod-${jbsdk_version}-windows-x64-b${build_number}.tar.gz
-jbrsdk-${jbsdk_version}-linux-aarch64-b${build_number}.tar.gz
+
 jbrsdk-${jbsdk_version}-linux-x86-b${build_number}.tar.gz
+jbrsdk-${jbsdk_version}-windows-x86-b${build_number}.tar.gz
+
+jbrsdk-${jbsdk_version}-linux-aarch64-fastdebug-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-linux-x64-fastdebug-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-osx-aarch64-fastdebug-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-osx-x64-fastdebug-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-windows-x64-fastdebug-b${build_number}.tar.gz
-jbrsdk-${jbsdk_version}-windows-x86-b${build_number}.tar.gz
+
 jbrsdk-${jbsdk_version}-linux-test-aarch64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-linux-test-x86-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-linux-test-x64-b${build_number}.tar.gz
@@ -64,14 +73,20 @@ jbrsdk-${jbsdk_version}-osx-test-aarch64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-osx-test-x64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-windows-test-x64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-windows-test-x86-b${build_number}.tar.gz
+
+jbrsdk_dcevm-${jbsdk_version}-linux-aarch64-b${build_number}.tar.gz
 jbrsdk_dcevm-${jbsdk_version}-linux-x64-b${build_number}.tar.gz
 jbrsdk_dcevm-${jbsdk_version}-osx-aarch64-b${build_number}.tar.gz
 jbrsdk_dcevm-${jbsdk_version}-osx-x64-b${build_number}.tar.gz
 jbrsdk_dcevm-${jbsdk_version}-windows-x64-b${build_number}.tar.gz
+
+jbrsdk_jcef-${jbsdk_version}-linux-aarch64-b${build_number}.tar.gz
 jbrsdk_jcef-${jbsdk_version}-linux-x64-b${build_number}.tar.gz
 jbrsdk_jcef-${jbsdk_version}-osx-aarch64-b${build_number}.tar.gz
 jbrsdk_jcef-${jbsdk_version}-osx-x64-b${build_number}.tar.gz
 jbrsdk_jcef-${jbsdk_version}-windows-x64-b${build_number}.tar.gz
+
+jbrsdk_nomod-${jbsdk_version}-linux-aarch64-b${build_number}.tar.gz
 jbrsdk_nomod-${jbsdk_version}-linux-x64-b${build_number}.tar.gz
 jbrsdk_nomod-${jbsdk_version}-osx-aarch64-b${build_number}.tar.gz
 jbrsdk_nomod-${jbsdk_version}-osx-x64-b${build_number}.tar.gz
@@ -81,19 +96,29 @@ EndOFArtifactsList
 testname="JBRArtifacts"
 count=$(echo $allArtifacts | wc -w)
 n=0
-echo "\#\#teamcity[testStarted name=\'$testname\']"
-for relpath in $dirname/*; do
+echo \#\#teamcity[testStarted name=\'$testname\']
+echo "Non existing artifacts:"
+for artifact in $allArtifacts; do
+  isFound=$(ls $dirname | grep -c $artifact)
+  if [ $isFound -eq 0 ]; then
+    n=$((n+1))
+    echo -e "\t$artifact"
+  fi
+done
+
+echo "Extra artifacts:"
+for relpath in $(ls $dirname); do
   filename=$(basename $relpath)
   isFound=$(echo $allArtifacts | grep -c $filename)
-  if [ $isFound -gt 0 ]; then
-    echo "$filename found"
-  else
+  if [ $isFound -eq 0 ]; then
     n=$((n+1))
-    echo "$filename cannot be found"
+    echo -e "\t$filename"
   fi
 done
 if [ $n -eq 0 ]; then
-  echo "\#\#teamcity[testFinished name=\'$testname\']"
+  echo \#\#teamcity[testFinished name=\'$testname\']
 else
-  echo "\#\#teamcity[testFailed name=\'$testname\' message=\'Some artifacts cannot be found\']"
+  echo \#\#teamcity[testFailed name=\'$testname\' message=\'Some artifacts cannot be found\']
 fi
+
+exit $n
