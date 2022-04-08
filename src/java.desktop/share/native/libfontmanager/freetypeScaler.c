@@ -1676,7 +1676,6 @@ static jlong
     int error, imageSize;
     UInt16 width, height, rowBytes;
     GlyphInfo *glyphInfo;
-    int target;
     FT_GlyphSlot ftglyph;
     FT_Library library;
 
@@ -1752,19 +1751,6 @@ static jlong
      we might also prefer to disable transform before hinting,
      and apply it explicitly after hinting is performed.
      Or we can disable hinting. */
-
-    /* select appropriate hinting mode */
-    if (context->aaType == TEXT_AA_ON || context->colorFont) {
-        target = FT_LOAD_TARGET_NORMAL;
-    } else if (context->aaType == TEXT_AA_OFF) {
-        target = FT_LOAD_TARGET_MONO;
-    } else if (context->aaType == TEXT_AA_LCD_HRGB ||
-               context->aaType == TEXT_AA_LCD_HBGR) {
-        target = FT_LOAD_TARGET_LCD;
-    } else {
-        target = FT_LOAD_TARGET_LCD_V;
-    }
-    context->loadFlags |= target;
 
     error = FT_Load_Glyph(scalerInfo->face, glyphCode, context->loadFlags);
     /* If hinted rendering fails for the specific reason of a bad FDEF reference,
@@ -2117,6 +2103,7 @@ Java_sun_font_FreetypeFontScaler_getGlyphCodeNative(
 static FT_Outline* getFTOutline(JNIEnv* env, jobject font2D,
         FTScalerContext *context, FTScalerInfo* scalerInfo,
         jint glyphCode, jfloat xpos, jfloat ypos) {
+
     FT_Error error;
     FT_GlyphSlot ftglyph;
     FT_Int32 loadFlags;
@@ -2132,7 +2119,7 @@ static FT_Outline* getFTOutline(JNIEnv* env, jobject font2D,
     }
 
     // We cannot get an outline from bitmap version of glyph
-    loadFlags = FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP;
+    loadFlags = context->loadFlags | FT_LOAD_NO_BITMAP;
 
     error = FT_Load_Glyph(scalerInfo->face, glyphCode, loadFlags);
     if (error) {
