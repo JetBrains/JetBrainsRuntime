@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 #
 # Copyright 2000-2022 JetBrains s.r.o.
@@ -85,19 +85,27 @@ EndOFArtifactsList
 testname="JBRArtifacts"
 count=$(echo $allArtifacts | wc -w)
 n=0
-echo "\#\#teamcity[testStarted name=\'$testname\']"
-for relpath in $dirname/*; do
+echo \#\#teamcity[testStarted name=\'$testname\']
+echo "Non existing artifacts:"
+for artifact in $allArtifacts; do
+  isFound=$(ls $dirname | grep -c $artifact)
+  if [ $isFound -eq 0 ]; then
+    n=$((n+1))
+    echo -e "\t$artifact"
+  fi
+done
+
+echo "Extra artifacts:"
+for relpath in $(ls $dirname); do
   filename=$(basename $relpath)
   isFound=$(echo $allArtifacts | grep -c $filename)
-  if [ $isFound -gt 0 ]; then
-    echo "$filename found"
-  else
+  if [ $isFound -eq 0 ]; then
     n=$((n+1))
-    echo "$filename cannot be found"
+    echo -e "\t$filename"
   fi
 done
 if [ $n -eq 0 ]; then
-  echo "\#\#teamcity[testFinished name=\'$testname\']"
+  echo \#\#teamcity[testFinished name=\'$testname\']
 else
-  echo "\#\#teamcity[testFailed name=\'$testname\' message=\'Some artifacts cannot be found\']"
+  echo \#\#teamcity[testFailed name=\'$testname\' message=\'Some artifacts cannot be found\']
 fi
