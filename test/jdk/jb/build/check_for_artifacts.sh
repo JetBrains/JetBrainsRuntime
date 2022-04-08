@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 #
 # Copyright 2000-2022 JetBrains s.r.o.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
