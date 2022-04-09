@@ -25,9 +25,10 @@ package gc.epsilon;
 
 /**
  * @test TestObjects
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Epsilon & !vm.graal.enabled
  * @summary Epsilon is able to allocate objects, and does not corrupt their state
+ * @library /test/lib
  *
  * @run main/othervm -XX:+UseTLAB -Xmx256m
  *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
@@ -69,23 +70,22 @@ package gc.epsilon;
  */
 
 import java.util.Random;
+import jdk.test.lib.Utils;
 
 public class TestObjects {
-
-  static long SEED = Long.getLong("seed", System.nanoTime());
   static int COUNT = Integer.getInteger("count", 1_000_000); // ~24 MB allocation
 
   static MyObject[] arr;
 
   public static void main(String[] args) throws Exception {
-    Random r = new Random(SEED);
+    Random r = Utils.getRandomInstance();
 
     arr = new MyObject[COUNT];
     for (int c = 0; c < COUNT; c++) {
       arr[c] = new MyObject(r.nextInt());
     }
 
-    r = new Random(SEED);
+    r = new Random(Utils.SEED);
     for (int c = 0; c < COUNT; c++) {
       int expected = r.nextInt();
       int actual = arr[c].id();

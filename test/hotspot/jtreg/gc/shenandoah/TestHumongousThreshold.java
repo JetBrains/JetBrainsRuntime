@@ -23,8 +23,9 @@
 
 /*
  * @test TestHumongousThreshold
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib
  *
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g
  *                   -XX:+ShenandoahVerify
@@ -68,8 +69,9 @@
 
 /*
  * @test TestHumongousThreshold
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Shenandoah & !vm.graal.enabled & (vm.bits == "64")
+ * @library /test/lib
  *
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g
  *                   -XX:ObjectAlignmentInBytes=16 -XX:+ShenandoahVerify
@@ -105,6 +107,7 @@
  */
 
 import java.util.Random;
+import jdk.test.lib.Utils;
 
 public class TestHumongousThreshold {
 
@@ -117,7 +120,7 @@ public class TestHumongousThreshold {
         final int max = 384 * 1024;
         long count = TARGET_MB * 1024 * 1024 / (16 + 4 * (min + (max - min) / 2));
 
-        Random r = new Random();
+        Random r = Utils.getRandomInstance();
         for (long c = 0; c < count; c++) {
             sink = new int[min + r.nextInt(max - min)];
         }

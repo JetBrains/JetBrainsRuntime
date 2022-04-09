@@ -23,8 +23,9 @@
 
 /* @test TestPinnedGarbage
  * @summary Test that garbage in the pinned region does not crash VM
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib
  *
  * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx128m
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=passive
@@ -39,8 +40,9 @@
 
 /* @test TestPinnedGarbage
  * @summary Test that garbage in the pinned region does not crash VM
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib
  *
  * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx128m
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
@@ -53,7 +55,8 @@
  */
 
 import java.util.Arrays;
-import java.util.concurrent.*;
+import java.util.Random;
+import jdk.test.lib.Utils;
 
 public class TestPinnedGarbage {
     static {
@@ -68,13 +71,13 @@ public class TestPinnedGarbage {
     private static native void unpin(int[] a);
 
     public static void main(String[] args) {
-        ThreadLocalRandom rng = ThreadLocalRandom.current();
+        Random rng = Utils.getRandomInstance();
         for (int i = 0; i < NUM_RUNS; i++) {
             test(rng);
         }
     }
 
-    private static void test(ThreadLocalRandom rng) {
+    private static void test(Random rng) {
         Object[] objs = new Object[OBJS_COUNT];
         for (int i = 0; i < OBJS_COUNT; i++) {
             objs[i] = new MyClass();

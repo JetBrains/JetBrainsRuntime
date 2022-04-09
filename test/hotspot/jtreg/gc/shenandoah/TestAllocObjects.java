@@ -186,8 +186,6 @@
  *      TestAllocObjects
  */
 
-import java.util.Random;
-
 public class TestAllocObjects {
 
     static final long TARGET_MB = Long.getLong("target", 10_000); // 10 Gb allocation

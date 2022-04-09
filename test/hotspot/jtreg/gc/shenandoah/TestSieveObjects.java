@@ -24,8 +24,9 @@
 /*
  * @test TestSieveObjects
  * @summary Acceptance tests: collector can deal with retained objects
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=passive
@@ -51,8 +52,9 @@
 /*
  * @test TestSieveObjects
  * @summary Acceptance tests: collector can deal with retained objects
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
@@ -123,8 +125,9 @@
 /*
  * @test TestSieveObjects
  * @summary Acceptance tests: collector can deal with retained objects
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu -XX:ShenandoahGCHeuristics=aggressive
@@ -157,7 +160,8 @@
  *      TestSieveObjects
  */
 
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Random;
+import jdk.test.lib.Utils;
 
 public class TestSieveObjects {
 
@@ -169,17 +173,18 @@ public class TestSieveObjects {
 
     public static void main(String[] args) throws Exception {
         int rIdx = 0;
+        Random rng = Utils.getRandomInstance();
         for (int c = 0; c < COUNT; c++) {
             MyObject v = arr[rIdx];
             if (v != null) {
                 if (v.x != rIdx) {
                     throw new IllegalStateException("Illegal value at index " + rIdx + ": " + v.x);
                 }
-                if (ThreadLocalRandom.current().nextInt(1000) > 100) {
+                if (rng.nextInt(1000) > 100) {
                     arr[rIdx] = null;
                 }
             } else {
-                if (ThreadLocalRandom.current().nextInt(1000) > 500) {
+                if (rng.nextInt(1000) > 500) {
                     arr[rIdx] = new MyObject(rIdx);
                 }
             }

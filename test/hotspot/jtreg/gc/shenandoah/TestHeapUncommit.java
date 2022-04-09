@@ -24,8 +24,9 @@
 /*
  * @test TestHeapUncommit
  * @summary Acceptance tests: collector can withstand allocation
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib
  *
  * @run main/othervm -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahUncommit -XX:ShenandoahUncommitDelay=0
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=passive
@@ -51,8 +52,9 @@
 /*
  * @test TestHeapUncommit
  * @summary Acceptance tests: collector can withstand allocation
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib
  *
  * @run main/othervm -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahUncommit -XX:ShenandoahUncommitDelay=0
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=adaptive
@@ -84,8 +86,9 @@
 /*
  * @test TestHeapUncommit
  * @summary Acceptance tests: collector can withstand allocation
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib
  *
  * @run main/othervm -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahUncommit -XX:ShenandoahUncommitDelay=0
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu
@@ -103,8 +106,9 @@
 
 /*
  * @test TestHeapUncommit
- * @key gc
+ * @key gc randomness
  * @requires vm.gc.Shenandoah & !vm.graal.enabled & (vm.bits == "64")
+ * @library /test/lib
  *
  * @run main/othervm -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahUncommit -XX:ShenandoahUncommitDelay=0 -XX:+UseLargePages
  *      -XX:+UseShenandoahGC
@@ -122,6 +126,7 @@
  */
 
 import java.util.Random;
+import jdk.test.lib.Utils;
 
 public class TestHeapUncommit {
 
@@ -134,7 +139,7 @@ public class TestHeapUncommit {
         final int max = 384 * 1024;
         long count = TARGET_MB * 1024 * 1024 / (16 + 4 * (min + (max - min) / 2));
 
-        Random r = new Random();
+        Random r = Utils.getRandomInstance();
         for (long c = 0; c < count; c++) {
             sink = new int[min + r.nextInt(max - min)];
         }

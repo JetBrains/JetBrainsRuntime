@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,7 @@ import java.util.Random;
 
 /**
  * @test TestUnifiedLoggingSwitchStress
- * @key gc stress
+ * @key gc stress randomness
  * @summary Switches gc log level on fly while stressing memory/gc
  * @requires !vm.flightRecorder
  * @requires vm.gc != "Z"
@@ -76,7 +76,7 @@ class MemoryStresser implements Runnable {
      * Maximum size of dead (i.e. one which is made unreachable right after allocation) object
      */
     private static final int DEAD_OBJECT_MAX_SIZE = G1_REGION_SIZE / 10;
-    private static final Random RND = Utils.getRandomInstance();
+    private final Random rnd = new Random(Utils.getRandomInstance().nextLong());
 
     /**
      * @param maxMemory maximum memory that could be allocated
@@ -89,7 +89,7 @@ class MemoryStresser implements Runnable {
             // Huge allocation
             () -> {
                 if (liveHObjects.size() < H_ALLOCATION_MAX_COUNT) {
-                    int allocationSize = RND.nextInt((int) (G1_REGION_SIZE * (H_ALLOCATION_REGION_SIZE - 0.5)
+                    int allocationSize = rnd.nextInt((int) (G1_REGION_SIZE * (H_ALLOCATION_REGION_SIZE - 0.5)
                             * 0.9));
                     liveHObjects.add(new byte[allocationSize + G1_REGION_SIZE / 2]);
                 }
@@ -98,7 +98,7 @@ class MemoryStresser implements Runnable {
             // Huge deallocation
             () -> {
                 if (liveHObjects.size() > 0) {
-                    int elementNum = RND.nextInt(liveHObjects.size());
+                    int elementNum = rnd.nextInt(liveHObjects.size());
                     liveHObjects.remove(elementNum);
                 }
             },
@@ -106,7 +106,7 @@ class MemoryStresser implements Runnable {
             // Simple allocation
             () -> {
                 if (maxSimpleAllocationMemory - usedMemory != 0) {
-                    int arraySize = RND.nextInt(Math.min(maxSimpleAllocationMemory - usedMemory,
+                    int arraySize = rnd.nextInt(Math.min(maxSimpleAllocationMemory - usedMemory,
                             MAX_SIMPLE_ALLOCATION_SIZE));
                     if (arraySize != 0) {
                         liveObjects.add(new byte[arraySize]);
@@ -118,7 +118,7 @@ class MemoryStresser implements Runnable {
             // Simple deallocation
             () -> {
                 if (liveObjects.size() != 0) {
-                    int elementNum = RND.nextInt(liveObjects.size());
+                    int elementNum = rnd.nextInt(liveObjects.size());
                     int shouldFree = liveObjects.get(elementNum).length;
                     liveObjects.remove(elementNum);
                     usedMemory -= shouldFree;
@@ -127,7 +127,7 @@ class MemoryStresser implements Runnable {
 
             // Dead object allocation
             () -> {
-                int size = RND.nextInt(DEAD_OBJECT_MAX_SIZE);
+                int size = rnd.nextInt(DEAD_OBJECT_MAX_SIZE);
                 byte[] deadObject = new byte[size];
             }
     };
@@ -135,7 +135,7 @@ class MemoryStresser implements Runnable {
     @Override
     public void run() {
         while (!shouldStop) {
-            actions[RND.nextInt(actions.length)].run();
+            actions[rnd.nextInt(actions.length)].run();
             Thread.yield();
         }
 
@@ -148,7 +148,7 @@ class LogLevelSwitcher implements Runnable {
     public static volatile boolean shouldStop = false;
     private final int logCount; // how many various log files will be used
     private final String logFilePrefix; // name of log file will be logFilePrefix + index
-    private final Random RND = Utils.getRandomInstance();
+    private final Random rnd;
     private final MBeanServer MBS = ManagementFactory.getPlatformMBeanServer();
 
     /**
@@ -158,7 +158,7 @@ class LogLevelSwitcher implements Runnable {
     public LogLevelSwitcher(String logFilePrefix, int logCount) {
         this.logCount = logCount;
         this.logFilePrefix = logFilePrefix;
-
+        this.rnd = new Random(Utils.getRandomInstance().nextLong());
     }
 
     private static final String[] LOG_LEVELS = {"error", "warning", "info", "debug", "trace"};
@@ -167,8 +167,8 @@ class LogLevelSwitcher implements Runnable {
     public void run() {
 
         while (!shouldStop) {
-            int fileNum = RND.nextInt(logCount);
-            int logLevel = RND.nextInt(LOG_LEVELS.length);
+            int fileNum = rnd.nextInt(logCount);
+            int logLevel = rnd.nextInt(LOG_LEVELS.length);
 
             String outputCommand = String.format("output=%s_%d.log", logFilePrefix, fileNum);
             String logLevelCommand = "what='gc*=" + LOG_LEVELS[logLevel] + "'";
