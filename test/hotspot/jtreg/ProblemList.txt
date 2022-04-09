@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -93,6 +93,8 @@ gc/survivorAlignment/TestPromotionFromSurvivorToTenuredAfterMinorGC.java 8177765
 gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java 8192647 generic-all
 gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java 8193639 solaris-all
 gc/stress/gcbasher/TestGCBasherWithCMS.java 8272195 generic-i586
+gc/cms/TestBubbleUpRef.java  8272195 generic-i586
+gc/stress/gcold/TestGCOldWithCMS.java 8272195 generic-i586
 
 #############################################################################
 
