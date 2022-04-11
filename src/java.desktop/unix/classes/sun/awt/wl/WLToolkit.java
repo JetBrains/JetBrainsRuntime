@@ -73,12 +73,51 @@ import sun.awt.*;
 import sun.awt.datatransfer.DataTransferer;
 import sun.util.logging.PlatformLogger;
 
+/**
+ * On events handling: the WLToolkit class creates a thread named "AWT-Wayland"
+ * where the communication with the Wayland server is chiefly carried on such
+ * as sending requests over and receiving events from the server.
+ * For "system" events that are not meant to trigger any user code, a separate
+ * thread is utilized called "AWT-Wayland-system-dispatcher". It is the only
+ * thread where such events are handled. For other events, such as mouse click
+ * events, the Wayland handlers are supposed to "transfer" themselves to
+ * "AWT-EventThread" by means of SunToolkit.postEvent(). See the implementation
+ * of run() method for more comments.
+ */
 public class WLToolkit extends UNIXToolkit implements Runnable {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLToolkit");
 
-    private static final int READ_RESULT_NOT_STARTED = 0;
+    /**
+     * Maximum wait time in ms between attempts to receive more data (events)
+     * from the Wayland server on the toolkit thread.
+     */
+    private static final int WAYLAND_DISPLAY_INTERACTION_TIMEOUT_MS = 50;
+
+    /**
+     * Returned by readEvents() to signify the presence of new events
+     * on the default Wayland display queue that have not been dispatched yet.
+     */
+    private static final int READ_RESULT_FINISHED_WITH_EVENTS = 0;
+
+    /**
+     * Returned by readEvents() to signify the total absence of events
+     * on any of the Wayland display queues.
+     */
     private static final int READ_RESULT_FINISHED_NO_EVENTS = 1;
-    private static final int READ_RESULT_FINISHED_WITH_EVENTS = 2;
+
+    /**
+     * Returned by readEvents() to signify the absence of *new* events
+     * on the default Wayland display queue. The existing events
+     * should better be dispatched prior to calling readEvents() again.
+     */
+    private static final int READ_RESULT_NO_NEW_EVENTS = 2;
+
+    /**
+     * Returned by readEvents() in case of an error condition like
+     * disappearing of the Wayland display. Errors not specifically
+     * related to Wayland are reported via an exception.
+     */
+    private static final int READ_RESULT_ERROR = 3;
 
     private static native void initIDs();
 
@@ -92,6 +131,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         Thread toolkitThread = new Thread(this, "AWT-Wayland");
         toolkitThread.setDaemon(true);
         toolkitThread.start();
+
+        final Thread toolkitSystemThread = new Thread(this::dispatchNonDefaultQueues, "AWT-Wayland-system-dispatcher");
+        toolkitSystemThread.setDaemon(true);
+        toolkitSystemThread.start();
     }
 
     @Override
@@ -115,22 +158,48 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return peer;
     }
 
+    /**
+     * Wayland events coming to queues other that the default are handled here.
+     * The code is executed on a separate thread and must not call any user code.
+     */
+    private void dispatchNonDefaultQueues() {
+        dispatchNonDefaultQueuesImpl(); // does not return until error or server disconnect
+    }
+
     @Override
     public void run() {
         while(true) {
             int result = readEvents();
-            if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
+            // TODO: the result of the very first call can theoretically be READ_RESULT_NO_NEW_EVENTS
+            // and that assumes we already have a dispatcher queued, which is initially not so.
+            // Can be solved by queueing dispatch once in the very beginning (?)
+
+            // There's also a problem where we can start waiting in the READ_RESULT_NO_NEW_EVENTS branch,
+            // but at the same time dispatch has just completed. So on the one hand we are ready for
+            // more events, but on the other we will wait for 50ms before getting them. This may hinder
+            // the responsiveness.
+
+            if (result == READ_RESULT_ERROR) {
+                // TODO: display disconnect handling here?
+                break;
+            } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
                 SunToolkit.postEvent(AppContext.getAppContext(),
                         new PeerEvent(this, () -> {
-                            dispatchEvents();
+                            dispatchEventsOnEDT();
                             synchronized (WLToolkit.this) {
+                                // Finally, processed the entire events queue, can ask for more now.
                                 WLToolkit.this.notifyAll();
                             }
                         }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
-            } else if (result == READ_RESULT_NOT_STARTED) {
+            } else if (result == READ_RESULT_NO_NEW_EVENTS) {
                 synchronized (WLToolkit.this) {
                     try {
-                        WLToolkit.this.wait(50);
+                        // Give the EDT an opportunity to process the current event queue
+                        // (see above) before requesting yet another dispatch
+                        // on the very next loop iteration. That iteration may exit with
+                        // the same READ_RESULT_NO_NEW_EVENTS thus creating a busy loop
+                        // until EDT finally gets around to dispatching the existing queue.
+                        WLToolkit.this.wait(WAYLAND_DISPLAY_INTERACTION_TIMEOUT_MS);
                     } catch (InterruptedException ignored) {
                     }
                 }
@@ -140,8 +209,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public RobotPeer createRobot(GraphicsDevice screen) throws AWTException {
-        log.info("Not implemented: WLToolkit.createRobot()");
-        return null;
+        if (screen instanceof WLGraphicsDevice) {
+            return new WLRobotPeer((WLGraphicsDevice) screen);
+        }
+        return super.createRobot(screen);
     }
 
     @Override
@@ -571,8 +642,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return false;
     }
 
-    private native void dispatchEvents();
+    @Override
+    public void sync() {
+        flushImpl();
+    }
+
     private native int readEvents();
+    private native void dispatchEventsOnEDT();
+    private native void flushImpl();
+    private native void dispatchNonDefaultQueuesImpl();
 
     protected static void targetDisposedPeer(Object target, Object peer) {
         SunToolkit.targetDisposedPeer(target, peer);

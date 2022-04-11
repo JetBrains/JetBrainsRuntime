@@ -285,10 +285,13 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/java2d/wl \
         #
 
+    # Enable 'wakefield' extension for java.awt.Robot support
+    WAKEFIELD_ROBOT_CFLAGS=-DWAKEFIELD_ROBOT
+
     LIBAWT_WLAWT_CFLAGS += -DWLAWT \
+        $(WAKEFIELD_ROBOT_CFLAGS) \
         $(FONTCONFIG_CFLAGS) \
         $(CUPS_CFLAGS)
-
 
     LIBAWT_WLAWT_LIBS := $(LIBM) -lawt $(WAYLAND_LIBS) $(LIBDL) -ljava -ljvm -lrt
 
