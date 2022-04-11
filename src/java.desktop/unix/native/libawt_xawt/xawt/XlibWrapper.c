@@ -661,7 +661,7 @@ static const int DEFAULT_THRESHOLD = 5;
 
 static void checkBrokenInputMethod(XEvent * event, jboolean isEventFiltered) {
     // Fix for JBR-2444
-    // By default filteredEventsThreshold == 5, you can turn it of with
+    // By default filteredEventsThreshold == 5, you can turn it off with
     // recreate.x11.input.method=false
     if (filteredEventsThreshold < 0) {
         filteredEventsThreshold = 0;
@@ -675,19 +675,21 @@ static void checkBrokenInputMethod(XEvent * event, jboolean isEventFiltered) {
         jstring name = (*env)->NewStringUTF(env, "recreate.x11.input.method");
         CHECK_NULL(name);
         jstring jvalue = (*env)->CallStaticObjectMethod(env, systemCls, mid, name);
-        if (jvalue != NULL) {
+
+        if (jvalue == NULL) {
+            filteredEventsThreshold = DEFAULT_THRESHOLD;
+        } else {
             const char * utf8string = (*env)->GetStringUTFChars(env, jvalue, NULL);
             if (utf8string != NULL) {
                 const int parsedVal = atoi(utf8string);
                 if (parsedVal > 0)
                     filteredEventsThreshold = parsedVal;
-                else if (strncmp(utf8string, "false", 5) == 0)
-                    filteredEventsThreshold = 0;
+                else if (strncmp(utf8string, "true", 4) == 0)
+                    filteredEventsThreshold = DEFAULT_THRESHOLD;
             }
             (*env)->ReleaseStringUTFChars(env, jvalue, utf8string);
-        } else {
-            filteredEventsThreshold = DEFAULT_THRESHOLD;
         }
+
         (*env)->DeleteLocalRef(env, name);
     }
     if (filteredEventsThreshold <= 0)
