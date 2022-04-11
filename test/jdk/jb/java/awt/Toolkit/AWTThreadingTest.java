@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import sun.lwawt.macosx.CThreading;
@@ -38,18 +39,24 @@ public class AWTThreadingTest {
 
         testCase().
             withCaption("certain threads superposition").
-            withRunnable(AWTThreadingTest::test, false).
+            withRunnable(AWTThreadingTest::test1, false).
             run();
 
         testCase().
             withCaption("random threads superposition").
-            withRunnable(AWTThreadingTest::test, false).
+            withRunnable(AWTThreadingTest::test1, false).
+            run();
+
+        testCase().
+            withCaption("JBR-4362").
+            withRunnable(AWTThreadingTest::test2, false).
+            withCompletionTimeout(3).
             run();
 
         System.out.println("Test PASSED");
     }
 
-    static void test() {
+    static void test1() {
         ITER_COUNTER.set(0);
 
         var timer = new TestTimer(TIMEOUT_SECONDS * 3, TimeUnit.SECONDS);
@@ -122,6 +129,53 @@ public class AWTThreadingTest {
         });
         THREAD.setDaemon(true);
         THREAD.start();
+    }
+
+    static void test2() {
+        var invocations = new CountDownLatch(1);
+        var invokeAndWaitCompleted = new AtomicBoolean(false);
+
+        var log = new Consumer<String>() {
+            public void accept(String msg) {
+                System.out.println(msg);
+                System.out.flush();
+            }
+        };
+
+        CThreading.executeOnAppKit(() -> {
+            log.accept("executeOnAppKit - entered");
+
+            //
+            // It's expected that LWCToolkit.invokeAndWait() does not exit before its invocation completes.
+            //
+            tryRun(() -> LWCToolkit.invokeAndWait(() -> {
+                log.accept("\tinvokeAndWait - entered");
+
+                AWTThreading.executeWaitToolkit(() -> {
+                    log.accept("\t\texecuteWaitToolkit - entered");
+
+                    LWCToolkit.performOnMainThreadAndWait(() -> log.accept("\t\t\tperformOnMainThreadAndWait - entered"));
+
+                    log.accept("\t\t\tperformOnMainThreadAndWait - exited");
+                });
+
+                invokeAndWaitCompleted.set(true);
+                log.accept("\t\texecuteWaitToolkit - exited");
+            }, FRAME));
+
+            log.accept("\tinvokeAndWait - exited");
+
+            if (!invokeAndWaitCompleted.get()) {
+                TEST_CASE_RESULT.completeExceptionally(new Throwable("Premature exit from invokeAndWait"));
+            }
+
+            invocations.countDown();
+        });
+
+        await(invocations, TIMEOUT_SECONDS * 2);
+        log.accept("executeOnAppKit + await - exited");
+
+        TEST_CASE_RESULT.complete(true);
     }
 
     static void dumpAllThreads() {
