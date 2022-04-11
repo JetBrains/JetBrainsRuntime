@@ -18,8 +18,8 @@ import static helper.ToolkitTestHelper.TestCase.*;
  * @summary Tests different scenarios for LWCToolkit.invokeAndWait().
  * @requires (os.family == "mac")
  * @modules java.desktop/sun.lwawt.macosx java.desktop/sun.awt
- * @run main/othervm -Dsun.lwawt.macosx.LWCToolkit.invokeAndWait.disposeOnEDTFree=true LWCToolkitInvokeAndWaitTest
- * @run main/othervm -Dlog.level.FINER=true -Dsun.lwawt.macosx.LWCToolkit.invokeAndWait.disposeOnEDTFree=true LWCToolkitInvokeAndWaitTest
+ * @run main LWCToolkitInvokeAndWaitTest
+ * @run main/othervm -Dlog.level.FINER=true LWCToolkitInvokeAndWaitTest
  * @author Anton Tarasov
  */
 @SuppressWarnings("ConstantConditions")
@@ -32,6 +32,8 @@ public class LWCToolkitInvokeAndWaitTest {
     static volatile CountDownLatch EDT_FAST_FREE_LATCH;
 
     static {
+        System.setProperty("sun.lwawt.macosx.LWCToolkit.invokeAndWait.disposeOnEDTFree", "true");
+
         AWTThreading.setAWTThreadingFactory(edt -> new AWTThreading(edt) {
             @Override
             public CompletableFuture<Void> onEventDispatchThreadFree(Runnable runnable) {
