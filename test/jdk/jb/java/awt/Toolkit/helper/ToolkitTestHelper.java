@@ -29,6 +29,8 @@ import sun.lwawt.macosx.LWCToolkit;
 import javax.swing.*;
 import javax.swing.Timer;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.Callable;
@@ -86,6 +88,7 @@ public class ToolkitTestHelper {
             handler.uncaughtException(t, e);
         });
 
+        CountDownLatch showLatch = new CountDownLatch(1);
         tryRun(() -> EventQueue.invokeAndWait(() -> {
             FRAME = new JFrame(testClass.getSimpleName());
             LABEL = new JLabel("0");
@@ -96,8 +99,16 @@ public class ToolkitTestHelper {
             FRAME.setLocationRelativeTo(null);
             FRAME.setSize(200, 200);
             FRAME.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+            FRAME.addComponentListener(new ComponentAdapter() {
+                @Override
+                public void componentShown(ComponentEvent e) {
+                    showLatch.countDown();
+                }
+            });
             FRAME.setVisible(true);
         }));
+        //noinspection ResultOfMethodCallIgnored
+        tryRun(() -> showLatch.await(1, TimeUnit.SECONDS));
 
         Timer timer = new Timer(100, e -> UPDATE_LABEL.run());
         timer.setRepeats(true);
