@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -30,14 +30,14 @@ JTREG_VERSION=5.1
 JTREG_BUILD=b01
 GTEST_VERSION=1.8.1
 
-LINUX_X64_BOOT_JDK_FILENAME=openjdk-11_linux-x64_bin.tar.gz
-LINUX_X64_BOOT_JDK_URL=https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.12%2B7/OpenJDK11U-jdk_x64_linux_hotspot_11.0.12_7.tar.gz
-LINUX_X64_BOOT_JDK_SHA256=8770f600fc3b89bf331213c7aa21f8eedd9ca5d96036d1cd48cb2748a3dbefd2
+LINUX_X64_BOOT_JDK_FILENAME=openjdk-11.0.14.1_linux-x64_bin.tar.gz
+LINUX_X64_BOOT_JDK_URL=https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jdk_x64_linux_hotspot_11.0.14.1_1.tar.gz
+LINUX_X64_BOOT_JDK_SHA256=43fb84f8063ad9bf6b6d694a67b8f64c8827552b920ec5ce794dfe5602edffe7
 
-WINDOWS_X64_BOOT_JDK_FILENAME=openjdk-11_windows-x64_bin.zip
-WINDOWS_X64_BOOT_JDK_URL=https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.12%2B7/OpenJDK11U-jdk_x64_windows_hotspot_11.0.12_7.zip
-WINDOWS_X64_BOOT_JDK_SHA256=c54123dd4b0d6473221539e7003b8ca1c1757c5588c46465565b03bf8781f807
+WINDOWS_X64_BOOT_JDK_FILENAME=openjdk-11.0.14.1_windows-x64_bin.zip
+WINDOWS_X64_BOOT_JDK_URL=https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jdk_x64_windows_hotspot_11.0.14.1_1.zip
+WINDOWS_X64_BOOT_JDK_SHA256=3e7da701aa92e441418299714f0ed6db10c3bb1e2db625c35a2c2cd9cc619731
 
-MACOS_X64_BOOT_JDK_FILENAME=openjdk-11_osx-x64_bin.tar.gz
-MACOS_X64_BOOT_JDK_URL=https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.12%2B7/OpenJDK11U-jdk_x64_mac_hotspot_11.0.12_7.tar.gz
-MACOS_X64_BOOT_JDK_SHA256=13d056ee9a57bf2d5b3af4504c8f8cf7a246c4dff78f96b70dd05dad98075855
+MACOS_X64_BOOT_JDK_FILENAME=openjdk-11.0.14.1_osx-x64_bin.tar.gz
+MACOS_X64_BOOT_JDK_URL=https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jdk_x64_mac_hotspot_11.0.14.1_1.tar.gz
+MACOS_X64_BOOT_JDK_SHA256=8c69808f5d9d209b195575e979de0e43cdf5d0f1acec1853a569601fe2c1f743
