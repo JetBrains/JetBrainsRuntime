@@ -31,7 +31,7 @@ architecture=$3 # aarch64 or x64
 bundle_type=$(do_maketest)
 do_maketest=$?
 tag_prefix="jbr-"
-OPENJDK_TAG=$(git log --simplify-by-decoration --decorate=short --pretty=short | grep "$tag_prefix" | cut -d "(" -f2 | cut -d ")" -f1 | awk '{print $2}' | sort -t "-" -k 2 -g | tail -n 1)
+OPENJDK_TAG=$(git log --simplify-by-decoration --decorate=short --pretty=short | grep "$tag_prefix" | cut -d "(" -f2 | cut -d ")" -f1 | awk '{print $2}' | sort -t "-" -k 2 -g | tail -n 1 | tr -d ",")
 VERSION_FEATURE=$(getVersionProp "DEFAULT_VERSION_FEATURE")
 VERSION_INTERIM=$(getVersionProp "DEFAULT_VERSION_INTERIM")
 VERSION_UPDATE=$(getVersionProp "DEFAULT_VERSION_UPDATE")
