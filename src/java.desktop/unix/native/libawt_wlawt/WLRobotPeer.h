@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +24,8 @@
  * questions.
  */
 
-#include <wayland-client.h>
-#include "xdg-shell-client-protocol.h"
-
-extern struct wl_display *wl_display;
-extern struct wl_shm *wl_shm;
-extern struct wl_compositor *wl_compositor;
-extern struct xdg_wm_base *xdg_wm_base;
-
-JNIEnv *getEnv();
-
-int wl_flush_to_server(JNIEnv* env);
+#ifdef WAKEFIELD_ROBOT
+extern struct wakefield         *wakefield;
+extern struct wakefield_listener wakefield_listener;
+extern struct wl_event_queue    *robot_queue;
+#endif

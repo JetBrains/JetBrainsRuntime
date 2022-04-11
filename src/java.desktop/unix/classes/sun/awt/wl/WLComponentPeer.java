@@ -280,6 +280,9 @@ public class WLComponentPeer implements ComponentPeer
     }
 
     public void setBounds(int x, int y, int width, int height, int op) {
+        if (this.x != x || this.y != y) {
+            WLRobotPeer.setLocationOfWLSurface(getWLSurface(), x, y);
+        }
         this.x = x;
         this.y = y;
         this.width = width;
@@ -331,7 +334,7 @@ public class WLComponentPeer implements ComponentPeer
 
     @Override
     public Point getLocationOnScreen() {
-        throw new UnsupportedOperationException();
+        return WLRobotPeer.getLocationOfWLSurface(getWLSurface());
     }
 
     @SuppressWarnings("fallthrough")

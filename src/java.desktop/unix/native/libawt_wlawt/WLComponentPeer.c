@@ -30,6 +30,11 @@
 
 #include "jni_util.h"
 #include "WLToolkit.h"
+#include "WLRobotPeer.h"
+
+#ifdef WAKEFIELD_ROBOT
+#include "wakefield-client-protocol.h"
+#endif
 
 jfieldID nativePtrID;
 
@@ -152,6 +157,12 @@ Java_sun_awt_wl_WLComponentPeer_nativeShowComponent
 
     wl_surface_commit(frame->wl_surface);
     wl_display_roundtrip(wl_display); // this should process 'configure' event, and send 'ack_configure' in response
+#ifdef WAKEFIELD_ROBOT
+        if (wakefield) {
+            // TODO: this doesn't work quite as expected for some reason
+            wakefield_move_surface(wakefield, frame->wl_surface, x, y);
+        }
+#endif
 }
 
 static void doHide(struct WLFrame *frame) {
