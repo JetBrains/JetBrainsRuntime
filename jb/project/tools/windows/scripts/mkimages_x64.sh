@@ -141,12 +141,11 @@ fi
 JSDK=build/$RELEASE_NAME/images/jdk
 BASE_DIR=build/$RELEASE_NAME/images
 BASE_DIR=jre
-if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ]; then
-  JBRSDK_BUNDLE=jbrsdk_${bundle_type}
-else
+if [ "${bundle_type}" == "fd" ] ]; then
   JBRSDK_BUNDLE=jbrsdk
+else
+  JBRSDK_BUNDLE=jbrsdk_${bundle_type}
 fi
-
 
 rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE} && rsync -a --exclude demo --exclude sample ${JSDK}/ ${JBRSDK_BUNDLE} || do_exit $?
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]

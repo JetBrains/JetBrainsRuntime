@@ -66,10 +66,10 @@ esac
 IMAGES_DIR=build/$RELEASE_NAME/images
 JSDK=$IMAGES_DIR/jdk
 BASE_DIR=.
-if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ]; then
-  JBRSDK_BUNDLE=jbrsdk_${bundle_type}
-else
+if [ "${bundle_type}" == "fd" ] ]; then
   JBRSDK_BUNDLE=jbrsdk
+else
+  JBRSDK_BUNDLE=jbrsdk_${bundle_type}
 fi
 
 echo Creating $JBSDK.tar.gz ...
