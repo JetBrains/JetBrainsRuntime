@@ -170,7 +170,7 @@ case "$bundle_type" in
     do_reset_changes=1
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     CONF_NAME=macosx-${CONF_ARCHITECTURE}-normal-server-fastdebug
-    JBSDK=${JBRSDK_BASE_NAME}-osx-${architecture}-fastdebug-b${build_number}
+    JBSDK=jbrsdk-${JBSDK_VERSION}-osx-${architecture}-fastdebug-b${build_number}
     ;;
   *)
     echo "***ERR*** bundle was not specified" && do_exit 1
@@ -198,23 +198,22 @@ cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || do_exit
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
   cp -a ${JCEF_PATH}/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 fi
-if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
-  echo Creating $JBSDK.tar.gz ...
-  sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
-  mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
-  [ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
-  COPYFILE_DISABLE=1 tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
-    --exclude='.DS_Store' --exclude='*~' \
-    --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
-    ${JBRSDK_BUNDLE} || do_exit $?
-fi
+
+echo Creating $JBSDK.tar.gz ...
+sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
+mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
+[ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
+COPYFILE_DISABLE=1 tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
+  --exclude='.DS_Store' --exclude='*~' \
+  --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
+  ${JBRSDK_BUNDLE} || do_exit $?
 
 create_jbr || do_exit $?
 
 if [ "$bundle_type" == "dcevm" ]; then
   make test-image CONF=$CONF_NAME || do_exit $?
 
-  JBRSDK_TEST=$JBRSDK_BASE_NAME-osx-test-${architecture}-b$build_number
+  JBRSDK_TEST=jbrsdk-${JBSDK_VERSION}-osx-test-${architecture}-b$build_number
 
   echo Creating $JBRSDK_TEST.tar.gz ...
   [ -f "${JBRSDK_TEST}.tar.gz" ] && rm "${JBRSDK_TEST}.tar.gz"
