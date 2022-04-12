@@ -149,15 +149,14 @@ cp -r $JSDK $BASE_DIR/$JBRSDK_BUNDLE || do_exit $?
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
   rsync -av ${JCEF_PATH}/ $BASE_DIR/$JBRSDK_BUNDLE/lib --exclude="modular-sdk" || do_exit $?
 fi
-if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
-  echo Creating $JBSDK.tar.gz ...
-  sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
-  mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
 
-  tar -pcf ${JBSDK}.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
-    -C ${BASE_DIR} ${JBRSDK_BUNDLE} || do_exit $?
-  gzip -f ${JBSDK}.tar || do_exit $?
-fi
+echo Creating $JBSDK.tar.gz ...
+sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/release > release
+mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
+
+tar -pcf ${JBSDK}.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
+  -C ${BASE_DIR} ${JBRSDK_BUNDLE} || do_exit $?
+gzip -f ${JBSDK}.tar || do_exit $?
 
 create_jbr || do_exit $?
 

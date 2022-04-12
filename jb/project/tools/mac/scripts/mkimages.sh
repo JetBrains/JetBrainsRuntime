@@ -198,16 +198,15 @@ cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || do_exit
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
   cp -a ${JCEF_PATH}/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 fi
-if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
-  echo Creating $JBSDK.tar.gz ...
-  sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
-  mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
-  [ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
-  COPYFILE_DISABLE=1 tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
-    --exclude='.DS_Store' --exclude='*~' \
-    --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
-    ${JBRSDK_BUNDLE} || do_exit $?
-fi
+
+echo Creating $JBSDK.tar.gz ...
+sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
+mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
+[ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
+COPYFILE_DISABLE=1 tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
+  --exclude='.DS_Store' --exclude='*~' \
+  --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
+  ${JBRSDK_BUNDLE} || do_exit $?
 
 create_jbr || do_exit $?
 

@@ -72,11 +72,9 @@ else
   JBRSDK_BUNDLE=jbrsdk
 fi
 
-if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
-  echo Creating $JBSDK.tar.gz ...
-  [ -f "$JBSDK.tar.gz" ] && rm "$JBSDK.tar.gz"
-  /usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || do_exit $?
-fi
+echo Creating $JBSDK.tar.gz ...
+[ -f "$JBSDK.tar.gz" ] && rm "$JBSDK.tar.gz"
+/usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || do_exit $?
 
 pack_jbr $bundle_type
 
