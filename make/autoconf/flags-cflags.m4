@@ -528,10 +528,10 @@ AC_DEFUN([FLAGS_SETUP_CFLAGS_HELPER],
     fi
 
   elif test "x$TOOLCHAIN_TYPE" = xxlc; then
-    TOOLCHAIN_CFLAGS_JDK="-qchars=signed -qfullpath -qsaveopt"  # add on both CFLAGS
+    TOOLCHAIN_CFLAGS_JDK="-qchars=signed -qfullpath -qsaveopt -qstackprotect"  # add on both CFLAGS
     TOOLCHAIN_CFLAGS_JVM="-qtune=balanced \
         -qalias=noansi -qstrict -qtls=default -qlanglvl=c99vla \
-        -qlanglvl=noredefmac -qnortti -qnoeh -qignerrno"
+        -qlanglvl=noredefmac -qnortti -qnoeh -qignerrno -qstackprotect"
   elif test "x$TOOLCHAIN_TYPE" = xmicrosoft; then
     TOOLCHAIN_CFLAGS_JVM="-nologo -MD -MP"
     TOOLCHAIN_CFLAGS_JDK="-nologo -MD -Zc:wchar_t-"
