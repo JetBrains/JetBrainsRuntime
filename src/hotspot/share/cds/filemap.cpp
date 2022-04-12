@@ -1057,6 +1057,9 @@ public:
   FileHeaderHelper() : _fd(-1), _is_valid(false), _header(nullptr), _base_archive_name(nullptr) {}
 
   ~FileHeaderHelper() {
+    if (_header != nullptr) {
+      FREE_C_HEAP_ARRAY(char, _header);
+    }
     if (_fd != -1) {
       os::close(_fd);
     }
