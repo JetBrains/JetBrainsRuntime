@@ -141,7 +141,7 @@ fi
 JSDK=build/$RELEASE_NAME/images/jdk
 BASE_DIR=build/$RELEASE_NAME/images
 BASE_DIR=jre
-if [ "${bundle_type}" == "fd" ] ]; then
+if [ "${bundle_type}" == "fd" ]; then
   JBRSDK_BUNDLE=jbrsdk
 else
   JBRSDK_BUNDLE=jbrsdk_${bundle_type}
