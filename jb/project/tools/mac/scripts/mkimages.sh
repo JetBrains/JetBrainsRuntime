@@ -213,7 +213,7 @@ create_jbr || do_exit $?
 if [ "$bundle_type" == "dcevm" ]; then
   make test-image CONF=$CONF_NAME || do_exit $?
 
-  JBRSDK_TEST=$JBRSDK_BASE_NAME-osx-test-${architecture}-b$build_number
+  JBRSDK_TEST=$jbrsdk-osx-test-${architecture}-b$build_number
 
   echo Creating $JBRSDK_TEST.tar.gz ...
   [ -f "${JBRSDK_TEST}.tar.gz" ] && rm "${JBRSDK_TEST}.tar.gz"

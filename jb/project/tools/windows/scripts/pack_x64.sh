@@ -79,7 +79,7 @@ echo Creating $JBSDK.tar.gz ...
 pack_jbr $bundle_type
 
 if [ "$bundle_type" == "dcevm" ]; then
-  JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number
+  JBRSDK_TEST=jbrsdk-windows-test-x64-b$build_number
   echo Creating $JBRSDK_TEST.tar.gz ...
   /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
 fi
