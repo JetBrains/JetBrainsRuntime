@@ -44,6 +44,7 @@ JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
 WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=${JCEF_PATH}/modular-sdk}"
 architecture=${architecture:=x64}
+BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 11)}
 
 source jb/project/tools/common.sh
 
@@ -65,7 +66,7 @@ function do_configure {
     --with-version-build=${JDK_BUILD_NUMBER} \
     --with-version-opt=b${build_number} \
     $WITH_IMPORT_MODULES \
-    --with-boot-jdk=`/usr/libexec/java_home -v 11` \
+    --with-boot-jdk=${BOOT_JDK} \
     --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
     --enable-cds=no \
     $WITH_JVM_FEATURES \
@@ -83,7 +84,7 @@ function do_configure {
       --with-version-build=${JDK_BUILD_NUMBER} \
       --with-version-opt=b${build_number} \
       $WITH_IMPORT_MODULES \
-      --with-boot-jdk=`/usr/libexec/java_home -v 11` \
+      --with-boot-jdk=${BOOT_JDK} \
       --enable-cds=yes || do_exit $?
   fi
 }
