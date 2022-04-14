@@ -19,6 +19,7 @@
 JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
+BOOT_JDK=${BOOT_JDK:=$(/jbrsdk-11.0.5-b1)}
 
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 
@@ -35,7 +36,7 @@ linux32 bash configure \
   --with-version-pre= \
   --with-version-build=$JDK_BUILD_NUMBER \
   --with-version-opt=b${build_number} \
-  --with-boot-jdk=/jbrsdk-11.0.5-b1 \
+  --with-boot-jdk=${BOOT_JDK} \
   --enable-cds=yes || exit $?
 make clean CONF=linux-x86-normal-server-release || exit $?
 make images CONF=linux-x86-normal-server-release test-image || exit $?

@@ -54,6 +54,7 @@ function do_configure {
     --with-version-pre= \
     --with-version-build=${JDK_BUILD_NUMBER} \
     --with-version-opt=b${build_number} \
+    --with-boot-jdk=${BOOT_JDK} \
     $WITH_IMPORT_MODULES \
     --enable-cds=yes || do_exit $?
 }

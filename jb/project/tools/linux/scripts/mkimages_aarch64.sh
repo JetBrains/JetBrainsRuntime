@@ -30,6 +30,8 @@ JBSDK_VERSION=$1
 JDK_BUILD_NUMBER=$2
 build_number=$3
 
+BOOT_JDK=${BOOT_JDK:=$(amazon-corretto-11.0.5.10.1-linux-aarch64)}
+
 JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 
 source jb/project/tools/common.sh
@@ -45,7 +47,7 @@ function do_configure {
     --with-version-build=${JDK_BUILD_NUMBER} \
     --with-version-opt=b${build_number} \
     --with-import-modules=./modular-sdk \
-    --with-boot-jdk=amazon-corretto-11.0.5.10.1-linux-aarch64 \
+    --with-boot-jdk=${BOOT_JDK} \
     --enable-cds=yes || exit $?
 }
 
