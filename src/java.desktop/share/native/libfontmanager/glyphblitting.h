@@ -39,11 +39,11 @@ typedef struct {
   ImageRef *glyphs;
 } GlyphBlitVector;
 
-extern jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds);
-extern GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
-                                        jint fromGlyph, jint toGlyph);
-extern GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
+JNIEXPORT jint RefineBounds(GlyphBlitVector *gbv, SurfaceDataBounds *bounds);
+JNIEXPORT GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
                                            jint fromGlyph, jint toGlyph);
+JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
+                                              jint fromGlyph, jint toGlyph);
 
 #ifdef  __cplusplus
 }

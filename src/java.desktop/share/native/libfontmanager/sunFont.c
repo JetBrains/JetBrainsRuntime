@@ -207,6 +207,12 @@ JNIEXPORT FontManagerNativeIDs getSunFontIDs(JNIEnv *env) {
     return sunFontIDs;
 }
 
+JNIEXPORT const FontManagerNativeIDs* getSunFontIDsPtr(JNIEnv* env) {
+
+    initFontIDs(env);
+    return &sunFontIDs;
+}
+
 /*
  * Class:     sun_font_StrikeCache
  * Method:    freeIntPointer

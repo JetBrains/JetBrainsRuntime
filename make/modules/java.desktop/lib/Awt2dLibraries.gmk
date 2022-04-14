@@ -273,7 +273,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         #
 
     LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11
-    LIBAWT_WLAWT_EXCLUDE_FILES := common/awt/X11Color.c common/awt/awt_Font.c common/awt/fontpath.c
+    LIBAWT_WLAWT_EXCLUDE_FILES := common/awt/X11Color.c common/awt/awt_Font.c
 
     LIBAWT_WLAWT_EXTRA_HEADER_DIRS := \
         $(LIBAWT_DEFAULT_HEADER_DIRS) \
@@ -570,13 +570,9 @@ ifneq ($(filter $(TOOLCHAIN_TYPE), gcc clang), )
 endif
 
 ifeq ($(call isTargetOs, windows), true)
-  LIBFONTMANAGER_EXCLUDE_FILES += X11FontScaler.c \
-      X11TextRenderer.c
   LIBFONTMANAGER_OPTIMIZATION := HIGHEST
 else ifeq ($(call isTargetOs, macosx), true)
-  LIBFONTMANAGER_EXCLUDE_FILES += X11FontScaler.c \
-      X11TextRenderer.c \
-      fontpath.c \
+  LIBFONTMANAGER_EXCLUDE_FILES += fontpath.c \
       lcdglyph.c
 else
   LIBFONTMANAGER_EXCLUDE_FILES += fontpath.c \
@@ -628,6 +624,51 @@ ifeq ($(FREETYPE_TO_USE), bundled)
 endif
 
 TARGETS += $(BUILD_LIBFONTMANAGER)
+
+################################################################################
+
+ifeq ($(call isTargetOs, windows macosx), false)
+  ifeq ($(ENABLE_HEADLESS_ONLY), false)
+
+    LIBFONTMANAGER_XAWT_EXCLUDE_FILES := $(LIBFONTMANAGER_EXCLUDE_FILES)
+    LIBFONTMANAGER_XAWT_CFLAGS := $(LIBFONTMANAGER_CFLAGS)
+    LIBFONTMANAGER_XAWT_OPTIMIZATION := $(LIBFONTMANAGER_OPTIMIZATION)
+    LIBFONTMANAGER_XAWT_EXTRA_HEADER_DIRS := $(LIBFONTMANAGER_EXTRA_HEADER_DIRS) \
+        libfontmanager
+    LIBFONTMANAGER_XAWT_EXTRA_SRC :=
+
+    $(eval $(call SetupJdkLibrary, BUILD_LIBFONTMANAGER_XAWT, \
+        NAME := fontmanager_xawt, \
+        EXCLUDE_FILES := $(LIBFONTMANAGER_XAWT_EXCLUDE_FILES) \
+            AccelGlyphCache.c, \
+        TOOLCHAIN := TOOLCHAIN_LINK_CXX, \
+        CFLAGS := $(CFLAGS_JDKLIB) $(LIBFONTMANAGER_XAWT_CFLAGS), \
+        CXXFLAGS := $(CXXFLAGS_JDKLIB) $(LIBFONTMANAGER_XAWT_CFLAGS), \
+        OPTIMIZATION := $(LIBFONTMANAGER_XAWT_OPTIMIZATION), \
+        CFLAGS_windows = -DCC_NOEX, \
+        EXTRA_HEADER_DIRS := $(LIBFONTMANAGER_XAWT_EXTRA_HEADER_DIRS), \
+        EXTRA_SRC := $(LIBFONTMANAGER_XAWT_EXTRA_SRC), \
+        WARNINGS_AS_ERRORS_xlc := false, \
+        DISABLED_WARNINGS_gcc := $(HARFBUZZ_DISABLED_WARNINGS_gcc), \
+        DISABLED_WARNINGS_CXX_gcc := $(HARFBUZZ_DISABLED_WARNINGS_CXX_gcc), \
+        DISABLED_WARNINGS_clang := $(HARFBUZZ_DISABLED_WARNINGS_clang), \
+        DISABLED_WARNINGS_microsoft := $(HARFBUZZ_DISABLED_WARNINGS_microsoft), \
+        LDFLAGS := $(subst -Xlinker -z -Xlinker defs,, \
+            $(subst -Wl$(COMMA)-z$(COMMA)defs,,$(LDFLAGS_JDKLIB))) $(LDFLAGS_CXX_JDK) \
+            $(call SET_SHARED_LIBRARY_ORIGIN), \
+        LDFLAGS_unix := -L$(INSTALL_LIBRARIES_HERE), \
+        LDFLAGS_aix := -Wl$(COMMA)-berok, \
+        LIBS := $(BUILD_LIBFONTMANAGER_FONTLIB), \
+        LIBS_unix := -lfontmanager -lawt -ljava -ljvm $(LIBM) $(LIBCXX), \
+    ))
+
+    $(BUILD_LIBFONTMANAGER_XAWT): $(BUILD_LIBFONTMANAGER)
+    $(BUILD_LIBFONTMANAGER_XAWT): $(BUILD_LIBAWT_XAWT)
+
+    TARGETS += $(BUILD_LIBFONTMANAGER_XAWT)
+
+  endif
+endif
 
 ################################################################################
 
