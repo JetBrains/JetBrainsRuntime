@@ -1828,8 +1828,13 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     }
 
     private static boolean screenOrDesktopDiffers(XWindowPeer p1, XWindowPeer p2) {
-        return p1.getScreenNumber() != p2.getScreenNumber() ||
-                ENABLE_DESKTOP_CHECK && !Objects.equals(p1.getDesktopId(), p2.getDesktopId());
+        if (p1.getScreenNumber() != p2.getScreenNumber()) return true;
+        if (!ENABLE_DESKTOP_CHECK) return false;
+        Long d1 = p1.getDesktopId();
+        if (d1 == null) return false;
+        Long d2 = p2.getDesktopId();
+        if (d2 == null) return false;
+        return !d1.equals(d2);
     }
 
     /*
