@@ -4036,7 +4036,7 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
 
 #if INCLUDE_JFR
   if (FlightRecorder) {
-    if (AllowEnhancedClassRedefinition) {
+    if (AllowEnhancedClassRedefinition || StartFlightRecording != NULL) {
       warning("EnhancedClassRedefinition was disabled, it is not allowed in FlightRecorder.");
       AllowEnhancedClassRedefinition = false;
     }
