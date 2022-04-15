@@ -38,12 +38,14 @@ import java.util.Objects;
 
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.opengl.CGLGraphicsConfig;
+import sun.util.logging.PlatformLogger;
 
 import static java.awt.peer.ComponentPeer.SET_BOUNDS;
 
 public final class CGraphicsDevice extends GraphicsDevice
         implements DisplayChangedListener {
 
+    private static final PlatformLogger logger = PlatformLogger.getLogger(CGraphicsDevice.class.getName());
     /**
      * CoreGraphics display ID. This identifier can become non-valid at any time
      * therefore methods, which is using this id should be ready to it.
@@ -268,6 +270,7 @@ public final class CGraphicsDevice extends GraphicsDevice
     }
 
     private void initScaleFactor() {
+        int _scale = scale;
         if (SunGraphicsEnvironment.isUIScaleEnabled()) {
             double debugScale = SunGraphicsEnvironment.getDebugScale();
             scale = (int) (debugScale >= 1
@@ -275,6 +278,9 @@ public final class CGraphicsDevice extends GraphicsDevice
                     : nativeGetScaleFactor(displayID));
         } else {
             scale = 1;
+        }
+        if (_scale != scale && logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("current scale = " + _scale + ", new scale = " + scale + " (" + this + ")");
         }
     }
 

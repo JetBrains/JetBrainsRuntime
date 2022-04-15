@@ -32,12 +32,15 @@ import sun.java2d.SurfaceData;
 import sun.java2d.NullSurfaceData;
 
 import sun.awt.CGraphicsConfig;
+import sun.util.logging.PlatformLogger;
 
 import java.awt.Rectangle;
 import java.awt.GraphicsConfiguration;
 import java.awt.Transparency;
+import java.util.Optional;
 
 public class CGLLayer extends CFRetainedResource {
+    private static final PlatformLogger logger = PlatformLogger.getLogger(CGLLayer.class.getName());
 
     private native long nativeCreateLayer();
     private static native void nativeSetScale(long layerPtr, double scale);
@@ -54,6 +57,14 @@ public class CGLLayer extends CFRetainedResource {
 
         setPtr(nativeCreateLayer());
         this.peer = peer;
+
+        CGraphicsConfig gc = (CGraphicsConfig)getGraphicsConfiguration();
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("device = " + (gc != null ? gc.getDevice() : "null"));
+        }
+        if (gc != null) {
+            setScale(gc.getDevice().getScaleFactor());
+        }
     }
 
     public long getPointer() {
@@ -125,8 +136,12 @@ public class CGLLayer extends CFRetainedResource {
         super.dispose();
     }
 
-    private void setScale(final int _scale) {
+    private void setScale(int _scale) {
         if (scale != _scale) {
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                CGraphicsConfig gc = (CGraphicsConfig)getGraphicsConfiguration();
+                logger.fine("current scale = " + scale + ", new scale = " + _scale + " (device = " + (gc != null ? gc.getDevice() : "null") + ")");
+            }
             scale = _scale;
             execute(ptr -> nativeSetScale(ptr, scale));
         }
