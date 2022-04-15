@@ -59,7 +59,7 @@ case "$bundle_type" in
   "fd")
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=windows-x86_64-normal-server-fastdebug
-    JBSDK=${JBRSDK_BASE_NAME}-windows-x64-fastdebug-b${build_number}
+    JBSDK=jbrsdk-${JBSDK_VERSION}-windows-x64-fastdebug-b${build_number}
     ;;
 esac
 

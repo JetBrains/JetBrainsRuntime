@@ -119,7 +119,7 @@ case "$bundle_type" in
     do_reset_changes=1
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=linux-x86_64-normal-server-fastdebug
-    JBSDK=${JBRSDK_BASE_NAME}-linux-x64-fastdebug-b${build_number}
+    JBSDK=jbrsdk-${JBSDK_VERSION}-linux-x64-fastdebug-b${build_number}
     ;;
   *)
     echo "***ERR*** bundle was not specified" && do_exit 1

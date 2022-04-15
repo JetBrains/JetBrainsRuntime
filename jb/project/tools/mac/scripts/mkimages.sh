@@ -171,7 +171,7 @@ case "$bundle_type" in
     do_reset_changes=1
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     CONF_NAME=macosx-${CONF_ARCHITECTURE}-normal-server-fastdebug
-    JBSDK=${JBRSDK_BASE_NAME}-osx-${architecture}-fastdebug-b${build_number}
+    JBSDK=jbrsdk-${JBSDK_VERSION}-osx-${architecture}-fastdebug-b${build_number}
     ;;
   *)
     echo "***ERR*** bundle was not specified" && do_exit 1
