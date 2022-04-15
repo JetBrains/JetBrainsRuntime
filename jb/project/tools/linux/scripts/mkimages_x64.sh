@@ -164,7 +164,7 @@ create_jbr || do_exit $?
 if [ "$bundle_type" == "dcevm" ]; then
   make test-image CONF=$RELEASE_NAME || do_exit $?
 
-  JBRSDK_TEST=jbrsdk-linux-test-x64-b$build_number
+  JBRSDK_TEST=jbrsdk-${JBSDK_VERSION}-linux-test-x64-b$build_number
 
   echo Creating $JBSDK_TEST.tar.gz ...
   tar -pcf ${JBRSDK_TEST}.tar -C ${BASE_DIR} --exclude='test/jdk/demos' test || do_exit $?
