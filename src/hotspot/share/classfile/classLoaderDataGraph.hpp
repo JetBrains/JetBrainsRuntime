@@ -79,9 +79,6 @@ class ClassLoaderDataGraph : public AllStatic {
   // Walking the ClassLoaderDataGraph also includes hidden classes.
   static void classes_do(KlassClosure* klass_closure);
 
-  // Enhanced class redefinition
-  static void initialized_classes_do(KlassClosure* klass_closure);
-
   static void classes_do(void f(Klass* const));
   static void methods_do(void f(Method*));
   static void modules_do(void f(ModuleEntry*));
