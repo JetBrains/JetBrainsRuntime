@@ -2129,6 +2129,11 @@ class AffectedKlassClosure : public KlassClosure {
   void do_klass(Klass* klass) {
     assert(!_affected_klasses->contains(klass), "must not occur more than once!");
 
+    // allow only loaded classes
+    if (!klass->is_instance_klass() || !InstanceKlass::cast(klass)->is_loaded()) {
+      return;
+    }
+
     if (klass->new_version() != NULL) {
       return;
     }
@@ -2185,12 +2190,8 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
   {
     MutexLocker mcld(ClassLoaderDataGraph_lock);
 
-    // We can't use ClassLoaderDataGraph::classes_do since classes can be uninitialized in cld,
-    // fully initialized class is in system dictionary, but hidden classes are excluded. Therefore
-    // we use special method iterating over initialized classes only
-    // ClassLoaderDataGraph::classes_do(&closure);
-
-    ClassLoaderDataGraph::initialized_classes_do(&closure);
+    // Hidden classes are not in SystemDictionary, so we have to iterate ClassLoaderDataGraph
+    ClassLoaderDataGraph::classes_do(&closure);
   }
 
   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());

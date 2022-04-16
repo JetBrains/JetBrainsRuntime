@@ -361,13 +361,6 @@ void ClassLoaderDataGraph::classes_do(KlassClosure* klass_closure) {
   }
 }
 
-void ClassLoaderDataGraph::initialized_classes_do(KlassClosure* klass_closure) {
-  ClassLoaderDataGraphIterator iter;
-  while (ClassLoaderData* cld = iter.get_next()) {
-    cld->initialized_classes_do(klass_closure);
-  }
-}
-
 void ClassLoaderDataGraph::classes_do(void f(Klass* const)) {
   ClassLoaderDataGraphIterator iter;
   while (ClassLoaderData* cld = iter.get_next()) {
