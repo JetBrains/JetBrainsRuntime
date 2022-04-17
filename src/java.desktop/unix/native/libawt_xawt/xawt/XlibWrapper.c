@@ -662,10 +662,7 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XlibWrapper_XWindowEvent
 //   * XFilterEvent have filtered more than filteredEventsThreshold last events of types KeyPressed, KeyReleased;
 //   * Input method hasn't been changed (e.g. recreated);
 //   * Current input context hasn't been switched;
-//   * The input context is not in preedit state (XNPreeditStartCallback has been called but XNPreeditDoneCallback - hasn't)
-//     OR
-//     the input context is in preedit state AND no preedit events (XNPreeditDrawCallback, XNPreeditCaretCallback, CommitStringCallback)
-//     have occurred.
+//   * The input context is not in preedit state (XNPreeditStartCallback has been called but then XNPreeditDoneCallback - hasn't)
 
 static struct {
     int eatenEventsThreshold;
@@ -677,7 +674,7 @@ static struct {
     XIC lastHandledXIC;
 
     char duringPreediting;
-    char preeditEventOccurred;
+    //char preeditEventOccurred;
 } brokenIMDetectionContext = {
     -1,
     0,
@@ -687,8 +684,8 @@ static struct {
     NULL,
     NULL,
 
-    0,
-    0
+    0/*,
+    0*/
 };
 
 static void detectAndRecreateBrokenInputMethod
@@ -744,17 +741,17 @@ static void detectAndRecreateBrokenInputMethod
         (brokenIMDetectionContext.lastHandledXIM != brokenIMDetectionContext.lastPreeditEventXIM);
     const int xicHasBeenChanged =
         (brokenIMDetectionContext.lastHandledXIC != brokenIMDetectionContext.lastPreeditEventXIC);
-    const char preeditEventOccurred = brokenIMDetectionContext.preeditEventOccurred;
+    //const char preeditEventOccurred = brokenIMDetectionContext.preeditEventOccurred;
 
     brokenIMDetectionContext.lastHandledXIM = brokenIMDetectionContext.lastPreeditEventXIM;
     brokenIMDetectionContext.lastHandledXIC = brokenIMDetectionContext.lastPreeditEventXIC;
-    brokenIMDetectionContext.preeditEventOccurred = 0;
+    //brokenIMDetectionContext.preeditEventOccurred = 0;
 
     if (ximHasBeenChanged || xicHasBeenChanged) {
         brokenIMDetectionContext.eatenEventsCount = 0;
     }
     if (isEventFiltered &&
-        (!brokenIMDetectionContext.duringPreediting || !preeditEventOccurred))
+        (!brokenIMDetectionContext.duringPreediting/* || !preeditEventOccurred*/))
     {
         ++brokenIMDetectionContext.eatenEventsCount;
     } else {
@@ -773,7 +770,7 @@ static void detectAndRecreateBrokenInputMethod
 void brokenIMDetection_onPreeditEventOccurred(XIC ic) {
     brokenIMDetectionContext.lastPreeditEventXIM = XIMOfIC(ic);
     brokenIMDetectionContext.lastPreeditEventXIC = ic;
-    brokenIMDetectionContext.preeditEventOccurred = 1;
+    //brokenIMDetectionContext.preeditEventOccurred = 1;
 }
 
 // Invoked by preedit callbacks implemented in awt_InputMethod.c
