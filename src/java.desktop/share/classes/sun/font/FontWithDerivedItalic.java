@@ -1,5 +1,5 @@
 package sun.font;
 
 interface FontWithDerivedItalic {
-  Font2D createItalicVariant();
+  Font2D createItalic();
 }
