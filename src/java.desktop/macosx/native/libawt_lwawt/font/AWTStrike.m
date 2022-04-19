@@ -28,6 +28,7 @@
 #import "sun_font_CStrikeDisposer.h"
 #import "CGGlyphImages.h"
 #import "CGGlyphOutlines.h"
+#import "CoreTextSupport.h"
 #import "JNIUtilities.h"
 #include "fontscalerdefs.h"
 #import "LWCToolkit.h"
@@ -159,8 +160,12 @@ JNI_COCOA_ENTER(env);
     AWTStrike *awtStrike = (AWTStrike *)jlong_to_ptr(awtStrikePtr);
     AWTFont *awtFont = awtStrike->fAWTFont;
 
-    CGGlyph glyph = glyphCode;
-    CGGlyphImages_GetGlyphMetrics((CTFontRef)awtFont->fFont, &awtStrike->fAltTx, awtStrike->fSize, awtStrike->fStyle, &glyph, 1, NULL, &advance, IS_OSX_GT10_14);
+    // negative glyph codes are really unicodes, which were placed there by the mapper
+    // to indicate we should use CoreText to substitute the character
+    CGGlyph glyph;
+    const CTFontRef fallback = CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(awtFont, glyphCode, &glyph);
+    CGGlyphImages_GetGlyphMetrics(fallback, &awtStrike->fAltTx, awtStrike->fSize, awtStrike->fStyle, &glyph, 1, NULL, &advance, IS_OSX_GT10_14);
+    CFRelease(fallback);
     advance = CGSizeApplyAffineTransform(advance, awtStrike->fFontTx);
     if (!JRSFontStyleUsesFractionalMetrics(awtStrike->fStyle)) {
         advance.width = round(advance.width);
@@ -190,9 +195,14 @@ JNI_COCOA_ENTER(env);
     tx.tx += x;
     tx.ty += y;
 
-    CGGlyph glyph = glyphCode;
+    // negative glyph codes are really unicodes, which were placed there by the mapper
+    // to indicate we should use CoreText to substitute the character
+    CGGlyph glyph;
+    const CTFontRef fallback = CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(awtFont, glyphCode, &glyph);
+
     CGRect bbox;
-    CGGlyphImages_GetGlyphMetrics((CTFontRef)awtFont->fFont, &tx, awtStrike->fSize, awtStrike->fStyle, &glyph, 1, &bbox, NULL, IS_OSX_GT10_14);
+    CGGlyphImages_GetGlyphMetrics(fallback, &tx, awtStrike->fSize, awtStrike->fStyle, &glyph, 1, &bbox, NULL, IS_OSX_GT10_14);
+    CFRelease(fallback);
 
     // the origin of this bounding box is relative to the bottom-left corner baseline
     CGFloat decender = -bbox.origin.y;
@@ -241,12 +251,14 @@ AWT_FONT_CLEANUP_CHECK(awtfont);
     tx.tx += xPos;
     tx.ty += yPos;
 
-    CGGlyph glyph = glyphCode;
-    NSFont *font = awtfont->fFont;
+    // get the right font and glyph for this "Java GlyphCode"
+
+    CGGlyph glyph;
+    const CTFontRef font = CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(awtfont, glyphCode, &glyph);
 
     // get the advance of this glyph
     CGSize advance;
-    CTFontGetAdvancesForGlyphs((CTFontRef)font, kCTFontDefaultOrientation, &glyph, &advance, 1);
+    CTFontGetAdvancesForGlyphs(font, kCTFontDefaultOrientation, &glyph, &advance, 1);
 
     // Create AWTPath
     path = AWTPathCreate(CGSizeMake(xPos, yPos));
@@ -255,7 +267,8 @@ AWT_FONT_CLEANUP_CHECK(path);
     // Get the paths
     tx = awtStrike->fTx;
     tx = CGAffineTransformConcat(tx, sInverseTX);
-    AWTGetGlyphOutline(&glyph, font, &advance, &tx, 0, 1, &path);
+    AWTGetGlyphOutline(&glyph, (NSFont *)font, &advance, &tx, 0, 1, &path);
+    CFRelease(font);
 
     pointCoords = (*env)->NewFloatArray(env, path->fNumberOfDataElements);
 AWT_FONT_CLEANUP_CHECK(pointCoords);
@@ -309,14 +322,19 @@ JNIEXPORT void JNICALL Java_sun_font_CStrike_getNativeGlyphOutlineBounds
     AWT_FONT_CLEANUP_SETUP;
     AWT_FONT_CLEANUP_CHECK(awtfont);
 
-    CGGlyph glyph = glyphCode;
+    // get the right font and glyph for this "Java GlyphCode"
+    CGGlyph glyph;
+    const CTFontRef font = CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(
+            awtfont, glyphCode, &glyph);
+
     CGRect bbox = CTFontGetBoundingRectsForGlyphs(
-        (CTFontRef)awtfont->fFont, kCTFontOrientationDefault, &glyph, NULL, 1);
+        font, kCTFontOrientationDefault, &glyph, NULL, 1);
 
     CGAffineTransform tx = CGAffineTransformConcat(awtStrike->fTx,
                                                    sInverseTX);
 
     bbox =  CGRectApplyAffineTransform (bbox, tx);
+    CFRelease(font);
     jfloat *rawRectData =
         (*env)->GetPrimitiveArrayCritical(env, rectData, NULL);
 

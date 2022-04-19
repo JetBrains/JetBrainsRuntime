@@ -266,12 +266,12 @@ public class FontFamily {
                 doSetFont(fontAndStyle.font, fontAndStyle.style);
             }
             if (italic == null && plain instanceof FontWithDerivedItalic) {
-                italic = ((FontWithDerivedItalic)plain).createItalicVariant();
+                italic = ((FontWithDerivedItalic)plain).createItalic();
             }
             if (bolditalic == null) {
                 Font2D boldItalicPrototype = bold != null ? bold : plain;
                 if (boldItalicPrototype instanceof FontWithDerivedItalic) {
-                    bolditalic = ((FontWithDerivedItalic)boldItalicPrototype).createItalicVariant();
+                    bolditalic = ((FontWithDerivedItalic)boldItalicPrototype).createItalic();
                 }
             }
             fontSequence.clear();
