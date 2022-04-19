@@ -1692,6 +1692,10 @@ static NSDictionary* prebuiltFamilyNames() {
              @"SourceCodePro-BoldIt" : @"Source Code Pro",
              @"SourceCodePro-It" : @"Source Code Pro",
              @"SourceCodePro-Regular" : @"Source Code Pro",
+             @"Inter-Bold": @"Inter",
+             @"Inter-BoldItalic": @"Inter",
+             @"Inter-Italic": @"Inter",
+             @"Inter-Regular": @"Inter",
              };
 }
 
