@@ -344,7 +344,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFamilyMap.put("Roboto-Thin", "Roboto Thin");
 
         jreFontMap.put("JetBrainsMono-Bold.ttf", new BundledFontInfo("JetBrainsMono-Bold", 2, 225, 0));
-        jreFontMap.put("JetBrainsMono-Bold-Italic.ttf", new BundledFontInfo("JetBrainsMono-Bold-Italic", 2, 225, 0));
         jreFontMap.put("JetBrainsMono-BoldItalic.ttf", new BundledFontInfo("JetBrainsMono-BoldItalic", 2, 225, 0));
         jreFontMap.put("JetBrainsMono-ExtraBold.ttf", new BundledFontInfo("JetBrainsMono-ExtraBold", 2, 225, 0));
         jreFontMap.put("JetBrainsMono-ExtraBoldItalic.ttf", new BundledFontInfo("JetBrainsMono-ExtraBoldItalic", 2, 225, 0));
