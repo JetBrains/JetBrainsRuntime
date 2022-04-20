@@ -21,7 +21,6 @@
 # questions.
 #
 
-        .file "linux_arm_32.S"
 
         # NOTE WELL!  The _Copy functions are called directly
 	# from server-compiler-generated code via CallLeafNoFP,

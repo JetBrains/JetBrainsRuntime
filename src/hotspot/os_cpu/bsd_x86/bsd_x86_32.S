@@ -31,7 +31,6 @@
 #define ELF_TYPE(name, description) .type name,description
 #endif
 
-        .file "bsd_x86_32.S"
         .globl SYMBOL(fixcw)
 
         # NOTE WELL!  The _Copy functions are called directly
