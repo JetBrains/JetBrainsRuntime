@@ -647,6 +647,16 @@ CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
 #define RENDER_GLYPH_BATCH_SIZE 16
 #define RENDER_GLYPH_ARRAY_INIT_8 glyph,glyph,glyph,glyph,glyph,glyph,glyph,glyph
 #define RENDER_GLYPH_ARRAY_INIT RENDER_GLYPH_ARRAY_INIT_8,RENDER_GLYPH_ARRAY_INIT_8
+
+static CTFontRef CopyFontWithSize(CTFontRef originalFont, CGFloat size) {
+    CTFontDescriptorRef descriptor = NULL;
+    CGFontRef cgFont = CTFontCopyGraphicsFont(originalFont, &descriptor);
+    CTFontRef result = CTFontCreateWithGraphicsFont(cgFont, size, NULL, descriptor);
+    if (cgFont) CFRelease(cgFont);
+    if (descriptor) CFRelease(descriptor);
+    return result;
+}
+
 /*
  * Clears the canvas, strikes the glyph with CoreGraphics, and then
  * copies the struck pixels into the GlyphInfo image.
@@ -687,7 +697,7 @@ CGGI_CreateImageForGlyph
         // Set actual font size from transformation matrix for color glyphs
         CGFloat fontSize = glyphDescriptor != &argb ? strike->fSize :
                            sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c));
-        CTFontRef sizedFont = CTFontCreateCopyWithSymbolicTraits(font, fontSize, NULL, 0, 0);
+        CTFontRef sizedFont = CopyFontWithSize(font, fontSize);
 
         CGFloat normFactor = 1.0 / fontSize;
         CGAffineTransform normalizedMatrix = CGAffineTransformScale(matrix, normFactor, normFactor);
@@ -1071,7 +1081,7 @@ CGGlyphImages_GetGlyphMetrics(const CTFontRef font,
         // The logic here must match the logic in CGGI_CreateImageForGlyph,
         // which performs glyph drawing.
 
-        CTFontRef sizedFont = CTFontCreateCopyWithSymbolicTraits(font, fontSize, NULL, 0, 0);
+        CTFontRef sizedFont = CopyFontWithSize(font, fontSize);
 
         if (bboxes) {
             // JRSFontGetBoundingBoxesForGlyphsAndStyle works incorrectly for AppleColorEmoji font:
