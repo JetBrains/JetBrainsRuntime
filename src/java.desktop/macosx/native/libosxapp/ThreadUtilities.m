@@ -126,8 +126,7 @@ AWT_ASSERT_APPKIT_THREAD;
             void (^blockCopy)(void) = Block_copy(^(){
                 setBlockingEventDispatchThread(YES);
                 @try {
-                    // perform immediately (out of the run loop) and wait
-                    [target performSelector:aSelector onThread:[NSThread currentThread] withObject:arg waitUntilDone:YES];
+                    [target performSelector:aSelector withObject:arg];
                 } @finally {
                     setBlockingEventDispatchThread(NO);
                 }
