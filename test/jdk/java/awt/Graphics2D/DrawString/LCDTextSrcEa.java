@@ -31,20 +31,14 @@
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 public class LCDTextSrcEa extends Component {
-
-    private static final int TIMEOUT = 20000;
-    private static volatile boolean nongrey = false;
-    private static CountDownLatch latch = new CountDownLatch(1);
 
     static int SZ=150;
     BufferedImage target =
         new BufferedImage(SZ, SZ, BufferedImage.TYPE_INT_RGB);
 
-    public static void main(String args[]) throws InterruptedException {
+    public static void main(String args[]) {
         Frame f = new Frame("LCD Text SrcEa Test");
         f.addWindowListener(new WindowAdapter() {
             @Override
@@ -56,16 +50,6 @@ public class LCDTextSrcEa extends Component {
         f.add("Center", td);
         f.pack();
         f.setVisible(true);
-
-        if(!latch.await(TIMEOUT, TimeUnit.MILLISECONDS)) {
-            throw new RuntimeException("ERROR: Test paint method has not finished for " + TIMEOUT + "msec");
-        }
-
-        f.dispose();
-
-        if (!nongrey) {
-            throw new RuntimeException("No LCD text found");
-        }
     }
 
     public Dimension getPreferredSize() {
@@ -89,7 +73,7 @@ public class LCDTextSrcEa extends Component {
         g2d.setColor(Color.black);
         g2d.drawString("Some sample text.", 10, 20);
         gx.drawImage(target, 0, 0, null);
-
+        boolean nongrey = false;
         //Test BI: should be some non-greyscale color
         for (int px=0;px<SZ;px++) {
             for (int py=0;py<SZ;py++) {
@@ -103,6 +87,8 @@ public class LCDTextSrcEa extends Component {
                 }
             }
         }
-        latch.countDown();
+        if (!nongrey) {
+            throw new RuntimeException("No LCD text found");
+        }
     }
 }
