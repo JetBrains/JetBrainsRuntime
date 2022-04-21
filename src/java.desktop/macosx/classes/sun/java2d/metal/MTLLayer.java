@@ -29,10 +29,13 @@ import sun.java2d.NullSurfaceData;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.macosx.CFLayer;
+import sun.util.logging.PlatformLogger;
+
 import java.awt.GraphicsConfiguration;
 import java.awt.Insets;
 
 public class MTLLayer extends CFLayer {
+    private static final PlatformLogger logger = PlatformLogger.getLogger(MTLLayer.class.getName());
 
     private native long nativeCreateLayer();
     private static native void nativeSetScale(long layerPtr, double scale);
@@ -50,6 +53,14 @@ public class MTLLayer extends CFLayer {
 
         setPtr(nativeCreateLayer());
         this.peer = peer;
+
+        MTLGraphicsConfig gc = (MTLGraphicsConfig)getGraphicsConfiguration();
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("device = " + (gc != null ? gc.getDevice() : "null"));
+        }
+        if (gc != null) {
+            setScale(gc.getDevice().getScaleFactor());
+        }
     }
 
     public SurfaceData replaceSurfaceData() {
@@ -100,6 +111,10 @@ public class MTLLayer extends CFLayer {
 
     private void setScale(final int _scale) {
         if (scale != _scale) {
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                MTLGraphicsConfig gc = (MTLGraphicsConfig)getGraphicsConfiguration();
+                logger.fine("current scale = " + scale + ", new scale = " + _scale + " (device = " + (gc != null ? gc.getDevice() : "null") + ")");
+            }
             scale = _scale;
             execute(ptr -> nativeSetScale(ptr, scale));
         }
