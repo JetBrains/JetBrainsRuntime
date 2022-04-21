@@ -25,7 +25,6 @@
  * @test
  * @key headful
  * @bug 6996867
- * @requires (os.family != "mac")
  * @summary Render as LCD Text in SrcEa composite mode.
  */
 
