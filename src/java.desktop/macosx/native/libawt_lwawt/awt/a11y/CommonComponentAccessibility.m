@@ -1186,25 +1186,7 @@ static jobject sAccessibilityClass = NULL;
 
 // NSAccessibilityActions methods
 
-- (BOOL)isEnableShowMenuEvent
-{
-    static NSNumber *sEnableShowContextMenuEvent = nil;
-    if (sEnableShowContextMenuEvent == nil) {
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
-        GET_CACCESSIBILITY_CLASS_RETURN(NO);
-        DECLARE_STATIC_METHOD_RETURN(sjm_enableShowMenuEvent, sjc_CAccessibility, "isEnableShowContextMenuEvent", "()Z", NO);
-        sEnableShowContextMenuEvent = [[NSNumber alloc] initWithBool:(*env)->CallStaticBooleanMethod(env, sjc_CAccessibility, sjm_enableShowMenuEvent)];
-        CHECK_EXCEPTION();
-    }
-
-    return sEnableShowContextMenuEvent.boolValue;
-}
-
 - (BOOL)isAccessibilitySelectorAllowed:(SEL)selector {
-    if ([self isEnableShowMenuEvent] &&
-            [NSStringFromSelector(selector) isEqualToString:@"accessibilityPerformShowMenu"]) {
-        return YES;
-    }
     if ([sAllActionSelectors containsObject:NSStringFromSelector(selector)] &&
         ![[self actionSelectors] containsObject:NSStringFromSelector(selector)]) {
         return NO;
@@ -1221,14 +1203,6 @@ static jobject sAccessibilityClass = NULL;
 }
 
 - (BOOL)accessibilityPerformShowMenu {
-    if ([self isEnableShowMenuEvent]) {
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
-        GET_CACCESSIBILITY_CLASS_RETURN(NO);
-        DECLARE_STATIC_METHOD_RETURN(sjm_accessibleShowContextMenuEvent, sjc_CAccessibility, "accessibleShowContextMenuEvent", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)V", NO);
-        (*env)->CallStaticVoidMethod(env, sjc_CAccessibility, sjm_accessibleShowContextMenuEvent, fAccessible, fComponent);
-        CHECK_EXCEPTION();
-        return YES;
-    }
     return [self accessiblePerformAction:NSAccessibilityShowMenuAction];
 }
 
