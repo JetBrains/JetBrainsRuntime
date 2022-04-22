@@ -42,7 +42,9 @@ public class MouseEventScenario {
         testStage = TestStage.MOUSE_DRAGGED;
         System.out.println("Stage: " + testStage.name());
         latch = new CountDownLatch(1);
-        robot.mouseMove(frameCenter.x + 1, frameCenter.y);
+        // Empiric observation: robot.mouseMove with small shifts (1-3 pixels) doesn't produce real moves
+        // So we must use quite large shifts
+        robot.mouseMove(frameCenter.x + browserFrame.getWidth()/4, frameCenter.y);
         latch.await(2, TimeUnit.SECONDS);
         checkActionHandler();
 
