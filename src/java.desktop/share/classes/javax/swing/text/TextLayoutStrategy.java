@@ -31,6 +31,7 @@ import java.awt.font.FontRenderContext;
 import java.awt.font.LineBreakMeasurer;
 import java.awt.font.TextAttribute;
 import java.awt.font.TextLayout;
+import java.awt.geom.AffineTransform;
 import java.text.AttributedCharacterIterator;
 import java.text.BreakIterator;
 import java.util.HashSet;
