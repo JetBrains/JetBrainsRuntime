@@ -1,7 +1,7 @@
 [general]
 project=jdk-updates
 jbs=JDK
-version=18.0.1
+version=18.0.1.1
 
 [checks]
 error=author,committer,reviewers,merge,issues,executable,symlink,message,hg-tag,whitespace,problemlists
