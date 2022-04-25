@@ -107,7 +107,7 @@ EndOFArtifactsList
 testname="JBRArtifacts"
 count=$(echo $allArtifacts | wc -w)
 n=0
-echo "\#\#teamcity[testStarted name=\'$testname\']"
+echo \#\#teamcity[testStarted name=\'$testname\']
 echo "Non existing artifacts:"
 for artifact in $allArtifacts; do
   isFound=$(ls $dirname | grep -c $artifact)
@@ -127,7 +127,7 @@ for relpath in $(ls $dirname); do
   fi
 done
 if [ $n -eq 0 ]; then
-  echo "\#\#teamcity[testFinished name=\'$testname\']"
+  echo \#\#teamcity[testFinished name=\'$testname\']
 else
-  echo "\#\#teamcity[testFailed name=\'$testname\' message=\'Some artifacts cannot be found\']"
+  echo \#\#teamcity[testFailed name=\'$testname\' message=\'Some artifacts cannot be found\']
 fi
