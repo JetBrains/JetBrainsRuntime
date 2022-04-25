@@ -1016,8 +1016,8 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                 }
             }
 
-            FT_LcdFilter fcLCDFilter;
-            FcBool fcLCDFilterSet = (*FcPatternGetIntegerPtr)(pattern, FC_LCD_FILTER, 0, (int*) &fcLCDFilter) == FcResultMatch;
+            int fcLCDFilter;
+            FcBool fcLCDFilterSet = (*FcPatternGetIntegerPtr)(pattern, FC_LCD_FILTER, 0, &fcLCDFilter) == FcResultMatch;
             context->lcdFilter = FT_LCD_FILTER_DEFAULT;
             if (fcLCDFilterSet) {
                 switch (fcLCDFilter) {
