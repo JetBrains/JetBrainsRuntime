@@ -61,6 +61,18 @@ compiler/tiered/LevelTransitionTest.java                                        
 compiler/types/correctness/CorrectnessTest.java                                     8066173 generic-all
 compiler/types/correctness/OffTest.java                                             8066173 generic-all
 
+compiler/rtm/locking/TestRTMAbortRatio.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMAbortThreshold.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMAfterNonRTMDeopt.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMDeoptOnHighAbortRatio.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMDeoptOnLowAbortRatio.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMLockingCalculationDelay.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMLockingThreshold.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMSpinLoopCount.java 8183263 generic-x64
+compiler/rtm/locking/TestUseRTMDeopt.java 8183263 generic-x64
+compiler/rtm/locking/TestUseRTMXendForLockBusy.java 8183263 generic-x64
+compiler/rtm/print/TestPrintPreciseRTMLockingStatistics.java 8183263 generic-x64
+
 compiler/c2/Test6852078.java                                                        8194310 generic-all
 compiler/c2/Test6857159.java                                                        8234290 generic-all
 compiler/c2/Test8004741.java                                                        8235801 generic-all
