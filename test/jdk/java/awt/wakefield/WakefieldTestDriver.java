@@ -85,12 +85,13 @@ public class WakefieldTestDriver {
             jvmArgs.addAll(Arrays.asList(args));
         }
 
-        final Process westonProcess = launchWeston(nScreens, screenWidth, screenHeight);
+        final String socketName = SOCKET_NAME_PREFIX + ProcessHandle.current().pid();
+        final Process westonProcess = launchWeston(nScreens, screenWidth, screenHeight, socketName);
         try {
-            System.out.println("Running test with WAYLAND_DISPLAY=" + SOCKET_NAME);
+            System.out.println("Running test with WAYLAND_DISPLAY=" + socketName);
             final ProcessBuilder pb = ProcessTools.createTestJvm(jvmArgs);
             final Map<String, String> env = pb.environment();
-            env.put("WAYLAND_DISPLAY", SOCKET_NAME);
+            env.put("WAYLAND_DISPLAY", socketName);
 
             final Process p = pb.start();
             final OutputAnalyzer output = new OutputAnalyzer(p);
@@ -136,13 +137,13 @@ public class WakefieldTestDriver {
         }
     }
 
-    static final String SOCKET_NAME = "wakefield-42";
+    static final String SOCKET_NAME_PREFIX = "wakefield-";
 
-    static Process launchWeston(int nScreens, int width, int height) throws IOException {
+    static Process launchWeston(int nScreens, int width, int height, String socketName) throws IOException {
         final List<String> args = new ArrayList<String>();
         args.add("weston");
         args.add("--backend=x11-backend.so");
-        args.add("--socket=" + SOCKET_NAME);
+        args.add("--socket=" + socketName);
         args.add("--output-count=" + nScreens);
         args.add("--width=" + width);
         args.add("--height=" + height);

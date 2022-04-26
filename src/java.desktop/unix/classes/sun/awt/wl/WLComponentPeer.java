@@ -334,7 +334,12 @@ public class WLComponentPeer implements ComponentPeer
 
     @Override
     public Point getLocationOnScreen() {
-        return WLRobotPeer.getLocationOfWLSurface(getWLSurface());
+        final long wlSurfacePtr = getWLSurface();
+        if (wlSurfacePtr != 0) {
+            return WLRobotPeer.getLocationOfWLSurface(wlSurfacePtr);
+        } else {
+            throw new UnsupportedOperationException("getLocationOnScreen() not supported without wayland surface");
+        }
     }
 
     @SuppressWarnings("fallthrough")
