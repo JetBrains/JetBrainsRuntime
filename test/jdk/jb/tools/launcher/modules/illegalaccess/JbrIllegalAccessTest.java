@@ -47,11 +47,11 @@ public class JbrIllegalAccessTest {
             .executeTestJava(vmopts)
             .outputTo(System.out)
             .errorTo(System.out);
-        outputAnalyzer.shouldContain(text);
+        outputAnalyzer.shouldNotContain(text);
     }
 
     public void testObsolete() throws Exception {
-        run("Option --jbr-illegal-access is deprecated",
+        run("Unrecognized option: --jbr-illegal-access",
             "-XX:-IgnoreUnrecognizedVMOptions",
             "--jbr-illegal-access", "--version");
     }
