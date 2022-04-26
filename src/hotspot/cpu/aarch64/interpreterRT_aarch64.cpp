@@ -52,95 +52,6 @@ InterpreterRuntime::SignatureHandlerGenerator::SignatureHandlerGenerator(
   _stack_offset = 0;
 }
 
-// On macos/aarch64 native stack is packed, int/float are using only 4 bytes
-// on stack. Natural alignment for types are still in place,
-// for example double/long should be 8 bytes alligned
-
-void InterpreterRuntime::SignatureHandlerGenerator::pass_byte() {
-  const Address src(from(), Interpreter::local_offset_in_bytes(offset()));
-
-  switch (_num_int_args) {
-  case 0:
-    __ ldr(c_rarg1, src);
-    _num_int_args++;
-    break;
-  case 1:
-    __ ldr(c_rarg2, src);
-    _num_int_args++;
-    break;
-  case 2:
-    __ ldr(c_rarg3, src);
-    _num_int_args++;
-    break;
-  case 3:
-    __ ldr(c_rarg4, src);
-    _num_int_args++;
-    break;
-  case 4:
-    __ ldr(c_rarg5, src);
-    _num_int_args++;
-    break;
-  case 5:
-    __ ldr(c_rarg6, src);
-    _num_int_args++;
-    break;
-  case 6:
-    __ ldr(c_rarg7, src);
-    _num_int_args++;
-    break;
-  default:
-    __ ldrb(r0, src);
-    __ strb(r0, Address(to(), _stack_offset));
-    _stack_offset += sizeof(jbyte);
-
-    _num_int_args++;
-    break;
-  }
-}
-
-void InterpreterRuntime::SignatureHandlerGenerator::pass_short() {
-  const Address src(from(), Interpreter::local_offset_in_bytes(offset()));
-
-  switch (_num_int_args) {
-  case 0:
-    __ ldr(c_rarg1, src);
-    _num_int_args++;
-    break;
-  case 1:
-    __ ldr(c_rarg2, src);
-    _num_int_args++;
-    break;
-  case 2:
-    __ ldr(c_rarg3, src);
-    _num_int_args++;
-    break;
-  case 3:
-    __ ldr(c_rarg4, src);
-    _num_int_args++;
-    break;
-  case 4:
-    __ ldr(c_rarg5, src);
-    _num_int_args++;
-    break;
-  case 5:
-    __ ldr(c_rarg6, src);
-    _num_int_args++;
-    break;
-  case 6:
-    __ ldr(c_rarg7, src);
-    _num_int_args++;
-    break;
-  default:
-    _stack_offset = align_up(_stack_offset, sizeof(jshort));
-    __ ldrh(r0, src);
-    __ strh(r0, Address(to(), _stack_offset));
-    _stack_offset += sizeof(jshort);
-
-    _num_int_args++;
-    break;
-  }
-}
-
 void InterpreterRuntime::SignatureHandlerGenerator::pass_int() {
   const Address src(from(), Interpreter::local_offset_in_bytes(offset()));
 
@@ -174,14 +85,9 @@ void InterpreterRuntime::SignatureHandlerGenerator::pass_int() {
     _num_int_args++;
     break;
   default:
-    _stack_offset = align_up(_stack_offset, sizeof(int));
     __ ldr(r0, src);
     __ str(r0, Address(to(), _stack_offset));
-#ifdef __APPLE__
-    _stack_offset += sizeof(int);
-#else
     _stack_offset += wordSize;
-#endif
     _num_int_args++;
     break;
   }
@@ -220,7 +126,6 @@ void InterpreterRuntime::SignatureHandlerGenerator::pass_long() {
     _num_int_args++;
     break;
   default:
-    _stack_offset = align_up(_stack_offset, wordSize);
     __ ldr(r0, src);
     __ str(r0, Address(to(), _stack_offset));
     _stack_offset += wordSize;
@@ -235,14 +140,9 @@ void InterpreterRuntime::SignatureHandlerGenerator::pass_float() {
   if (_num_fp_args < Argument::n_float_register_parameters_c) {
     __ ldrs(as_FloatRegister(_num_fp_args++), src);
   } else {
-      _stack_offset = align_up(_stack_offset, sizeof(float));
     __ ldrw(r0, src);
     __ strw(r0, Address(to(), _stack_offset));
-#ifdef __APPLE__
-    _stack_offset += sizeof(float);
-#else
     _stack_offset += wordSize;
-#endif
     _num_fp_args++;
   }
 }
@@ -253,7 +153,6 @@ void InterpreterRuntime::SignatureHandlerGenerator::pass_double() {
   if (_num_fp_args < Argument::n_float_register_parameters_c) {
     __ ldrd(as_FloatRegister(_num_fp_args++), src);
   } else {
-    _stack_offset = align_up(_stack_offset, wordSize);
     __ ldr(r0, src);
     __ str(r0, Address(to(), _stack_offset));
     _stack_offset += wordSize;
@@ -349,7 +248,6 @@ void InterpreterRuntime::SignatureHandlerGenerator::pass_object() {
       __ cbnz(temp(), L);
       __ mov(r0, zr);
       __ bind(L);
-      _stack_offset = align_up(_stack_offset, wordSize);
       __ str(r0, Address(to(), _stack_offset));
       _stack_offset += wordSize;
       _num_int_args++;
@@ -386,39 +284,6 @@ class SlowSignatureHandler
   unsigned int _num_int_args;
   unsigned int _num_fp_args;
 
-
-  virtual void pass_byte()
-  {
-    jbyte from_obj = *(jbyte *)(_from+Interpreter::local_offset_in_bytes(0));
-    _from -= Interpreter::stackElementSize;
-
-    if (_num_int_args < Argument::n_int_register_parameters_c-1) {
-      *_int_args++ = from_obj;
-      _num_int_args++;
-    } else {
-      *(jbyte*)_to = from_obj;
-      _to = (intptr_t *)((char*) _to + sizeof (jbyte));
-
-      _num_int_args++;
-    }
-  }
-
-  virtual void pass_short()
-  {
-    jshort from_obj = *(jshort *)(_from+Interpreter::local_offset_in_bytes(0));
-    _from -= Interpreter::stackElementSize;
-
-    if (_num_int_args < Argument::n_int_register_parameters_c-1) {
-      *_int_args++ = from_obj;
-      _num_int_args++;
-    } else {
-      _to = align_up(_to, sizeof(jshort));
-      *(jshort*)_to = from_obj;
-      _to = (intptr_t *)((char*) _to + sizeof (jshort));
-
-      _num_int_args++;
-    }
-  }
   virtual void pass_int()
   {
     jint from_obj = *(jint *)(_from+Interpreter::local_offset_in_bytes(0));
@@ -428,13 +293,7 @@ class SlowSignatureHandler
       *_int_args++ = from_obj;
       _num_int_args++;
     } else {
-      _to = align_up(_to, sizeof(jint));
-#ifdef __APPLE__
-      *_to = from_obj;
-       _to = (intptr_t *)((char*) _to + sizeof (jint));
-#else
       *_to++ = from_obj;
-#endif
       _num_int_args++;
     }
   }
@@ -448,7 +307,6 @@ class SlowSignatureHandler
       *_int_args++ = from_obj;
       _num_int_args++;
     } else {
-      _to = align_up(_to, wordSize);
       *_to++ = from_obj;
       _num_int_args++;
     }
@@ -463,7 +321,6 @@ class SlowSignatureHandler
       *_int_args++ = (*from_addr == 0) ? NULL : (intptr_t)from_addr;
       _num_int_args++;
     } else {
-      _to = align_up(_to, wordSize);
       *_to++ = (*from_addr == 0) ? NULL : (intptr_t) from_addr;
       _num_int_args++;
     }
@@ -478,13 +335,7 @@ class SlowSignatureHandler
       *_fp_args++ = from_obj;
       _num_fp_args++;
     } else {
-      _to = align_up(_to, sizeof(jint));
-#ifdef __APPLE__
-      *_to = from_obj;
-      _to = (intptr_t *)((char*) _to + sizeof(jint));
-#else
       *_to++ = from_obj;
-#endif
       _num_fp_args++;
     }
   }
@@ -499,7 +350,6 @@ class SlowSignatureHandler
       *_fp_identifiers |= (1ull << _num_fp_args); // mark as double
       _num_fp_args++;
     } else {
-      _to = align_up(_to, wordSize);
       *_to++ = from_obj;
       _num_fp_args++;
     }
@@ -510,7 +360,7 @@ class SlowSignatureHandler
     : NativeSignatureIterator(method)
   {
     _from = from;
-    _to   = to; //FIXME, should I allign_up here ?
+    _to   = to;
 
     _int_args = to - (method->is_static() ? 16 : 17);
     _fp_args =  to - 8;
