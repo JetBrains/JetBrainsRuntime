@@ -131,3 +131,5 @@ if [ $n -eq 0 ]; then
 else
   echo \#\#teamcity[testFailed name=\'$testname\' message=\'Some artifacts cannot be found\']
 fi
+
+exit $n
