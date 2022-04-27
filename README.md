@@ -25,7 +25,7 @@ sensible. Then add this argument to `java`
 
 ### Testing
 Testing that involves `Robot` is done inside a [Weston](https://gitlab.freedesktop.org/wayland/weston/)
-instance with a special module loaded called [wakefield](https://github.com/mkartashev/wakefield) 
+instance with a special module loaded called `libwakefield`
 that provides the necessary functionality. The Wayland-specific tests are therefore executed with a dedicated test driver
 `test/jdk/java/awt/wakefield/WakefieldTestDriver.java`. The driver also provides an easy
 way to run the test in several configurations with a different size and even number
@@ -33,8 +33,10 @@ of "outputs" (monitors).
 
 To run the Wayland-specific tests, perform these steps:
 * Install Weston version 9 (earlier versions are known NOT to work).
-* Obtain `libwakefield.so` either by building [from source](https://github.com/mkartashev/wakefield)
-or by obtaining the latest pre-built `x64` binary
+* Obtain `libwakefield.so` either by building from source (available under
+`src/java.desktop/share/native/libwakefield` and not integrated into the rest of the
+build infrastructure; see `README.md` there)
+or by fetching the latest pre-built `x64` binary
 ```
 wget https://github.com/mkartashev/wakefield/raw/main/libwakefield.so
 ```
