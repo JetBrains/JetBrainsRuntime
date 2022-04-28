@@ -604,12 +604,19 @@ static StatusWindow *createStatusWindow(Window parent) {
     Window rootWindow;
     Window *ignoreWindowPtr;
     unsigned int ignoreUnit;
+    Status rc;
 
-    XGetGeometry(dpy, parent, &rootWindow, &x, &y, &w, &h, &bw, &depth);
+    rc = XGetGeometry(dpy, parent, &rootWindow, &x, &y, &w, &h, &bw, &depth);
+    if (rc == 0) {
+        return NULL;
+    }
 
     attrib.override_redirect = True;
     attribmask = CWOverrideRedirect;
-    XGetWindowAttributes(dpy, parent, &xwa);
+    rc = XGetWindowAttributes(dpy, parent, &xwa);
+    if (rc == 0) {
+        return NULL;
+    }
     bw = 2; /*xwa.border_width does not have the correct value*/
 
     if (xwa.screen != NULL) {
