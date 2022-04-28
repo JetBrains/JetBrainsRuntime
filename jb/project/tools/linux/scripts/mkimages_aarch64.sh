@@ -48,6 +48,7 @@ function do_configure {
     --with-version-opt=b${build_number} \
     --with-import-modules=./modular-sdk \
     --with-boot-jdk=${BOOT_JDK} \
+    $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
     --enable-cds=yes || exit $?
 }
 
@@ -78,6 +79,8 @@ tar -pcf $JBSDK.tar \
   --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
   -C $BASE_DIR ${JBRSDK_BUNDLE} || exit $?
 gzip $JBSDK.tar || exit $?
+
+zip_native_debug_symbols ${BASE_DIR}/jdk "${JBSDK}_diz"
 
 JBR_BUNDLE=jbr
 JBR_BASE_NAME=jbr-$JBSDK_VERSION
