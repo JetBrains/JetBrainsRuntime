@@ -115,7 +115,7 @@ typedef struct CachedMatch {
     FcBool fcAutohintSet;
     int fcRGBA;
     FcBool fcRGBASet;
-    FT_LcdFilter fcLCDFilter;
+    int fcLCDFilter;
     FcBool fcLCDFilterSet;
 } CachedMatch;
 
