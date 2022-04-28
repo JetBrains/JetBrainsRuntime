@@ -56,6 +56,7 @@ function do_configure {
     --with-version-opt=b${build_number} \
     --with-boot-jdk=${BOOT_JDK} \
     $WITH_IMPORT_MODULES \
+    $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
     --enable-cds=yes || do_exit $?
 }
 
@@ -158,6 +159,8 @@ mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
 tar -pcf ${JBSDK}.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man \
   -C ${BASE_DIR} ${JBRSDK_BUNDLE} || do_exit $?
 gzip -f ${JBSDK}.tar || do_exit $?
+
+zip_native_debug_symbols ${BASE_DIR}/jdk "${JBSDK}_diz"
 
 create_jbr || do_exit $?
 
