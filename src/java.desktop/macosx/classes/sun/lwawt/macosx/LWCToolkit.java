@@ -145,6 +145,8 @@ public final class LWCToolkit extends LWToolkit {
 
     private static CInputMethodDescriptor sInputMethodDescriptor;
 
+    private static final boolean DISPOSE_INVOCATION_ON_EDT_FREE;
+
     static {
         System.err.flush();
 
@@ -181,6 +183,12 @@ public final class LWCToolkit extends LWToolkit {
                 return !Boolean.parseBoolean(System.getProperty("javafx.embed.singleThread", "false"));
             }
         });
+
+        // Listens to EDT state in invokeAndWait() and disposes the invocation event
+        // when EDT becomes free but the invocation event is not yet dispatched (considered lost).
+        // This prevents a deadlock and makes the invocation return some default result.
+        DISPOSE_INVOCATION_ON_EDT_FREE = java.security.AccessController.doPrivileged(
+          (PrivilegedAction<Boolean>)() -> Boolean.getBoolean("sun.lwawt.macosx.LWCToolkit.invokeAndWait.disposeOnEDTFree"));
     }
 
     /*
@@ -695,30 +703,6 @@ public final class LWCToolkit extends LWToolkit {
         }
     }
 
-    private static final AtomicInteger blockingRunLoopCounter = new AtomicInteger(0);
-    private static final AtomicBoolean priorityInvocationPending = new AtomicBoolean(false);
-
-    @Override
-    public void unsafeNonblockingExecute(Runnable runnable) {
-        if (!EventQueue.isDispatchThread()) {
-            throw new Error("the method must be called on the Event Dispatching thread");
-        }
-        if (runnable == null) return;
-
-        synchronized (priorityInvocationPending) {
-            priorityInvocationPending.set(true);
-        }
-        AWTAccessor.getEventQueueAccessor().createSecondaryLoop(
-            getSystemEventQueue(),
-            () -> blockingRunLoopCounter.get() > 0).enter();
-
-        try {
-            runnable.run();
-        } finally {
-            priorityInvocationPending.set(false);
-        }
-    }
-
     /**
      * Kicks an event over to the appropriate event queue and waits for it to
      * finish To avoid deadlocking, we manually run the NSRunLoop while waiting
@@ -764,18 +748,6 @@ public final class LWCToolkit extends LWToolkit {
             return;
         }
 
-        boolean nonBlockingRunLoop;
-
-        if (!processEvents) {
-            synchronized (priorityInvocationPending) {
-                nonBlockingRunLoop = priorityInvocationPending.get();
-                if (!nonBlockingRunLoop) blockingRunLoopCounter.incrementAndGet();
-            }
-        }
-        else {
-            nonBlockingRunLoop = true;
-        }
-
         AWTThreading.TrackedInvocationEvent invocationEvent =
             AWTThreading.createAndTrackInvocationEvent(component, runnable, true);
 
@@ -794,22 +766,21 @@ public final class LWCToolkit extends LWToolkit {
             ((LWCToolkit)Toolkit.getDefaultToolkit()).getSystemEventQueueForInvokeAndWait().postEvent(invocationEvent);
         }
 
-        CompletableFuture<Void> eventDispatchThreadFreeFuture =
-            AWTThreading.getInstance(component).onEventDispatchThreadFree(() -> {
-                if (!invocationEvent.isDone()) {
-                    // EventQueue is now empty but the posted InvocationEvent is still not dispatched,
-                    // consider it lost then.
-                    invocationEvent.dispose("InvocationEvent was lost");
-                }
-            });
-
-        invocationEvent.onDone(() -> eventDispatchThreadFreeFuture.cancel(false));
-
-        if (!doAWTRunLoop(mediator, nonBlockingRunLoop, timeoutSeconds)) {
-            invocationEvent.dispose("InvocationEvent has timed out");
+        if (DISPOSE_INVOCATION_ON_EDT_FREE) {
+            CompletableFuture<Void> eventDispatchThreadFreeFuture =
+              AWTThreading.getInstance(component).onEventDispatchThreadFree(() -> {
+                  if (!invocationEvent.isCompleted(true)) {
+                      // EventQueue is now empty but the posted InvocationEvent is still not dispatched,
+                      // consider it lost then.
+                      invocationEvent.dispose("InvocationEvent was lost");
+                  }
+              });
+            invocationEvent.onDone(() -> eventDispatchThreadFreeFuture.cancel(false));
         }
 
-        if (!nonBlockingRunLoop) blockingRunLoopCounter.decrementAndGet();
+        if (!doAWTRunLoop(mediator, processEvents, timeoutSeconds)) {
+            invocationEvent.dispose("InvocationEvent has timed out");
+        }
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("invokeAndWait finished: " + runnable);

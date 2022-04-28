@@ -521,7 +521,7 @@ static unsigned long ReadTTFontFileFunc(FT_Stream stream,
             if (byteArray == NULL) {
                 return 0;
             } else {
-                jsize len = (*env)->GetArrayLength(env, byteArray);
+                unsigned long len = (*env)->GetArrayLength(env, byteArray);
                 if (len < numBytes) {
                     numBytes = len; // don't get more bytes than there are ..
                 }
@@ -553,7 +553,7 @@ static unsigned long ReadTTFontFileFunc(FT_Stream stream,
         CHECK_EXCEPTION(env, debugFonts);
         if (bread <= 0) {
             return 0;
-        } else if (bread < numBytes) {
+        } else if ((unsigned long)bread < numBytes) {
            numBytes = bread;
         }
         memcpy(destBuffer, scalerInfo->fontData, numBytes);
@@ -1097,7 +1097,7 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                 }
             }
 
-            FT_LcdFilter fcLCDFilter = cachedMatch.fcLCDFilter;
+            int fcLCDFilter = cachedMatch.fcLCDFilter;
             FcBool fcLCDFilterSet = cachedMatch.fcLCDFilterSet;
             context->lcdFilter = FT_LCD_FILTER_DEFAULT;
             if (fcLCDFilterSet) {
@@ -1521,9 +1521,9 @@ static SampledBGRABitmap createSampledBGRABitmap(FT_GlyphSlot ftglyph,
                     xTo = xFrom + xDownscale,
                     yTo = yFrom + yDownscale;
                 if (xFrom < 0) xFrom = 0;
-                if (xTo > ftglyph->bitmap.width) xTo = ftglyph->bitmap.width;
+                if (xTo > (int)ftglyph->bitmap.width) xTo = ftglyph->bitmap.width;
                 if (yFrom < 0) yFrom = 0;
-                if (yTo > ftglyph->bitmap.rows) yTo = ftglyph->bitmap.rows;
+                if (yTo > (int)ftglyph->bitmap.rows) yTo = ftglyph->bitmap.rows;
                 int i, j;
                 for (j = yFrom; j < yTo; j++) {
                     for (i = xFrom; i < xTo; i++) {
@@ -1788,7 +1788,7 @@ static jlong
             context->ptsz, scalerInfo->face->available_sizes[context->fixedSizeIndex].size);
     FT_Matrix manualTransform;
     FT_BBox manualTransformBoundingBox;
-    int topLeftX, topLeftY;
+    int topLeftX = 0, topLeftY = 0;
     if (renderImage) {
         if (context->fixedSizeIndex == -1) {
             width  = (UInt16) ftglyph->bitmap.width + subpixelGlyph;
@@ -2424,7 +2424,7 @@ Java_sun_font_FreetypeFontScaler_getGlyphVectorOutlineNative(
              (FTScalerInfo*) jlong_to_ptr(pScaler);
 
     glyphs = NULL;
-    if (numGlyphs > 0 && 0xffffffffu / sizeof(jint) >= numGlyphs) {
+    if (numGlyphs > 0 && 0xffffffffu / sizeof(jint) >= (unsigned int)numGlyphs) {
         glyphs = (jint*) malloc(numGlyphs*sizeof(jint));
     }
     if (glyphs == NULL) {

@@ -51,7 +51,7 @@ function pack_jbr {
   /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR jbr || do_exit $?
 }
 
-JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
+JBRSDK_BASE_NAME=jbrsdk_${bundle_type}-${JBSDK_VERSION}
 WITH_DEBUG_LEVEL="--with-debug-level=release"
 RELEASE_NAME=windows-x86_64-normal-server-release
 JBSDK=${JBRSDK_BASE_NAME}-windows-x64-b${build_number}
@@ -59,25 +59,27 @@ case "$bundle_type" in
   "fd")
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=windows-x86_64-normal-server-fastdebug
-    JBSDK=${JBRSDK_BASE_NAME}-windows-x64-fastdebug-b${build_number}
+    JBSDK=jbrsdk-${JBSDK_VERSION}-windows-x64-fastdebug-b${build_number}
     ;;
 esac
 
 IMAGES_DIR=build/$RELEASE_NAME/images
 JSDK=$IMAGES_DIR/jdk
 BASE_DIR=.
-
-if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
+if [ "${bundle_type}" == "fd" ]; then
   JBRSDK_BUNDLE=jbrsdk
-  echo Creating $JBSDK.tar.gz ...
-  [ -f "$JBSDK.tar.gz" ] && rm "$JBSDK.tar.gz"
-  /usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || do_exit $?
+else
+  JBRSDK_BUNDLE=jbrsdk_${bundle_type}
 fi
+
+echo Creating $JBSDK.tar.gz ...
+[ -f "$JBSDK.tar.gz" ] && rm "$JBSDK.tar.gz"
+/usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || do_exit $?
 
 pack_jbr $bundle_type
 
-if [ "$bundle_type" == "jcef" ]; then
-  JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number
+if [ "$bundle_type" == "dcevm" ]; then
+  JBRSDK_TEST=jbrsdk-${JBSDK_VERSION}-windows-test-x64-b$build_number
   echo Creating $JBRSDK_TEST.tar.gz ...
   /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
 fi

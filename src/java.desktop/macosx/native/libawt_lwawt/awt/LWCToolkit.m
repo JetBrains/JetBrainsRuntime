@@ -593,8 +593,6 @@ AWT_ASSERT_APPKIT_THREAD;
     jboolean result = JNI_TRUE;
 JNI_COCOA_ENTER(env);
 
-    if (ThreadUtilities.blockingEventDispatchThread) return JNI_FALSE;
-
     AWTRunLoopObject* mediatorObject = (AWTRunLoopObject*)jlong_to_ptr(mediator);
 
     if (mediatorObject == nil) return JNI_TRUE;

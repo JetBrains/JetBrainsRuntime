@@ -1,0 +1,39 @@
+# NOTE: This Dockerfile is meant to be used from the mkdocker_aarch64.sh script.
+
+# Pull a concrete version of Linux that does NOT recieve updates after it's
+# been created.  This is so that the image is as stable as possible to make
+# image creation reproducible.
+# NB: this also means there may be no security-related fixes there, need to
+# move the version to the next manually.
+FROM arm64v8/centos:7
+
+# Install the necessary build tools
+RUN export DEBIAN_FRONTEND=noninteractive \
+    export DEBCONF_NONINTERACTIVE_SEEN=true && \
+    yum -y update && \
+    yum -y groupinstall \
+        "Development Tools" && \
+    yum -y install centos-release-scl && \
+    yum -y install devtoolset-8 && \
+    yum -y install \
+        centos-release-scl-rh \
+        devtoolset-8 \
+        which \
+        autoconf \
+        git \
+        file \
+        make \
+        libXtst-devel libXt-devel libXrender-devel libXrandr-devel libXi-devel \
+        cups-devel \
+        fontconfig-devel \
+        alsa-lib-devel \
+        unzip \
+        zip \
+        && \
+   yum -y clean all && \
+   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+ENV PATH /opt/rh/devtoolset-8/root/usr/bin:$PATH
+
+RUN git config --global user.email "teamcity@jetbrains.com" && \
+    git config --global user.name "builduser"

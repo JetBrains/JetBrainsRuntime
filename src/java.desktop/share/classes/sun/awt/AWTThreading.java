@@ -252,8 +252,8 @@ public class AWTThreading {
         private final Throwable throwable = new Throwable();
         private final CompletableFuture<Void> futureResult = new CompletableFuture<>();
 
-        // dispatched or disposed
-        private final AtomicBoolean isFinished = new AtomicBoolean(false);
+        // dispatch or dispose has been started or already completed
+        private final AtomicBoolean isCompletionStarted = new AtomicBoolean(false);
 
         static TrackedInvocationEvent create(Object source,
                                              Runnable onDispatch,
@@ -271,7 +271,7 @@ public class AWTThreading {
                     TrackedInvocationEvent thisEvent = eventRef.get();
                     if (!thisEvent.isDispatched()) {
                         // If we're here - this {onDone} is being disposed.
-                        thisEvent.finishIfNotYet(() ->
+                        thisEvent.completeIfNotYet(() ->
                             // If we're here - this {onDone} is called by the outer AWTAccessor.getInvocationEventAccessor().dispose()
                             // which we do not control, so complete here.
                             thisEvent.futureResult.completeExceptionally(new Throwable("InvocationEvent was disposed"))
@@ -304,26 +304,40 @@ public class AWTThreading {
 
         @Override
         public void dispatch() {
-            finishIfNotYet(super::dispatch);
-            futureResult.complete(null);
+            // Should not complete if competion has already started.
+            if (completeIfNotYet(super::dispatch)) {
+                futureResult.complete(null);
+            }
         }
 
         public void dispose(String reason) {
-            finishIfNotYet(() -> AWTAccessor.getInvocationEventAccessor().dispose(this));
+            completeIfNotYet(() -> AWTAccessor.getInvocationEventAccessor().dispose(this));
+            // Should complete exceptionally regardless of whether completetion has alredy started or hasn't.
             futureResult.completeExceptionally(new Throwable(reason));
         }
 
-        private void finishIfNotYet(Runnable finish) {
-            if (!isFinished.getAndSet(true)) {
-                finish.run();
+        private boolean completeIfNotYet(Runnable competeRunnable) {
+            if (!isCompletionStarted.getAndSet(true)) {
+                competeRunnable.run();
+                return true;
             }
+            return false;
         }
 
         /**
          * Returns whether the event is dispatched or disposed.
          */
-        public boolean isDone() {
+        public boolean isCompleted() {
             return futureResult.isDone();
+        }
+
+        /**
+         * Returns whether the event is dispatched or disposed.
+         * If {@code isCompletionInProgress} is true then also checks whether the event
+         * dispatching or disposal is in progress and if so returns true.
+         */
+        public boolean isCompleted(boolean isCompletionInProgress) {
+            return isCompleted() || (isCompletionInProgress && isCompletionStarted.get());
         }
 
         /**

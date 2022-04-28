@@ -106,21 +106,21 @@ RELEASE_NAME=windows-aarch64-normal-server-release
 JBSDK=${JBRSDK_BASE_NAME}-windows-aarch64-b${build_number}
 case "$bundle_type" in
   "jcef")
-    git apply -p0 < jb/project/tools/patches/add_jcef_module_winaarch64.patch || do_exit $?
+    git apply -p0 < jb/project/tools/patches/add_jcef_module_arch64.patch || do_exit $?
     do_reset_changes=1
     ;;
   "dcevm")
     HEAD_REVISION=$(git rev-parse HEAD)
     git am jb/project/tools/patches/dcevm/*.patch || do_exit $?
     do_reset_dcevm=1
-    git apply -p0 < jb/project/tools/patches/add_jcef_module_winaarch64.patch || do_exit $?
+    git apply -p0 < jb/project/tools/patches/add_jcef_module_arch64.patch || do_exit $?
     do_reset_changes=1
     ;;
   "nomod")
     WITH_IMPORT_MODULES=""
     ;;
   "fd")
-    git apply -p0 < jb/project/tools/patches/add_jcef_module_winaarch64.patch || do_exit $?
+    git apply -p0 < jb/project/tools/patches/add_jcef_module_arch64.patch || do_exit $?
     do_reset_changes=1
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=windows-aarch64-normal-server-fastdebug

@@ -50,21 +50,22 @@ static inline void attachCurrentThread(void** env) {
 
 @implementation ThreadUtilities
 
-// A backing store for the [blockingEventDispatchThread] class level property
 static BOOL _blockingEventDispatchThread = NO;
 static long eventDispatchThreadPtr = (long)nil;
 
+static BOOL isEventDispatchThread() {
+    return (long)[NSThread currentThread] == eventDispatchThreadPtr;
+}
+
 // The [blockingEventDispatchThread] property is readonly, so we implement a private setter
 static void setBlockingEventDispatchThread(BOOL value) {
-    @synchronized([ThreadUtilities class]) {
-        _blockingEventDispatchThread = value;
-    }
+    assert([NSThread isMainThread]);
+    _blockingEventDispatchThread = value;
 }
 
 + (BOOL) blockingEventDispatchThread {
-    @synchronized([ThreadUtilities class]) {
-        return _blockingEventDispatchThread;
-    }
+    assert([NSThread isMainThread]);
+    return _blockingEventDispatchThread;
 }
 
 + (void)initialize {
@@ -98,13 +99,6 @@ AWT_ASSERT_APPKIT_THREAD;
     appkitThreadGroup = group;
 }
 
-/* This is needed because we can't directly pass a block to
- * performSelectorOnMainThreadWaiting .. since it expects a selector
- */
-+ (void)invokeBlock:(void (^)())block {
-  block();
-}
-
 /*
  * When running a block where either we don't wait, or it needs to run on another thread
  * we need to copy it from stack to heap, use the copy in the call and release after use.
@@ -120,12 +114,7 @@ AWT_ASSERT_APPKIT_THREAD;
     if ([NSThread isMainThread] && wait == YES) {
         block();
     } else {
-        if (wait == YES) {
-            [self performOnMainThread:@selector(invokeBlock:) on:self withObject:block waitUntilDone:YES];
-        } else {
-            void (^blockCopy)(void) = Block_copy(block);
-            [self performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:blockCopy waitUntilDone:NO];
-        }
+        [self performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block) waitUntilDone:wait];
     }
 }
 
@@ -133,11 +122,18 @@ AWT_ASSERT_APPKIT_THREAD;
     if ([NSThread isMainThread] && wait == YES) {
         [target performSelector:aSelector withObject:arg];
     } else {
-        setBlockingEventDispatchThread((long)[NSThread currentThread] == eventDispatchThreadPtr);
-        @try {
+        if (wait && isEventDispatchThread()) {
+            void (^blockCopy)(void) = Block_copy(^(){
+                setBlockingEventDispatchThread(YES);
+                @try {
+                    [target performSelector:aSelector withObject:arg];
+                } @finally {
+                    setBlockingEventDispatchThread(NO);
+                }
+            });
+            [self performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:YES modes:javaModes];
+        } else {
             [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
-        } @finally {
-            setBlockingEventDispatchThread(NO);
         }
     }
 }

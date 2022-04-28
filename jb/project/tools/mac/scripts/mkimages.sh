@@ -44,6 +44,7 @@ JBSDK_VERSION_WITH_DOTS=$(echo $JBSDK_VERSION | sed 's/_/\./g')
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
 WITH_IMPORT_MODULES="--with-import-modules=${MODULAR_SDK_PATH:=${JCEF_PATH}/modular-sdk}"
 architecture=${architecture:=x64}
+BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 11)}
 
 source jb/project/tools/common.sh
 
@@ -65,7 +66,7 @@ function do_configure {
     --with-version-build=${JDK_BUILD_NUMBER} \
     --with-version-opt=b${build_number} \
     $WITH_IMPORT_MODULES \
-    --with-boot-jdk=`/usr/libexec/java_home -v 11` \
+    --with-boot-jdk=${BOOT_JDK} \
     --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
     --enable-cds=no \
     $WITH_JVM_FEATURES \
@@ -83,7 +84,7 @@ function do_configure {
       --with-version-build=${JDK_BUILD_NUMBER} \
       --with-version-opt=b${build_number} \
       $WITH_IMPORT_MODULES \
-      --with-boot-jdk=`/usr/libexec/java_home -v 11` \
+      --with-boot-jdk=${BOOT_JDK} \
       --enable-cds=yes || do_exit $?
   fi
 }
@@ -141,7 +142,7 @@ function create_jbr {
   rm -rf ${BASE_DIR}/${JBR_BUNDLE}
 }
 
-JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
+JBRSDK_BASE_NAME=jbrsdk_${bundle_type}-${JBSDK_VERSION}
 WITH_DEBUG_LEVEL="--with-debug-level=release"
 CONF_ARCHITECTURE=x86_64
 if [[ "${architecture}" == *aarch64* ]]; then
@@ -149,7 +150,7 @@ if [[ "${architecture}" == *aarch64* ]]; then
 fi
 CONF_NAME=macosx-${CONF_ARCHITECTURE}-normal-server-release
 
-JBSDK=${JBRSDK_BASE_NAME}-osx-${architecture}-b${build_number}
+JBSDK="${JBRSDK_BASE_NAME}-osx-${architecture}-b${build_number}"
 case "$bundle_type" in
   "jcef")
     git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
@@ -170,7 +171,7 @@ case "$bundle_type" in
     do_reset_changes=1
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     CONF_NAME=macosx-${CONF_ARCHITECTURE}-normal-server-fastdebug
-    JBSDK=${JBRSDK_BASE_NAME}-osx-${architecture}-fastdebug-b${build_number}
+    JBSDK=jbrsdk-${JBSDK_VERSION}-osx-${architecture}-fastdebug-b${build_number}
     ;;
   *)
     echo "***ERR*** bundle was not specified" && do_exit 1
@@ -186,7 +187,11 @@ make images CONF=$CONF_NAME || do_exit $?
 JSDK=build/${CONF_NAME}/images/jdk-bundle
 
 BASE_DIR=jre
-JBRSDK_BUNDLE=jbrsdk
+if [ "${bundle_type}" == "dcevm" ] || [ "${bundle_type}" == "jcef" ]; then
+  JBRSDK_BUNDLE=jbrsdk_${bundle_type}
+else
+  JBRSDK_BUNDLE=jbrsdk
+fi
 
 rm -rf $BASE_DIR
 mkdir $BASE_DIR || do_exit $?
@@ -194,23 +199,22 @@ cp -a $JSDK/jdk-$JBSDK_VERSION_WITH_DOTS.jdk $BASE_DIR/$JBRSDK_BUNDLE || do_exit
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]; then
   cp -a ${JCEF_PATH}/Frameworks $BASE_DIR/$JBRSDK_BUNDLE/Contents/
 fi
-if [ "${bundle_type}" == "jcef" ] || [ "${bundle_type}" == "fd" ]; then
-  echo Creating $JBSDK.tar.gz ...
-  sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
-  mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
-  [ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
-  COPYFILE_DISABLE=1 tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
-    --exclude='.DS_Store' --exclude='*~' \
-    --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
-    ${JBRSDK_BUNDLE} || do_exit $?
-fi
+
+echo Creating $JBSDK.tar.gz ...
+sed 's/JBR/JBRSDK/g' ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release > release
+mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/Contents/Home/release
+[ -f "${JBSDK}.tar.gz" ] && rm "${JBSDK}.tar.gz"
+COPYFILE_DISABLE=1 tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
+  --exclude='.DS_Store' --exclude='*~' \
+  --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
+  ${JBRSDK_BUNDLE} || do_exit $?
 
 create_jbr || do_exit $?
 
-if [ "$bundle_type" == "jcef" ]; then
+if [ "$bundle_type" == "dcevm" ]; then
   make test-image CONF=$CONF_NAME || do_exit $?
 
-  JBRSDK_TEST=$JBRSDK_BASE_NAME-osx-test-${architecture}-b$build_number
+  JBRSDK_TEST=jbrsdk-${JBSDK_VERSION}-osx-test-${architecture}-b$build_number
 
   echo Creating $JBRSDK_TEST.tar.gz ...
   [ -f "${JBRSDK_TEST}.tar.gz" ] && rm "${JBRSDK_TEST}.tar.gz"
