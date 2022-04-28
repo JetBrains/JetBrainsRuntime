@@ -66,6 +66,7 @@ function do_configure {
     --with-version-build=${JDK_BUILD_NUMBER} \
     --with-version-opt=b${build_number} \
     $WITH_IMPORT_MODULES \
+    $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
     --with-boot-jdk=${BOOT_JDK} \
     --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
     --enable-cds=no \
@@ -84,6 +85,7 @@ function do_configure {
       --with-version-build=${JDK_BUILD_NUMBER} \
       --with-version-opt=b${build_number} \
       $WITH_IMPORT_MODULES \
+      $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
       --with-boot-jdk=${BOOT_JDK} \
       --enable-cds=yes || do_exit $?
   fi
@@ -208,6 +210,8 @@ COPYFILE_DISABLE=1 tar -pczf ${JBSDK}.tar.gz -C ${BASE_DIR} \
   --exclude='.DS_Store' --exclude='*~' \
   --exclude='Home/demo' --exclude='Home/man' --exclude='Home/sample' \
   ${JBRSDK_BUNDLE} || do_exit $?
+
+zip_native_debug_symbols ${JSDK} "${JBSDK}_diz"
 
 create_jbr || do_exit $?
 

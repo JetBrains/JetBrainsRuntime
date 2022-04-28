@@ -37,6 +37,7 @@ linux32 bash configure \
   --with-version-build=$JDK_BUILD_NUMBER \
   --with-version-opt=b${build_number} \
   --with-boot-jdk=${BOOT_JDK} \
+   $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
   --enable-cds=yes || exit $?
 make clean CONF=linux-x86-normal-server-release || exit $?
 make images CONF=linux-x86-normal-server-release test-image || exit $?
@@ -58,6 +59,8 @@ mv release ${BASE_DIR}/${JBRSDK_BUNDLE}/release
 
 tar -pcf $JBSDK.tar --exclude=*.debuginfo --exclude=demo --exclude=sample --exclude=man -C $BASE_DIR ${JBRSDK_BUNDLE} || exit $?
 gzip $JBSDK.tar || exit $?
+
+zip_native_debug_symbols ${BASE_DIR}/jdk "${JBSDK}_diz"
 
 JBR_BUNDLE=jbr
 JBR_BASE_NAME=jbr-$JBSDK_VERSION
