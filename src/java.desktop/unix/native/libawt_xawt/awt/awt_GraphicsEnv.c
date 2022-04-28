@@ -794,6 +794,7 @@ AwtGraphicsConfigDataPtr
 getDefaultConfig(int screen) {
     // NB: should be invoked only while holding the AWT lock
     DASSERT(screen >= 0 && screen < awt_numScreens);
+    if (screen < 0 || screen >= awt_numScreens) return NULL;
     ensureConfigsInited(NULL, screen);
     return x11Screens[screen].defaultConfig;
 }
