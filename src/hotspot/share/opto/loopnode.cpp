@@ -2847,12 +2847,12 @@ bool PhaseIdealLoop::only_has_infinite_loops() {
 //----------------------------build_and_optimize-------------------------------
 // Create a PhaseLoop.  Build the ideal Loop tree.  Map each Ideal Node to
 // its corresponding LoopNode.  If 'optimize' is true, do some loop cleanups.
-void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
-  bool do_split_ifs = (mode == LoopOptsDefault || mode == LoopOptsLastRound);
-  bool skip_loop_opts = (mode == LoopOptsNone);
+void PhaseIdealLoop::build_and_optimize() {
+  bool do_split_ifs = (_mode == LoopOptsDefault || _mode == LoopOptsLastRound);
+  bool skip_loop_opts = (_mode == LoopOptsNone);
 #if INCLUDE_SHENANDOAHGC
-  bool shenandoah_opts = (mode == LoopOptsShenandoahExpand ||
-                          mode == LoopOptsShenandoahPostExpand);
+  bool shenandoah_opts = (_mode == LoopOptsShenandoahExpand ||
+                          _mode == LoopOptsShenandoahPostExpand);
 #endif
 
   ResourceMark rm;
@@ -3020,7 +3020,7 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
     // restore major progress flag
     for (int i = 0; i < old_progress; i++)
       C->set_major_progress();
-    assert(C->unique() == unique, "verification mode made Nodes? ? ?");
+    assert(C->unique() == unique, "verification _mode made Nodes? ? ?");
     assert(_igvn._worklist.size() == orig_worklist_size, "shouldn't push anything");
     return;
   }
@@ -3051,8 +3051,8 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
 #ifndef PRODUCT
   C->verify_graph_edges();
   if (_verify_me) {             // Nested verify pass?
-    // Check to see if the verify mode is broken
-    assert(C->unique() == unique, "non-optimize mode made Nodes? ? ?");
+    // Check to see if the verify _mode is broken
+    assert(C->unique() == unique, "non-optimize _mode made Nodes? ? ?");
     return;
   }
   if (VerifyLoopOptimizations) verify();
@@ -3077,7 +3077,7 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
   }
 
 #if INCLUDE_SHENANDOAHGC
-  if (UseShenandoahGC && ((ShenandoahBarrierSetC2*) BarrierSet::barrier_set()->barrier_set_c2())->optimize_loops(this, mode, visited, nstack, worklist)) {
+  if (UseShenandoahGC && ((ShenandoahBarrierSetC2*) BarrierSet::barrier_set()->barrier_set_c2())->optimize_loops(this, _mode, visited, nstack, worklist)) {
     _igvn.optimize();
     if (C->log() != NULL) {
       log_loop_tree(_ltree_root, _ltree_root, C->log());
@@ -3116,9 +3116,9 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
   // that require basic-block info (like cloning through Phi's)
   if( SplitIfBlocks && do_split_ifs ) {
     visited.Clear();
-    split_if_with_blocks( visited, nstack, mode == LoopOptsLastRound );
+    split_if_with_blocks( visited, nstack, _mode == LoopOptsLastRound );
     NOT_PRODUCT( if( VerifyLoopOptimizations ) verify(); );
-    if (mode == LoopOptsLastRound) {
+    if (_mode == LoopOptsLastRound) {
       C->set_major_progress();
     }
   }
@@ -4480,9 +4480,13 @@ void PhaseIdealLoop::build_loop_late_post( Node *n ) {
     }
     least = new_ctrl;
   }
+#if INCLUDE_SHENANDOAHGC
+  bool shenandoah_opts = (_mode == LoopOptsShenandoahExpand ||
+                          _mode == LoopOptsShenandoahPostExpand);
+#endif
   // Try not to place code on a loop entry projection
   // which can inhibit range check elimination.
-  if (least != early) {
+  if (least != early SHENANDOAHGC_ONLY(&& !shenandoah_opts)) {
     Node* ctrl_out = least->unique_ctrl_out();
     if (ctrl_out && ctrl_out->is_Loop() &&
         least == ctrl_out->in(LoopNode::EntryControl) &&

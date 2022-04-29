@@ -927,6 +927,7 @@ private:
   Node **_idom;                  // Array of immediate dominators
   uint *_dom_depth;              // Used for fast LCA test
   GrowableArray<uint>* _dom_stk; // For recomputation of dom depth
+  LoopOptsMode _mode;
 
 public:
   Node* idom_no_update(Node* d) const {
@@ -978,12 +979,13 @@ public:
     _dom_lca_tags(arena()), // Thread::resource_area
     _nodes_required(UINT_MAX),
     _verify_me(NULL),
-    _verify_only(true) {
-    build_and_optimize(LoopOptsVerify);
+    _verify_only(true),
+    _mode(LoopOptsVerify) {
+    build_and_optimize();
   }
 
   // build the loop tree and perform any requested optimizations
-  void build_and_optimize(LoopOptsMode mode);
+  void build_and_optimize();
 
   // Dominators for the sea of nodes
   void Dominators();
@@ -998,9 +1000,10 @@ public:
     _igvn(igvn),
     _dom_lca_tags(arena()), // Thread::resource_area
     _nodes_required(UINT_MAX),
+    _mode(mode),
     _verify_me(NULL),
     _verify_only(false) {
-    build_and_optimize(mode);
+    build_and_optimize();
   }
 
   // Verify that verify_me made the same decisions as a fresh run.
@@ -1010,8 +1013,9 @@ public:
     _dom_lca_tags(arena()), // Thread::resource_area
     _nodes_required(UINT_MAX),
     _verify_me(verify_me),
+    _mode(LoopOptsVerify),
     _verify_only(false) {
-    build_and_optimize(LoopOptsVerify);
+    build_and_optimize();
   }
 
   // Build and verify the loop tree without modifying the graph.  This
