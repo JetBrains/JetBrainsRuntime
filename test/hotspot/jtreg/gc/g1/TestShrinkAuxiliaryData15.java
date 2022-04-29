@@ -29,7 +29,7 @@ package gc.g1;
  * @summary Checks that decommitment occurs for JVM with different
  * G1ConcRSLogCacheSize and ObjectAlignmentInBytes options values
  * @requires vm.gc.G1
- * @requires vm.opt.AggressiveOpts=="false" | vm.opt.AggressiveOpts=="null"
+ * @requires vm.opt.AggressiveOpts != true
  * @library /test/lib
  * @library /
  * @modules java.base/jdk.internal.misc

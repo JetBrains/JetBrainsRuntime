@@ -27,8 +27,8 @@ package gc.arguments;
  * @test TestTargetSurvivorRatioFlag
  * @key gc
  * @summary Verify that option TargetSurvivorRatio affects survivor space occupancy after minor GC.
- * @requires (vm.opt.ExplicitGCInvokesConcurrent == null) | (vm.opt.ExplicitGCInvokesConcurrent == false)
- * @requires (vm.opt.UseJVMCICompiler == null) | (vm.opt.UseJVMCICompiler == false)
+ * @requires vm.opt.ExplicitGCInvokesConcurrent != true
+ * @requires vm.opt.UseJVMCICompiler != true
  * @requires vm.gc != "Z" & vm.gc != "Shenandoah"
  * @library /test/lib
  * @library /
