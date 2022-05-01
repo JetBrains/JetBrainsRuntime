@@ -45,8 +45,9 @@ public class HandleJSQueryTest {
             firstBrowser.getBrowser().dispose();
             secondBrowser.getBrowser().dispose();
             JBCefApp.getInstance().getCefApp().dispose();
-            SwingUtilities.invokeAndWait(firstBrowser::dispose);
-            SwingUtilities.invokeAndWait(secondBrowser::dispose);
+            System.out.println("Close all windows");
+            SwingUtilities.invokeLater(() -> firstBrowser.dispatchEvent(new WindowEvent(firstBrowser, WindowEvent.WINDOW_CLOSING)));
+            SwingUtilities.invokeLater(() -> secondBrowser.dispatchEvent(new WindowEvent(firstBrowser, WindowEvent.WINDOW_CLOSING)));
         }
     }
 }

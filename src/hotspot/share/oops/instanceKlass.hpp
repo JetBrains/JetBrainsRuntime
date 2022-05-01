@@ -255,8 +255,7 @@ class InstanceKlass: public Klass {
     _misc_is_shared_platform_class            = 1 << 11, // defining class loader is platform class loader
     _misc_is_shared_app_class                 = 1 << 12, // defining class loader is app class loader
     _misc_has_resolved_methods                = 1 << 13, // resolved methods table entries added for this class
-    _misc_is_being_redefined                  = 1 << 14, // used for locking redefinition
-    _misc_has_contended_annotations           = 1 << 15  // has @Contended annotation
+    _misc_has_contended_annotations           = 1 << 14  // has @Contended annotation
   };
   u2 shared_loader_type_bits() const {
     return _misc_is_shared_boot_class|_misc_is_shared_platform_class|_misc_is_shared_app_class;
@@ -739,14 +738,16 @@ public:
 
 #if INCLUDE_JVMTI
   // Redefinition locking.  Class can only be redefined by one thread at a time.
+  // The flag is in access_flags so that it can be set and reset using atomic
+  // operations, and not be reset by other misc_flag settings.
   bool is_being_redefined() const          {
-    return ((_misc_flags & _misc_is_being_redefined) != 0);
+    return _access_flags.is_being_redefined();
   }
   void set_is_being_redefined(bool value)  {
     if (value) {
-      _misc_flags |= _misc_is_being_redefined;
+      _access_flags.set_is_being_redefined();
     } else {
-      _misc_flags &= ~_misc_is_being_redefined;
+      _access_flags.clear_is_being_redefined();
     }
   }
 
@@ -1115,7 +1116,7 @@ public:
   // callbacks for actions during class unloading
   static void unload_class(InstanceKlass* ik);
 
-  virtual void release_C_heap_structures();
+  virtual void release_C_heap_structures(bool release_constant_pool = true);
 
   // Naming
   const char* signature_name() const;
@@ -1211,8 +1212,6 @@ private:
   void initialize_impl                           (TRAPS);
   void initialize_super_interfaces               (TRAPS);
   void eager_initialize_impl                     ();
-  /* jni_id_for_impl for jfieldID only */
-  JNIid* jni_id_for_impl                         (int offset);
 
   // find a local method (returns NULL if not found)
   Method* find_method_impl(const Symbol* name,
@@ -1227,9 +1226,6 @@ private:
                                   OverpassLookupMode overpass_mode,
                                   StaticLookupMode static_mode,
                                   PrivateLookupMode private_mode);
-
-  // Free CHeap allocated fields.
-  void release_C_heap_structures_internal();
 
 #if INCLUDE_JVMTI
   // RedefineClasses support
