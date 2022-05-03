@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +68,8 @@ public class RenderPerfTest {
     private static HashSet<String> ignoredTests = new HashSet<>();
 
     static {
-        ignoredTests.add("testWiredBoxAA");
+       // add ignored tests here
+       // ignoredTests.add("testMyIgnoredTest");
     }
 
     private final static int N = 1000;
@@ -640,8 +642,10 @@ public class RenderPerfTest {
                             Graphics2D g2d = (Graphics2D) g.create();
                             renderable.setup(g2d);
                             renderable.render(g2d);
+                            g2d.setClip(null);
+                            g2d.setPaintMode();
                             g2d.setColor(expColor);
-                            g.fillRect(0, 0, BW, BH);
+                            g2d.fillRect(0, 0, BW, BH);
                         }
                     };
 
@@ -717,8 +721,8 @@ public class RenderPerfTest {
         }
 
         private boolean isAlmostEqual(Color c1, Color c2) {
-            return Math.abs(c1.getRed() - c2.getRed()) < COLOR_TOLERANCE ||
-                    Math.abs(c1.getGreen() - c2.getGreen()) < COLOR_TOLERANCE ||
+            return Math.abs(c1.getRed() - c2.getRed()) < COLOR_TOLERANCE &&
+                    Math.abs(c1.getGreen() - c2.getGreen()) < COLOR_TOLERANCE &&
                     Math.abs(c1.getBlue() - c2.getBlue()) < COLOR_TOLERANCE;
 
         }
