@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
  * @bug 4780570 4731671 6354700 6367077 6670965 4882974
  * @summary Checks for LD_LIBRARY_PATH and execution  on *nixes
  * @requires os.family != "windows" & !vm.musl & os.family != "aix"
+ * @library /test/lib
  * @modules jdk.compiler
  *          jdk.zipfs
  * @compile -XDignore.symbol.file ExecutionEnvironment.java
@@ -37,6 +38,7 @@
  * @bug 4780570 4731671 6354700 6367077 6670965 4882974
  * @summary Checks for LD_LIBRARY_PATH and execution  on *nixes
  * @requires os.family == "aix" | vm.musl
+ * @library /test/lib
  * @modules jdk.compiler
  *          jdk.zipfs
  * @compile -XDignore.symbol.file ExecutionEnvironment.java
@@ -66,6 +68,9 @@
  *         launcher may add as implementation details.
  *      b. add a pldd for solaris to ensure only one libjvm.so is linked
  */
+
+import jdk.test.lib.Platform;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -74,11 +79,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ExecutionEnvironment extends TestHelper {
-    static final String LD_LIBRARY_PATH    = TestHelper.isMacOSX
-            ? "DYLD_LIBRARY_PATH"
-            : TestHelper.isAIX
-                    ? "LIBPATH"
-                    : "LD_LIBRARY_PATH";
+    static final String LD_LIBRARY_PATH    = Platform.sharedLibraryPathVariableName();
     static final String LD_LIBRARY_PATH_32 = LD_LIBRARY_PATH + "_32";
     static final String LD_LIBRARY_PATH_64 = LD_LIBRARY_PATH + "_64";
 

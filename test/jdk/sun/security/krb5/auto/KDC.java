@@ -21,6 +21,8 @@
  * questions.
  */
 
+import jdk.test.lib.Platform;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -1815,8 +1817,7 @@ public class KDC {
             this.env = Map.of(
                     "KRB5_CONFIG", base + "/krb5.conf",
                     "KRB5_TRACE", "/dev/stderr",
-                    "DYLD_LIBRARY_PATH", nativePath + "/lib",
-                    "LD_LIBRARY_PATH", nativePath + "/lib");
+                    Platform.sharedLibraryPathVariableName(), nativePath + "/lib");
         }
 
         @Override
@@ -1908,8 +1909,7 @@ public class KDC {
                     "KRB5_KDC_PROFILE", base + "/kdc.conf",
                     "KRB5_CONFIG", base + "/krb5.conf",
                     "KRB5_TRACE", "/dev/stderr",
-                    "DYLD_LIBRARY_PATH", nativePath + "/lib",
-                    "LD_LIBRARY_PATH", nativePath + "/lib");
+                    Platform.sharedLibraryPathVariableName(), nativePath + "/lib");
         }
 
         @Override
