@@ -85,6 +85,7 @@ function create_image_bundle {
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' $JRE_CONTENTS/Home/release > release
     mv release $JRE_CONTENTS/Home/release
+    cp $IMAGES_DIR/jdk-bundle/jdk-$JBSDK_VERSION.jdk/Contents/Home/lib/src.zip $JRE_CONTENTS/Home/lib
     copy_jmods "$__modules" "$__modules_path" "$JRE_CONTENTS"/Home/jmods
   fi
 
