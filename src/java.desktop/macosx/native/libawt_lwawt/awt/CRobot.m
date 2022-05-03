@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -331,10 +331,11 @@ Java_sun_lwawt_macosx_CRobot_keyEvent
         CGKeyCode keyCode = GetCGKeyCode(javaKeyCode);
         CGEventRef event = CGEventCreateKeyboardEvent(source, keyCode, keyPressed);
         if (event != NULL) {
-             // this assumes Robot isn't used to generate Fn key presses
-            clearStickyFlags(event, keyCode, kCGEventFlagMaskSecondaryFn);
-            // there is no NumPad key, so this won't hurt in any case
-            clearStickyFlags(event, keyCode, kCGEventFlagMaskNumericPad);
+            CGEventFlags flags = CGEventSourceFlagsState(kCGEventSourceStateHIDSystemState);
+            if ((flags & kCGEventFlagMaskSecondaryFn) != 0) {
+                flags ^= kCGEventFlagMaskSecondaryFn;
+                CGEventSetFlags(event, flags);
+            }
             CGEventPost(kCGHIDEventTap, event);
             CFRelease(event);
         }
