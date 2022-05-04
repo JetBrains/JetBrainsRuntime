@@ -1173,6 +1173,28 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             updateChildrenSizes();
         }
         repositionSecurityWarning();
+
+        /*
+         * Fix for 6457980/JBR-1762.
+         * When hiding an owned Window we should implicitly
+         * return focus to its owner because it won't
+         * receive WM_TAKE_FOCUS.
+         */
+        if (!vis && isSimpleWindow() && target == XKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow()) {
+            // Use the same logic as in MacOS (see LWWindowPeer, was introduced in:
+            // 54bb2dd097 'JBR-1417 JBR 11 does not support chain of popups)'
+            Window targetOwner = ((Window)target).getOwner();
+            while (targetOwner != null && (targetOwner.getOwner() != null && !targetOwner.isFocusableWindow())) {
+                targetOwner = targetOwner.getOwner();
+            }
+
+            if (targetOwner != null) {
+                XWindowPeer xwndpeer = AWTAccessor.getComponentAccessor().getPeer(targetOwner);
+                if (xwndpeer != null) {
+                    xwndpeer.requestWindowFocus();
+                }
+            }
+        }
     }
 
     protected void suppressWmTakeFocus(boolean doSuppress) {
@@ -1302,31 +1324,6 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         removeRootPropertyEventDispatcher();
         mustControlStackPosition = false;
         super.dispose();
-
-        /*
-         * Fix for 6457980.
-         * When disposing an owned Window we should implicitly
-         * return focus to its decorated owner because it won't
-         * receive WM_TAKE_FOCUS.
-         */
-        if (isSimpleWindow()) {
-            if (target == XKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow()) {
-                // fix for: JBR-1762 Flotating navigation bar closes on navigate
-                // Use the same logic as in MacOS (see LWWindowPeer, was introduced in:
-                // 54bb2dd097 'JBR-1417 JBR 11 does not support chain of popups)'
-                Window targetOwner = ((Window)target).getOwner();
-                while (targetOwner != null && (targetOwner.getOwner() != null && !targetOwner.isFocusableWindow())) {
-                    targetOwner = targetOwner.getOwner();
-                }
-
-                if (targetOwner != null) {
-                    final XWindowPeer xwndpeer = ((XWindowPeer)AWTAccessor.getComponentAccessor().getPeer(targetOwner));
-                    if (xwndpeer != null) {
-                        xwndpeer.requestWindowFocus();
-                    }
-                }
-            }
-        }
     }
 
     boolean isResizable() {
