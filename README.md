@@ -3,9 +3,10 @@
 # Welcome to JetBrains Runtime!
 
 JetBrains Runtime is a fork of [OpenJDK](https://github.com/openjdk/jdk) available for Windows, Mac OS X, and Linux.
-It includes a number enhancements in font rendering, HiDPI support, ligatures, performance improvements, and bugfixes.
+It includes a number of enhancements in font rendering, HiDPI support, windowing/focus subsystems, performance
+improvements and bugfixes.
 
-> **_NOTE_**: This is a **development** branch that is periodically synhronized with 
+> **_NOTE_**: This is a **development** branch that is periodically synchronized with 
 > the [OpenJDK master](https://github.com/openjdk/jdk/tree/master) branch.
 > 
 > Release builds are based on these branches:
