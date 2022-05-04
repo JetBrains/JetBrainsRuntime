@@ -1206,7 +1206,6 @@ sanity/client/SwingSet/src/GridBagLayoutDemoTest.java                           
 jb/java/jcef/MouseEventTest.java                                                    JBR-2750 linux-all
 jb/java/jcef/MouseEventAfterHideAndShowBrowserTest.java                             JBR-2750 linux-all
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java                       nobug windows-6.1 not supported on Windows 7
-jb/java/awt/Focus/ChainOfPopupsFocusTest.java                                       JBR-1518 linux-all
 
 java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
 
