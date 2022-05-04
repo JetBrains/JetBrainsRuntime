@@ -141,6 +141,7 @@ public class IRNode {
     public static final String LSHIFT_L = START + "LShiftL" + MID + END;
     public static final String ADD_I = START + "AddI" + MID + END;
     public static final String ADD_L = START + "AddL" + MID + END;
+    public static final String MUL_L = START + "MulL" + MID + END;
     public static final String CONV_I2L = START + "ConvI2L" + MID + END;
     public static final String POPCOUNT_L = START + "PopCountL" + MID + END;
 
