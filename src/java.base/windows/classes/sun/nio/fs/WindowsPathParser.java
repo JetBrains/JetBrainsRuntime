@@ -171,14 +171,9 @@ class WindowsPathParser {
         // whether the element at that position is a slash
         int pathPos = srcPos;
 
-        char lastC = 0;
         while (pathPos < result.length) {
             char c = result[pathPos];
             if (isSlash(c)) {
-                if (lastC == ' ')
-                    throw new InvalidPathException(path,
-                                                   "Trailing char <" + lastC + ">",
-                                                   pathPos - 1);
                 int nchars = pathPos - srcPos;
                 System.arraycopy(result, srcPos, result, dstPos, nchars);
                 dstPos += nchars;
@@ -191,15 +186,10 @@ class WindowsPathParser {
                     throw new InvalidPathException(path,
                                                    "Illegal char <" + c + ">",
                                                    pathPos);
-                lastC = c;
                 pathPos++;
             }
         }
         if (srcPos != pathPos) {
-            if (lastC == ' ')
-                throw new InvalidPathException(path,
-                                               "Trailing char <" + lastC + ">",
-                                               pathPos - 1);
             int nchars = pathPos - srcPos;
             System.arraycopy(result, srcPos, result, dstPos, nchars);
             dstPos += nchars;
