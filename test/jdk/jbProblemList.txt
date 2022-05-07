@@ -1212,3 +1212,5 @@ java/nio/file/WatchService/WithSecurityManager.java                             
 
 java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java            JBR-4207 windows-all
 jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                    JBR-4207 windows-all
+
+java/awt/Window/WindowsLeak/WindowsLeak.java                                        JBR-4450 macosx-aarch64
