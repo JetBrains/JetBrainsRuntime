@@ -1334,7 +1334,8 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     AWTWindowDragView* windowDragView = [[AWTWindowDragView alloc] initWithPlatformWindow:self.javaPlatformWindow];
     [titlebar addSubview:windowDragView positioned:NSWindowBelow relativeTo:closeButtonView];
 
-    for (NSView* view in @[titlebar, windowDragView])
+    NSArray* viewsToStretch = [titlebarContainer.subviews arrayByAddingObject:windowDragView];
+    for (NSView* view in viewsToStretch)
     {
         view.translatesAutoresizingMaskIntoConstraints = NO;
         [_transparentTitleBarConstraints addObjectsFromArray:@[
@@ -1345,12 +1346,16 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
         ]];
     }
 
+    for(NSView* view in titlebar.subviews)
+    {
+        view.translatesAutoresizingMaskIntoConstraints = NO;
+    }
+
     CGFloat shrinkingFactor = [self getTransparentTitleBarButtonShrinkingFactor];
     CGFloat horizontalButtonOffset = shrinkingFactor * DefaultHorizontalTitleBarButtonOffset;
     _transparentTitleBarButtonCenterXConstraints = [[NSMutableArray alloc] initWithCapacity:3];
     [@[closeButtonView, miniaturizeButtonView, zoomButtonView] enumerateObjectsUsingBlock:^(NSView* button, NSUInteger index, BOOL* stop)
     {
-        button.translatesAutoresizingMaskIntoConstraints = NO;
         NSLayoutConstraint* buttonCenterXConstraint = [button.centerXAnchor constraintEqualToAnchor:titlebarContainer.leftAnchor constant:(_transparentTitleBarHeight/2.0 + (index * horizontalButtonOffset))];
         [_transparentTitleBarButtonCenterXConstraints addObject:buttonCenterXConstraint];
         [_transparentTitleBarConstraints addObjectsFromArray:@[
@@ -1395,7 +1400,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     [NSLayoutConstraint deactivateConstraints:_transparentTitleBarConstraints];
 
     AWTWindowDragView* windowDragView;
-    for (NSView* view in titlebar.subviews) {
+    for (NSView* view in [titlebar.subviews arrayByAddingObjectsFromArray:titlebarContainer.subviews]) {
         if ([view isMemberOfClass:[AWTWindowDragView class]]) {
             windowDragView = view;
         }
