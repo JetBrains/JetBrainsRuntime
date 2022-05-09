@@ -1115,11 +1115,20 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 }
 
+- (BOOL) isTransparentTitleBarEnabled
+{
+    return _transparentTitleBarHeight != 0.0;
+}
+
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
     [self fullScreenTransitionStarted];
     [self allowMovingChildrenBetweenSpaces:YES];
 
     self.isEnterFullScreen = YES;
+
+    if ([self isTransparentTitleBarEnabled]) {
+        [self resetTitleBar];
+    }
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
@@ -1157,6 +1166,10 @@ AWT_ASSERT_APPKIT_THREAD;
 
     [self fullScreenTransitionStarted];
 
+    if ([self isTransparentTitleBarEnabled]) {
+        [self setWindowControlsHidden:YES];
+    }
+
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowWillExitFullScreen, jc_CPlatformWindow, "windowWillExitFullScreen", "()V");
@@ -1178,6 +1191,11 @@ AWT_ASSERT_APPKIT_THREAD;
     self.isEnterFullScreen = NO;
 
     [self fullScreenTransitionFinished];
+
+    if ([self isTransparentTitleBarEnabled]) {
+        [self setUpTransparentTitleBar];
+        [self setWindowControlsHidden:NO];
+    }
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
@@ -1428,62 +1446,35 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     return (masks & NSWindowStyleMaskFullScreen) != 0;
 }
 
-- (void) configureWindowAndListenersForTransparentTitleBar
-{
-    dispatch_sync(dispatch_get_main_queue(), ^{
-        [self.nsWindow setTitlebarAppearsTransparent:YES];
-        [self.nsWindow setTitleVisibility:NSWindowTitleHidden];
-        [self.nsWindow setStyleMask:[self.nsWindow styleMask]|NSWindowStyleMaskFullSizeContentView];
-
-        if (!self.isFullScreen) {
-            [self setUpTransparentTitleBar];
-        }
-    });
-    NSNotificationCenter* defaultCenter = [NSNotificationCenter defaultCenter];
-    NSOperationQueue* mainQueue = [NSOperationQueue mainQueue];
-    _windowWillEnterFullScreenNotification = [defaultCenter addObserverForName:NSWindowWillEnterFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
-        [self resetTitleBar];
-    }];
-    _windowWillExitFullScreenNotification = [defaultCenter addObserverForName:NSWindowWillExitFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
-        [self setWindowControlsHidden:YES];
-    }];
-    _windowDidExitFullScreenNotification = [defaultCenter addObserverForName:NSWindowDidExitFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
-        [self setUpTransparentTitleBar];
-        [self setWindowControlsHidden:NO];
-    }];
-}
-
-- (void) configureWindowAndListenersForDefaultTitleBar
-{
-    dispatch_sync(dispatch_get_main_queue(), ^{
-        [self.nsWindow setTitlebarAppearsTransparent:NO];
-        [self.nsWindow setTitleVisibility:NSWindowTitleVisible];
-        [self.nsWindow setStyleMask:[self.nsWindow styleMask]&(~NSWindowStyleMaskFullSizeContentView)];
-
-        if (!self.isFullScreen) {
-            [self resetTitleBar];
-        }
-    });
-    NSNotificationCenter* defaultCenter = [NSNotificationCenter defaultCenter];
-    [defaultCenter removeObserver:_windowWillEnterFullScreenNotification];
-    [defaultCenter removeObserver:_windowWillExitFullScreenNotification];
-    [defaultCenter removeObserver:_windowDidExitFullScreenNotification];
-    _windowWillEnterFullScreenNotification = _windowWillExitFullScreenNotification = _windowDidExitFullScreenNotification = nil;
-}
-
 - (void) setTransparentTitleBarHeight: (CGFloat) transparentTitleBarHeight
 {
     if (_transparentTitleBarHeight == transparentTitleBarHeight) return;
     if (_transparentTitleBarHeight != 0.0f) {
         _transparentTitleBarHeight = transparentTitleBarHeight;
         if (transparentTitleBarHeight == 0.0f) {
-            [self configureWindowAndListenersForDefaultTitleBar];
+            dispatch_sync(dispatch_get_main_queue(), ^{
+                [self.nsWindow setTitlebarAppearsTransparent:NO];
+                [self.nsWindow setTitleVisibility:NSWindowTitleVisible];
+                [self.nsWindow setStyleMask:[self.nsWindow styleMask]&(~NSWindowStyleMaskFullSizeContentView)];
+
+                if (!self.isFullScreen) {
+                    [self resetTitleBar];
+                }
+            });
         } else if (_transparentTitleBarHeightConstraint != nil || _transparentTitleBarButtonCenterXConstraints != nil) {
             [self updateTransparentTitleBarConstraints];
         }
     } else {
         _transparentTitleBarHeight = transparentTitleBarHeight;
-        [self configureWindowAndListenersForTransparentTitleBar];
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            [self.nsWindow setTitlebarAppearsTransparent:YES];
+            [self.nsWindow setTitleVisibility:NSWindowTitleHidden];
+            [self.nsWindow setStyleMask:[self.nsWindow styleMask]|NSWindowStyleMaskFullSizeContentView];
+
+            if (!self.isFullScreen) {
+                [self setUpTransparentTitleBar];
+            }
+        });
     }
 }
 
