@@ -744,6 +744,13 @@ final class HttpsClient extends HttpClient
     }
 
     /**
+     * Returns the {@code SSLSession} in use on this connection.
+     */
+    SSLSession getSSLSession() {
+        return session;
+    }
+
+    /**
      * This method implements the SSL HandshakeCompleted callback,
      * remembering the resulting session so that it may be queried
      * for the current cipher suite and peer certificates.  Servers
