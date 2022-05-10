@@ -50,6 +50,7 @@ import jdk.test.lib.util.FileUtils;
 
 /*
  * @test
+ * @key cgroups
  * @requires os.family == "linux"
  * @modules java.base/jdk.internal.platform
  *          java.base/jdk.internal.platform.cgroupv1
