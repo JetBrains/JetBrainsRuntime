@@ -1461,8 +1461,11 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 @end // AWTWindow
 
 @implementation AWTWindowDragView {
-    CGFloat _accumulatedDragDelta;
-    BOOL _draggingWindow;
+    enum WindowDragState {
+        NO_DRAG,   // Mouse not dragging
+        SKIP_DRAG, // Mouse dragging in non-draggable area
+        DRAG,      // Mouse is dragging window
+    } _draggingWindow;
 }
 
 - (id) initWithPlatformWindow:(jobject)javaPlatformWindow {
@@ -1504,25 +1507,28 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
 - (void)mouseDown:(NSEvent *)event
 {
-    _accumulatedDragDelta = 0.0;
+    _draggingWindow = NO_DRAG;
     // We don't follow the regular responder chain here since the native window swallows events in some cases
     [[self.window contentView] deliverJavaMouseEvent:event];
 }
 
 - (void)mouseDragged:(NSEvent *)event
 {
-    _accumulatedDragDelta += fabs(event.deltaX) + fabs(event.deltaY);
-    BOOL shouldStartWindowDrag = !_draggingWindow && ( _accumulatedDragDelta > 4.0 || [self isInDraggableArea:event.locationInWindow]);
-    if (shouldStartWindowDrag) {
-        [self.window performWindowDragWithEvent:event];
-        _draggingWindow = YES;
+    if (_draggingWindow == NO_DRAG) {
+        BOOL shouldStartWindowDrag = [self isInDraggableArea:event.locationInWindow];
+        if (shouldStartWindowDrag) {
+            [self.window performWindowDragWithEvent:event];
+            _draggingWindow = DRAG;
+        } else {
+            _draggingWindow = SKIP_DRAG;
+        }
     }
 }
 
 - (void)mouseUp:(NSEvent *)event
 {
-    if (_draggingWindow) {
-        _draggingWindow = NO;
+    if (_draggingWindow == DRAG) {
+        _draggingWindow = NO_DRAG;
     } else {
         if (event.clickCount == 2 && [self isInDraggableArea:event.locationInWindow]) {
             [self.window performZoom:nil];
