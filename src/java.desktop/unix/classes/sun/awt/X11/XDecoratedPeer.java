@@ -27,7 +27,6 @@ package sun.awt.X11;
 import java.awt.*;
 
 import java.awt.event.ComponentEvent;
-import java.awt.event.InvocationEvent;
 import java.awt.event.WindowEvent;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1226,6 +1225,18 @@ abstract class XDecoratedPeer extends XWindowPeer {
         }
 
         XWindowPeer toFocus = this;
+
+        if (!FULL_MODAL_TRANSIENTS_CHAIN && modalBlocker != null && !haveCommonAncestor(target, modalBlocker)) {
+            toFocus = AWTAccessor.getComponentAccessor().getPeer(modalBlocker);
+            // raising an already top-most window is a no-op, but we perform corresponding
+            // check here to avoid xmonad WM going into an infinite loop - raise request
+            // causes it to refresh internal state and re-send WM_TAKE_FOCUS message
+            if (!toFocus.isTopMostWindow()) {
+                toFocus.toFront();
+                return false;
+            }
+        }
+
         while (toFocus.nextTransientFor != null) {
             toFocus = toFocus.nextTransientFor;
         }
