@@ -1225,6 +1225,11 @@ abstract class XDecoratedPeer extends XWindowPeer {
                        Boolean.valueOf(target == focusedWindow));
         }
 
+        if (!ENABLE_MODAL_TRANSIENTS_CHAIN && modalBlocker != null) {
+            ((XBaseWindow)AWTAccessor.getComponentAccessor().getPeer(modalBlocker)).toFront();
+            return false;
+        }
+
         XWindowPeer toFocus = this;
         while (toFocus.nextTransientFor != null) {
             toFocus = toFocus.nextTransientFor;
