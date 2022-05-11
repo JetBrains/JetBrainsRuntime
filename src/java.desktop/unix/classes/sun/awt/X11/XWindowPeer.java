@@ -62,6 +62,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             = "true".equals(System.getProperty("reparenting.check"));
     private static final boolean ENABLE_DESKTOP_CHECK
             = "true".equals(System.getProperty("transients.desktop.check", "true"));
+    static final boolean FULL_MODAL_TRANSIENTS_CHAIN
+            = "true".equals(System.getProperty("full.modal.transients.chain"));
 
     // should be synchronized on awtLock
     private static Set<XWindowPeer> windows = new HashSet<XWindowPeer>();
@@ -1575,7 +1577,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                     if (isReparented() ||
                             ENABLE_REPARENTING_CHECK && XWM.isNonReparentingWM() ||
                             !ENABLE_REPARENTING_CHECK && isMapped()) {
-                        removeFromTransientFors();
+                        if (FULL_MODAL_TRANSIENTS_CHAIN || haveCommonAncestor(target, d)) {
+                            removeFromTransientFors();
+                        }
                     } else {
                         delayedModalBlocking = false;
                     }
@@ -1772,6 +1776,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     private void addToTransientFors(XDialogPeer blockerPeer, Vector<XWindowPeer> javaToplevels)
     {
+        if (!FULL_MODAL_TRANSIENTS_CHAIN && !haveCommonAncestor(target, blockerPeer.target)) return;
         // blockerPeer chain iterator
         XWindowPeer blockerChain = blockerPeer;
         while (blockerChain.prevTransientFor != null) {
@@ -2417,5 +2422,43 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     @Override
     public void updateWindow() {
         // no-op
+    }
+
+    boolean isTopMostWindow() {
+        long curChild = 0;
+        long curParent = window;
+        while (curParent != 0) {
+            XQueryTree qt = new XQueryTree(curParent);
+            try {
+                if (qt.execute() == 0) {
+                    return false;
+                }
+                if (curParent == qt.get_root()) {
+                    // children are reported in bottom-to-top order,
+                    // so we are checking the last one
+                    int nChildren = qt.get_nchildren();
+                    return nChildren > 0 && Native.getWindow(qt.get_children(), nChildren - 1) == curChild;
+                } else {
+                    // our window could have been re-parented by window manager,
+                    // so we should get to the direct child of the root window
+                    curChild = curParent;
+                    curParent = qt.get_parent();
+                }
+            } finally {
+                qt.dispose();
+            }
+        }
+        return false;
+    }
+
+    static boolean haveCommonAncestor(Component c1, Component c2) {
+        return getRootOwner(c1) == getRootOwner(c2);
+    }
+
+    static Component getRootOwner(Component c) {
+        while (c.getParent() != null) {
+            c = c.getParent();
+        }
+        return c;
     }
 }
