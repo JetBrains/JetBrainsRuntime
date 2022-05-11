@@ -182,15 +182,19 @@ class CriticalSection {
     #define TOUCHEVENTF_PEN             0x0040
     #define TOUCHEVENTF_PALM            0x0080
 
-    #define MOUSEEVENTF_FROMTOUCH_MASK  0xFFFFFF00
-    #define MOUSEEVENTF_FROMTOUCH       0xFF515700
-    
     /*
     * Conversion of touch input coordinates to pixels
     */
     #define TOUCH_COORD_TO_PIXEL(l)         ((l) / 100)
 #endif
 
+#ifndef MOUSEEVENTF_FROMTOUCH_MASK
+#define MOUSEEVENTF_FROMTOUCH_MASK  0xFFFFFF00
+#endif
+
+#ifndef MOUSEEVENTF_FROMTOUCH
+#define MOUSEEVENTF_FROMTOUCH       0xFF515700
+#endif
 /************************************************************************
  * AwtToolkit class
  */
