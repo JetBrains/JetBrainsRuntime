@@ -56,6 +56,7 @@ import java.util.List;
 import com.jetbrains.desktop.JBRFileDialog;
 import sun.awt.AWTAccessor;
 import sun.java2d.pipe.Region;
+import sun.lwawt.LWWindowPeer;
 import sun.util.logging.PlatformLogger;
 
 import static com.jetbrains.desktop.JBRFileDialog.*;
@@ -87,7 +88,16 @@ final class CFileDialog implements FileDialogPeer {
                     title = " ";
                 }
 
-                String[] userFileNames = nativeRunFileDialog(title,
+                Window owner = target.getOwner();
+
+                long ownerPtr = owner == null ?
+                        0L :
+                        ((CPlatformWindow) ((LWWindowPeer) AWTAccessor.getComponentAccessor().getPeer(owner))
+                                .getPlatformWindow()).executeGet(ptr -> ptr);
+
+                String[] userFileNames = nativeRunFileDialog(
+                        ownerPtr,
+                        title,
                         dialogMode,
                         target.isMultipleMode(),
                         navigateApps,
@@ -102,7 +112,7 @@ final class CFileDialog implements FileDialogPeer {
                 String file = null;
                 File[] files = null;
 
-                if (userFileNames != null) {
+                if (userFileNames != null && userFileNames.length > 0) {
                     // the dialog wasn't cancelled
                     int filesNumber = userFileNames.length;
                     files = new File[filesNumber];
@@ -185,7 +195,7 @@ final class CFileDialog implements FileDialogPeer {
         return ret;
     }
 
-    private native String[] nativeRunFileDialog(String title, int mode,
+    private native String[] nativeRunFileDialog(long ownerPtr, String title, int mode,
             boolean multipleMode, boolean shouldNavigateApps,
             boolean canChooseDirectories, boolean canChooseFiles,
             boolean canCreateDirectories, boolean hasFilenameFilter,
