@@ -1226,6 +1226,18 @@ abstract class XDecoratedPeer extends XWindowPeer {
         }
 
         XWindowPeer toFocus = this;
+
+        if (!ENABLE_MODAL_TRANSIENTS_CHAIN && modalBlocker != null) {
+            toFocus = AWTAccessor.getComponentAccessor().getPeer(modalBlocker);
+            // raising an already top-most window is a no-op, but we perform corresponding
+            // check here to avoid xmonad WM going into an infinite loop - raise request
+            // causes it to refresh internal state and re-send WM_TAKE_FOCUS message
+            if (!((Window)target).isAncestorOf(modalBlocker) && !toFocus.isTopMostWindow()) {
+                toFocus.toFront();
+                return false;
+            }
+        }
+
         while (toFocus.nextTransientFor != null) {
             toFocus = toFocus.nextTransientFor;
         }
