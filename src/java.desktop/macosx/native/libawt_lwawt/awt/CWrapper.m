@@ -517,6 +517,31 @@ JNI_COCOA_EXIT(env);
 }
 
 /*
+ * Class:     sun_lwawt_macosx_CWrapper$NSWindow
+ * Method:    isTabbedWindow
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL
+Java_sun_lwawt_macosx_CWrapper_00024NSWindow_isTabbedWindow
+(JNIEnv *env, jclass cls, jlong windowPtr)
+{
+    __block jboolean isTabbedWindow = JNI_FALSE;
+
+JNI_COCOA_ENTER(env);
+
+    if (@available(macOS 10.13, *)) {
+        NSWindow *window = (NSWindow *)jlong_to_ptr(windowPtr);
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+            isTabbedWindow = [[[window tabGroup] windows] count] > 1;
+        }];
+    }
+
+JNI_COCOA_EXIT(env);
+
+    return isTabbedWindow;
+}
+
+/*
  * Class:     sun_lwawt_macosx_CWrapper$NSView
  * Method:    addSubview
  * Signature: (JJ)V
