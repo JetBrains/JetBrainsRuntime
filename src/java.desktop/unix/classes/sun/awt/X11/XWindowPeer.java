@@ -62,6 +62,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             = "true".equals(GetPropertyAction.privilegedGetProperty("reparenting.check"));
     private static final boolean ENABLE_DESKTOP_CHECK
             = "true".equals(GetPropertyAction.privilegedGetProperty("transients.desktop.check", "true"));
+    static final boolean ENABLE_MODAL_TRANSIENTS_CHAIN
+            = "true".equals(GetPropertyAction.privilegedGetProperty("modal.transients.chain"));
 
     // should be synchronized on awtLock
     private static Set<XWindowPeer> windows = new HashSet<XWindowPeer>();
@@ -1698,7 +1700,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         if (!allStates && (window.getWMState() != transientForWindow.getWMState())) {
             return;
         }
-        if (screenOrDesktopDiffers(window, transientForWindow)) {
+        if (ENABLE_MODAL_TRANSIENTS_CHAIN && screenOrDesktopDiffers(window, transientForWindow)) {
             return;
         }
         long bpw = window.getWindow();
@@ -1853,6 +1855,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     private void addToTransientFors(XDialogPeer blockerPeer, Vector<XWindowPeer> javaToplevels)
     {
+        if (!ENABLE_MODAL_TRANSIENTS_CHAIN) return;
         // blockerPeer chain iterator
         XWindowPeer blockerChain = blockerPeer;
         while (blockerChain.prevTransientFor != null) {
@@ -1913,6 +1916,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     }
 
     static void restoreTransientFor(XWindowPeer window) {
+        if (!ENABLE_MODAL_TRANSIENTS_CHAIN) return;
         XWindowPeer ownerPeer = window.getOwnerPeer();
         if (ownerPeer != null) {
             setToplevelTransientFor(window, ownerPeer, false, true);
@@ -1952,6 +1956,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
      * @see #setModalBlocked
      */
     private void removeFromTransientFors() {
+        if (!ENABLE_MODAL_TRANSIENTS_CHAIN) return;
         // the head of the chain of this window
         XWindowPeer thisChain = this;
         // the head of the current chain
@@ -2492,5 +2497,32 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     @Override
     public void updateWindow() {
         // no-op
+    }
+
+    boolean isTopMostWindow() {
+        long curChild = 0;
+        long curParent = window;
+        while (curParent != 0) {
+            XQueryTree qt = new XQueryTree(curParent);
+            try {
+                if (qt.execute() == 0) {
+                    return false;
+                }
+                if (curParent == qt.get_root()) {
+                    // children are reported in bottom-to-top order,
+                    // so we are checking the last one
+                    int nChildren = qt.get_nchildren();
+                    return nChildren > 0 && Native.getWindow(qt.get_children(), nChildren - 1) == curChild;
+                } else {
+                    // our window could have been re-parented by window manager,
+                    // so we should get to the direct child of the root window
+                    curChild = curParent;
+                    curParent = qt.get_parent();
+                }
+            } finally {
+                qt.dispose();
+            }
+        }
+        return false;
     }
 }
