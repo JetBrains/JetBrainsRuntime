@@ -1711,6 +1711,21 @@ BOOL AwtFrame::HasCustomDecoration()
     return *m_pHasCustomDecoration;
 }
 
+void _UpdateCustomDecoration(void* p) {
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+
+    jobject self = reinterpret_cast<jobject>(p);
+    PDATA pData;
+    JNI_CHECK_PEER_GOTO(self, ret);
+
+    AwtFrame* frame = (AwtFrame*)pData;
+    if (!frame->m_pHasCustomDecoration) frame->m_pHasCustomDecoration = new BOOL;
+    *frame->m_pHasCustomDecoration = JNU_GetFieldByName(env, NULL, frame->GetTarget(env), "hasCustomDecoration", "Z").z;
+    frame->RedrawNonClient();
+ret:
+    env->DeleteGlobalRef(self);
+}
+
 void GetSysInsets(RECT* insets, AwtFrame* pFrame) {
     if (pFrame->IsUndecorated()) {
         ::SetRectEmpty(insets);
@@ -2201,6 +2216,17 @@ Java_sun_awt_windows_WFramePeer_updateIcon(JNIEnv *env, jobject self)
 
     AwtToolkit::GetInstance().InvokeFunction(_UpdateIcon, env->NewGlobalRef(self));
     // global ref is deleted in _UpdateIcon()
+
+    CATCH_BAD_ALLOC;
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_windows_WFramePeer_updateCustomDecoration(JNIEnv *env, jobject self)
+{
+    TRY;
+
+    AwtToolkit::GetInstance().InvokeFunction(_UpdateCustomDecoration, env->NewGlobalRef(self));
+    // global ref is deleted in _UpdateCustomDecoration()
 
     CATCH_BAD_ALLOC;
 }

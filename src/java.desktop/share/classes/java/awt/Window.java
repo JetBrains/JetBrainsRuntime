@@ -4037,7 +4037,9 @@ public class Window extends Container implements Accessible {
 
         void setCustomDecorationEnabled(Window window, boolean enabled) {
             window.hasCustomDecoration = enabled;
-            if (MacOS.INSTANCE != null && window.customDecorTitleBarHeight > 0f) {
+            if (Win.INSTANCE != null) {
+                Win.INSTANCE.updateCustomDecoration(window.peer);
+            } else if (MacOS.INSTANCE != null && window.customDecorTitleBarHeight > 0f) {
                 MacOS.INSTANCE.setTitleBarHeight(window, window.peer, enabled ? window.customDecorTitleBarHeight : 0);
             }
         }
@@ -4062,6 +4064,12 @@ public class Window extends Container implements Accessible {
         }
         int getCustomDecorationTitleBarHeight(Window window) {
             return window.customDecorTitleBarHeight;
+        }
+
+        private interface Win {
+            Win INSTANCE = (Win) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
+                    .withStatic("updateCustomDecoration", "sun.awt.windows.WFramePeer").build();
+            void updateCustomDecoration(ComponentPeer peer);
         }
 
         private interface MacOS {
