@@ -69,6 +69,7 @@ function create_image_bundle {
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' "$IMAGES_DIR"/"$__arch_name"/release > release
     mv release "$IMAGES_DIR"/"$__arch_name"/release
+    cp $IMAGES_DIR/lib/src.zip $__arch_name/lib
     copy_jmods "$__modules" "$__modules_path" "$IMAGES_DIR"/"$__arch_name"/jmods
     zip_native_debug_symbols $IMAGES_DIR/jdk "${JBR}_diz"
   fi
