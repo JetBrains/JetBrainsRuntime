@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8279842
+ * @bug 8279842 8282293
  * @library /test/lib /lib/testlibrary
  * @build jdk.testlibrary.SimpleSSLContext
  * @modules java.base/sun.security.util
@@ -53,7 +53,13 @@
  * @run main/othervm -Djdk.net.hosts.file=TestHosts
  *          -Djdk.https.negotiate.cbt=domain:host.web.domain HttpsCB true true
  * @run main/othervm -Djdk.net.hosts.file=TestHosts
+ *          -Djdk.https.negotiate.cbt=domain:HOST.WEB.DOMAIN HttpsCB true true
+ * @run main/othervm -Djdk.net.hosts.file=TestHosts
  *          -Djdk.https.negotiate.cbt=domain:*.web.domain HttpsCB true true
+ * @run main/othervm -Djdk.net.hosts.file=TestHosts
+ *          -Djdk.https.negotiate.cbt=domain:*.WEB.Domain HttpsCB true true
+ * @run main/othervm -Djdk.net.hosts.file=TestHosts
+ *          -Djdk.https.negotiate.cbt=domain:*.Invalid,*.WEB.Domain HttpsCB true true
  */
 
 import com.sun.net.httpserver.Headers;
@@ -200,6 +206,7 @@ public class HttpsCB {
                     conn.getInputStream()));
             return reader.readLine().equals(CONTENT);
         } catch (IOException e) {
+            e.printStackTrace(System.out);
             return false;
         }
     }
