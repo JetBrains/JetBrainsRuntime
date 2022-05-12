@@ -83,7 +83,9 @@ public class RenderPerfTest {
     private final static int RESOLUTION = 5;
     private final static int COLOR_TOLERANCE = 10;
     private final static int MAX_MEASURE_TIME = 5000;
+    private final static int MAX_FRAME_TIME = 1000;
 
+    private final static Color[] marker = {Color.RED, Color.BLUE, Color.GREEN};
 
     interface Configurable {
         void configure(Graphics2D g2d);
@@ -289,6 +291,18 @@ public class RenderPerfTest {
         }
     }
 
+    static class LargeLCDTextParticleRenderer extends LargeTextParticleRenderer {
+        LargeLCDTextParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            if (id % 100 == 0) {
+                super.render(g2d, id, x, y, vx, vy);
+            }
+        }
+    }
     static class FlatOvalRotParticleRenderer extends FlatParticleRenderer {
 
 
@@ -607,7 +621,7 @@ public class RenderPerfTest {
 
         private long time;
         private double execTime = 0;
-        private Color expColor = Color.RED;
+        private int markerIdx = 0;
         AtomicBoolean waiting = new AtomicBoolean(false);
         private double fps;
 
@@ -644,7 +658,7 @@ public class RenderPerfTest {
                             renderable.render(g2d);
                             g2d.setClip(null);
                             g2d.setPaintMode();
-                            g2d.setColor(expColor);
+                            g2d.setColor(marker[markerIdx]);
                             g2d.fillRect(0, 0, BW, BH);
                         }
                     };
@@ -665,30 +679,51 @@ public class RenderPerfTest {
                     Color c = robot.getPixelColor(
                             panel.getTopLevelAncestor().getX() + panel.getTopLevelAncestor().getInsets().left + BW / 2,
                             panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BW / 2);
-                    if (isAlmostEqual(c, Color.BLUE)) {
-                        expColor = Color.RED;
-                    } else {
-                        expColor = Color.BLUE;
+
+                    for (int i = 0; i < marker.length; i++) {
+                        if (isAlmostEqual(c, marker[i])) {
+                            markerIdx = (i + 1) % marker.length;
+                            break;
+                        }
+                    }
+                    if (markerIdx != 0) {
+                        waiting.set(false);
                     }
                     renderable.update();
                     panel.getParent().repaint();
 
                 } else {
-                    while (!isAlmostEqual(
-                            robot.getPixelColor(
-                                    panel.getTopLevelAncestor().getX() + panel.getTopLevelAncestor().getInsets().left + BW/2,
-                                    panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BH/2),
-                            expColor))
-                    {
+                    int sleepTime = 0;
+                    boolean noSkippedFrame = true;
+                    while (true) {
+                        Color c = robot.getPixelColor(
+                                panel.getTopLevelAncestor().getX() + panel.getTopLevelAncestor().getInsets().left + BW/2,
+                                panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BH/2);
+                        if (isAlmostEqual(c, marker[markerIdx])) {
+                            break;
+                        }
+                        if (isAlmostEqual(c, marker[(marker.length + markerIdx - 1) % marker.length])) {
+                            noSkippedFrame = false;
+                            break;
+                        }
+
                         try {
                             Thread.sleep(RESOLUTION);
                         } catch (InterruptedException ex) {
                             ex.printStackTrace();
                         }
+
+                        sleepTime += RESOLUTION;
+                        if (sleepTime > MAX_FRAME_TIME) {
+                            noSkippedFrame = false;
+                            break;
+                        }
                     }
-                    time = System.nanoTime() - time;
-                    execTime += time;
-                    frame++;
+                    if (noSkippedFrame) {
+                        time = System.nanoTime() - time;
+                        execTime += time;
+                        frame++;
+                    }
                     waiting.set(false);
                 }
 
@@ -746,6 +781,7 @@ public class RenderPerfTest {
     private static final ParticleRenderer imgRenderer = new ImgParticleRenderer(N, R);
     private static final ParticleRenderer textRenderer = new TextParticleRenderer(N, R);
     private static final ParticleRenderer largeTextRenderer = new LargeTextParticleRenderer(N, R);
+    private static final ParticleRenderer largeLCDTextRenderer = new LargeLCDTextParticleRenderer(N, R);
     private static final ParticleRenderer whiteTextRenderer = new WhiteTextParticleRenderer(R);
     private static final ParticleRenderer argbSwBlitImageRenderer = new SwBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_ARGB);
     private static final ParticleRenderer bgrSwBlitImageRenderer = new SwBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_BGR);
@@ -910,7 +946,7 @@ public class RenderPerfTest {
     }
 
     public void testLargeTextLCD() throws Exception {
-        (new PerfMeter("LargeTextLCD")).exec(createPR(largeTextRenderer).configure(TextLCD)).report();
+        (new PerfMeter("LargeTextLCD")).exec(createPR(largeLCDTextRenderer).configure(TextLCD)).report();
     }
 
     public void testLargeTextGray() throws Exception {
