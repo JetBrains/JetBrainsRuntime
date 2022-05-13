@@ -3103,7 +3103,7 @@ const char* JavaThread::get_thread_name() const {
 }
 
 // Returns a non-NULL representation of this thread's name, or a suitable
-// descriptive string if there is no set name
+// descriptive string if there is no set name.
 const char* JavaThread::get_thread_name_string(char* buf, int buflen) const {
   const char* name_str;
   oop thread_obj = threadObj();
@@ -3163,6 +3163,19 @@ ThreadPriority JavaThread::java_priority() const {
   ThreadPriority priority = java_lang_Thread::priority(thr_oop);
   assert(MinPriority <= priority && priority <= MaxPriority, "sanity check");
   return priority;
+}
+
+// Helper to extract the name from the thread oop for logging.
+const char* JavaThread::name_for(oop thread_obj) {
+  assert(thread_obj != NULL, "precondition");
+  oop name = java_lang_Thread::name(thread_obj);
+  const char* name_str;
+  if (name != NULL) {
+    name_str = java_lang_String::as_utf8_string(name);
+  } else {
+    name_str = "<un-named>";
+  }
+  return name_str;
 }
 
 void JavaThread::prepare(jobject jni_thread, ThreadPriority prio) {
