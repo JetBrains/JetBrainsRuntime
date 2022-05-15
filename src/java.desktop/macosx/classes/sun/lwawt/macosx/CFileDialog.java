@@ -49,17 +49,14 @@ import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
 import java.awt.peer.FileDialogPeer;
-import java.awt.peer.WindowPeer;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.security.AccessController;
 import java.util.List;
-import sun.lwawt.LWWindowPeer;
 
 import com.jetbrains.desktop.JBRFileDialog;
 import sun.awt.AWTAccessor;
 import sun.java2d.pipe.Region;
-import sun.lwawt.LWWindowPeer;
 import sun.security.action.GetBooleanAction;
 
 import static com.jetbrains.desktop.JBRFileDialog.*;
@@ -93,17 +90,7 @@ class CFileDialog implements FileDialogPeer {
                     title = " ";
                 }
 
-                Window owner = target.getOwner();
-
-                LWWindowPeer lwWindowPeer = (LWWindowPeer) AWTAccessor.getComponentAccessor().getPeer(owner);
-
-                long ownerPtr = owner == null ?
-                        0L :
-                        ((CPlatformWindow) lwWindowPeer.getPlatformWindow()).executeGet(ptr -> ptr);
-
-                String[] userFileNames = nativeRunFileDialog(
-                        ownerPtr,
-                        title,
+                String[] userFileNames = nativeRunFileDialog(title,
                         dialogMode,
                         target.isMultipleMode(),
                         navigateApps,
@@ -118,7 +105,7 @@ class CFileDialog implements FileDialogPeer {
                 String file = null;
                 File[] files = null;
 
-                if (userFileNames != null && userFileNames.length > 0) {
+                if (userFileNames != null) {
                     // the dialog wasn't cancelled
                     int filesNumber = userFileNames.length;
                     files = new File[filesNumber];
@@ -193,7 +180,7 @@ class CFileDialog implements FileDialogPeer {
         return ret;
     }
 
-    private native String[] nativeRunFileDialog(long ownerPtr, String title, int mode,
+    private native String[] nativeRunFileDialog(String title, int mode,
             boolean multipleMode, boolean shouldNavigateApps,
             boolean canChooseDirectories, boolean canChooseFiles,
             boolean canCreateDirectories, boolean hasFilenameFilter,
@@ -213,13 +200,6 @@ class CFileDialog implements FileDialogPeer {
 
     @Override
     public void blockWindows(List<Window> windows) {
-        for (Window w : windows) {
-            WindowPeer wp =
-                    (WindowPeer) AWTAccessor.getComponentAccessor().getPeer(w);
-            if (wp != null) {
-                wp.setModalBlocked(target, true);
-            }
-        }
     }
 
     @Override
@@ -382,7 +362,7 @@ class CFileDialog implements FileDialogPeer {
 
     @Override
     public boolean isFocusable() {
-        return true;
+        return false;
     }
 
     @Override

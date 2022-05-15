@@ -29,7 +29,6 @@
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
 #import "CFileDialog.h"
-#import "AWTWindow.h"
 #import "CMenuBar.h"
 #import "ApplicationDelegate.h"
 
@@ -38,8 +37,7 @@
 
 @implementation CFileDialog
 
-- (id)initWithOwner:(NSWindow*)owner
-              filter:(jboolean)inHasFilter
+- (id)initWithFilter:(jboolean)inHasFilter
           fileDialog:(jobject)inDialog
                title:(NSString *)inTitle
            directory:(NSString *)inPath
@@ -52,9 +50,7 @@ canChooseDirectories:(BOOL)inChooseDirectories
 canCreateDirectories:(BOOL)inCreateDirectories
              withEnv:(JNIEnv*)env;
 {
-    if (self = [super init]) {
-        fOwner = owner;
-        [fOwner retain];
+  if (self = [super init]) {
         fHasFileFilter = inHasFilter;
         fFileDialog = (*env)->NewGlobalRef(env, inDialog);
         fDirectory = inPath;
@@ -95,9 +91,6 @@ canCreateDirectories:(BOOL)inCreateDirectories
 
     [fURLs release];
     fURLs = nil;
-
-    [fOwner release];
-    fOwner = nil;
 
     [super dealloc];
 }
@@ -156,64 +149,8 @@ canCreateDirectories:(BOOL)inCreateDirectories
             [editMenuItem release];
         }
 
-
-        if (fOwner != nil) {
-            if (fDirectory != nil) {
-                 [thePanel setDirectoryURL:[NSURL fileURLWithPath:[fDirectory stringByExpandingTildeInPath]]];
-            }
-
-            if (fFile != nil) {
-                 [thePanel setNameFieldStringValue:fFile];
-            }
-
-            if (fOwner != nil) {
-
-                // Finds appropriate menubar in our hierarchy,
-                AWTWindow *awtWindow = (AWTWindow *)fOwner.delegate;
-                while (awtWindow.ownerWindow != nil) {
-                    awtWindow = awtWindow.ownerWindow;
-                }
-
-                CMenuBar *menuBar = nil;
-                BOOL isDisabled = NO;
-                if ([awtWindow.nsWindow isVisible]){
-                    menuBar = awtWindow.javaMenuBar;
-                    isDisabled = !awtWindow.isEnabled;
-                }
-
-                if (menuBar == nil) {
-                    menuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
-                    isDisabled = NO;
-                }
-
-                [CMenuBar activate:menuBar modallyDisabled:isDisabled];
-            }
-
-            [thePanel setAppearance:fOwner.appearance];
-
-            [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {
-
-                if (result == NSFileHandlingPanelOKButton) {
-                    NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
-                    fURLs = (fMode == java_awt_FileDialog_LOAD)
-                         ? [openPanel URLs]
-                         : [NSArray arrayWithObject:[openPanel URL]];
-
-                    fPanelResult = NSFileHandlingPanelOKButton;
-
-                    } else {
-                        fURLs = [NSArray array];
-                    }
-                    [fURLs retain];
-                    [NSApp stopModal];
-                }
-            ];
-
-            [NSApp runModalForWindow:thePanel];
-        }
-        else
-        {
-            fPanelResult = [thePanel runModalForDirectory:fDirectory file:fFile];
+        fPanelResult = [thePanel runModalForDirectory:fDirectory file:fFile];
+        [thePanel setDelegate:nil];
         CMenuBar *menuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
         [CMenuBar activate:menuBar modallyDisabled:NO];
 
@@ -221,18 +158,15 @@ canCreateDirectories:(BOOL)inCreateDirectories
             [menu removeItem:editMenuItem];
         }
 
-            if ([self userClickedOK]) {
-                if (fMode == java_awt_FileDialog_LOAD) {
-                    NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
-                    fURLs = [openPanel URLs];
-                } else {
-                    fURLs = [NSArray arrayWithObject:[thePanel URL]];
-                }
-                [fURLs retain];
+        if ([self userClickedOK]) {
+            if (fMode == java_awt_FileDialog_LOAD) {
+                NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
+                fURLs = [openPanel URLs];
+            } else {
+                fURLs = [NSArray arrayWithObject:[thePanel URL]];
             }
+            [fURLs retain];
         }
-
-        [thePanel setDelegate:nil];
     }
 
     [self disposer];
@@ -300,7 +234,7 @@ canCreateDirectories:(BOOL)inCreateDirectories
 }
 
 - (BOOL) userClickedOK {
-    return fPanelResult == NSFileHandlingPanelOKButton;
+    return fPanelResult == NSOKButton;
 }
 
 - (NSArray *)URLs {
@@ -314,7 +248,7 @@ canCreateDirectories:(BOOL)inCreateDirectories
  */
 JNIEXPORT jobjectArray JNICALL
 Java_sun_lwawt_macosx_CFileDialog_nativeRunFileDialog
-(JNIEnv *env, jobject peer, jlong ownerPtr, jstring title, jint mode, jboolean multipleMode,
+(JNIEnv *env, jobject peer, jstring title, jint mode, jboolean multipleMode,
  jboolean navigateApps, jboolean chooseDirectories, jboolean chooseFiles, jboolean createDirectories,
  jboolean hasFilter, jstring directory, jstring file)
 {
@@ -326,8 +260,7 @@ JNI_COCOA_ENTER(env);
         dialogTitle = @" ";
     }
 
-    CFileDialog *dialogDelegate = [[CFileDialog alloc] initWithOwner:(NSWindow *)jlong_to_ptr(ownerPtr)
-                                                               filter:hasFilter
+    CFileDialog *dialogDelegate = [[CFileDialog alloc] initWithFilter:hasFilter
                                                            fileDialog:peer
                                                                 title:dialogTitle
                                                             directory:JavaStringToNSString(env, directory)

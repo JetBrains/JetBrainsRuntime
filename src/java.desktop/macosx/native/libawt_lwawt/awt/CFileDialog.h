@@ -26,8 +26,6 @@
 #import <Cocoa/Cocoa.h>
 
 @interface CFileDialog : NSObject <NSOpenSavePanelDelegate> {
-    NSWindow* fOwner;
-
     // Should we query back to Java for a file filter?
     jboolean fHasFileFilter;
 
@@ -67,8 +65,7 @@
 }
 
 // Allocator
-- (id) initWithOwner:(NSWindow*) owner
-           filter:(jboolean)inHasFilter
+- (id) initWithFilter:(jboolean)inHasFilter
            fileDialog:(jobject)inDialog
                 title:(NSString *)inTitle
             directory:(NSString *)inPath
