@@ -57,11 +57,11 @@ import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import java.util.concurrent.atomic.AtomicLong;
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 import javax.swing.WindowConstants;
 
 public class RenderPerfTest {
@@ -78,14 +78,13 @@ public class RenderPerfTest {
     private final static float R = 25;
     private final static int BW = 50;
     private final static int BH = 50;
-    private final static int COUNT = 300;
-    private final static int DELAY = 10;
-    private final static int RESOLUTION = 5;
+    private final static int COUNT = 600;
+    private final static int CYCLE_DELAY = 3;
+    private final static int CYCLES_TILL_PAINT = 10;
     private final static int COLOR_TOLERANCE = 10;
     private final static int MAX_MEASURE_TIME = 5000;
-    private final static int MAX_FRAME_TIME = 1000;
 
-    private final static Color[] marker = {Color.RED, Color.BLUE, Color.GREEN};
+    private final static Color[] marker = {Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW, Color.ORANGE, Color.MAGENTA};
 
     interface Configurable {
         void configure(Graphics2D g2d);
@@ -280,6 +279,7 @@ public class RenderPerfTest {
         @Override
         public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
             setPaint(g2d, id);
+            if (id % 100 != 0) return;
             Font font = new Font("LucidaGrande", Font.PLAIN, 32);
             g2d.setFont(font);
             g2d.drawString("The quick brown fox jumps over the lazy dog",
@@ -291,18 +291,6 @@ public class RenderPerfTest {
         }
     }
 
-    static class LargeLCDTextParticleRenderer extends LargeTextParticleRenderer {
-        LargeLCDTextParticleRenderer(int n, float r) {
-            super(n, r);
-        }
-
-        @Override
-        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
-            if (id % 100 == 0) {
-                super.render(g2d, id, x, y, vx, vy);
-            }
-        }
-    }
     static class FlatOvalRotParticleRenderer extends FlatParticleRenderer {
 
 
@@ -615,14 +603,15 @@ public class RenderPerfTest {
 
     static class PerfMeter {
         private String name;
-        private int frame = 0;
+
 
         private JPanel panel;
 
-        private long time;
         private double execTime = 0;
         private int markerIdx = 0;
-        AtomicBoolean waiting = new AtomicBoolean(false);
+        private AtomicBoolean paintOccurred = new AtomicBoolean(false);
+        private AtomicLong markerPaintTime = new AtomicLong(0);
+
         private double fps;
 
         PerfMeter(String name) {
@@ -630,7 +619,6 @@ public class RenderPerfTest {
         }
 
         PerfMeter exec(final Renderable renderable) throws Exception {
-            final CountDownLatch latch = new CountDownLatch(COUNT);
             final CountDownLatch latchFrame = new CountDownLatch(1);
             final long endTime = System.currentTimeMillis() + MAX_MEASURE_TIME;
 
@@ -646,13 +634,15 @@ public class RenderPerfTest {
                 @Override
                 public void run() {
 
-                    panel = new JPanel()
-                    {
+                    panel = new JPanel() {
                         @Override
                         protected void paintComponent(Graphics g) {
-
                             super.paintComponent(g);
-                            time = System.nanoTime();
+                            if (markerIdx == 0) {
+                                markerPaintTime.set(System.nanoTime());
+                            }
+                            paintOccurred.set(true);
+
                             Graphics2D g2d = (Graphics2D) g.create();
                             renderable.setup(g2d);
                             renderable.render(g2d);
@@ -660,10 +650,11 @@ public class RenderPerfTest {
                             g2d.setPaintMode();
                             g2d.setColor(marker[markerIdx]);
                             g2d.fillRect(0, 0, BW, BH);
+                            markerIdx = (markerIdx + 1) % marker.length;
                         }
                     };
 
-                    panel.setPreferredSize(new Dimension((int)(WIDTH + BW), (int)(HEIGHT + BH)));
+                    panel.setPreferredSize(new Dimension((int) (WIDTH + BW), (int) (HEIGHT + BH)));
                     panel.setBackground(Color.BLACK);
                     f.add(panel);
                     f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -671,72 +662,53 @@ public class RenderPerfTest {
                     f.setVisible(true);
                 }
             });
+
             Robot robot = new Robot();
+            int cycle = 0;
+            int cycleToPaint = -1;
+            int frame = 0;
+            long paintTime = 0;
+            while (frame < COUNT) {
+                if (paintOccurred.compareAndSet(true, false)) {
+                    long t = markerPaintTime.getAndSet(0);
+                    paintTime = t > 0 ? t : paintTime;
+                    cycleToPaint = cycle + CYCLES_TILL_PAINT;
+                }
 
-            Timer timer = new Timer(DELAY, e -> {
+                if (cycle == cycleToPaint) {
+                    renderable.update();
+                    panel.getParent().repaint();
+                }
 
-                if (waiting.compareAndSet(false, true)) {
+                if (paintTime > 0) {
                     Color c = robot.getPixelColor(
                             panel.getTopLevelAncestor().getX() + panel.getTopLevelAncestor().getInsets().left + BW / 2,
                             panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BW / 2);
-
+                    int currIdx = -1;
                     for (int i = 0; i < marker.length; i++) {
                         if (isAlmostEqual(c, marker[i])) {
-                            markerIdx = (i + 1) % marker.length;
+                            currIdx = i;
                             break;
                         }
                     }
-                    if (markerIdx != 0) {
-                        waiting.set(false);
-                    }
-                    renderable.update();
-                    panel.getParent().repaint();
 
-                } else {
-                    int sleepTime = 0;
-                    boolean noSkippedFrame = true;
-                    while (true) {
-                        Color c = robot.getPixelColor(
-                                panel.getTopLevelAncestor().getX() + panel.getTopLevelAncestor().getInsets().left + BW/2,
-                                panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BH/2);
-                        if (isAlmostEqual(c, marker[markerIdx])) {
-                            break;
-                        }
-                        if (isAlmostEqual(c, marker[(marker.length + markerIdx - 1) % marker.length])) {
-                            noSkippedFrame = false;
-                            break;
-                        }
-
-                        try {
-                            Thread.sleep(RESOLUTION);
-                        } catch (InterruptedException ex) {
-                            ex.printStackTrace();
-                        }
-
-                        sleepTime += RESOLUTION;
-                        if (sleepTime > MAX_FRAME_TIME) {
-                            noSkippedFrame = false;
-                            break;
-                        }
-                    }
-                    if (noSkippedFrame) {
-                        time = System.nanoTime() - time;
-                        execTime += time;
+                    if (currIdx == 0) {
+                        execTime += System.nanoTime() - paintTime;
                         frame++;
+                        paintTime = 0;
                     }
-                    waiting.set(false);
                 }
-
-                if (System.currentTimeMillis() < endTime) {
-                    latch.countDown();
-                } else {
-                    while(latch.getCount() > 0) latch.countDown();
+                try {
+                    Thread.sleep(CYCLE_DELAY);
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
                 }
-            });
-            timer.start();
-            latch.await();
+                if (System.currentTimeMillis() >= endTime) {
+                    break;
+                }
+                cycle++;
+            }
             SwingUtilities.invokeAndWait(() -> {
-                timer.stop();
                 f.setVisible(false);
                 f.dispose();
             });
@@ -781,7 +753,6 @@ public class RenderPerfTest {
     private static final ParticleRenderer imgRenderer = new ImgParticleRenderer(N, R);
     private static final ParticleRenderer textRenderer = new TextParticleRenderer(N, R);
     private static final ParticleRenderer largeTextRenderer = new LargeTextParticleRenderer(N, R);
-    private static final ParticleRenderer largeLCDTextRenderer = new LargeLCDTextParticleRenderer(N, R);
     private static final ParticleRenderer whiteTextRenderer = new WhiteTextParticleRenderer(R);
     private static final ParticleRenderer argbSwBlitImageRenderer = new SwBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_ARGB);
     private static final ParticleRenderer bgrSwBlitImageRenderer = new SwBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_BGR);
@@ -946,7 +917,7 @@ public class RenderPerfTest {
     }
 
     public void testLargeTextLCD() throws Exception {
-        (new PerfMeter("LargeTextLCD")).exec(createPR(largeLCDTextRenderer).configure(TextLCD)).report();
+        (new PerfMeter("LargeTextLCD")).exec(createPR(largeTextRenderer).configure(TextLCD)).report();
     }
 
     public void testLargeTextGray() throws Exception {
