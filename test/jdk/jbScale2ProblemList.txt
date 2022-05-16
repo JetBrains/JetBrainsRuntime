@@ -2,3 +2,4 @@ java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.java           
 java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.java                   JBR-1011 generic-all
 java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java          8279190 linux-all,windows-all,macosx-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  8282232 windows-all
+java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java                 8286840 linux-all
