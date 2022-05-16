@@ -563,6 +563,9 @@ public final class X11GraphicsDevice extends GraphicsDevice
     public synchronized void displayChanged() {
         xrmXftDpi = getXrmXftDpi(-1);
         scale = initScaleFactor(1);
+
+        if (X11GraphicsEnvironment.useBoundsCache()) resetBoundsCache();
+
         // On X11 the visuals do not change, and therefore we don't need
         // to reset the defaultConfig, config, doubleBufferVisuals,
         // neither do we need to reset the native data.
@@ -607,6 +610,7 @@ public final class X11GraphicsDevice extends GraphicsDevice
                 if (x11gd.isScaleFactorDefault.get() || !uiScaleEnabled) {
                     x11gd.scale = (int)Math.round(xftDpiScale * (uiScaleEnabled ? GDK_SCALE_MULTIPLIER : 1));
                     x11gd.isScaleFactorDefault.set(false);
+                    if (X11GraphicsEnvironment.useBoundsCache()) x11gd.resetBoundsCache();
                 }
             }
         }
