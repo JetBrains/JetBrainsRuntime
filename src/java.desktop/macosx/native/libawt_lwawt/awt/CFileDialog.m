@@ -204,10 +204,10 @@ canCreateDirectories:(BOOL)inCreateDirectories
             fPanelResult = [thePanel runModalForDirectory:fDirectory file:fFile];
             CMenuBar *menuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
             [CMenuBar activate:menuBar modallyDisabled:NO];
+        }
 
-            if (editMenuItem != nil) {
-                [menu removeItem:editMenuItem];
-            }
+        if (editMenuItem != nil) {
+            [menu removeItem:editMenuItem];
         }
 
         if ([self userClickedOK]) {

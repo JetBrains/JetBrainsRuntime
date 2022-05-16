@@ -95,11 +95,10 @@ class CFileDialog implements FileDialogPeer {
 
                 Window owner = target.getOwner();
 
-                LWWindowPeer lwWindowPeer = (LWWindowPeer) AWTAccessor.getComponentAccessor().getPeer(owner);
-
                 long ownerPtr = owner == null ?
                         0L :
-                        ((CPlatformWindow) lwWindowPeer.getPlatformWindow()).executeGet(ptr -> ptr);
+                        ((CPlatformWindow) ((LWWindowPeer) AWTAccessor.getComponentAccessor().getPeer(owner))
+                                .getPlatformWindow()).executeGet(ptr -> ptr);
 
                 String[] userFileNames = nativeRunFileDialog(
                         ownerPtr,
