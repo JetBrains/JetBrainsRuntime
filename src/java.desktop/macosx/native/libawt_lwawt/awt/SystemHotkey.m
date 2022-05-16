@@ -473,7 +473,7 @@ bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, NSString
         && [chars isEqualToString:shortcutCharacter];
 }
 
-void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, jobject reader) {
+JNIEXPORT void JNICALL Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, jobject reader) {
     jclass clsReader = (*env)->GetObjectClass(env, reader);
     jmethodID methodAdd = (*env)->GetMethodID(env, clsReader, "add", "(ILjava/lang/String;ILjava/lang/String;)V");
 
@@ -489,7 +489,7 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
     );
 }
 
-jint Java_java_awt_desktop_SystemHotkeyReader_osx2java(JNIEnv* env, jclass clazz, jint osxKeyCode) {
+JNIEXPORT jint JNICALL Java_java_awt_desktop_SystemHotkeyReader_osx2java(JNIEnv* env, jclass clazz, jint osxKeyCode) {
     static NSDictionary * osx2javaMap = nil;
     if (osx2javaMap == nil) {
         osx2javaMap = [NSDictionary dictionaryWithObjectsAndKeys:
@@ -619,7 +619,7 @@ jint Java_java_awt_desktop_SystemHotkeyReader_osx2java(JNIEnv* env, jclass clazz
     return java_awt_event_KeyEvent_VK_UNDEFINED;
 }
 
-jstring Java_java_awt_desktop_SystemHotkey_osxKeyCodeDescription(JNIEnv* env, jclass clazz, jint osxKeyCode) {
+JNIEXPORT jstring JNICALL Java_java_awt_desktop_SystemHotkey_osxKeyCodeDescription(JNIEnv* env, jclass clazz, jint osxKeyCode) {
     static NSDictionary * osxCode2DescMap = nil;
     if (osxCode2DescMap == nil) {
         osxCode2DescMap = [NSDictionary dictionaryWithObjectsAndKeys:
