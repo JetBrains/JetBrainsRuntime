@@ -1,12 +1,15 @@
-#!/bin/bash -x
+#!/bin/bash
 
-function do_maketest() {
+set -euo pipefail
+set -x
+
+function check_bundle_type_maketest() {
+  # check whether last char is 't', if so remove it
   if [ "${bundle_type: -1}" == "t" ]; then
-    echo ${bundle_type%?}
-    return 1
+    bundle_type="${bundle_type%?}"
+    do_maketest=1
   else
-    echo ${bundle_type}
-    return 0
+    do_maketest=0
   fi
 }
 
@@ -16,20 +19,23 @@ function getVersionProp() {
 
 while getopts ":i?" o; do
     case "${o}" in
-        i)
-            i="incremental build"
-            INC_BUILD=1
-            ;;
+        i) INC_BUILD=1 ;;
     esac
 done
 shift $((OPTIND-1))
 
+if [[ $# -lt 2 ]]; then
+  echo "Required at least two arguments: build_number bundle_type"
+  exit 1
+fi
+
 build_number=$1
 bundle_type=$2
-architecture=$3 # aarch64 or x64
+# shellcheck disable=SC2034
+architecture=${3:-x64} # aarch64 or x64
 
-bundle_type=$(do_maketest)
-do_maketest=$?
+check_bundle_type_maketest
+
 tag_prefix="jdk-"
 OPENJDK_TAG=$(git log --simplify-by-decoration --decorate=short --pretty=short | grep "$tag_prefix" | cut -d "(" -f2 | cut -d ")" -f1 | awk '{print $2}' | sort -t "-" -k 2 -g | tail -n 1)
 VERSION_FEATURE=$(getVersionProp "DEFAULT_VERSION_FEATURE")
@@ -61,6 +67,10 @@ export TZ
 SOURCE_DATE_EPOCH="$(git log -1 --pretty=%ct)"
 export SOURCE_DATE_EPOCH
 
+COPYRIGHT_YEAR=""
+BUILD_TIME=""
+TOUCH_TIME=""
+REPRODUCIBLE_TAR_OPTS=""
 case "$OS_NAME" in
     Linux)
         COPYRIGHT_YEAR="$(date --utc --date=@$SOURCE_DATE_EPOCH +%Y)"
