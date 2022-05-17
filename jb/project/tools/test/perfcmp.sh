@@ -1,4 +1,7 @@
-#!/bin/bash -x
+#!/bin/bash
+
+set -euo pipefail
+set -x
 
 usage ()
 {
