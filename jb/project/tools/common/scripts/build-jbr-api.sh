@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/bin/bash
+
+set -euo pipefail
 
 # $1 - Boot JDK
 # $2 - JBR part of API version
