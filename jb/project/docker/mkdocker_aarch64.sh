@@ -1,4 +1,7 @@
-#!/bin/bash -x
+#!/bin/bash
+
+set -euo pipefail
+set -x
 
 # This script creates a Docker image suitable for building AArch64 variant
 # of the JetBrains Runtime "dev" version.
