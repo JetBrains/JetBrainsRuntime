@@ -1,4 +1,7 @@
-#!/bin/bash -x
+#!/bin/bash
+
+set -euo pipefail
+set -x
 
 # The following parameters must be specified:
 #   build_number - specifies the number of JetBrainsRuntime build
