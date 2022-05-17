@@ -1,4 +1,7 @@
-#!/bin/bash -x
+#!/bin/bash
+
+set -euo pipefail
+set -x
 
 function do_maketest() {
   if [ "${bundle_type: -1}" == "t" ]; then

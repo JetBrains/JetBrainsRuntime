@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -euo pipefail
 
 while getopts ":t" o; do
     case "${o}" in
