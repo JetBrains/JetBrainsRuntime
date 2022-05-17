@@ -1,7 +1,8 @@
-#!/bin/bash -x
+#!/bin/bash
 
 #immediately exit script with an error if a command fails
 set -euo pipefail
+set -x
 
 export COPY_EXTENDED_ATTRIBUTES_DISABLE=true
 export COPYFILE_DISABLE=true
