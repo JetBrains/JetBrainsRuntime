@@ -1,4 +1,7 @@
-#!/bin/bash -x
+#!/bin/bash
+
+set -euo pipefail
+set -x
 
 # This script creates a Docker image suitable for building musl-x64 variant
 # of the JetBrains Runtime version 17.
