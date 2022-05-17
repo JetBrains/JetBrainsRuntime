@@ -44,6 +44,7 @@ function do_configure {
       --with-extra-cflags="-F$(pwd)/Frameworks" \
       --with-extra-cxxflags="-F$(pwd)/Frameworks" \
       --with-extra-ldflags="-F$(pwd)/Frameworks" \
+      $STATIC_CONF_ARGS \
       $REPRODUCIBLE_BUILD_OPTS \
       $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
       || do_exit $?
@@ -61,6 +62,7 @@ function do_configure {
       --with-boot-jdk="$BOOT_JDK" \
       --with-macosx-version-max="${MACOSX_VERSION_MAX:="10.12.00"}" \
       --enable-cds=yes \
+      $STATIC_CONF_ARGS \
       $REPRODUCIBLE_BUILD_OPTS \
       $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
       || do_exit $?
