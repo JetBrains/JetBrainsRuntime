@@ -911,6 +911,12 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                     }
                     handleWindowFocusOut(oppositeWindow, xfe.get_serial());
                 }
+                if (XToolkit.isXWayland() && XAwtState.getGrabWindow() != null) {
+                    // under XWayland, pointer grab doesn't give us ability to receive button events for native Wayland
+                    // windows, so the logic in handleButtonPressRelease method won't work, and we need this workaround
+                    // to cancel the grab on switching to another application
+                    postEventToEventQueue(new sun.awt.UngrabEvent(getEventSource()));
+                }
             }
         }
     }
