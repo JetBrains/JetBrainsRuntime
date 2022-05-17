@@ -1,0 +1,23 @@
+# NOTE: This Dockerfile is meant to be used from the mkdocker_musl_x64.sh script.
+
+# Pull a concrete version of Linux that does NOT recieve updates after it's
+# been created.  This is so that the image is as stable as possible to make
+# image creation reproducible.
+# NB: this also means there may be no security-related fixes there, need to
+# move the version to the next manually.
+FROM ubuntu:jammy
+
+# Install the necessary build tools
+RUN     apt install build-essential autoconf
+
+# Set up boot JDK for building
+COPY boot_jdk_amd64.tar.gz /jdk17/
+RUN cd /jdk17 && tar --strip-components=1 -xzf boot_jdk_musl_amd64.tar.gz && rm /jdk17/boot_jdk_amd64.tar.gz
+ENV BOOT_JDK=/jdk17
+
+COPY sdk-x86_64-linux-gnu-to-riscv64-linux-gnu-20220423.tar.gz /devkit/
+RUN cd /devkit && tar --strip-components=1 -xzf sdk-x86_64-linux-gnu-to-riscv64-linux-gnu-20220423.tar.gz && rm /devkit/sdk-x86_64-linux-gnu-to-riscv64-linux-gnu-20220423.tar.gz
+ENV DEVKIT_PATH=/devkit
+
+RUN git config --global user.email "teamcity@jetbrains.com" && \
+    git config --global user.name "builduser"
