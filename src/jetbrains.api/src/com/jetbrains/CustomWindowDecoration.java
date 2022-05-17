@@ -49,13 +49,14 @@ public interface CustomWindowDecoration {
                 setCustomDecorationHitTestSpots,
                 setCustomDecorationTitleBarHeight;
         private final Field peer;
+        private final Class<?> wpeer;
 
         __Fallback() throws Exception {
             hasCustomDecoration = Window.class.getDeclaredMethod("hasCustomDecoration");
             hasCustomDecoration.setAccessible(true);
             setHasCustomDecoration = Window.class.getDeclaredMethod("setHasCustomDecoration");
             setHasCustomDecoration.setAccessible(true);
-            Class<?> wpeer = Class.forName("sun.awt.windows.WWindowPeer");
+            wpeer = Class.forName("sun.awt.windows.WWindowPeer");
             setCustomDecorationHitTestSpots = wpeer.getDeclaredMethod("setCustomDecorationHitTestSpots", List.class);
             setCustomDecorationHitTestSpots.setAccessible(true);
             setCustomDecorationTitleBarHeight = wpeer.getDeclaredMethod("setCustomDecorationTitleBarHeight", int.class);
@@ -89,10 +90,10 @@ public interface CustomWindowDecoration {
         public void setCustomDecorationHitTestSpots(Window window, List<Map.Entry<Shape, Integer>> spots) {
             List<Rectangle> hitTestSpots = spots.stream().map(e -> e.getKey().getBounds()).collect(Collectors.toList());
             try {
-                setCustomDecorationHitTestSpots.invoke(peer.get(window), hitTestSpots);
+                setCustomDecorationHitTestSpots.invoke(wpeer.cast(peer.get(window)), hitTestSpots);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
-            }
+            } catch(ClassCastException | NullPointerException ignore) {}
         }
 
         @Override
@@ -103,10 +104,10 @@ public interface CustomWindowDecoration {
         @Override
         public void setCustomDecorationTitleBarHeight(Window window, int height) {
             try {
-                setCustomDecorationTitleBarHeight.invoke(peer.get(window), height);
+                setCustomDecorationTitleBarHeight.invoke(wpeer.cast(peer.get(window)), height);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
-            }
+            } catch(ClassCastException | NullPointerException ignore) {}
         }
 
         @Override

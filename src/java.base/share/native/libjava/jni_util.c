@@ -930,7 +930,7 @@ getStringUTF8(JNIEnv *env, jstring jstr)
     return result;
 }
 
-JNIEXPORT const char * JNICALL
+JNIEXPORT const char *
 GetStringUTF8Chars(JNIEnv *env, jstring jstr)
 {
     return getStringUTF8(env, jstr);

@@ -1115,11 +1115,20 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 }
 
+- (BOOL) isTransparentTitleBarEnabled
+{
+    return _transparentTitleBarHeight != 0.0;
+}
+
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
     [self fullScreenTransitionStarted];
     [self allowMovingChildrenBetweenSpaces:YES];
 
     self.isEnterFullScreen = YES;
+
+    if ([self isTransparentTitleBarEnabled]) {
+        [self resetTitleBar];
+    }
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
@@ -1157,6 +1166,10 @@ AWT_ASSERT_APPKIT_THREAD;
 
     [self fullScreenTransitionStarted];
 
+    if ([self isTransparentTitleBarEnabled]) {
+        [self setWindowControlsHidden:YES];
+    }
+
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowWillExitFullScreen, jc_CPlatformWindow, "windowWillExitFullScreen", "()V");
@@ -1178,6 +1191,11 @@ AWT_ASSERT_APPKIT_THREAD;
     self.isEnterFullScreen = NO;
 
     [self fullScreenTransitionFinished];
+
+    if ([self isTransparentTitleBarEnabled]) {
+        [self setUpTransparentTitleBar];
+        [self setWindowControlsHidden:NO];
+    }
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
@@ -1318,7 +1336,8 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     AWTWindowDragView* windowDragView = [[AWTWindowDragView alloc] initWithPlatformWindow:self.javaPlatformWindow];
     [titlebar addSubview:windowDragView positioned:NSWindowBelow relativeTo:closeButtonView];
 
-    for (NSView* view in @[titlebar, windowDragView])
+    NSArray* viewsToStretch = [titlebarContainer.subviews arrayByAddingObject:windowDragView];
+    for (NSView* view in viewsToStretch)
     {
         view.translatesAutoresizingMaskIntoConstraints = NO;
         [_transparentTitleBarConstraints addObjectsFromArray:@[
@@ -1329,12 +1348,16 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
         ]];
     }
 
+    for(NSView* view in titlebar.subviews)
+    {
+        view.translatesAutoresizingMaskIntoConstraints = NO;
+    }
+
     CGFloat shrinkingFactor = [self getTransparentTitleBarButtonShrinkingFactor];
     CGFloat horizontalButtonOffset = shrinkingFactor * DefaultHorizontalTitleBarButtonOffset;
     _transparentTitleBarButtonCenterXConstraints = [[NSMutableArray alloc] initWithCapacity:3];
     [@[closeButtonView, miniaturizeButtonView, zoomButtonView] enumerateObjectsUsingBlock:^(NSView* button, NSUInteger index, BOOL* stop)
     {
-        button.translatesAutoresizingMaskIntoConstraints = NO;
         NSLayoutConstraint* buttonCenterXConstraint = [button.centerXAnchor constraintEqualToAnchor:titlebarContainer.leftAnchor constant:(_transparentTitleBarHeight/2.0 + (index * horizontalButtonOffset))];
         [_transparentTitleBarButtonCenterXConstraints addObject:buttonCenterXConstraint];
         [_transparentTitleBarConstraints addObjectsFromArray:@[
@@ -1375,7 +1398,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     [NSLayoutConstraint deactivateConstraints:_transparentTitleBarConstraints];
 
     AWTWindowDragView* windowDragView;
-    for (NSView* view in titlebar.subviews) {
+    for (NSView* view in [titlebar.subviews arrayByAddingObjectsFromArray:titlebarContainer.subviews]) {
         if ([view isMemberOfClass:[AWTWindowDragView class]]) {
             windowDragView = view;
         }
@@ -1403,70 +1426,46 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     return (masks & NSWindowStyleMaskFullScreen) != 0;
 }
 
-- (void) configureWindowAndListenersForTransparentTitleBar
-{
-    dispatch_sync(dispatch_get_main_queue(), ^{
-        [self.nsWindow setTitlebarAppearsTransparent:YES];
-        [self.nsWindow setTitleVisibility:NSWindowTitleHidden];
-        [self.nsWindow setStyleMask:[self.nsWindow styleMask]|NSWindowStyleMaskFullSizeContentView];
-
-        if (!self.isFullScreen) {
-            [self setUpTransparentTitleBar];
-        }
-    });
-    NSNotificationCenter* defaultCenter = [NSNotificationCenter defaultCenter];
-    NSOperationQueue* mainQueue = [NSOperationQueue mainQueue];
-    _windowWillEnterFullScreenNotification = [defaultCenter addObserverForName:NSWindowWillEnterFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
-        [self resetTitleBar];
-    }];
-    _windowWillExitFullScreenNotification = [defaultCenter addObserverForName:NSWindowWillExitFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
-        [self setWindowControlsHidden:YES];
-    }];
-    _windowDidExitFullScreenNotification = [defaultCenter addObserverForName:NSWindowDidExitFullScreenNotification object:self.nsWindow queue:mainQueue usingBlock:^(NSNotification* notification) {
-        [self setUpTransparentTitleBar];
-        [self setWindowControlsHidden:NO];
-    }];
-}
-
-- (void) configureWindowAndListenersForDefaultTitleBar
-{
-    dispatch_sync(dispatch_get_main_queue(), ^{
-        [self.nsWindow setTitlebarAppearsTransparent:NO];
-        [self.nsWindow setTitleVisibility:NSWindowTitleVisible];
-        [self.nsWindow setStyleMask:[self.nsWindow styleMask]&(~NSWindowStyleMaskFullSizeContentView)];
-
-        if (!self.isFullScreen) {
-            [self resetTitleBar];
-        }
-    });
-    NSNotificationCenter* defaultCenter = [NSNotificationCenter defaultCenter];
-    [defaultCenter removeObserver:_windowWillEnterFullScreenNotification];
-    [defaultCenter removeObserver:_windowWillExitFullScreenNotification];
-    [defaultCenter removeObserver:_windowDidExitFullScreenNotification];
-    _windowWillEnterFullScreenNotification = _windowWillExitFullScreenNotification = _windowDidExitFullScreenNotification = nil;
-}
-
 - (void) setTransparentTitleBarHeight: (CGFloat) transparentTitleBarHeight
 {
     if (_transparentTitleBarHeight == transparentTitleBarHeight) return;
     if (_transparentTitleBarHeight != 0.0f) {
         _transparentTitleBarHeight = transparentTitleBarHeight;
         if (transparentTitleBarHeight == 0.0f) {
-            [self configureWindowAndListenersForDefaultTitleBar];
+            dispatch_sync(dispatch_get_main_queue(), ^{
+                [self.nsWindow setTitlebarAppearsTransparent:NO];
+                [self.nsWindow setTitleVisibility:NSWindowTitleVisible];
+                [self.nsWindow setStyleMask:[self.nsWindow styleMask]&(~NSWindowStyleMaskFullSizeContentView)];
+
+                if (!self.isFullScreen) {
+                    [self resetTitleBar];
+                }
+            });
         } else if (_transparentTitleBarHeightConstraint != nil || _transparentTitleBarButtonCenterXConstraints != nil) {
             [self updateTransparentTitleBarConstraints];
         }
     } else {
         _transparentTitleBarHeight = transparentTitleBarHeight;
-        [self configureWindowAndListenersForTransparentTitleBar];
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            [self.nsWindow setTitlebarAppearsTransparent:YES];
+            [self.nsWindow setTitleVisibility:NSWindowTitleHidden];
+            [self.nsWindow setStyleMask:[self.nsWindow styleMask]|NSWindowStyleMaskFullSizeContentView];
+
+            if (!self.isFullScreen) {
+                [self setUpTransparentTitleBar];
+            }
+        });
     }
 }
 
 @end // AWTWindow
 
 @implementation AWTWindowDragView {
-    CGFloat _accumulatedDragDelta;
-    BOOL _draggingWindow;
+    enum WindowDragState {
+        NO_DRAG,   // Mouse not dragging
+        SKIP_DRAG, // Mouse dragging in non-draggable area
+        DRAG,      // Mouse is dragging window
+    } _draggingWindow;
 }
 
 - (id) initWithPlatformWindow:(jobject)javaPlatformWindow {
@@ -1508,25 +1507,28 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
 - (void)mouseDown:(NSEvent *)event
 {
-    _accumulatedDragDelta = 0.0;
+    _draggingWindow = NO_DRAG;
     // We don't follow the regular responder chain here since the native window swallows events in some cases
     [[self.window contentView] deliverJavaMouseEvent:event];
 }
 
 - (void)mouseDragged:(NSEvent *)event
 {
-    _accumulatedDragDelta += fabs(event.deltaX) + fabs(event.deltaY);
-    BOOL shouldStartWindowDrag = !_draggingWindow && ( _accumulatedDragDelta > 4.0 || [self isInDraggableArea:event.locationInWindow]);
-    if (shouldStartWindowDrag) {
-        [self.window performWindowDragWithEvent:event];
-        _draggingWindow = YES;
+    if (_draggingWindow == NO_DRAG) {
+        BOOL shouldStartWindowDrag = [self isInDraggableArea:event.locationInWindow];
+        if (shouldStartWindowDrag) {
+            [self.window performWindowDragWithEvent:event];
+            _draggingWindow = DRAG;
+        } else {
+            _draggingWindow = SKIP_DRAG;
+        }
     }
 }
 
 - (void)mouseUp:(NSEvent *)event
 {
-    if (_draggingWindow) {
-        _draggingWindow = NO;
+    if (_draggingWindow == DRAG) {
+        _draggingWindow = NO_DRAG;
     } else {
         if (event.clickCount == 2 && [self isInDraggableArea:event.locationInWindow]) {
             [self.window performZoom:nil];
