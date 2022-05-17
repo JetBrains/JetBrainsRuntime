@@ -496,6 +496,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
     private static XMouseInfoPeer xPeer;
 
+    private static Boolean isXWayland;
+
     static {
         if (GraphicsEnvironment.isHeadless()) {
             localEnv = null;
@@ -2888,5 +2890,12 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
      */
     public static boolean getSunAwtDisableGrab() {
         return Boolean.getBoolean("sun.awt.disablegrab");
+    }
+
+    static synchronized boolean isXWayland() {
+        if (isXWayland == null) {
+            isXWayland = getEnv("WAYLAND_DISPLAY") != null;
+        }
+        return isXWayland;
     }
 }
