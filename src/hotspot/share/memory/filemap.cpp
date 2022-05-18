@@ -162,18 +162,23 @@ template <int N> static void get_header_version(char (&header_version) [N]) {
   assert(header_version[JVM_IDENT_MAX-1] == 0, "must be");
 }
 
-FileMapInfo::FileMapInfo() {
+FileMapInfo::FileMapInfo() :
+  _file_open(false), _fd(-1), _file_offset(0), _full_path(NULL), _paths_misc_info(NULL) {
   assert(_current_info == NULL, "must be singleton"); // not thread safe
   _current_info = this;
-  memset((void*)this, 0, sizeof(FileMapInfo));
-  _file_offset = 0;
-  _file_open = false;
   _header = (FileMapHeader*)os::malloc(sizeof(FileMapHeader), mtInternal);
   _header->_version = INVALID_CDS_ARCHIVE_VERSION;
   _header->_has_platform_or_app_classes = true;
 }
 
 FileMapInfo::~FileMapInfo() {
+  assert(_header != NULL, "Sanity");
+  os::free(_header);
+
+  if (_file_open) {
+    ::close(_fd);
+  }
+
   assert(_current_info == this, "must be singleton"); // not thread safe
   _current_info = NULL;
 }
