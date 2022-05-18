@@ -49,6 +49,8 @@ function create_image_bundle {
   __modules_path=$3
   __modules=$4
 
+  fastdebug_infix=''
+
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
 
   echo Running jlink ...
@@ -83,7 +85,7 @@ case "$bundle_type" in
     ;;
 esac
 
-if [ -z "$INC_BUILD" ]; then
+if [ -z "${INC_BUILD:-}" ]; then
   do_configure || do_exit $?
   if [ $do_maketest -eq 1 ]; then
     make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
@@ -109,6 +111,8 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
   cp $JCEF_PATH/jmods/* ${JSDK_MODS_DIR} # $JSDK/jmods is not unchanged
 
   jbr_name_postfix="_${bundle_type}"
+else
+  jbr_name_postfix=""
 fi
 
 # create runtime image bundle

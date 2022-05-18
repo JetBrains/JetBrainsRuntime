@@ -25,7 +25,6 @@ set -x
 source jb/project/tools/common/scripts/common.sh
 
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
-architecture=${architecture:=x64}
 BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 16)}
 
 function do_configure {
@@ -78,11 +77,13 @@ function create_image_bundle {
   __modules_path=$3
   __modules=$4
 
+  fastdebug_infix=''
+
   tmp=.bundle.$$.tmp
   mkdir "$tmp" || do_exit $?
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
-  JBR=${__bundle_name}-${JBSDK_VERSION}-osx-${architecture}-${fastdebug_infix}b${build_number}
+  JBR=${__bundle_name}-${JBSDK_VERSION}-osx-${architecture}-${fastdebug_infix:-}b${build_number}
 
   JRE_CONTENTS=$tmp/$__arch_name/Contents
   mkdir -p "$JRE_CONTENTS" || do_exit $?
@@ -141,7 +142,7 @@ case "$bundle_type" in
     ;;
 esac
 
-if [ -z "$INC_BUILD" ]; then
+if [ -z "${INC_BUILD:-}" ]; then
   do_configure || do_exit $?
   make clean CONF=$RELEASE_NAME || do_exit $?
 fi
@@ -159,6 +160,8 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
   cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
 
   jbr_name_postfix="_${bundle_type}"
+else
+  jbr_name_postfix=""
 fi
 
 # create runtime image bundle
