@@ -20,6 +20,7 @@ function do_configure {
     --with-version-build="$JDK_BUILD_NUMBER" \
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
+    $STATIC_CONF_ARGS \
     --enable-cds=yes \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
