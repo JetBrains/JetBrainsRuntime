@@ -4,13 +4,7 @@
 #   build_number - specifies the number of JetBrainsRuntime build
 #   bundle_type  - specifies bundle to be built;possible values:
 #               <empty> or nomod - the release bundles without any additional modules (jcef)
-#               jcef - the release bundles with jcef
 #               fd - the fastdebug bundles which also include the jcef module
-#
-# $ ./java --version
-# openjdk 11.0.6 2020-01-14
-# OpenJDK Runtime Environment (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number})
-# OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
 #
 
 source jb/project/tools/common/scripts/common.sh
@@ -22,7 +16,7 @@ function pack_jbr {
   __arch_name=$2
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
-  JBR=${__bundle_name}-${JBSDK_VERSION}-windows-x64-${fastdebug_infix}b${build_number}
+  JBR=${__bundle_name}-${JBSDK_VERSION}-windows-x86-${fastdebug_infix}b${build_number}
 
   echo Creating $JBR.tar.gz ...
 
@@ -32,7 +26,7 @@ function pack_jbr {
 [ "$bundle_type" == "nomod" ] && bundle_type=""
 
 JBRSDK_BUNDLE=jbrsdk
-RELEASE_NAME=windows-x86_64-server-release
+RELEASE_NAME=windows-x86-server-release
 IMAGES_DIR=build/$RELEASE_NAME/images
 BASE_DIR=.
 
@@ -44,7 +38,7 @@ pack_jbr jbr${jbr_name_postfix} jbr
 pack_jbr jbrsdk${jbr_name_postfix} jbrsdk
 
 if [ $do_maketest -eq 1 ]; then
-  JBRSDK_TEST=$JBRSDK_BUNDLE-$JBSDK_VERSION-windows-test-x64-b$build_number
+  JBRSDK_TEST=$JBRSDK_BUNDLE-$JBSDK_VERSION-windows-test-x86-b$build_number
   echo Creating $JBRSDK_TEST.tar.gz ...
   /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
 fi
