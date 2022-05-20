@@ -1,0 +1,1 @@
+--with-vendor-vm-bug-url=https://youtrack.jetbrains.com/issues/JBR
