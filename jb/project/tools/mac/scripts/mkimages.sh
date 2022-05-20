@@ -41,6 +41,7 @@ function do_configure {
       --with-extra-cflags="-F$(pwd)/Frameworks" \
       --with-extra-cxxflags="-F$(pwd)/Frameworks" \
       --with-extra-ldflags="-F$(pwd)/Frameworks" \
+      $STATIC_CONF_ARGS \
       $REPRODUCIBLE_BUILD_OPTS \
       || do_exit $?
   else
@@ -56,6 +57,7 @@ function do_configure {
       --with-version-opt=b"$build_number" \
       --with-boot-jdk="$BOOT_JDK" \
       --enable-cds=yes \
+      $STATIC_CONF_ARGS \
       $REPRODUCIBLE_BUILD_OPTS \
       || do_exit $?
   fi
