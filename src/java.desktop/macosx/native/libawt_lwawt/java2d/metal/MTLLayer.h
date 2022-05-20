@@ -27,7 +27,6 @@
 #define MTLLayer_h_Included
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
-#include <CoreVideo/CVDisplayLink.h>
 #import "common.h"
 
 @interface MTLLayer : CAMetalLayer
@@ -43,7 +42,6 @@
     int nextDrawableCount;
     int topInset;
     int leftInset;
-    CVDisplayLinkRef displayLink;
 }
 
 @property (nonatomic) jobject javaLayer;
@@ -54,7 +52,6 @@
 @property (readwrite, assign) int nextDrawableCount;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
-@property (readwrite, assign) CVDisplayLinkRef displayLink;
 
 - (id) initWithJavaLayer:(jobject)layer;
 
@@ -68,8 +65,6 @@
 - (void) blitCallback;
 - (void) display;
 - (void) redraw;
-- (void) startDisplayLink;
-- (void) stopDisplayLink;
 @end
 
 #endif /* MTLLayer_h_Included */
