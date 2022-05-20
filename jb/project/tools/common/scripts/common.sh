@@ -49,6 +49,11 @@ do_reset_changes=0
 do_reset_dcevm=0
 HEAD_REVISION=0
 
+STATIC_CONF_ARGS=""
+common_conf_props_file="jb/project/tools/common/static_conf_args.txt"
+if [[ -f "$common_conf_props_file" ]]; then
+    STATIC_CONF_ARGS=$(<$common_conf_props_file)
+fi
 OS_NAME=$(uname -s)
 # Enable reproducible builds
 TZ=UTC
