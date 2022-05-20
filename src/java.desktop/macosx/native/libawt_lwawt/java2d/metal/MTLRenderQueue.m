@@ -881,18 +881,22 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             [mtlc.encoderManager endEncoder];
             MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
             id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+            __block MTLLayer *layer = nil;
+            if (dstOps != NULL) {
+                MTLSDOps *dstMTLOps = (MTLSDOps *) dstOps->privOps;
+                layer = (MTLLayer *) dstMTLOps->layer;
+                [layer retain];
+            }
+
             [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
                 [cbwrapper release];
+                if (layer != NULL) {
+                    [layer performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
+                    [layer release];
+                }
             }];
             [commandbuf commit];
-            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
-            if (dstOps != NULL) {
-                MTLSDOps *dstMTLOps = (MTLSDOps *)dstOps->privOps;
-                MTLLayer *layer = (MTLLayer*)dstMTLOps->layer;
-                if (layer != NULL) {
-                    [layer startDisplayLink];
-                }
-            }
         }
         RESET_PREVIOUS_OP();
     }
