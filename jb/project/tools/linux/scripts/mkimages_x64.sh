@@ -32,6 +32,7 @@ function do_configure {
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
     --enable-cds=yes \
+    $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     || do_exit $?
 }
