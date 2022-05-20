@@ -1,7 +1,55 @@
-FROM i386/ubuntu:xenial
+# NOTE: This Dockerfile is meant to be used from the mkdocker_x86.sh script.
 
-RUN linux32 apt-get update && apt-get install -y --no-install-recommends apt-utils
-COPY jbrsdk-11.0.5-b1 /jbrsdk-11.0.5-b1
-RUN linux32 apt-get -y install file build-essential zip unzip curl libx11-dev libxext-dev \
-  libxrender-dev libxrandr-dev libxtst-dev libxt-dev libcups2-dev libasound2-data \
-  libpng12-0 libasound2 libfreetype6 libfontconfig1-dev libasound2-dev autoconf
+# Pull a concrete version of Linux that does NOT receive updates after it's
+# been created.  This is so that the image is as stable as possible to make
+# image creation reproducible.
+# NB: this also means there may be no security-related fixes there, need to
+# move the version to the next manually.
+#FROM i386/ubuntu:xenial
+#FROM i386/ubuntu:bionic
+FROM i386/ubuntu:focal
+
+RUN linux32 \
+    apt-get update && apt-get install -y --no-install-recommends apt-utils
+RUN export DEBIAN_FRONTEND=noninteractive \
+    export DEBCONF_NONINTERACTIVE_SEEN=true && \
+    echo 'tzdata tzdata/Areas select Etc' | debconf-set-selections; \
+    echo 'tzdata tzdata/Zones/Etc select UTC' | debconf-set-selections; \
+    linux32 \
+    apt-get -y install \
+        autoconf \
+        build-essential \
+        curl \
+        file \
+        git \
+        libx11-dev \
+        libxext-dev \
+        libxrender-dev \
+        libxrandr-dev \
+        libxtst-dev \
+        libxt-dev \
+        libcups2-dev \
+        libasound2-data \
+#        libpng12-0 \
+        libasound2 \
+        libfreetype6 \
+        libfontconfig1-dev \
+        libasound2-dev \
+        rsync \
+        unzip \
+        zip
+RUN linux32 \
+    apt-get -y install \
+        g++-10 \
+        gcc-10 && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10 && \
+    apt-get clean -qy && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Set up boot JDK for building
+COPY boot_jdk_x86.tar.gz /jdk17/
+RUN cd /jdk17 && tar --strip-components=1 -xzf boot_jdk_x86.tar.gz && rm /jdk17/boot_jdk_x86.tar.gz
+ENV BOOT_JDK=/jdk17
+
+RUN git config --global user.email "teamcity@jetbrains.com" && \
+    git config --global user.name "builduser"
