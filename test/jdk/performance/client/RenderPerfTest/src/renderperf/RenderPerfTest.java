@@ -608,7 +608,7 @@ public class RenderPerfTest {
         private JPanel panel;
 
         private double execTime = 0;
-        private int markerIdx = 0;
+        private volatile int markerIdx = 0;
         private AtomicBoolean paintOccurred = new AtomicBoolean(false);
         private AtomicLong markerPaintTime = new AtomicLong(0);
 
@@ -638,9 +638,9 @@ public class RenderPerfTest {
                         @Override
                         protected void paintComponent(Graphics g) {
                             super.paintComponent(g);
-                            if (markerIdx == 0) {
+                           // if (markerIdx == 0) {
                                 markerPaintTime.set(System.nanoTime());
-                            }
+                           // }
                             paintOccurred.set(true);
 
                             Graphics2D g2d = (Graphics2D) g.create();
@@ -650,7 +650,7 @@ public class RenderPerfTest {
                             g2d.setPaintMode();
                             g2d.setColor(marker[markerIdx]);
                             g2d.fillRect(0, 0, BW, BH);
-                            markerIdx = (markerIdx + 1) % marker.length;
+                      //      markerIdx = (markerIdx + 1) % marker.length;
                         }
                     };
 
@@ -675,10 +675,10 @@ public class RenderPerfTest {
                     cycleToPaint = cycle + CYCLES_TILL_PAINT;
                 }
 
-                if (cycle == cycleToPaint) {
-                    renderable.update();
-                    panel.getParent().repaint();
-                }
+//                if (cycle == cycleToPaint) {
+//                    renderable.update();
+//                    panel.getParent().repaint();
+//                }
 
                 if (paintTime > 0) {
                     Color c = robot.getPixelColor(
@@ -692,10 +692,13 @@ public class RenderPerfTest {
                         }
                     }
 
-                    if (currIdx == 0) {
+                    if (currIdx == markerIdx) {
                         execTime += System.nanoTime() - paintTime;
                         frame++;
                         paintTime = 0;
+                        markerIdx = (markerIdx + 1) % marker.length;
+                        renderable.update();
+                        panel.getParent().repaint();
                     }
                 }
                 try {
