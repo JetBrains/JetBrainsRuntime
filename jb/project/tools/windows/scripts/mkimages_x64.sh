@@ -34,6 +34,7 @@ function do_configure {
     --with-toolchain-version=$TOOLCHAIN_VERSION \
     --with-boot-jdk=$BOOT_JDK \
     --disable-ccache \
+    $STATIC_CONF_ARGS \
     --enable-cds=yes || do_exit $?
 }
 
