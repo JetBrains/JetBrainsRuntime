@@ -34,6 +34,7 @@ linux32 bash configure \
   --with-version-build=$JDK_BUILD_NUMBER \
   --with-version-opt=b${build_number} \
   --with-boot-jdk=${BOOT_JDK} \
+  $STATIC_CONF_ARGS \
   --enable-cds=yes || exit $?
 make clean CONF=linux-x86-server-release || exit $?
 make images CONF=linux-x86-server-release test-image || exit $?
