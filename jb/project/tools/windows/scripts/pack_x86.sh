@@ -1,42 +1,44 @@
 #!/bin/bash -x
 
 # The following parameters must be specified:
-#   JBSDK_VERSION    - specifies the current version of OpenJDK e.g. 11_0_6
-#   JDK_BUILD_NUMBER - specifies the number of OpenJDK build or the value of --with-version-build argument to configure
-#   build_number     - specifies the number of JetBrainsRuntime build
-#
-# jbrsdk-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
-# jbr-${JBSDK_VERSION}-osx-x64-b${build_number}.tar.gz
-#
-# $ ./java --version
-# openjdk 11.0.6 2020-01-14
-# OpenJDK Runtime Environment (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number})
-# OpenJDK 64-Bit Server VM (build 11.0.6+${JDK_BUILD_NUMBER}-b${build_number}, mixed mode)
+#   build_number - specifies the number of JetBrainsRuntime build
+#   bundle_type  - specifies bundle to be built;possible values:
+#               <empty> or nomod - the release bundles without any additional modules (jcef)
+#               fd - the fastdebug bundles which also include the jcef module
 #
 
-JBSDK_VERSION=$1
-JDK_BUILD_NUMBER=$2
-build_number=$3
+source jb/project/tools/common/scripts/common.sh
 
-JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
-JBR_BASE_NAME=jbr-$JBSDK_VERSION
+[ "$bundle_type" == "jcef" ] && echo "not implemented" && do_exit 1
 
-IMAGES_DIR=build/windows-x86-server-release/images
-JSDK=$IMAGES_DIR/jdk
-JBSDK=$JBRSDK_BASE_NAME-windows-x86-b$build_number
-BASE_DIR=.
+function pack_jbr {
+  __bundle_name=$1
+  __arch_name=$2
+
+  [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
+  JBR=${__bundle_name}-${JBSDK_VERSION}-windows-x86-${fastdebug_infix}b${build_number}
+
+  echo Creating $JBR.tar.gz ...
+
+  /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR $__arch_name || do_exit $?
+}
+
+[ "$bundle_type" == "nomod" ] && bundle_type=""
 
 JBRSDK_BUNDLE=jbrsdk
-echo Creating $JBSDK.tar.gz ...
-/usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || exit 1
+RELEASE_NAME=windows-x86-server-release
+IMAGES_DIR=build/$RELEASE_NAME/images
+BASE_DIR=.
 
-JBR_BUNDLE=jbr
-JBR_BASE_NAME=jbr-${JBSDK_VERSION}
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ]; then
+  jbr_name_postfix="_${bundle_type}"
+fi
 
-JBR=$JBR_BASE_NAME-windows-x86-b$build_number
-echo Creating $JBR.tar.gz ...
-/usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR ${JBR_BUNDLE} || exit 1
+pack_jbr jbr${jbr_name_postfix} jbr
+pack_jbr jbrsdk${jbr_name_postfix} jbrsdk
 
-JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x86-b$build_number
-echo Creating $JBRSDK_TEST.tar.gz ...
-/usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || exit 1
+if [ $do_maketest -eq 1 ]; then
+  JBRSDK_TEST=$JBRSDK_BUNDLE-$JBSDK_VERSION-windows-test-x86-b$build_number
+  echo Creating $JBRSDK_TEST.tar.gz ...
+  /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $BASE_DIR --exclude='test/jdk/demos' test || do_exit $?
+fi
