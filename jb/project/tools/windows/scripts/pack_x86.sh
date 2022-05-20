@@ -40,5 +40,5 @@ pack_jbr jbrsdk${jbr_name_postfix} jbrsdk
 if [ $do_maketest -eq 1 ]; then
   JBRSDK_TEST=$JBRSDK_BUNDLE-$JBSDK_VERSION-windows-test-x86-b$build_number
   echo Creating $JBRSDK_TEST.tar.gz ...
-  /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
+  /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $BASE_DIR --exclude='test/jdk/demos' test || do_exit $?
 fi
