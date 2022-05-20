@@ -7,6 +7,12 @@ do_reset_dcevm=0
 HEAD_REVISION=0
 WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS="--with-native-debug-symbols=zipped"
 
+STATIC_CONF_ARGS=""
+common_conf_props_file="jb/project/tools/common/static_conf_args.txt"
+if [[ -f "$common_conf_props_file" ]]; then
+    STATIC_CONF_ARGS=$(<$common_conf_props_file)
+fi
+
 function zip_native_debug_symbols() {
   image_bundle_path=$(echo $1 | cut -d"/" -f-4)
   jbr_diz_name=$2

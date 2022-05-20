@@ -57,6 +57,7 @@ function do_configure {
     --with-boot-jdk=${BOOT_JDK} \
     $WITH_IMPORT_MODULES \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
+    $STATIC_CONF_ARGS \
     --enable-cds=yes || do_exit $?
 }
 

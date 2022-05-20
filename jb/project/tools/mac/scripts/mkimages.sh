@@ -70,6 +70,7 @@ function do_configure {
     --with-boot-jdk=${BOOT_JDK} \
     --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
     --enable-cds=no \
+    $STATIC_CONF_ARGS \
     $WITH_JVM_FEATURES \
     --with-extra-cflags="-F$(pwd)/Frameworks" \
     --with-extra-cxxflags="-F$(pwd)/Frameworks" \
@@ -87,6 +88,7 @@ function do_configure {
       $WITH_IMPORT_MODULES \
       $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
       --with-boot-jdk=${BOOT_JDK} \
+      $STATIC_CONF_ARGS \
       --enable-cds=yes || do_exit $?
   fi
 }

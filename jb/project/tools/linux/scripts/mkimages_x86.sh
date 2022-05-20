@@ -38,6 +38,7 @@ linux32 bash configure \
   --with-version-opt=b${build_number} \
   --with-boot-jdk=${BOOT_JDK} \
    $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
+   $STATIC_CONF_ARGS \
   --enable-cds=yes || exit $?
 make clean CONF=linux-x86-normal-server-release || exit $?
 make images CONF=linux-x86-normal-server-release test-image || exit $?
