@@ -68,6 +68,12 @@ static jmethodID jm_getChildrenAndRoles = NULL;
     GET_STATIC_METHOD_RETURN(jm_getChildrenAndRoles, sjc_CAccessibility, "getChildrenAndRoles",\
                       "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;", ret);
 
+static jmethodID jm_getTableInfo = NULL;
+#define GET_TABLEINFO_METHOD_RETURN(ret) \
+    GET_CACCESSIBILITY_CLASS_RETURN(ret); \
+    GET_STATIC_METHOD_RETURN(jm_getTableInfo, sjc_CAccessibility, "getTableInfo",\
+                      "(Ljavax/accessibility/Accessible;Ljava/awt/Component;IZ)[Ljava/lang/Object;", ret);
+
 static jmethodID sjm_getAccessibleComponent = NULL;
 #define GET_ACCESSIBLECOMPONENT_STATIC_METHOD_RETURN(ret) \
     GET_CACCESSIBILITY_CLASS_RETURN(ret); \
@@ -134,6 +140,14 @@ static NSObject *sAttributeNamesLOCK = nil;
 - (BOOL)accessibilityIsVerticalScrollBarAttributeSettable;
 - (id)accessibilityHorizontalScrollBarAttribute;
 - (BOOL)accessibilityIsHorizontalScrollBarAttributeSettable;
+@end
+
+@interface TableAccessibility : JavaComponentAccessibility {
+
+}
+- (NSArray *)initializeAttributeNamesWithEnv:(JNIEnv *)env;
+- (NSArray *)accessibilityRowsAttribute;
+- (NSArray *)accessibilityColumnsAttribute;
 @end
 
 
@@ -408,6 +422,8 @@ static NSObject *sAttributeNamesLOCK = nil;
     JavaComponentAccessibility *newChild = nil;
     if ([javaRole isEqualToString:@"pagetablist"]) {
         newChild = [TabGroupAccessibility alloc];
+    } else if ([javaRole isEqualToString:@"table"]) {
+        newChild = [TableAccessibility alloc];
     } else if ([javaRole isEqualToString:@"scrollpane"]) {
         newChild = [ScrollAreaAccessibility alloc];
     } else {
@@ -526,7 +542,8 @@ static NSObject *sAttributeNamesLOCK = nil;
     // children
     if (attributeStatesArray[6]) {
         [attributeNames addObject:NSAccessibilityChildrenAttribute];
-        if ([javaRole isEqualToString:@"list"]) {
+        if ([javaRole isEqualToString:@"list"]
+                || [javaRole isEqualToString:@"table"]) {
             [attributeNames addObject:NSAccessibilitySelectedChildrenAttribute];
             [attributeNames addObject:NSAccessibilityVisibleChildrenAttribute];
         }
@@ -702,7 +719,9 @@ static NSObject *sAttributeNamesLOCK = nil;
         id myParent = [self accessibilityParentAttribute];
         if ([myParent isKindOfClass:[JavaComponentAccessibility class]]) {
             NSString *parentRole = [(JavaComponentAccessibility *)myParent javaRole];
-            if ([parentRole isEqualToString:@"list"]) {
+
+            if ([parentRole isEqualToString:@"list"]
+                    || [parentRole isEqualToString:@"table"]) {
                 NSMutableArray *moreNames =
                     [[NSMutableArray alloc] initWithCapacity: [names count] + 2];
                 [moreNames addObjectsFromArray: names];
@@ -1980,6 +1999,43 @@ static BOOL ObjectEquals(JNIEnv *env, jobject a, jobject b, jobject component);
     return NO;
 }
 
+@end
+
+// these constants are duplicated in CAccessibility.java
+#define JAVA_AX_ROWS (1)
+#define JAVA_AX_COLS (2)
+
+@implementation TableAccessibility
+
+- (NSArray *)initializeAttributeNamesWithEnv:(JNIEnv *)env
+{
+    NSMutableArray *names = (NSMutableArray *)[super initializeAttributeNamesWithEnv:env];
+
+    [names addObject:NSAccessibilityRowCountAttribute];
+    [names addObject:NSAccessibilityColumnCountAttribute];
+    return names;
+}
+
+- (id)getTableInfo:(jint)info {
+    if (fAccessible == NULL) return 0;
+
+    JNIEnv* env = [ThreadUtilities getJNIEnv];
+    GET_TABLEINFO_METHOD_RETURN(nil);
+    jint count = (*env)->CallStaticIntMethod(env, jm_getTableInfo, fAccessible,
+                                             fComponent, info);
+    CHECK_EXCEPTION();
+    NSNumber *index = [NSNumber numberWithInt:count];
+    return index;
+}
+
+
+- (id)accessibilityRowCountAttribute {
+    return [self getTableInfo:JAVA_AX_ROWS];
+}
+
+- (id)accessibilityColumnCountAttribute {
+    return [self getTableInfo:JAVA_AX_COLS];
+}
 @end
 
 /*
