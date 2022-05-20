@@ -38,6 +38,7 @@ PATH="/usr/local/bin:/usr/bin:${PATH}"
   --with-toolchain-version=${TOOLCHAIN_VERSION} \
   --with-boot-jdk=${BOOT_JDK} \
   --disable-ccache \
+  $STATIC_CONF_ARGS \
   --enable-cds=yes || exit 1
 make clean CONF=windows-x86-server-release || exit 1
 make LOG=info images CONF=windows-x86-server-release test-image || exit 1
