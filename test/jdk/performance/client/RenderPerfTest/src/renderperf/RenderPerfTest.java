@@ -55,8 +55,8 @@ import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
@@ -80,9 +80,10 @@ public class RenderPerfTest {
     private final static int BH = 50;
     private final static int COUNT = 600;
     private final static int CYCLE_DELAY = 3;
-    private final static int CYCLES_TILL_PAINT = 10;
+    private final static int MAX_FRAME_CYCLES = 3000/CYCLE_DELAY;
+
     private final static int COLOR_TOLERANCE = 10;
-    private final static int MAX_MEASURE_TIME = 5000;
+    private final static int MAX_MEASURE_CYCLES = 6000/CYCLE_DELAY;
 
     private final static Color[] marker = {Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW, Color.ORANGE, Color.MAGENTA};
 
@@ -608,11 +609,11 @@ public class RenderPerfTest {
         private JPanel panel;
 
         private double execTime = 0;
-        private int markerIdx = 0;
-        private AtomicBoolean paintOccurred = new AtomicBoolean(false);
+        private AtomicInteger markerIdx = new AtomicInteger(0);
         private AtomicLong markerPaintTime = new AtomicLong(0);
 
         private double fps;
+        private int skippedFrame = 0;
 
         PerfMeter(String name) {
             this.name = name;
@@ -620,7 +621,6 @@ public class RenderPerfTest {
 
         PerfMeter exec(final Renderable renderable) throws Exception {
             final CountDownLatch latchFrame = new CountDownLatch(1);
-            final long endTime = System.currentTimeMillis() + MAX_MEASURE_TIME;
 
             final JFrame f = new JFrame();
             f.addWindowListener(new WindowAdapter() {
@@ -638,19 +638,15 @@ public class RenderPerfTest {
                         @Override
                         protected void paintComponent(Graphics g) {
                             super.paintComponent(g);
-                            if (markerIdx == 0) {
-                                markerPaintTime.set(System.nanoTime());
-                            }
-                            paintOccurred.set(true);
+                            markerPaintTime.set(System.nanoTime());
 
                             Graphics2D g2d = (Graphics2D) g.create();
                             renderable.setup(g2d);
                             renderable.render(g2d);
                             g2d.setClip(null);
                             g2d.setPaintMode();
-                            g2d.setColor(marker[markerIdx]);
+                            g2d.setColor(marker[markerIdx.get()]);
                             g2d.fillRect(0, 0, BW, BH);
-                            markerIdx = (markerIdx + 1) % marker.length;
                         }
                     };
 
@@ -665,19 +661,14 @@ public class RenderPerfTest {
 
             Robot robot = new Robot();
             int cycle = 0;
-            int cycleToPaint = -1;
             int frame = 0;
             long paintTime = 0;
+            int maxFrameCycle = -1;
             while (frame < COUNT) {
-                if (paintOccurred.compareAndSet(true, false)) {
-                    long t = markerPaintTime.getAndSet(0);
-                    paintTime = t > 0 ? t : paintTime;
-                    cycleToPaint = cycle + CYCLES_TILL_PAINT;
-                }
-
-                if (cycle == cycleToPaint) {
-                    renderable.update();
-                    panel.getParent().repaint();
+                long t;
+                if ((t = markerPaintTime.getAndSet(0)) > 0) {
+                    paintTime = t;
+                    maxFrameCycle = cycle + MAX_FRAME_CYCLES;
                 }
 
                 if (paintTime > 0) {
@@ -692,10 +683,20 @@ public class RenderPerfTest {
                         }
                     }
 
-                    if (currIdx == 0) {
+                    if (currIdx == markerIdx.get()) {
                         execTime += System.nanoTime() - paintTime;
                         frame++;
                         paintTime = 0;
+                        maxFrameCycle = -1;
+                        markerIdx.accumulateAndGet(marker.length, (x, y) -> (x + 1) % y);
+                        renderable.update();
+                        panel.getParent().repaint();
+                    } else if (cycle >= maxFrameCycle) {
+                        skippedFrame++;
+                        paintTime = 0;
+                        maxFrameCycle = -1;
+                        markerIdx.accumulateAndGet(marker.length, (x, y) -> (x + 1) % y);
+                        panel.getParent().repaint();
                     }
                 }
                 try {
@@ -703,7 +704,7 @@ public class RenderPerfTest {
                 } catch (InterruptedException ex) {
                     ex.printStackTrace();
                 }
-                if (System.currentTimeMillis() >= endTime) {
+                if (cycle >= MAX_MEASURE_CYCLES) {
                     break;
                 }
                 cycle++;
@@ -724,6 +725,9 @@ public class RenderPerfTest {
         }
 
         private void report() {
+            if (skippedFrame > 0) {
+                System.err.println(skippedFrame + " frame(s) skipped");
+            }
             System.err.println(name + " : " + String.format("%.2f FPS", fps));
         }
 
