@@ -35,6 +35,7 @@ jbr-${jbsdk_version}-linux-aarch64-b${build_number}.tar.gz
 jbr-${jbsdk_version}-linux-musl-aarch64-b${build_number}.tar.gz
 jbr-${jbsdk_version}-linux-musl-x64-b${build_number}.tar.gz
 jbr-${jbsdk_version}-linux-x64-b${build_number}.tar.gz
+jbr-${jbsdk_version}-linux-x86-b${build_number}.tar.gz
 jbr-${jbsdk_version}-osx-aarch64-b${build_number}.tar.gz
 jbr-${jbsdk_version}-osx-x64-b${build_number}.tar.gz
 jbr-${jbsdk_version}-windows-x64-b${build_number}.tar.gz
@@ -63,6 +64,7 @@ jbrsdk-${jbsdk_version}-linux-aarch64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-linux-musl-aarch64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-linux-musl-x64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-linux-x64-b${build_number}.tar.gz
+jbrsdk-${jbsdk_version}-linux-x86-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-osx-aarch64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-osx-x64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-windows-x64-b${build_number}.tar.gz
@@ -72,6 +74,7 @@ jbrsdk-${jbsdk_version}-linux-test-aarch64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-linux-musl-test-aarch64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-linux-musl-test-x64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-linux-test-x64-b${build_number}.tar.gz
+jbrsdk-${jbsdk_version}-linux-test-x86-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-osx-test-aarch64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-osx-test-x64-b${build_number}.tar.gz
 jbrsdk-${jbsdk_version}-windows-test-x64-b${build_number}.tar.gz
@@ -88,6 +91,7 @@ jbrsdk-${jbsdk_version}-linux-musl-aarch64-b${build_number}_diz.tar.gz
 jbrsdk-${jbsdk_version}-linux-musl-x64-b${build_number}_diz.tar.gz
 jbrsdk-${jbsdk_version}-linux-x64-b${build_number}_diz.tar.gz
 jbrsdk-${jbsdk_version}-linux-x64-fastdebug-b${build_number}_diz.tar.gz
+jbrsdk-${jbsdk_version}-linux-x86-b${build_number}_diz.tar.gz
 jbrsdk-${jbsdk_version}-osx-aarch64-b${build_number}_diz.tar.gz
 jbrsdk-${jbsdk_version}-osx-aarch64-fastdebug-b${build_number}_diz.tar.gz
 jbrsdk-${jbsdk_version}-osx-x64-b${build_number}_diz.tar.gz
