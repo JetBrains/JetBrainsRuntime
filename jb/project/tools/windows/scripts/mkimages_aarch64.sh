@@ -64,6 +64,7 @@ function do_configure {
     --with-boot-jdk=${BOOT_JDK} \
     --with-build-jdk=${BOOT_JDK} \
     --disable-ccache \
+    $STATIC_CONF_ARGS \
     --enable-cds=yes || do_exit $?
 }
 
@@ -100,7 +101,7 @@ function create_jbr {
   cat ${JSDK}/release | tr -d '\r' | grep -v 'JAVA_VERSION' | grep -v 'MODULES' >> ${JBR_BUNDLE}/release
 }
 
-JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}
+JBRSDK_BASE_NAME=jbrsdk_${bundle_type}-${JBSDK_VERSION}
 WITH_DEBUG_LEVEL="--with-debug-level=release"
 RELEASE_NAME=windows-aarch64-normal-server-release
 JBSDK=${JBRSDK_BASE_NAME}-windows-aarch64-b${build_number}
@@ -125,7 +126,7 @@ case "$bundle_type" in
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=windows-aarch64-normal-server-fastdebug
     JBRSDK_BASE_NAME=jbrsdk-${JBSDK_VERSION}-fastdebug
-    JBSDK=${JBRSDK_BASE_NAME}-windows-aarch64-fastdebug-b${build_number}
+    JBSDK=jbrsdk-${JBSDK_VERSION}-windows-aarch64-fastdebug-b${build_number}
     ;;
   *)
     echo "***ERR*** bundle was not specified" && do_exit 1
@@ -134,22 +135,27 @@ esac
 
 if [ -z "$INC_BUILD" ]; then
   do_configure || do_exit $?
-  if [ "${bundle_type}" == "jcef" ]; then
-    make LOG=info clean images test-image CONF=$RELEASE_NAME || do_exit $?
+  if [ "${bundle_type}" == "dcevm" ]; then
+    make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
   else
-    make LOG=info clean images CONF=$RELEASE_NAME || do_exit $?
+    make LOG=info CONF=$RELEASE_NAME clean images || do_exit $?
   fi
 else
-  if [ "${bundle_type}" == "jcef" ]; then
-    make LOG=info images test-image CONF=$RELEASE_NAME || do_exit $?
+  if [ "${bundle_type}" == "dcevm" ]; then
+    make LOG=info CONF=$RELEASE_NAME images test-image || do_exit $?
   else
-    make LOG=info images CONF=$RELEASE_NAME || do_exit $?
+    make LOG=info CONF=$RELEASE_NAME images || do_exit $?
   fi
 fi
 
 JSDK=build/$RELEASE_NAME/images/jdk
 BASE_DIR=build/$RELEASE_NAME/images
-JBRSDK_BUNDLE=jbrsdk
+BASE_DIR=jre
+if [ "${bundle_type}" == "fd" ]; then
+  JBRSDK_BUNDLE=jbrsdk
+else
+  JBRSDK_BUNDLE=jbrsdk_${bundle_type}
+fi
 
 rm -rf ${BASE_DIR}/${JBRSDK_BUNDLE} && rsync -a --exclude demo --exclude sample ${JSDK}/ ${JBRSDK_BUNDLE} || do_exit $?
 if [[ "${bundle_type}" == *jcef* ]] || [[ "${bundle_type}" == *dcevm* ]] || [[ "${bundle_type}" == fd ]]
