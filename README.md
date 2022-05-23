@@ -9,13 +9,33 @@ improvements and bugfixes.
 > **_NOTE_**: This is a **development** branch that is periodically synchronized with 
 > the [OpenJDK master](https://github.com/openjdk/jdk/tree/master) branch.
 > 
-> Release builds are based on these branches:
-> * [master](https://github.com/JetBrains/JetBrainsRuntime/tree/master) (JDK 11)
-> * [master17](https://github.com/JetBrains/JetBrainsRuntime/tree/master17) (JDK 17)
+ Release builds are based on these branches:
+ * [jbr11](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr11) (JDK 11)
+ * [jbr17](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr17) (JDK 17)
+ 
+Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. The full list
+ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntime/releases).
 
+## Releases based on JDK 17
+
+| IDE Version | Latest JBR                                                                                        | Date Released |
+|-------------|---------------------------------------------------------------------------------------------------|---------------|
+| 2022.2      | [17.0.3-b423.10](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr17.0.3b423.10)     | 17-May-2022   |
+| 2022.1      | [17_0_2-b315.1](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr17_0_2b315.1)       | 09-Feb-2022   |
+| 2021.3      | [17_0_1-b164.8](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr17_0_1b164.8)       | 15-Nov-2021   |
+
+## Releases based on JDK 11
+
+| IDE Version | Latest JBR                                                                                            | Date Released |
+|-------------|-------------------------------------------------------------------------------------------------------|---------------|
+| 2022.1      | [11_0_15-b2043.56](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_15b2043.56)     | 17-May-2022   |
+| 2021.3      | [11_0_14_1-b1751.46](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_14_1b1751.46) | 21-Feb-2022   |
+| 2021.2      | [11_0_13-b1504.49](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jb11_0_13-b1504.49)     | 15-Nov-2021   |
+| 2021.1      | [11.0.11+9-b1341.60](https://confluence.jetbrains.com/pages/viewpage.action?pageId=218857477)         | 15-Jun-2021   |
+| 2020.3      | [11_0_11-b1145.115](https://confluence.jetbrains.com/pages/viewpage.action?pageId=219349001)          | 21-Jun-2021   |
 
 ## Contents
-- [Welcome to JetBrains Runtime](#jetbrains-runtime)
+- [Welcome to JetBrains Runtime](#welcome-to-jetbrains-runtime)
   - [Products Built on JetBrains Runtime](#products-built-on-jetbrains-runtime)
   - [Getting Sources](#getting-sources)
     - [macOS, Linux](#macos-linux)
@@ -63,7 +83,7 @@ Please refer to [OpenJDK build docs](https://openjdk.java.net/groups/build/doc/b
 coverage of all the details.
 
 > **_TIP:_**  To get a preliminary report of what's missing, run `./configure` and check its output. 
-> It would usually have a meaningful advice on how to solve the problem.
+> It would usually have meaningful advice on how to solve the problem.
 
 ### Linux (Docker)
 Create a container:
@@ -87,7 +107,7 @@ Install the necessary tools, libraries, and headers with:
 $ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
        libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev
 ```
-Get Java 17 (for instance, [Azul Zulu Builds of OpenJDK 17](https://www.azul.com/downloads/?version=java-17-ea&package=jdk)).
+Get Java 18 (for instance, [Azul Zulu Builds of OpenJDK 18](https://www.azul.com/downloads/?version=java-18-sts&os=linux&package=jdk)).
 
 Then run the following:
 ```
@@ -107,7 +127,7 @@ Install the following:
 * [Visual Studio compiler toolset](https://visualstudio.microsoft.com/downloads/).
   Install with the desktop development kit, which includes Windows SDK and compilers.
   Visual Studio 2019 is supported by default.
-* Java 17 (for instance, [Azul Zulu Builds of OpenJDK 17](https://www.azul.com/downloads/?version=java-17-ea&os=windows&architecture=x86-64-bit&package=jdk).
+* Java 18 (for instance, [Azul Zulu Builds of OpenJDK 18](https://www.azul.com/downloads/?version=java-18-sts&os=windows&package=jdk)).
   If you have problems while configuring, read [Java tips on Cygwin](http://horstmann.com/articles/cygwin-tips.html).
 
 From the command line: 
@@ -129,7 +149,7 @@ This will build the release configuration under `./build/windows-x86_64-server-r
 ### macOS
 Install the following:
 * Xcode command line developer tools and `autoconf` via [Homebrew](https://brew.sh/).
-* Java 17 (for instance, [Azul Zulu Builds of OpenJDK 17](https://www.azul.com/downloads/?version=java-17-ea&package=jdk)).
+* Java 18 (for instance, [Azul Zulu Builds of OpenJDK 18](https://www.azul.com/downloads/?version=java-18-sts&os=macos&package=jdk)).
 
 From the command line:
 ```
@@ -170,6 +190,6 @@ We are happy to receive your pull requests!
 Before you submit one, please sign our [Contributor License Agreement (CLA)](https://www.jetbrains.com/agreements/cla/).
 
 ## Resources
-* [JetBrains Runtime on github](https://github.com/JetBrains/JetBrainsRuntime).
+* [JetBrains Runtime on GitHub](https://github.com/JetBrains/JetBrainsRuntime).
 * [OpenJDK build instructions](https://openjdk.java.net/groups/build/doc/building.html).
 * [OpenJDK test instructions](https://htmlpreview.github.io/?https://raw.githubusercontent.com/openjdk/jdk/master/doc/building.html#running-tests).
