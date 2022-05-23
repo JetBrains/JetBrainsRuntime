@@ -745,13 +745,31 @@ class Compile : public Phase {
 
   Ticks _latest_stage_start_counter;
 
-  void begin_method() {
+  void begin_method(int level = 1) {
 #ifndef PRODUCT
-    if (_printer && _printer->should_print(1)) {
+    if (_method != NULL && should_print(level)) {
       _printer->begin_method();
     }
 #endif
     C->_latest_stage_start_counter.stamp();
+  }
+
+  bool should_print(int level = 1) {
+#ifndef PRODUCT
+    if (PrintIdealGraphLevel < 0) { // disabled by the user
+      return false;
+    }
+
+    bool need = directive()->IGVPrintLevelOption >= level;
+    if (need && !_printer) {
+      _printer = IdealGraphPrinter::printer();
+      assert(_printer != NULL, "_printer is NULL when we need it!");
+      _printer->set_compile(this);
+    }
+    return need;
+#else
+    return false;
+#endif
   }
 
   void print_method(CompilerPhaseType cpt, int level = 1) {
@@ -766,7 +784,7 @@ class Compile : public Phase {
 
 
 #ifndef PRODUCT
-    if (_printer && _printer->should_print(level)) {
+    if (_printer && should_print(level)) {
       _printer->print_method(CompilerPhaseTypeHelper::to_string(cpt), level);
     }
 #endif
@@ -783,7 +801,7 @@ class Compile : public Phase {
       event.commit();
     }
 #ifndef PRODUCT
-    if (_printer && _printer->should_print(level)) {
+    if (_printer && should_print(level)) {
       _printer->end_method();
     }
 #endif

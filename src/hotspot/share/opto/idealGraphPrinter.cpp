@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,10 +75,6 @@ const char *IdealGraphPrinter::ASSEMBLY_ELEMENT = "assembly";
 int IdealGraphPrinter::_file_count = 0;
 
 IdealGraphPrinter *IdealGraphPrinter::printer() {
-  if (!PrintIdealGraph) {
-    return NULL;
-  }
-
   JavaThread *thread = JavaThread::current();
   if (!thread->is_Compiler_thread()) return NULL;
 
@@ -670,7 +666,7 @@ void IdealGraphPrinter::print_method(const char *name, int level, bool clear_nod
 // Print current ideal graph
 void IdealGraphPrinter::print(const char *name, Node *node, int level, bool clear_nodes) {
 
-  if (!_current_method || !_should_send_method || !should_print(level)) return;
+  if (!_current_method || !_should_send_method || !C->should_print(level)) return;
 
   // Warning, unsafe cast?
   _chaitin = (PhaseChaitin *)C->regalloc();
@@ -718,11 +714,6 @@ void IdealGraphPrinter::print(const char *name, Node *node, int level, bool clea
   }
   tail(GRAPH_ELEMENT);
   _xml->flush();
-}
-
-// Should method be printed?
-bool IdealGraphPrinter::should_print(int level) {
-  return C->directive()->IGVPrintLevelOption >= level;
 }
 
 extern const char *NodeClassNames[];
