@@ -68,14 +68,4 @@ class ExplodedSystemModules implements SystemModules {
     public Map<String, Set<String>> moduleReads() {
         throw new InternalError();
     }
-
-    @Override
-    public  Map<String, Set<String>> concealedPackagesToOpen() {
-        return Map.of();
-    }
-
-    @Override
-    public  Map<String, Set<String>> exportedPackagesToOpen() {
-        return Map.of();
-    }
 }
