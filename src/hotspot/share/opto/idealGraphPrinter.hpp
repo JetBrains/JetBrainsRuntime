@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,7 +133,6 @@ class IdealGraphPrinter : public CHeapObj<mtCompiler> {
   void print_method(const char *name, int level=1, bool clear_nodes = false);
   void print(const char *name, Node *root, int level=1, bool clear_nodes = false);
   void print_xml(const char *name);
-  bool should_print(int level);
   void set_compile(Compile* compile) {C = compile; }
 };
 
