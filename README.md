@@ -18,11 +18,10 @@ Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. Th
 
 ## Releases based on JDK 17
 
-| IDE Version | Latest JBR                                                                                        | Date Released |
-|-------------|---------------------------------------------------------------------------------------------------|---------------|
-| 2022.2      | [17.0.3-b423.10](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr17.0.3b423.10)     | 17-May-2022   |
-| 2022.1      | [17_0_2-b315.1](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr17_0_2b315.1)       | 09-Feb-2022   |
-| 2021.3      | [17_0_1-b164.8](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr17_0_1b164.8)       | 15-Nov-2021   |
+| IDE Version | Latest JBR                                                                                   | Date Released |
+|-------------|----------------------------------------------------------------------------------------------|---------------|
+| 2022.3      | [17.0.4.1-b629.2](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.4.1b629.2)| 4-Oct-2022   |
+| 2022.2      | [17.0.4.1-b469.62](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.4.1b469.62)| 28-Sep-2022   |
 
 ## Releases based on JDK 11
 
@@ -31,8 +30,8 @@ Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. Th
 | 2022.1      | [11_0_15-b2043.56](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_15b2043.56)     | 17-May-2022   |
 | 2021.3      | [11_0_14_1-b1751.46](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_14_1b1751.46) | 21-Feb-2022   |
 | 2021.2      | [11_0_13-b1504.49](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jb11_0_13-b1504.49)     | 15-Nov-2021   |
-| 2021.1      | [11.0.11+9-b1341.60](https://confluence.jetbrains.com/pages/viewpage.action?pageId=218857477)         | 15-Jun-2021   |
-| 2020.3      | [11_0_11-b1145.115](https://confluence.jetbrains.com/pages/viewpage.action?pageId=219349001)          | 21-Jun-2021   |
+| 2021.1      | [11.0.11+9-b1341.60](https://github.com/JetBrains/JetBrainsRuntime/issues/171#issuecomment-1248891540)| 15-Jun-2021   |
+| 2020.3      | [11_0_10-b1145.115](https://github.com/JetBrains/JetBrainsRuntime/issues/171#issuecomment-1249243977) | 21-Jun-2021   |
 
 ## Contents
 - [Welcome to JetBrains Runtime](#welcome-to-jetbrains-runtime)
