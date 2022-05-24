@@ -12,7 +12,6 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 
 | IDE Version | Latest JBR                                                                                            | Date Released |
 |-------------|-------------------------------------------------------------------------------------------------------|---------------|
-| 2022.2      | [17.0.3-b423.10](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr17.0.3b423.10)         | 17-May-2022   |
 | 2022.1      | [11_0_15-b2043.56](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_15b2043.56)     | 17-May-2022   |
 | 2021.3      | [11_0_14_1-b1751.46](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_14_1b1751.46) | 21-Feb-2022   |
 | 2021.2      | [11_0_13-b1504.49](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jb11_0_13-b1504.49)     | 15-Nov-2021   |
