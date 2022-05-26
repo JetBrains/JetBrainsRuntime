@@ -156,6 +156,66 @@ public class XInputMethod extends X11InputMethod {
         return peer.getContentWindow();
     }
 
+
+    static void onXKeyEventFiltering(final boolean isXKeyEventFiltered) {
+        // Fix of JBR-1573, JBR-2444, JBR-4394 (a.k.a. IDEA-246833).
+        // Input method is considered broken if and only if all the following statements are true:
+        //   * XFilterEvent have filtered more than filteredEventsThreshold last events of types KeyPress, KeyRelease;
+        //   * Input method hasn't been changed (e.g. recreated);
+        //   * The input context is not in preedit state (XNPreeditStartCallback has been called but then XNPreeditDoneCallback - hasn't)
+
+        // The functionality is disabled
+        if (BrokenImDetectionContext.EATEN_EVENTS_THRESHOLD < 1) {
+            return;
+        }
+        // Must be called within AWT_LOCK
+        if (!XToolkit.isAWTLockHeldByCurrentThread()) {
+            return;
+        }
+
+        // A key event is filtered but the input method is not in preediting state (or its state is unknown)
+        if (isXKeyEventFiltered && (BrokenImDetectionContext.isDuringPreediting() <= 0)) {
+            ++BrokenImDetectionContext.eatenKeyEventsCount;
+        } else {
+            BrokenImDetectionContext.eatenKeyEventsCount = 0;
+        }
+
+        if (BrokenImDetectionContext.eatenKeyEventsCount > BrokenImDetectionContext.EATEN_EVENTS_THRESHOLD) {
+            BrokenImDetectionContext.eatenKeyEventsCount = 0;
+            recreateAllXIC();
+        }
+    }
+
+    private static class BrokenImDetectionContext {
+        static final int EATEN_EVENTS_THRESHOLD;
+
+        static int eatenKeyEventsCount = 0;
+
+        /**
+         * <0 - unknown
+         * >0 - true
+         *  0 - false
+         */
+        static native int isDuringPreediting();
+
+        static {
+            int eatenEventsThresholdInitializer = 7;
+            final String eventsThresholdMode = System.getProperty("recreate.x11.input.method", "true");
+
+            if ("false".equals(eventsThresholdMode)) {
+                eatenEventsThresholdInitializer = 0;
+            } else {
+                try {
+                    eatenEventsThresholdInitializer = Integer.parseInt(eventsThresholdMode);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+
+            EATEN_EVENTS_THRESHOLD = eatenEventsThresholdInitializer;
+        }
+    }
+
+
     /*
      * Native methods
      */
