@@ -29,44 +29,27 @@ BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 16)}
 
 function do_configure {
   if [[ "${architecture}" == *aarch64* ]]; then
-
-    sh configure \
-      $WITH_DEBUG_LEVEL \
-      --with-vendor-name="${VENDOR_NAME}" \
-      --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
-      --with-macosx-bundle-name-base=${VENDOR_VERSION_STRING} \
-      --with-macosx-bundle-id-base="com.jetbrains.jbr" \
-      --with-jvm-features=shenandoahgc \
-      --with-version-pre= \
-      --with-version-build="${JDK_BUILD_NUMBER}" \
-      --with-version-opt=b"${build_number}" \
-      --with-boot-jdk="$BOOT_JDK" \
-      --with-macosx-version-max="${MACOSX_VERSION_MAX:="11.00.00"}" \
-      --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
-      --enable-cds=no \
-      $STATIC_CONF_ARGS \
-      $REPRODUCIBLE_BUILD_OPTS \
-      $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
-      || do_exit $?
+    MACOSX_VERSION_MAX="11.00.00"
   else
-    sh configure \
-      $WITH_DEBUG_LEVEL \
-      --with-vendor-name="$VENDOR_NAME" \
-      --with-vendor-version-string="$VENDOR_VERSION_STRING" \
-      --with-macosx-bundle-name-base=${VENDOR_VERSION_STRING} \
-      --with-macosx-bundle-id-base="com.jetbrains.jbr" \
-      --with-jvm-features=shenandoahgc \
-      --with-version-pre= \
-      --with-version-build="$JDK_BUILD_NUMBER" \
-      --with-version-opt=b"$build_number" \
-      --with-boot-jdk="$BOOT_JDK" \
-      --with-macosx-version-max="${MACOSX_VERSION_MAX:="10.12.00"}" \
-      --enable-cds=yes \
-      $STATIC_CONF_ARGS \
-      $REPRODUCIBLE_BUILD_OPTS \
-      $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
-      || do_exit $?
+    MACOSX_VERSION_MAX="10.12.00"
   fi
+  sh configure \
+    $WITH_DEBUG_LEVEL \
+    --with-vendor-name="$VENDOR_NAME" \
+    --with-vendor-version-string="$VENDOR_VERSION_STRING" \
+    --with-macosx-bundle-name-base=${VENDOR_VERSION_STRING} \
+    --with-macosx-bundle-id-base="com.jetbrains.jbr" \
+    --with-jvm-features=shenandoahgc \
+    --with-version-pre= \
+    --with-version-build="$JDK_BUILD_NUMBER" \
+    --with-version-opt=b"$build_number" \
+    --with-boot-jdk="$BOOT_JDK" \
+    --with-macosx-version-max="${MACOSX_VERSION_MAX}" \
+    --enable-cds=yes \
+    $STATIC_CONF_ARGS \
+    $REPRODUCIBLE_BUILD_OPTS \
+    $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
+    || do_exit $?
 }
 
 function create_image_bundle {
