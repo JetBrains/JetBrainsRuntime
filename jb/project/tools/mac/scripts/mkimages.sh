@@ -27,44 +27,26 @@ BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 17)}
 
 function do_configure {
   if [[ "${architecture}" == *aarch64* ]]; then
-    sh configure \
-      $WITH_DEBUG_LEVEL \
-      --with-vendor-name="${VENDOR_NAME}" \
-      --with-vendor-version-string="${VENDOR_VERSION_STRING}" \
-      --with-macosx-bundle-name-base=${VENDOR_VERSION_STRING} \
-      --with-macosx-bundle-id-base="com.jetbrains.jbr" \
-      --with-jvm-features=shenandoahgc \
-      --with-version-pre= \
-      --with-version-build="${JDK_BUILD_NUMBER}" \
-      --with-version-opt=b"${build_number}" \
-      --with-boot-jdk="$BOOT_JDK" \
-      --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
-      --enable-cds=no \
-      --with-extra-cflags="-F$(pwd)/Frameworks" \
-      --with-extra-cxxflags="-F$(pwd)/Frameworks" \
-      --with-extra-ldflags="-F$(pwd)/Frameworks" \
-      $STATIC_CONF_ARGS \
-      $REPRODUCIBLE_BUILD_OPTS \
-      $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
-      || do_exit $?
+    ENABLE_CDS="--enable-cds=no"
   else
-    sh configure \
-      $WITH_DEBUG_LEVEL \
-      --with-vendor-name="$VENDOR_NAME" \
-      --with-vendor-version-string="$VENDOR_VERSION_STRING" \
-      --with-macosx-bundle-name-base=${VENDOR_VERSION_STRING} \
-      --with-macosx-bundle-id-base="com.jetbrains.jbr" \
-      --with-jvm-features=shenandoahgc \
-      --with-version-pre= \
-      --with-version-build="$JDK_BUILD_NUMBER" \
-      --with-version-opt=b"$build_number" \
-      --with-boot-jdk="$BOOT_JDK" \
-      --enable-cds=yes \
-      $STATIC_CONF_ARGS \
-      $REPRODUCIBLE_BUILD_OPTS \
-      $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
-      || do_exit $?
+    ENABLE_CDS="--enable-cds=yes"
   fi
+  sh configure \
+    $WITH_DEBUG_LEVEL \
+    --with-vendor-name="$VENDOR_NAME" \
+    --with-vendor-version-string="$VENDOR_VERSION_STRING" \
+    --with-macosx-bundle-name-base=${VENDOR_VERSION_STRING} \
+    --with-macosx-bundle-id-base="com.jetbrains.jbr" \
+    --with-jvm-features=shenandoahgc \
+    --with-version-pre= \
+    --with-version-build="$JDK_BUILD_NUMBER" \
+    --with-version-opt=b"$build_number" \
+    --with-boot-jdk="$BOOT_JDK" \
+    --enable-cds=yes \
+    $STATIC_CONF_ARGS \
+    $REPRODUCIBLE_BUILD_OPTS \
+    $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
+    || do_exit $?
 }
 
 function create_image_bundle {
