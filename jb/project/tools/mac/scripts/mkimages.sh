@@ -62,8 +62,9 @@ function create_image_bundle {
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-osx-${architecture}-${fastdebug_infix:-}b${build_number}
+  __root_dir=${__bundle_name}-${JBSDK_VERSION}-${architecture}-${fastdebug_infix:-}b${build_number%%.*}
 
-  JRE_CONTENTS=$tmp/$__arch_name/Contents
+  JRE_CONTENTS=$tmp/$__root_dir/Contents
   mkdir -p "$JRE_CONTENTS" || do_exit $?
 
   echo Running jlink...
@@ -87,10 +88,10 @@ function create_image_bundle {
 
   echo Creating "$JBR".tar.gz ...
   # Normalize timestamp
-  find "$tmp"/"$__arch_name" -print0 | xargs -0 touch -c -h -t "$TOUCH_TIME"
+  find "$tmp"/"$__root_dir" -print0 | xargs -0 touch -c -h -t "$TOUCH_TIME"
 
   (cd "$tmp" &&
-      find "$__arch_name" -print0 | LC_ALL=C sort -z | \
+      find "$__root_dir" -print0 | LC_ALL=C sort -z | \
       COPYFILE_DISABLE=1 tar $REPRODUCIBLE_TAR_OPTS  --no-recursion --null -T - \
                              -czf "$JBR".tar.gz --exclude='*.dSYM' --exclude='man') || do_exit $?
   mv "$tmp"/"$JBR".tar.gz  "$JBR".tar.gz
