@@ -53,18 +53,19 @@ function create_image_bundle {
   fastdebug_infix=''
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
+  __root_dir=${__bundle_name}-${JBSDK_VERSION}-x64-${fastdebug_infix:-}b${build_number%%.*}
 
   echo Running jlink ...
   ${BOOT_JDK}/bin/jlink \
     --module-path $__modules_path --no-man-pages --compress=2 \
-    --add-modules $__modules --output $__arch_name || do_exit $?
+    --add-modules $__modules --output $__root_dir || do_exit $?
 
   grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__arch_name/release
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
-    sed 's/JBR/JBRSDK/g' $__arch_name/release > release
-    mv release $__arch_name/release
-    cp $IMAGES_DIR/jdk/lib/src.zip $__arch_name/lib
-    copy_jmods "$__modules" "$__modules_path" "$__arch_name"/jmods
+    sed 's/JBR/JBRSDK/g' $__root_dir/release > release
+    mv release $__root_dir/release
+    cp $IMAGES_DIR/jdk/lib/src.zip $__root_dir/lib
+    copy_jmods "$__modules" "$__modules_path" "$__root_dir"/jmods
   fi
 }
 
