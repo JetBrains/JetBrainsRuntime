@@ -63,36 +63,38 @@ function create_image_bundle {
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}aarch64-${fastdebug_infix}b${build_number}
+  __root_dir=${__bundle_name}-${JBSDK_VERSION}-${libc_type_suffix}aarch64-${fastdebug_infix:-}b${build_number%%.*}
+
 
   echo Running jlink....
-  [ -d "$IMAGES_DIR"/"$__arch_name" ] && rm -rf "${IMAGES_DIR:?}"/"$__arch_name"
+  [ -d "$IMAGES_DIR"/"$__root_dir" ] && rm -rf "${IMAGES_DIR:?}"/"$__root_dir"
   $JSDK/bin/jlink \
     --module-path "$__modules_path" --no-man-pages --compress=2 \
-    --add-modules "$__modules" --output "$IMAGES_DIR"/"$__arch_name"
+    --add-modules "$__modules" --output "$IMAGES_DIR"/"$__root_dir"
 
-  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$IMAGES_DIR"/"$__arch_name"/release
+  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$IMAGES_DIR"/"$__root_dir"/release
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
-    sed 's/JBR/JBRSDK/g' "$IMAGES_DIR"/"$__arch_name"/release > release
-    mv release "$IMAGES_DIR"/"$__arch_name"/release
-    cp $IMAGES_DIR/jdk/lib/src.zip "$IMAGES_DIR"/"$__arch_name"/lib
-    copy_jmods "$__modules" "$__modules_path" "$IMAGES_DIR"/"$__arch_name"/jmods
+    sed 's/JBR/JBRSDK/g' "$IMAGES_DIR"/"$__root_dir"/release > release
+    mv release "$IMAGES_DIR"/"$__root_dir"/release
+    cp $IMAGES_DIR/jdk/lib/src.zip "$IMAGES_DIR"/"$__root_dir"/lib
+    copy_jmods "$__modules" "$__modules_path" "$IMAGES_DIR"/"$__root_dir"/jmods
     zip_native_debug_symbols $IMAGES_DIR/jdk "${JBR}_diz"
   fi
 
   # jmod does not preserve file permissions (JDK-8173610)
-  [ -f "$IMAGES_DIR"/"$__arch_name"/lib/jcef_helper ] && chmod a+x "$IMAGES_DIR"/"$__arch_name"/lib/jcef_helper
+  [ -f "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper
 
   echo Creating "$JBR".tar.gz ...
 
   (cd "$IMAGES_DIR" &&
-    find "$__arch_name" -print0 | LC_ALL=C sort -z | \
+    find "$__root_dir" -print0 | LC_ALL=C sort -z | \
     tar $REPRODUCIBLE_TAR_OPTS \
       --no-recursion --null -T - -cf "$JBR".tar) || do_exit $?
   mv "$IMAGES_DIR"/"$JBR".tar ./"$JBR".tar
   [ -f "$JBR".tar.gz ] && rm "$JBR.tar.gz"
   touch -c -d "@$SOURCE_DATE_EPOCH" "$JBR".tar
   gzip "$JBR".tar || do_exit $?
-  rm -rf "${IMAGES_DIR:?}"/"$__arch_name"
+  rm -rf "${IMAGES_DIR:?}"/"$__root_dir"
 }
 
 WITH_DEBUG_LEVEL="--with-debug-level=release"
