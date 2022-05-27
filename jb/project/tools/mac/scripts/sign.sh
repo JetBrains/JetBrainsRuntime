@@ -100,8 +100,11 @@ BUILD_NAME=$(echo $APPLICATION_PATH | awk -F"/" '{ print $2 }')
 
 log "Creating $APP_NAME.pkg..."
 rm -rf "$APP_NAME.pkg"
-pkgbuild --identifier $BUNDLE_ID --sign "$JB_INSTALLER_CERT" --root $APPLICATION_PATH \
-    --install-location /Library/Java/JavaVirtualMachines/${BUILD_NAME} ${APP_NAME}.pkg
+
+mkdir -p unsigned
+pkgbuild --identifier $BUNDLE_ID --root $APPLICATION_PATH \
+    --install-location /Library/Java/JavaVirtualMachines/${BUILD_NAME} unsigned/${APP_NAME}.pkg
+productsign --timestamp --sign "$JB_INSTALLER_CERT" unsigned/${APP_NAME}.pkg ${APP_NAME}.pkg
 
 #log "Signing whole app..."
 #codesign --timestamp \
