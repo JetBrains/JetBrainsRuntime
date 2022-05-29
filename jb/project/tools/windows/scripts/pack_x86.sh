@@ -25,7 +25,7 @@ function pack_jbr {
   __root_dir=${__bundle_name}-${JBSDK_VERSION}-x86-${fastdebug_infix:-}b${build_number%%.*}
 
   echo Creating $JBR.tar.gz ...
-
+  chmod -R ug+rwx,o+rx ${BASE_DIR}/$__root_dir
   /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR $__root_dir || do_exit $?
 }
 
