@@ -106,7 +106,7 @@ jbrsdk_jcef-${jbsdk_version}-osx-x64-b${build_number}.pkg
 jbrsdk_jcef-${jbsdk_version}-osx-x64-b${build_number}.tar.gz
 jbrsdk_jcef-${jbsdk_version}-windows-x64-b${build_number}.tar.gz
 
-jbrsdk_jcef-${jbsdk_version}-linux-aarcb${build_number}_diz.tar.gz
+jbrsdk_jcef-${jbsdk_version}-linux-aarch64-b${build_number}_diz.tar.gz
 jbrsdk_jcef-${jbsdk_version}-linux-x64-b${build_number}_diz.tar.gz
 jbrsdk_jcef-${jbsdk_version}-osx-aarch64-b${build_number}_diz.tar.gz
 jbrsdk_jcef-${jbsdk_version}-osx-x64-b${build_number}_diz.tar.gz
