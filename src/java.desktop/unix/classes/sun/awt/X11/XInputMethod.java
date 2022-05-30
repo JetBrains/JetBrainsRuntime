@@ -207,7 +207,13 @@ public class XInputMethod extends X11InputMethod {
             } else {
                 try {
                     eatenEventsThresholdInitializer = Integer.parseInt(eventsThresholdMode);
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException err) {
+                    log.warning(
+                        "Invalid value of \"recreate.x11.input.method\" system property \"" +
+                            eventsThresholdMode +
+                            "\". Only \"true\", \"false\" and integer values are supported",
+                        err
+                    );
                 }
             }
 

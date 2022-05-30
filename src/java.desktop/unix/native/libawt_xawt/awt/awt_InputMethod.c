@@ -1567,6 +1567,30 @@ Java_sun_awt_X11_XInputMethod_setXICFocusNative(JNIEnv *env,
 }
 
 
+static XIMPreeditState getPreeditStateOf(XIC xic) {
+#if defined(__linux__) && defined(_LP64) && !defined(_LITTLE_ENDIAN)
+    // XIMPreeditState value which is used for XGetICValues must be 32bit on BigEndian XOrg's xlib
+    unsigned int state = XIMPreeditUnKnown;
+#else
+    XIMPreeditState state = XIMPreeditUnKnown;
+#endif
+
+    XVaNestedList preeditStateAttr = XVaCreateNestedList(0, XNPreeditState, &state, NULL);
+    if (preeditStateAttr == NULL) {
+        return XIMPreeditUnKnown;
+    }
+    const char * const unsupportedAttrs = XGetICValues(xic, XNPreeditAttributes, preeditStateAttr, NULL);
+    XFree((void *)preeditStateAttr);
+
+    if (unsupportedAttrs != NULL) {
+        return XIMPreeditUnKnown;
+    }
+
+    return (state == XIMPreeditEnable) ? XIMPreeditEnable
+           : (state == XIMPreeditDisable) ? XIMPreeditDisable
+           : XIMPreeditUnKnown;
+}
+
 /*
  * Class:     sun_awt_X11_XInputMethod_BrokenImDetectionContext
  * Method:    isDuringPreediting
@@ -1588,7 +1612,16 @@ JNIEXPORT jint JNICALL Java_sun_awt_X11_XInputMethod_00024BrokenImDetectionConte
         goto finally;
     }
 
-    result = pX11IMData->brokenImDetectionContext.isBetweenPreeditStartAndPreeditDone ? 1 : 0;
+    if (pX11IMData->brokenImDetectionContext.isBetweenPreeditStartAndPreeditDone) {
+        result = 1;
+    } else if (pX11IMData->current_ic != NULL) {
+        const XIMPreeditState preeditState = getPreeditStateOf(pX11IMData->current_ic);
+        if (preeditState == XIMPreeditEnable) {
+            result = 1;
+        } else if (preeditState == XIMPreeditDisable) {
+            result = 0;
+        }
+    }
 
  finally:
     AWT_UNLOCK();
