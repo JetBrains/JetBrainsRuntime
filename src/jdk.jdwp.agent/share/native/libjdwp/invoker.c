@@ -845,6 +845,7 @@ invoker_completeInvokeRequest(jthread thread)
         (void)outStream_writeObjectTag(env, &out, exc);
         (void)outStream_writeObjectRef(env, &out, exc);
         outStream_sendReply(&out);
+        outStream_destroy(&out);
     }
 
     /*
