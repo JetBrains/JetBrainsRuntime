@@ -4033,7 +4033,8 @@ public class Window extends Container implements Accessible {
                 MINIMIZE_BUTTON = 2,
                 MAXIMIZE_BUTTON = 3,
                 CLOSE_BUTTON = 4,
-                MENU_BAR = 5;
+                MENU_BAR = 5,
+                DRAGGABLE_AREA = 6;
 
         void setCustomDecorationEnabled(Window window, boolean enabled) {
             window.hasCustomDecoration = enabled;

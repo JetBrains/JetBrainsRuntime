@@ -515,7 +515,15 @@ MsgRouting AwtFrame::WmMouseMove(UINT flags, int x, int y) {
      * If this Frame is non-focusable then we should implement move and size operation for it by
      * ourselfves because we don't dispatch appropriate mouse messages to default window procedure.
      */
-    if (!IsFocusableWindow() && isInManualMoveOrSize) {
+    if (isInManualMoveOrSize) {
+        if (grabbedHitTest == HTCAPTION) {
+            WINDOWPLACEMENT placement;
+            ::GetWindowPlacement(GetHWnd(), &placement);
+            if (placement.showCmd == SW_SHOWMAXIMIZED) {
+                placement.showCmd = SW_SHOWNORMAL;
+                ::SetWindowPlacement(GetHWnd(), &placement);
+            }
+        }
         DWORD curPos = ::GetMessagePos();
         x = GET_X_LPARAM(curPos);
         y = GET_Y_LPARAM(curPos);
@@ -627,12 +635,29 @@ MsgRouting AwtFrame::WmNcMouseDown(WPARAM hitTest, int x, int y, int button) {
     // Do not handle events from caption itself to preserve native drag behavior
     if (HasCustomDecoration()) {
         switch (hitTest) {
+            case HTCAPTION:
             case HTMINBUTTON:
             case HTMAXBUTTON:
             case HTCLOSE:
             case HTMENU:
                 RECT rcWindow;
                 GetWindowRect(GetHWnd(), &rcWindow);
+                if (hitTest == HTCAPTION) {
+                    JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
+                    jint customSpot = JNU_CallMethodByName(env, NULL, GetTarget(env),
+                                                           "hitTestCustomDecoration", "(II)I",
+                                                           ScaleDownX(x - rcWindow.left),
+                                                           ScaleDownY(y - rcWindow.top)).i;
+                    if (customSpot == java_awt_Window_CustomWindowDecoration_DRAGGABLE_AREA) {
+                        if (button & LEFT_BUTTON) {
+                            savedMousePos.x = x;
+                            savedMousePos.y = y;
+                            ::SetCapture(GetHWnd());
+                            isInManualMoveOrSize = TRUE;
+                            grabbedHitTest = hitTest;
+                        }
+                    } else break;
+                }
                 WmMouseDown(GetButtonMK(button),
                             x - rcWindow.left,
                             y - rcWindow.top,
@@ -1783,6 +1808,7 @@ LRESULT HitTestNCA(AwtFrame* frame, int x, int y) {
                                                frame->ScaleDownY(y - rcWindow.top)).i;
         switch (customSpot) {
             case java_awt_Window_CustomWindowDecoration_NO_HIT_SPOT:
+            case java_awt_Window_CustomWindowDecoration_DRAGGABLE_AREA:
                 break; // Nothing
             case java_awt_Window_CustomWindowDecoration_MINIMIZE_BUTTON:
                 return HTMINBUTTON;

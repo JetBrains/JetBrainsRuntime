@@ -1461,6 +1461,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 @end // AWTWindow
 
 @implementation AWTWindowDragView {
+    CGFloat _accumulatedDragDelta;
     enum WindowDragState {
         NO_DRAG,   // Mouse not dragging
         SKIP_DRAG, // Mouse dragging in non-draggable area
@@ -1481,9 +1482,9 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     return NO;
 }
 
-- (BOOL)isInDraggableArea:(NSPoint)point
+- (jint)hitTestCustomDecoration:(NSPoint)point
 {
-    BOOL returnValue = YES;
+    jint returnValue = java_awt_Window_CustomWindowDecoration_NO_HIT_SPOT;
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow != NULL) {
@@ -1495,8 +1496,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
         if (awtWindow != NULL) {
             NSRect frame = [self.window frame];
             float windowHeight = frame.size.height;
-            returnValue = (*env)->CallIntMethod(env, awtWindow, jm_hitTestCustomDecoration, (jint) point.x,  (jint) (windowHeight - point.y)) ==
-                                  (jint) java_awt_Window_CustomWindowDecoration_NO_HIT_SPOT ? YES : NO;
+            returnValue = (*env)->CallIntMethod(env, awtWindow, jm_hitTestCustomDecoration, (jint) point.x,  (jint) (windowHeight - point.y));
             CHECK_EXCEPTION();
             (*env)->DeleteLocalRef(env, awtWindow);
         }
@@ -1508,6 +1508,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 - (void)mouseDown:(NSEvent *)event
 {
     _draggingWindow = NO_DRAG;
+    _accumulatedDragDelta = 0.0;
     // We don't follow the regular responder chain here since the native window swallows events in some cases
     [[self.window contentView] deliverJavaMouseEvent:event];
 }
@@ -1515,12 +1516,17 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 - (void)mouseDragged:(NSEvent *)event
 {
     if (_draggingWindow == NO_DRAG) {
-        BOOL shouldStartWindowDrag = [self isInDraggableArea:event.locationInWindow];
-        if (shouldStartWindowDrag) {
-            [self.window performWindowDragWithEvent:event];
-            _draggingWindow = DRAG;
-        } else {
-            _draggingWindow = SKIP_DRAG;
+        jint hitSpot = [self hitTestCustomDecoration:event.locationInWindow];
+        switch (hitSpot) {
+            case java_awt_Window_CustomWindowDecoration_DRAGGABLE_AREA:
+                // Start drag only after 4px threshold inside DRAGGABLE_AREA
+                if ((_accumulatedDragDelta += fabs(event.deltaX) + fabs(event.deltaY)) <= 4.0) break;
+            case java_awt_Window_CustomWindowDecoration_NO_HIT_SPOT:
+                [self.window performWindowDragWithEvent:event];
+                _draggingWindow = DRAG;
+                break;
+            default:
+                _draggingWindow = SKIP_DRAG;
         }
     }
 }
@@ -1530,7 +1536,8 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     if (_draggingWindow == DRAG) {
         _draggingWindow = NO_DRAG;
     } else {
-        if (event.clickCount == 2 && [self isInDraggableArea:event.locationInWindow]) {
+        jint hitSpot = [self hitTestCustomDecoration:event.locationInWindow];
+        if (event.clickCount == 2 && hitSpot == java_awt_Window_CustomWindowDecoration_NO_HIT_SPOT) {
             [self.window performZoom:nil];
         }
 
