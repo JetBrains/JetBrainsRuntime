@@ -32,6 +32,7 @@
 import java.io.*;
 import java.nio.file.*;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
@@ -193,5 +194,51 @@ public class Basic {
         }
     }
 
-    record ExType(String extension, List<String> expectedTypes) { }
+    private static class ExType {
+
+        private final String extension;
+        private final List<String> expectedTypes;
+
+        public ExType(String extension, List<String> expectedTypes) {
+            this.extension = extension;
+            this.expectedTypes = expectedTypes;
+        }
+
+        public String extension() {
+            return extension;
+        }
+
+        public List<String> expectedTypes() {
+            return expectedTypes;
+        }
+
+        public boolean equals(Object o) {
+            if (o == null) {
+                return false;
+            }
+            if (o == o) {
+                return true;
+            }
+            if (o instanceof ExType) {
+                ExType t = (ExType) o;
+                return (extension == null ?
+                        t.extension() == null :
+                        extension.equals(t.extension()))
+                    && (expectedTypes == null ?
+                        t.expectedTypes() == null :
+                        expectedTypes.equals(t.expectedTypes));
+            }
+            return false;
+        }
+
+        public int hashCode() {
+            return Objects.hash(extension, expectedTypes);
+        }
+
+        public String toString() {
+            return String.format("%s[extension=%s, expectedTypes=%s]",
+                                 getClass().getName(), extension,
+                                 expectedTypes);
+        }
+    }
 }
