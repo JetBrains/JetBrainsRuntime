@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * reserved comment block
+ * DO NOT REMOVE OR ALTER!
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -37,7 +38,6 @@ import com.sun.org.apache.xalan.internal.res.XSLMessages;
  * {@link javax.xml.xpath.XPathVariableResolver}.
  *
  * @author Ramesh Mandava
- * @LastModified: Feb 2022
  */
 public class JAXPVariableStack extends VariableStack {
 
@@ -61,13 +61,6 @@ public class JAXPVariableStack extends VariableStack {
             new javax.xml.namespace.QName(
                 qname.getNamespace(),
                 qname.getLocalPart());
-
-        if (resolver == null) {
-            String fmsg = XSLMessages.createXPATHMessage(
-                XPATHErrorResources.ER_NO_XPATH_VARIABLE_RESOLVER,
-                new Object[] { name.toString()} );
-            throw new TransformerException( fmsg );
-        }
         Object varValue = resolver.resolveVariable( name );
         if ( varValue == null ) {
             String fmsg = XSLMessages.createXPATHMessage(

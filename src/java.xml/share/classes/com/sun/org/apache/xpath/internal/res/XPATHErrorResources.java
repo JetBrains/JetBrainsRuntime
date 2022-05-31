@@ -140,7 +140,6 @@ public class XPATHErrorResources extends ListResourceBundle
          "ER_EXPECTED_SINGLE_QUOTE";
   public static final String ER_EMPTY_EXPRESSION = "ER_EMPTY_EXPRESSION";
   public static final String ER_EXPECTED_BUT_FOUND = "ER_EXPECTED_BUT_FOUND";
-  public static final String ER_UNION_MUST_BE_NODESET = "ER_UNION_MUST_BE_NODESET";
   public static final String ER_INCORRECT_PROGRAMMER_ASSERTION =
          "ER_INCORRECT_PROGRAMMER_ASSERTION";
   public static final String ER_BOOLEAN_ARG_NO_LONGER_OPTIONAL =
@@ -310,8 +309,6 @@ public static final String ER_IGNORABLE_WHITESPACE_NOT_HANDLED =
   //BEGIN: Keys needed for exception messages of  JAXP 1.3 XPath API implementation
   public static final String ER_EXTENSION_FUNCTION_CANNOT_BE_INVOKED = "ER_EXTENSION_FUNCTION_CANNOT_BE_INVOKED";
   public static final String ER_RESOLVE_VARIABLE_RETURNS_NULL = "ER_RESOLVE_VARIABLE_RETURNS_NULL";
-  public static final String ER_NO_XPATH_VARIABLE_RESOLVER = "ER_NO_XPATH_VARIABLE_RESOLVER";
-  public static final String ER_NO_XPATH_FUNCTION_PROVIDER = "ER_NO_XPATH_FUNCTION_PROVIDER";
   public static final String ER_UNSUPPORTED_RETURN_TYPE = "ER_UNSUPPORTED_RETURN_TYPE";
   public static final String ER_SOURCE_RETURN_TYPE_CANNOT_BE_NULL = "ER_SOURCE_RETURN_TYPE_CANNOT_BE_NULL";
   public static final String ER_ARG_CANNOT_BE_NULL = "ER_ARG_CANNOT_BE_NULL";
@@ -462,9 +459,6 @@ public static final String ER_IGNORABLE_WHITESPACE_NOT_HANDLED =
 
   { ER_EXPECTED_BUT_FOUND,
      "Expected {0}, but found: {1}"},
-
-  { ER_UNION_MUST_BE_NODESET,
-     "Operands for a union must be node-sets."},
 
   { ER_INCORRECT_PROGRAMMER_ASSERTION,
       "Programmer assertion is incorrect! - {0}"},
@@ -785,12 +779,6 @@ public static final String ER_IGNORABLE_WHITESPACE_NOT_HANDLED =
 
   { ER_RESOLVE_VARIABLE_RETURNS_NULL,
        "resolveVariable for variable {0} returning null"},
-
-  { ER_NO_XPATH_VARIABLE_RESOLVER,
-       "Attempting to resolve variable {0}, but a variable resolver is not set."},
-
-  { ER_NO_XPATH_FUNCTION_PROVIDER,
-       "Attempting to call an extension function {0}, but an extension provider is not set."},
 
   /** Field ER_UNSUPPORTED_RETURN_TYPE                       */
 
