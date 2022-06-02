@@ -51,7 +51,7 @@ function create_image_bundle {
   tmp=.bundle.$$.tmp
   mkdir "$tmp" || do_exit $?
 
-  [ "$bundle_type" == "fd" ] && [ "$__bundle_name" == "$JBRSDK_BUNDLE" ] && fastdebug_infix="fastdebug-"
+  [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-osx-${architecture}-${fastdebug_infix}b${build_number}
 
   JRE_CONTENTS=$tmp/$__arch_name/Contents
@@ -63,7 +63,7 @@ function create_image_bundle {
     --add-modules "$__modules" --output "$JRE_CONTENTS/Home" || do_exit $?
 
   grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$JRE_CONTENTS/Home/release"
-  if [ "$__bundle_name" == "$JBRSDK_BUNDLE" ]; then
+  if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' $JRE_CONTENTS/Home/release > release
     mv release $JRE_CONTENTS/Home/release
     copy_jmods "$__modules" "$__modules_path" "$JRE_CONTENTS"/Home/jmods
@@ -94,19 +94,19 @@ RELEASE_NAME=macosx-${CONF_ARCHITECTURE}-server-release
 
 case "$bundle_type" in
   "jcef")
-    do_reset_changes=1
+    do_reset_changes=0
     ;;
   "dcevm")
     HEAD_REVISION=$(git rev-parse HEAD)
     git am jb/project/tools/patches/dcevm/*.patch || do_exit $?
-    do_reset_dcevm=1
-    do_reset_changes=1
+    do_reset_dcevm=0
+    do_reset_changes=0
     ;;
   "nomod" | "")
     bundle_type=""
     ;;
   "fd")
-    do_reset_changes=1
+    do_reset_changes=0
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=macosx-${CONF_ARCHITECTURE}-server-fastdebug
     JBSDK=macosx-${architecture}-server-release
@@ -165,7 +165,7 @@ modules=$(cat "$JSDK"/release | grep MODULES | sed s/MODULES=//g | sed s/' '/','
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
   modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
 fi
-create_image_bundle "$JBRSDK_BUNDLE" "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
+create_image_bundle "$JBRSDK_BUNDLE${jbr_name_postfix}" "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
 
 if [ -z "$bundle_type" ]; then
     JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-osx-test-${architecture}-b${build_number}
