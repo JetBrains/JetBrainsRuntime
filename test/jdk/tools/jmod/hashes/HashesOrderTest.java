@@ -51,7 +51,6 @@ public class HashesOrderTest {
             new RuntimeException("jmod tool not found")
         );
 
-    private String DATE = "2021-01-06T14:36:00+02:00";
     private int NUM_MODULES = 64;
     private Path mods;
     private Path lib1;
@@ -113,7 +112,6 @@ public class HashesOrderTest {
         List<String> args = new ArrayList<>();
         args.add("create");
         Collections.addAll(args, options);
-        Collections.addAll(args, "--date", DATE);
         Collections.addAll(args, "--class-path", mclasses.toString(),
                            outfile.toString());
 
