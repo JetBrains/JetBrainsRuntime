@@ -36,7 +36,7 @@ function create_image_bundle {
   __modules_path=$3
   __modules=$4
 
-  [ "$bundle_type" == "fd" ] && [ "$__bundle_name" == "$JBRSDK_BUNDLE" ] && fastdebug_infix="fastdebug-"
+  [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-linux-x64-${fastdebug_infix}b${build_number}
 
   echo Running jlink....
@@ -46,7 +46,7 @@ function create_image_bundle {
     --add-modules "$__modules" --output "$IMAGES_DIR"/"$__arch_name"
 
   grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$IMAGES_DIR"/"$__arch_name"/release
-  if [ "$__bundle_name" == "$JBRSDK_BUNDLE" ]; then
+  if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' "$IMAGES_DIR"/"$__arch_name"/release > release
     mv release "$IMAGES_DIR"/"$__arch_name"/release
     copy_jmods "$__modules" "$__modules_path" "$IMAGES_DIR"/"$__arch_name"/jmods
@@ -67,19 +67,19 @@ RELEASE_NAME=linux-x86_64-server-release
 
 case "$bundle_type" in
   "jcef")
-    do_reset_changes=1
+    do_reset_changes=0
     ;;
   "dcevm")
     HEAD_REVISION=$(git rev-parse HEAD)
     git am jb/project/tools/patches/dcevm/*.patch || do_exit $?
-    do_reset_dcevm=1
-    do_reset_changes=1
+    do_reset_dcevm=0
+    do_reset_changes=0
     ;;
   "nomod" | "")
     bundle_type=""
     ;;
   "fd")
-    do_reset_changes=1
+    do_reset_changes=0
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=linux-x86_64-server-fastdebug
     ;;
@@ -113,6 +113,7 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_t
   cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
 
   jbr_name_postfix="_${bundle_type}"
+  [ "$bundle_type" != "fd" ] && jbrsdk_name_postfix="_${bundle_type}"
 fi
 
 # create runtime image bundle
@@ -124,7 +125,7 @@ modules=$(cat $JSDK/release | grep MODULES | sed s/MODULES=//g | sed s/' '/','/g
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
   modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
 fi
-create_image_bundle $JBRSDK_BUNDLE $JBRSDK_BUNDLE $JSDK_MODS_DIR "$modules" || do_exit $?
+create_image_bundle "$JBRSDK_BUNDLE${jbr_name_postfix}" $JBRSDK_BUNDLE $JSDK_MODS_DIR "$modules" || do_exit $?
 
 if [ -z "$bundle_type" ]; then
     JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-linux-test-x64-b${build_number}
