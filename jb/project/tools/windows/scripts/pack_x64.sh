@@ -26,52 +26,33 @@ build_number=$3
 bundle_type=$4
 
 function pack_jbr {
+  __bundle_name=$1
+  __arch_name=$2
 
-  if [ -z "${bundle_type}" ]; then
-    JBR_BUNDLE=jbr
-  else
-    JBR_BUNDLE=jbr_${bundle_type}
-    [ -d ${BASE_DIR}/jbr ] && rm -rf ${BASE_DIR}/jbr
-    cp -R ${BASE_DIR}/${JBR_BUNDLE} ${BASE_DIR}/jbr
-  fi
-  JBR_BASE_NAME=${JBR_BUNDLE}-${JBSDK_VERSION}
+  [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
+  JBR=${__bundle_name}-${JBSDK_VERSION}-windows-x64-${fastdebug_infix}b${build_number}
 
-  JBR=$JBR_BASE_NAME-windows-x64-b$build_number
   echo Creating $JBR.tar.gz ...
 
-  /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR jbr || do_exit $?
+  /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR $__arch_name || do_exit $?
 }
 
-JBRSDK_BASE_NAME=jbrsdk-$JBSDK_VERSION
-JBR_BASE_NAME=jbr-$JBSDK_VERSION
-RELEASE_NAME=windows-x86_64-server-release
-JBSDK=${JBRSDK_BASE_NAME}-osx-x64-b${build_number}
-case "$bundle_type" in
-  "nomod" | "")
-    bundle_type=""
-    ;;
-  "fd")
-    RELEASE_NAME=macosx-x86_64-server-fastdebug
-    JBSDK=${JBRSDK_BASE_NAME}-osx-x64-fastdebug-b${build_number}
-    ;;
-esac
+[ "$bundle_type" == "nomod" ] && bundle_type=""
 
+JBRSDK_BUNDLE=jbrsdk
+RELEASE_NAME=windows-x86_64-server-release
 IMAGES_DIR=build/$RELEASE_NAME/images
-JSDK=$IMAGES_DIR/jdk
-JBSDK=$JBRSDK_BASE_NAME-windows-x64-b$build_number
 BASE_DIR=.
 
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ]; then
-  JBRSDK_BUNDLE=jbrsdk
-  echo Creating $JBSDK.tar.gz ...
-  [ -f "$JBSDK.tar.gz" ] && rm "$JBSDK.tar.gz"
-  /usr/bin/tar -czf $JBSDK.tar.gz $JBRSDK_BUNDLE || do_exit $?
+  jbr_name_postfix="_${bundle_type}"
 fi
 
-pack_jbr $bundle_type
+pack_jbr jbr${jbr_name_postfix} jbr
+pack_jbr jbrsdk${jbr_name_postfix} jbrsdk
 
 if [ -z "$bundle_type" ]; then
-  JBRSDK_TEST=$JBRSDK_BASE_NAME-windows-test-x64-b$build_number
+  JBRSDK_TEST=$JBRSDK_BUNDLE-$JBSDK_VERSION-windows-test-x64-b$build_number
   echo Creating $JBRSDK_TEST.tar.gz ...
   /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
 fi
