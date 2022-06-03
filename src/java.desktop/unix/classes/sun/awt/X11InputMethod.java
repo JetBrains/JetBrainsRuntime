@@ -371,8 +371,8 @@ public abstract class X11InputMethod extends X11InputMethodBase {
         }
     }
 
-    static void recreateAllXIC() {
-        // NOTE: called from native within AWT_LOCK
+    protected static void recreateAllXIC() {
+        // NOTE: called within AWT_LOCK
         Map<X11InputMethod, Integer> im2ctxid = new HashMap<>(activeInputMethods.size());
         for (X11InputMethod im : activeInputMethods) {
             im2ctxid.put(im, im.releaseXIC());
