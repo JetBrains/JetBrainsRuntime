@@ -166,6 +166,95 @@ public final class XInputMethod extends X11InputMethod {
         return peer.getContentWindow();
     }
 
+
+    static void onXKeyEventFiltering(final boolean isXKeyEventFiltered) {
+        // Fix of JBR-1573, JBR-2444, JBR-4394 (a.k.a. IDEA-246833).
+        // Input method is considered broken if and only if all the following statements are true:
+        //   * XFilterEvent have filtered more than filteredEventsThreshold last events of types KeyPress, KeyRelease;
+        //   * Input method hasn't been changed (e.g. recreated);
+        //   * The input context is not in preedit state (XNPreeditStartCallback has been called but then XNPreeditDoneCallback - hasn't)
+
+        // The functionality is disabled
+        if (BrokenImDetectionContext.EATEN_EVENTS_THRESHOLD < 1) {
+            return;
+        }
+        // Must be called within AWT_LOCK
+        if (!XToolkit.isAWTLockHeldByCurrentThread()) {
+            return;
+        }
+
+        if (isXKeyEventFiltered) {
+            final long nativeDataPtr = BrokenImDetectionContext.obtainCurrentXimNativeDataPtr();
+            if (nativeDataPtr == 0) {
+                ++BrokenImDetectionContext.eatenKeyEventsCount;
+            } else {
+                final int isDuringPreediting = BrokenImDetectionContext.isDuringPreediting(nativeDataPtr);
+                if (isDuringPreediting > 0) {
+                    BrokenImDetectionContext.eatenKeyEventsCount = 0;
+                } else if (isDuringPreediting == 0) {
+                    ++BrokenImDetectionContext.eatenKeyEventsCount;
+                } else if (BrokenImDetectionContext.isCurrentXicPassive(nativeDataPtr)) {
+                    // Unfortunately for passive XIC (XIMPreeditNothing | XIMStatusNothing) we have no way to get know
+                    //  whether the XIC is in preediting state or not, so we won't handle this case.
+                    BrokenImDetectionContext.eatenKeyEventsCount = 0;
+                } else {
+                    ++BrokenImDetectionContext.eatenKeyEventsCount;
+                }
+            }
+        } else {
+            BrokenImDetectionContext.eatenKeyEventsCount = 0;
+        }
+
+        if (BrokenImDetectionContext.eatenKeyEventsCount > BrokenImDetectionContext.EATEN_EVENTS_THRESHOLD) {
+            BrokenImDetectionContext.eatenKeyEventsCount = 0;
+            recreateAllXIC();
+        }
+    }
+
+    private static class BrokenImDetectionContext {
+        static final int EATEN_EVENTS_THRESHOLD;
+
+        static int eatenKeyEventsCount = 0;
+
+        /**
+         * @return pointer to X11InputMethodData
+         */
+        static native long obtainCurrentXimNativeDataPtr();
+
+        /**
+         * <0 - unknown
+         * >0 - true
+         *  0 - false
+         */
+        static native int isDuringPreediting(long ximNativeDataPtr);
+
+        static native boolean isCurrentXicPassive(long ximNativeDataPtr);
+
+
+        static {
+            int eatenEventsThresholdInitializer = 7;
+            final String eventsThresholdMode = System.getProperty("recreate.x11.input.method", "true");
+
+            if ("false".equals(eventsThresholdMode)) {
+                eatenEventsThresholdInitializer = 0;
+            } else if (!"true".equals(eventsThresholdMode)) {
+                try {
+                    eatenEventsThresholdInitializer = Integer.parseInt(eventsThresholdMode);
+                } catch (NumberFormatException err) {
+                    log.warning(
+                        "Invalid value of \"recreate.x11.input.method\" system property \"" +
+                            eventsThresholdMode +
+                            "\". Only \"true\", \"false\" and integer values are supported",
+                        err
+                    );
+                }
+            }
+
+            EATEN_EVENTS_THRESHOLD = eatenEventsThresholdInitializer;
+        }
+    }
+
+
     /*
      * Native methods
      */
