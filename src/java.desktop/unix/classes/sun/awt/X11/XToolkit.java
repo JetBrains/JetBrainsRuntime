@@ -988,19 +988,26 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                         }
                     }
                 }
-                if (keyEventLog.isLoggable(PlatformLogger.Level.FINE) && (
-                        ev.get_type() == XConstants.KeyPress
-                                || ev.get_type() == XConstants.KeyRelease)) {
+
+                final boolean isKeyEvent = ( (ev.get_type() == XConstants.KeyPress) ||
+                                             (ev.get_type() == XConstants.KeyRelease) );
+
+                if (keyEventLog.isLoggable(PlatformLogger.Level.FINE) && isKeyEvent) {
                     keyEventLog.fine("before XFilterEvent:" + ev);
                 }
                 if (XlibWrapper.XFilterEvent(ev.getPData(), w)) {
+                    if (isKeyEvent) {
+                        XInputMethod.onXKeyEventFiltering(true);
+                    }
                     continue;
                 }
-                if (keyEventLog.isLoggable(PlatformLogger.Level.FINE) && (
-                        ev.get_type() == XConstants.KeyPress
-                                || ev.get_type() == XConstants.KeyRelease)) {
+                if (keyEventLog.isLoggable(PlatformLogger.Level.FINE) && isKeyEvent) {
                     keyEventLog.fine(
                             "after XFilterEvent:" + ev); // IS THIS CORRECT?
+                }
+
+                if (isKeyEvent) {
+                    XInputMethod.onXKeyEventFiltering(false);
                 }
 
                 dispatchEvent(ev);
