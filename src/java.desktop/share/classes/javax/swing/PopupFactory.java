@@ -46,6 +46,7 @@ import java.util.Map;
 
 import sun.awt.EmbeddedFrame;
 import sun.awt.OSInfo;
+import sun.awt.SunToolkit;
 import sun.swing.SwingAccessor;
 
 import static javax.swing.ClientPropertyKey.PopupFactory_FORCE_HEAVYWEIGHT_POPUP;
@@ -391,9 +392,13 @@ public class PopupFactory {
                 }
             }
 
+            Toolkit toolkit = Toolkit.getDefaultToolkit();
             if (popup == null ||
                 ((JWindow) popup.getComponent())
-                 .getFocusableWindowState() != focusPopup) {
+                 .getFocusableWindowState() != focusPopup ||
+                (toolkit instanceof SunToolkit) &&
+                        (((SunToolkit) toolkit).popupMenusAreSpecial()) &&
+                        popup.isPopupMenu() != (contents instanceof JPopupMenu)) {
 
                 if(popup != null) {
                     // The recycled popup can't serve us well
@@ -415,6 +420,11 @@ public class PopupFactory {
             }
 
             return popup;
+        }
+
+        private boolean isPopupMenu() {
+            Component[] components = ((JWindow) getComponent()).getContentPane().getComponents();
+            return components.length == 1 && components[0] instanceof JPopupMenu;
         }
 
         /**
