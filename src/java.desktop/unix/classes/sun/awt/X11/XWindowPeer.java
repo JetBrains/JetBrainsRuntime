@@ -1182,7 +1182,11 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     @Override
     void setUserTimeBeforeShowing() {
-        if (winAttr.initialFocus || shouldSuppressWmTakeFocus()) {
+        if (XWM.getWMID() == XWM.KDE2_WM && isSimpleWindow() && ((Window)target).getType() == Window.Type.POPUP) {
+            // Workaround, to suppress blinking of taskbar icon, when hover popup is displayed for a background window
+            setUserTime(XToolkit.getCurrentServerTime(), false);
+        }
+        else if (winAttr.initialFocus || shouldSuppressWmTakeFocus()) {
             super.setUserTimeBeforeShowing();
         }
         else {
