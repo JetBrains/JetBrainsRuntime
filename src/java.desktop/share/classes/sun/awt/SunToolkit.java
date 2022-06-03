@@ -1990,6 +1990,10 @@ public abstract class SunToolkit extends Toolkit
         return false;
     }
 
+    public boolean popupMenusAreSpecial() {
+        return false;
+    }
+
     /**
      * Returns whether or not a containing top level window for the passed
      * component is
