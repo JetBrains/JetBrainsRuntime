@@ -1295,7 +1295,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
 
     @Override
     boolean isOverrideRedirect() {
-        return Window.Type.POPUP.equals(getWindowType());
+        return Window.Type.POPUP.equals(getWindowType()) && !XWM.isKDE2();
     }
 
     @Override
