@@ -27,6 +27,7 @@ package sun.awt.X11;
 
 import java.awt.AWTEvent;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.EventQueue;
@@ -59,6 +60,9 @@ import sun.awt.X11GraphicsDevice;
 import sun.awt.X11GraphicsEnvironment;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
+
+import javax.swing.JPopupMenu;
+import javax.swing.JWindow;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -1322,7 +1326,15 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     boolean isOverrideRedirect() {
         return XWM.getWMID() == XWM.OPENLOOK_WM ||
-            Window.Type.POPUP.equals(getWindowType());
+            Window.Type.POPUP.equals(getWindowType()) && (!XWM.isKDE2() || isPopupMenuWindow());
+    }
+
+    private boolean isPopupMenuWindow() {
+        if (!(target instanceof JWindow)) return false;
+        Container contentPane = ((JWindow) target).getContentPane();
+        if (contentPane == null) return false;
+        Component[] components = contentPane.getComponents();
+        return components.length == 1 && components[0] instanceof JPopupMenu;
     }
 
     final boolean isOLWMDecorBug() {
