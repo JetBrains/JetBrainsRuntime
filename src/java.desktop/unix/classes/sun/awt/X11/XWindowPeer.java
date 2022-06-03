@@ -1329,7 +1329,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     boolean isOverrideRedirect() {
         return XWM.getWMID() == XWM.OPENLOOK_WM ||
-            Window.Type.POPUP.equals(getWindowType());
+            Window.Type.POPUP.equals(getWindowType()) && XWM.getWMID() != XWM.KDE2_WM;
     }
 
     final boolean isOLWMDecorBug() {
