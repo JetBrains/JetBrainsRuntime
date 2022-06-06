@@ -173,9 +173,24 @@ public class XInputMethod extends X11InputMethod {
             return;
         }
 
-        // A key event is filtered but the input method is not in preediting state (or its state is unknown)
-        if (isXKeyEventFiltered && (BrokenImDetectionContext.isDuringPreediting() <= 0)) {
-            ++BrokenImDetectionContext.eatenKeyEventsCount;
+        if (isXKeyEventFiltered) {
+            final long nativeDataPtr = BrokenImDetectionContext.obtainCurrentXimNativeDataPtr();
+            if (nativeDataPtr == 0) {
+                ++BrokenImDetectionContext.eatenKeyEventsCount;
+            } else {
+                final int isDuringPreediting = BrokenImDetectionContext.isDuringPreediting(nativeDataPtr);
+                if (isDuringPreediting > 0) {
+                    BrokenImDetectionContext.eatenKeyEventsCount = 0;
+                } else if (isDuringPreediting == 0) {
+                    ++BrokenImDetectionContext.eatenKeyEventsCount;
+                } else if (BrokenImDetectionContext.isCurrentXicPassive(nativeDataPtr)) {
+                    // Unfortunately for passive XIC (XIMPreeditNothing | XIMStatusNothing) we have no way to get know
+                    //  whether the XIC is in preediting state or not, so we won't handle this case.
+                    BrokenImDetectionContext.eatenKeyEventsCount = 0;
+                } else {
+                    ++BrokenImDetectionContext.eatenKeyEventsCount;
+                }
+            }
         } else {
             BrokenImDetectionContext.eatenKeyEventsCount = 0;
         }
@@ -192,11 +207,19 @@ public class XInputMethod extends X11InputMethod {
         static int eatenKeyEventsCount = 0;
 
         /**
+         * @return pointer to X11InputMethodData
+         */
+        static native long obtainCurrentXimNativeDataPtr();
+
+        /**
          * <0 - unknown
          * >0 - true
          *  0 - false
          */
-        static native int isDuringPreediting();
+        static native int isDuringPreediting(long ximNativeDataPtr);
+
+        static native boolean isCurrentXicPassive(long ximNativeDataPtr);
+
 
         static {
             int eatenEventsThresholdInitializer = 7;
@@ -204,7 +227,7 @@ public class XInputMethod extends X11InputMethod {
 
             if ("false".equals(eventsThresholdMode)) {
                 eatenEventsThresholdInitializer = 0;
-            } else {
+            } else if (!"true".equals(eventsThresholdMode)) {
                 try {
                     eatenEventsThresholdInitializer = Integer.parseInt(eventsThresholdMode);
                 } catch (NumberFormatException err) {
