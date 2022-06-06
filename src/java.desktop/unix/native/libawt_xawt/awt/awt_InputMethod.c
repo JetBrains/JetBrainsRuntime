@@ -1574,6 +1574,48 @@ Java_sun_awt_X11_XInputMethod_setXICFocusNative(JNIEnv *env,
 }
 
 
+/*
+ * Class:     sun_awt_X11_XInputMethod_BrokenImDetectionContext
+ * Method:    obtainCurrentXimNativeDataPtr
+ * Signature: ()J
+ *
+ * NOTE: MUST BE CALLED WITHIN AWT_LOCK
+ */
+JNIEXPORT jlong JNICALL Java_sun_awt_X11_XInputMethod_00024BrokenImDetectionContext_obtainCurrentXimNativeDataPtr
+  (JNIEnv *env, jclass cls)
+{
+    jlong result = 0;
+
+    if (isX11InputMethodGRefInList(currentX11InputMethodInstance)) {
+        X11InputMethodData * const pX11IMData = getX11InputMethodData(env, currentX11InputMethodInstance);
+        result = ptr_to_jlong(pX11IMData);
+    }
+
+    return result;
+}
+
+/*
+ * Class:     sun_awt_X11_XInputMethod_BrokenImDetectionContext
+ * Method:    isCurrentXicPassive
+ * Signature: (J)Z
+ *
+ * NOTE: MUST BE CALLED WITHIN AWT_LOCK
+ */
+JNIEXPORT jboolean JNICALL Java_sun_awt_X11_XInputMethod_00024BrokenImDetectionContext_isCurrentXicPassive
+  (JNIEnv *env, jclass cls, jlong ximNativeDataPtr)
+{
+    X11InputMethodData * const pX11ImData = (X11InputMethodData *)jlong_to_ptr(ximNativeDataPtr);
+    if (pX11ImData == NULL) {
+        return JNI_FALSE;
+    }
+
+    const jboolean result = (pX11ImData->current_ic == NULL) ? JNI_FALSE
+                            : (pX11ImData->current_ic == pX11ImData->ic_passive) ? JNI_TRUE
+                            : JNI_FALSE;
+
+    return result;
+}
+
 static XIMPreeditState getPreeditStateOf(XIC xic) {
 #if defined(__linux__) && defined(_LP64) && !defined(_LITTLE_ENDIAN)
     // XIMPreeditState value which is used for XGetICValues must be 32bit on BigEndian XOrg's xlib
@@ -1607,27 +1649,23 @@ static XIMPreeditState getPreeditStateOf(XIC xic) {
  * * >0 in case the IM is in preediting state;
  * *  0 in case the IM is not in preediting state;
  * * <0 in case it's unknown whether the IM is in preediting state or not.
+ *
+ * NOTE: MUST BE CALLED WITHIN AWT_LOCK
  */
 JNIEXPORT jint JNICALL Java_sun_awt_X11_XInputMethod_00024BrokenImDetectionContext_isDuringPreediting
-  (JNIEnv *env, jclass cls)
+  (JNIEnv *env, jclass cls, jlong ximNativeDataPtr)
 {
+    X11InputMethodData * const pX11ImData = (X11InputMethodData *)jlong_to_ptr(ximNativeDataPtr);
+    if (pX11ImData == NULL) {
+        return -1;
+    }
+
     jint result = -1;
 
-    AWT_LOCK();
-
-    if (!isX11InputMethodGRefInList(currentX11InputMethodInstance)) {
-        goto finally;
-    }
-
-    X11InputMethodData * const pX11IMData = getX11InputMethodData(env, currentX11InputMethodInstance);
-    if (pX11IMData == NULL) {
-        goto finally;
-    }
-
-    if (pX11IMData->brokenImDetectionContext.isBetweenPreeditStartAndPreeditDone) {
+    if (pX11ImData->brokenImDetectionContext.isBetweenPreeditStartAndPreeditDone) {
         result = 1;
-    } else if (pX11IMData->current_ic != NULL) {
-        const XIMPreeditState preeditState = getPreeditStateOf(pX11IMData->current_ic);
+    } else if (pX11ImData->current_ic != NULL) {
+        const XIMPreeditState preeditState = getPreeditStateOf(pX11ImData->current_ic);
         if (preeditState == XIMPreeditEnable) {
             result = 1;
         } else if (preeditState == XIMPreeditDisable) {
@@ -1635,8 +1673,6 @@ JNIEXPORT jint JNICALL Java_sun_awt_X11_XInputMethod_00024BrokenImDetectionConte
         }
     }
 
- finally:
-    AWT_UNLOCK();
     return result;
 }
 
