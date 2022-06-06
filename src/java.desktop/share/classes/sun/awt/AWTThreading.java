@@ -446,7 +446,11 @@ public class AWTThreading {
             synchronized (eventDispatchThreadStateNotifiers) {
                 if (!isEventDispatchThreadFree) {
                     eventDispatchThreadStateNotifiers.add(future);
-                    future.whenComplete((r, ex) -> eventDispatchThreadStateNotifiers.remove(future));
+                    future.whenComplete((r, ex) -> {
+                        synchronized (eventDispatchThreadStateNotifiers) {
+                            eventDispatchThreadStateNotifiers.remove(future);
+                        }
+                    });
                     return future;
                 }
             }
