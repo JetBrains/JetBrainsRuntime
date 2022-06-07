@@ -79,7 +79,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class CPlatformWindow extends CFRetainedResource implements PlatformWindow {
-    private native long nativeCreateNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h);
+    private native long nativeCreateNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h, double transparentTitleBarHeight);
     private static native void nativeSetNSWindowStyleBits(long nsWindowPtr, int mask, int data);
     private static native void nativeSetNSWindowAppearance(long nsWindowPtr, String appearanceName);
     private static native void nativeSetNSWindowMenuBar(long nsWindowPtr, long menuBarPtr);
@@ -292,6 +292,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         new Property<CPlatformWindow>(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT) {
             public void applyProperty(final CPlatformWindow c, final Object value) {
                 if (value != null && (value instanceof Float)) {
+                    boolean enabled = (float) value != 0f;
+                    c.setStyleBits(FULL_WINDOW_CONTENT, enabled);
+                    c.setStyleBits(TRANSPARENT_TITLE_BAR, enabled);
+                    c.setStyleBits(TITLE_VISIBLE, !enabled);
                     c.execute(ptr -> AWTThreading.executeWaitToolkit(wait -> nativeSetTransparentTitleBarHeight(ptr, (float) value)));
                 }
             }
@@ -362,6 +366,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         responder = createPlatformResponder();
         contentView.initialize(peer, responder);
 
+        float transparentTitleBarHeight = getTransparentTitleBarHeight(_target);
+
         Rectangle bounds;
         if (!IS(DECORATED, styleBits)) {
             // For undecorated frames the move/resize event does not come if the frame is centered on the screen
@@ -382,7 +388,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                                 + ", bounds=" + bounds);
                     }
                     long windowPtr = createNSWindow(viewPtr, ownerPtr, styleBits,
-                            bounds.x, bounds.y, bounds.width, bounds.height);
+                            bounds.x, bounds.y, bounds.width, bounds.height, transparentTitleBarHeight);
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                         logger.fine("window created: " + Long.toHexString(windowPtr));
                     }
@@ -397,7 +403,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                             + ", bounds=" + bounds);
                 }
                 long windowPtr = createNSWindow(viewPtr, 0, styleBits,
-                        bounds.x, bounds.y, bounds.width, bounds.height);
+                        bounds.x, bounds.y, bounds.width, bounds.height, transparentTitleBarHeight);
                 if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                     logger.fine("window created: " + Long.toHexString(windowPtr));
                 }
@@ -560,6 +566,14 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             prop = rootpane.getClientProperty(WINDOW_TITLE_VISIBLE);
             if (prop != null) {
                 styleBits = SET(styleBits, TITLE_VISIBLE, Boolean.parseBoolean(prop.toString()));
+            }
+
+            prop = rootpane.getClientProperty(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT);
+            if (prop != null) {
+                boolean enabled = Float.parseFloat(prop.toString()) != 0f;
+                styleBits = SET(styleBits, FULL_WINDOW_CONTENT, enabled);
+                styleBits = SET(styleBits, TRANSPARENT_TITLE_BAR, enabled);
+                styleBits = SET(styleBits, TITLE_VISIBLE, !enabled);
             }
         }
 
@@ -1452,8 +1466,16 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return false;
     }
 
-    private long createNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h) {
-        return AWTThreading.executeWaitToolkit(() -> nativeCreateNSWindow(nsViewPtr, ownerPtr, styleBits, x, y, w, h));
+    private long createNSWindow(long nsViewPtr,
+                                long ownerPtr,
+                                long styleBits,
+                                double x,
+                                double y,
+                                double w,
+                                double h,
+                                double transparentTitleBarHeight) {
+        return AWTThreading.executeWaitToolkit(() ->
+                nativeCreateNSWindow(nsViewPtr, ownerPtr, styleBits, x, y, w, h, transparentTitleBarHeight));
     }
 
     // ----------------------------------------------------------------------
@@ -1487,20 +1509,24 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         isFullScreenAnimationOn = false;
     }
 
-    // JBR API internals
-    private static void setCustomDecorationTitleBarHeight(Window target, ComponentPeer peer, float height) {
-        if (peer instanceof LWComponentPeer) {
-            PlatformWindow platformWindow = ((LWComponentPeer<?, ?>) peer).getPlatformWindow();
-            if (platformWindow instanceof CPlatformWindow) {
-                ((CPlatformWindow) platformWindow).execute(ptr -> {
-                    AWTThreading.executeWaitToolkit(wait -> nativeSetTransparentTitleBarHeight(ptr, height));
-                });
-                if (target instanceof javax.swing.RootPaneContainer) {
-                    final javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer)target).getRootPane();
-                    if (rootpane != null) rootpane.putClientProperty(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT, height);
+    private float getTransparentTitleBarHeight(Window target) {
+        if (target instanceof javax.swing.RootPaneContainer) {
+            final javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer)target).getRootPane();
+            if (rootpane != null) {
+                Object transparentTitleBarHeightProperty = rootpane.getClientProperty(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT);
+                if (transparentTitleBarHeightProperty != null) {
+                    return Float.parseFloat(transparentTitleBarHeightProperty.toString());
                 }
             }
         }
+        return 0f;
     }
 
+    // JBR API internals
+    private static void setCustomDecorationTitleBarHeight(Window target, ComponentPeer peer, float height) {
+        if (target instanceof javax.swing.RootPaneContainer) {
+            final javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer)target).getRootPane();
+            if (rootpane != null) rootpane.putClientProperty(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT, height);
+        }
+    }
 }
