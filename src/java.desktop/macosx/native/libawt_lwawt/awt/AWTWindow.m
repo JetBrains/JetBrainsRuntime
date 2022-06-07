@@ -416,7 +416,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
     }
 
     if (IS(mask, TITLE_VISIBLE) && [self.nsWindow respondsToSelector:@selector(setTitleVisibility:)]) {
-        [self.nsWindow setTitleVisibility:(IS(bits, TITLE_VISIBLE)) ? NSWindowTitleVisible :NSWindowTitleHidden];
+        [self.nsWindow setTitleVisibility:(IS(bits, TITLE_VISIBLE) ? NSWindowTitleVisible : NSWindowTitleHidden)];
     }
 
 }
@@ -426,6 +426,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
                     styleBits:(jint)bits
                     frameRect:(NSRect)rect
                   contentView:(NSView *)view
+    transparentTitleBarHeight:(CGFloat)transparentTitleBarHeight
 {
 AWT_ASSERT_APPKIT_THREAD;
 
@@ -485,6 +486,11 @@ AWT_ASSERT_APPKIT_THREAD;
     self.javaWindowTabbingMode = [self getJavaWindowTabbingMode];
     self.nsWindow.collectionBehavior = NSWindowCollectionBehaviorManaged;
     self.isEnterFullScreen = NO;
+
+    _transparentTitleBarHeight = transparentTitleBarHeight;
+    if (transparentTitleBarHeight != 0.0 && !self.isFullScreen) {
+        [self setUpTransparentTitleBar];
+    }
 
     return self;
 }
@@ -1449,32 +1455,25 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 - (void) setTransparentTitleBarHeight: (CGFloat) transparentTitleBarHeight
 {
     if (_transparentTitleBarHeight == transparentTitleBarHeight) return;
+
     if (_transparentTitleBarHeight != 0.0f) {
         _transparentTitleBarHeight = transparentTitleBarHeight;
         if (transparentTitleBarHeight == 0.0f) {
-            dispatch_sync(dispatch_get_main_queue(), ^{
-                [self.nsWindow setTitlebarAppearsTransparent:NO];
-                [self.nsWindow setTitleVisibility:NSWindowTitleVisible];
-                [self.nsWindow setStyleMask:[self.nsWindow styleMask]&(~NSWindowStyleMaskFullSizeContentView)];
-
-                if (!self.isFullScreen) {
+            if (!self.isFullScreen) {
+                dispatch_sync(dispatch_get_main_queue(), ^{
                     [self resetTitleBar];
-                }
-            });
+                });
+            }
         } else if (_transparentTitleBarHeightConstraint != nil || _transparentTitleBarButtonCenterXConstraints != nil) {
             [self updateTransparentTitleBarConstraints];
         }
     } else {
         _transparentTitleBarHeight = transparentTitleBarHeight;
-        dispatch_sync(dispatch_get_main_queue(), ^{
-            [self.nsWindow setTitlebarAppearsTransparent:YES];
-            [self.nsWindow setTitleVisibility:NSWindowTitleHidden];
-            [self.nsWindow setStyleMask:[self.nsWindow styleMask]|NSWindowStyleMaskFullSizeContentView];
-
-            if (!self.isFullScreen) {
+        if (!self.isFullScreen) {
+            dispatch_sync(dispatch_get_main_queue(), ^{
                 [self setUpTransparentTitleBar];
-            }
-        });
+            });
+        }
     }
 }
 
@@ -1590,10 +1589,10 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetAllowAutom
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
  * Method:    nativeCreateNSWindow
- * Signature: (JJIIII)J
+ * Signature: (JJIDDDDD)J
  */
 JNIEXPORT jlong JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeCreateNSWindow
-(JNIEnv *env, jobject obj, jlong contentViewPtr, jlong ownerPtr, jlong styleBits, jdouble x, jdouble y, jdouble w, jdouble h)
+(JNIEnv *env, jobject obj, jlong contentViewPtr, jlong ownerPtr, jlong styleBits, jdouble x, jdouble y, jdouble w, jdouble h, jdouble transparentTitleBarHeight)
 {
     __block AWTWindow *window = nil;
 
@@ -1620,7 +1619,8 @@ JNI_COCOA_ENTER(env);
                                                ownerWindow:owner
                                                  styleBits:styleBits
                                                  frameRect:frameRect
-                                               contentView:contentView];
+                                               contentView:contentView
+                                 transparentTitleBarHeight:(CGFloat)transparentTitleBarHeight];
         // the window is released is CPlatformWindow.nativeDispose()
 
         if (window) {
@@ -1707,8 +1707,8 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
- * Method:    nativeSetNSWindowStyleBits
- * Signature: (JII)V
+ * Method:    nativeSetNSWindowAppearance
+ * Signature: (JLjava/lang/String;)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetNSWindowAppearance
         (JNIEnv *env, jclass clazz, jlong windowPtr,  jstring appearanceName)
