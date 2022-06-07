@@ -49,12 +49,10 @@ import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
 import java.awt.peer.FileDialogPeer;
-import java.awt.peer.WindowPeer;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.security.AccessController;
 import java.util.List;
-import sun.lwawt.LWWindowPeer;
 
 import com.jetbrains.desktop.JBRFileDialog;
 import sun.awt.AWTAccessor;
@@ -212,13 +210,6 @@ class CFileDialog implements FileDialogPeer {
 
     @Override
     public void blockWindows(List<Window> windows) {
-        for (Window w : windows) {
-            WindowPeer wp =
-                    (WindowPeer) AWTAccessor.getComponentAccessor().getPeer(w);
-            if (wp != null) {
-                wp.setModalBlocked(target, true);
-            }
-        }
     }
 
     @Override
@@ -381,7 +372,7 @@ class CFileDialog implements FileDialogPeer {
 
     @Override
     public boolean isFocusable() {
-        return true;
+        return false;
     }
 
     @Override
