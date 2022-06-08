@@ -660,7 +660,7 @@ javax/security/auth/kerberos/KerberosTixDateTest.java           8039280 generic-
 sun/security/provider/PolicyFile/GrantAllPermToExtWhenNoPolicy.java 8039280 generic-all
 sun/security/provider/PolicyParser/ExtDirsChange.java           8039280 generic-all
 sun/security/provider/PolicyParser/PrincipalExpansionError.java 8039280 generic-all
-sun/security/ssl/SSLSessionImpl/NoInvalidateSocketException.java 8277970 linux-all,macosx-x64
+sun/security/ssl/SSLSessionImpl/NoInvalidateSocketException.java 8277970,8280158 generic-all
 
 sun/security/ssl/X509TrustManagerImpl/Symantec/Distrust.java    8287109 generic-all
 
@@ -812,6 +812,8 @@ tools/jlink/JLinkReproducibleTest.java                          8258945 generic-
 com/sun/jdi/RepStep.java                                        8043571 generic-all
 
 com/sun/jdi/NashornPopFrameTest.java                            8187143 generic-all
+
+com/sun/jdi/InvokeHangTest.java                                 8218463 linux-all
 
 ############################################################################
 
