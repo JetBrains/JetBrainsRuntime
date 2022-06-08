@@ -430,6 +430,10 @@ abstract class XDecoratedPeer extends XWindowPeer {
             insets_corrected = true;
             reshape(dimensions, SET_SIZE, false);
         } else if (xe.get_parent() == root) {
+            if (!isReparented()) {
+                // X server on Windows (e.g. Cygwin/X) does perform a no-op reparenting to the root window
+                return;
+            }
             configure_seen = false;
             insets_corrected = false;
 
