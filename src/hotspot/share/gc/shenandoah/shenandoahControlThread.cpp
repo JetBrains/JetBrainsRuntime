@@ -187,7 +187,7 @@ void ShenandoahControlThread::run_service() {
       heap->reset_bytes_allocated_since_gc_start();
 
       // Capture metaspace usage before GC.
-      const size_t metadata_prev_used = MetaspaceUtils::used_bytes();
+      const metaspace::MetaspaceSizesSnapshot prev_meta_sizes;
 
       // If GC was requested, we are sampling the counters even without actual triggers
       // from allocation machinery. This captures GC phases more accurately.
@@ -273,7 +273,7 @@ void ShenandoahControlThread::run_service() {
       heap->phase_timings()->flush_cycle_to_global();
 
       // Print Metaspace change following GC (if logging is enabled).
-      MetaspaceUtils::print_metaspace_change(metadata_prev_used);
+      MetaspaceUtils::print_metaspace_change(prev_meta_sizes);
 
       // GC is over, we are at idle now
       if (ShenandoahPacing) {
