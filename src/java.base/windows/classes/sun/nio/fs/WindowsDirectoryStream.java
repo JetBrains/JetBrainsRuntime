@@ -179,6 +179,12 @@ class WindowsDirectoryStream
                     int nextEntryOffset = WindowsFileAttributes.getNextOffsetFromFileDirInformation(
                             queryDirectoryInformation, dirInformationAddress);
                     nextOffset = nextEntryOffset == 0 ? -1 : nextOffset + nextEntryOffset;
+                    if (nextOffset > NATIVE_BUFFER_SIZE - WindowsFileAttributes.SIZEOF_FILE_DIRECTORY_INFORMATION) {
+                        // The offset to the next data structure sometimes points past the end of the buffer.
+                        // Treat this as there are no more data (and hope NextNtQueryDirectoryInformation()
+                        // didn't write past the allocated memory).
+                        nextOffset = -1;
+                    }
                     name = WindowsFileAttributes.getFileNameFromFileDirInformation(
                             queryDirectoryInformation, dirInformationAddress);
                     if (isSelfOrParent(name)) {
