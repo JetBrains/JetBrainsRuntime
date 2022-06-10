@@ -489,4 +489,30 @@ extern void initSamplers(id<MTLDevice> device);
     return _bufImgOp;
 }
 
+- (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
+    [self.encoderManager endEncoder];
+    MTLCommandBufferWrapper * cbwrapper = [self pullCommandBufferWrapper];
+    id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+    __block MTLLayer *layer = nil;
+    __block BOOL dSync = updateDisplay;
+    if (dstOps != NULL) {
+        MTLSDOps *dstMTLOps = (MTLSDOps *) dstOps->privOps;
+        layer = (MTLLayer *) dstMTLOps->layer;
+        [layer retain];
+    }
+    [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+        [cbwrapper release];
+        if (layer != nil) {
+            if (dSync) {
+                [layer performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
+            }
+            [layer release];
+        }
+    }];
+    [commandbuf commit];
+    if (waitUntilCompleted) {
+        [commandbuf waitUntilCompleted];
+    }
+}
 @end
