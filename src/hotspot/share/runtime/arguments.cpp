@@ -1311,6 +1311,8 @@ bool Arguments::add_property(const char* prop, PropertyWriteable writeable, Prop
       if (old_java_vendor_url_bug != nullptr) {
         os::free((void *)old_java_vendor_url_bug);
       }
+    } else if (strcmp(key, "jbr.catch.SIGABRT") == 0) {
+      CatchSIGABRT = (strcmp(value, "true") == 0);
     }
 
     // Create new property and add at the end of the list
