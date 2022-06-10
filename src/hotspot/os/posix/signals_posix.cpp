@@ -567,6 +567,12 @@ int JVM_HANDLE_XXX_SIGNAL(int sig, siginfo_t* info,
     return true; // ignore it
   }
 
+  if (sig == SIGABRT) {
+      // Re-set the handler so that we don't recurse if/when abort() is called
+      // from here.
+      os::signal(SIGABRT, (void*)SIG_DFL);
+  }
+
   // Note: it's not uncommon that JNI code uses signal/sigset to install,
   // then restore certain signal handler (e.g. to temporarily block SIGPIPE,
   // or have a SIGILL handler when detecting CPU type). When that happens,
@@ -1313,6 +1319,9 @@ void install_signal_handlers() {
     // that an attach client accidentally forces HotSpot to quit prematurely. We skip the periodic
     // check because late initialization will overwrite it to UserHandler.
     set_signal_handler(BREAK_SIGNAL, false);
+  }
+  if (CatchSIGABRT) {
+    set_signal_handler(SIGABRT);
   }
 #if defined(__APPLE__)
   // lldb (gdb) installs both standard BSD signal handlers, and mach exception
