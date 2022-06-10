@@ -41,6 +41,8 @@
     float bufferHeight;
     id<MTLTexture> buffer;
     int nextDrawableCount;
+    int frameCount;
+    int blittedFrame;
     int topInset;
     int leftInset;
     CVDisplayLinkRef displayLink;
@@ -55,8 +57,12 @@
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
 @property (readwrite, assign) CVDisplayLinkRef displayLink;
+@property (readwrite, atomic) int displayLinkCount;
+@property (readwrite, atomic) int frameCount;
+@property (readonly) NSLock* blitLock;
 
 - (id) initWithJavaLayer:(jobject)layer;
+- (void) validateEnv:(JNIEnv*)env sData:(jobject)surfaceData;
 
 - (void) blitTexture;
 - (void) fillParallelogramCtxX:(jfloat)x
