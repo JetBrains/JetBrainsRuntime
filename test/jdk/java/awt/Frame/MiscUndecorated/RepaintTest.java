@@ -65,6 +65,7 @@ public class RepaintTest {
     private boolean passed = true;
     private boolean buttonClicked = false;
     private final int MAX_TOLERANCE_LEVEL = 10;
+    BufferedImage cImg = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
 
     public static void main(String[] args) {
         RepaintTest test = new RepaintTest();
@@ -111,6 +112,7 @@ public class RepaintTest {
 
         frame.setBackground(Color.green);
         frame.setVisible(true);
+        hideCursor(frame);
     }
     private Component createButton(boolean swingControl, String txt) {
         if(swingControl) {
@@ -290,5 +292,10 @@ public class RepaintTest {
             comparison = false;
         }
         return comparison;
+    }
+
+    void hideCursor(Frame f) {
+        f.setCursor(Toolkit.getDefaultToolkit().createCustomCursor(
+                cImg, new Point(0, 0), ""));
     }
 }

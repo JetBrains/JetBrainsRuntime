@@ -80,8 +80,7 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
     if (mtlc != NULL) {
         [mtlc.encoderManager endEncoder];
 
-        if (op == MTL_OP_RESET_PAINT || op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS ||
-            mtlPreviousOp == MTL_OP_MASK_OP)
+        if (op == MTL_OP_RESET_PAINT || op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS)
         {
             MTLCommandBufferWrapper *cbwrapper = [mtlc pullCommandBufferWrapper];
             id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
@@ -881,18 +880,26 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             [mtlc.encoderManager endEncoder];
             MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
             id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+            __block MTLLayer *layer = nil;
+            if (dstOps != NULL) {
+                MTLSDOps *dstMTLOps = (MTLSDOps *) dstOps->privOps;
+                layer = (MTLLayer *) dstMTLOps->layer;
+                [layer retain];
+            }
+
             [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
                 [cbwrapper release];
+                if (layer != nil) {
+                    J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLRenderQueue_flushBuffer: frame=%d completed",
+                                layer.frameCount);
+                    layer.frameCount++;
+                    [layer performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
+                    [layer startDisplayLink];
+                    [layer release];
+                }
             }];
             [commandbuf commit];
-            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
-            if (dstOps != NULL) {
-                MTLSDOps *dstMTLOps = (MTLSDOps *)dstOps->privOps;
-                MTLLayer *layer = (MTLLayer*)dstMTLOps->layer;
-                if (layer != NULL) {
-                    [layer startDisplayLink];
-                }
-            }
         }
         RESET_PREVIOUS_OP();
     }
