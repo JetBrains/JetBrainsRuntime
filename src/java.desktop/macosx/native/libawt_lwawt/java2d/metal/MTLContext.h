@@ -229,6 +229,7 @@
 
 - (id<MTLCommandBuffer>)createCommandBuffer;
 - (id<MTLCommandBuffer>)createBlitCommandBuffer;
+- (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 @end
 
 /**
