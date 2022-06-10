@@ -559,6 +559,12 @@ int JVM_HANDLE_XXX_SIGNAL(int sig, siginfo_t* info,
 {
   assert(info != nullptr && ucVoid != nullptr, "sanity");
 
+  if (sig == SIGABRT) {
+      // Re-set the handler so that we don't recurse if/when abort() is called
+      // from here.
+      PosixSignals::install_generic_signal_handler(SIGABRT, (void*)SIG_DFL);
+  }
+
   // Note: it's not uncommon that JNI code uses signal/sigset to install,
   // then restore certain signal handler (e.g. to temporarily block SIGPIPE,
   // or have a SIGILL handler when detecting CPU type). When that happens,
@@ -1339,6 +1345,10 @@ void install_signal_handlers() {
     int ret =  PosixSignals::install_sigaction_signal_handler(&sigAct, &oldSigAct,
                                                               BREAK_SIGNAL, UserHandler);
     assert(ret == 0, "check");
+  }
+
+  if (CatchSIGABRT) {
+    set_signal_handler(SIGABRT);
   }
 
 #if defined(__APPLE__)
