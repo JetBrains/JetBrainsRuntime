@@ -41,6 +41,9 @@
     float bufferHeight;
     id<MTLTexture> buffer;
     int nextDrawableCount;
+    int frameCount;
+    int completedFrame;
+    int blittedFrame;
     int topInset;
     int leftInset;
     CVDisplayLinkRef displayLink;
@@ -55,8 +58,14 @@
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
 @property (readwrite, assign) CVDisplayLinkRef displayLink;
+@property (readwrite, atomic) int displayLinkCount;
+@property (readwrite, atomic) int frameCount;
+@property (readwrite, atomic) int completedFrame;
+@property (readwrite, atomic) int blittedFrame;
+
 
 - (id) initWithJavaLayer:(jobject)layer;
+- (void) validateEnv:(JNIEnv*)env sData:(jobject)surfaceData;
 
 - (void) blitTexture;
 - (void) fillParallelogramCtxX:(jfloat)x
@@ -70,6 +79,7 @@
 - (void) redraw;
 - (void) startDisplayLink;
 - (void) stopDisplayLink;
+- (void) resetBlittedFrame;
 @end
 
 #endif /* MTLLayer_h_Included */
