@@ -235,14 +235,8 @@ replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRas
                           toTexture:dest
                    destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
         [blitEncoder endEncoding];
-        [mtlc.encoderManager endEncoder];
 
-        MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
-        id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
-        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-            [cbwrapper release];
-        }];
-        [commandbuf commit];
+        [mtlc commitCommandBuffer:NO display:NO];
     }
 }
 
@@ -848,14 +842,7 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
                         dstOps->isOpaque, INTERPOLATION_NEAREST_NEIGHBOR,
                         srcBounds.x1, srcBounds.y1, srcBounds.x2, srcBounds.y2,
                         dstBounds.x1, dstBounds.y1, dstBounds.x2, dstBounds.y2);
-            [mtlc.encoderManager endEncoder];
-            MTLCommandBufferWrapper * cbwrapper =
-                [mtlc pullCommandBufferWrapper];
-            id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
-            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                [cbwrapper release];
-            }];
-            [commandbuf commit];
+            [mtlc commitCommandBuffer:NO display:NO];
         }
    }
 }
