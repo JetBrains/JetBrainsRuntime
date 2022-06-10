@@ -179,6 +179,9 @@ class WindowsDirectoryStream
                     int nextEntryOffset = WindowsFileAttributes.getNextOffsetFromFileDirInformation(
                             queryDirectoryInformation, dirInformationAddress);
                     nextOffset = nextEntryOffset == 0 ? -1 : nextOffset + nextEntryOffset;
+                    if (nextOffset > NATIVE_BUFFER_SIZE - WindowsFileAttributes.SIZEOF_FILE_DIRECTORY_INFORMATION) {
+                        throw new DirectoryIteratorException(new IOException("NextNtQueryDirectoryInformation() provided bad offset " + nextEntryOffset));
+                    }
                     name = WindowsFileAttributes.getFileNameFromFileDirInformation(
                             queryDirectoryInformation, dirInformationAddress);
                     if (isSelfOrParent(name)) {
