@@ -107,6 +107,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private static native boolean nativeDelayShowing(long nsWindowPtr);
     private static native void nativeSetTransparentTitleBarHeight(long nsWindowPtr, float height);
     private static native void nativeCallDeliverMoveResizeEvent(long nsWindowPtr);
+    private static native void nativeSetRoundedCorners(long nsWindowPrt, float radius);
 
     // Logger to report issues happened during execution but that do not affect functionality
     private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.CPlatformWindow");
@@ -140,6 +141,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     public static final String WINDOW_TITLE_VISIBLE = "apple.awt.windowTitleVisible";
     public static final String WINDOW_APPEARANCE = "apple.awt.windowAppearance";
     public static final String WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT = "apple.awt.windowTransparentTitleBarHeight";
+    public static final String WINDOW_CORNER_RADIUS = "apple.awt.windowCornerRadius";
 
     // This system property is named as jdk.* because it is not specific to AWT
     // and it is also used in JavaFX
@@ -296,6 +298,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                     c.setStyleBits(TRANSPARENT_TITLE_BAR, enabled);
                     c.setStyleBits(TITLE_VISIBLE, !enabled);
                     c.execute(ptr -> AWTThreading.executeWaitToolkit(wait -> nativeSetTransparentTitleBarHeight(ptr, (float) value)));
+                }
+            }
+        },
+        new Property<CPlatformWindow>(WINDOW_CORNER_RADIUS) {
+            public void applyProperty(final CPlatformWindow c, final Object value) {
+                if (value != null && (value instanceof Float)) {
+                    c.execute(ptr -> nativeSetRoundedCorners(ptr, (float) value));
                 }
             }
         }
