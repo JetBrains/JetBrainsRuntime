@@ -164,6 +164,9 @@ class WindowsFileAttributes
     private static final int OFFSETOF_DIR_INFO_FILENAME_LENGTH = 60;
     private static final int OFFSETOF_DIR_INFO_FILENAME = 64;
 
+    // Minimum sane size of either _FILE_DIRECTORY_INFORMATION or _FILE_ID_FULL_DIR_INFORMATION
+    public static final int SIZEOF_FILE_DIRECTORY_INFORMATION = 65;
+
     // used to adjust values between Windows and java epoch
     private static final long WINDOWS_EPOCH_IN_MICROSECONDS = -11644473600000000L;
 
