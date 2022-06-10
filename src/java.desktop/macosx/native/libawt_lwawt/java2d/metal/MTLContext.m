@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -489,4 +489,36 @@ extern void initSamplers(id<MTLDevice> device);
     return _bufImgOp;
 }
 
+- (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
+    [self.encoderManager endEncoder];
+    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+    __block MTLLayer *layer = nil;
+    __block BOOL dSync = updateDisplay;
+    if (dstOps != NULL) {
+        MTLSDOps *dstMTLOps = (MTLSDOps *) dstOps->privOps;
+        layer = (MTLLayer *) dstMTLOps->layer;
+    }
+    MTLCommandBufferWrapper * cbwrapper = [self pullCommandBufferWrapper];
+    if (cbwrapper != nil) {
+        if (layer != nil) {
+            [layer retain];
+        }
+        id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+            [cbwrapper release];
+            if (layer != nil) {
+                if (dSync) {
+                    [layer startRedraw];
+                }
+                [layer release];
+            }
+        }];
+        [commandbuf commit];
+        if (waitUntilCompleted) {
+            [commandbuf waitUntilCompleted];
+        }
+    } else if (layer != nil && updateDisplay) {
+        [layer startRedraw];
+    }
+}
 @end
