@@ -563,6 +563,12 @@ int JVM_HANDLE_XXX_SIGNAL(int sig, siginfo_t* info,
 {
   assert(info != NULL && ucVoid != NULL, "sanity");
 
+  if (sig == SIGABRT) {
+      // Re-set the handler so that we don't recurse if/when abort() is called
+      // from here.
+      os::signal(SIGABRT, (void*)SIG_DFL);
+  }
+
   // Note: it's not uncommon that JNI code uses signal/sigset to install,
   // then restore certain signal handler (e.g. to temporarily block SIGPIPE,
   // or have a SIGILL handler when detecting CPU type). When that happens,
@@ -1320,6 +1326,10 @@ void install_signal_handlers() {
     // -XX:+ReduceSignalUsage, libjsig will prevent changing BREAK_SIGNAL's
     // handler to a custom handler.
     os::signal(BREAK_SIGNAL, os::user_handler());
+  }
+
+  if (CatchSIGABRT) {
+    set_signal_handler(SIGABRT);
   }
 
 #if defined(__APPLE__)
