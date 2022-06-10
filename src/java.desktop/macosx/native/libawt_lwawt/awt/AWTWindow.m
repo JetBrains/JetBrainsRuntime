@@ -2384,3 +2384,24 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeCallDeliverMo
 
     JNI_COCOA_EXIT(env);
 }
+
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetRoundedCorners
+(JNIEnv *env, jclass clazz, jlong windowPtr, jfloat radius)
+{
+    JNI_COCOA_ENTER(env);
+
+    NSWindow *w = (NSWindow *)jlong_to_ptr(windowPtr);
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        w.hasShadow = YES;
+        w.contentView.wantsLayer = YES;
+        w.contentView.layer.cornerRadius = radius;
+        w.contentView.layer.masksToBounds = YES;
+        w.backgroundColor = NSColor.clearColor;
+        w.opaque = NO;
+        // remove corner radius animation
+        [w.contentView.layer removeAllAnimations];
+        [w invalidateShadow];
+    }];
+
+    JNI_COCOA_EXIT(env);
+}
