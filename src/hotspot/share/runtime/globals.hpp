@@ -2099,8 +2099,10 @@ const intx ObjectAlignmentInBytes = 8;
           "core: core HA. Use integrated hotswap-agent-core.jar"            \
           "external: external HA. use external HA, open required JDK "      \
           "modules.")                                                       \
-          constraint(HotswapAgentConstraintFunc, AfterErgo)
-
+          constraint(HotswapAgentConstraintFunc, AfterErgo)                 \
+                                                                            \
+  product(bool, CatchSIGABRT, false,                                        \
+          "Handle SIGABRT and generate hs_err file (Unix only) ")
 
 // end of RUNTIME_FLAGS
 
