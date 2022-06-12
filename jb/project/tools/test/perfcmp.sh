@@ -60,7 +60,13 @@ else
   testContent=`paste -d '\t' $refFile <(echo "$curValues") | tail -n +1`
 fi
 
-testContent=`echo "$testContent" | awk -F'\t' '{ if ($3>$2+$2*0.1) {print "* "$1"\t"$2"\t"$3"\t"(($2==0)?"-":$3/$2)} else {print "  "$1"\t"$2"\t"$3"\t"(($2==0)?"-":$3/$2)} }'`
+testContent=`echo "$testContent" | tr "," "." | awk -F'\t' '{
+  if ($3>$2+$2*0.1) {
+    print "* "$1"\t"$2"\t"$3"\t"(($2>0)?$3+$2:"-")
+  } else {
+    print "  "$1"\t"$2"\t"$3"\t"(($2>0)?$3+$2:"-")
+  }
+}'`
 if [ -z $noHeaders ]; then
   echo "$header" > $resFile
 fi
