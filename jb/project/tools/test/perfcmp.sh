@@ -60,7 +60,13 @@ else
   testContent=`paste -d '\t' $refFile <(echo "$curValues") | tail -n +1`
 fi
 
-testContent=`echo "$testContent" | awk -F'\t' '{ if ($3>$2+$2*0.1) {print "* "$1"\t"$2"\t"$3"\t"(($2==0)?"-":$3/$2)} else {print "  "$1"\t"$2"\t"$3"\t"(($2==0)?"-":$3/$2)} }'`
+testContent=`echo "$testContent" | tr "," "." | awk -F'\t' '{
+  if ($3>$2+$2*0.1) {
+    print "* "$1"\t"$2"\t"$3"\t"(($2>0)?$3/$2:"-")
+  } else {
+    print "  "$1"\t"$2"\t"$3"\t"(($2>0)?$3/$2:"-")
+  }
+}'`
 if [ -z $noHeaders ]; then
   echo "$header" > $resFile
 fi
@@ -71,11 +77,12 @@ if [ -z $tc ]; then
 exit 0
 fi
 
+failed=0
 echo "$testContent" 2>&1 | (
     while read -r s; do
         testname=`echo "$s" | cut -f 1 | tr -d "[:space:]" |  tr -d "*"`
         duration=`echo "$s" | cut -f 3`
-        failed=`echo "$s" | cut -c1 | grep -c "*"`
+        echo "$s" | cut -c1 | grep -c "*" && failed=1
         echo \#\#teamcity[testStarted name=\'$testNamePrefix$testname\']
         echo "===>$s"
         echo \#\#teamcity[buildStatisticValue key=\'$testNamePrefix$testname\' value=\'$duration\']
