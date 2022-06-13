@@ -2453,6 +2453,7 @@ void os::Linux::print_uptime_info(outputStream* st) {
 
 void os::Linux::print_container_info(outputStream* st) {
   if (!OSContainer::is_containerized()) {
+    st->print_cr("container information not found.");
     return;
   }
 
@@ -2544,6 +2545,15 @@ void os::Linux::print_container_info(outputStream* st) {
   } else {
     st->print("%s\n", j == OSCONTAINER_ERROR ? "not supported" : "unlimited");
   }
+
+  j = OSContainer::OSContainer::pids_max();
+  st->print("maximum number of tasks: ");
+  if (j > 0) {
+    st->print_cr(JLONG_FORMAT, j);
+  } else {
+    st->print_cr("%s", j == OSCONTAINER_ERROR ? "not supported" : "unlimited");
+  }
+
   st->cr();
 }
 
