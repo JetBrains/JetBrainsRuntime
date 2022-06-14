@@ -28,6 +28,8 @@ import java.awt.Desktop;
 import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @test
@@ -40,7 +42,10 @@ import java.awt.event.KeyEvent;
  */
 
 public class AboutHandlerTest {
-    private static final int WAIT_TIME = 1000;
+
+    private static CountDownLatch doneSignal = new CountDownLatch(1);
+
+    private static final int WAIT_TIME = 3000;
 
     private static Robot robot;
 
@@ -52,9 +57,11 @@ public class AboutHandlerTest {
         robot = new Robot();
         robot.setAutoDelay(50);
 
+        long starttime = System.currentTimeMillis();
         Desktop.getDesktop().setAboutHandler(e -> {
             System.out.println("AboutHandler hits");
             testPassed = true;
+            doneSignal.countDown();
         });
 
         SwingUtilities.invokeLater(() -> {
@@ -62,8 +69,9 @@ public class AboutHandlerTest {
         });
 
         // waiting for AboutHandler
-        sleep(WAIT_TIME);
-
+        doneSignal.await(WAIT_TIME, TimeUnit.SECONDS);
+        long endtime = System.currentTimeMillis();
+        System.out.println("Duration (milisec): " + (endtime - starttime));
         myApp.dispose();
 
         if (!testPassed)
@@ -91,9 +99,5 @@ public class AboutHandlerTest {
         // hit the "About AboutHandlerTest" menu item
         robot.keyPress(KeyEvent.VK_ENTER);
         robot.keyRelease(KeyEvent.VK_ENTER);
-    }
-
-    private static void sleep(int millis) throws InterruptedException {
-        Thread.sleep(millis);
     }
 }
