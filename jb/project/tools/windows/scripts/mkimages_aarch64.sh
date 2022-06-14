@@ -37,7 +37,6 @@ function do_configure {
     --with-version-opt=b${build_number} \
     --with-toolchain-version=$TOOLCHAIN_VERSION \
     --with-boot-jdk=$BOOT_JDK \
-    --with-build-jdk=$BOOT_JDK \
     --disable-ccache \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
@@ -53,10 +52,10 @@ function create_image_bundle {
   fastdebug_infix=''
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
-  __root_dir=${__bundle_name}-${JBSDK_VERSION}-x64-${fastdebug_infix:-}b${build_number%%.*}
+  __root_dir=${__bundle_name}-${JBSDK_VERSION}-aarch64-${fastdebug_infix:-}b${build_number%%.*}
 
   echo Running jlink ...
-  ${BOOT_JDK}/bin/jlink \
+  ${BUILD_JDK}/bin/jlink \
     --module-path $__modules_path --no-man-pages --compress=2 \
     --add-modules $__modules --output $__root_dir || do_exit $?
 
@@ -109,6 +108,8 @@ JSDK=$IMAGES_DIR/jdk
 JSDK_MODS_DIR=$IMAGES_DIR/jmods
 JBRSDK_BUNDLE=jbrsdk
 
+BUILD_JDK=build/$RELEASE_NAME/buildjdk/jdk
+
 where cygpath
 if [ $? -eq 0 ]; then
   JCEF_PATH="$(cygpath -w $JCEF_PATH | sed 's/\\/\//g')"
@@ -116,7 +117,7 @@ fi
 
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
   git apply -p0 < jb/project/tools/patches/add_jcef_module_aarch64.patch || do_exit $?
-  update_jsdk_mods "$BOOT_JDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
+  update_jsdk_mods "$BUILD_JDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
   cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not unchanged
 
   jbr_name_postfix="_${bundle_type}"
