@@ -229,15 +229,19 @@ else
 endif
 
 ifeq ($(ENABLE_REPRODUCIBLE_BUILD), true)
-  ifeq ($(MODULE), java.base)
-    JAR_FILE_TO_FIX := $(SUPPORT_OUTPUTDIR)/modules_libs/java.base/jrt-fs.jar
-    $(eval $(call SetupExecute, fixup_jrtfs_jar, \
-      WARN := Fixing timestamps in modules_libs/java.base/jrt-fs.jar, \
-      DEPS := $(JAR_FILE_TO_FIX) $(JDK_OUTPUTDIR)/bin/jar, \
-      OUTPUT_DIR := $(JMODS_SUPPORT_DIR), \
-      COMMAND := $(FIXPATH) $(JDK_OUTPUTDIR)/bin/jar --date $(SOURCE_DATE_ISO_8601) --update --file $(JAR_FILE_TO_FIX) @$(SUPPORT_OUTPUTDIR)/modules_libs/java.base/_the.jrt-fs.jar_contents, \
-    ))
-    DEPS += $(fixup_jrtfs_jar_TARGET)
+  # If boot JDK's jar supported --date, jrt-fs.jar would've been built with
+  # that option already.
+  ifneq ($(BOOT_JDK_JAR_SUPPORTS_DATE), true)
+    ifeq ($(MODULE), java.base)
+      JAR_FILE_TO_FIX := $(SUPPORT_OUTPUTDIR)/modules_libs/java.base/jrt-fs.jar
+      $(eval $(call SetupExecute, fixup_jrtfs_jar, \
+        WARN := Fixing timestamps in modules_libs/java.base/jrt-fs.jar, \
+        DEPS := $(JAR_FILE_TO_FIX) $(JDK_OUTPUTDIR)/bin/jar, \
+        OUTPUT_DIR := $(JMODS_SUPPORT_DIR), \
+        COMMAND := $(BUILD_JAR) --date $(SOURCE_DATE_ISO_8601) --update --file $(JAR_FILE_TO_FIX) @$(SUPPORT_OUTPUTDIR)/modules_libs/java.base/_the.jrt-fs.jar_contents, \
+      ))
+      DEPS += $(fixup_jrtfs_jar_TARGET)
+    endif
   endif
 endif
 
