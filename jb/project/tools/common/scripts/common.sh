@@ -140,7 +140,7 @@ function update_jsdk_mods() {
   # re-create java.base.jmod with updated hashes
   tmp=.java.base.$$.tmp
   mkdir "$tmp" || exit $?
-  hash_modules=$("$JSDK"/bin/jmod describe "$__orig_jsdk_mods"/java.base.jmod | grep hashes | awk '{print $2}' | tr '\n' '|' | sed s/\|$//) || exit $?
+  hash_modules=$("$__jsdk"/bin/jmod describe "$__orig_jsdk_mods"/java.base.jmod | grep hashes | awk '{print $2}' | tr '\n' '|' | sed s/\|$//) || exit $?
   "$__jsdk"/bin/jmod extract --dir "$tmp" "$__orig_jsdk_mods"/java.base.jmod || exit $?
   rm "$__updated_jsdk_mods"/java.base.jmod || exit $? # temp exclude from path
   "$__jsdk"/bin/jmod \
