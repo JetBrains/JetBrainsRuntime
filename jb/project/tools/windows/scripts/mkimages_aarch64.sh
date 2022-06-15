@@ -20,6 +20,12 @@ set -x
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
 #               By default JCEF binaries should be located in ./jcef_win_aarch64
 
+if [ -z "$BUILD_JDK" ]; then
+  echo "BUILD_JDK environment variable must be specified and point to a JDK built from the current sources" \
+       " and is able to run on the build system. See OpenJDK documentation for --with-build-jdk for more info."
+  exit 1
+fi
+
 source jb/project/tools/common/scripts/common.sh
 
 WORK_DIR=$(pwd)
@@ -37,6 +43,7 @@ function do_configure {
     --with-version-opt=b${build_number} \
     --with-toolchain-version=$TOOLCHAIN_VERSION \
     --with-boot-jdk=$BOOT_JDK \
+    --with-build-jdk=$BUILD_JDK \
     --disable-ccache \
     $STATIC_CONF_ARGS \
     --enable-cds=yes || do_exit $?
@@ -106,8 +113,6 @@ IMAGES_DIR=build/$RELEASE_NAME/images
 JSDK=$IMAGES_DIR/jdk
 JSDK_MODS_DIR=$IMAGES_DIR/jmods
 JBRSDK_BUNDLE=jbrsdk
-
-BUILD_JDK=build/$RELEASE_NAME/buildjdk/jdk
 
 where cygpath
 if [ $? -eq 0 ]; then
