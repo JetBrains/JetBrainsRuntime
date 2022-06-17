@@ -77,12 +77,12 @@ if [ -z $tc ]; then
 exit 0
 fi
 
-failed=1
+failed=0
 echo "$testContent" 2>&1 | (
     while read -r s; do
         testname=`echo "$s" | cut -f 1 | tr -d "[:space:]" |  tr -d "*"`
         duration=`echo "$s" | cut -f 3`
-        echo "$s" | cut -c1 | grep -c "*" && failed=0
+        echo "$s" | cut -c1 | grep -c "*" && failed=1
         echo \#\#teamcity[testStarted name=\'$testNamePrefix$testname\']
         echo "===>$s"
         echo \#\#teamcity[buildStatisticValue key=\'$testNamePrefix$testname\' value=\'$duration\']
