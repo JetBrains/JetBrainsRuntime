@@ -700,6 +700,7 @@ javax/swing/JPopupMenu/6580930/bug6580930.java 7124313 macosx-all
 javax/swing/JPopupMenu/6800513/bug6800513.java 7184956 macosx-all
 javax/swing/JTabbedPane/8007563/Test8007563.java 8051591 generic-all
 javax/swing/JTabbedPane/4624207/bug4624207.java 8064922,8197552 macosx-all,windows-all 8064922:macosx-all, 8197552:windows-all
+javax/swing/JToolBar/4529206/bug4529206.java 8288707 linux-x64
 javax/swing/SwingUtilities/TestBadBreak/TestBadBreak.java 8160720 generic-all
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java 8194048 windows-all
 javax/swing/text/DefaultCaret/HidingSelection/MultiSelectionTest.java 8213562 linux-all
