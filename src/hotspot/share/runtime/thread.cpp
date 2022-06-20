@@ -1611,6 +1611,7 @@ void JavaThread::initialize() {
   clear_must_deopt_id();
   set_monitor_chunks(NULL);
   set_next(NULL);
+  _in_asgct = false;
   _on_thread_list = false;
   _thread_state = _thread_new;
   _terminated = _not_terminated;
