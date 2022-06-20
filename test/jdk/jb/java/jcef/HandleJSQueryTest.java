@@ -42,11 +42,11 @@ public class HandleJSQueryTest {
             }
             System.out.println("Test PASSED");
         } finally {
-            firstBrowser.getBrowser().dispose();
-            secondBrowser.getBrowser().dispose();
+            System.out.println("Close all windows");
+            SwingUtilities.invokeAndWait(() -> firstBrowser.dispatchEvent(new WindowEvent(firstBrowser, WindowEvent.WINDOW_CLOSING)));
+            SwingUtilities.invokeAndWait(() -> secondBrowser.dispatchEvent(new WindowEvent(secondBrowser, WindowEvent.WINDOW_CLOSING)));
+            System.out.println("Dispose CefApp");
             JBCefApp.getInstance().getCefApp().dispose();
-            SwingUtilities.invokeAndWait(firstBrowser::dispose);
-            SwingUtilities.invokeAndWait(secondBrowser::dispose);
         }
     }
 }
