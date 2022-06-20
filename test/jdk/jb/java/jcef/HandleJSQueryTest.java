@@ -55,18 +55,19 @@ public class HandleJSQueryTest {
 class CefBrowserFrame extends JFrame {
 
     static volatile int callbackCounter;
-    static volatile int browserNumber;
+    static volatile int ourBrowserNumber;
 
     private final JBCefBrowser browser = new JBCefBrowser();
 
     private final CountDownLatch latch;
+    private int browserNumber;
 
     public CefBrowserFrame(final CountDownLatch latch) {
         this.latch=latch;
     }
 
     public void initUI() {
-        browserNumber++;
+        browserNumber = ourBrowserNumber++;
         CefMessageRouter.CefMessageRouterConfig config = new org.cef.browser.CefMessageRouter.CefMessageRouterConfig();
         config.jsQueryFunction = "cef_query_" + browserNumber;
         config.jsCancelFunction = "cef_query_cancel_" + browserNumber;
