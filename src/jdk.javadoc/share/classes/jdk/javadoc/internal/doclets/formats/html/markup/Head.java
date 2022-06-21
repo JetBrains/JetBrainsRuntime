@@ -317,7 +317,9 @@ public class Head {
         }
 
         if (index) {
-            addStylesheet(tree, DocPaths.JQUERY_FILES.resolve(DocPaths.JQUERY_STYLESHEET_FILE));
+            // The order of the addStylesheet(...) calls is important
+            addStylesheet(tree, DocPaths.JQUERY_FILES.resolve(DocPaths.JQUERY_UI_CSS));
+            addStylesheet(tree, DocPaths.JQUERY_OVERRIDES_CSS);
         }
     }
 
@@ -344,8 +346,8 @@ public class Head {
             tree.addContent(new RawHtml("<!--[if IE]>"));
             addJQueryFile(tree, DocPaths.JSZIPUTILS_IE_MIN);
             tree.addContent(new RawHtml("<![endif]-->"));
-            addJQueryFile(tree, DocPaths.JQUERY_JS_3_3);
             addJQueryFile(tree, DocPaths.JQUERY_JS);
+            addJQueryFile(tree, DocPaths.JQUERY_UI_JS);
         }
         for (Script script : scripts) {
             tree.addContent(script.asContent());

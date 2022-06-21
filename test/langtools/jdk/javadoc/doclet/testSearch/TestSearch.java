@@ -394,14 +394,14 @@ public class TestSearch extends JavadocTester {
     void checkSearchOutput(String fileName, boolean expectedOutput, boolean moduleDirectoriesVar) {
         // Test for search related markup
         checkOutput(fileName, expectedOutput,
-                "<link rel=\"stylesheet\" type=\"text/css\" href=\"jquery/jquery-ui.css\" title=\"Style\">\n",
+                "<link rel=\"stylesheet\" type=\"text/css\" href=\"jquery/jquery-ui.min.css\" title=\"Style\">\n",
                 "<script type=\"text/javascript\" src=\"jquery/jszip/dist/jszip.min.js\"></script>\n",
                 "<script type=\"text/javascript\" src=\"jquery/jszip-utils/dist/jszip-utils.min.js\"></script>\n",
                 "<!--[if IE]>\n",
                 "<script type=\"text/javascript\" src=\"jquery/jszip-utils/dist/jszip-utils-ie.min.js\"></script>\n",
                 "<![endif]-->\n",
-                "<script type=\"text/javascript\" src=\"jquery/jquery-3.5.1.js\"></script>\n",
-                "<script type=\"text/javascript\" src=\"jquery/jquery-ui.js\"></script>",
+                "<script type=\"text/javascript\" src=\"jquery/jquery-3.5.1.min.js\"></script>\n",
+                "<script type=\"text/javascript\" src=\"jquery/jquery-ui.min.js\"></script>",
                 "var pathtoroot = \"./\";\n"
                 + "var useModuleDirectories = " + moduleDirectoriesVar + ";\n"
                 + "loadScripts(document, 'script');",
@@ -592,13 +592,11 @@ public class TestSearch extends JavadocTester {
     void checkJqueryAndImageFiles(boolean expectedOutput) {
         checkFiles(expectedOutput,
                 "search.js",
-                "jquery/jquery-3.5.1.js",
-                "jquery/jquery-ui.js",
-                "jquery/jquery-ui.css",
+                "jquery-ui.overrides.css",
+                "jquery/jquery-3.5.1.min.js",
                 "jquery/jquery-ui.min.js",
                 "jquery/jquery-ui.min.css",
                 "jquery/jquery-ui.structure.min.css",
-                "jquery/jquery-ui.structure.css",
                 "jquery/external/jquery/jquery.js",
                 "jquery/jszip/dist/jszip.js",
                 "jquery/jszip/dist/jszip.min.js",

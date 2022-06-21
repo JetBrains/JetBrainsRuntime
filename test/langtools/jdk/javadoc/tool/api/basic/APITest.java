@@ -198,13 +198,10 @@ class APITest {
             "help-doc.html",
             "index-all.html",
             "index.html",
-            "jquery/jquery-3.5.1.js",
-            "jquery/jquery-ui.js",
-            "jquery/jquery-ui.css",
+            "jquery/jquery-3.5.1.min.js",
             "jquery/jquery-ui.min.js",
             "jquery/jquery-ui.min.css",
             "jquery/jquery-ui.structure.min.css",
-            "jquery/jquery-ui.structure.css",
             "jquery/external/jquery/jquery.js",
             "jquery/jszip/dist/jszip.js",
             "jquery/jszip/dist/jszip.min.js",
@@ -236,15 +233,22 @@ class APITest {
             "resources/x.png",
             "script.js",
             "search.js",
+            "jquery-ui.overrides.css",
             "stylesheet.css",
             "type-search-index.js",
             "type-search-index.zip"
     ));
 
     protected static Set<String> noIndexFiles = standardExpectFiles.stream()
-            .filter(s -> !s.startsWith("jquery") && !s.startsWith("resources") && !s.endsWith("zip")
-            && !s.equals("index-all.html") && !s.equals("search.js") && !s.endsWith("-search-index.js")
-            && !s.equals("allclasses-index.html") && !s.equals("allpackages-index.html"))
+            .filter(s ->    !s.startsWith("jquery")
+                         && !s.startsWith("resources")
+                         && !s.endsWith("zip")
+                         && !s.endsWith("-search-index.js")
+                         && !s.equals("index-all.html")
+                         && !s.equals("search.js")
+                         && !s.equals("jquery-ui.overrides.css")
+                         && !s.equals("allclasses-index.html")
+                         && !s.equals("allpackages-index.html"))
             .collect(Collectors.toSet());
 }
 
