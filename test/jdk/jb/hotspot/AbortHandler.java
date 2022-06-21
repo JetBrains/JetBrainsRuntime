@@ -51,16 +51,20 @@ public class AbortHandler {
             unsafe.freeMemory(addr);
             System.out.println(MARKER_TEXT); // not supposed to get here if libc detected double-free
         } else {
-            verifyErrorFileNotCreated(); // with default options
+            verifyErrorFileNotCreated(null); // with default options
+            verifyErrorFileNotCreated("-Djbr.catch.SIGABRT=false");
+            verifyErrorFileNotCreated("-Djbr.catch.SIGABRT");
             verifyErrorFileCreated();    // with the option that enables SIGABRT to be caught
         }
     }
 
-    public static void verifyErrorFileNotCreated() throws Exception {
+    public static void verifyErrorFileNotCreated(String option) throws Exception {
             ArrayList<String> opts = new ArrayList<>();
             opts.add("--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED");
             opts.add("-XX:-CreateCoredumpOnCrash");
-            // opts.add("-XX:+CatchSIGABRT"); // By default, SIGABRT shouldn't generate hs_err
+            if (option != null) {
+                opts.add(option);
+            }
             opts.add("AbortHandler");
             opts.add("--test");
             ProcessBuilder pb = ProcessTools.createTestJvm(opts);
@@ -76,7 +80,7 @@ public class AbortHandler {
         ArrayList<String> opts = new ArrayList<>();
         opts.add("--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED");
         opts.add("-XX:-CreateCoredumpOnCrash");
-        opts.add("-XX:+CatchSIGABRT");
+        opts.add("-Djbr.catch.SIGABRT=true");
         opts.add("AbortHandler");
         opts.add("--test");
         ProcessBuilder pb = ProcessTools.createTestJvm(opts);
