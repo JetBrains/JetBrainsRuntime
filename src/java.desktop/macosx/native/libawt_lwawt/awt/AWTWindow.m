@@ -1408,8 +1408,6 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 {
     // See [setUpTransparentTitleBar] for the view hierarchy we're working with
     NSView* closeButtonView = [self.nsWindow standardWindowButton:NSWindowCloseButton];
-    NSView* zoomButtonView = [self.nsWindow standardWindowButton:NSWindowZoomButton];
-    NSView* miniaturizeButtonView = [self.nsWindow standardWindowButton:NSWindowMiniaturizeButton];
     NSView* titlebar = closeButtonView.superview;
     NSView* titlebarContainer = titlebar.superview;
     if (!titlebarContainer) {
@@ -1420,7 +1418,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
     [NSLayoutConstraint deactivateConstraints:_transparentTitleBarConstraints];
 
-    AWTWindowDragView* windowDragView;
+    AWTWindowDragView* windowDragView = nil;
     for (NSView* view in [titlebar.subviews arrayByAddingObjectsFromArray:titlebarContainer.subviews]) {
         if ([view isMemberOfClass:[AWTWindowDragView class]]) {
             windowDragView = (AWTWindowDragView*)view;
@@ -1429,7 +1427,11 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
             view.translatesAutoresizingMaskIntoConstraints = YES;
         }
     }
-    [windowDragView removeFromSuperview];
+
+    if (windowDragView != nil) {
+        [windowDragView removeFromSuperview];
+    }
+
     titlebarContainer.translatesAutoresizingMaskIntoConstraints = YES;
     titlebar.translatesAutoresizingMaskIntoConstraints = YES;
 
