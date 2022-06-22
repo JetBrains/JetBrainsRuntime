@@ -117,7 +117,7 @@ public class TestTargetSurvivorRatioFlag {
         vmOptions.add("-XX:TargetSurvivorRatio=" + ratio);
         vmOptions.add("-version");
 
-        ProcessBuilder procBuilder = ProcessTools.createJavaProcessBuilder(vmOptions.toArray(new String[vmOptions.size()]));
+        ProcessBuilder procBuilder = GCArguments.createJavaProcessBuilder(vmOptions.toArray(new String[vmOptions.size()]));
         OutputAnalyzer analyzer = new OutputAnalyzer(procBuilder.start());
 
         analyzer.shouldHaveExitValue(1);
@@ -152,7 +152,7 @@ public class TestTargetSurvivorRatioFlag {
                 Integer.toString(ratio)
         );
 
-        ProcessBuilder procBuilder = ProcessTools.createJavaProcessBuilder(vmOptions.toArray(new String[vmOptions.size()]));
+        ProcessBuilder procBuilder = GCArguments.createJavaProcessBuilder(vmOptions.toArray(new String[vmOptions.size()]));
         OutputAnalyzer analyzer = new OutputAnalyzer(procBuilder.start());
 
         analyzer.shouldHaveExitValue(0);
