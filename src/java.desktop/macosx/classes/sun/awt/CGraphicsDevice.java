@@ -71,15 +71,24 @@ public final class CGraphicsDevice extends GraphicsDevice
     public CGraphicsDevice(final int displayID) {
         this.displayID = displayID;
         this.initialMode = getDisplayMode();
+        StringBuilder errorMessage = new StringBuilder();
 
         if (MacOSFlags.isMetalEnabled()) {
             // Try to create MTLGraphicsConfig, if it fails,
             // try to create CGLGraphicsConfig as a fallback
-            this.config = MTLGraphicsConfig.getConfig(this, displayID);
+            this.config = MTLGraphicsConfig.getConfig(this, displayID, errorMessage);
 
             if (this.config != null) {
                 metalPipelineEnabled = true;
             } else {
+
+                if (MTLGraphicsConfig.isMetalUsed()) {
+                    // Should not fall back to OpenGL if Metal has been used before
+                    // (it could cause CCE during replace of surface data)
+                    throw new InternalError("Error - unable to initialize Metal" +
+                            " after recreation of graphics device." + errorMessage);
+                }
+
                 // Try falling back to OpenGL pipeline
                 if (MacOSFlags.isMetalVerbose()) {
                     System.out.println("Metal rendering pipeline" +
@@ -108,7 +117,7 @@ public final class CGraphicsDevice extends GraphicsDevice
                         " rendering pipeline");
                 }
 
-                this.config = MTLGraphicsConfig.getConfig(this, displayID);
+                this.config = MTLGraphicsConfig.getConfig(this, displayID, errorMessage);
 
                 if (this.config != null) {
                     metalPipelineEnabled = true;
@@ -120,7 +129,7 @@ public final class CGraphicsDevice extends GraphicsDevice
             // This indicates fallback to other rendering pipeline also failed.
             // Should never reach here
             throw new InternalError("Error - unable to initialize any" +
-                " rendering pipeline.");
+                " rendering pipeline." + errorMessage);
         }
 
         if (metalPipelineEnabled && MacOSFlags.isMetalVerbose()) {
