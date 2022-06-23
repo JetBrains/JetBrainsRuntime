@@ -2752,6 +2752,11 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // to make it accessible from Java
   Arguments::set_unrecognized_vm_options_property();
 
+#if INCLUDE_NMT
+  // Initialize NMT right after argument parsing to keep the pre-NMT-init window small.
+  MemTracker::initialize();
+#endif // INCLUDE_NMT
+
   os::init_before_ergo();
 
   jint ergo_result = Arguments::apply_ergo();
