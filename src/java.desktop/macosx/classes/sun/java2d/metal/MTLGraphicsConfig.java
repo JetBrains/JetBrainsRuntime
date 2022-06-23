@@ -25,6 +25,7 @@
 
 package sun.java2d.metal;
 
+import java.lang.annotation.Native;
 import sun.awt.CGraphicsConfig;
 import sun.awt.CGraphicsDevice;
 import sun.awt.image.OffScreenImage;
@@ -71,6 +72,12 @@ import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_BIOP_SHADER;
 public final class MTLGraphicsConfig extends CGraphicsConfig
         implements AccelGraphicsConfig, SurfaceManager.Factory
 {
+    @Native private final static int LOAD_LIB_ERROR = -1;
+    @Native private final static int LOAD_LIB_OK = 0;
+    @Native private final static int LOAD_LIB_NO_DEVICE = 1;
+    @Native private final static int LOAD_LIB_NO_SHADER_LIB = 2;
+
+    private static boolean mtlUsed = false;
     private static ImageCapabilities imageCaps = new MTLImageCaps();
 
 
@@ -86,7 +93,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     private final Object disposerReferent = new Object();
     private final int maxTextureSize;
 
-    private static native boolean tryLoadMetalLibrary(int displayID, String shaderLib);
+    private static native int tryLoadMetalLibrary(int displayID, String shaderLib);
     private static native long getMTLConfigInfo(int displayID, String mtlShadersLib);
 
     /**
@@ -118,17 +125,25 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     }
 
     public static MTLGraphicsConfig getConfig(CGraphicsDevice device,
-                                              int displayID)
+                                              int displayID, StringBuilder errorMessage)
     {
-        if (!tryLoadMetalLibrary(displayID, mtlShadersLib)) {
-            return null;
-        }
-
         long cfginfo = 0;
         int textureSize = 0;
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
+            int res = tryLoadMetalLibrary(displayID, mtlShadersLib);
+            if (res != LOAD_LIB_OK) {
+                errorMessage.append(" Cannot load metal library: " +
+                    switch (res) {
+                        case LOAD_LIB_ERROR -> "Unexpected error.";
+                        case LOAD_LIB_NO_DEVICE -> "No MTLDevice.";
+                        case LOAD_LIB_NO_SHADER_LIB -> "No Metal shader library.";
+                        default -> throw new IllegalStateException("Unexpected value: " + res);
+                    });
+                return null;
+            }
+
             cfginfo = getMTLConfigInfo(displayID, mtlShadersLib);
             if (cfginfo != 0L) {
                 textureSize = nativeGetMaxTextureSize();
@@ -142,6 +157,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
             rq.unlock();
         }
         if (cfginfo == 0) {
+            errorMessage.append(" Cannot create MTLConfigInfo.");
             return null;
         }
 
@@ -151,7 +167,13 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
                         CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE |
                         CAPS_EXT_BIOP_SHADER | CAPS_EXT_GRAD_SHADER,
                 null);
+
+        mtlUsed = true;
         return new MTLGraphicsConfig(device, cfginfo, textureSize, caps);
+    }
+
+    public static boolean isMetalUsed() {
+        return mtlUsed;
     }
 
     /**
