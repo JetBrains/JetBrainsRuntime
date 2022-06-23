@@ -93,7 +93,7 @@ const char* ZReferenceProcessor::reference_type_name(ReferenceType type) const {
 
   default:
     ShouldNotReachHere();
-    return NULL;
+    return "Unknown";
   }
 }
 
