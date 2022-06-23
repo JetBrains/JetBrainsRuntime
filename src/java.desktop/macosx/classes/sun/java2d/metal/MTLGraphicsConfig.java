@@ -73,6 +73,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         implements AccelGraphicsConfig, SurfaceManager.ProxiedGraphicsConfig
 {
     private static boolean mtlAvailable;
+    private static boolean mtlUsed = false;
     private static ImageCapabilities imageCaps = new MTLImageCaps();
 
     @SuppressWarnings("removal")
@@ -168,7 +169,13 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
                         CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE |
                         CAPS_EXT_BIOP_SHADER | CAPS_EXT_GRAD_SHADER,
                 null);
+
+        mtlUsed = true;
         return new MTLGraphicsConfig(device, cfginfo, textureSize, caps);
+    }
+
+    public static boolean isMetalUsed() {
+        return mtlUsed;
     }
 
     public static boolean isMetalAvailable() {
