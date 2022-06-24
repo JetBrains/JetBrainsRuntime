@@ -35,7 +35,7 @@ import java.lang.reflect.InvocationTargetException;
  * @requires (os.family == "mac")
  */
 public class MacNativeSetRoundedCorners {
-  private static final int TD = 10;
+  private static final int TD = 30;
   private static final int DELAY = 1000;
 
   private static MacNativeSetRoundedCorners theTest;
