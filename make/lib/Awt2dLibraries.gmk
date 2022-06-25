@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -810,6 +810,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
 
   ifeq ($(USE_EXTERNAL_LIBZ), false)
     LIBSPLASHSCREEN_EXTRA_SRC += java.base:libzip/zlib
+    LIBZ_DISABLED_WARNINGS_CLANG := format-nonliteral
   endif
 
   ifeq ($(OPENJDK_TARGET_OS), macosx)
@@ -869,7 +870,8 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
       EXTRA_HEADER_DIRS := $(LIBSPLASHSCREEN_HEADER_DIRS), \
       DISABLED_WARNINGS_gcc := sign-compare type-limits unused-result \
           maybe-uninitialized shift-negative-value implicit-fallthrough, \
-      DISABLED_WARNINGS_clang := incompatible-pointer-types deprecated-declarations, \
+      DISABLED_WARNINGS_clang := incompatible-pointer-types deprecated-declarations \
+          $(LIBZ_DISABLED_WARNINGS_CLANG), \
       DISABLED_WARNINGS_solstudio := E_NEWLINE_NOT_LAST E_DECLARATION_IN_CODE \
           E_STATEMENT_NOT_REACHED, \
       DISABLED_WARNINGS_microsoft := 4018 4244 4267, \
