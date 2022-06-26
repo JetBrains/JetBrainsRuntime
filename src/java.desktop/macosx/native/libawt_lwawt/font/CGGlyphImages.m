@@ -664,6 +664,16 @@ CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
 #define RENDER_GLYPH_BATCH_SIZE 16
 #define RENDER_GLYPH_ARRAY_INIT_8 glyph,glyph,glyph,glyph,glyph,glyph,glyph,glyph
 #define RENDER_GLYPH_ARRAY_INIT RENDER_GLYPH_ARRAY_INIT_8,RENDER_GLYPH_ARRAY_INIT_8
+
+static CTFontRef CopyFontWithSize(CTFontRef originalFont, CGFloat size) {
+    CTFontDescriptorRef descriptor = NULL;
+    CGFontRef cgFont = CTFontCopyGraphicsFont(originalFont, &descriptor);
+    CTFontRef result = CTFontCreateWithGraphicsFont(cgFont, size, NULL, descriptor);
+    if (cgFont) CFRelease(cgFont);
+    if (descriptor) CFRelease(descriptor);
+    return result;
+}
+
 /*
  * Clears the canvas, strikes the glyph with CoreGraphics, and then
  * copies the struck pixels into the GlyphInfo image.
@@ -696,7 +706,8 @@ CGGI_CreateImageForGlyph
     CGPoint subpixelOffset = CGPointMake(1.0 / (float) info->subpixelResolutionX, 1.0 / (float) info->subpixelResolutionY);
     if (isCatalinaOrAbove || glyphDescriptor == &argb) {
         CGAffineTransform matrix = CGContextGetTextMatrix(canvas->context);
-        CGFloat fontSize = sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c));
+        CGFloat fontSize = glyphDescriptor != &argb ? strike->fSize :
+                           sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c));
         CTFontRef font = CTFontCreateWithGraphicsFont(cgFont, fontSize, NULL, NULL);
 
         CGFloat normFactor = 1.0 / fontSize;
@@ -727,16 +738,6 @@ CGGI_CreateImageForGlyph
         if (glyphIndex > 0) {
             CTFontDrawGlyphs(font, glyphs, glyphPositions, glyphIndex, canvas->context);
         }
-
-        // CTFontGetAdvancesForGlyphs returns rounded advance for emoji font, so it can be calculated only here
-        // where CTFont instance with actual size is available
-        CGSize advance;
-        CTFontGetAdvancesForGlyphs(font, kCTFontDefaultOrientation, &glyph, &advance, 1);
-        advance.width /= fontSize;
-        advance.height /= fontSize;
-        advance = CGGI_ScaleAdvance(advance, strike);
-        info->advanceX = advance.width;
-        info->advanceY = advance.height;
 
         CFRelease(font);
         // restore context's original state
@@ -793,10 +794,8 @@ CGGI_CreateImageForUnicode
     bool subpixelResolution = mode->subpixelResolution && glyphDescriptor == &grey;
 
     CGRect bbox;
-    JRSFontGetBoundingBoxesForGlyphsAndStyle(fallback, &strike->fTx, style, &glyph, 1, &bbox);
-
     CGSize advance;
-    CTFontGetAdvancesForGlyphs(fallback, kCTFontDefaultOrientation, &glyph, &advance, 1);
+    CGGlyphImages_GetGlyphMetrics(fallback, &strike->fTx, strike->fSize, style, &glyph, 1, &bbox, &advance, isCatalinaOrAbove);
 
 
     // create the Sun2D GlyphInfo we are going to strike into
@@ -954,8 +953,8 @@ CGGI_CreateGlyphInfos(jlong *glyphInfos, const AWTStrike *strike,
     AWTFont *font = strike->fAWTFont;
     JRSFontRenderingStyle bboxCGMode = JRSFontAlignStyleForFractionalMeasurement(strike->fStyle);
 
-    JRSFontGetBoundingBoxesForGlyphsAndStyle((CTFontRef)font->fFont, &strike->fTx, bboxCGMode, glyphs, len, bboxes);
-    CTFontGetAdvancesForGlyphs((CTFontRef)font->fFont, kCTFontDefaultOrientation, glyphs, advances, len);
+    CTFontRef fontRef = (CTFontRef)font->fFont;
+    CGGlyphImages_GetGlyphMetrics(fontRef, &strike->fTx, strike->fSize, bboxCGMode, glyphs, len, bboxes, advances, IS_OSX_GT10_14);
 
     size_t maxWidth = 1;
     size_t maxHeight = 1;
@@ -1072,4 +1071,61 @@ CGGlyphImages_GetGlyphImagePtrs(jlong glyphInfos[],
                                             advances, bboxes, len);
 
     free(buffer);
+}
+
+/*
+ * Calculates bounding boxes (for given transform) and advance (for untransformed 1pt-size font) for specified glyphs.
+ */
+void
+CGGlyphImages_GetGlyphMetrics(const CTFontRef font,
+                              const CGAffineTransform *tx,
+                              CGFloat fontSize,
+                              const JRSFontRenderingStyle style,
+                              const CGGlyph glyphs[],
+                              size_t count,
+                              CGRect bboxes[],
+                              CGSize advances[],
+                              const bool isCatalinaOrAbove) {
+    if (isCatalinaOrAbove || CGGI_IsColorFont(font)) {
+        // Glyph metrics for emoji font are not strictly proportional to font size,
+        // so we need to construct real-sized font object to calculate them.
+        // The logic here must match the logic in CGGI_CreateImageForGlyph,
+        // which performs glyph drawing.
+
+        CTFontRef sizedFont = CopyFontWithSize(font, fontSize);
+
+        if (bboxes) {
+            // JRSFontGetBoundingBoxesForGlyphsAndStyle works incorrectly for AppleColorEmoji font:
+            // it uses bottom left corner of the glyph's bounding box as a fixed point of transformation
+            // instead of glyph's origin point (used at drawing). So, as a workaround,
+            // we request a bounding box for the untransformed glyph, and apply the transform ourselves.
+            JRSFontGetBoundingBoxesForGlyphsAndStyle(sizedFont, &CGAffineTransformIdentity, style, glyphs, count, bboxes);
+            CGAffineTransform txNormalized = CGAffineTransformMake(tx->a / fontSize,
+                                                                   tx->b / fontSize,
+                                                                   tx->c / fontSize,
+                                                                   tx->d / fontSize,
+                                                                   0, 0);
+            for (int i = 0; i < count; i++) {
+                bboxes[i] = CGRectApplyAffineTransform(bboxes[i], txNormalized);
+            }
+        }
+
+        if (advances) {
+            CTFontGetAdvancesForGlyphs(sizedFont, kCTFontDefaultOrientation, glyphs, advances, count);
+            for (int i = 0; i < count; i++) {
+                // Calling code will scale the result back
+                advances[i].width /= fontSize;
+                advances[i].height /= fontSize;
+            }
+        }
+
+        CFRelease(sizedFont);
+    } else {
+        if (bboxes) {
+            JRSFontGetBoundingBoxesForGlyphsAndStyle(font, tx, style, glyphs, count, bboxes);
+        }
+        if (advances) {
+            CTFontGetAdvancesForGlyphs(font, kCTFontDefaultOrientation, glyphs, advances, count);
+        }
+    }
 }

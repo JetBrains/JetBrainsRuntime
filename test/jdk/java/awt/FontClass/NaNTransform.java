@@ -32,9 +32,6 @@ import java.awt.font.*;
 import java.awt.geom.*;
 import java.awt.image.*;
 
-import static java.awt.RenderingHints.KEY_TEXT_ANTIALIASING;
-import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON;
-
 public class NaNTransform {
 
     private static void testShape(String msg, Shape s) {
@@ -55,7 +52,6 @@ public class NaNTransform {
         Graphics2D g2d = bi.createGraphics();
 
         g2d.rotate(NaN);
-        g2d.setRenderingHint(KEY_TEXT_ANTIALIASING, VALUE_TEXT_ANTIALIAS_ON);
 
         Font font = g2d.getFont();
         FontMetrics fm = g2d.getFontMetrics();
