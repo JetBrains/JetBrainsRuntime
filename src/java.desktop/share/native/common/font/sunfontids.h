@@ -80,6 +80,12 @@ typedef struct FontManagerNativeIDs {
     /* sun/font/GlyphList */
     jfieldID glyphListX, glyphListY, glyphListLen,
       glyphImages, glyphListUsePos, glyphListPos, lcdRGBOrder, lcdSubPixPos;
+
+    /* sun/font/GlyphRenderData */
+    jfieldID glyphRenderDataOutline, glyphRenderDataColorLayers;
+    jmethodID glyphRenderDataSetColorLayersListMID,
+      glyphRenderDataAddColorLayerMID, glyphRenderDataAddColorLayerFGMID,
+      glyphRenderDataAddBitmapMID;
 } FontManagerNativeIDs;
 
 extern FontManagerNativeIDs sunFontIDs;
