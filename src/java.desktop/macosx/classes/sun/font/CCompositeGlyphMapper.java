@@ -36,27 +36,31 @@ public final class CCompositeGlyphMapper extends CompositeGlyphMapper {
     }
 
     @Override
-    int getGlyph(int unicode, boolean raw) {
+    int getGlyph(int unicode, int variationSelector, boolean raw) {
         if (isIgnorableWhitespace(unicode) || (isDefaultIgnorable(unicode) && !raw)) {
             return INVISIBLE_GLYPH_ID;
         }
         int glyphCode;
-        if ((glyphCode = getCachedGlyphCode(unicode)) != UNINITIALIZED_GLYPH) {
+        if (variationSelector == 0 && (glyphCode = getCachedGlyphCode(unicode, raw)) != UNINITIALIZED_GLYPH) {
             return glyphCode;
         }
         CCompositeFont compositeFont = (CCompositeFont) font;
         CFont mainFont = (CFont) font.getSlotFont(0);
         String[] fallbackFontInfo = new String[2];
-        glyphCode = nativeCodePointToGlyph(mainFont.getNativeFontPtr(), unicode, fallbackFontInfo);
+        glyphCode = nativeCodePointToGlyph(mainFont.getNativeFontPtr(), unicode, variationSelector, fallbackFontInfo);
         if (glyphCode == missingGlyph) {
-            setCachedGlyphCode(unicode, missingGlyph);
+            if (variationSelector == 0) setCachedGlyphCode(unicode, missingGlyph, raw);
+            else {
+                // Fallback to base glyph if variation was not found.
+                return getGlyph(unicode, 0, raw);
+            }
             return missingGlyph;
         }
         String fallbackFontName = fallbackFontInfo[0];
         String fallbackFontFamilyName = fallbackFontInfo[1];
         if (fallbackFontName == null || fallbackFontFamilyName == null) {
             int result = compositeGlyphCode(0, glyphCode);
-            setCachedGlyphCode(unicode, result);
+            if (variationSelector == 0) setCachedGlyphCode(unicode, result, raw);
             return result;
         }
 
@@ -79,11 +83,11 @@ public final class CCompositeGlyphMapper extends CompositeGlyphMapper {
         }
 
         int result = compositeGlyphCode(slot, glyphCode);
-        setCachedGlyphCode(unicode, result);
+        if (variationSelector == 0) setCachedGlyphCode(unicode, result, raw);
         return result;
     }
 
     // This invokes native font fallback mechanism, returning information about font (its Postscript and family names)
     // able to display a given character, and corresponding glyph code
-    private static native int nativeCodePointToGlyph(long nativeFontPtr, int codePoint, String[] result);
+    private static native int nativeCodePointToGlyph(long nativeFontPtr, int codePoint, int variationSelector, String[] result);
 }
