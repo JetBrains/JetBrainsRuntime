@@ -106,28 +106,42 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         return mapper;
     }
 
-    int getGlyph(int unicode, boolean raw) {
-        int glyphCode = getCachedGlyphCode(unicode, raw);
-        if (glyphCode != UNINITIALIZED_GLYPH) {
+    int getGlyph(int unicode, int variationSelector, boolean raw) {
+        int glyphCode;
+        if (variationSelector == 0 && (glyphCode = getCachedGlyphCode(unicode, raw)) != UNINITIALIZED_GLYPH) {
             return glyphCode;
         }
         if (isIgnorableWhitespace(unicode) || (isDefaultIgnorable(unicode) && !raw)) {
             glyphCode = INVISIBLE_GLYPH_ID;
-            setCachedGlyphCode(unicode, glyphCode, raw);
+            if (variationSelector == 0) setCachedGlyphCode(unicode, glyphCode, raw);
             return glyphCode;
         }
         for (int slot = 0; slot < font.numSlots; slot++) {
             if (!hasExcludes || !font.isExcludedChar(slot, unicode)) {
                 CharToGlyphMapper mapper = getSlotMapper(slot);
-                glyphCode = mapper.charToGlyphRaw(unicode);
+                glyphCode = mapper.charToVariationGlyphRaw(unicode, variationSelector);
                 if (glyphCode != mapper.getMissingGlyphCode()) {
                     glyphCode = compositeGlyphCode(slot, glyphCode);
-                    setCachedGlyphCode(unicode, glyphCode, raw);
+                    if (variationSelector == 0) setCachedGlyphCode(unicode, glyphCode, raw);
                     return glyphCode;
                 }
             }
         }
+        if (variationSelector != 0) {
+            // Fallback to base glyph if variation was not found.
+            return getGlyph(unicode, 0, raw);
+        }
         return missingGlyph;
+    }
+
+    @Override
+    public int charToVariationGlyphRaw(int unicode, int variationSelector) {
+        return getGlyph(unicode, variationSelector, true);
+    }
+
+    @Override
+    public int charToVariationGlyph(int unicode, int variationSelector) {
+        return getGlyph(unicode, variationSelector, false);
     }
 
     public int getNumGlyphs() {
@@ -153,12 +167,12 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
     }
 
     public int charToGlyphRaw(int unicode) {
-        int glyphCode = getGlyph(unicode, true);
+        int glyphCode = getGlyph(unicode, 0, true);
         return glyphCode;
     }
 
     public int charToGlyph(int unicode) {
-        int glyphCode = getGlyph(unicode, false);
+        int glyphCode = getGlyph(unicode, 0, false);
         return glyphCode;
     }
 
@@ -174,7 +188,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
     }
 
     public int charToGlyph(char unicode) {
-        int glyphCode = getGlyph(unicode, false);
+        int glyphCode = getGlyph(unicode, 0, false);
         return glyphCode;
     }
 
@@ -200,7 +214,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
                 }
             }
 
-            glyphs[i] = getGlyph(code, false);
+            glyphs[i] = getGlyph(code, 0, false);
 
             if (code < FontUtilities.MIN_LAYOUT_CHARCODE) {
                 continue;
@@ -234,21 +248,21 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
                     code = (code - HI_SURROGATE_START) *
                         0x400 + low - LO_SURROGATE_START + 0x10000;
 
-                    glyphs[i] = getGlyph(code, false);
+                    glyphs[i] = getGlyph(code, 0, false);
                     i += 1; // Empty glyph slot after surrogate
                     glyphs[i] = INVISIBLE_GLYPH_ID;
                     continue;
                 }
             }
 
-            glyphs[i] = getGlyph(code, false);
+            glyphs[i] = getGlyph(code, 0, false);
         }
     }
 
     public void charsToGlyphs(int count, int[] unicodes, int[] glyphs) {
         for (int i=0; i<count; i++) {
             int code = unicodes[i];
-            glyphs[i] = getGlyph(code, false);
+            glyphs[i] = getGlyph(code, 0, false);
         }
     }
 
