@@ -1034,6 +1034,36 @@ public class FileFontStrike extends PhysicalStrike {
                                               glyphs, glyphs.length, x, y);
     }
 
+    private
+        WeakReference<ConcurrentHashMap<Integer, GlyphRenderData>> glyphRenderDataMapRef;
+
+    GlyphRenderData getGlyphRenderData(int glyphCode, float x, float y) {
+
+        GlyphRenderData grd = null;
+        ConcurrentHashMap<Integer, GlyphRenderData> glyphRenderDataMap = null;
+
+        if (glyphRenderDataMapRef != null) {
+            glyphRenderDataMap = glyphRenderDataMapRef.get();
+            if (glyphRenderDataMap != null) {
+                grd = glyphRenderDataMap.get(glyphCode);
+            }
+        }
+
+        if (grd == null) {
+            grd = fileFont.getGlyphRenderData(pScalerContext, glyphCode, 0, 0);
+            if (glyphRenderDataMap == null) {
+                glyphRenderDataMap = new ConcurrentHashMap<>();
+                glyphRenderDataMapRef = new WeakReference<>(glyphRenderDataMap);
+            }
+            glyphRenderDataMap.put(glyphCode, grd);
+        }
+        grd = new GlyphRenderData(grd); // mutable!
+        if (x != 0f || y != 0f) {
+            grd.transform(AffineTransform.getTranslateInstance(x, y));
+        }
+        return grd;
+    }
+
     protected void adjustPoint(Point2D.Float pt) {
         if (invertDevTx != null) {
             invertDevTx.deltaTransform(pt, pt);
