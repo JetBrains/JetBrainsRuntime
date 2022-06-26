@@ -56,6 +56,16 @@
 #include FT_MODULE_H
 #include FT_LCD_FILTER_H
 
+// Linux is built with system Freetype by default,
+// and it's often a bit old and doesn't have FT_COLOR_H.
+// Thus, we disable colored outlines on Linux to be able
+// to build on older Linuxes, this is not a big problem,
+// as Linux uses bitmap emoji anyway.
+#if defined(_WIN32) || defined(MACOSX)
+#include FT_COLOR_H
+#define ENABLE_COLOR_OUTLINES
+#endif
+
 #ifndef DISABLE_FONTCONFIG
 /* Use bundled fontconfig.h for now */
 #include "fontconfig.h"
@@ -87,6 +97,7 @@
 #define  ROUND(x) ((int) ((x<0) ? (x-0.5) : (x+0.5)))
 #define  FT26Dot6ToDouble(x)  ((x) / ((double) (1<<6)))
 #define  FT26Dot6ToInt(x) (((int)(x)) >> 6)
+#define  FT26Dot6ToIntRound(x) (((int)(x + (1 << 5))) >> 6)
 #define  FT26Dot6ToIntCeil(x) (((int)(x - 1 + (1 << 6))) >> 6)
 #define  IntToFT26Dot6(x) (((FT_Fixed)(x)) << 6)
 #define  DEFAULT_DPI 72
@@ -126,6 +137,12 @@ typedef struct CachedMatch {
 } CachedMatch;
 
 #define NUM_CACHED_VALUES 8
+#endif
+
+// Define these manually when building with old Freetype (before 2.5)
+#if !defined(FT_LOAD_COLOR)
+#define FT_LOAD_COLOR ( 1L << 20 )
+#define FT_PIXEL_MODE_BGRA 7
 #endif
 
 typedef struct {
@@ -616,7 +633,7 @@ static void setInterpreterVersion(FT_Library library) {
     ((FT_MulFix(units_per_EM, y_scale) / BOLD_DIVISOR ))
 
 #define BOLD_MODIFIER(units_per_EM, y_scale) \
-    (context->doBold ? BOLD_FACTOR(units_per_EM, y_scale) : 0)
+    ((context->doBold && !context->colorFont) ? BOLD_FACTOR(units_per_EM, y_scale) : 0)
 
 static void GlyphSlot_Embolden(FT_GlyphSlot slot, FT_Matrix transform) {
     FT_Pos extra = 0;
@@ -878,7 +895,7 @@ static void setupLoadRenderFlags(FTScalerContext *context, int fcHintStyle, FcBo
 
 static void setupTransform(FT_Matrix* target, FTScalerContext *context) {
     FT_Matrix* transform = &context->transform;
-    if (context->doItalize) {
+    if (context->doItalize && !context->colorFont) {
         // we cannot use FT_GlyphSlot_Oblique as it doesn't work well with arbitrary transforms,
         // so we add corresponding shear transform to the requested glyph transformation
         target->xx = FT_MATRIX_ONE;
@@ -919,18 +936,18 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
     scalerInfo->font2D = font2D;
 
     if (context != NULL) {
+        context->colorFont = FT_HAS_COLOR(scalerInfo->face) || !FT_IS_SCALABLE(scalerInfo->face);
+
         setupTransform(&matrix, context);
         FT_Set_Transform(scalerInfo->face, &matrix, NULL);
         FT_UInt dpi = (FT_UInt) getScreenResolution(env);
 
         if (FT_IS_SCALABLE(scalerInfo->face)) { // Standard scalable face
-            context->colorFont = FT_HAS_COLOR(scalerInfo->face) ? TRUE : FALSE;
             context->fixedSizeIndex = -1;
             errCode = FT_Set_Char_Size(scalerInfo->face, 0,
                                        ADJUST_FONT_SIZE(context->ptsz, dpi),
                                        dpi, dpi);
         } else { // Non-scalable face (that should only be bitmap faces)
-            context->colorFont = TRUE;
             const int ptsz = context->ptsz;
             // Best size is smallest, but not smaller than requested
             int bestSizeIndex = 0;
@@ -1200,7 +1217,8 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
 }
 
 // using same values as for the transformation matrix
-#define OBLIQUE_MODIFIER(y)  (context->doItalize ? ((y)*FT_MATRIX_OBLIQUE_XY/FT_MATRIX_ONE) : 0)
+#define OBLIQUE_MODIFIER(y) \
+    ((context->doItalize && !context->colorFont) ? ((y)*FT_MATRIX_OBLIQUE_XY/FT_MATRIX_ONE) : 0)
 
 /*
  * Class:     sun_font_FreetypeFontScaler
@@ -1349,7 +1367,7 @@ static jlong
     getGlyphImageNativeInternal(
         JNIEnv *env, jobject scaler, jobject font2D,
         jlong pScalerContext, jlong pScaler, jint glyphCode,
-        jboolean renderImage);
+        jboolean renderImage, jboolean setupContext);
 
 /*
  * Class:     sun_font_FreetypeFontScaler
@@ -1378,7 +1396,7 @@ Java_sun_font_FreetypeFontScaler_getGlyphAdvanceNative(
     jlong image;
 
     image = getGlyphImageNativeInternal(
-          env, scaler, font2D, pScalerContext, pScaler, glyphCode, JNI_FALSE);
+          env, scaler, font2D, pScalerContext, pScaler, glyphCode, JNI_FALSE, JNI_TRUE);
     info = (GlyphInfo*) jlong_to_ptr(image);
 
     if (info != NULL) {
@@ -1404,7 +1422,7 @@ Java_sun_font_FreetypeFontScaler_getGlyphMetricsNative(
 
      jlong image = getGlyphImageNativeInternal(
                                  env, scaler, font2D,
-                                 pScalerContext, pScaler, glyphCode, JNI_FALSE);
+                                 pScalerContext, pScaler, glyphCode, JNI_FALSE, JNI_TRUE);
      info = (GlyphInfo*) jlong_to_ptr(image);
 
      if (info != NULL) {
@@ -1714,14 +1732,14 @@ Java_sun_font_FreetypeFontScaler_getGlyphImageNative(
 
     return getGlyphImageNativeInternal(
         env, scaler, font2D,
-        pScalerContext, pScaler, glyphCode, JNI_TRUE);
+        pScalerContext, pScaler, glyphCode, JNI_TRUE, JNI_TRUE);
 }
 
 static jlong
      getGlyphImageNativeInternal(
         JNIEnv *env, jobject scaler, jobject font2D,
         jlong pScalerContext, jlong pScaler, jint glyphCode,
-        jboolean renderImage) {
+        jboolean renderImage, jboolean setupContext) {
 
     static int PADBYTES = 3;
     int error, imageSize;
@@ -1771,11 +1789,13 @@ static jlong
                 ((double)context->ptsz)/64.0);
     }
 
-    error = setupFTContext(env, font2D, scalerInfo, context, TRUE);
-    if (error) {
-        if (logFFS) fprintf(stderr, "FFS_LOG: Cannot setup FT context\n");
-        invalidateJavaScaler(env, scaler, scalerInfo);
-        return ptr_to_jlong(getNullGlyphImage());
+    if (setupContext) {
+        error = setupFTContext(env, font2D, scalerInfo, context, TRUE);
+        if (error) {
+            if (logFFS) fprintf(stderr, "FFS_LOG: Cannot setup FT context\n");
+            invalidateJavaScaler(env, scaler, scalerInfo);
+            return ptr_to_jlong(getNullGlyphImage());
+        }
     }
 
     /*
@@ -1942,13 +1962,13 @@ static jlong
             (float) - (advh * FTFixedToFloat(context->transform.yx));
     } else {
         if (!ftglyph->advance.y) {
-            glyphInfo->advanceX =
-                (float) ROUND(FT26Dot6ToFloat(FT_MulFix(ftglyph->advance.x, manualScale)));
+            glyphInfo->advanceX = FT26Dot6ToIntRound(
+                    FT_MulFix(ftglyph->advance.x, manualScale));
             glyphInfo->advanceY = 0;
         } else if (!ftglyph->advance.x) {
             glyphInfo->advanceX = 0;
-            glyphInfo->advanceY =
-                (float) ROUND(FT26Dot6ToFloat(-FT_MulFix(ftglyph->advance.y, manualScale)));
+            glyphInfo->advanceY = FT26Dot6ToIntRound(
+                    -FT_MulFix(ftglyph->advance.y, manualScale));
         } else {
             glyphInfo->advanceX = FT26Dot6ToFloat(
                     FT_MulFix(ftglyph->advance.x, manualScale));
@@ -2144,23 +2164,12 @@ Java_sun_font_FreetypeFontScaler_getGlyphCodeNative(
 
 #define FloatToF26Dot6(x) ((unsigned int) ((x)*64))
 
-static FT_Outline* getFTOutline(JNIEnv* env, jobject font2D,
-        FTScalerContext *context, FTScalerInfo* scalerInfo,
-        jint glyphCode, jfloat xpos, jfloat ypos) {
+static FT_Outline* getFTOutlineNoSetup(FTScalerContext *context, FTScalerInfo* scalerInfo,
+                                       jint glyphCode, jfloat xpos, jfloat ypos) {
 
     FT_Error error;
     FT_GlyphSlot ftglyph;
     FT_Int32 loadFlags;
-
-    if (glyphCode >= INVISIBLE_GLYPHS ||
-            isNullScalerContext(context) || scalerInfo == NULL) {
-        return NULL;
-    }
-
-    error = setupFTContext(env, font2D, scalerInfo, context, TRUE);
-    if (error) {
-        return NULL;
-    }
 
     // We cannot get an outline from bitmap version of glyph
     loadFlags = context->loadFlags | FT_LOAD_NO_BITMAP;
@@ -2171,9 +2180,10 @@ static FT_Outline* getFTOutline(JNIEnv* env, jobject font2D,
     }
 
     ftglyph = scalerInfo->face->glyph;
+    int outlineGlyph = ftglyph->format == FT_GLYPH_FORMAT_OUTLINE;
 
     /* apply styles */
-    if (context->doBold) { /* if bold style */
+    if (context->doBold && outlineGlyph && !context->colorFont) { /* if bold style */
         GlyphSlot_Embolden(ftglyph, context->transform);
     }
 
@@ -2182,6 +2192,24 @@ static FT_Outline* getFTOutline(JNIEnv* env, jobject font2D,
                          FloatToF26Dot6(-ypos));
 
     return &ftglyph->outline;
+}
+
+static FT_Outline* getFTOutline(JNIEnv* env, jobject font2D,
+                                FTScalerContext *context, FTScalerInfo* scalerInfo,
+                                jint glyphCode, jfloat xpos, jfloat ypos) {
+    FT_Error error;
+
+    if (glyphCode >= INVISIBLE_GLYPHS ||
+        isNullScalerContext(context) || scalerInfo == NULL) {
+        return NULL;
+    }
+
+    error = setupFTContext(env, font2D, scalerInfo, context, TRUE);
+    if (error) {
+        return NULL;
+    }
+
+    return getFTOutlineNoSetup(context, scalerInfo, glyphCode, xpos, ypos);
 }
 
 #define F26Dot6ToFloat(n) (((float)(n))/((float) 64))
@@ -2340,18 +2368,12 @@ static void freeGP(GPData* gpdata) {
     }
 }
 
-static jobject getGlyphGeneralPath(JNIEnv* env, jobject font2D,
-        FTScalerContext *context, FTScalerInfo *scalerInfo,
-        jint glyphCode, jfloat xpos, jfloat ypos) {
+static jobject outlineToGeneralPath(JNIEnv* env, FT_Outline* outline) {
 
-    FT_Outline* outline;
     jobject gp = NULL;
     jbyteArray types;
     jfloatArray coords;
     GPData gpdata;
-
-    outline = getFTOutline(env, font2D, context, scalerInfo,
-                           glyphCode, xpos, ypos);
 
     if (outline == NULL || outline->n_points == 0) {
         return gp;
@@ -2390,6 +2412,75 @@ static jobject getGlyphGeneralPath(JNIEnv* env, jobject font2D,
     return gp;
 }
 
+static jboolean addColorLayersRenderData(JNIEnv* env, FTScalerContext *context,
+                                         FTScalerInfo* scalerInfo, jint glyphCode,
+                                         jfloat xpos, jfloat ypos, jobject result) {
+
+#ifdef ENABLE_COLOR_OUTLINES
+    FT_Error error;
+
+    FT_Color* colors;
+    error = FT_Palette_Select(scalerInfo->face, 0, &colors);
+    if (error) return JNI_FALSE;
+
+    FT_LayerIterator iterator;
+    iterator.p = NULL;
+    FT_UInt glyphIndex, colorIndex;
+    if (!FT_Get_Color_Glyph_Layer(scalerInfo->face, glyphCode,
+                                  &glyphIndex, &colorIndex, &iterator)) return JNI_FALSE;
+    (*env)->CallVoidMethod(env, result, sunFontIDs.glyphRenderDataSetColorLayersListMID, iterator.num_layers);
+    do {
+        FT_Outline* outline = getFTOutlineNoSetup(context, scalerInfo, glyphIndex, xpos, ypos);
+        jobject gp = outlineToGeneralPath(env, outline);
+
+        if (colorIndex == 0xFFFF) {
+            (*env)->CallVoidMethod(env, result, sunFontIDs.glyphRenderDataAddColorLayerFGMID, gp);
+        } else {
+            (*env)->CallVoidMethod(env, result, sunFontIDs.glyphRenderDataAddColorLayerMID,
+                                   colors[colorIndex].red, colors[colorIndex].green,
+                                   colors[colorIndex].blue, colors[colorIndex].alpha, gp);
+        }
+    } while(FT_Get_Color_Glyph_Layer(scalerInfo->face, glyphCode,
+                                     &glyphIndex, &colorIndex, &iterator));
+
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+static void addBitmapRenderData(JNIEnv *env, jobject scaler, jobject font2D,
+                                FTScalerContext *context, FTScalerInfo* scalerInfo,
+                                jint glyphCode, jfloat xpos, jfloat ypos, jobject result) {
+    GlyphInfo* glyphInfo = (GlyphInfo*) jlong_to_ptr(getGlyphImageNativeInternal(
+            env, scaler, font2D,
+            ptr_to_jlong(context), ptr_to_jlong(scalerInfo),
+            glyphCode, JNI_FALSE, JNI_FALSE));
+
+    FT_GlyphSlot ftglyph = scalerInfo->face->glyph;
+
+    if (ftglyph->bitmap.pixel_mode != FT_PIXEL_MODE_BGRA) return;
+
+    int pitch = ftglyph->bitmap.pitch / 4;
+    int size = pitch * ftglyph->bitmap.rows;
+    jintArray array = (*env)->NewIntArray(env, size);
+    (*env)->SetIntArrayRegion(env, array, 0, size, (jint*) ftglyph->bitmap.buffer);
+
+    double bitmapSize = (double) scalerInfo->face->available_sizes[context->fixedSizeIndex].size;
+    double scale = (double) context->ptsz / bitmapSize / (double) (ftFixed1);
+    double tx = ftglyph->bitmap_left + xpos * bitmapSize / (double) context->ptsz;
+    double ty = -ftglyph->bitmap_top + ypos * bitmapSize / (double) context->ptsz;
+
+    jdouble m00 = (jdouble) context->transform.xx * scale, m10 = (jdouble) context->transform.xy * scale;
+    jdouble m01 = (jdouble) context->transform.yx * scale, m11 = (jdouble) context->transform.yy * scale;
+    jdouble m02 = m00 * tx + m01 * ty, m12 = m10 * tx + m11 * ty;
+
+    free(glyphInfo);
+    (*env)->CallVoidMethod(env, result, sunFontIDs.glyphRenderDataAddBitmapMID,
+                           m00, m10, m01, m11, m02, m12,
+                           ftglyph->bitmap.width, ftglyph->bitmap.rows, pitch, 2, array);
+}
+
 /*
  * Class:     sun_font_FreetypeFontScaler
  * Method:    getGlyphOutlineNative
@@ -2404,13 +2495,10 @@ Java_sun_font_FreetypeFontScaler_getGlyphOutlineNative(
          (FTScalerContext*) jlong_to_ptr(pScalerContext);
     FTScalerInfo* scalerInfo = (FTScalerInfo *) jlong_to_ptr(pScaler);
 
-    jobject gp = getGlyphGeneralPath(env,
-                               font2D,
-                               context,
-                               scalerInfo,
-                               glyphCode,
-                               xpos,
-                               ypos);
+    FT_Outline* outline = getFTOutline(env, font2D, context,
+                                       scalerInfo, glyphCode,
+                                       xpos, ypos);
+    jobject gp = outlineToGeneralPath(env, outline);
     if (gp == NULL) { /* can be legal */
         gp = (*env)->NewObject(env,
                                sunFontIDs.gpClass,
@@ -2556,6 +2644,42 @@ Java_sun_font_FreetypeFontScaler_getGlyphVectorOutlineNative(
       }
     }
     return (*env)->NewObject(env, sunFontIDs.gpClass, sunFontIDs.gpCtrEmpty);
+}
+
+/*
+ * Class:     sun_font_FreetypeFontScaler
+ * Method:    getGlyphRenderDataNative
+ * Signature: (Lsun/font/Font2D;JIFFLsun/font/GlyphRenderData;)V
+ */
+JNIEXPORT void JNICALL
+Java_sun_font_FreetypeFontScaler_getGlyphRenderDataNative(
+        JNIEnv *env, jobject scaler, jobject font2D, jlong pScalerContext,
+        jlong pScaler, jint glyphCode, jfloat xpos, jfloat ypos, jobject result) {
+
+    FTScalerContext *context =
+            (FTScalerContext*) jlong_to_ptr(pScalerContext);
+    FTScalerInfo* scalerInfo = (FTScalerInfo *) jlong_to_ptr(pScaler);
+
+    if (glyphCode >= INVISIBLE_GLYPHS ||
+        isNullScalerContext(context) || scalerInfo == NULL) {
+        return;
+    }
+
+    FT_Error error = setupFTContext(env, font2D, scalerInfo, context, TRUE);
+    if (error) return;
+
+    if (context->fixedSizeIndex == -1) {
+        if (!context->colorFont ||
+            !addColorLayersRenderData(env, context, scalerInfo, glyphCode, xpos, ypos, result)) {
+            FT_Outline* outline = getFTOutlineNoSetup(context, scalerInfo, glyphCode, xpos, ypos);
+            jobject gp = outlineToGeneralPath(env, outline);
+            if (gp != NULL) {
+                (*env)->SetObjectField(env, result, sunFontIDs.glyphRenderDataOutline, gp);
+            }
+        }
+    } else {
+        addBitmapRenderData(env, scaler, font2D, context, scalerInfo, glyphCode, xpos, ypos, result);
+    }
 }
 
 JNIEXPORT jlong JNICALL
