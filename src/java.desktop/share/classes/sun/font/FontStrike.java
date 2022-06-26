@@ -62,5 +62,9 @@ public abstract class FontStrike {
 
     abstract Rectangle2D.Float getGlyphOutlineBounds(int glyphCode);
 
-    abstract GeneralPath getGlyphOutline(int glyphCode, float x, float y);
+    abstract GeneralPath
+        getGlyphOutline(int glyphCode, float x, float y);
+
+    abstract GlyphRenderData getGlyphRenderData(int glyphCode, float x, float y);
+
 }
