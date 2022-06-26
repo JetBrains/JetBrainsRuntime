@@ -120,16 +120,17 @@ JNI_COCOA_EXIT(env);
 /*
  * Class:     sun_font_CCompositeGlyphMapper
  * Method:    nativeCodePointToGlyph
- * Signature: (JI[Ljava/lang/String;)I
+ * Signature: (JII[Ljava/lang/String;)I
  */
 JNIEXPORT jint JNICALL
 Java_sun_font_CCompositeGlyphMapper_nativeCodePointToGlyph
-(JNIEnv *env, jclass clazz, jlong awtFontPtr, jint codePoint, jobjectArray resultArray)
+(JNIEnv *env, jclass clazz, jlong awtFontPtr, jint codePoint, jint variationSelector, jobjectArray resultArray)
 {
 JNI_COCOA_ENTER(env);
     AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
     CFStringRef fontNames[] = {NULL, NULL};
-    CGGlyph glyph = CTS_CopyGlyphAndFontNamesForCodePoint(awtFont, (UnicodeScalarValue)codePoint, fontNames);
+    CGGlyph glyph = CTS_CopyGlyphAndFontNamesForCodePoint(awtFont, (UnicodeScalarValue)codePoint,
+                                                          (UnicodeScalarValue)variationSelector, fontNames);
     if (glyph > 0) {
         jstring fontName = NSStringToJavaString(env, (NSString *)fontNames[0]);
         (*env)->SetObjectArrayElement(env, resultArray, 0, fontName);
