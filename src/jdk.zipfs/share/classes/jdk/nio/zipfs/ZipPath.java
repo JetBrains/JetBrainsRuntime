@@ -713,7 +713,7 @@ final class ZipPath implements Path {
             if (type == FileOwnerAttributeView.class)
                 return (V)new ZipPosixFileAttributeView(this,true);
         }
-        return null;
+        throw new UnsupportedOperationException("view <" + type + "> is not supported");
     }
 
     private ZipFileAttributeView getFileAttributeView(String type) {
