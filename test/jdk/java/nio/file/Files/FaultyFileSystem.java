@@ -42,8 +42,6 @@ import java.nio.file.WatchService;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
-import java.nio.file.attribute.FileTime;
-import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Iterator;
@@ -325,44 +323,12 @@ class FaultyFileSystem extends FileSystem {
             return Files.readAttributes(unwrap(file), attributes, options);
         }
 
-        private class FaultyBasicFileAttributeView implements BasicFileAttributeView {
-            private final Path file;
-            private final LinkOption[] options;
-
-            public FaultyBasicFileAttributeView(final Path file, final LinkOption... options) {
-                this.file = file;
-                this.options = options;
-            }
-
-            @Override
-            public String name() {
-                return "faulty";
-            }
-
-            @Override
-            public BasicFileAttributes readAttributes() throws IOException {
-                triggerEx(file, "readAttributes");
-                return Files.readAttributes(file, BasicFileAttributes.class, options);
-            }
-
-            @Override
-            public void setTimes(FileTime lastModifiedTime,
-                          FileTime lastAccessTime,
-                          FileTime createTime) throws IOException {
-                triggerEx(file, "setTimes");
-            }
-        }
-
         @Override
         public <V extends FileAttributeView> V getFileAttributeView(Path file,
                                                                     Class<V> type,
                                                                     LinkOption... options)
         {
-            if (type != BasicFileAttributeView.class) {
-                return null;
-            }
-
-            return (V)new FaultyBasicFileAttributeView(unwrap(file), options);
+            return Files.getFileAttributeView(unwrap(file), type, options);
         }
 
         @Override
