@@ -41,16 +41,16 @@ import static sun.nio.fs.WindowsConstants.*;
 class WindowsDirectoryStream
     implements DirectoryStream<Path>
 {
-    private static final int NATIVE_BUFFER_SIZE = 8192;
-
     private final WindowsPath dir;
     private final DirectoryStream.Filter<? super Path> filter;
 
-    // Query directory information data structure
-    private final QueryDirectoryInformation queryDirectoryInformation;
+    // handle to directory
+    private final long handle;
+    // first entry in the directory
+    private final String firstName;
 
-    // Buffer used to receive file entries from NtQueryDirectoryInformation calls
-    private final NativeBuffer queryDirectoryInformationBuffer;
+    // buffer for WIN32_FIND_DATA structure that receives information about file
+    private final NativeBuffer findDataBuffer;
 
     private final Object closeLock = new Object();
 
@@ -65,15 +65,21 @@ class WindowsDirectoryStream
         this.dir = dir;
         this.filter = filter;
 
-        this.queryDirectoryInformationBuffer = NativeBuffers.getNativeBuffer(NATIVE_BUFFER_SIZE);
         try {
-            // Open the directory for reading and read the first set of entries in the native buffer
+            // Need to append * or \* to match entries in directory.
             String search = dir.getPathForWin32Calls();
-            this.queryDirectoryInformation = OpenNtQueryDirectoryInformation(search, this.queryDirectoryInformationBuffer);
-        } catch (WindowsException x) {
-            // Release the buffer, as this instance is not fully constructed
-            this.queryDirectoryInformationBuffer.release();
+            char last = search.charAt(search.length() -1);
+            if (last == ':' || last == '\\') {
+                search += "*";
+            } else {
+                search += "\\*";
+            }
 
+            FirstFile first = FindFirstFile(search);
+            this.handle = first.handle();
+            this.firstName = first.name();
+            this.findDataBuffer = WindowsFileAttributes.getBufferForFindData();
+        } catch (WindowsException x) {
             if (x.lastError() == ERROR_DIRECTORY) {
                 throw new NotDirectoryException(dir.getPathForExceptionMessage());
             }
@@ -93,9 +99,9 @@ class WindowsDirectoryStream
                 return;
             isOpen = false;
         }
-        queryDirectoryInformationBuffer.release();
+        findDataBuffer.release();
         try {
-            CloseNtQueryDirectoryInformation(queryDirectoryInformation);
+            FindClose(handle);
         } catch (WindowsException x) {
             x.rethrowAsIOException(dir);
         }
@@ -109,20 +115,20 @@ class WindowsDirectoryStream
         synchronized (this) {
             if (iterator != null)
                 throw new IllegalStateException("Iterator already obtained");
-            iterator = new WindowsDirectoryIterator();
+            iterator = new WindowsDirectoryIterator(firstName);
             return iterator;
         }
     }
 
     private class WindowsDirectoryIterator implements Iterator<Path> {
         private boolean atEof;
+        private String first;
         private Path nextEntry;
         private String prefix;
-        private int nextOffset;
 
-        WindowsDirectoryIterator() {
+        WindowsDirectoryIterator(String first) {
             atEof = false;
-            nextOffset = 0;
+            this.first = first;
             if (dir.needsSlashWhenResolving()) {
                 prefix = dir.toString() + "\\";
             } else {
@@ -150,48 +156,44 @@ class WindowsDirectoryStream
 
         // reads next directory entry
         private Path readNextEntry() {
+            // handle first element returned by search
+            if (first != null) {
+                nextEntry = isSelfOrParent(first) ? null : acceptEntry(first, null);
+                first = null;
+                if (nextEntry != null)
+                    return nextEntry;
+            }
+
             for (;;) {
-                String name;
+                String name = null;
                 WindowsFileAttributes attrs;
 
                 // synchronize on closeLock to prevent close while reading
                 synchronized (closeLock) {
-                    // Fetch next set of entries if we don't have anything available in buffer
-                    if (!isOpen) {
+                    try {
+                        if (isOpen) {
+                            name = FindNextFile(handle, findDataBuffer.address());
+                        }
+                    } catch (WindowsException x) {
+                        IOException ioe = x.asIOException(dir);
+                        throw new DirectoryIteratorException(ioe);
+                    }
+
+                    // NO_MORE_FILES or stream closed
+                    if (name == null) {
                         atEof = true;
                         return null;
                     }
 
-                    if (nextOffset < 0) {
-                        try {
-                            atEof = !NextNtQueryDirectoryInformation(queryDirectoryInformation, queryDirectoryInformationBuffer);
-                        } catch (WindowsException x) {
-                            IOException ioe = x.asIOException(dir);
-                            throw new DirectoryIteratorException(ioe);
-                        }
-                        if (atEof) {
-                            return null;
-                        }
-                        nextOffset = 0;
-                    }
-
-                    long dirInformationAddress = queryDirectoryInformationBuffer.address() + nextOffset;
-                    int nextEntryOffset = WindowsFileAttributes.getNextOffsetFromFileDirInformation(
-                            queryDirectoryInformation, dirInformationAddress);
-                    nextOffset = nextEntryOffset == 0 ? -1 : nextOffset + nextEntryOffset;
-                    if (nextOffset > NATIVE_BUFFER_SIZE - WindowsFileAttributes.SIZEOF_FILE_DIRECTORY_INFORMATION) {
-                        // The offset to the next data structure sometimes points past the end of the buffer.
-                        // Treat this as there are no more data (and hope NextNtQueryDirectoryInformation()
-                        // didn't write past the allocated memory).
-                        nextOffset = -1;
-                    }
-                    name = WindowsFileAttributes.getFileNameFromFileDirInformation(
-                            queryDirectoryInformation, dirInformationAddress);
-                    if (isSelfOrParent(name)) {
-                        // Skip "." and ".."
+                    // ignore link to self and parent directories
+                    if (isSelfOrParent(name))
                         continue;
-                    }
-                    attrs = WindowsFileAttributes.fromFileDirInformation(queryDirectoryInformation, dirInformationAddress);
+
+                    // grab the attributes from the WIN32_FIND_DATA structure
+                    // (needs to be done while holding closeLock because close
+                    // will release the buffer)
+                    attrs = WindowsFileAttributes
+                        .fromFindData(findDataBuffer.address());
                 }
 
                 // return entry if accepted by filter
