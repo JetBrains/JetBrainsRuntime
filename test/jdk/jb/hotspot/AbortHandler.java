@@ -68,6 +68,11 @@ public class AbortHandler {
             opts.add("AbortHandler");
             opts.add("--test");
             ProcessBuilder pb = ProcessTools.createTestJvm(opts);
+            if (pb.command().contains("-Djbr.catch.SIGABRT=true")) {
+                System.out.println("Test is being executed with -Djbr.catch.SIGABRT=true.");
+                System.out.println("Skipping verification that hs_err is not generated.");
+                return;
+            }
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
 
             final String hs_err_file = output.firstMatch("# *(\\S*hs_err_pid\\d+\\.log)", 1);
