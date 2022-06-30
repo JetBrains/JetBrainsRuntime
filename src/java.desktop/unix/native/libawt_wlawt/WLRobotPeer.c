@@ -246,6 +246,11 @@ Java_sun_awt_wl_WLRobotPeer_setLocationOfWLSurfaceImpl
             x, y);
 
     struct wl_surface * const surface = (struct wl_surface*) wlSurfacePtr;
+    if (!surface) {
+        J2dTrace(J2D_TRACE_INFO, "WLRobotPeer: unable to set location for NULL surface\n");
+        return;
+    }
+
     wakefield_move_surface(wakefield, surface, x, y);
     wl_surface_commit(surface);
     wl_flush_to_server(env);

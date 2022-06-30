@@ -198,7 +198,8 @@ public class WLComponentPeer implements ComponentPeer
 
     @Override
     public boolean isFocusable() {
-        throw new UnsupportedOperationException();
+        log.info("Not implemented: WLComponentPeer.isFocusable()");
+        return false;
     }
 
     public boolean requestFocus(Component lightweightChild, boolean temporary,
