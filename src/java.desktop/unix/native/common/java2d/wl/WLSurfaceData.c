@@ -244,11 +244,15 @@ static void WLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
     /* ops is assumed non-null as it is checked in SurfaceData_DisposeOps */
     J2dTrace1(J2D_TRACE_INFO, "WLSD_Dispose %p\n", ops);
     WLSDOps *wsdo = (WLSDOps*)ops;
-    close(wsdo->fd);
-    wsdo->fd = 0;
-    munmap(wsdo->data, wsdo->dataSize);
-    wl_shm_pool_destroy((struct wl_shm_pool *) wsdo->wlShmPool);
-    wl_buffer_add_listener((struct wl_buffer*)wsdo->wlBuffer, &wl_buffer_listener, NULL);
+    if (wsdo->wlSurface != 0) {
+        close(wsdo->fd);
+        wsdo->fd = 0;
+        munmap(wsdo->data, wsdo->dataSize);
+        wl_shm_pool_destroy((struct wl_shm_pool *) wsdo->wlShmPool);
+        wl_buffer_add_listener((struct wl_buffer *) wsdo->wlBuffer, &wl_buffer_listener, NULL);
+    } else {
+        J2dTrace(J2D_TRACE_INFO, "WLSD_Dispose: wlSurface == 0\n");
+    }
     pthread_mutex_destroy(&wsdo->lock);
 #endif
 }
