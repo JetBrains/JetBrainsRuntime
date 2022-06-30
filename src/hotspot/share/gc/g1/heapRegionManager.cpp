@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@
 #include "logging/logStream.hpp"
 #include "memory/allocation.hpp"
 #include "runtime/atomic.hpp"
+#include "runtime/mutexLocker.hpp"
 #include "runtime/orderAccess.hpp"
 #include "utilities/bitMap.inline.hpp"
 
@@ -400,7 +401,7 @@ void HeapRegionManager::expand_exact(uint start, uint num_regions, WorkerThreads
         reactivate_regions(i, 1);
       }
     }
-    // Not else-if to catch the case where the inactive region was uncommited
+    // Not else-if to catch the case where the inactive region was uncommitted
     // while waiting to get the lock.
     if (!_committed_map.active(i)) {
       expand(i, 1, pretouch_workers);

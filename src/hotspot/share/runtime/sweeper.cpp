@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,11 +39,11 @@
 #include "oops/method.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/handshake.hpp"
+#include "runtime/javaThread.hpp"
 #include "runtime/mutexLocker.hpp"
 #include "runtime/orderAccess.hpp"
 #include "runtime/os.hpp"
 #include "runtime/sweeper.hpp"
-#include "runtime/thread.inline.hpp"
 #include "runtime/vmOperations.hpp"
 #include "runtime/vmThread.hpp"
 #include "utilities/events.hpp"
@@ -130,8 +130,7 @@ Tickspan NMethodSweeper::_peak_sweep_fraction_time;            // Peak time swee
 class MarkActivationClosure: public CodeBlobClosure {
 public:
   virtual void do_code_blob(CodeBlob* cb) {
-    assert(cb->is_nmethod(), "CodeBlob should be nmethod");
-    nmethod* nm = (nmethod*)cb;
+    nmethod* nm = cb->as_nmethod();
     nm->set_hotness_counter(NMethodSweeper::hotness_counter_reset_val());
     // If we see an activation belonging to a non_entrant nmethod, we mark it.
     if (nm->is_not_entrant()) {
@@ -198,6 +197,10 @@ CodeBlobClosure* NMethodSweeper::prepare_mark_active_nmethods() {
   */
 void NMethodSweeper::do_stack_scanning() {
   assert(!CodeCache_lock->owned_by_self(), "just checking");
+  if (Continuations::enabled()) {
+    // There are continuation stacks in the heap that need to be scanned.
+    Universe::heap()->collect(GCCause::_codecache_GC_threshold);
+  }
   if (wait_for_stack_scanning()) {
     CodeBlobClosure* code_cl;
     {
@@ -229,19 +232,19 @@ void NMethodSweeper::sweeper_loop() {
 /**
   * Wakes up the sweeper thread to sweep if code cache space runs low
   */
-void NMethodSweeper::report_allocation(int code_blob_type) {
-  if (should_start_aggressive_sweep(code_blob_type)) {
+void NMethodSweeper::report_allocation() {
+  if (should_start_aggressive_sweep()) {
     MonitorLocker waiter(CodeSweeper_lock, Mutex::_no_safepoint_check_flag);
     _should_sweep = true;
     CodeSweeper_lock->notify();
   }
 }
 
-bool NMethodSweeper::should_start_aggressive_sweep(int code_blob_type) {
+bool NMethodSweeper::should_start_aggressive_sweep() {
   // Makes sure that we do not invoke the sweeper too often during startup.
   double start_threshold = 100.0 / (double)StartAggressiveSweepingAt;
   double aggressive_sweep_threshold = MAX2(start_threshold, 1.1);
-  return (CodeCache::reverse_free_ratio(code_blob_type) >= aggressive_sweep_threshold);
+  return (CodeCache::reverse_free_ratio() >= aggressive_sweep_threshold);
 }
 
 /**
@@ -266,7 +269,7 @@ void NMethodSweeper::force_sweep() {
  */
 void NMethodSweeper::handle_safepoint_request() {
   JavaThread* thread = JavaThread::current();
-  if (SafepointMechanism::should_process(thread)) {
+  if (SafepointMechanism::local_poll_armed(thread)) {
     if (PrintMethodFlushing && Verbose) {
       tty->print_cr("### Sweep at %d out of %d, yielding to safepoint", _seen, CodeCache::nmethod_count());
     }
@@ -342,6 +345,7 @@ void NMethodSweeper::sweep_code_cache() {
     MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
 
     while (!_current.end()) {
+      CodeCache::Sweep::begin();
       swept_count++;
       // Since we will give up the CodeCache_lock, always skip ahead
       // to the next nmethod.  Other blobs can be deleted by other
@@ -387,6 +391,7 @@ void NMethodSweeper::sweep_code_cache() {
       }
 
       _seen++;
+      CodeCache::Sweep::end();
       handle_safepoint_request();
     }
   }
@@ -546,8 +551,7 @@ void NMethodSweeper::possibly_flush(nmethod* nm) {
       // ReservedCodeCacheSize
       int reset_val = hotness_counter_reset_val();
       int time_since_reset = reset_val - nm->hotness_counter();
-      int code_blob_type = CodeCache::get_code_blob_type(nm);
-      double threshold = -reset_val + (CodeCache::reverse_free_ratio(code_blob_type) * NmethodSweepActivity);
+      double threshold = -reset_val + (CodeCache::reverse_free_ratio() * NmethodSweepActivity);
       // The less free space in the code cache we have - the bigger reverse_free_ratio() is.
       // I.e., 'threshold' increases with lower available space in the code cache and a higher
       // NmethodSweepActivity. If the current hotness counter - which decreases from its initial
@@ -594,7 +598,7 @@ void NMethodSweeper::possibly_flush(nmethod* nm) {
           } else if (MethodCounters::is_nmethod_age_unset(age)) {
             // No counters were used before. Set the counters to the detection
             // limit value. If the method is going to be used again it will be compiled
-            // with counters that we're going to use for analysis the the next time.
+            // with counters that we're going to use for analysis the next time.
             mc->reset_nmethod_age();
           } else {
             // Method was totally idle for 10 sweeps

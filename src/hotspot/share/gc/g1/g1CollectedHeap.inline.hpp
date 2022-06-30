@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@
 
 #include "gc/g1/g1BarrierSet.hpp"
 #include "gc/g1/g1CollectorState.hpp"
-#include "gc/g1/g1ConcurrentMark.inline.hpp"
 #include "gc/g1/g1EvacFailureRegions.hpp"
 #include "gc/g1/g1Policy.hpp"
 #include "gc/g1/g1RemSet.hpp"
@@ -39,6 +38,7 @@
 #include "gc/g1/heapRegionSet.inline.hpp"
 #include "gc/shared/markBitMap.inline.hpp"
 #include "gc/shared/taskqueue.inline.hpp"
+#include "oops/stackChunkOop.hpp"
 #include "runtime/atomic.hpp"
 #include "utilities/bitMap.inline.hpp"
 
@@ -163,15 +163,15 @@ inline bool G1CollectedHeap::is_marked_next(oop obj) const {
   return _cm->next_mark_bitmap()->is_marked(obj);
 }
 
-inline bool G1CollectedHeap::is_in_cset(oop obj) {
+inline bool G1CollectedHeap::is_in_cset(oop obj) const {
   return is_in_cset(cast_from_oop<HeapWord*>(obj));
 }
 
-inline bool G1CollectedHeap::is_in_cset(HeapWord* addr) {
+inline bool G1CollectedHeap::is_in_cset(HeapWord* addr) const {
   return _region_attr.is_in_cset(addr);
 }
 
-bool G1CollectedHeap::is_in_cset(const HeapRegion* hr) {
+bool G1CollectedHeap::is_in_cset(const HeapRegion* hr) const {
   return _region_attr.is_in_cset(hr);
 }
 
@@ -208,11 +208,16 @@ void G1CollectedHeap::register_optional_region_with_region_attr(HeapRegion* r) {
   _region_attr.set_optional(r->hrm_index(), r->rem_set()->is_tracked());
 }
 
-inline bool G1CollectedHeap::is_in_young(const oop obj) {
+inline bool G1CollectedHeap::is_in_young(const oop obj) const {
   if (obj == NULL) {
     return false;
   }
   return heap_region_containing(obj)->is_young();
+}
+
+inline bool G1CollectedHeap::requires_barriers(stackChunkOop obj) const {
+  assert(obj != NULL, "");
+  return !heap_region_containing(obj)->is_young(); // is_in_young does an unnecessary NULL check
 }
 
 inline bool G1CollectedHeap::is_obj_dead(const oop obj, const HeapRegion* hr) const {
@@ -226,33 +231,12 @@ inline bool G1CollectedHeap::is_obj_dead(const oop obj) const {
   return is_obj_dead(obj, heap_region_containing(obj));
 }
 
-inline bool G1CollectedHeap::is_obj_ill(const oop obj, const HeapRegion* hr) const {
-  return
-    !hr->obj_allocated_since_next_marking(obj) &&
-    !is_marked_next(obj) &&
-    !hr->is_closed_archive();
-}
-
-inline bool G1CollectedHeap::is_obj_ill(const oop obj) const {
-  if (obj == NULL) {
-    return false;
-  }
-  return is_obj_ill(obj, heap_region_containing(obj));
-}
-
 inline bool G1CollectedHeap::is_obj_dead_full(const oop obj, const HeapRegion* hr) const {
    return !is_marked_next(obj) && !hr->is_closed_archive();
 }
 
 inline bool G1CollectedHeap::is_obj_dead_full(const oop obj) const {
     return is_obj_dead_full(obj, heap_region_containing(obj));
-}
-
-inline void G1CollectedHeap::mark_evac_failure_object(const oop obj, uint worker_id) const {
-    // All objects failing evacuation are live. What we'll do is
-    // that we'll update the prev marking info so that they are
-    // all under PTAMS and explicitly marked.
-    _cm->par_mark_in_prev_bitmap(obj);
 }
 
 inline void G1CollectedHeap::set_humongous_reclaim_candidate(uint region, bool value) {

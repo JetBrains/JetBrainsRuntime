@@ -51,10 +51,8 @@ private:
   G1CollectedHeap* _g1h;
   VerifyOption     _vo;
   bool             _failures;
+
 public:
-  // _vo == UsePrevMarking -> use "prev" marking information,
-  // _vo == UseNextMarking -> use "next" marking information,
-  // _vo == UseFullMarking -> use "next" marking bitmap but no TAMS
   VerifyRootsClosure(VerifyOption vo) :
     _g1h(G1CollectedHeap::heap()),
     _vo(vo),
@@ -99,7 +97,7 @@ class G1VerifyCodeRootOopClosure: public OopClosure {
     }
 
     // Don't check the code roots during marking verification in a full GC
-    if (_vo == VerifyOption_G1UseFullMarking) {
+    if (_vo == VerifyOption::G1UseFullMarking) {
       return;
     }
 
@@ -204,10 +202,8 @@ private:
   size_t _live_bytes;
   HeapRegion *_hr;
   VerifyOption _vo;
+
 public:
-  // _vo == UsePrevMarking -> use "prev" marking information,
-  // _vo == UseNextMarking -> use "next" marking information,
-  // _vo == UseFullMarking -> use "next" marking bitmap but no TAMS.
   VerifyObjsInRegionClosure(HeapRegion *hr, VerifyOption vo)
     : _live_bytes(0), _hr(hr), _vo(vo) {
     _g1h = G1CollectedHeap::heap();
@@ -223,7 +219,7 @@ public:
       // word), it may not be marked, or may have been marked
       // but has since became dead, or may have been allocated
       // since the last marking.
-      if (_vo == VerifyOption_G1UseFullMarking) {
+      if (_vo == VerifyOption::G1UseFullMarking) {
         guarantee(!_g1h->is_obj_dead(o), "Full GC marking and concurrent mark mismatch");
       }
 
@@ -354,16 +350,12 @@ void G1HeapVerifier::verify_archive_regions() {
 
 class VerifyRegionClosure: public HeapRegionClosure {
 private:
-  bool             _par;
   VerifyOption     _vo;
   bool             _failures;
+
 public:
-  // _vo == UsePrevMarking -> use "prev" marking information,
-  // _vo == UseNextMarking -> use "next" marking information,
-  // _vo == UseFullMarking -> use "next" marking bitmap but no TAMS
-  VerifyRegionClosure(bool par, VerifyOption vo)
-    : _par(par),
-      _vo(vo),
+  VerifyRegionClosure(VerifyOption vo)
+    : _vo(vo),
       _failures(false) {}
 
   bool failures() {
@@ -407,16 +399,10 @@ public:
       } else if (!r->is_starts_humongous()) {
         VerifyObjsInRegionClosure not_dead_yet_cl(r, _vo);
         r->object_iterate(&not_dead_yet_cl);
-        if (_vo != VerifyOption_G1UseNextMarking) {
-          if (r->max_live_bytes() < not_dead_yet_cl.live_bytes()) {
-            log_error(gc, verify)("[" PTR_FORMAT "," PTR_FORMAT "] max_live_bytes " SIZE_FORMAT " < calculated " SIZE_FORMAT,
+        if (r->max_live_bytes() < not_dead_yet_cl.live_bytes()) {
+          log_error(gc, verify)("[" PTR_FORMAT "," PTR_FORMAT "] max_live_bytes " SIZE_FORMAT " < calculated " SIZE_FORMAT,
                                   p2i(r->bottom()), p2i(r->end()), r->max_live_bytes(), not_dead_yet_cl.live_bytes());
-            _failures = true;
-          }
-        } else {
-          // When vo == UseNextMarking we cannot currently do a sanity
-          // check on the live bytes as the calculation has not been
-          // finalized yet.
+          _failures = true;
         }
       }
     }
@@ -424,9 +410,9 @@ public:
   }
 };
 
-// This is the task used for parallel verification of the heap regions
+// This is the task used for verification of the heap regions
 
-class G1ParVerifyTask: public WorkerTask {
+class G1VerifyTask: public WorkerTask {
 private:
   G1CollectedHeap*  _g1h;
   VerifyOption      _vo;
@@ -434,11 +420,8 @@ private:
   HeapRegionClaimer _hrclaimer;
 
 public:
-  // _vo == UsePrevMarking -> use "prev" marking information,
-  // _vo == UseNextMarking -> use "next" marking information,
-  // _vo == UseFullMarking -> use "next" marking bitmap but no TAMS
-  G1ParVerifyTask(G1CollectedHeap* g1h, VerifyOption vo) :
-      WorkerTask("Parallel verify task"),
+  G1VerifyTask(G1CollectedHeap* g1h, VerifyOption vo) :
+      WorkerTask("Verify task"),
       _g1h(g1h),
       _vo(vo),
       _failures(false),
@@ -449,7 +432,7 @@ public:
   }
 
   void work(uint worker_id) {
-    VerifyRegionClosure blk(true, _vo);
+    VerifyRegionClosure blk(_vo);
     _g1h->heap_region_par_iterate_from_worker_offset(&blk, &_hrclaimer, worker_id);
     if (blk.failures()) {
       _failures = true;
@@ -501,24 +484,12 @@ void G1HeapVerifier::verify(VerifyOption vo) {
   }
 
   log_debug(gc, verify)("HeapRegions");
-  if (GCParallelVerificationEnabled && ParallelGCThreads > 1) {
 
-    G1ParVerifyTask task(_g1h, vo);
-    _g1h->workers()->run_task(&task);
-    if (task.failures()) {
-      failures = true;
-    }
-
-  } else {
-    VerifyRegionClosure blk(false, vo);
-    _g1h->heap_region_iterate(&blk);
-    if (blk.failures()) {
-      failures = true;
-    }
-  }
-
-  if (failures) {
-    log_error(gc, verify)("Heap after failed verification (kind %d):", vo);
+  G1VerifyTask task(_g1h, vo);
+  _g1h->workers()->run_task(&task);
+  if (failures || task.failures()) {
+    log_error(gc, verify)("Heap after failed verification (kind %u):",
+                          static_cast<std::underlying_type_t<VerifyOption>>(vo));
     // It helps to have the per-region information in the output to
     // help us track down what went wrong. This is why we call
     // print_extended_on() instead of print_on().
@@ -526,8 +497,9 @@ void G1HeapVerifier::verify(VerifyOption vo) {
     ResourceMark rm;
     LogStream ls(log.error());
     _g1h->print_extended_on(&ls);
+
+    fatal("there should not have been any failures");
   }
-  guarantee(!failures, "there should not have been any failures");
 }
 
 // Heap region set verification
@@ -612,11 +584,11 @@ void G1HeapVerifier::verify(G1VerifyType type, VerifyOption vo, const char* msg)
 }
 
 void G1HeapVerifier::verify_before_gc(G1VerifyType type) {
-  verify(type, VerifyOption_G1UsePrevMarking, "Before GC");
+  verify(type, VerifyOption::G1UsePrevMarking, "Before GC");
 }
 
 void G1HeapVerifier::verify_after_gc(G1VerifyType type) {
-  verify(type, VerifyOption_G1UsePrevMarking, "After GC");
+  verify(type, VerifyOption::G1UsePrevMarking, "After GC");
 }
 
 
