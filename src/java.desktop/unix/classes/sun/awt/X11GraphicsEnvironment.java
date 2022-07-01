@@ -84,6 +84,8 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
                             glxRequested = true;
                             glxVerbose = true;
                         }
+                    } else if (openGLRecommended()) {
+                        glxRequested = true;
                     }
 
                     // Now check for XRender system property
@@ -137,6 +139,16 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
         // Install the correct surface manager factory.
         SurfaceManagerFactory.setInstance(new UnixSurfaceManagerFactory());
 
+    }
+
+    private static boolean isVMWare() {
+        final String virtName = System.getProperty("jbr.virtualization.information");
+        return virtName != null && virtName.equals("VMWare virtualization");
+    }
+
+    private static boolean openGLRecommended() {
+        final String sessionType = System.getenv("XDG_SESSION_TYPE");
+        return (sessionType != null && sessionType.equals("wayland") && isVMWare());
     }
 
 
