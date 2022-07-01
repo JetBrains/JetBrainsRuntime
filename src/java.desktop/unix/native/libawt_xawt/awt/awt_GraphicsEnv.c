@@ -818,12 +818,12 @@ Java_sun_awt_X11GraphicsEnvironment_initDisplay(JNIEnv *env, jobject this,
  * Signature: ()Z
  */
 JNIEXPORT jboolean JNICALL
-Java_sun_awt_X11GraphicsEnvironment_initGLX(JNIEnv *env, jclass x11ge)
+Java_sun_awt_X11GraphicsEnvironment_initGLX(JNIEnv *env, jclass x11ge, jboolean glxRecommended)
 {
     jboolean glxAvailable;
 
     AWT_LOCK();
-    glxAvailable = GLXGC_IsGLXAvailable();
+    glxAvailable = GLXGC_IsGLXAvailable(glxRecommended);
     AWT_UNLOCK();
 
     return glxAvailable;
