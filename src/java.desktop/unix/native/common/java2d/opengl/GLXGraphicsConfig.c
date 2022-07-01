@@ -47,6 +47,64 @@ extern Bool usingXinerama;
  */
 static GLXContext sharedContext = 0;
 
+static jboolean
+isSoftwareRenderer(void)
+{
+    jboolean isLLVMPipeline = JNI_TRUE; // Assume the worst
+    const int attributes[] = {
+      GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+      GLX_RENDER_TYPE,   GLX_RGBA_BIT,
+      GLX_RED_SIZE,      1,   /* Request a single buffered color buffer */
+      GLX_GREEN_SIZE,    1,   /* with the maximum number of color bits  */
+      GLX_BLUE_SIZE,     1,   /* for each component                     */
+      None
+    };
+    const int scrnum = DefaultScreen(awt_display);
+    int nconfs;
+    GLXFBConfig *fbConfigs = j2d_glXChooseFBConfig(awt_display, scrnum,
+                                                   attributes, &nconfs);
+    if ((fbConfigs == NULL) || (nconfs <= 0)) {
+        return isLLVMPipeline;
+    }
+
+    XVisualInfo *visinfo = j2d_glXGetVisualFromFBConfig(awt_display, fbConfigs[0]);
+    if (visinfo == NULL) {
+        XFree(fbConfigs);
+        return isLLVMPipeline;
+    }
+
+    GLXContext ctx = j2d_glXCreateNewContext(awt_display, fbConfigs[0],
+                                             GLX_RGBA_TYPE, 0, GL_TRUE);
+    if (ctx == 0) {
+        XFree(visinfo);
+        XFree(fbConfigs);
+        return isLLVMPipeline;
+    }
+
+    const Window root = RootWindow(awt_display, scrnum);
+    XSetWindowAttributes attr;
+    attr.background_pixel = 0;
+    attr.border_pixel = 0;
+    attr.colormap = XCreateColormap(awt_display, root, visinfo->visual, AllocNone);
+    attr.event_mask = StructureNotifyMask | ExposureMask;
+    const unsigned long mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
+    const Window win = XCreateWindow(awt_display, root, 0, 0, 1, 1,
+                                     0, visinfo->depth, InputOutput,
+                                     visinfo->visual, mask, &attr);
+
+    if (j2d_glXMakeContextCurrent(awt_display, win, win, ctx)) {
+        const char * renderer = j2d_glXQueryCurrentRendererStringMESA(GLX_RENDERER_DEVICE_ID_MESA);
+        isLLVMPipeline = (strstr(renderer, "llvmpipe") != NULL);
+    }
+
+    XDestroyWindow(awt_display, win);
+    j2d_glXDestroyContext(awt_display, ctx);
+    XFree(visinfo);
+    XFree(fbConfigs);
+
+    return isLLVMPipeline;
+}
+
 /**
  * Attempts to initialize GLX and the core OpenGL library.  For this method
  * to return JNI_TRUE, the following must be true:
@@ -59,7 +117,7 @@ static GLXContext sharedContext = 0;
  * GraphicsConfig in the environment.
  */
 static jboolean
-GLXGC_InitGLX()
+GLXGC_InitGLX(jboolean glxRecommended)
 {
     int errorbase, eventbase;
     const char *version;
@@ -105,6 +163,14 @@ GLXGC_InitGLX()
         return JNI_FALSE;
     }
 
+    if (glxRecommended) {
+        if (isSoftwareRenderer()) {
+          // There are severe glitches when using software renderer, so
+          // if the OpenGL pipeline is merely recommended and not forced,
+          // report that it is not useable.
+          return JNI_FALSE;
+        }
+    }
     return JNI_TRUE;
 }
 
@@ -115,7 +181,7 @@ GLXGC_InitGLX()
  * calling this method.
  */
 jboolean
-GLXGC_IsGLXAvailable()
+GLXGC_IsGLXAvailable(jboolean glxRecommended)
 {
     static jboolean glxAvailable = JNI_FALSE;
     static jboolean firstTime = JNI_TRUE;
@@ -123,7 +189,7 @@ GLXGC_IsGLXAvailable()
     J2dTraceLn(J2D_TRACE_INFO, "GLXGC_IsGLXAvailable");
 
     if (firstTime) {
-        glxAvailable = GLXGC_InitGLX();
+        glxAvailable = GLXGC_InitGLX(glxRecommended);
         firstTime = JNI_FALSE;
     }
 
@@ -339,7 +405,7 @@ GLXGC_FindBestVisual(JNIEnv *env, jint screen)
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "GLXGC_FindBestVisual: scn=%d", screen);
 
-    if (!GLXGC_IsGLXAvailable()) {
+    if (!GLXGC_IsGLXAvailable(JNI_FALSE)) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
             "GLXGC_FindBestVisual: could not initialize GLX");
         return 0;
