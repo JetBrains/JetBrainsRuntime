@@ -35,6 +35,7 @@
 #include "gc/shared/gcConfig.hpp"
 #include "gc/shared/stringdedup/stringDedup.hpp"
 #include "gc/shared/tlab_globals.hpp"
+#include "jfr/periodic/jfrOSInterface.hpp"
 #include "logging/log.hpp"
 #include "logging/logConfiguration.hpp"
 #include "logging/logStream.hpp"
@@ -4476,5 +4477,11 @@ void Arguments::setup_hotswap_agent() {
   create_numbered_module_property("jdk.module.addopens", "java.desktop/com.sun.beans.introspect=ALL-UNNAMED", addopens_count++);
   // com.sun.beans.introspect.util.Cache access
   create_numbered_module_property("jdk.module.addopens", "java.desktop/com.sun.beans.util=ALL-UNNAMED", addopens_count++);
+}
 
+void Arguments::add_virtualization_information_property()
+{
+  const char *virt_name = "undetected";
+  JFR_ONLY(virt_name = JfrOSInterface::virtualization_name();)
+  PropertyList_add(&_system_properties, new SystemProperty("jbr.virtualization.information", virt_name, false));
 }
