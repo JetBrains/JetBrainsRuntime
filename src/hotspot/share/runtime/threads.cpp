@@ -636,6 +636,8 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   JFR_ONLY(Jfr::on_create_vm_1();)
 
+  Arguments::add_virtualization_information_property();
+
   // Should be done after the heap is fully created
   main_thread->cache_global_variables();
 
