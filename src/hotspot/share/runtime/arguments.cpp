@@ -39,6 +39,7 @@
 #include "gc/shared/stringdedup/stringDedup.hpp"
 #include "gc/shared/tlab_globals.hpp"
 #include "jvm.h"
+#include "jfr/periodic/jfrOSInterface.hpp"
 #include "logging/log.hpp"
 #include "logging/logConfiguration.hpp"
 #include "logging/logStream.hpp"
@@ -4094,4 +4095,11 @@ bool Arguments::copy_expand_pid(const char* src, size_t srclen,
   }
   *b = '\0';
   return (p == src_end); // return false if not all of the source was copied
+}
+
+void Arguments::add_virtualization_information_property()
+{
+  const char *virt_name = "undetected";
+  JFR_ONLY(virt_name = JfrOSInterface::virtualization_name();)
+  PropertyList_add(&_system_properties, new SystemProperty("jbr.virtualization.information", virt_name, false));
 }
