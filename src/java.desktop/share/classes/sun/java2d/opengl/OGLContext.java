@@ -48,31 +48,32 @@ public class OGLContext extends BufferedContext {
     private final OGLGraphicsConfig config;
 
     static {
-        EventQueue.invokeLater(() -> {
-            Integer blitTileSize = AccessController.doPrivileged((PrivilegedAction<Integer>)() ->
-                Integer.parseInt(System.getProperty("sun.java2d.opengl.blitTileSize", "128")));
+        if (!GraphicsEnvironment.isHeadless()) {
+            EventQueue.invokeLater(() -> {
+                Integer blitTileSize = AccessController.doPrivileged((PrivilegedAction<Integer>) () ->
+                        Integer.parseInt(System.getProperty("sun.java2d.opengl.blitTileSize", "128")));
 
-            if (blitTileSize < 0) {
-                int maxDeviceSize = 0;
-                try {
-                    GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-                    if (ge != null) {
-                        for (GraphicsDevice gd : ge.getScreenDevices()) {
-                            GraphicsConfiguration gc = gd.getDefaultConfiguration();
-                            if (gc == null) continue;
-                            AffineTransform tx = gc.getDefaultTransform();
-                            Rectangle bounds = gc.getBounds();
-                            maxDeviceSize = Math.max((int)(bounds.width * tx.getScaleX()), maxDeviceSize);
-                            maxDeviceSize = Math.max((int)(bounds.height * tx.getScaleY()), maxDeviceSize);
+                if (blitTileSize < 0) {
+                    int maxDeviceSize = 0;
+                    try {
+                        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+                        if (ge != null) {
+                            for (GraphicsDevice gd : ge.getScreenDevices()) {
+                                GraphicsConfiguration gc = gd.getDefaultConfiguration();
+                                if (gc == null) continue;
+                                AffineTransform tx = gc.getDefaultTransform();
+                                Rectangle bounds = gc.getBounds();
+                                maxDeviceSize = Math.max((int) (bounds.width * tx.getScaleX()), maxDeviceSize);
+                                maxDeviceSize = Math.max((int) (bounds.height * tx.getScaleY()), maxDeviceSize);
+                            }
                         }
+                    } catch (HeadlessException ignore) {
                     }
+                    blitTileSize = Math.max(128, Integer.highestOneBit((int) (maxDeviceSize * 1.25)));
                 }
-                catch (HeadlessException ignore) {
-                }
-                blitTileSize = Math.max(128, Integer.highestOneBit((int)(maxDeviceSize * 1.25)));
-            }
-            init(blitTileSize);
-        });
+                init(blitTileSize);
+            });
+        }
     }
 
     private static native void init(int blitTileSize);
