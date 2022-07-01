@@ -69,6 +69,11 @@ typedef void (GLAPIENTRY *glXSelectEventType)(Display *dpy, GLXDrawable draw, un
 typedef void (GLAPIENTRY *glXGetSelectedEventType)(Display *dpy, GLXDrawable draw, unsigned long *event_mask);
 
 /**
+ * These are required for just one purpose of checking the available renderer in isSoftwareRenderer()
+ */
+typedef const char* (GLAPIENTRY *glXQueryCurrentRendererStringMESAType) (int attribute);
+
+/**
  * GLX extension functions
  */
 typedef void * (GLAPIENTRY *glXGetProcAddressType)(const char *);
@@ -165,7 +170,8 @@ do { \
     OGL_##action##_FUNC(glXMakeContextCurrent); \
     OGL_##action##_FUNC(glXGetCurrentReadDrawable); \
     OGL_##action##_FUNC(glXQueryContext); \
-    OGL_##action##_FUNC(glXSelectEvent); \
+    OGL_##action##_FUNC(glXSelectEvent);   \
+    OGL_##action##_FUNC(glXQueryCurrentRendererStringMESA);   \
     OGL_##action##_FUNC(glXGetSelectedEvent);
 
 #define OGL_EXPRESS_PLATFORM_EXT_FUNCS(action)
