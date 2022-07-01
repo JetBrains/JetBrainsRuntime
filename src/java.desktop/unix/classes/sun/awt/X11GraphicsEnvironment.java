@@ -69,6 +69,7 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
         if (!isHeadless()) {
             // first check the OGL system property
             boolean glxRequested = false;
+            boolean glxRecommended = false;
             String prop = System.getProperty("sun.java2d.opengl");
             if (prop != null) {
                 if (prop.equals("true") || prop.equals("t")) {
@@ -77,13 +78,16 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
                     glxRequested = true;
                     glxVerbose = true;
                 }
+            } else if (openGLRecommended()) {
+                glxRequested = true;
+                glxRecommended = true;
             }
 
             // Now check for XRender system property
             boolean xRenderRequested = true;
             boolean xRenderIgnoreLinuxVersion = false;
             String xProp = System.getProperty("sun.java2d.xrender");
-                if (xProp != null) {
+            if (xProp != null) {
                 if (xProp.equals("false") || xProp.equals("f")) {
                     xRenderRequested = false;
                 } else if (xProp.equals("True") || xProp.equals("T")) {
@@ -91,7 +95,7 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
                     xRenderVerbose = true;
                 }
 
-                if (xProp.equalsIgnoreCase("t") || xProp.equalsIgnoreCase("true")) {
+                if(xProp.equalsIgnoreCase("t") || xProp.equalsIgnoreCase("true")) {
                     xRenderIgnoreLinuxVersion = true;
                 }
             }
@@ -101,11 +105,11 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
 
             // only attempt to initialize GLX if it was requested
             if (glxRequested) {
-                glxAvailable = initGLX();
+                glxAvailable = initGLX(glxRecommended);
                 if (glxVerbose && !glxAvailable) {
                     System.out.println(
-                        "Could not enable OpenGL " +
-                        "pipeline (GLX 1.3 not available)");
+                            "Could not enable OpenGL " +
+                            "pipeline (GLX 1.3 not available)");
                 }
             }
 
@@ -114,7 +118,7 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
                 xRenderAvailable = initXRender(xRenderVerbose, xRenderIgnoreLinuxVersion);
                 if (xRenderVerbose && !xRenderAvailable) {
                     System.out.println(
-                                 "Could not enable XRender pipeline");
+                            "Could not enable XRender pipeline");
                 }
             }
 
@@ -124,11 +128,21 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
         }
     }
 
+    private static boolean isVMWare() {
+        final String virtName = System.getProperty("jbr.virtualization.information");
+        return virtName != null && virtName.equals("VMWare virtualization");
+    }
+
+    private static boolean openGLRecommended() {
+        final String sessionType = System.getenv("XDG_SESSION_TYPE");
+        return (sessionType != null && sessionType.equals("wayland") && isVMWare());
+    }
+
 
     private static boolean glxAvailable;
     private static boolean glxVerbose;
 
-    private static native boolean initGLX();
+    private static native boolean initGLX(boolean glxRecommended);
 
     public static boolean isGLXAvailable() {
         return glxAvailable;
