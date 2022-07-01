@@ -458,6 +458,8 @@ class Arguments : AllStatic {
     _vm_info->set_value(vm_info);
   }
 
+  static void add_virtualization_information_property();
+
   // Property List manipulation
   static void PropertyList_add(SystemProperty *element);
   static void PropertyList_add(SystemProperty** plist, SystemProperty *element);
