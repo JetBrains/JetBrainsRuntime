@@ -36,6 +36,7 @@
 #include "gc/shared/gcConfig.hpp"
 #include "gc/shared/stringdedup/stringDedup.hpp"
 #include "gc/shared/tlab_globals.hpp"
+#include "jfr/periodic/jfrOSInterface.hpp"
 #include "logging/log.hpp"
 #include "logging/logConfiguration.hpp"
 #include "logging/logStream.hpp"
@@ -4480,5 +4481,11 @@ void Arguments::parse_malloc_limits(size_t* total_limit, size_t limits[mt_number
   } while (p != nullptr);
 
   os::free(copy);
+}
 
+void Arguments::add_virtualization_information_property()
+{
+  const char *virt_name = "undetected";
+  JFR_ONLY(virt_name = JfrOSInterface::virtualization_name();)
+  PropertyList_add(&_system_properties, new SystemProperty("jbr.virtualization.information", virt_name, false));
 }
