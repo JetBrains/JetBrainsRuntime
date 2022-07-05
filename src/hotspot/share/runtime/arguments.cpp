@@ -35,7 +35,6 @@
 #include "gc/shared/gcConfig.hpp"
 #include "gc/shared/stringdedup/stringDedup.hpp"
 #include "gc/shared/tlab_globals.hpp"
-#include "jfr/periodic/jfrOSInterface.hpp"
 #include "logging/log.hpp"
 #include "logging/logConfiguration.hpp"
 #include "logging/logStream.hpp"
@@ -4410,6 +4409,28 @@ bool Arguments::copy_expand_pid(const char* src, size_t srclen,
 
 void Arguments::add_virtualization_information_property()
 {
-  const char *virt_name = JfrOSInterface::virtualization_name();
+  // NB: the following has been taken from JfrOSInterface::virtualization_name()
+  const char *virt_name = "No virtualization detected";
+  
+  VirtualizationType vrt = VM_Version::get_detected_virtualization();
+  if (vrt == XenHVM) {
+    virt_name = "Xen hardware-assisted virtualization";
+  } else if (vrt == KVM) {
+    virt_name = "KVM virtualization";
+  } else if (vrt == VMWare) {
+    virt_name = "VMWare virtualization";
+  } else if (vrt == HyperV) {
+    virt_name = "Hyper-V virtualization";
+  } else if (vrt == HyperVRole) {
+    virt_name = "Hyper-V role";
+  } else if (vrt == PowerVM) {
+    virt_name = "PowerVM virtualization";
+  } else if (vrt == PowerKVM) {
+    virt_name = "Power KVM virtualization";
+  } else if (vrt == PowerFullPartitionMode) {
+    virt_name = "Power full partition";
+  }
+
   PropertyList_add(&_system_properties, new SystemProperty("jbr.virtualization.information", virt_name, false));
 }
+
