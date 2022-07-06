@@ -41,8 +41,11 @@ import sun.lwawt.LWWindowPeer;
 
 import sun.java2d.SurfaceData;
 import sun.java2d.opengl.CGLLayer;
+import sun.util.logging.PlatformLogger;
 
 public class CPlatformView extends CFRetainedResource {
+    private static final PlatformLogger logger =
+            PlatformLogger.getLogger(CPlatformView.class.getName());
     private native long nativeCreateView(int x, int y, int width, int height, long windowLayerPtr);
     private static native void nativeSetAutoResizable(long awtView, boolean toResize);
     private static native int nativeGetNSViewDisplayID(long awtView);
@@ -210,5 +213,14 @@ public class CPlatformView extends CFRetainedResource {
      */
     private void deliverWindowDidExposeEvent() {
         peer.notifyExpose(peer.getSize());
+    }
+
+    private void deliverChangeBackingProperties(float scale) {
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("Changed backing properties, scale = " + scale);
+        }
+        if (scale > 0) {
+            windowLayer.replaceSurfaceData(Math.round(scale));
+        }
     }
 }
