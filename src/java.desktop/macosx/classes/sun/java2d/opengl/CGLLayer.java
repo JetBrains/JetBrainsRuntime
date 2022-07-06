@@ -59,7 +59,7 @@ public final class CGLLayer extends CFLayer {
     }
 
     @Override
-    public SurfaceData replaceSurfaceData() {
+    public SurfaceData replaceSurfaceData(int scale) {
         if (getBounds().isEmpty()) {
             surfaceData = NullSurfaceData.theInstance;
             return surfaceData;
@@ -73,7 +73,10 @@ public final class CGLLayer extends CFLayer {
             return surfaceData;
         }
         surfaceData = gc.createSurfaceData(this);
-        setScale(gc.getDevice().getScaleFactor());
+        if (scale <= 0) {
+            scale = gc.getDevice().getScaleFactor();
+        }
+        setScale(scale);
         // the layer holds a reference to the buffer, which in
         // turn has a reference back to this layer
         if (surfaceData instanceof CGLSurfaceData) {
