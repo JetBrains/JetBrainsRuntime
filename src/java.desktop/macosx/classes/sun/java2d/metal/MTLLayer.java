@@ -64,7 +64,7 @@ public final class MTLLayer extends CFLayer {
     }
 
     @Override
-    public SurfaceData replaceSurfaceData() {
+    public SurfaceData replaceSurfaceData(int scale) {
         if (getBounds().isEmpty()) {
             surfaceData = NullSurfaceData.theInstance;
             return surfaceData;
@@ -74,7 +74,10 @@ public final class MTLLayer extends CFLayer {
         // and blits the buffer to the layer surface (in display callback)
         MTLGraphicsConfig gc = (MTLGraphicsConfig)getGraphicsConfiguration();
         surfaceData = gc.createSurfaceData(this);
-        setScale(gc.getDevice().getScaleFactor());
+        if (scale <= 0) {
+            scale = gc.getDevice().getScaleFactor();
+        }
+        setScale(scale);
         if (peer != null) {
             Insets insets = peer.getInsets();
             execute(ptr -> nativeSetInsets(ptr, insets.top, insets.left));
