@@ -43,7 +43,11 @@ public abstract class CFLayer extends CFRetainedResource {
         super(ptr, disposeOnAppKitThread);
     }
 
-    public abstract SurfaceData replaceSurfaceData();
+    public abstract SurfaceData replaceSurfaceData(int scale);
+
+    public SurfaceData replaceSurfaceData() {
+        return replaceSurfaceData(0);
+    }
 
     @Override
     public void dispose() {
