@@ -76,6 +76,7 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
                 if (!isHeadless()) {
                     // first check the OGL system property
                     boolean glxRequested = false;
+                    boolean glxRecommended = false;
                     String prop = System.getProperty("sun.java2d.opengl");
                     if (prop != null) {
                         if (prop.equals("true") || prop.equals("t")) {
@@ -86,6 +87,7 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
                         }
                     } else if (openGLRecommended()) {
                         glxRequested = true;
+                        glxRecommended = true;
                     }
 
                     // Now check for XRender system property
@@ -110,7 +112,7 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
 
                     // only attempt to initialize GLX if it was requested
                     if (glxRequested) {
-                        glxAvailable = initGLX();
+                        glxAvailable = initGLX(glxRecommended);
                         if (glxVerbose && !glxAvailable) {
                             System.out.println(
                                 "Could not enable OpenGL " +
@@ -155,7 +157,7 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
     private static boolean glxAvailable;
     private static boolean glxVerbose;
 
-    private static native boolean initGLX();
+    private static native boolean initGLX(boolean glxRecommended);
 
     public static boolean isGLXAvailable() {
         return glxAvailable;
