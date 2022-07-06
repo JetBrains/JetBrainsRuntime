@@ -1482,8 +1482,18 @@ static jclass jc_CInputMethod = NULL;
 
 /********************************   END NSTextInputClient Protocol   ********************************/
 
-
-
+- (void)viewDidChangeBackingProperties {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    if (self.window.backingScaleFactor > 0) {
+        self.layer.contentsScale = self.window.backingScaleFactor;
+        DECLARE_CLASS(jc_CPlatformView, "sun/lwawt/macosx/CPlatformView");
+        DECLARE_METHOD(deliverChangeBackingProperties, jc_CPlatformView, "deliverChangeBackingProperties", "(F)V");
+        jobject jlocal = (*env)->NewLocalRef(env, m_cPlatformView);
+        (*env)->CallVoidMethod(env, jlocal, deliverChangeBackingProperties, self.window.backingScaleFactor);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, jlocal);
+    }
+}
 
 @end // AWTView
 
