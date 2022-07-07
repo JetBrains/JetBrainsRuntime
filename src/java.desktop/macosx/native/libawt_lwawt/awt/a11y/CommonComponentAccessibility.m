@@ -95,9 +95,9 @@ static jobject sAccessibilityClass = NULL;
         return NO;
     }
 
-    id parent = [self parent];
-    if ([parent isKindOfClass:[CommonComponentAccessibility class]]) {
-        return isChildSelected(env, ((CommonComponentAccessibility *)parent)->fAccessible, fIndex, fComponent);
+    CommonComponentAccessibility* parent = [self typeSafeParent];
+    if (parent != nil) {
+        return isChildSelected(env, parent->fAccessible, fIndex, fComponent);
     }
     return NO;
 }
@@ -715,6 +715,15 @@ static jobject sAccessibilityClass = NULL;
     return fParent;
 }
 
+- (CommonComponentAccessibility *)typeSafeParent
+{
+    id parent = [self parent];
+    if ([parent isKindOfClass:[CommonComponentAccessibility class]]) {
+        return (CommonComponentAccessibility*)parent;
+    }
+    return nil;
+}
+
 - (NSString *)javaRole
 {
     if(fJavaRole == nil) {
@@ -831,11 +840,13 @@ static jobject sAccessibilityClass = NULL;
     if (fNSRole == nil) {
         NSString *javaRole = [self javaRole];
         fNSRole = [sRoles objectForKey:javaRole];
+        CommonComponentAccessibility* parent = [self typeSafeParent];
         // The sRoles NSMutableDictionary maps popupmenu to Mac's popup button.
         // JComboBox behavior currently relies on this.  However this is not the
         // proper mapping for a JPopupMenu so fix that.
         if ( [javaRole isEqualToString:@"popupmenu"] &&
-             ![[[self parent] javaRole] isEqualToString:@"combobox"] ) {
+             parent != nil &&
+             ![[parent javaRole] isEqualToString:@"combobox"] ) {
              fNSRole = NSAccessibilityMenuRole;
         }
         if (fNSRole == nil) {
@@ -1032,8 +1043,9 @@ static jobject sAccessibilityClass = NULL;
     // This may change when later fixing issues which currently
     // exist for combo boxes, but for now the following is only
     // for JPopupMenus, not for combobox menus.
-    id parent = [self parent];
+    id parent = [self typeSafeParent];
     if ( [[self javaRole] isEqualToString:@"popupmenu"] &&
+         parent != nil &&
          ![[parent javaRole] isEqualToString:@"combobox"] ) {
         NSArray *children =
             [CommonComponentAccessibility childrenOfParent:self
