@@ -44,7 +44,6 @@ public class WLSurfaceData extends SurfaceData {
     return new WLSurfaceData(peer, gc, gc.getSurfaceType(), peer.getColorModel());
   }
 
-
   public static WLGraphicsConfig getGC(WLComponentPeer peer) {
     if (peer != null) {
       return (WLGraphicsConfig) peer.getGraphicsConfiguration();

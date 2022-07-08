@@ -23,7 +23,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <wayland-client.h>
+
+#include <stdbool.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -32,8 +33,11 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <pthread.h>
-#include <jni.h>
+#include <wayland-client.h>
+
+#include "jni.h"
 #include "jni_util.h"
+
 #include "Trace.h"
 #include "WLSurfaceData.h"
 extern struct wl_shm *wl_shm;
@@ -244,11 +248,14 @@ static void WLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
     /* ops is assumed non-null as it is checked in SurfaceData_DisposeOps */
     J2dTrace1(J2D_TRACE_INFO, "WLSD_Dispose %p\n", ops);
     WLSDOps *wsdo = (WLSDOps*)ops;
-    close(wsdo->fd);
-    wsdo->fd = 0;
-    munmap(wsdo->data, wsdo->dataSize);
-    wl_shm_pool_destroy((struct wl_shm_pool *) wsdo->wlShmPool);
-    wl_buffer_add_listener((struct wl_buffer*)wsdo->wlBuffer, &wl_buffer_listener, NULL);
+    const bool surfaceFullyInitialized = (wsdo->wlShmPool && wsdo->wlBuffer);
+    if (surfaceFullyInitialized) {
+        close(wsdo->fd);
+        wsdo->fd = 0;
+        munmap(wsdo->data, wsdo->dataSize);
+        wl_shm_pool_destroy((struct wl_shm_pool *) wsdo->wlShmPool);
+        wl_buffer_add_listener((struct wl_buffer*)wsdo->wlBuffer, &wl_buffer_listener, NULL);
+    }
     pthread_mutex_destroy(&wsdo->lock);
 #endif
 }
