@@ -26,6 +26,14 @@
 #include <wayland-client.h>
 #include "xdg-shell-client-protocol.h"
 
+#define CHECK_NULL_THROW_OOME_RETURN(env, x, msg, z)\
+    do {                                        \
+        if ((x) == NULL) {                      \
+           JNU_ThrowOutOfMemoryError((env), (msg));\
+           return (z);                          \
+        }                                       \
+    } while(0)                                  \
+
 extern struct wl_display *wl_display;
 extern struct wl_shm *wl_shm;
 extern struct wl_compositor *wl_compositor;

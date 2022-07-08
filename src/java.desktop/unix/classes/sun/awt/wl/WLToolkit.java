@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,15 @@
 
 package sun.awt.wl;
 
+import sun.awt.AWTAccessor;
+import sun.awt.AppContext;
+import sun.awt.LightweightFrame;
+import sun.awt.PeerEvent;
+import sun.awt.SunToolkit;
+import sun.awt.UNIXToolkit;
+import sun.awt.datatransfer.DataTransferer;
+import sun.util.logging.PlatformLogger;
+
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.dnd.DragGestureEvent;
@@ -34,6 +43,11 @@ import java.awt.dnd.DragGestureRecognizer;
 import java.awt.dnd.DragSource;
 import java.awt.dnd.InvalidDnDOperationException;
 import java.awt.dnd.peer.DragSourceContextPeer;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.WindowEvent;
 import java.awt.font.TextAttribute;
 import java.awt.im.InputMethodHighlight;
 import java.awt.im.spi.InputMethodDescriptor;
@@ -66,12 +80,12 @@ import java.awt.peer.TextFieldPeer;
 import java.awt.peer.TrayIconPeer;
 import java.awt.peer.WindowPeer;
 import java.beans.PropertyChangeListener;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-
-import sun.awt.*;
-import sun.awt.datatransfer.DataTransferer;
-import sun.util.logging.PlatformLogger;
 
 /**
  * On events handling: the WLToolkit class creates a thread named "AWT-Wayland"
@@ -86,6 +100,7 @@ import sun.util.logging.PlatformLogger;
  */
 public class WLToolkit extends UNIXToolkit implements Runnable {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLToolkit");
+    private static final PlatformLogger logKeys = PlatformLogger.getLogger("sun.awt.wl.WLToolkit.keys");
 
     /**
      * Maximum wait time in ms between attempts to receive more data (events)
@@ -118,6 +133,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      * related to Wayland are reported via an exception.
      */
     private static final int READ_RESULT_ERROR = 3;
+    
+    private static final int MOUSE_BUTTONS_COUNT = 3;
+    private static final int AWT_MULTICLICK_DEFAULT_TIME_MS = 500;
 
     private static native void initIDs();
 
@@ -127,7 +145,16 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
+    @SuppressWarnings("removal")
     public WLToolkit() {
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            final String extraButtons = "sun.awt.enableExtraMouseButtons";
+            areExtraMouseButtonsEnabled =
+                    Boolean.parseBoolean(System.getProperty(extraButtons, "true"));
+            System.setProperty(extraButtons, String.valueOf(areExtraMouseButtonsEnabled));
+            return null;
+        });
+
         Thread toolkitThread = new Thread(this, "AWT-Wayland");
         toolkitThread.setDaemon(true);
         toolkitThread.start();
@@ -205,6 +232,325 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                 }
             }
         }
+    }
+    
+    /**
+     * If more than this amount milliseconds has passed since the same mouse button click,
+     * the next click is considered separate and not part of multi-click event.
+     * @return maximum milliseconds between same mouse button clicks for them to be a multiclick
+     */
+    static long getMulticlickTime() {
+        /* TODO: get from the system somehow */
+        return AWT_MULTICLICK_DEFAULT_TIME_MS;
+    }
+
+
+    /**
+     * The rate of repeating keys in characters per second
+     * Set from the native code  by the 'repeat_info' Wayland event (see wayland.xml).
+     */
+    static volatile int keyRepeatRate = 33;
+
+    /**
+     * Delay in milliseconds since key down until repeating starts.
+     * Set from the native code by the 'repeat_info' Wayland event (see wayland.xml).
+     */
+    static volatile int keyRepeatDelay = 500;
+
+    static int getKeyRepeatRate() {
+        return keyRepeatRate;
+    }
+
+    static int getKeyRepeatDelay() {
+        return keyRepeatDelay;
+    }
+
+    /**
+     * Creates and posts mouse events based on the given WLPointerEvent received from Wayland,
+     * the freshly updated WLInputState, and the previous WLInputState stored in inputState.
+     */
+    private static void dispatchPointerEventInContext(WLPointerEvent e, WLInputState newInputState) {
+        final WLComponentPeer peer = newInputState.getPeer();
+        if (peer == null)  {
+            log.severe("Surface doesn't map to any component");
+            return; // or else we don't know whom to notify of the event
+        }
+
+        final int x = newInputState.getPointerX();
+        final int y = newInputState.getPointerY();
+        final Point abs = peer.relativePointToAbsolute(new Point(x, y));
+        int xAbsolute = abs.x;
+        int yAbsolute = abs.y;
+        
+        final long timestamp = newInputState.getTimestamp();
+
+        if (e.hasEnterEvent()) {
+            final MouseEvent mouseEvent = new MouseEvent(peer.getTarget(), MouseEvent.MOUSE_ENTERED,
+                    timestamp,
+                    newInputState.getModifiers(),
+                    x, y,
+                    xAbsolute, yAbsolute,
+                    0, false, MouseEvent.NOBUTTON);
+            postEvent(mouseEvent);
+        }
+
+        int clickCount = 0;
+        boolean isPopupTrigger = false;
+        int buttonChanged = MouseEvent.NOBUTTON;
+
+        if (e.hasButtonEvent()) {
+            final WLPointerEvent.PointerButtonCodes buttonCode
+                    = WLPointerEvent.PointerButtonCodes.recognizedOrNull(e.getButtonCode());
+            if (buttonCode != null) {
+                clickCount = newInputState.getClickCount();
+                isPopupTrigger = buttonCode.isPopupTrigger();
+                buttonChanged = buttonCode.javaCode;
+
+                final MouseEvent mouseEvent = new MouseEvent(peer.getTarget(),
+                        e.getIsButtonPressed() ? MouseEvent.MOUSE_PRESSED : MouseEvent.MOUSE_RELEASED,
+                        timestamp,
+                        newInputState.getModifiers(),
+                        x, y,
+                        xAbsolute, yAbsolute,
+                        clickCount,
+                        isPopupTrigger,
+                        buttonChanged);
+                postEvent(mouseEvent);
+
+                final boolean isButtonReleased = !e.getIsButtonPressed();
+                final boolean wasSameButtonPressed = inputState.hasThisPointerButtonPressed(e.getButtonCode());
+                final boolean isButtonClicked = isButtonReleased && wasSameButtonPressed;
+                if (isButtonClicked) {
+                    final MouseEvent mouseClickEvent = new MouseEvent(peer.getTarget(),
+                            MouseEvent.MOUSE_CLICKED,
+                            timestamp,
+                            newInputState.getModifiers(),
+                            x, y,
+                            xAbsolute, yAbsolute,
+                            clickCount,
+                            isPopupTrigger,
+                            buttonChanged);
+                    postEvent(mouseClickEvent);
+                }
+            }
+        }
+        
+        if (e.hasAxisEvent() && e.getIsAxis0Valid()) {
+            final MouseEvent mouseEvent = new MouseWheelEvent(peer.getTarget(),
+                    MouseEvent.MOUSE_WHEEL,
+                    timestamp,
+                    newInputState.getModifiers(),
+                    x, y,
+                    xAbsolute, yAbsolute,
+                    1,
+                    isPopupTrigger,
+                    MouseWheelEvent.WHEEL_UNIT_SCROLL,
+                    1,
+                    e.getAxis0Value());
+            postEvent(mouseEvent);
+        }
+        
+        if (e.hasMotionEvent()) {
+            final MouseEvent mouseEvent = new MouseEvent(peer.getTarget(),
+                    newInputState.hasPointerButtonPressed()
+                            ? MouseEvent.MOUSE_DRAGGED : MouseEvent.MOUSE_MOVED,
+                    timestamp,
+                    newInputState.getModifiers(),
+                    x, y,
+                    xAbsolute, yAbsolute,
+                    clickCount,
+                    isPopupTrigger,
+                    buttonChanged);
+            postEvent(mouseEvent);
+        }
+
+        if (e.hasLeaveEvent()) {
+            final MouseEvent mouseEvent = new MouseEvent(peer.getTarget(),
+                    MouseEvent.MOUSE_EXITED,
+                    timestamp,
+                    newInputState.getModifiers(),
+                    x, y,
+                    xAbsolute, yAbsolute,
+                    clickCount,
+                    isPopupTrigger,
+                    buttonChanged);
+            postEvent(mouseEvent);
+        }
+    }
+
+    private static WLInputState inputState = WLInputState.initialState();
+
+    private static void dispatchPointerEvent(WLPointerEvent e) {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread();
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) log.fine("dispatchPointerEvent: " + e);
+
+        final WLInputState newInputState = inputState.update(e);
+        dispatchPointerEventInContext(e, newInputState);
+        inputState = newInputState;
+    }
+
+    private static void dispatchKeyboardKeyEvent(long serial,
+                                                 long timestamp,
+                                                 long keycode,
+                                                 int keyCodePoint,  // UTF32 character
+                                                 boolean isPressed) {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread();
+
+        if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
+            logKeys.fine("dispatchKeyboardKeyEvent: keycode " + keycode + ", code point 0x"
+                    + Integer.toHexString(keyCodePoint) + ", " + (isPressed ? "pressed" : "released")
+                    + ", serial " + serial + ", timestamp " + timestamp);
+        }
+
+        if (timestamp == 0) {
+            // Happens when a surface was focused with keys already pressed.
+            // Fake the timestamp by peeking at the last known event.
+            timestamp = inputState.getTimestamp();
+        }
+
+        final long surfacePtr = inputState.getSurfaceForKeyboardInput();
+        final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
+        if (peer != null) {
+            convertToKeyEvent(timestamp, keycode, keyCodePoint, isPressed, peer);
+        }
+    }
+
+    private static void convertToKeyEvent(long timestamp, long keycode, int keyCodePoint,
+                                          boolean isPressed, WLComponentPeer peer) {
+        // See also XWindow.handleKeyPress()
+        final char keyChar = Character.isBmpCodePoint(keyCodePoint)
+                ? (char) keyCodePoint
+                : KeyEvent.CHAR_UNDEFINED;
+        final WLKeySym.KeyDescriptor keyDescriptor = WLKeySym.KeyDescriptor.fromXKBCode(keycode);
+        final int jkeyExtended = keyDescriptor.javaKeyCode() == KeyEvent.VK_UNDEFINED
+                        ? primaryUnicodeToJavaKeycode(keyCodePoint)
+                        : keyDescriptor.javaKeyCode();
+        postKeyEvent(peer.getTarget(),
+                isPressed ? KeyEvent.KEY_PRESSED : KeyEvent.KEY_RELEASED,
+                timestamp,
+                keyDescriptor.javaKeyCode(),
+                keyChar,
+                keyDescriptor.keyLocation(),
+                keycode,
+                jkeyExtended);
+
+        if (isPressed && keyChar != 0 && keyChar != KeyEvent.CHAR_UNDEFINED) {
+            postKeyEvent(peer.getTarget(),
+                    KeyEvent.KEY_TYPED,
+                    timestamp,
+                    KeyEvent.VK_UNDEFINED,
+                    keyChar,
+                    KeyEvent.KEY_LOCATION_UNKNOWN,
+                    keycode,
+                    KeyEvent.VK_UNDEFINED);
+        }
+    }
+
+    private static int primaryUnicodeToJavaKeycode(int codePoint) {
+        return (codePoint > 0? sun.awt.ExtendedKeyCodes.getExtendedKeyCodeForChar(codePoint) : 0);
+    }
+
+    private static void postKeyEvent(Component source,
+                                     int id,
+                                     long timestamp,
+                                     int keyCode,
+                                     char keyChar,
+                                     int keyLocation,
+                                     long rawCode,
+                                     int extendedKeyCode) {
+        final KeyEvent keyEvent = new KeyEvent(source, id, timestamp,
+                inputState.getModifiers(), keyCode, keyChar, keyLocation);
+
+        AWTAccessor.KeyEventAccessor kea = AWTAccessor.getKeyEventAccessor();
+        kea.setRawCode(keyEvent, rawCode);
+        kea.setExtendedKeyCode(keyEvent, (long) extendedKeyCode);
+        if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
+            logKeys.fine(String.valueOf(keyEvent));
+        }
+        postEvent(keyEvent);
+    }
+
+    private static void dispatchKeyboardModifiersEvent(long serial,
+                                                       boolean isShiftActive,
+                                                       boolean isAltActive,
+                                                       boolean isCtrlActive,
+                                                       boolean isMetaActive) {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread();
+
+        final int newModifiers =
+                  (isShiftActive ? InputEvent.SHIFT_DOWN_MASK : 0)
+                | (isAltActive   ? InputEvent.ALT_DOWN_MASK   : 0)
+                | (isCtrlActive  ? InputEvent.CTRL_DOWN_MASK  : 0)
+                | (isMetaActive  ? InputEvent.META_DOWN_MASK  : 0);
+        if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
+            logKeys.fine("dispatchKeyboardModifiersEvent: new modifiers 0x"
+                    + Integer.toHexString(newModifiers));
+        }
+
+        inputState = inputState.updatedFromKeyboardModifiersEvent(serial, newModifiers);
+    }
+
+    private static void dispatchKeyboardEnterEvent(long serial, long surfacePtr /*, TODO*/) {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread();
+
+        if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
+            logKeys.fine("dispatchKeyboardEnterEvent: " + serial + ", surface 0x"
+                    + Long.toHexString(surfacePtr));
+        }
+
+        final WLInputState newInputState = inputState.updatedFromKeyboardEnterEvent(serial, surfacePtr);
+        final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
+        if (peer != null && peer.getTarget() instanceof Window window) {
+            WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(window);
+            final WindowEvent windowEnterEvent = new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS);
+            postEvent(windowEnterEvent);
+        }
+        inputState = newInputState;
+    }
+
+    private static void dispatchKeyboardLeaveEvent(long serial, long surfacePtr) {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread();
+
+        if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
+            logKeys.fine("dispatchKeyboardLeaveEvent: " + serial + ", surface 0x"
+                    + Long.toHexString(surfacePtr));
+        }
+
+        final WLInputState newInputState = inputState.updatedFromKeyboardLeaveEvent(serial, surfacePtr);
+        final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
+        if (peer != null && peer.getTarget() instanceof Window window) {
+            final WindowEvent windowEnterEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
+            WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
+            WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
+            postEvent(windowEnterEvent);
+        }
+        inputState = newInputState;
+    }
+
+    /**
+     * Maps 'struct wl_surface*' to WLComponentPeer that owns the Wayland surface.
+     */
+    private static final Map<Long, WLComponentPeer> wlSurfaceToComponentMap = Collections.synchronizedMap(new HashMap<>());
+
+    static void registerWLSurface(long wlSurfacePtr, WLComponentPeer componentPeer) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("registerWLSurface: 0x" + Long.toHexString(wlSurfacePtr) + "->" + componentPeer);
+        }
+        wlSurfaceToComponentMap.put(wlSurfacePtr, componentPeer);
+    }
+
+    static void unregisterWLSurface(long wlSurfacePtr) {
+        wlSurfaceToComponentMap.remove(wlSurfacePtr);
+    }
+
+    static WLComponentPeer componentPeerFromSurface(long wlSurfacePtr) {
+        return wlSurfaceToComponentMap.get(wlSurfacePtr);
     }
 
     @Override
@@ -510,13 +856,16 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     protected void initializeDesktopProperties() {
-        log.info("Not implemented: WLToolkit.initializeDesktopProperties()");
+        super.initializeDesktopProperties();
+
+        if (!GraphicsEnvironment.isHeadless()) {
+            desktopProperties.put("awt.mouse.numButtons", MOUSE_BUTTONS_COUNT);
+        }
     }
 
     @Override
     public int getNumberOfButtons(){
-        log.info("Not implemented: WLToolkit.getNumberOfButtons()");
-        return 0;
+        return MOUSE_BUTTONS_COUNT;
     }
 
     @Override
@@ -612,10 +961,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return null;
     }
 
+    private static boolean areExtraMouseButtonsEnabled = true;
     @Override
     public boolean areExtraMouseButtonsEnabled() throws HeadlessException {
-        log.info("Not implemented: WLToolkit.areExtraMouseButtonsEnabled()");
-        return false;
+        return areExtraMouseButtonsEnabled;
     }
 
     @Override

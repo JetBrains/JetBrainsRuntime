@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,17 @@
 
 package sun.awt.wl;
 
-import static sun.awt.wl.WLToolkit.postEvent;
+import sun.awt.AWTAccessor;
+import sun.awt.AWTAccessor.ComponentAccessor;
+import sun.awt.PaintEventDispatcher;
+import sun.awt.SunToolkit;
+import sun.awt.event.IgnorePaintEvent;
+import sun.java2d.SunGraphics2D;
+import sun.java2d.SurfaceData;
+import sun.java2d.pipe.Region;
+import sun.java2d.wl.WLSurfaceData;
+import sun.util.logging.PlatformLogger;
+import sun.util.logging.PlatformLogger.Level;
 
 import java.awt.AWTEvent;
 import java.awt.AWTException;
@@ -43,7 +53,6 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.SystemColor;
 import java.awt.Toolkit;
-import java.awt.Window;
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.InputMethodEvent;
@@ -57,21 +66,10 @@ import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
 import java.util.Objects;
-import sun.awt.AWTAccessor;
-import sun.awt.AWTAccessor.ComponentAccessor;
-import sun.awt.PaintEventDispatcher;
-import sun.awt.SunToolkit;
-import sun.awt.event.IgnorePaintEvent;
-import sun.java2d.SunGraphics2D;
-import sun.java2d.SurfaceData;
-import sun.java2d.pipe.Region;
-import sun.java2d.wl.WLSurfaceData;
-import sun.util.logging.PlatformLogger;
-import sun.util.logging.PlatformLogger.Level;
 
+public class WLComponentPeer implements ComponentPeer {
+    private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
 
-public class WLComponentPeer implements ComponentPeer
-{
     private long nativePtr;
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     protected final Component target;
@@ -111,7 +109,7 @@ public class WLComponentPeer implements ComponentPeer
         width = bounds.width;
         height = bounds.height;
         log.info("WLComponentPeer: target=" + target + " x=" + x + " y=" + y +
-                 " width=" + width + " height=" + height);
+                " width=" + width + " height=" + height);
         // TODO
         // setup parent window for target
     }
@@ -148,7 +146,7 @@ public class WLComponentPeer implements ComponentPeer
         PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
                 createPaintEvent(target, x, y, w, h);
         if (event != null) {
-            postEvent(event);
+            WLToolkit.postEvent(event);
         }
     }
 
@@ -156,7 +154,7 @@ public class WLComponentPeer implements ComponentPeer
         if (isVisible()) {
             PaintEvent pe = new PaintEvent(target, PaintEvent.PAINT,
                     new Rectangle(0, 0, width, height));
-            postEvent(pe);
+            WLToolkit.postEvent(pe);
         }
     }
 
@@ -189,23 +187,39 @@ public class WLComponentPeer implements ComponentPeer
     }
 
     public void focusGained(FocusEvent e) {
-        log.info("Not implemented: WLComponentPeer.isObscured()");
     }
 
     public void focusLost(FocusEvent e) {
-        log.info("Not implemented: WLComponentPeer.focusLost(FocusEvent)");
     }
 
     @Override
     public boolean isFocusable() {
-        throw new UnsupportedOperationException();
+        return true;
     }
 
     public boolean requestFocus(Component lightweightChild, boolean temporary,
-                                      boolean focusedWindowChangeAllowed, long time,
-                                      FocusEvent.Cause cause)
-    {
-        log.info("Not implemented: WLComponentPeer.focusLost(FocusEvent)");
+                                boolean focusedWindowChangeAllowed, long time,
+                                FocusEvent.Cause cause) {
+        final Component currentlyFocused = WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusOwner();
+        if (currentlyFocused == null)
+            return false;
+
+        WLComponentPeer peer = AWTAccessor.getComponentAccessor().getPeer(currentlyFocused);
+        if (peer == null)
+            return false;
+
+        if (this == peer) {
+            WLKeyboardFocusManagerPeer.deliverFocus(lightweightChild,
+                    target,
+                    temporary,
+                    focusedWindowChangeAllowed,
+                    time,
+                    cause,
+                    WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusOwner());
+        } else {
+            return false;
+        }
+
         return true;
     }
 
@@ -213,13 +227,15 @@ public class WLComponentPeer implements ComponentPeer
         this.visible = v;
         if (this.visible) {
             nativeShowComponent(nativePtr, getParentNativePtr(target), target.getX(), target.getY());
-            ((WLSurfaceData)surfaceData).initSurface(this, background != null ? background.getRGB() : 0, target.getWidth(), target.getHeight());
+            WLToolkit.registerWLSurface(getWLSurface(), this);
+            ((WLSurfaceData) surfaceData).initSurface(this, background != null ? background.getRGB() : 0, target.getWidth(), target.getHeight());
             PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
                     createPaintEvent(target, 0, 0, target.getWidth(), target.getHeight());
             if (event != null) {
                 WLToolkit.postEvent(WLToolkit.targetToAppContext(event.getSource()), event);
             }
         } else {
+            WLToolkit.unregisterWLSurface(getWLSurface());
             nativeHideFrame(nativePtr);
         }
     }
@@ -315,7 +331,7 @@ public class WLComponentPeer implements ComponentPeer
             paintArea.add(r, e.getID());
         }
         if (true) {
-            switch(e.getID()) {
+            switch (e.getID()) {
                 case PaintEvent.UPDATE:
                     if (log.isLoggable(Level.INFO)) {
                         log.info("WLCP coalescePaintEvent : UPDATE : add : x = " +
@@ -336,23 +352,41 @@ public class WLComponentPeer implements ComponentPeer
     public Point getLocationOnScreen() {
         final long wlSurfacePtr = getWLSurface();
         if (wlSurfacePtr != 0) {
-            return WLRobotPeer.getLocationOfWLSurface(wlSurfacePtr);
+            try {
+                return WLRobotPeer.getLocationOfWLSurface(wlSurfacePtr);
+            } catch (UnsupportedOperationException ignore) {
+                return new Point(0, 0);
+            }
         } else {
             throw new UnsupportedOperationException("getLocationOnScreen() not supported without wayland surface");
         }
     }
 
+    /**
+     * Translate the point of coordinates relative to this component to the absolute coordinates,
+     * if getLocationOnScreen() is supported. Otherwise, the argument is returned.
+     */
+    Point relativePointToAbsolute(Point relativePoint) {
+        Point absolute = relativePoint;
+        try {
+            final Point myLocation = getLocationOnScreen();
+            absolute = absolute.getLocation();
+            absolute.translate(myLocation.x, myLocation.y);
+        } catch (UnsupportedOperationException ignore) {
+        }
+        return absolute;
+    }
+
     @SuppressWarnings("fallthrough")
     public void handleEvent(AWTEvent e) {
-        if ((e instanceof InputEvent) && !((InputEvent) e).isConsumed() && target.isEnabled()) {
-            if (e instanceof MouseEvent) {
-                if (e instanceof MouseWheelEvent) {
-                    log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): MouseWheelEvent");
+        if ((e instanceof InputEvent inputEvent) && !inputEvent.isConsumed() && target.isEnabled()) {
+            if (e instanceof MouseEvent mouseEvent) {
+                if (e instanceof MouseWheelEvent mouseWheelEvent) {
+                    handleJavaMouseWheelEvent(mouseWheelEvent);
                 } else
-                    log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): MouseEvent");
-            } else if (e instanceof KeyEvent) {
-                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleF10JavaKeyEvent");
-                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleJavaKeyEvent");
+                    handleJavaMouseEvent(mouseEvent);
+            } else if (e instanceof KeyEvent keyEvent) {
+                handleJavaKeyEvent(keyEvent);
             }
         } else if (e instanceof KeyEvent && !((InputEvent) e).isConsumed()) {
             // even if target is disabled.
@@ -378,15 +412,39 @@ public class WLComponentPeer implements ComponentPeer
                 return;
             case FocusEvent.FOCUS_LOST:
             case FocusEvent.FOCUS_GAINED:
-                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleJavaFocusEvent");
+                handleJavaFocusEvent(e);
                 break;
             case WindowEvent.WINDOW_LOST_FOCUS:
             case WindowEvent.WINDOW_GAINED_FOCUS:
-                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleJavaWindowFocusEvent");
+                handleJavaWindowFocusEvent(e);
                 break;
             default:
                 break;
         }
+    }
+
+    void handleJavaKeyEvent(KeyEvent e) {
+    }
+
+    void handleJavaMouseEvent(MouseEvent e) {
+    }
+
+    void handleJavaMouseWheelEvent(MouseWheelEvent e) {
+    }
+
+    void handleJavaFocusEvent(AWTEvent e) {
+        if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
+            focusLog.finer(String.valueOf(e));
+        }
+
+        if (e.getID() == FocusEvent.FOCUS_GAINED) {
+            focusGained((FocusEvent)e);
+        } else {
+            focusLost((FocusEvent)e);
+        }
+    }
+
+    void handleJavaWindowFocusEvent(AWTEvent e) {
     }
 
     public void beginLayout() {
@@ -398,10 +456,9 @@ public class WLComponentPeer implements ComponentPeer
     public void endLayout() {
         log.info("WLComponentPeer.endLayout(): paintArea.isEmpty() " + paintArea.isEmpty());
         if (!paintPending && !paintArea.isEmpty()
-                && !AWTAccessor.getComponentAccessor().getIgnoreRepaint(target))
-        {
+                && !AWTAccessor.getComponentAccessor().getIgnoreRepaint(target)) {
             // if not waiting for native painting repaint damaged area
-            postEvent(new PaintEvent(target, PaintEvent.PAINT,
+            WLToolkit.postEvent(new PaintEvent(target, PaintEvent.PAINT,
                     new Rectangle()));
         }
         isLayouting = false;
@@ -450,6 +507,7 @@ public class WLComponentPeer implements ComponentPeer
 
     @Override
     public void dispose() {
+        WLToolkit.unregisterWLSurface(getWLSurface());
         nativeDisposeFrame(nativePtr);
     }
 
