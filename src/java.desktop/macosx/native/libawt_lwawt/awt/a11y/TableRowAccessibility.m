@@ -123,7 +123,11 @@ static jclass sjc_CAccessibility = NULL;
             if ([accessibilityName isEqualToString:@""]) {
                 accessibilityName = [cell accessibilityLabel];
             } else {
-                accessibilityName = [accessibilityName stringByAppendingFormat:@", %@", [cell accessibilityLabel]];
+                if ([cell accessibilityLabel] == nil) {
+                    accessibilityName = [accessibilityName stringByAppendingFormat:@", %@", [cell accessibilityValue]];
+                } else {
+                    accessibilityName = [accessibilityName stringByAppendingFormat:@", %@", [cell accessibilityLabel]];
+                }
             }
         }
         return accessibilityName;
