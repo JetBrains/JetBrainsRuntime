@@ -32,6 +32,7 @@
 #import "GeomUtilities.h"
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
+#import "jni_util.h"
 #import "PropertiesUtilities.h"
 
 #import <Carbon/Carbon.h>
@@ -1484,7 +1485,13 @@ static jclass jc_CInputMethod = NULL;
 
 - (void)viewDidChangeBackingProperties {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    if (self.window.backingScaleFactor > 0) {
+    static double debugScale = -2.0;
+    if (debugScale == -2.0) { // default debugScale value in SGE is -1.0
+        debugScale = JNU_CallStaticMethodByName(env, NULL, "sun/java2d/SunGraphicsEnvironment",
+                                                "getDebugScale", "()D").d;
+    }
+
+    if (self.window.backingScaleFactor > 0 && debugScale < 0) {
         self.layer.contentsScale = self.window.backingScaleFactor;
         DECLARE_CLASS(jc_CPlatformView, "sun/lwawt/macosx/CPlatformView");
         DECLARE_METHOD(deliverChangeBackingProperties, jc_CPlatformView, "deliverChangeBackingProperties", "(F)V");
