@@ -30,8 +30,14 @@
 #import "MTLSurfaceData.h"
 #import "JNIUtilities.h"
 #define KEEP_ALIVE_INC 4
+#define FRAMES_BUFF_SIZE 8
 
-@implementation MTLLayer
+@implementation MTLLayer {
+    id<MTLTexture> framesBuffer[FRAMES_BUFF_SIZE];
+    int framesNumbers[FRAMES_BUFF_SIZE];
+    int inFramesIndex;
+    int outFramesIndex;
+}
 
 
 @synthesize javaLayer;
@@ -98,15 +104,34 @@
         return;
     }
 
-    if (self.nextDrawableCount != 0) {
+    if (self.nextDrawableCount >= FRAMES_BUFF_SIZE) {
         return;
     }
-
-    if (blittedFrame == fCount) {
-        J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture: frame=%d already present", blittedFrame);
-        return;
+    BOOL bufEmpty = outFramesIndex == inFramesIndex;
+    BOOL directBlit = NO;
+    BOOL blitFromBuf = NO;
+    BOOL storeToBuf = NO;
+    if (bufEmpty && self.nextDrawableCount == 0) {
+        if (blittedFrame == fCount) {
+            J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture: frame=%d already present", blittedFrame);
+            return;
+        }
+        blittedFrame = fCount;
+        directBlit = YES;
+    } else if (bufEmpty && self.nextDrawableCount > 0) {
+        if (blittedFrame == fCount) {
+            J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture: frame=%d already present", blittedFrame);
+            return;
+        }
+        storeToBuf = YES;
+        blittedFrame = fCount;
+    } else if (!bufEmpty) {
+        if (framesNumbers[(inFramesIndex + FRAMES_BUFF_SIZE - 1) % FRAMES_BUFF_SIZE] != fCount)  {
+            storeToBuf = YES;
+        }
+        blittedFrame = framesNumbers[outFramesIndex];
+        blitFromBuf = YES;
     }
-    blittedFrame = fCount;
 
     @autoreleasepool {
         if ((self.buffer.width == 0) || (self.buffer.height == 0)) {
@@ -139,19 +164,62 @@
             return;
         }
         self.nextDrawableCount++;
+        BOOL present = YES;
+        id <MTLBlitCommandEncoder> blitEncoder = nil;
+        __block int frame = fCount;
+        if (directBlit) {
+            blitEncoder = [commandBuf blitCommandEncoder];
+            [blitEncoder
+                    copyFromTexture:self.buffer sourceSlice:0 sourceLevel:0
+                       sourceOrigin:MTLOriginMake(src_x, src_y, 0)
+                         sourceSize:MTLSizeMake(src_w, src_h, 1)
+                          toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0
+                  destinationOrigin:MTLOriginMake(0, 0, 0)];
+            [blitEncoder endEncoding];
+        } else {
+            if (storeToBuf || blitFromBuf) {
+                blitEncoder = [commandBuf blitCommandEncoder];
+            }
+            if (storeToBuf) {
+                id <MTLTexture> inFrame = framesBuffer[inFramesIndex];
+                framesNumbers[inFramesIndex] = fCount;
+                inFramesIndex = (inFramesIndex + 1) % FRAMES_BUFF_SIZE;
 
-        id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
+                [blitEncoder
+                        copyFromTexture:self.buffer sourceSlice:0 sourceLevel:0
+                           sourceOrigin:MTLOriginMake(src_x, src_y, 0)
+                             sourceSize:MTLSizeMake(src_w, src_h, 1)
+                              toTexture:inFrame destinationSlice:0 destinationLevel:0
+                      destinationOrigin:MTLOriginMake(0, 0, 0)];
+            }
 
-        [blitEncoder
-                copyFromTexture:self.buffer sourceSlice:0 sourceLevel:0
-                sourceOrigin:MTLOriginMake(src_x, src_y, 0)
-                sourceSize:MTLSizeMake(src_w, src_h, 1)
-                toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
-        [blitEncoder endEncoding];
+            if (blitFromBuf) {
+                frame = framesNumbers[outFramesIndex];
+                id <MTLTexture> outFrame = framesBuffer[outFramesIndex];
+                outFramesIndex = (outFramesIndex + 1) % FRAMES_BUFF_SIZE;
+                [blitEncoder
+                        copyFromTexture:outFrame sourceSlice:0 sourceLevel:0
+                           sourceOrigin:MTLOriginMake(0, 0, 0)
+                             sourceSize:MTLSizeMake(outFrame.width, outFrame.height, 1)
+                              toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0
+                      destinationOrigin:MTLOriginMake(0, 0, 0)];
+            } else {
+                present = NO;
+            }
+            if (storeToBuf || blitFromBuf) {
+                [blitEncoder endEncoding];
+            }
+        }
 
-        [commandBuf presentDrawable:mtlDrawable];
+        if (present) {
+            [commandBuf presentDrawable:mtlDrawable];
+        }
+
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
-            self.nextDrawableCount--;
+            if (self.nextDrawableCount > 0) {
+                self.nextDrawableCount--;
+            }
+            J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture: frame=%d blitted", frame);
         }];
 
         [commandBuf commit];
@@ -167,6 +235,10 @@
     self.javaLayer = nil;
     [self stopDisplayLink];
     CVDisplayLinkRelease(self.displayLink);
+    for (int i = 0; i < FRAMES_BUFF_SIZE; i++) {
+        [framesBuffer[i] release];
+        framesBuffer[i] = nil;
+    }
     self.displayLink = nil;
     [super dealloc];
 }
@@ -223,6 +295,53 @@ CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* no
     }
     return kCVReturnSuccess;
 }
+
+- (void) validateEnv:(JNIEnv*)env sData:(jobject)surfaceData {
+    if (surfaceData != NULL) {
+        BMTLSDOps *bmtlsdo = (BMTLSDOps *) SurfaceData_GetOps(env, surfaceData);
+        self.ctx = ((MTLSDOps *) bmtlsdo->privOps)->configInfo->context;
+        self.device = self.ctx.device;
+
+        inFramesIndex = 0;
+        outFramesIndex = 0;
+        BOOL releaseFramesTextures = self.bufferWidth != bmtlsdo->width || self.bufferHeight != bmtlsdo->height;
+        for (int i = 0; i < FRAMES_BUFF_SIZE; i++) {
+            if (framesBuffer[i] != nil && releaseFramesTextures) {
+                [framesBuffer[i] release];
+                framesBuffer[i] = nil;
+            }
+
+            if (framesBuffer[i] == nil) {
+                MTLTextureDescriptor *textureDescriptor =
+                        [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
+                                                                           width:bmtlsdo->width
+                                                                          height:bmtlsdo->height mipmapped:NO];
+                textureDescriptor.usage = MTLTextureUsageUnknown;
+                textureDescriptor.storageMode = MTLStorageModePrivate;
+                framesBuffer[i] = [ctx.device newTextureWithDescriptor:textureDescriptor];
+                [framesBuffer[i] retain];
+            }
+        }
+        self.buffer = bmtlsdo->pTexture;
+        self.bufferWidth = bmtlsdo->width;
+        self.bufferHeight = bmtlsdo->height;
+        self.pixelFormat = MTLPixelFormatBGRA8Unorm;
+        self.drawableSize =
+                CGSizeMake(self.buffer.width,
+                           self.buffer.height);
+        self.frameCount = 0;
+        self.blittedFrame = -2;
+        [self performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
+        [self startDisplayLink];
+    } else {
+        self.ctx = NULL;
+        [self stopDisplayLink];
+    }
+}
+
+- (void) resetBlittedFrame {
+    self.blittedFrame = -2;
+}
 @end
 
 /*
@@ -257,24 +376,7 @@ Java_sun_java2d_metal_MTLLayer_validate
 (JNIEnv *env, jclass cls, jlong layerPtr, jobject surfaceData)
 {
     MTLLayer *layer = OBJC(layerPtr);
-
-    if (surfaceData != NULL) {
-        BMTLSDOps *bmtlsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
-        layer.bufferWidth = bmtlsdo->width;
-        layer.bufferHeight = bmtlsdo->width;
-        layer.buffer = bmtlsdo->pTexture;
-        layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
-        layer.device = layer.ctx.device;
-        layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
-        layer.drawableSize =
-            CGSizeMake(layer.buffer.width,
-                       layer.buffer.height);
-        layer.blittedFrame = -1;
-        [layer startDisplayLink];
-    } else {
-        layer.ctx = NULL;
-        [layer stopDisplayLink];
-    }
+    [layer validateEnv:env sData:surfaceData];
 }
 
 JNIEXPORT void JNICALL
