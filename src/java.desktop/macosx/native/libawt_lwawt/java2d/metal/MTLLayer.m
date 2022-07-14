@@ -44,6 +44,8 @@
 @synthesize nextDrawableCount;
 @synthesize displayLink;
 @synthesize displayLinkCount;
+@synthesize frameCount;
+@synthesize blittedFrame;
 
 - (id) initWithJavaLayer:(jobject)layer
 {
@@ -77,10 +79,13 @@
     CVDisplayLinkCreateWithActiveCGDisplays(&displayLink);
     CVDisplayLinkSetOutputCallback(displayLink, &displayLinkCallback, (__bridge void*)self);
     self.displayLinkCount = 0;
+    self.frameCount = 0;
+    blittedFrame = -1;
     return self;
 }
 
 - (void) blitTexture {
+    int fCount = self.frameCount;
     if (self.displayLinkCount > 0) {
         self.displayLinkCount--;
     }
@@ -96,6 +101,13 @@
     if (self.nextDrawableCount != 0) {
         return;
     }
+
+    if (blittedFrame == fCount) {
+        J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture: frame=%d already present", blittedFrame);
+        return;
+    }
+    blittedFrame = fCount;
+
     @autoreleasepool {
         if ((self.buffer.width == 0) || (self.buffer.height == 0)) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
@@ -257,6 +269,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.drawableSize =
             CGSizeMake(layer.buffer.width,
                        layer.buffer.height);
+        layer.blittedFrame = -1;
         [layer startDisplayLink];
     } else {
         layer.ctx = NULL;

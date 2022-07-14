@@ -32,6 +32,7 @@
 #include "MTLRenderQueue.h"
 #import "MTLSamplerManager.h"
 #import "MTLStencilManager.h"
+#import "MTLRenderer.h"
 
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
@@ -489,4 +490,29 @@ extern void initSamplers(id<MTLDevice> device);
     return _bufImgOp;
 }
 
+- (void) commitCommandBuffer:(BOOL) waitUntilCompleted display:(BOOL) displaySync {
+    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+    if (dstOps != NULL) {
+        MTLRenderer_SubmitVertexBatch(self, dstOps);
+    }
+    [self.encoderManager endEncoder];
+    MTLCommandBufferWrapper * cbwrapper = [self pullCommandBufferWrapper];
+    id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+    __block MTLLayer *layer = nil;
+    if (dstOps != NULL) {
+        MTLSDOps *dstMTLOps = (MTLSDOps *) dstOps->privOps;
+        layer = (MTLLayer *) dstMTLOps->layer;
+        layer.frameCount++;
+    }
+    [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+        [cbwrapper release];
+    }];
+    [commandbuf commit];
+    if (waitUntilCompleted) {
+        [commandbuf waitUntilCompleted];
+    }
+    if (displaySync && layer != nil) {
+        [layer startDisplayLink];
+    }
+}
 @end

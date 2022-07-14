@@ -56,8 +56,12 @@
 @property (readwrite, assign) int leftInset;
 @property (readwrite, assign) CVDisplayLinkRef displayLink;
 @property (readwrite, atomic) int displayLinkCount;
+@property (readwrite, atomic) int frameCount;
+@property (readwrite, atomic) int blittedFrame;
+
 
 - (id) initWithJavaLayer:(jobject)layer;
+- (void) validateEnv:(JNIEnv*)env sData:(jobject)surfaceData;
 
 - (void) blitTexture;
 - (void) fillParallelogramCtxX:(jfloat)x
