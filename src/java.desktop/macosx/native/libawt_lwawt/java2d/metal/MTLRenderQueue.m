@@ -98,18 +98,9 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
     if (mtlc != NULL) {
         [mtlc.encoderManager endEncoder];
 
-        if (op == MTL_OP_RESET_PAINT || op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS ||
-            mtlPreviousOp == MTL_OP_MASK_OP)
+        if (op == MTL_OP_RESET_PAINT || op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS)
         {
-            MTLCommandBufferWrapper *cbwrapper = [mtlc pullCommandBufferWrapper];
-            id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
-            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                [cbwrapper release];
-            }];
-            [commandbuf commit];
-            if (op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS) {
-                [commandbuf waitUntilCompleted];
-            }
+            [mtlc commitCommandBuffer:(op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS) display:NO];
         }
     }
     mtlPreviousOp = op;
@@ -149,7 +140,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_DRAW_LINE);
 
                     if ([mtlc useXORComposite]) {
-                        commitEncodedCommands();
+                        [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "DRAW_LINE in XOR mode - Force commit earlier draw calls before DRAW_LINE.");
                     }
@@ -166,7 +157,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
 
                     if ([mtlc useXORComposite]) {
 
-                        commitEncodedCommands();
+                        [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "DRAW_RECT in XOR mode - Force commit earlier draw calls before DRAW_RECT.");
                     }
@@ -188,7 +179,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jint *yPoints = ((jint *)b) + nPoints;
 
                     if ([mtlc useXORComposite]) {
-                        commitEncodedCommands();
+                        [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "DRAW_POLY in XOR mode - Force commit earlier draw calls before DRAW_POLY.");
 
@@ -217,7 +208,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
 
                     if ([mtlc useXORComposite]) {
-                        commitEncodedCommands();
+                        [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "DRAW_PIXEL in XOR mode - Force commit earlier draw calls before DRAW_PIXEL.");
                     }
@@ -233,7 +224,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
 
                     if ([mtlc useXORComposite]) {
-                        commitEncodedCommands();
+                        [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "DRAW_SCANLINES in XOR mode - Force commit earlier draw calls before "
                                    "DRAW_SCANLINES.");
@@ -250,7 +241,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_DRAW_PARALLELOGRAM);
 
                     if ([mtlc useXORComposite]) {
-                        commitEncodedCommands();
+                        [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "DRAW_PARALLELOGRAM in XOR mode - Force commit earlier draw calls before "
                                    "DRAW_PARALLELOGRAM.");
@@ -298,7 +289,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_FILL_RECT);
 
                     if ([mtlc useXORComposite]) {
-                        commitEncodedCommands();
+                        [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "FILL_RECT in XOR mode - Force commit earlier draw calls before FILL_RECT.");
                     }
@@ -315,7 +306,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
 
                     if ([mtlc useXORComposite]) {
-                        commitEncodedCommands();
+                        [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "FILL_SPANS in XOR mode - Force commit earlier draw calls before FILL_SPANS.");
                     }
@@ -330,7 +321,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_FILL_PARALLELOGRAM);
 
                     if ([mtlc useXORComposite]) {
-                        commitEncodedCommands();
+                        [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "FILL_PARALLELOGRAM in XOR mode - Force commit earlier draw calls before "
                                    "FILL_PARALLELOGRAM.");
@@ -370,7 +361,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
 
                     if ([mtlc useXORComposite]) {
-                        commitEncodedCommands();
+                        [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "DRAW_GLYPH_LIST in XOR mode - Force commit earlier draw calls before "
                                    "DRAW_GLYPH_LIST.");
@@ -563,7 +554,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 case sun_java2d_pipe_BufferedOpCodes_RESET_COMPOSITE:
                 {
                     /* TODO: check whether something needs to be done here if we are moving out of XOR composite
-                    commitEncodedCommands();
+                    commitEncodedCommands(mtlc, YES, NO);
                     MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
                     [cbwrapper onComplete];
 
@@ -602,13 +593,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
 
                     if (mtlc != NULL) {
                         MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
-                        [mtlc.encoderManager endEncoder];
-                        MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
-                        id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
-                        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                            [cbwrapper release];
-                        }];
-                        [commandbuf commit];
+                        [mtlc commitCommandBuffer:YES display:NO];
                     }
                     mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
                     dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
@@ -630,13 +615,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                         } else {
                             if (mtlc != NULL) {
                                 MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
-                                [mtlc.encoderManager endEncoder];
-                                MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
-                                id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
-                                [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                                    [cbwrapper release];
-                                }];
-                                [commandbuf commit];
+                                [mtlc commitCommandBuffer:NO display:NO];
                             }
                             mtlc = newMtlc;
                             dstOps = NULL;
@@ -901,21 +880,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             }
             MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
 
-            [mtlc.encoderManager endEncoder];
-            MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
-            id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
-            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                [cbwrapper release];
-            }];
-            [commandbuf commit];
-            BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
-            if (dstOps != NULL) {
-                MTLSDOps *dstMTLOps = (MTLSDOps *)dstOps->privOps;
-                MTLLayer *layer = (MTLLayer*)dstMTLOps->layer;
-                if (layer != NULL) {
-                    [layer startDisplayLink];
-                }
-            }
+            [mtlc commitCommandBuffer:NO display:YES];
         }
         RESET_PREVIOUS_OP();
     }
@@ -946,9 +911,6 @@ MTLRenderQueue_GetCurrentDestination()
  * these would be rendered to the back-buffer - which is read in shader while rendering in XOR mode
  */
 void commitEncodedCommands() {
-
-    MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
-
     [mtlc.encoderManager endEncoder];
 
     MTLCommandBufferWrapper *cbwrapper = [mtlc pullCommandBufferWrapper];
