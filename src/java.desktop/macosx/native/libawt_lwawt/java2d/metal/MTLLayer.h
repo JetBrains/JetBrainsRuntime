@@ -41,6 +41,7 @@
     float bufferHeight;
     id<MTLTexture> buffer;
     int nextDrawableCount;
+    int blittedFrame;
     int topInset;
     int leftInset;
     CVDisplayLinkRef displayLink;
