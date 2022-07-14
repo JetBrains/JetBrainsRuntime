@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2016, 2022, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -29,6 +29,7 @@ import java.io.IOException;
  * @test TestGCBasherWithShenandoah
  * @key gc
  * @key stress
+ * @library /
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @requires vm.flavor == "server" & !vm.emulatedClient & !vm.graal.enabled
  * @summary Stress the Shenandoah GC by trying to make old objects more likely to be garbage than young objects.

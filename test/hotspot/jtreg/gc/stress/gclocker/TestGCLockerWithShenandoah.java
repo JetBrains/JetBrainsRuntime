@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2017, 2022, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package gc.stress.gclocker;
 /*
  * @test TestGCLockerWithShenandoah
  * @key gc
+ * @library /
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @summary Stress Shenandoah's JNI handling by calling GetPrimitiveArrayCritical while concurrently filling up old gen.
  *
@@ -43,6 +44,7 @@ package gc.stress.gclocker;
 /*
  * @test TestGCLockerWithShenandoah
  * @key gc
+ * @library /
  * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @summary Stress Shenandoah's JNI handling by calling GetPrimitiveArrayCritical while concurrently filling up old gen.
  *

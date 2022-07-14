@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2018, 2022, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -37,20 +37,14 @@ package gc.shenandoah.jni;
  * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCMode=iu -XX:ShenandoahGCHeuristics=aggressive -Xcomp -Xmx512M -XX:+CriticalJNINatives gc.shenandoah.jni.CriticalNativeArgs
  */
 public class CriticalNativeArgs {
-    static {
-        System.loadLibrary("CriticalNative");
-    }
-
-    static native boolean isNull(int[] a);
-
     public static void main(String[] args) {
         int[] arr = new int[2];
 
-        if (isNull(arr)) {
+        if (CriticalNative.isNull(arr)) {
             throw new RuntimeException("Should not be null");
         }
 
-        if (!isNull(null)) {
+        if (!CriticalNative.isNull(null)) {
             throw new RuntimeException("Should be null");
         }
     }

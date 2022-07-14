@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2018, 2022, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -26,11 +26,11 @@ package gc.shenandoah.jni;
 import java.util.Random;
 import jdk.test.lib.Utils;
 
-import gc.shenandoah.jni.CriticalNative;
-
 /* @test
  * @key randomness
- * @library /test/lib
+ * @library /
+ *          /test/lib
+ *
  * @requires (os.arch =="x86_64" | os.arch == "amd64" | os.arch=="x86" | os.arch=="i386") & !vm.graal.enabled & vm.gc.Shenandoah
  *
  * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCMode=passive    -XX:+ShenandoahDegeneratedGC -Xcomp -Xmx512M -XX:+CriticalJNINatives gc.shenandoah.jni.CriticalNativeStress
@@ -43,17 +43,8 @@ import gc.shenandoah.jni.CriticalNative;
  * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu -XX:ShenandoahGCHeuristics=aggressive -Xcomp -Xmx512M -XX:+CriticalJNINatives gc.shenandoah.jni.CriticalNativeStress
  */
 public class CriticalNativeStress {
-    static {
-        System.loadLibrary("CriticalNative");
-    }
-
     static final int CYCLES = 50;
     static final int THREAD_PER_CASE = 1;
-
-    static native long sum1(long[] a);
-
-    // More than 6 parameters
-    static native long sum2(long a1, int[] a2, int[] a3, long[] a4, int[] a5);
 
     static long sum(long[] a) {
         long sum = 0;
@@ -93,7 +84,7 @@ public class CriticalNativeStress {
             create_garbage(index);
         }
 
-        long native_sum = sum1(arr);
+        long native_sum = CriticalNative.sum1(arr);
         long java_sum = sum(arr);
         if (native_sum != java_sum) {
             StringBuffer sb = new StringBuffer("Sums do not match: native = ")
@@ -135,7 +126,7 @@ public class CriticalNativeStress {
             create_garbage(index);
         }
 
-        long native_sum = sum2(a1, a2, a3, a4, a5);
+        long native_sum = CriticalNative.sum2(a1, a2, a3, a4, a5);
         long java_sum = a1 + sum(a2) + sum(a3) + sum(a4) + sum(a5);
         if (native_sum != java_sum) {
             StringBuffer sb = new StringBuffer("Sums do not match: native = ")
