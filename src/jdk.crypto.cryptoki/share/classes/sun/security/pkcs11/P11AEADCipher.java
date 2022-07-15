@@ -96,7 +96,7 @@ final class P11AEADCipher extends CipherSpi {
     // flag indicating whether an operation is initialized
     private boolean initialized = false;
 
-    // falg indicating encrypt or decrypt mode
+    // flag indicating encrypt or decrypt mode
     private boolean encrypt = true;
 
     // parameters

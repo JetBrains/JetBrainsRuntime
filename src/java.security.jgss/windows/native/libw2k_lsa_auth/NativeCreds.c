@@ -1048,7 +1048,7 @@ jobject BuildTicketFlags(JNIEnv *env, PULONG flags) {
     jobject ticketFlags = NULL;
     jbyteArray ary;
     /*
-     * mdu: Convert the bytes to nework byte order before copying
+     * mdu: Convert the bytes to network byte order before copying
      * them to a Java byte array.
      */
     ULONG nlflags = htonl(*flags);
