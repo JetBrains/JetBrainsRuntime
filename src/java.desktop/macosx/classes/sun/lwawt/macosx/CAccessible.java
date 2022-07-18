@@ -236,7 +236,6 @@ class CAccessible extends CFRetainedResource implements Accessible {
         }
     }
 
-
     static Accessible getSwingAccessible(final Accessible a) {
         return (a instanceof CAccessible) ? ((CAccessible)a).accessible : a;
     }

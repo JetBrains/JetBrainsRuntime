@@ -186,10 +186,10 @@ static jobject sAccessibilityClass = NULL;
     [rolesMap setObject:IgnoreClassName forKey:@"window"];
 
     rowRolesMapForParent = [[NSMutableDictionary alloc] initWithCapacity:3];
+    [rowRolesMapForParent setObject:@"MenuItemAccessibility" forKey:@"MenuAccessibility"];
 
     [rowRolesMapForParent setObject:@"ListRowAccessibility" forKey:@"ListAccessibility"];
     [rowRolesMapForParent setObject:@"OutlineRowAccessibility" forKey:@"OutlineAccessibility"];
-    [rowRolesMapForParent setObject:@"MenuItemAccessibility" forKey:@"MenuAccessibility"];
 
     /*
      * Initialize CAccessibility instance
