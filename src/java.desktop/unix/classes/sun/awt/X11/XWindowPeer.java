@@ -2559,4 +2559,31 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     public void updateWindow() {
         // no-op
     }
+
+    boolean isTopMostWindow() {
+        long curChild = 0;
+        long curParent = window;
+        while (curParent != 0) {
+            XQueryTree qt = new XQueryTree(curParent);
+            try {
+                if (qt.execute() == 0) {
+                    return false;
+                }
+                if (curParent == qt.get_root()) {
+                    // children are reported in bottom-to-top order,
+                    // so we are checking the last one
+                    int nChildren = qt.get_nchildren();
+                    return nChildren > 0 && Native.getWindow(qt.get_children(), nChildren - 1) == curChild;
+                } else {
+                    // our window could have been re-parented by window manager,
+                    // so we should get to the direct child of the root window
+                    curChild = curParent;
+                    curParent = qt.get_parent();
+                }
+            } finally {
+                qt.dispose();
+            }
+        }
+        return false;
+    }
 }
