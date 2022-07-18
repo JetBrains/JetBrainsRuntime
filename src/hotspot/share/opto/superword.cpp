@@ -104,8 +104,6 @@ void SuperWord::transform_loop(IdealLoopTree* lpt, bool do_optimization) {
 
   if (!cl->is_valid_counted_loop()) return; // skip malformed counted loop
 
-  assert(!lpt->has_reduction_nodes() || cl->is_reduction_loop(),
-         "non-reduction loop contains reduction nodes");
   bool post_loop_allowed = (PostLoopMultiversioning && Matcher::has_predicated_vectors() && cl->is_post_loop());
   if (post_loop_allowed) {
     if (cl->is_reduction_loop()) return; // no predication mapping
@@ -2298,6 +2296,11 @@ void SuperWord::output() {
     }
     return;
   }
+
+  // Check that the loop to be vectorized does not have inconsistent reduction
+  // information, which would likely lead to a miscompilation.
+  assert(!lpt()->has_reduction_nodes() || cl->is_reduction_loop(),
+         "non-reduction loop contains reduction nodes");
 
 #ifndef PRODUCT
   if (TraceLoopOpts) {
