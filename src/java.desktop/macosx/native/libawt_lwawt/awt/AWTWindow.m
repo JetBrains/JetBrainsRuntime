@@ -1325,9 +1325,19 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     NSView* closeButtonView = [self.nsWindow standardWindowButton:NSWindowCloseButton];
     NSView* zoomButtonView = [self.nsWindow standardWindowButton:NSWindowZoomButton];
     NSView* miniaturizeButtonView = [self.nsWindow standardWindowButton:NSWindowMiniaturizeButton];
+    if (!closeButtonView || !zoomButtonView || !miniaturizeButtonView) {
+        NSLog(@"WARNING: setUpTransparentTitleBar closeButtonView=%@, zoomButtonView=%@, miniaturizeButtonView=%@",
+              closeButtonView, zoomButtonView, miniaturizeButtonView);
+        return;
+    }
     NSView* titlebar = closeButtonView.superview;
     NSView* titlebarContainer = titlebar.superview;
     NSView* themeFrame = titlebarContainer.superview;
+    if (!themeFrame) {
+        NSLog(@"WARNING: setUpTransparentTitleBar titlebar=%@, titlebarContainer=%@, themeFrame=%@",
+              titlebar, titlebarContainer, themeFrame);
+        return;
+    }
 
     _transparentTitleBarConstraints = [[NSMutableArray alloc] init];
     titlebarContainer.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1397,6 +1407,11 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     NSView* closeButtonView = [self.nsWindow standardWindowButton:NSWindowCloseButton];
     NSView* titlebar = closeButtonView.superview;
     NSView* titlebarContainer = titlebar.superview;
+    if (!titlebarContainer) {
+        NSLog(@"WARNING: resetTitleBar closeButtonView=%@, titlebar=%@, titlebarContainer=%@",
+              closeButtonView, titlebar, titlebarContainer);
+        return;
+    }
 
     [NSLayoutConstraint deactivateConstraints:_transparentTitleBarConstraints];
 
