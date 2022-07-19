@@ -39,7 +39,7 @@
  * @library /vmTestbase
  *          /test/lib
  * @run driver jdk.test.lib.FileInstaller . .
- * @run main/othervm/native/manual/timeout=240
+ * @run main/othervm/native/manual
  *      -agentlib:resexhausted=-waittime=5
  *      -XX:-UseGCOverheadLimit
  *      nsk.jvmti.ResourceExhausted.resexhausted001
