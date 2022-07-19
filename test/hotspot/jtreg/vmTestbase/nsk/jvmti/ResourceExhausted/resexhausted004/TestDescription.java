@@ -24,6 +24,7 @@
 
 /*
  * @test
+ * @bug 8253916
  *
  * @summary converted from VM Testbase nsk/jvmti/ResourceExhausted/resexhausted004.
  * VM Testbase keywords: [jpda, jvmti, noras, vm6, nonconcurrent, quarantine, exclude]
@@ -39,7 +40,7 @@
  * @library /vmTestbase
  *          /test/lib
  * @run driver jdk.test.lib.FileInstaller . .
- * @run main/othervm/native
+ * @run main/othervm/native/manual
  *      -agentlib:resexhausted=-waittime=5
  *      -Xms16m
  *      -Xmx16m
