@@ -70,9 +70,8 @@ function create_image_bundle {
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' $__root_dir/release > release
     mv release $__root_dir/release
-    for dir in $(ls -d $IMAGES_DIR/jdk/*); do
-      rsync -a --exclude demo --exclude sample $dir $__root_dir
-    done
+    cp $IMAGES_DIR/jdk/lib/src.zip $__root_dir/lib
+    cp $IMAGES_DIR/jdk/bin/*.pdb $__root_dir/bin
     copy_jmods "$__modules" "$__modules_path" "$__root_dir"/jmods
   fi
 }
