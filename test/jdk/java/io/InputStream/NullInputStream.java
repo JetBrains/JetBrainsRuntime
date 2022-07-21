@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,12 +21,14 @@
  * questions.
  */
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.IOException;
-import org.testng.annotations.AfterGroups;
-import org.testng.annotations.BeforeGroups;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
 import static org.testng.Assert.*;
 
 /*
@@ -39,13 +41,9 @@ public class NullInputStream {
     private static InputStream openStream;
     private static InputStream closedStream;
 
-    @BeforeGroups(groups="open")
-    public static void openStream() {
+    @BeforeClass
+    public static void setup() {
         openStream = InputStream.nullInputStream();
-    }
-
-    @BeforeGroups(groups="closed")
-    public static void openAndCloseStream() {
         closedStream = InputStream.nullInputStream();
         try {
            closedStream.close();
@@ -54,7 +52,7 @@ public class NullInputStream {
         }
     }
 
-    @AfterGroups(groups="open")
+    @AfterClass
     public static void closeStream() {
         try {
             openStream.close();
@@ -63,12 +61,12 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "open")
+    @Test
     public static void testOpen() {
         assertNotNull(openStream, "InputStream.nullInputStream() returned null");
     }
 
-    @Test(groups = "open")
+    @Test
     public static void testAvailable() {
         try {
             assertEquals(0, openStream.available(), "available() != 0");
@@ -77,7 +75,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "open")
+    @Test
     public static void testRead() {
         try {
             assertEquals(-1, openStream.read(), "read() != -1");
@@ -86,7 +84,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "open")
+    @Test
     public static void testReadBII() {
         try {
             assertEquals(-1, openStream.read(new byte[1], 0, 1),
@@ -96,7 +94,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "open")
+    @Test
     public static void testReadAllBytes() {
         try {
             assertEquals(0, openStream.readAllBytes().length,
@@ -106,7 +104,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "open")
+    @Test
     public static void testReadNBytes() {
         try {
             assertEquals(0, openStream.readNBytes(new byte[1], 0, 1),
@@ -116,7 +114,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "open")
+    @Test
     public static void testReadNBytesWithLength() {
         try {
             assertEquals(0, openStream.readNBytes(-1).length,
@@ -136,7 +134,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "open")
+    @Test
     public static void testSkip() {
         try {
             assertEquals(0, openStream.skip(1), "skip() != 0");
@@ -145,7 +143,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "open")
+    @Test
     public static void testTransferTo() {
         try {
             assertEquals(0, openStream.transferTo(new ByteArrayOutputStream(7)),
@@ -155,7 +153,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "closed")
+    @Test
     public static void testAvailableClosed() {
         try {
             closedStream.available();
@@ -164,7 +162,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "closed")
+    @Test
     public static void testReadClosed() {
         try {
             closedStream.read();
@@ -173,7 +171,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "closed")
+    @Test
     public static void testReadBIIClosed() {
         try {
             closedStream.read(new byte[1], 0, 1);
@@ -182,7 +180,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "closed")
+    @Test
     public static void testReadAllBytesClosed() {
         try {
             closedStream.readAllBytes();
@@ -191,7 +189,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "closed")
+    @Test
     public static void testReadNBytesClosed() {
         try {
             closedStream.readNBytes(new byte[1], 0, 1);
@@ -200,7 +198,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "closed")
+    @Test
     public static void testReadNBytesWithLengthClosed() {
         try {
             closedStream.readNBytes(1);
@@ -209,7 +207,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "closed")
+    @Test
     public static void testSkipClosed() {
         try {
             closedStream.skip(1);
@@ -218,7 +216,7 @@ public class NullInputStream {
         }
     }
 
-    @Test(groups = "closed")
+    @Test
     public static void testTransferToClosed() {
         try {
             closedStream.transferTo(new ByteArrayOutputStream(7));
