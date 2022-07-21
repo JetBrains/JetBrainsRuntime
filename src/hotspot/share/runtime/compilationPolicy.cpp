@@ -328,8 +328,6 @@ void NonTieredCompPolicy::reset_counter_for_invocation_event(const methodHandle&
   assert(mcs != NULL, "MethodCounters cannot be NULL for profiling");
   mcs->invocation_counter()->set_carry();
   mcs->backedge_counter()->set_carry();
-
-  assert(!m->was_never_executed(), "don't reset to 0 -- could be mistaken for never-executed");
 }
 
 void NonTieredCompPolicy::reset_counter_for_back_branch_event(const methodHandle& m) {
