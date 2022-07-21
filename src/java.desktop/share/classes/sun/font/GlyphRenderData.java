@@ -108,9 +108,25 @@ public class GlyphRenderData {
         }
     }
 
-    public record ColorLayer(Color color, GeneralPath outline) {}
+    public static class ColorLayer {
+        public final Color color;
+        public final GeneralPath outline;
 
-    public record Bitmap(AffineTransform transform, Image image) {}
+        public ColorLayer(Color color, GeneralPath outline) {
+            this.color = color;
+            this.outline = outline;
+        }
+    }
+
+    public static class Bitmap {
+        public final AffineTransform transform;
+        public final Image image;
+
+        public Bitmap(AffineTransform transform, Image image) {
+            this.transform = transform;
+            this.image = image;
+        }
+    }
 
     // These methods exist for convenience and are called from native
 
