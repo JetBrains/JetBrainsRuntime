@@ -85,6 +85,10 @@ tier4 = \
    -:tier2 \
    -:tier3
 
+tier4_no_desktop = \
+   :tier4 \
+   -:jdk_desktop
+
 ###############################################################################
 #
 # Other test definitions; generally smaller granularity than tiers
