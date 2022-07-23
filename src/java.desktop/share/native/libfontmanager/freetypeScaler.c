@@ -55,7 +55,16 @@
 #include FT_LCD_FILTER_H
 #include FT_MODULE_H
 #include FT_LCD_FILTER_H
+
+// Linux is built with system Freetype by default,
+// and it's often a bit old and doesn't have FT_COLOR_H.
+// Thus, we disable colored outlines on Linux to be able
+// to build on older Linuxes, this is not a big problem,
+// as Linux uses bitmap emoji anyway.
+#if defined(_WIN32) || defined(MACOSX)
 #include FT_COLOR_H
+#define ENABLE_COLOR_OUTLINES
+#endif
 
 #ifndef DISABLE_FONTCONFIG
 /* Use bundled fontconfig.h for now */
@@ -2405,6 +2414,7 @@ static jboolean addColorLayersRenderData(JNIEnv* env, FTScalerContext *context,
                                          FTScalerInfo* scalerInfo, jint glyphCode,
                                          jfloat xpos, jfloat ypos, jobject result) {
 
+#ifdef ENABLE_COLOR_OUTLINES
     FT_Error error;
 
     FT_Color* colors;
@@ -2432,6 +2442,9 @@ static jboolean addColorLayersRenderData(JNIEnv* env, FTScalerContext *context,
                                      &glyphIndex, &colorIndex, &iterator));
 
     return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
 }
 
 static void addBitmapRenderData(JNIEnv *env, jobject scaler, jobject font2D,
