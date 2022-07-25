@@ -1486,7 +1486,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                 }
             }
         }
-        if (!isSimpleWindow() && shouldFocusOnMapNotify()) {
+        if (!isSimpleWindow() && shouldFocusOnMapNotify() && !XWM.isWeston()) {
             focusLog.fine("Automatically request focus on window");
             requestInitialFocus();
         }
