@@ -4167,9 +4167,10 @@ public final class Main {
      * Create a GeneralName object from known types
      * @param t one of 5 known types
      * @param v value
+     * @param exttype X.509 extension type
      * @return which one
      */
-    private GeneralName createGeneralName(String t, String v)
+    private GeneralName createGeneralName(String t, String v, int exttype)
             throws Exception {
         GeneralNameInterface gn;
         int p = oneOf(t, "EMAIL", "URI", "DNS", "IP", "OID");
@@ -4180,7 +4181,14 @@ public final class Main {
         switch (p) {
             case 0: gn = new RFC822Name(v); break;
             case 1: gn = new URIName(v); break;
-            case 2: gn = new DNSName(v); break;
+            case 2:
+                if (exttype == 3) {
+                    // Allow wildcard only for SAN extension
+                    gn = new DNSName(v, true);
+                } else {
+                    gn = new DNSName(v);
+                }
+                break;
             case 3: gn = new IPAddressName(v); break;
             default: gn = new OIDName(v); break; //4
         }
@@ -4475,7 +4483,7 @@ public final class Main {
                                 }
                                 String t = item.substring(0, colonpos);
                                 String v = item.substring(colonpos+1);
-                                gnames.add(createGeneralName(t, v));
+                                gnames.add(createGeneralName(t, v, exttype));
                             }
                             if (exttype == 3) {
                                 setExt(result, new SubjectAlternativeNameExtension(
@@ -4529,7 +4537,7 @@ public final class Main {
                                     oid = new ObjectIdentifier("1.3.6.1.5.5.7.48." + p);
                                 }
                                 accessDescriptions.add(new AccessDescription(
-                                        oid, createGeneralName(t, v)));
+                                        oid, createGeneralName(t, v, exttype)));
                             }
                             if (exttype == 5) {
                                 setExt(result, new SubjectInfoAccessExtension(accessDescriptions));
@@ -4552,7 +4560,7 @@ public final class Main {
                                 }
                                 String t = item.substring(0, colonpos);
                                 String v = item.substring(colonpos+1);
-                                gnames.add(createGeneralName(t, v));
+                                gnames.add(createGeneralName(t, v, exttype));
                             }
                             setExt(result, new CRLDistributionPointsExtension(
                                     isCritical, Collections.singletonList(
