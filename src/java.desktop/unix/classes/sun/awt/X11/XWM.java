@@ -111,7 +111,8 @@ final class XWM
         UNITY_COMPIZ_WM = 16,
         XMONAD_WM = 17,
         AWESOME_WM = 18,
-        I3_WM = 19;
+        I3_WM = 19,
+        WESTON_WM = 20;
 
     public String toString() {
         switch  (WMID) {
@@ -149,6 +150,8 @@ final class XWM
               return "XMonad";
           case AWESOME_WM:
               return "Awesome";
+          case WESTON_WM:
+              return "Weston";
           case UNDETERMINED_WM:
           default:
               return "Undetermined WM";
@@ -626,6 +629,10 @@ final class XWM
         return isNetWMName("i3");
     }
 
+    static boolean isWeston() {
+        return isNetWMName("Weston");
+    }
+
     static int awtWMNonReparenting = -1;
     static boolean isNonReparentingWM() {
         if (awtWMNonReparenting == -1) {
@@ -831,6 +838,8 @@ final class XWM
                 awt_wmgr = XWM.AWESOME_WM;
             } else if (isI3()) {
                 awt_wmgr = XWM.I3_WM;
+            } else if (isWeston()) {
+                awt_wmgr = XWM.WESTON_WM;
             }
             /*
              * We don't check for legacy WM when we already know that WM
