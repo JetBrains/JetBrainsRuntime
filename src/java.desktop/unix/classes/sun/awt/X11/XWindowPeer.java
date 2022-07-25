@@ -1481,7 +1481,11 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         }
         if (shouldFocusOnMapNotify()) {
             focusLog.fine("Automatically request focus on window");
-            requestInitialFocus();
+            if (XWM.isWeston()) {
+                requestInitialFocusInternally();
+            } else {
+                requestInitialFocus();
+            }
         } else {
             dequeueKeyEvents();
         }
@@ -1533,6 +1537,18 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     protected void requestInitialFocus() {
         requestXFocus();
+    }
+
+    // This will request focus without sending any requests to X server or window manager.
+    // It can only work for 'simple' windows, as their focusing is managed internally
+    // (natively, simple window's owner is seen as focused window).
+    private void requestInitialFocusInternally() {
+        if (isSimpleWindow() &&
+                XKeyboardFocusManagerPeer.getInstance().getCurrentFocusOwner() == getDecoratedOwner((Window)target)) {
+            handleWindowFocusInSync(-1, this::dequeueKeyEvents);
+        } else {
+            dequeueKeyEvents();
+        }
     }
 
     public void addToplevelStateListener(ToplevelStateListener l){
