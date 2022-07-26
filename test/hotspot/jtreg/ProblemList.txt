@@ -137,7 +137,7 @@ serviceability/sa/ClhsdbWhere.java 8193639 solaris-all
 serviceability/sa/DeadlockDetectionTest.java 8193639,8211767 solaris-all,linux-ppc64le,linux-ppc64
 serviceability/sa/JhsdbThreadInfoTest.java 8193639 solaris-all
 serviceability/sa/jmap-hprof/JMapHProfLargeHeapTest.java 8193639 solaris-all
-serviceability/sa/sadebugd/SADebugDTest.java 8163805 generic-all
+serviceability/sa/sadebugd/DebugdConnectTest.java 8239062,8270326 macosx-x64,macosx-aarch64
 serviceability/sa/TestClassDump.java 8193639 solaris-all
 serviceability/sa/TestClhsdbJstackLock.java 8193639 solaris-all
 serviceability/sa/TestCpoolForInvokeDynamic.java 8193639,8211767 solaris-all,linux-ppc64le,linux-ppc64
