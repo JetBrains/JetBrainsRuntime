@@ -127,6 +127,9 @@ public class DocPaths {
     /** The name of the default jQuery UI javascript file. */
     public static final DocPath JQUERY_UI_JS = DocPath.create("jquery-ui.min.js");
 
+    /** The name of the jQuery UI stylesheet file containing structural declarations. */
+    public static final DocPath JQUERY_UI_STRUCTURE_CSS = DocPath.create("jquery-ui.structure.min.css");
+
     /** The name of the default jszip javascript file. */
     public static final DocPath JSZIP = DocPath.create("jszip/dist/jszip.js");
 
