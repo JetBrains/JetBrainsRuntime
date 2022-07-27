@@ -948,4 +948,4 @@ java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.
 java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                 JBR-4250 windows-all
 java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
 
-jb/hotspot/AbortHandler.java                                                        JBR-4669 macosx-11.6.7
+jb/hotspot/AbortHandler.java                                                        JBR-4669 macosx-all
