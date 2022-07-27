@@ -883,3 +883,5 @@ java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java        
 jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                    JBR-4207 windows-all
 
 java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
+
+jb/hotspot/AbortHandler.java                                                        JBR-4669 macosx-all
