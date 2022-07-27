@@ -1127,6 +1127,8 @@ AC_DEFUN([BASIC_CHECK_TAR],
     TAR_TYPE="bsd"
   elif test "x$($TAR -v | $GREP "bsdtar")" != "x"; then
     TAR_TYPE="bsd"
+  elif test "x$($TAR --version | $GREP "busybox")" != "x"; then
+    TAR_TYPE="busybox"
   elif test "x$OPENJDK_BUILD_OS" = "xsolaris"; then
     TAR_TYPE="solaris"
   fi
@@ -1142,6 +1144,9 @@ AC_DEFUN([BASIC_CHECK_TAR],
       # When using gnu tar for Solaris targets, need to use compatibility mode
       TAR_CREATE_EXTRA_PARAM="--format=ustar"
     fi
+  elif test "x$TAR_TYPE" = "xbusybox"; then
+    TAR_INCLUDE_PARAM="T"
+    TAR_SUPPORTS_TRANSFORM="false"
   else
     TAR_INCLUDE_PARAM="I"
     TAR_SUPPORTS_TRANSFORM="false"
