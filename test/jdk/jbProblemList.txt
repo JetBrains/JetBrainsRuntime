@@ -946,3 +946,5 @@ jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                
 java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.java JBR-4250 windows-all
 java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                 JBR-4250 windows-all
 java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
+
+jb/hotspot/AbortHandler.java                                                        JBR-4669 macosx-11.6.7
