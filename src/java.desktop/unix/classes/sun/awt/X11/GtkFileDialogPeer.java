@@ -114,12 +114,7 @@ final class GtkFileDialogPeer extends XDialogPeer implements FileDialogPeer {
         try {
             quit = !b;
             if (b) {
-                Runnable task = () -> {
-                    showNativeDialog();
-                    standaloneWindow = 0;
-                    fd.setVisible(false);
-                };
-                new Thread(null, task, "ShowDialog", 0, false).start();
+                new Thread(null, this::showNativeDialog, "ShowDialog", 0, false).start();
             } else {
                 quit();
                 fd.setVisible(false);
@@ -208,5 +203,14 @@ final class GtkFileDialogPeer extends XDialogPeer implements FileDialogPeer {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Called by native code when GTK dialog is closing.
+     */
+    private void onClose() {
+        widget = 0;
+        standaloneWindow = 0;
+        fd.setVisible(false);
     }
 }
