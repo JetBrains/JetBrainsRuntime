@@ -885,3 +885,4 @@ jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                
 java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
 
 jb/hotspot/AbortHandler.java                                                        JBR-4669 macosx-all
+java/awt/image/DrawImage/BlitRotateClippedArea.java                                 JBR-4674 macosx-all
