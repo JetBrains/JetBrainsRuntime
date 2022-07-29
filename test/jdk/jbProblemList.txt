@@ -886,3 +886,7 @@ java/nio/file/WatchService/WithSecurityManager.java                             
 
 jb/hotspot/AbortHandler.java                                                        JBR-4669 macosx-all
 java/awt/image/DrawImage/BlitRotateClippedArea.java                                 JBR-4674 macosx-all
+
+jb/hotspot/AbortHandler.java                                                        JBR-4669 macosx-all
+javax/swing/SwingUtilities/4917669/bug4917669.java                                  JBR-4677 windows-all
+javax/swing/SwingUtilities/7146377/bug7146377.java                                  JBR-4679 windows-all
