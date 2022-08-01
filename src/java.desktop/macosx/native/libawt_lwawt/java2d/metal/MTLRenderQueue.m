@@ -37,6 +37,8 @@
 #include "MTLRenderer.h"
 #include "MTLTextRenderer.h"
 #import "ThreadUtilities.h"
+#import "PropertiesUtilities.h"
+
 
 /**
  * References to the "current" context and destination surface.
@@ -47,6 +49,18 @@ jint mtlPreviousOp = MTL_OP_INIT;
 
 
 extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
+
+BOOL isSyncSurfacesEnabled() {
+    static int syncEnabled = -1;
+    if (syncEnabled == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) return YES;
+        NSString *syncEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.java2d.metal.syncSurfaces"
+                                     withEnv:env];
+        syncEnabled = [@"false" isCaseInsensitiveLike:syncEnabledProp] ? NO : YES;
+    }
+    return (BOOL)syncEnabled;
+}
 
 bool isDrawOp (jint op) {
      switch(op) {
@@ -100,7 +114,8 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
 
         if (op == MTL_OP_RESET_PAINT || op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS)
         {
-            [mtlc commitCommandBuffer:(op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS) display:NO];
+            [mtlc commitCommandBuffer:(op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS ||
+              (!isSyncSurfacesEnabled() && mtlPreviousOp == MTL_OP_MASK_OP)) display:NO];
         }
     }
     mtlPreviousOp = op;
@@ -593,7 +608,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
 
                     if (mtlc != NULL) {
                         MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
-                        [mtlc commitCommandBuffer:YES display:NO];
+                        [mtlc commitCommandBuffer:isSyncSurfacesEnabled() display:NO];
                     }
                     mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
                     dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
