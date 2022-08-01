@@ -37,6 +37,8 @@
 #include "MTLRenderer.h"
 #include "MTLTextRenderer.h"
 #import "ThreadUtilities.h"
+#import "PropertiesUtilities.h"
+
 
 /**
  * References to the "current" context and destination surface.
@@ -47,6 +49,19 @@ jint mtlPreviousOp = MTL_OP_INIT;
 
 
 extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
+
+BOOL isSyncSurfacesEnabled() {
+    static int syncEnabled = -1;
+    if (syncEnabled == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) return NO;
+        NSString *syncEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.java2d.metal.syncSurfaces"
+                                     withEnv:env];
+        syncEnabled = [@"true" isCaseInsensitiveLike:syncEnabledProp] ? YES : NO;
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLRenderQueue_isSyncSurfacesEnabled: %d", syncEnabled);
+    }
+    return (BOOL)syncEnabled;
+}
 
 void MTLRenderQueue_CheckPreviousOp(jint op) {
 
@@ -80,7 +95,9 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
     if (mtlc != NULL) {
         [mtlc.encoderManager endEncoder];
 
-        if (op == MTL_OP_RESET_PAINT || op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS) {
+        if (op == MTL_OP_RESET_PAINT || op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS ||
+                (!isSyncSurfacesEnabled() && mtlPreviousOp == MTL_OP_MASK_OP))
+        {
             MTLCommandBufferWrapper *cbwrapper = [mtlc pullCommandBufferWrapper];
             id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
             [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
@@ -587,6 +604,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                             [cbwrapper release];
                         }];
                         [commandbuf commit];
+                        if (isSyncSurfacesEnabled()) {
+                            [commandbuf waitUntilCompleted];
+                        }
                     }
                     mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
                     dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
