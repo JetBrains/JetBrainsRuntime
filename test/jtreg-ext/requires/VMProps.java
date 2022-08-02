@@ -99,9 +99,6 @@ public class VMProps implements Callable<Map<String, String>> {
         // vm.hasSA is "true" if the VM contains the serviceability agent
         // and jhsdb.
         map.put("vm.hasSA", this::vmHasSA);
-        // vm.hasSAandCanAttach is "true" if the VM contains the serviceability agent
-        // and jhsdb and it can attach to the VM.
-        map.put("vm.hasSAandCanAttach", this::vmHasSAandCanAttach);
         // vm.hasJFR is "true" if JFR is included in the build of the VM and
         // so tests can be executed.
         map.put("vm.hasJFR", this::vmHasJFR);
@@ -320,19 +317,6 @@ public class VMProps implements Callable<Map<String, String>> {
      */
     protected String vmHasSA() {
         return "" + Platform.hasSA();
-    }
-
-    /**
-     * @return "true" if VM has a serviceability agent and it can
-     * attach to the VM.
-     */
-    protected String vmHasSAandCanAttach() {
-        try {
-            return "" + Platform.shouldSAAttach();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return errorWithMessage("Checking whether SA can attach to the VM failed.:" + e);
-        }
     }
 
     /**

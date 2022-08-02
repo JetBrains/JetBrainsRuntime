@@ -23,18 +23,15 @@
 
 package jdk.test.lib;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.regex.Pattern;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 public class Platform {
     public  static final String vmName      = privilegedGetProperty("java.vm.name");
@@ -232,6 +229,10 @@ public class Platform {
         return osArch;
     }
 
+    public static boolean isRoot() {
+        return userName.equals("root");
+    }
+
     /**
      * Return a boolean for whether SA and jhsdb are ported/available
      * on this platform.
@@ -252,76 +253,56 @@ public class Platform {
     }
 
     /**
-     * Return a boolean for whether we expect to be able to attach
-     * the SA to our own processes on this system.  This requires
-     * that SA is ported/available on this platform.
+     * Return true if the test JDK is signed, otherwise false. Only valid on OSX.
      */
-    public static boolean shouldSAAttach() throws IOException {
-        if (!hasSA()) return false;
-        if (isLinux()) {
-            return canPtraceAttachLinux();
-        } else if (isOSX()) {
-            return canAttachOSX();
+    public static boolean isSignedOSX() throws IOException {
+        // We only care about signed binaries for 10.14 and later (actually 10.14.5, but
+        // for simplicity we'll also include earlier 10.14 versions).
+        if (getOsVersionMajor() == 10 && getOsVersionMinor() < 14) {
+            return false; // assume not signed
+        }
+
+        // Find the path to the java binary.
+        String jdkPath = System.getProperty("java.home");
+        Path javaPath = Paths.get(jdkPath + "/bin/java");
+        String javaFileName = javaPath.toAbsolutePath().toString();
+        if (!javaPath.toFile().exists()) {
+            throw new FileNotFoundException("Could not find file " + javaFileName);
+        }
+
+        // Run codesign on the java binary.
+        ProcessBuilder pb = new ProcessBuilder("codesign", "-d", "-v", javaFileName);
+        pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+        pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+        Process codesignProcess = pb.start();
+        try {
+            if (codesignProcess.waitFor(10, TimeUnit.SECONDS) == false) {
+                System.err.println("Timed out waiting for the codesign process to complete. Assuming not signed.");
+                codesignProcess.destroyForcibly();
+                return false; // assume not signed
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Check codesign result to see if java binary is signed. Here are the
+        // exit code meanings:
+        //    0: signed
+        //    1: not signed
+        //    2: invalid arguments
+        //    3: only has meaning with the -R argument.
+        // So we should always get 0 or 1 as an exit value.
+        if (codesignProcess.exitValue() == 0) {
+            System.out.println("Target JDK is signed. Some tests may be skipped.");
+            return true; // signed
+        } else if (codesignProcess.exitValue() == 1) {
+            System.out.println("Target JDK is not signed.");
+            return false; // not signed
         } else {
-            // Other platforms expected to work:
-            return true;
+            System.err.println("Executing codesign failed. Assuming unsigned: " +
+                               codesignProcess.exitValue());
+            return false; // not signed
         }
-    }
-
-    /**
-     * On Linux, first check the SELinux boolean "deny_ptrace" and return false
-     * as we expect to be denied if that is "1".  Then expect permission to attach
-     * if we are root, so return true.  Then return false for an expected denial
-     * if "ptrace_scope" is 1, and true otherwise.
-     */
-    private static boolean canPtraceAttachLinux() throws IOException {
-        // SELinux deny_ptrace:
-        File deny_ptrace = new File("/sys/fs/selinux/booleans/deny_ptrace");
-        if (deny_ptrace.exists()) {
-            try (RandomAccessFile file = AccessController.doPrivileged(
-                    (PrivilegedExceptionAction<RandomAccessFile>) () -> new RandomAccessFile(deny_ptrace, "r"))) {
-                if (file.readByte() != '0') {
-                    return false;
-                }
-            } catch (PrivilegedActionException e) {
-                @SuppressWarnings("unchecked")
-                IOException t = (IOException) e.getException();
-                throw t;
-            }
-        }
-
-        // YAMA enhanced security ptrace_scope:
-        // 0 - a process can PTRACE_ATTACH to any other process running under the same uid
-        // 1 - restricted ptrace: a process must be a children of the inferior or user is root
-        // 2 - only processes with CAP_SYS_PTRACE may use ptrace or user is root
-        // 3 - no attach: no processes may use ptrace with PTRACE_ATTACH
-        File ptrace_scope = new File("/proc/sys/kernel/yama/ptrace_scope");
-        if (ptrace_scope.exists()) {
-            try (RandomAccessFile file = AccessController.doPrivileged(
-                    (PrivilegedExceptionAction<RandomAccessFile>) () -> new RandomAccessFile(ptrace_scope, "r"))) {
-                byte yama_scope = file.readByte();
-                if (yama_scope == '3') {
-                    return false;
-                }
-
-                if (!userName.equals("root") && yama_scope != '0') {
-                    return false;
-                }
-            } catch (PrivilegedActionException e) {
-                @SuppressWarnings("unchecked")
-                IOException t = (IOException) e.getException();
-                throw t;
-            }
-        }
-        // Otherwise expect to be permitted:
-        return true;
-    }
-
-    /**
-     * On OSX, expect permission to attach only if we are root.
-     */
-    private static boolean canAttachOSX() {
-        return userName.equals("root");
     }
 
     private static boolean isArch(String archnameRE) {

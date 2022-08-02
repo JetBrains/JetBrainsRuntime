@@ -34,19 +34,20 @@ import sun.jvm.hotspot.HotSpotAgent;
 import sun.jvm.hotspot.debugger.*;
 
 import jdk.test.lib.apps.LingeredApp;
+import jdk.test.lib.Asserts;
 import jdk.test.lib.JDKToolLauncher;
 import jdk.test.lib.JDKToolFinder;
 import jdk.test.lib.Platform;
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.SA.SATestUtils;
 import jdk.test.lib.Utils;
-import jdk.test.lib.Asserts;
 
 /**
  * @test
  * @library /test/lib
  * @bug 8171084
- * @requires vm.hasSAandCanAttach & (vm.bits == "64" & os.maxMemory > 8g)
+ * @requires vm.hasSA & (vm.bits == "64" & os.maxMemory > 8g)
  * @requires vm.gc != "Shenandoah"
  * @modules java.base/jdk.internal.misc
  *          jdk.hotspot.agent/sun.jvm.hotspot
@@ -71,8 +72,7 @@ public class TestHeapDumpForLargeArray {
         launcher.addToolArg("--pid");
         launcher.addToolArg(Long.toString(lingeredAppPid));
 
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        processBuilder.command(launcher.getCommand());
+        ProcessBuilder processBuilder = SATestUtils.createProcessBuilder(launcher);
         System.out.println(
             processBuilder.command().stream().collect(Collectors.joining(" ")));
 
@@ -87,6 +87,7 @@ public class TestHeapDumpForLargeArray {
     }
 
     public static void main (String... args) throws Exception {
+        SATestUtils.skipIfCannotAttach(); // throws SkippedException if attach not expected to work.
 
         String heapDumpFileName = "LargeArrayHeapDump.bin";
 

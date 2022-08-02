@@ -33,7 +33,7 @@ import jtreg.SkippedException;
 /**
  * @test
  * @summary Test the 'universe' command of jhsdb clhsdb.
- * @requires vm.hasSAandCanAttach & vm.gc != "Z"
+ * @requires vm.hasSA & vm.gc != "Z"
  * @bug 8190307
  * @library /test/lib
  * @build jdk.test.lib.apps.*
@@ -45,7 +45,7 @@ import jtreg.SkippedException;
 /**
  * @test
  * @summary Test the 'universe' command of jhsdb clhsdb.
- * @requires vm.hasSAandCanAttach & vm.gc == "Z"
+ * @requires vm.hasSA & vm.gc == "Z"
  * @bug 8190307
  * @library /test/lib
  * @build jdk.test.lib.apps.*

@@ -58,7 +58,6 @@ requires.properties= \
     vm.cpu.features \
     vm.debug \
     vm.hasSA \
-    vm.hasSAandCanAttach \
     vm.hasJFR \
     vm.rtm.cpu \
     vm.rtm.compiler \

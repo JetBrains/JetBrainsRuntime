@@ -51,7 +51,8 @@ public class TestMutuallyExclusivePlatformPredicates {
         VM_TYPE("isClient", "isServer", "isGraal", "isMinimal", "isZero", "isEmbedded"),
         MODE("isInt", "isMixed", "isComp"),
         IGNORED("isEmulatedClient", "isDebugBuild", "isFastDebugBuild", "isSlowDebugBuild",
-                "hasSA", "shouldSAAttach", "isTieredSupported", "areCustomLoadersSupportedForCDS");
+                "hasSA", "isRoot", "isTieredSupported", "areCustomLoadersSupportedForCDS",
+                "isSignedOSX");
 
         public final List<String> methodNames;
 
