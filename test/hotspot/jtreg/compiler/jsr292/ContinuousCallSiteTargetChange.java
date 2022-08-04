@@ -28,7 +28,7 @@
  * @build sun.hotspot.WhiteBox
  * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  *                                sun.hotspot.WhiteBox$WhiteBoxPermission
- * @run driver/timeout=300 compiler.jsr292.ContinuousCallSiteTargetChange
+ * @run driver compiler.jsr292.ContinuousCallSiteTargetChange
  */
 
 package compiler.jsr292;
