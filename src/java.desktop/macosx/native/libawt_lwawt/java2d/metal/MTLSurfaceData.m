@@ -24,6 +24,7 @@
  */
 
 #import <stdlib.h>
+#import <AWTView.h>
 
 #import "sun_java2d_metal_MTLSurfaceData.h"
 
@@ -326,7 +327,9 @@ Java_sun_java2d_metal_MTLSurfaceData_initOps
     bmtlsdo->isOpaque = isOpaque;
 
     mtlsdo->peerData = (AWTView *)jlong_to_ptr(pPeerData);
+    [mtlsdo->peerData retain];
     mtlsdo->layer = (MTLLayer *)jlong_to_ptr(layerPtr);
+    [mtlsdo->layer retain];
     mtlsdo->configInfo = (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
     if (mtlsdo->configInfo == NULL) {
@@ -343,8 +346,9 @@ Java_sun_java2d_metal_MTLSurfaceData_clearWindow
 
     BMTLSDOps *bmtlsdo = (MTLSDOps*) SurfaceData_GetOps(env, mtlsd);
     MTLSDOps *mtlsdo = (MTLSDOps*) bmtlsdo->privOps;
-
+    [mtlsdo->peerData release];
     mtlsdo->peerData = NULL;
+    [mtlsdo->layer release];
     mtlsdo->layer = NULL;
 }
 
