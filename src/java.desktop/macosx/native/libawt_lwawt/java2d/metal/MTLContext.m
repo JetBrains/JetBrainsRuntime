@@ -498,11 +498,15 @@ extern void initSamplers(id<MTLDevice> device);
     [self.encoderManager endEncoder];
     MTLCommandBufferWrapper * cbwrapper = [self pullCommandBufferWrapper];
     id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
-    __block MTLLayer *layer = nil;
+    MTLLayer *layer = nil;
     if (dstOps != NULL) {
         MTLSDOps *dstMTLOps = (MTLSDOps *) dstOps->privOps;
-        layer = (MTLLayer *) dstMTLOps->layer;
-        layer.frameCount++;
+        if (dstMTLOps != NULL) {
+            layer = (MTLLayer *) dstMTLOps->layer;
+            if (layer != nil) {
+                layer.frameCount++;
+            }
+        }
     }
     [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
         [cbwrapper release];
