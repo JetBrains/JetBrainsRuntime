@@ -58,6 +58,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 * [PyCharm](https://www.jetbrains.com/pycharm/). The Python IDE from JetBrains.
 * [Rider](https://www.jetbrains.com/rider/). The cross-platform .NET IDE from JetBrains.
 * [RubyMine](https://www.jetbrains.com/ruby/). The Ruby and Rails IDE from JetBrains.
+* [Toolbox App](https://www.jetbrains.com/toolbox-app/). JetBrains IDE manager.
 * [WebStorm](https://www.jetbrains.com/webstorm/). The JavaScript IDE from JetBrains.
 * [YourKit](https://www.yourkit.com/). Java and .NET profilers.
 
