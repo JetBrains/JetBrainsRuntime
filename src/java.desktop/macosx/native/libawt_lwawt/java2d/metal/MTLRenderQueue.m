@@ -625,15 +625,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     MTLGraphicsConfigInfo *mtlInfo =
                             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
-                    if (mtlInfo == NULL) {
-
-                    } else {
+                    if (mtlInfo != NULL) {
                         MTLContext *newMtlc = mtlInfo->context;
-                        if (newMtlc == NULL) {
-
-                        } else {
+                        if (newMtlc != NULL) {
                             if (mtlc != NULL) {
-                                MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
                                 [mtlc commitCommandBuffer:NO display:NO];
                             }
                             mtlc = newMtlc;
