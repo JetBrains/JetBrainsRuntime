@@ -93,7 +93,7 @@ function create_image_bundle {
   [ -f "$JBR".tar.gz ] && rm "$JBR.tar.gz"
   touch -c -d "@$SOURCE_DATE_EPOCH" "$JBR".tar
   gzip "$JBR".tar || do_exit $?
-  rm -rf "${IMAGES_DIR:?}"/"$__root_dir"
+  #rm -rf "${IMAGES_DIR:?}"/"$__root_dir"
 }
 
 WITH_DEBUG_LEVEL="--with-debug-level=release"
