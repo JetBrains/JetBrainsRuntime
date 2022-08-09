@@ -50,12 +50,12 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_CWrapper$NSWindow
- * Method:    makeKeyWindow
- * Signature: (J)V
+ * Method:    nativeMakeKeyWindow
+ * Signature: (JZ)V
  */
 JNIEXPORT void JNICALL
-Java_sun_lwawt_macosx_CWrapper_00024NSWindow_makeKeyWindow
-(JNIEnv *env, jclass cls, jlong windowPtr)
+Java_sun_lwawt_macosx_CWrapper_00024NSWindow_nativeMakeKeyWindow
+(JNIEnv *env, jclass cls, jlong windowPtr, jboolean wait)
 {
 JNI_COCOA_ENTER(env);
 
@@ -63,7 +63,7 @@ JNI_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThread:@selector(makeKeyWindow)
                                       on:window
                               withObject:nil
-                           waitUntilDone:NO];
+                           waitUntilDone:(BOOL)wait];
 
 JNI_COCOA_EXIT(env);
 }
