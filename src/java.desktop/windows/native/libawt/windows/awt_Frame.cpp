@@ -631,11 +631,13 @@ MsgRouting AwtFrame::WmNcMouseDown(WPARAM hitTest, int x, int y, int button) {
             case HTMAXBUTTON:
             case HTCLOSE:
             case HTMENU:
-                RECT rcWindow;
-                GetWindowRect(GetHWnd(), &rcWindow);
+                POINT myPos;
+                myPos.x = x;
+                myPos.y = y;
+                ::ScreenToClient(GetHWnd(), &myPos);
                 WmMouseDown(GetButtonMK(button),
-                            x - rcWindow.left,
-                            y - rcWindow.top,
+                            myPos.x,
+                            myPos.y,
                             button);
                 return mrConsume;
         }
@@ -680,9 +682,11 @@ MsgRouting AwtFrame::WmNcMouseMove(WPARAM hitTest, int x, int y) {
             case HTCLOSE:
             case HTMENU:
             case HTCAPTION:
-                RECT rcWindow;
-                GetWindowRect(GetHWnd(), &rcWindow);
-                WmMouseMove(0, x - rcWindow.left, y - rcWindow.top);
+                POINT myPos;
+                myPos.x = x;
+                myPos.y = y;
+                ::ScreenToClient(GetHWnd(), &myPos);
+                WmMouseMove(0, myPos.x, myPos.y);
                 if (hitTest != HTCAPTION) return mrConsume; // Preserve default window drag for HTCAPTION
         }
     }
