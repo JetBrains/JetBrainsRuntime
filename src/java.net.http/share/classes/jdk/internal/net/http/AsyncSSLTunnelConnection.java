@@ -105,7 +105,7 @@ class AsyncSSLTunnelConnection extends AbstractAsyncSSLConnection {
 
     @Override
     ConnectionPool.CacheKey cacheKey() {
-        return ConnectionPool.cacheKey(address, plainConnection.proxyAddr);
+        return ConnectionPool.cacheKey(true, address, plainConnection.proxyAddr);
     }
 
     @Override
