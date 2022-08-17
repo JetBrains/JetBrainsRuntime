@@ -26,6 +26,8 @@
  * @bug 8202414
  * @summary Unsafe write after primitive array creation may result in array length change
  * @requires (os.arch != "sparc") & (os.arch != "sparcv9")
+ * @modules java.base/jdk.internal.misc
+ * @library /test/lib
  * @run main/othervm compiler.c2.Test8202414
  */
 
@@ -35,10 +37,18 @@ import sun.misc.Unsafe;
 import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import jtreg.SkippedException;
 
 public class Test8202414 {
 
     public static void main(String[] args) {
+        // Some CPUs (for example, ARM) does not support unaligned
+        // memory accesses. This test may cause JVM crash due to
+        // alignment check failure on such CPUs.
+        if (!jdk.internal.misc.Unsafe.getUnsafe().unalignedAccess()) {
+          throw new SkippedException(
+            "Platform is missing unaligned memory accesses support.");
+        }
         System.err.close();
         int count = 0;
         while (count++ < 120000) {
