@@ -40,6 +40,7 @@ import java.awt.peer.DesktopPeer;
 import java.io.File;
 import java.io.FilePermission;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.AccessController;
@@ -428,7 +429,11 @@ public class Desktop {
         checkActionSupport(Action.OPEN);
         checkFileValidation(file);
 
-        peer.open(file);
+        final DesktopActions localHandler = actions;
+        if (localHandler != null && localHandler.openSupported)
+            localHandler.handler.open(file);
+        else
+            peer.open(file);
     }
 
     /**
@@ -463,7 +468,12 @@ public class Desktop {
         if (file.isDirectory()) {
             throw new IOException(file.getPath() + " is a directory");
         }
-        peer.edit(file);
+
+        final DesktopActions localHandler = actions;
+        if (localHandler != null && localHandler.editSupported)
+            localHandler.handler.edit(file);
+        else
+            peer.edit(file);
     }
 
     /**
@@ -499,7 +509,12 @@ public class Desktop {
         if (file.isDirectory()) {
             throw new IOException(file.getPath() + " is a directory");
         }
-        peer.print(file);
+
+        final DesktopActions localHandler = actions;
+        if (localHandler != null && localHandler.printSupported)
+            localHandler.handler.print(file);
+        else
+            peer.print(file);
     }
 
     /**
@@ -530,7 +545,12 @@ public class Desktop {
         checkExec();
         checkActionSupport(Action.BROWSE);
         Objects.requireNonNull(uri);
-        peer.browse(uri);
+
+        final DesktopActions localHandler = actions;
+        if (localHandler != null && localHandler.browseSupported)
+            localHandler.handler.browse(uri);
+        else
+            peer.browse(uri);
     }
 
     /**
@@ -600,7 +620,11 @@ public class Desktop {
             throw new IllegalArgumentException("URI scheme is not \"mailto\"");
         }
 
-        peer.mail(mailtoURI);
+        final DesktopActions localHandler = actions;
+        if (localHandler != null && localHandler.mailSupported)
+            localHandler.handler.mail(mailtoURI);
+        else
+            peer.mail(mailtoURI);
     }
 
     private void checkExec() throws SecurityException {
@@ -1046,5 +1070,45 @@ public class Desktop {
             return null;
         });
         return peer.moveToTrash(file);
+    }
+
+    private interface DesktopActionsHandler {
+        void open(File file) throws IOException;
+        void edit(File file) throws IOException;
+        void print(File file) throws IOException;
+        void mail(URI mailtoURL) throws IOException;
+        void browse(URI uri) throws IOException;
+    }
+    private static class DesktopActions {
+        private final DesktopActionsHandler handler;
+
+        private final boolean openSupported, editSupported, printSupported, mailSupported, browseSupported;
+
+        private static boolean isImplemented(Object target, String method, Class<?>... params) throws NoSuchMethodException {
+            return !target.getClass().getMethod(method, params)
+                    .getDeclaringClass().getName().equals("com.jetbrains.DesktopActions$Handler");
+        }
+
+        private DesktopActions(DesktopActionsHandler handler) throws NoSuchFieldException, IllegalAccessException, NoSuchMethodException {
+            this.handler = handler;
+            // Check which methods are actually implemented
+            Field targetField = handler.getClass().getDeclaredField("target");
+            targetField.setAccessible(true);
+            Object target = targetField.get(handler);
+            openSupported = isImplemented(target, "open", File.class);
+            editSupported = isImplemented(target, "edit", File.class);
+            printSupported = isImplemented(target, "print", File.class);
+            mailSupported = isImplemented(target, "mail", URI.class);
+            browseSupported = isImplemented(target, "browse", URI.class);
+        }
+    }
+    private static volatile DesktopActions actions;
+
+    static void setDesktopActionsHandler(DesktopActionsHandler h) {
+        try {
+            actions = new DesktopActions(h);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
