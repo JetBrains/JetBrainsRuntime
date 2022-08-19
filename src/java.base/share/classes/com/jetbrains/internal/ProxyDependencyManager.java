@@ -87,7 +87,7 @@ class ProxyDependencyManager {
      * Collect dependencies for given class and store them into cache.
      */
     private static void step(Node parent, Class<?> clazz) {
-        if (!clazz.getPackageName().startsWith("com.jetbrains")) return;
+        if (!clazz.getPackageName().startsWith("com.jetbrains") && !JBRApi.isKnownProxyInterface(clazz)) return;
         if (parent != null && parent.findAndMergeCycle(clazz) != null) {
             return;
         }
@@ -110,6 +110,9 @@ class ProxyDependencyManager {
             // Otherwise cache will contain incomplete data
             for (Class<?> c : node.cycle.members) {
                 cache.put(c, node.cycle.dependencies);
+                if (JBRApi.VERBOSE) {
+                    System.out.println("Found dependencies for " + c.getName() + ": " + node.cycle.dependencies);
+                }
             }
         }
     }
