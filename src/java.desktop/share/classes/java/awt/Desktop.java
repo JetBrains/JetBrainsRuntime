@@ -428,7 +428,11 @@ public class Desktop {
         checkActionSupport(Action.OPEN);
         checkFileValidation(file);
 
-        peer.open(file);
+        final DesktopActionsHandler localHandler = actionsHandler;
+        if (localHandler != null && localHandler.isSupported(Action.OPEN))
+            localHandler.open(file);
+        else
+            peer.open(file);
     }
 
     /**
@@ -463,7 +467,12 @@ public class Desktop {
         if (file.isDirectory()) {
             throw new IOException(file.getPath() + " is a directory");
         }
-        peer.edit(file);
+
+        final DesktopActionsHandler localHandler = actionsHandler;
+        if (localHandler != null && localHandler.isSupported(Action.EDIT))
+            localHandler.edit(file);
+        else
+            peer.edit(file);
     }
 
     /**
@@ -499,7 +508,12 @@ public class Desktop {
         if (file.isDirectory()) {
             throw new IOException(file.getPath() + " is a directory");
         }
-        peer.print(file);
+
+        final DesktopActionsHandler localHandler = actionsHandler;
+        if (localHandler != null && localHandler.isSupported(Action.PRINT))
+            localHandler.print(file);
+        else
+            peer.print(file);
     }
 
     /**
@@ -530,7 +544,12 @@ public class Desktop {
         checkExec();
         checkActionSupport(Action.BROWSE);
         Objects.requireNonNull(uri);
-        peer.browse(uri);
+
+        final DesktopActionsHandler localHandler = actionsHandler;
+        if (localHandler != null && localHandler.isSupported(Action.BROWSE))
+            localHandler.browse(uri);
+        else
+            peer.browse(uri);
     }
 
     /**
@@ -600,7 +619,11 @@ public class Desktop {
             throw new IllegalArgumentException("URI scheme is not \"mailto\"");
         }
 
-        peer.mail(mailtoURI);
+        final DesktopActionsHandler localHandler = actionsHandler;
+        if (localHandler != null && localHandler.isSupported(Action.MAIL))
+            localHandler.mail(mailtoURI);
+        else
+            peer.mail(mailtoURI);
     }
 
     private void checkExec() throws SecurityException {
@@ -1046,5 +1069,20 @@ public class Desktop {
             return null;
         });
         return peer.moveToTrash(file);
+    }
+
+    interface DesktopActionsHandler {
+        boolean isSupported(Desktop.Action action);
+        void open(File file) throws IOException;
+        void edit(File file) throws IOException;
+        void print(File file) throws IOException;
+        void mail(URI mailtoURL) throws IOException;
+        void browse(URI uri) throws IOException;
+    };
+
+    private static volatile DesktopActionsHandler actionsHandler;
+
+    static void setDesktopActionsHandler(DesktopActionsHandler h) {
+        actionsHandler = h;
     }
 }
