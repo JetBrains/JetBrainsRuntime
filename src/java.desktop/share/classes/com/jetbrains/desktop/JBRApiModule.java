@@ -40,6 +40,9 @@ public class JBRApiModule {
                 .service("com.jetbrains.JBRFileDialogService", null)
                     .withStatic("getFileDialog", "com.jetbrains.desktop.JBRFileDialog", "get")
                 .proxy("com.jetbrains.JBRFileDialog", "com.jetbrains.desktop.JBRFileDialog")
-                .service("com.jetbrains.CustomWindowDecoration", "java.awt.Window$CustomWindowDecoration");
+                .service("com.jetbrains.CustomWindowDecoration", "java.awt.Window$CustomWindowDecoration")
+                .service("com.jetbrains.DesktopActions", null)
+                    .withStatic("setHandler", "java.awt.Desktop", "setDesktopActionsHandler")
+                .clientProxy("java.awt.Desktop$DesktopActionsHandler", "com.jetbrains.DesktopActions$Handler");
     }
 }
