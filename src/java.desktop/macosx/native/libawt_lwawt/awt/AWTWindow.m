@@ -158,32 +158,41 @@ AWT_NS_WINDOW_IMPLEMENTATION
 - (void)postGesture:(NSEvent *)event as:(jint)type a:(jdouble)a b:(jdouble)b {
     AWT_ASSERT_APPKIT_THREAD;
 
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = (*env)->NewLocalRef(env, ((AWTWindow *)self.delegate).javaPlatformWindow);
-    if (platformWindow != NULL) {
-        // extract the target AWT Window object out of the CPlatformWindow
-        GET_CPLATFORM_WINDOW_CLASS();
-        DECLARE_FIELD(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;");
-        jobject awtWindow = (*env)->GetObjectField(env, platformWindow, jf_target);
-        if (awtWindow != NULL) {
-            // translate the point into Java coordinates
-            NSPoint loc = [event locationInWindow];
-            loc.y = [self frame].size.height - loc.y;
+    NSLog(@"postGesture:{%p %@} as:%lld a:%f b:%f", event, event, (long long)type, a, b);
 
-            // send up to the GestureHandler to recursively dispatch on the AWT event thread
-            DECLARE_CLASS(jc_GestureHandler, "com/apple/eawt/event/GestureHandler");
-            DECLARE_STATIC_METHOD(sjm_handleGestureFromNative, jc_GestureHandler,
-                            "handleGestureFromNative", "(Ljava/awt/Window;IDDDD)V");
-            (*env)->CallStaticVoidMethod(env, jc_GestureHandler, sjm_handleGestureFromNative,
-                               awtWindow, type, (jdouble)loc.x, (jdouble)loc.y, (jdouble)a, (jdouble)b);
-            CHECK_EXCEPTION();
-            (*env)->DeleteLocalRef(env, awtWindow);
+    @try {
+        JNIEnv *env = [ThreadUtilities getJNIEnv];
+        jobject platformWindow = (*env)->NewLocalRef(env, ((AWTWindow *) self.delegate).javaPlatformWindow);
+        if (platformWindow != NULL) {
+            // extract the target AWT Window object out of the CPlatformWindow
+            GET_CPLATFORM_WINDOW_CLASS();
+            DECLARE_FIELD(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;");
+            jobject awtWindow = (*env)->GetObjectField(env, platformWindow, jf_target);
+            if (awtWindow != NULL) {
+                // translate the point into Java coordinates
+                NSPoint loc = [event locationInWindow];
+                loc.y = [self frame].size.height - loc.y;
+
+                // send up to the GestureHandler to recursively dispatch on the AWT event thread
+                DECLARE_CLASS(jc_GestureHandler, "com/apple/eawt/event/GestureHandler");
+                DECLARE_STATIC_METHOD(sjm_handleGestureFromNative, jc_GestureHandler,
+                                      "handleGestureFromNative", "(Ljava/awt/Window;IDDDD)V");
+                (*env)->CallStaticVoidMethod(env, jc_GestureHandler, sjm_handleGestureFromNative,
+                                             awtWindow, type, (jdouble) loc.x, (jdouble) loc.y, (jdouble) a,
+                                             (jdouble) b);
+                CHECK_EXCEPTION();
+                (*env)->DeleteLocalRef(env, awtWindow);
+            }
+            (*env)->DeleteLocalRef(env, platformWindow);
         }
-        (*env)->DeleteLocalRef(env, platformWindow);
+    } @finally {
+        NSLog(@"---- postGesture:%p as:%lld a:%f b:%f => exits", event, (long long)type, a, b);
     }
 }
 
 - (BOOL)postPhaseEvent:(NSEvent *)event {
+    NSLog(@"postPhaseEvent: %p %@", event, event);
+
     // Consider changing API to reflect MacOS api
     // Gesture event should come with phase field
     // PhaseEvent should be removed
@@ -196,6 +205,9 @@ AWT_NS_WINDOW_IMPLEMENTATION
                        as:com_apple_eawt_event_GestureHandler_PHASE
                         a:-1.0
                         b:0.0];
+
+        NSLog(@"---- postPhaseEvent(%p) => true", event);
+
         return true;
     } else if (event.phase == NSEventPhaseEnded ||
                event.phase == NSEventPhaseCancelled) {
@@ -203,12 +215,59 @@ AWT_NS_WINDOW_IMPLEMENTATION
                        as:com_apple_eawt_event_GestureHandler_PHASE
                         a:1.0
                         b:0.0];
+
+        NSLog(@"---- postPhaseEvent(%p) => true", event);
+
         return true;
     }
+
+    NSLog(@"---- postPhaseEvent(%p) => false", event);
+
     return false;
 }
 
+- (void)logGestureEvent: (NSEvent*)event withPrefix: (const char*)prefix {
+    const CGEventRef cgEvent = [event CGEvent];
+    CGEventType cgEventType = 0;
+    CGEventFlags cgEventFlags = 0;
+
+    if (cgEvent != NULL)
+    {
+        cgEventType = CGEventGetType(cgEvent);
+        cgEventFlags = CGEventGetFlags(cgEvent);
+    }
+
+    fprintf(stderr, "======== MY SUPER PUPER PRINTF ========\n");
+
+    NSLog(
+        @"%s: %p %@\n"
+         //"  number: %llu\n"
+         "  type: %llu\n"
+         "  subtype: %llu\n"
+         "  modifierFlags: 0x%llX\n"
+         "  phase: %llu\n"
+         //"  magnification: %f\n"
+         "  CGEvent: %p\n"
+         "    type: %llu\n"
+         "    flags: 0x%llX",
+        (prefix == NULL) ? "gesture-event" : prefix,
+        event,
+        event,
+        //(unsigned long long)[event eventNumber],
+        (unsigned long long)[event type],
+        (unsigned long long)[event subtype],
+        (unsigned long long)[event modifierFlags],
+        (unsigned long long)[event phase],
+        //[event magnification],
+        cgEvent,
+        (unsigned long long)cgEventType,
+        (unsigned long long)cgEventFlags
+    );
+}
+
 - (void)magnifyWithEvent:(NSEvent *)event {
+    [self logGestureEvent:event withPrefix:"magnifyWithEvent"];
+
     if ([self postPhaseEvent:event]) {
         return;
     }
@@ -219,6 +278,8 @@ AWT_NS_WINDOW_IMPLEMENTATION
 }
 
 - (void)rotateWithEvent:(NSEvent *)event {
+    [self logGestureEvent:event withPrefix:"rotateWithEvent"];
+
     if ([self postPhaseEvent:event]) {
         return;
     }
@@ -229,6 +290,8 @@ AWT_NS_WINDOW_IMPLEMENTATION
 }
 
 - (void)swipeWithEvent:(NSEvent *)event {
+    [self logGestureEvent:event withPrefix:"swipeWithEvent"];
+
     [self postGesture:event
                    as:com_apple_eawt_event_GestureHandler_SWIPE
                     a:[event deltaX]
@@ -236,6 +299,8 @@ AWT_NS_WINDOW_IMPLEMENTATION
 }
 
 - (void)pressureChangeWithEvent:(NSEvent *)event {
+    [self logGestureEvent:event withPrefix:"pressureChangeWithEvent"];
+
     float pressure = event.pressure;
     [self postGesture:event
                        as:com_apple_eawt_event_GestureHandler_PRESSURE
