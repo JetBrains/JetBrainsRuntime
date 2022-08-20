@@ -54,7 +54,7 @@ class ProxyGenerator {
     /**
      * Print warnings about usage of deprecated interfaces and methods to {@link System#err}.
      */
-    private static final boolean LOG_DEPRECATED = System.getProperty("jetbrains.api.logDeprecated", "true").equalsIgnoreCase("true");
+    private static final boolean LOG_DEPRECATED = System.getProperty("jetbrains.api.logDeprecated", String.valueOf(JBRApi.VERBOSE)).equalsIgnoreCase("true");
 
     private static final AtomicInteger nameCounter = new AtomicInteger();
 
@@ -77,6 +77,9 @@ class ProxyGenerator {
      * classes until {@link #defineClasses()} is called.
      */
     ProxyGenerator(ProxyInfo info) {
+        if (JBRApi.VERBOSE) {
+            System.out.println("Generating proxy " + info.interFace.getName());
+        }
         this.info = info;
         generateBridge = info.type.isPublicApi();
         int nameId = nameCounter.getAndIncrement();
@@ -250,6 +253,11 @@ class ProxyGenerator {
             if (e1 != null) exceptions.add(e1);
             if (e2 != null) exceptions.add(e2);
             generateUnsupportedMethod(proxyWriter, method);
+            if (JBRApi.VERBOSE) {
+                System.err.println("Couldn't generate method " + method.getName());
+                if (e1 != null) e1.printStackTrace();
+                if (e2 != null) e2.printStackTrace();
+            }
             allMethodsImplemented = false;
         }
     }
